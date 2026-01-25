@@ -585,10 +585,12 @@ void DrawAdvancedSettings() {
 
     if (ui::new_ui::g_tab_manager.HasTab("controller")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab")) {
-            LogInfo("Show Controller tab %s", settings::g_mainTabSettings.show_controller_tab.GetValue() ? "enabled" : "disabled");
+            LogInfo("Show Controller tab %s",
+                    settings::g_mainTabSettings.show_controller_tab.GetValue() ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Controller tab (XInput monitoring and remapping) even when 'Show All Tabs' is disabled.");
+            ImGui::SetTooltip(
+                "Shows the Controller tab (XInput monitoring and remapping) even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -2273,50 +2275,55 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
         if (ImGui::CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
-            bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
-            if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
-                s_restart_needed_vsync_tearing.store(true);
-                // Mutual exclusion
-                if (vs_on) {
-                    settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+            if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
+                bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
+                if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
+                    s_restart_needed_vsync_tearing.store(true);
+                    // Mutual exclusion
+                    if (vs_on) {
+                        settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+                        // s_force_vsync_off is automatically synced via BoolSettingRef
+                    }
+                    settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
+                    // s_force_vsync_on is automatically synced via BoolSettingRef
+                    LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Forces sync interval = 1 (requires restart).");
+                }
+
+                ImGui::SameLine();
+
+                bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
+                if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
+                    s_restart_needed_vsync_tearing.store(true);
+                    // Mutual exclusion
+                    if (vs_off) {
+                        settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+                    }
+                    settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
                     // s_force_vsync_off is automatically synced via BoolSettingRef
+                    LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
                 }
-                settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
-                // s_force_vsync_on is automatically synced via BoolSettingRef
-                LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Forces sync interval = 1 (requires restart).");
-            }
-
-            ImGui::SameLine();
-
-            bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
-            if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
-                s_restart_needed_vsync_tearing.store(true);
-                // Mutual exclusion
-                if (vs_off) {
-                    settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
                 }
-                settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
-                // s_force_vsync_off is automatically synced via BoolSettingRef
-                LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
-            }
 
-            ImGui::SameLine();
+                ImGui::SameLine();
 
-            bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
-            if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
-                settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-                // s_prevent_tearing is automatically synced via BoolSettingRef
-                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
-                                  : "Prevent Tearing disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+                bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
+                if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
+                    settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
+                    // s_prevent_tearing is automatically synced via BoolSettingRef
+                    LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
+                                      : "Prevent Tearing disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+                }
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                   "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
             }
 
             int current_api = g_last_reshade_device_api.load();

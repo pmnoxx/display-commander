@@ -166,6 +166,128 @@ void DrawFrameTimeGraph() {
     }
 }
 
+// Draw DLSS information (same format as performance overlay)
+void DrawDLSSInfo() {
+    const DLSSGSummary dlssg_summary = GetDLSSGSummary();
+    auto any_dlss_active = dlssg_summary.dlss_active || dlssg_summary.ray_reconstruction_active;
+
+    // FG Mode
+    if (any_dlss_active && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
+        ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+    }
+
+    // DLSS Internal Resolution
+    if (any_dlss_active && dlssg_summary.internal_resolution != "N/A") {
+        std::string res_text;
+        if (dlssg_summary.output_resolution != "N/A") {
+            res_text = dlssg_summary.internal_resolution + " -> " + dlssg_summary.output_resolution;
+        } else {
+            res_text = dlssg_summary.internal_resolution;
+        }
+        ImGui::Text("DLSS Res: %s", res_text.c_str());
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Res: N/A");
+    }
+
+    // DLSS Status
+    if (any_dlss_active) {
+        std::string status_text = "DLSS: On";
+        if (dlssg_summary.ray_reconstruction_active) {
+            status_text += " (RR)";
+        }
+        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "%s", status_text.c_str());
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS: Off");
+    }
+
+    // DLSS Quality Preset
+    if (any_dlss_active && dlssg_summary.quality_preset != "N/A") {
+        ImGui::Text("DLSS Quality: %s", dlssg_summary.quality_preset.c_str());
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
+    }
+
+    // DLSS Render Preset
+    if (any_dlss_active) {
+        DLSSModelProfile model_profile = GetDLSSModelProfile();
+        if (model_profile.is_valid) {
+            std::string current_quality = dlssg_summary.quality_preset;
+            int render_preset_value = 0;
+
+            // Use Ray Reconstruction presets if RR is active, otherwise use Super Resolution presets
+            if (dlssg_summary.ray_reconstruction_active) {
+                if (current_quality == "Quality") {
+                    render_preset_value = model_profile.rr_quality_preset;
+                } else if (current_quality == "Balanced") {
+                    render_preset_value = model_profile.rr_balanced_preset;
+                } else if (current_quality == "Performance") {
+                    render_preset_value = model_profile.rr_performance_preset;
+                } else if (current_quality == "Ultra Performance") {
+                    render_preset_value = model_profile.rr_ultra_performance_preset;
+                } else if (current_quality == "Ultra Quality") {
+                    render_preset_value = model_profile.rr_ultra_quality_preset;
+                } else {
+                    render_preset_value = model_profile.rr_quality_preset;
+                }
+            } else {
+                if (current_quality == "Quality") {
+                    render_preset_value = model_profile.sr_quality_preset;
+                } else if (current_quality == "Balanced") {
+                    render_preset_value = model_profile.sr_balanced_preset;
+                } else if (current_quality == "Performance") {
+                    render_preset_value = model_profile.sr_performance_preset;
+                } else if (current_quality == "Ultra Performance") {
+                    render_preset_value = model_profile.sr_ultra_performance_preset;
+                } else if (current_quality == "Ultra Quality") {
+                    render_preset_value = model_profile.sr_ultra_quality_preset;
+                } else if (current_quality == "DLAA") {
+                    render_preset_value = model_profile.sr_dlaa_preset;
+                } else {
+                    render_preset_value = model_profile.sr_quality_preset;
+                }
+            }
+
+            std::string render_preset_letter = ConvertRenderPresetToLetter(render_preset_value);
+            ImGui::Text("DLSS Render: %s", render_preset_letter.c_str());
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+        }
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+    }
+
+    // DLSS Sharpness
+    if (any_dlss_active && dlssg_summary.sharpness != "N/A") {
+        ImGui::Text("DLSS Sharpness: %s", dlssg_summary.sharpness.c_str());
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Sharpness: N/A");
+    }
+
+    // DLSS DLL Versions
+    ImGui::Spacing();
+    if (dlssg_summary.dlss_dll_version != "N/A") {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS DLL: %s", dlssg_summary.dlss_dll_version.c_str());
+        if (dlssg_summary.supported_dlss_presets != "N/A") {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", dlssg_summary.supported_dlss_presets.c_str());
+        }
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS DLL: N/A");
+    }
+
+    if (dlssg_summary.dlssg_dll_version != "N/A") {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-G DLL: %s", dlssg_summary.dlssg_dll_version.c_str());
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS-G DLL: N/A");
+    }
+
+    if (dlssg_summary.dlssd_dll_version != "N/A" && dlssg_summary.dlssd_dll_version != "Not loaded") {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-D DLL: %s", dlssg_summary.dlssd_dll_version.c_str());
+    }
+}
+
 // Draw native frame time graph (for frames shown to display via native swapchain Present)
 void DrawNativeFrameTimeGraph() {
     // Check if limit real frames is enabled
@@ -2235,6 +2357,13 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 "Skip ReShade's on_present processing when the game window is not in the foreground. "
                 "This can save GPU power and reduce background processing.");
         }
+    }
+
+    // DLSS Information (default closed)
+    if (ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+        DrawDLSSInfo();
+        ImGui::Unindent();
     }
 
     // VSync & Tearing controls

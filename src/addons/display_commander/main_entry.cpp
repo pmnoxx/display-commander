@@ -697,7 +697,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
         || show_dlss_render_preset) {
         const DLSSGSummary dlssg_summary = GetDLSSGSummary();
-        auto any_dlss_active = dlssg_summary.dlss_active || dlssg_summary.ray_reconstruction_active;
+        auto any_dlss_active =
+            dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
         if (show_fg_mode) {
             // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
@@ -741,6 +742,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 // Add details about which DLSS feature is active
                 if (dlssg_summary.ray_reconstruction_active) {
                     status_text += " (RR)";
+                } else if (dlssg_summary.dlss_g_active) {
+                    status_text += " (DLSS-G)";
                 } else if (dlssg_summary.dlss_active) {
                     // Regular DLSS Super Resolution is active (no suffix needed)
                 }

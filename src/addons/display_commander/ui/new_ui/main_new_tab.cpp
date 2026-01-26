@@ -172,7 +172,8 @@ void DrawDLSSInfo() {
     auto any_dlss_active = dlssg_summary.dlss_active || dlssg_summary.ray_reconstruction_active;
 
     // FG Mode
-    if (any_dlss_active && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
+    if (any_dlss_active
+        && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
         ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
     } else {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
@@ -196,6 +197,8 @@ void DrawDLSSInfo() {
         std::string status_text = "DLSS: On";
         if (dlssg_summary.ray_reconstruction_active) {
             status_text += " (RR)";
+        } else if (dlssg_summary.dlss_g_active) {
+            status_text += " (DLSS-G)";
         }
         ImGui::TextColored(ui::colors::TEXT_SUCCESS, "%s", status_text.c_str());
     } else {
@@ -3650,7 +3653,9 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_dlss_quality_preset.SetValue(show_dlss_quality_preset);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows DLSS quality preset (Performance, Balanced, Quality, Ultra Performance, Ultra Quality, DLAA) in the performance overlay.");
+            ImGui::SetTooltip(
+                "Shows DLSS quality preset (Performance, Balanced, Quality, Ultra Performance, Ultra Quality, DLAA) in "
+                "the performance overlay.");
         }
         ImGui::NextColumn();
 
@@ -3660,7 +3665,9 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_dlss_render_preset.SetValue(show_dlss_render_preset);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows DLSS render preset (A, B, C, D, E, etc.) for the current quality mode in the performance overlay.");
+            ImGui::SetTooltip(
+                "Shows DLSS render preset (A, B, C, D, E, etc.) for the current quality mode in the performance "
+                "overlay.");
         }
         ImGui::NextColumn();
 

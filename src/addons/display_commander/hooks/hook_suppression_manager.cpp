@@ -33,7 +33,6 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::DISPLAY_SETTINGS: return &settings::g_hook_suppression_settings.suppress_display_settings_hooks;
         case HookType::WINDOWS_MESSAGE:  return &settings::g_hook_suppression_settings.suppress_windows_message_hooks;
         case HookType::OPENGL:           return &settings::g_hook_suppression_settings.suppress_opengl_hooks;
-        case HookType::VULKAN:           return &settings::g_hook_suppression_settings.suppress_vulkan_hooks;
         case HookType::HID_SUPPRESSION:  return &settings::g_hook_suppression_settings.suppress_hid_suppression_hooks;
         case HookType::NVAPI:            return &settings::g_hook_suppression_settings.suppress_nvapi_hooks;
         case HookType::PROCESS_EXIT:     return &settings::g_hook_suppression_settings.suppress_process_exit_hooks;
@@ -107,9 +106,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                 case HookType::OPENGL:
                     current_value = settings::g_hook_suppression_settings.suppress_opengl_hooks.GetValue();
                     break;
-                case HookType::VULKAN:
-                    current_value = settings::g_hook_suppression_settings.suppress_vulkan_hooks.GetValue();
-                    break;
                 case HookType::HID_SUPPRESSION:
                     current_value = settings::g_hook_suppression_settings.suppress_hid_suppression_hooks.GetValue();
                     break;
@@ -159,7 +155,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::WINDOWS_MESSAGE:
             return settings::g_hook_suppression_settings.suppress_windows_message_hooks.GetValue();
         case HookType::OPENGL: return settings::g_hook_suppression_settings.suppress_opengl_hooks.GetValue();
-        case HookType::VULKAN: return settings::g_hook_suppression_settings.suppress_vulkan_hooks.GetValue();
         case HookType::HID_SUPPRESSION:
             return settings::g_hook_suppression_settings.suppress_hid_suppression_hooks.GetValue();
         case HookType::NVAPI: return settings::g_hook_suppression_settings.suppress_nvapi_hooks.GetValue();
@@ -282,12 +277,6 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_opengl_hooks.SetValue(false);
             }
             break;
-        case HookType::VULKAN:
-            if (!settings::g_hook_suppression_settings.vulkan_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.vulkan_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_vulkan_hooks.SetValue(false);
-            }
-            break;
         case HookType::HID_SUPPRESSION:
             if (!settings::g_hook_suppression_settings.hid_suppression_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.hid_suppression_hooks_installed.SetValue(true);
@@ -343,7 +332,6 @@ std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType)
         case HookType::DISPLAY_SETTINGS:     return "SuppressDisplaySettingsHooks";
         case HookType::WINDOWS_MESSAGE:      return "SuppressWindowsMessageHooks";
         case HookType::OPENGL:               return "SuppressOpenGLHooks";
-        case HookType::VULKAN:               return "SuppressVulkanHooks";
         case HookType::HID_SUPPRESSION:      return "SuppressHidSuppressionHooks";
         case HookType::NVAPI:                return "SuppressNvapiHooks";
         case HookType::PROCESS_EXIT:         return "SuppressProcessExitHooks";
@@ -375,7 +363,6 @@ std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType
         case HookType::DISPLAY_SETTINGS:     return "DisplaySettingsHooksInstalled";
         case HookType::WINDOWS_MESSAGE:      return "WindowsMessageHooksInstalled";
         case HookType::OPENGL:               return "OpenGLHooksInstalled";
-        case HookType::VULKAN:               return "VulkanHooksInstalled";
         case HookType::HID_SUPPRESSION:      return "HidSuppressionHooksInstalled";
         case HookType::NVAPI:                return "NvapiHooksInstalled";
         case HookType::PROCESS_EXIT:         return "ProcessExitHooksInstalled";
@@ -414,7 +401,6 @@ bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
         case HookType::WINDOWS_MESSAGE:
             return settings::g_hook_suppression_settings.windows_message_hooks_installed.GetValue();
         case HookType::OPENGL: return settings::g_hook_suppression_settings.opengl_hooks_installed.GetValue();
-        case HookType::VULKAN: return settings::g_hook_suppression_settings.vulkan_hooks_installed.GetValue();
         case HookType::HID_SUPPRESSION:
             return settings::g_hook_suppression_settings.hid_suppression_hooks_installed.GetValue();
         case HookType::NVAPI: return settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue();
@@ -447,7 +433,6 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::DISPLAY_SETTINGS:     return "Display Settings";
         case HookType::WINDOWS_MESSAGE:      return "Windows Message";
         case HookType::OPENGL:               return "OpenGL";
-        case HookType::VULKAN:               return "Vulkan";
         case HookType::HID_SUPPRESSION:      return "HID Suppression";
         case HookType::NVAPI:                return "NVAPI";
         case HookType::PROCESS_EXIT:         return "Process Exit";

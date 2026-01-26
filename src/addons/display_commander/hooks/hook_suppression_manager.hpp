@@ -24,7 +24,6 @@ enum class HookType {
     DISPLAY_SETTINGS,
     WINDOWS_MESSAGE,
     OPENGL,
-    VULKAN,
     HID_SUPPRESSION,
     NVAPI,
     PROCESS_EXIT,

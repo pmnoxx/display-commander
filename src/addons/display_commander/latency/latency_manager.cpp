@@ -60,6 +60,11 @@ bool LatencyManager::Initialize(reshade::api::device* device, LatencyTechnology 
 }
 
 bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, LatencyTechnology technology) {
+    static std::atomic<bool> g_init_failed_warned{false};
+    if (g_init_failed_warned.load(std::memory_order_acquire)) {
+        return false;
+    }
+
     if (initialized_.load(std::memory_order_acquire)) {
         // Already initialized, check if we need to switch technology
         if (config_.technology != technology) {
@@ -78,7 +83,6 @@ bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, L
     // Initialize the provider with native device
     if (!provider_->InitializeNative(native_device, device_type)) {
         // Only log this warning once per session to avoid spam
-        static std::atomic<bool> g_init_failed_warned{false};
         if (!g_init_failed_warned.exchange(true, std::memory_order_acq_rel)) {
             LogWarn("LatencyManager: Failed to initialize provider with native device");
         }

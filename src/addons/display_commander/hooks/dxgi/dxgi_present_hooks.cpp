@@ -257,6 +257,9 @@ void CleanupGPUMeasurementState() {
             g_gpu_state.event_handle = nullptr;
         }
 
+        // Clear the atomic event handle so monitoring thread stops waiting on invalid handle
+        g_gpu_completion_event.store(nullptr);
+
         // Reset state flags
         g_gpu_state.fence_value.store(0);
         g_gpu_state.initialized.store(false);

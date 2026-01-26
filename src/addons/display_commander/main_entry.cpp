@@ -564,97 +564,100 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+    if (enabled_experimental_features) {
+        bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
 
-    if (show_vrr_status || show_vrr_debug_mode) {
-        static bool cached_vrr_active = false;
-        static LONGLONG last_update_ns = 0;
-        static LONGLONG last_valid_sample_ns = 0;
-        static dxgi::fps_limiter::RefreshRateStats cached_stats{};
-        const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 100ms in nanoseconds
-        const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;  // 1 second in nanoseconds
+        if (show_vrr_status || show_vrr_debug_mode) {
+            static bool cached_vrr_active = false;
+            static LONGLONG last_update_ns = 0;
+            static LONGLONG last_valid_sample_ns = 0;
+            static dxgi::fps_limiter::RefreshRateStats cached_stats{};
+            const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 100ms in nanoseconds
+            const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;  // 1 second in nanoseconds
 
-        // NVAPI VRR (more authoritative on NVIDIA). Status is now updated from OnPresentUpdateBefore
-        // with direct swapchain access, so we just read the cached values here.
-        bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
-        nvapi::VrrStatus cached_nvapi_vrr = vrr_status::cached_nvapi_vrr;  // Copy for thread safety
+            // NVAPI VRR (more authoritative on NVIDIA). Status is now updated from OnPresentUpdateBefore
+            // with direct swapchain access, so we just read the cached values here.
+            bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
+            nvapi::VrrStatus cached_nvapi_vrr = vrr_status::cached_nvapi_vrr;  // Copy for thread safety
 
-        LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG now_ns = utils::get_now_ns();
 
-        // Update cached value every 100ms
-        if (now_ns - last_update_ns >= update_interval_ns) {
-            auto stats = dxgi::fps_limiter::GetRefreshRateStats();
-            if (stats.is_valid && stats.sample_count > 0) {
-                // VRR is active if refresh rate varies (max > min + 1.0 Hz threshold)
-                cached_vrr_active = (stats.max_rate > stats.min_rate + 2.0);
-                cached_stats = stats;
-                last_update_ns = now_ns;
-                last_valid_sample_ns = now_ns;
-            }
-        }
-
-        // Check if we got a sample within the last 1 second
-        bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
-
-        // Display VRR status (only if show_vrr_status is enabled)
-        if (show_vrr_status) {
-            // Prefer NVAPI when available; fall back to the existing DXGI heuristic otherwise.
-            if (cached_nvapi_ok) {
-                if (cached_nvapi_vrr.is_display_in_vrr_mode && cached_nvapi_vrr.is_vrr_enabled) {
-                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-
-                } else if (cached_nvapi_vrr.is_display_in_vrr_mode) {
-                    ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Capable");
-                } else if (cached_nvapi_vrr.is_vrr_requested) {
-                    ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Requested");
-                } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
-                }
-            } else {
-                if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
-                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
-                } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+            // Update cached value every 100ms
+            if (now_ns - last_update_ns >= update_interval_ns) {
+                auto stats = dxgi::fps_limiter::GetRefreshRateStats();
+                if (stats.is_valid && stats.sample_count > 0) {
+                    // VRR is active if refresh rate varies (max > min + 1.0 Hz threshold)
+                    cached_vrr_active = (stats.max_rate > stats.min_rate + 2.0);
+                    cached_stats = stats;
+                    last_update_ns = now_ns;
+                    last_valid_sample_ns = now_ns;
                 }
             }
-        }
 
-        // Display debugging parameters below VRR status (only if vrr_debug_mode is enabled)
-        if (show_vrr_debug_mode && has_recent_sample && cached_stats.is_valid) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
-                               cached_stats.total_samples_last_10s);
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
-                               cached_stats.samples_below_threshold_last_10s);
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
-                               cached_stats.all_last_20_within_1s ? "Yes" : "No");
-        }
+            // Check if we got a sample within the last 1 second
+            bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
 
-        // NVAPI debug info (optional, shown only in VRR debug mode)
-        if (show_vrr_debug_mode) {
-            if (!cached_nvapi_vrr.nvapi_initialized) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
-            } else if (!cached_nvapi_vrr.display_id_resolved) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
-                                   (int)cached_nvapi_vrr.resolve_status);
-                if (!cached_nvapi_vrr.nvapi_display_name.empty()) {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
-                                       cached_nvapi_vrr.nvapi_display_name.c_str());
+            // Display VRR status (only if show_vrr_status is enabled)
+            if (show_vrr_status) {
+                // Prefer NVAPI when available; fall back to the existing DXGI heuristic otherwise.
+                if (cached_nvapi_ok) {
+                    if (cached_nvapi_vrr.is_display_in_vrr_mode && cached_nvapi_vrr.is_vrr_enabled) {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+
+                    } else if (cached_nvapi_vrr.is_display_in_vrr_mode) {
+                        ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Capable");
+                    } else if (cached_nvapi_vrr.is_vrr_requested) {
+                        ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Requested");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                    }
+                } else {
+                    if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                    }
                 }
-            } else if (!cached_nvapi_ok) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
-                                   (int)cached_nvapi_vrr.query_status);
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr.display_id);
-            } else {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
-                                   (int)cached_nvapi_vrr.is_vrr_enabled, (int)cached_nvapi_vrr.is_vrr_requested,
-                                   (int)cached_nvapi_vrr.is_vrr_possible, (int)cached_nvapi_vrr.is_display_in_vrr_mode);
-                // Show which field is causing "VRR: On" to display
-                if (cached_nvapi_vrr.is_display_in_vrr_mode) {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
-                } else if (cached_nvapi_vrr.is_vrr_enabled) {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
+            }
+
+            // Display debugging parameters below VRR status (only if vrr_debug_mode is enabled)
+            if (show_vrr_debug_mode && has_recent_sample && cached_stats.is_valid) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
+                                   cached_stats.total_samples_last_10s);
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
+                                   cached_stats.samples_below_threshold_last_10s);
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
+                                   cached_stats.all_last_20_within_1s ? "Yes" : "No");
+            }
+
+            // NVAPI debug info (optional, shown only in VRR debug mode)
+            if (show_vrr_debug_mode) {
+                if (!cached_nvapi_vrr.nvapi_initialized) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
+                } else if (!cached_nvapi_vrr.display_id_resolved) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
+                                       (int)cached_nvapi_vrr.resolve_status);
+                    if (!cached_nvapi_vrr.nvapi_display_name.empty()) {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
+                                           cached_nvapi_vrr.nvapi_display_name.c_str());
+                    }
+                } else if (!cached_nvapi_ok) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
+                                       (int)cached_nvapi_vrr.query_status);
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr.display_id);
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
+                                       (int)cached_nvapi_vrr.is_vrr_enabled, (int)cached_nvapi_vrr.is_vrr_requested,
+                                       (int)cached_nvapi_vrr.is_vrr_possible,
+                                       (int)cached_nvapi_vrr.is_display_in_vrr_mode);
+                    // Show which field is causing "VRR: On" to display
+                    if (cached_nvapi_vrr.is_display_in_vrr_mode) {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
+                    } else if (cached_nvapi_vrr.is_vrr_enabled) {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
+                    }
                 }
             }
         }

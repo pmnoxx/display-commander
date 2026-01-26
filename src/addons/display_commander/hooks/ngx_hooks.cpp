@@ -943,17 +943,13 @@ static bool IsValidStringPtr(const char* str, size_t max_len = 4096) {
         return false;
     }
 
-    // Try to read the string safely (check for null terminator within reasonable bounds)
-    __try {
-        for (size_t i = 0; i < max_len; ++i) {
-            if (str[i] == '\0') {
-                return true;  // Found null terminator
-            }
+    // Check for null terminator within reasonable bounds
+    for (size_t i = 0; i < max_len; ++i) {
+        if (str[i] == '\0') {
+            return true;  // Found null terminator
         }
-        return false;  // No null terminator found within max_len
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;  // Access violation when reading
     }
+    return false;  // No null terminator found within max_len
 }
 
 // Helper function to safely validate and log wide string pointer
@@ -970,17 +966,13 @@ static bool IsValidWStringPtr(const wchar_t* str, size_t max_len = 4096) {
         return false;
     }
 
-    // Try to read the string safely (check for null terminator within reasonable bounds)
-    __try {
-        for (size_t i = 0; i < max_len; ++i) {
-            if (str[i] == L'\0') {
-                return true;  // Found null terminator
-            }
+    // Check for null terminator within reasonable bounds
+    for (size_t i = 0; i < max_len; ++i) {
+        if (str[i] == L'\0') {
+            return true;  // Found null terminator
         }
-        return false;  // No null terminator found within max_len
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;  // Access violation when reading
     }
+    return false;  // No null terminator found within max_len
 }
 
 // Helper function to safely log string value
@@ -988,11 +980,7 @@ static void SafeLogString(const char* name, const char* str) {
     if (str == nullptr) {
         LogInfo("  %s: nullptr", name);
     } else if (IsValidStringPtr(str)) {
-        __try {
-            LogInfo("  %s: \"%s\"", name, str);
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            LogError("  %s: <ACCESS VIOLATION when reading>", name);
-        }
+        LogInfo("  %s: \"%s\"", name, str);
     } else {
         LogError("  %s: <INVALID POINTER: 0x%p>", name, str);
     }
@@ -1003,19 +991,15 @@ static void SafeLogWString(const char* name, const wchar_t* str) {
     if (str == nullptr) {
         LogInfo("  %s: nullptr", name);
     } else if (IsValidWStringPtr(str)) {
-        __try {
-            // Convert to char for logging (first 256 chars max)
-            char buffer[256] = {};
-            size_t i = 0;
-            while (i < 255 && str[i] != L'\0') {
-                buffer[i] = (char)str[i];
-                ++i;
-            }
-            buffer[i] = '\0';
-            LogInfo("  %s: \"%s\"", name, buffer);
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            LogError("  %s: <ACCESS VIOLATION when reading>", name);
+        // Convert to char for logging (first 256 chars max)
+        char buffer[256] = {};
+        size_t i = 0;
+        while (i < 255 && str[i] != L'\0') {
+            buffer[i] = (char)str[i];
+            ++i;
         }
+        buffer[i] = '\0';
+        LogInfo("  %s: \"%s\"", name, buffer);
     } else {
         LogError("  %s: <INVALID POINTER: 0x%p>", name, str);
     }
@@ -1048,21 +1032,17 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
             LogError("  InDevice: <INVALID POINTER: 0x%p>", InDevice);
         } else {
             LogInfo("  InDevice: 0x%p (memory region: 0x%p, size: 0x%llx)", InDevice, mbi.BaseAddress, mbi.RegionSize);
-            // Try to validate it's actually a COM object by checking vtable
-            __try {
-                void** vftable = *(void***)InDevice;
-                if (vftable != nullptr) {
-                    MEMORY_BASIC_INFORMATION vftable_mbi = {};
-                    if (VirtualQuery(vftable, &vftable_mbi, sizeof(vftable_mbi)) != 0) {
-                        LogInfo("  InDevice vtable: 0x%p (valid)", vftable);
-                    } else {
-                        LogError("  InDevice vtable: <INVALID POINTER: 0x%p>", vftable);
-                    }
+            // Validate it's actually a COM object by checking vtable
+            void** vftable = *(void***)InDevice;
+            if (vftable != nullptr) {
+                MEMORY_BASIC_INFORMATION vftable_mbi = {};
+                if (VirtualQuery(vftable, &vftable_mbi, sizeof(vftable_mbi)) != 0) {
+                    LogInfo("  InDevice vtable: 0x%p (valid)", vftable);
                 } else {
-                    LogError("  InDevice vtable: nullptr");
+                    LogError("  InDevice vtable: <INVALID POINTER: 0x%p>", vftable);
                 }
-            } __except (EXCEPTION_EXECUTE_HANDLER) {
-                LogError("  InDevice: <ACCESS VIOLATION when reading vtable>");
+            } else {
+                LogError("  InDevice vtable: nullptr");
             }
         }
     }
@@ -1077,12 +1057,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
         } else {
             LogInfo("  InFeatureInfo: 0x%p (memory region: 0x%p, size: 0x%llx)", InFeatureInfo, mbi.BaseAddress,
                     mbi.RegionSize);
-            // Try to read structure fields safely
-            __try {
-                LogInfo("  InFeatureInfo structure size check passed");
-            } __except (EXCEPTION_EXECUTE_HANDLER) {
-                LogError("  InFeatureInfo: <ACCESS VIOLATION when reading structure>");
-            }
+            LogInfo("  InFeatureInfo structure size check passed");
         }
     }
 
@@ -1132,22 +1107,10 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
 
     LogInfo("Calling original NVSDK_NGX_D3D11_Init_ProjectID function...");
 
-    __try {
-        NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_ProjectID_Original(
-            InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
-        LogInfo("NVSDK_NGX_D3D11_Init_ProjectID returned: 0x%08X", result);
-        return result;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        // GetExceptionCode() is a macro that's only valid in exception handlers
-        LogError("EXCEPTION in NVSDK_NGX_D3D11_Init_ProjectID: Code=0x%08X (Access Violation)", GetExceptionCode());
-        LogError("This indicates one of the arguments passed to NGX was invalid:");
-        LogError("  - InDevice: 0x%p", InDevice);
-        LogError("  - InProjectId: 0x%p", InProjectId);
-        LogError("  - InEngineVersion: 0x%p", InEngineVersion);
-        LogError("  - InApplicationDataPath: 0x%p", InApplicationDataPath);
-        LogError("  - InFeatureInfo: 0x%p", InFeatureInfo);
-        return NVSDK_NGX_Result_Fail;
-    }
+    NVSDK_NGX_Result result = NVSDK_NGX_D3D11_Init_ProjectID_Original(
+        InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion);
+    LogInfo("NVSDK_NGX_D3D11_Init_ProjectID returned: 0x%08X", result);
+    return result;
 }
 
 // D3D11 CreateFeature detour

@@ -424,7 +424,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
-    ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
+    // Apply spacing offsets for stream overlay text compatibility
+    float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
+    float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
+    ImGui::SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, 10.0f + vertical_spacing), ImGuiCond_Always);
     // Set transparent background for the window (configurable opacity)
     float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
     ImGui::SetNextWindowBgAlpha(bg_alpha);

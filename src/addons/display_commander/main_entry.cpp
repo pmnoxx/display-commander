@@ -702,15 +702,87 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
     if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
         || show_dlss_render_preset) {
-        const DLSSGSummary dlssg_summary = GetDLSSGSummary();
-        auto any_dlss_active =
-            dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
+        // Get only the fields we need directly instead of calling GetDLSSGSummary()
+        const bool dlss_active = g_dlss_enabled.load();
+        const bool dlss_g_active = g_dlssg_enabled.load();
+        const bool ray_reconstruction_active = g_ray_reconstruction_enabled.load();
+        auto any_dlss_active = dlss_active || dlss_g_active || ray_reconstruction_active;
+
+        // Get fg_mode if needed
+        std::string fg_mode = "N/A";
+        if (show_fg_mode) {
+            int enable_interp;
+            if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp) && enable_interp == 1) {
+                unsigned int multi_frame_count;
+                if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
+                    if (multi_frame_count == 1) {
+                        fg_mode = "2x";
+                    } else if (multi_frame_count == 2) {
+                        fg_mode = "3x";
+                    } else if (multi_frame_count == 3) {
+                        fg_mode = "4x";
+                    } else {
+                        char buffer[16];
+                        snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
+                        fg_mode = std::string(buffer);
+                    }
+                }
+            }
+        }
+
+        // Get resolutions if needed
+        std::string internal_resolution = "N/A";
+        std::string output_resolution = "N/A";
+        if (show_dlss_internal_resolution) {
+            unsigned int internal_width, internal_height, output_width, output_height;
+            bool has_internal_width =
+                g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Width", internal_width);
+            bool has_internal_height =
+                g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Height", internal_height);
+            bool has_output_width = g_ngx_parameters.get_as_uint("Width", output_width);
+            bool has_output_height = g_ngx_parameters.get_as_uint("Height", output_height);
+
+            if (has_internal_width && has_internal_height) {
+                internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
+            }
+            if (has_output_width && has_output_height) {
+                output_resolution = std::to_string(output_width) + "x" + std::to_string(output_height);
+            }
+        }
+
+        // Get quality preset if needed
+        std::string quality_preset = "N/A";
+        if (show_dlss_quality_preset || show_dlss_render_preset) {
+            unsigned int perf_quality;
+            if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
+                switch (perf_quality) {
+                    case 0:  // NVSDK_NGX_PerfQuality_Value_MaxPerf
+                        quality_preset = "Performance";
+                        break;
+                    case 1:  // NVSDK_NGX_PerfQuality_Value_Balanced
+                        quality_preset = "Balanced";
+                        break;
+                    case 2:  // NVSDK_NGX_PerfQuality_Value_MaxQuality
+                        quality_preset = "Quality";
+                        break;
+                    case 3:  // NVSDK_NGX_PerfQuality_Value_UltraPerformance
+                        quality_preset = "Ultra Performance";
+                        break;
+                    case 4:  // NVSDK_NGX_PerfQuality_Value_UltraQuality
+                        quality_preset = "Ultra Quality";
+                        break;
+                    case 5:  // NVSDK_NGX_PerfQuality_Value_DLAA
+                        quality_preset = "DLAA";
+                        break;
+                    default: quality_preset = "Unknown"; break;
+                }
+            }
+        }
 
         if (show_fg_mode) {
             // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
-            if (any_dlss_active
-                && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
-                ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
+            if (any_dlss_active && (fg_mode == "2x" || fg_mode == "3x" || fg_mode == "4x")) {
+                ImGui::Text("FG: %s", fg_mode.c_str());
             } else {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
             }
@@ -718,12 +790,12 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
         if (show_dlss_internal_resolution) {
             // Show internal resolution -> output resolution if DLSS is active and we have valid data
-            if (any_dlss_active && dlssg_summary.internal_resolution != "N/A") {
+            if (any_dlss_active && internal_resolution != "N/A") {
                 std::string res_text;
-                if (dlssg_summary.output_resolution != "N/A") {
-                    res_text = dlssg_summary.internal_resolution + " -> " + dlssg_summary.output_resolution;
+                if (output_resolution != "N/A") {
+                    res_text = internal_resolution + " -> " + output_resolution;
                 } else {
-                    res_text = dlssg_summary.internal_resolution;
+                    res_text = internal_resolution;
                 }
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
                     ImGui::Text("DLSS Res: %s", res_text.c_str());
@@ -746,11 +818,11 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 }
 
                 // Add details about which DLSS feature is active
-                if (dlssg_summary.ray_reconstruction_active) {
+                if (ray_reconstruction_active) {
                     status_text += " (RR)";
-                } else if (dlssg_summary.dlss_g_active) {
+                } else if (dlss_g_active) {
                     status_text += " (DLSS-G)";
-                } else if (dlssg_summary.dlss_active) {
+                } else if (dlss_active) {
                     // Regular DLSS Super Resolution is active (no suffix needed)
                 }
 
@@ -766,11 +838,11 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
         if (show_dlss_quality_preset) {
             // Show quality preset (Performance, Balanced, Quality, etc.) if DLSS is active and we have valid data
-            if (any_dlss_active && dlssg_summary.quality_preset != "N/A") {
+            if (any_dlss_active && quality_preset != "N/A") {
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    ImGui::Text("DLSS Quality: %s", dlssg_summary.quality_preset.c_str());
+                    ImGui::Text("DLSS Quality: %s", quality_preset.c_str());
                 } else {
-                    ImGui::Text("%s", dlssg_summary.quality_preset.c_str());
+                    ImGui::Text("%s", quality_preset.c_str());
                 }
             } else {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
@@ -783,11 +855,11 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 DLSSModelProfile model_profile = GetDLSSModelProfile();
                 if (model_profile.is_valid) {
                     // Get current quality preset to determine which render preset value to show
-                    std::string current_quality = dlssg_summary.quality_preset;
+                    std::string current_quality = quality_preset;
                     int render_preset_value = 0;
 
                     // Use Ray Reconstruction presets if RR is active, otherwise use Super Resolution presets
-                    if (dlssg_summary.ray_reconstruction_active) {
+                    if (ray_reconstruction_active) {
                         // Determine which Ray Reconstruction render preset value to display based on current quality
                         // preset
                         if (current_quality == "Quality") {

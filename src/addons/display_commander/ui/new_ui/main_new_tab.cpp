@@ -1924,14 +1924,17 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 ImGui::TextColored(ui::colors::TEXT_WARNING,
                                    ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
-                bool enable_reflex = settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
-                if (ImGui::Checkbox("Enable Reflex as fps limiter", &enable_reflex)) {
-                    settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS limit "
-                        "for better latency reduction.");
+                if (enabled_experimental_features) {
+                    bool enable_reflex = settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
+                    if (ImGui::Checkbox("Enable Reflex as fps limiter", &enable_reflex)) {
+                        settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS "
+                            "limit "
+                            "for better latency reduction.");
+                    }
                 }
 
                 // Low Latency Ratio Selector (Experimental WIP placeholder)

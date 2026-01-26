@@ -3585,27 +3585,29 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
-        // Show VRR Status
-        bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-        if (ImGui::Checkbox("VRR Status", &show_vrr_status)) {
-            settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
-        }
-        ImGui::NextColumn();
+        if (enabled_experimental_features) {
+            // Show VRR Status
+            bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+            if (ImGui::Checkbox("VRR Status", &show_vrr_status)) {
+                settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
+            }
+            ImGui::NextColumn();
 
-        // VRR Debug Mode
-        bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-        if (ImGui::Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
-            settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
+            // VRR Debug Mode
+            bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+            if (ImGui::Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
+                settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Shows detailed VRR debugging parameters (Fixed Hz, Threshold, Samples, etc.) in the performance "
+                    "overlay.");
+            }
+            ImGui::NextColumn();
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Shows detailed VRR debugging parameters (Fixed Hz, Threshold, Samples, etc.) in the performance "
-                "overlay.");
-        }
-        ImGui::NextColumn();
 
         // Show CPU Usage
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();

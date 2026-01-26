@@ -1205,6 +1205,8 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
                 && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 g_latencyManager->Sleep();
             }
+        } else {
+            s_reflex_enable_current_frame.store(false);
         }
     } else {
         s_reflex_enable_current_frame.store(false);

@@ -123,6 +123,8 @@ class MainTabSettings {
     ui::new_ui::FloatSetting overlay_chart_alpha;
     ui::new_ui::FloatSetting overlay_graph_scale;
     ui::new_ui::FloatSetting overlay_graph_max_scale;
+    ui::new_ui::FloatSetting overlay_vertical_spacing;
+    ui::new_ui::FloatSetting overlay_horizontal_spacing;
 
     // GPU Measurement Settings
     ui::new_ui::IntSetting gpu_measurement_enabled;
@@ -179,6 +181,7 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);
 void UpdateTargetDisplayFromGameWindow();
 void UpdateFpsLimitMaximums();
+void UpdateOverlaySpacingMaximums();
 void UpdateCpuCoresMaximum();
 
 }  // namespace settings

@@ -1185,8 +1185,8 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     HandleFpsLimiterPost(false, from_wrapper);
 
     if (should_enable_reflex) {
-        s_reflex_enable_current_frame.store(true);
         if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
+            s_reflex_enable_current_frame.store(true);
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
             float target_fps = GetTargetFps();

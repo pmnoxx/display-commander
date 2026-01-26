@@ -1176,8 +1176,8 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     // Enable Reflex if:
     // 1. Developer tab Reflex is enabled, OR
     // 2. OnPresentSync mode is selected AND onpresent_sync_enable_reflex is enabled
-    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue()
-                                || (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync);
+    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue();
+    //    || (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync);
     if (delay_first_500_frames && current_frame_id < 500) {
         should_enable_reflex = false;
     }

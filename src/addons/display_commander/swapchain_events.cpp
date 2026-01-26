@@ -779,7 +779,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "Present Flags: 0x" << std::hex << desc.present_flags << std::dec << ", ";
             oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
             oss << "Back Buffer Format: " << static_cast<int>(desc.back_buffer.texture.format) << ", ";
-            oss << "Back Buffer Usage: 0x" << std::hex << static_cast<uint64_t>(desc.back_buffer.usage) << std::dec << ", ";
+            oss << "Back Buffer Usage: 0x" << std::hex << static_cast<uint64_t>(desc.back_buffer.usage) << std::dec
+                << ", ";
             oss << "Multisample: " << desc.back_buffer.texture.samples;
             LogInfo(oss.str().c_str());
         }
@@ -853,7 +854,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "Present Flags: 0x" << std::hex << desc.present_flags << std::dec << ", ";
             oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
             oss << "Back Buffer Format: " << static_cast<int>(desc.back_buffer.texture.format) << ", ";
-            oss << "Back Buffer Usage: 0x" << std::hex << static_cast<uint64_t>(desc.back_buffer.usage) << std::dec << ", ";
+            oss << "Back Buffer Usage: 0x" << std::hex << static_cast<uint64_t>(desc.back_buffer.usage) << std::dec
+                << ", ";
             oss << "Multisample: " << desc.back_buffer.texture.samples;
             LogInfo(oss.str().c_str());
         }
@@ -1601,8 +1603,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
             bool got_device_name = false;
 
             auto api = swapchain->get_device()->get_api();
-            if (api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12 ||
-                api == reshade::api::device_api::d3d10) {
+            if (api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12
+                || api == reshade::api::device_api::d3d10) {
                 IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
                 if (iunknown != nullptr) {
                     Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
@@ -1629,8 +1631,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                 }
 
                 nvapi::VrrStatus vrr{};
-                bool ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(
-                    vrr_status::cached_output_device_name, vrr);
+                bool ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(vrr_status::cached_output_device_name, vrr);
                 vrr_status::cached_nvapi_ok.store(ok);
                 vrr_status::cached_nvapi_vrr = vrr;
             } else {

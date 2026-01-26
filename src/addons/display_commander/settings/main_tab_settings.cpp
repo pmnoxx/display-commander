@@ -119,6 +119,10 @@ MainTabSettings::MainTabSettings()
       overlay_chart_alpha("overlay_chart_alpha", 0.0f, 0.0f, 1.0f, "DisplayCommander"),
       overlay_graph_scale("overlay_graph_scale", 1.0f, 0.5f, 10.0f, "DisplayCommander"),
       overlay_graph_max_scale("overlay_graph_max_scale", 4.0f, 2.0f, 10.0f, "DisplayCommander"),
+      overlay_vertical_spacing("overlay_vertical_spacing", 0.0f, 0.0f,
+                               static_cast<float>(GetSystemMetrics(SM_CYSCREEN)), "DisplayCommander"),
+      overlay_horizontal_spacing("overlay_horizontal_spacing", 0.0f, 0.0f,
+                                 static_cast<float>(GetSystemMetrics(SM_CXSCREEN)), "DisplayCommander"),
       gpu_measurement_enabled("gpu_measurement_enabled", 1, 0, 1, "DisplayCommander"),
       target_display("target_display", "", "DisplayCommander"),
       game_window_display_device_id("game_window_display_device_id", "", "DisplayCommander"),
@@ -211,6 +215,8 @@ MainTabSettings::MainTabSettings()
         &overlay_chart_alpha,
         &overlay_graph_scale,
         &overlay_graph_max_scale,
+        &overlay_vertical_spacing,
+        &overlay_horizontal_spacing,
         &gpu_measurement_enabled,
         &frame_time_mode,
         &target_display,
@@ -250,6 +256,9 @@ void MainTabSettings::LoadSettings() {
 
     // Update CPU cores maximum based on system CPU count
     UpdateCpuCoresMaximum();
+
+    // Update overlay spacing maximums based on screen dimensions
+    UpdateOverlaySpacingMaximums();
 
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
@@ -337,6 +346,26 @@ void UpdateCpuCoresMaximum() {
     if (g_mainTabSettings.cpu_cores.GetMax() != static_cast<int>(cpu_count)) {
         g_mainTabSettings.cpu_cores.SetMax(static_cast<int>(cpu_count));
         LogInfo("Updated CPU cores maximum to %lu cores", cpu_count);
+    }
+}
+
+// Function to update overlay spacing maximums based on screen dimensions
+void UpdateOverlaySpacingMaximums() {
+    int screen_width = GetSystemMetrics(SM_CXSCREEN);
+    int screen_height = GetSystemMetrics(SM_CYSCREEN);
+
+    float max_width = static_cast<float>(screen_width);
+    float max_height = static_cast<float>(screen_height);
+
+    // Update the maximum values for overlay spacing settings
+    if (g_mainTabSettings.overlay_horizontal_spacing.GetMax() != max_width) {
+        g_mainTabSettings.overlay_horizontal_spacing.SetMax(max_width);
+        LogInfo("Updated overlay horizontal spacing maximum to %.0f px (screen width)", max_width);
+    }
+
+    if (g_mainTabSettings.overlay_vertical_spacing.GetMax() != max_height) {
+        g_mainTabSettings.overlay_vertical_spacing.SetMax(max_height);
+        LogInfo("Updated overlay vertical spacing maximum to %.0f px (screen height)", max_height);
     }
 }
 

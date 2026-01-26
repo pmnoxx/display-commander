@@ -3806,6 +3806,28 @@ void DrawImportantInfo() {
                 "Lower values (2x-4x) show more detail for normal frame times. "
                 "Higher values (6x-10x) accommodate frame time spikes without clipping.");
         }
+        // Overlay vertical spacing slider
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_vertical_spacing, "Overlay Vertical Spacing",
+                               "%.0f px")) {
+            // Setting is automatically saved by SliderFloatSetting
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Adds vertical spacing to the performance overlay position. "
+                "Useful to prevent overlap with stream overlay text. "
+                "Positive values move the overlay down, negative values move it up.");
+        }
+        // Overlay horizontal spacing slider
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_horizontal_spacing, "Overlay Horizontal Spacing",
+                               "%.0f px")) {
+            // Setting is automatically saved by SliderFloatSetting
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Adds horizontal spacing to the performance overlay position. "
+                "Useful to prevent overlap with stream overlay text. "
+                "Positive values move the overlay to the right, negative values move it to the left.");
+        }
     }
 
     ImGui::Spacing();

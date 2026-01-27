@@ -12,6 +12,7 @@
 #include "hook_stats_tab.hpp"
 #include "hotkeys_tab.hpp"
 #include "main_new_tab.hpp"
+#include "performance_tab.hpp"
 #include "streamline_tab.hpp"
 #include "swapchain_tab.hpp"
 #include "updates_tab.hpp"
@@ -127,6 +128,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                 tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
             } else if (tab_id == "reshade") {
                 tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
+            } else if (tab_id == "performance") {
+                tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
             }
 
             // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -181,6 +184,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                     tab_enabled = settings::g_mainTabSettings.show_experimental_tab.GetValue();
                 } else if (tab_id == "reshade") {
                     tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
+                } else if (tab_id == "performance") {
+                    tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
                 }
 
                 // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -371,6 +376,20 @@ void InitializeNewUI() {
             },
             true);  // Experimental tab is advanced
     }
+
+    // Add performance tab conditionally based on advanced settings
+    g_tab_manager.AddTab(
+        "Performance", "performance",
+        [](reshade::api::effect_runtime* runtime) {
+            try {
+                ui::new_ui::DrawPerformanceTab();
+            } catch (const std::exception& e) {
+                LogError("Error drawing performance tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing performance tab");
+            }
+        },
+        true);  // Performance tab is advanced
 
     // Add reshade tab
     g_tab_manager.AddTab(

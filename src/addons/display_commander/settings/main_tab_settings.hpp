@@ -156,6 +156,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_streamline_tab;
     ui::new_ui::BoolSetting show_experimental_tab;
     ui::new_ui::BoolSetting show_reshade_tab;
+    ui::new_ui::BoolSetting show_performance_tab;
 
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;

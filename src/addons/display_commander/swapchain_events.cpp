@@ -1692,36 +1692,37 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
         return;
     }
 
-    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::OnPresentFlags2);
+    {
+        perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::OnPresentFlags2);
 
-    // Increment event counter
-    g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
+        // Increment event counter
+        g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
+        g_swapchain_event_total_count.fetch_add(1);
 
-    if (api_type == DeviceTypeDC::DX11 || api_type == DeviceTypeDC::DX12 || api_type == DeviceTypeDC::DX10) {
-        // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
-        if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
-            *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
+        if (api_type == DeviceTypeDC::DX11 || api_type == DeviceTypeDC::DX12 || api_type == DeviceTypeDC::DX10) {
+            // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
+            if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
+                *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
 
-            // Log the flag removal for debugging
-            static int prevent_tearing_log_count = 0;
-            if (prevent_tearing_log_count++ < 10) {
-                std::ostringstream oss;
-                oss << "Device Creation Flags callback: Stripped "
-                       "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
-                    << std::hex << *present_flags;
-                LogInfo(oss.str().c_str());
+                // Log the flag removal for debugging
+                static int prevent_tearing_log_count = 0;
+                if (prevent_tearing_log_count++ < 10) {
+                    std::ostringstream oss;
+                    oss << "Device Creation Flags callback: Stripped "
+                           "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
+                        << std::hex << *present_flags;
+                    LogInfo(oss.str().c_str());
+                }
             }
-        }
-        // Don't block presents if continue rendering is enabled
-        if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)
-            && !s_continue_rendering.load()) {
-            *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
+            // Don't block presents if continue rendering is enabled
+            if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)
+                && !s_continue_rendering.load()) {
+                *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
+            }
         }
     }
 
     HandleFpsLimiterPre(from_present_detour, from_wrapper);
-    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
@@ -1730,7 +1731,6 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
             }
         }
     }
-    RECORD_DETOUR_CALL(utils::get_now_ns());
 }
 
 // Resource creation event handler to upgrade buffer resolutions and texture

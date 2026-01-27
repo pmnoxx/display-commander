@@ -1,20 +1,20 @@
 #include "timeslowdown_hooks.hpp"
-#include "hook_suppression_manager.hpp"
+#include <MinHook.h>
+#include <windows.h>
+#include <atomic>
+#include <map>
+#include <memory>
+#include <set>
+#include <sstream>
+#include <string>
+#include <vector>
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
+#include "../swapchain_events.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
-#include "../swapchain_events.hpp"
-#include <MinHook.h>
-#include <atomic>
-#include <memory>
-#include <set>
-#include <map>
-#include <vector>
-#include <string>
-#include <sstream>
-#include <windows.h>
+#include "hook_suppression_manager.hpp"
 
 // NTSTATUS constants
 #ifndef STATUS_SUCCESS
@@ -30,18 +30,18 @@
 namespace display_commanderhooks {
 
 // Hook type constants
-const char *HOOK_QUERY_PERFORMANCE_COUNTER = "QueryPerformanceCounter";
-const char *HOOK_GET_TICK_COUNT = "GetTickCount";
-const char *HOOK_GET_TICK_COUNT64 = "GetTickCount64";
-const char *HOOK_TIME_GET_TIME = "timeGetTime";
-const char *HOOK_GET_SYSTEM_TIME = "GetSystemTime";
-const char *HOOK_GET_SYSTEM_TIME_AS_FILE_TIME = "GetSystemTimeAsFileTime";
-const char *HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME = "GetSystemTimePreciseAsFileTime";
-const char *HOOK_GET_LOCAL_TIME = "GetLocalTime";
-const char *HOOK_NT_QUERY_SYSTEM_TIME = "NtQuerySystemTime";
+const char* HOOK_QUERY_PERFORMANCE_COUNTER = "QueryPerformanceCounter";
+const char* HOOK_GET_TICK_COUNT = "GetTickCount";
+const char* HOOK_GET_TICK_COUNT64 = "GetTickCount64";
+const char* HOOK_TIME_GET_TIME = "timeGetTime";
+const char* HOOK_GET_SYSTEM_TIME = "GetSystemTime";
+const char* HOOK_GET_SYSTEM_TIME_AS_FILE_TIME = "GetSystemTimeAsFileTime";
+const char* HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME = "GetSystemTimePreciseAsFileTime";
+const char* HOOK_GET_LOCAL_TIME = "GetLocalTime";
+const char* HOOK_NT_QUERY_SYSTEM_TIME = "NtQuerySystemTime";
 
 // Helper function to apply timeslowdown with baseline tracking
-template<typename T>
+template <typename T>
 T ApplyTimeslowdownWithBaseline(T result) {
     static T start_time = 0;
 
@@ -115,44 +115,44 @@ std::atomic<uint64_t> g_nt_query_system_time_call_count{0};
 std::atomic<std::shared_ptr<const TimeslowdownState>> g_timeslowdown_state{std::make_shared<TimeslowdownState>()};
 
 // Render thread tracking
-std::atomic<DWORD> g_render_thread_id{0}; // 0 means not set yet
+std::atomic<DWORD> g_render_thread_id{0};  // 0 means not set yet
 
 // Thread-local storage for cached thread ID (per-thread cache)
 thread_local DWORD tls_thread_id = 0;
 
 namespace {
-    // QPC calling module tracking
-    SRWLOCK g_qpc_modules_srwlock = SRWLOCK_INIT;
-    std::set<HMODULE> g_qpc_calling_modules;
-    // Map to track which modules have QPC enabled (default: enabled for all)
-    std::map<HMODULE, bool> g_qpc_module_enabled_states;
-} // anonymous namespace
+// QPC calling module tracking
+SRWLOCK g_qpc_modules_srwlock = SRWLOCK_INIT;
+std::set<HMODULE> g_qpc_calling_modules;
+// Map to track which modules have QPC enabled (default: enabled for all)
+std::map<HMODULE, bool> g_qpc_module_enabled_states;
+}  // anonymous namespace
 
 namespace {
-    // Helper function to get module name from HMODULE
-    std::wstring GetModuleNameFromHandle(HMODULE hModule) {
-        if (hModule == nullptr) {
-            return L"<null>";
-        }
-
-        wchar_t module_path[MAX_PATH];
-        DWORD path_length = GetModuleFileNameW(hModule, module_path, MAX_PATH);
-        if (path_length == 0) {
-            return L"<unknown>";
-        }
-
-        // Extract just the filename from the full path
-        std::wstring path(module_path);
-        size_t last_slash = path.find_last_of(L"\\/");
-        if (last_slash != std::wstring::npos) {
-            return path.substr(last_slash + 1);
-        }
-        return path;
+// Helper function to get module name from HMODULE
+std::wstring GetModuleNameFromHandle(HMODULE hModule) {
+    if (hModule == nullptr) {
+        return L"<null>";
     }
-} // anonymous namespace
+
+    wchar_t module_path[MAX_PATH];
+    DWORD path_length = GetModuleFileNameW(hModule, module_path, MAX_PATH);
+    if (path_length == 0) {
+        return L"<unknown>";
+    }
+
+    // Extract just the filename from the full path
+    std::wstring path(module_path);
+    size_t last_slash = path.find_last_of(L"\\/");
+    if (last_slash != std::wstring::npos) {
+        return path.substr(last_slash + 1);
+    }
+    return path;
+}
+}  // anonymous namespace
 
 // Helper function to get hook identifier by name (DLL-safe) - kept for backward compatibility only
-TimerHookIdentifier GetHookIdentifierByName(const char *hook_name) {
+TimerHookIdentifier GetHookIdentifierByName(const char* hook_name) {
     if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
         return TimerHookIdentifier::QueryPerformanceCounter;
     } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
@@ -172,37 +172,28 @@ TimerHookIdentifier GetHookIdentifierByName(const char *hook_name) {
     } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
         return TimerHookIdentifier::NtQuerySystemTime;
     }
-    return TimerHookIdentifier::Count; // Invalid identifier
+    return TimerHookIdentifier::Count;  // Invalid identifier
 }
 
 // Helper function to get hook type by identifier (DLL-safe)
 TimerHookType GetHookTypeById(TimerHookIdentifier id) {
     switch (id) {
-        case TimerHookIdentifier::QueryPerformanceCounter:
-            return g_query_performance_counter_hook_type.load();
-        case TimerHookIdentifier::GetTickCount:
-            return g_get_tick_count_hook_type.load();
-        case TimerHookIdentifier::GetTickCount64:
-            return g_get_tick_count64_hook_type.load();
-        case TimerHookIdentifier::TimeGetTime:
-            return g_time_get_time_hook_type.load();
-        case TimerHookIdentifier::GetSystemTime:
-            return g_get_system_time_hook_type.load();
-        case TimerHookIdentifier::GetSystemTimeAsFileTime:
-            return g_get_system_time_as_file_time_hook_type.load();
+        case TimerHookIdentifier::QueryPerformanceCounter: return g_query_performance_counter_hook_type.load();
+        case TimerHookIdentifier::GetTickCount:            return g_get_tick_count_hook_type.load();
+        case TimerHookIdentifier::GetTickCount64:          return g_get_tick_count64_hook_type.load();
+        case TimerHookIdentifier::TimeGetTime:             return g_time_get_time_hook_type.load();
+        case TimerHookIdentifier::GetSystemTime:           return g_get_system_time_hook_type.load();
+        case TimerHookIdentifier::GetSystemTimeAsFileTime: return g_get_system_time_as_file_time_hook_type.load();
         case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
             return g_get_system_time_precise_as_file_time_hook_type.load();
-        case TimerHookIdentifier::GetLocalTime:
-            return g_get_local_time_hook_type.load();
-        case TimerHookIdentifier::NtQuerySystemTime:
-            return g_nt_query_system_time_hook_type.load();
-        default:
-            return TimerHookType::None;
+        case TimerHookIdentifier::GetLocalTime:      return g_get_local_time_hook_type.load();
+        case TimerHookIdentifier::NtQuerySystemTime: return g_nt_query_system_time_hook_type.load();
+        default:                                     return TimerHookType::None;
     }
 }
 
 // Helper function to get hook type by name (DLL-safe) - kept for backward compatibility
-TimerHookType GetHookTypeByName(const char *hook_name) {
+TimerHookType GetHookTypeByName(const char* hook_name) {
     TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
     return GetHookTypeById(id);
 }
@@ -215,14 +206,12 @@ void SetRenderThreadId(DWORD thread_id) {
     }
 }
 
-DWORD GetRenderThreadId() {
-    return g_render_thread_id.load(std::memory_order_acquire);
-}
+DWORD GetRenderThreadId() { return g_render_thread_id.load(std::memory_order_acquire); }
 
 bool IsCurrentThreadRenderThread() {
     DWORD render_thread_id = GetRenderThreadId();
     if (render_thread_id == 0) {
-        return false; // Render thread not set yet
+        return false;  // Render thread not set yet
     }
 
     // Use thread-local storage to cache thread ID for performance
@@ -257,7 +246,7 @@ bool ShouldApplyHookById(TimerHookIdentifier id) {
 }
 
 // Helper function to check if a hook should be applied (DLL-safe) - kept for backward compatibility
-bool ShouldApplyHook(const char *hook_name) {
+bool ShouldApplyHook(const char* hook_name) {
     TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
     return ShouldApplyHookById(id);
 }
@@ -286,8 +275,8 @@ LONGLONG ApplyTimeslowdownToQPC(LONGLONG original_qpc) {
                 new_state->original_quad_value = now_qpc;
             } else if (current_state->multiplier != new_multiplier) {
                 new_state->original_quad_value =
-                    current_state->original_quad_value +
-                    (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
+                    current_state->original_quad_value
+                    + (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
                 new_state->original_quad_ts = now_qpc;
             }
 
@@ -299,8 +288,8 @@ LONGLONG ApplyTimeslowdownToQPC(LONGLONG original_qpc) {
         }
 
         // Apply timeslowdown calculation
-        return current_state->original_quad_value +
-               (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
+        return current_state->original_quad_value
+               + (now_qpc - current_state->original_quad_ts) * current_state->multiplier;
     }
 
     // Return original value if timeslowdown is not applicable
@@ -308,7 +297,7 @@ LONGLONG ApplyTimeslowdownToQPC(LONGLONG original_qpc) {
 }
 
 // Hooked QueryPerformanceCounter function
-BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
+BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
     g_qpc_call_count.fetch_add(1, std::memory_order_relaxed);
 
     // Track calling module
@@ -324,7 +313,8 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
                 // Check settings if this is a new module
                 bool should_enable = false;
                 if (is_new_module) {
-                    std::string enabled_modules_str = settings::g_experimentalTabSettings.qpc_enabled_modules.GetValue();
+                    std::string enabled_modules_str =
+                        settings::g_experimentalTabSettings.qpc_enabled_modules.GetValue();
                     if (!enabled_modules_str.empty()) {
                         std::wstring module_name = GetModuleNameFromHandle(calling_module);
                         // Parse comma-separated module names
@@ -385,7 +375,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
     auto current_state = g_timeslowdown_state.load();
 
     if (!settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue()
-       && settings::g_experimentalTabSettings.timeslowdown_compatibility_mode.GetValue()) {
+        && settings::g_experimentalTabSettings.timeslowdown_compatibility_mode.GetValue()) {
         return result;
     }
 
@@ -400,7 +390,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER *lpPerformanceCount) {
 }
 
 // Hooked QueryPerformanceFrequency function
-BOOL WINAPI QueryPerformanceFrequency_Detour(LARGE_INTEGER *lpFrequency) {
+BOOL WINAPI QueryPerformanceFrequency_Detour(LARGE_INTEGER* lpFrequency) {
     g_qpf_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!QueryPerformanceFrequency_Original) {
         return QueryPerformanceFrequency(lpFrequency);
@@ -453,7 +443,7 @@ ULONGLONG WINAPI GetTickCount64_Detour() {
 // Initialize timeGetTime direct function pointer
 static void InitializeTimeGetTimeDirect() {
     if (timeGetTime_Direct) {
-        return; // Already initialized
+        return;  // Already initialized
     }
 
     HMODULE winmm_module = LoadLibraryA("winmm.dll");
@@ -662,8 +652,8 @@ NTSTATUS WINAPI NtQuerySystemTime_Detour(PLARGE_INTEGER SystemTime) {
     }
 
     // Apply timeslowdown if enabled
-    if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue() && SystemTime != nullptr &&
-        NT_SUCCESS(result)) {
+    if (settings::g_experimentalTabSettings.timeslowdown_enabled.GetValue() && SystemTime != nullptr
+        && NT_SUCCESS(result)) {
         float multiplier = settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue();
         if (multiplier > 0.0) {
             // Apply multiplier to system time
@@ -675,13 +665,17 @@ NTSTATUS WINAPI NtQuerySystemTime_Detour(PLARGE_INTEGER SystemTime) {
 }
 
 bool InstallTimeslowdownHooks() {
+    if (!enabled_experimental_features) {
+        return true;
+    }
     if (g_timeslowdown_hooks_installed.load()) {
         LogInfo("Timeslowdown hooks already installed");
         return true;
     }
 
     // Check if Time Slowdown hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::TIMESLOWDOWN)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::TIMESLOWDOWN)) {
         LogInfo("Time Slowdown hooks installation suppressed by user setting");
         return false;
     }
@@ -704,26 +698,27 @@ bool InstallTimeslowdownHooks() {
 
     // Hook QueryPerformanceCounter
     if (!CreateAndEnableHook(QueryPerformanceCounter, QueryPerformanceCounter_Detour,
-                             (LPVOID *)&QueryPerformanceCounter_Original, HOOK_QUERY_PERFORMANCE_COUNTER)) {
+                             (LPVOID*)&QueryPerformanceCounter_Original, HOOK_QUERY_PERFORMANCE_COUNTER)) {
         LogError("Failed to create and enable QueryPerformanceCounter hook");
         return false;
     }
 
     // Hook QueryPerformanceFrequency
     if (!CreateAndEnableHook(QueryPerformanceFrequency, QueryPerformanceFrequency_Detour,
-                             (LPVOID *)&QueryPerformanceFrequency_Original, "QueryPerformanceFrequency")) {
+                             (LPVOID*)&QueryPerformanceFrequency_Original, "QueryPerformanceFrequency")) {
         LogError("Failed to create and enable QueryPerformanceFrequency hook");
         return false;
     }
 
     // Hook GetTickCount
-    if (!CreateAndEnableHook(GetTickCount, GetTickCount_Detour, (LPVOID *)&GetTickCount_Original, HOOK_GET_TICK_COUNT)) {
+    if (!CreateAndEnableHook(GetTickCount, GetTickCount_Detour, (LPVOID*)&GetTickCount_Original, HOOK_GET_TICK_COUNT)) {
         LogError("Failed to create and enable GetTickCount hook");
         return false;
     }
 
     // Hook GetTickCount64
-    if (!CreateAndEnableHook(GetTickCount64, GetTickCount64_Detour, (LPVOID *)&GetTickCount64_Original, HOOK_GET_TICK_COUNT64)) {
+    if (!CreateAndEnableHook(GetTickCount64, GetTickCount64_Detour, (LPVOID*)&GetTickCount64_Original,
+                             HOOK_GET_TICK_COUNT64)) {
         LogError("Failed to create and enable GetTickCount64 hook");
         return false;
     }
@@ -733,7 +728,8 @@ bool InstallTimeslowdownHooks() {
 
     // Hook timeGetTime (only if we have the direct function)
     if (timeGetTime_Direct) {
-        if (!CreateAndEnableHook(timeGetTime_Direct, timeGetTime_Detour, (LPVOID *)&timeGetTime_Original, HOOK_TIME_GET_TIME)) {
+        if (!CreateAndEnableHook(timeGetTime_Direct, timeGetTime_Detour, (LPVOID*)&timeGetTime_Original,
+                                 HOOK_TIME_GET_TIME)) {
             LogError("Failed to create and enable timeGetTime hook");
             return false;
         }
@@ -742,27 +738,29 @@ bool InstallTimeslowdownHooks() {
     }
 
     // Hook GetSystemTime
-    if (!CreateAndEnableHook(GetSystemTime, GetSystemTime_Detour, (LPVOID *)&GetSystemTime_Original, HOOK_GET_SYSTEM_TIME)) {
+    if (!CreateAndEnableHook(GetSystemTime, GetSystemTime_Detour, (LPVOID*)&GetSystemTime_Original,
+                             HOOK_GET_SYSTEM_TIME)) {
         LogError("Failed to create and enable GetSystemTime hook");
         return false;
     }
 
     // Hook GetSystemTimeAsFileTime
     if (!CreateAndEnableHook(GetSystemTimeAsFileTime, GetSystemTimeAsFileTime_Detour,
-                             (LPVOID *)&GetSystemTimeAsFileTime_Original, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME)) {
+                             (LPVOID*)&GetSystemTimeAsFileTime_Original, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME)) {
         LogError("Failed to create and enable GetSystemTimeAsFileTime hook");
         return false;
     }
 
     // Hook GetSystemTimePreciseAsFileTime
     if (!CreateAndEnableHook(GetSystemTimePreciseAsFileTime, GetSystemTimePreciseAsFileTime_Detour,
-                             (LPVOID *)&GetSystemTimePreciseAsFileTime_Original, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME)) {
+                             (LPVOID*)&GetSystemTimePreciseAsFileTime_Original,
+                             HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME)) {
         LogError("Failed to create and enable GetSystemTimePreciseAsFileTime hook");
         return false;
     }
 
     // Hook GetLocalTime
-    if (!CreateAndEnableHook(GetLocalTime, GetLocalTime_Detour, (LPVOID *)&GetLocalTime_Original, HOOK_GET_LOCAL_TIME)) {
+    if (!CreateAndEnableHook(GetLocalTime, GetLocalTime_Detour, (LPVOID*)&GetLocalTime_Original, HOOK_GET_LOCAL_TIME)) {
         LogError("Failed to create and enable GetLocalTime hook");
         return false;
     }
@@ -772,7 +770,8 @@ bool InstallTimeslowdownHooks() {
     if (ntdll) {
         LPVOID ntQuerySystemTime = GetProcAddress(ntdll, "NtQuerySystemTime");
         if (ntQuerySystemTime) {
-            if (!CreateAndEnableHook(ntQuerySystemTime, NtQuerySystemTime_Detour, (LPVOID *)&NtQuerySystemTime_Original, HOOK_NT_QUERY_SYSTEM_TIME)) {
+            if (!CreateAndEnableHook(ntQuerySystemTime, NtQuerySystemTime_Detour, (LPVOID*)&NtQuerySystemTime_Original,
+                                     HOOK_NT_QUERY_SYSTEM_TIME)) {
                 LogError("Failed to create and enable NtQuerySystemTime hook");
                 return false;
             }
@@ -787,7 +786,8 @@ bool InstallTimeslowdownHooks() {
     LogInfo("Timeslowdown hooks installed successfully");
 
     // Mark Time Slowdown hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::TIMESLOWDOWN);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::TIMESLOWDOWN);
 
     return true;
 }
@@ -880,40 +880,23 @@ void SetTimeslowdownEnabled(bool enabled) {
 // Efficient enum-based hook type configuration (DLL-safe)
 void SetTimerHookTypeById(TimerHookIdentifier id, TimerHookType type) {
     switch (id) {
-        case TimerHookIdentifier::QueryPerformanceCounter:
-            g_query_performance_counter_hook_type.store(type);
-            break;
-        case TimerHookIdentifier::GetTickCount:
-            g_get_tick_count_hook_type.store(type);
-            break;
-        case TimerHookIdentifier::GetTickCount64:
-            g_get_tick_count64_hook_type.store(type);
-            break;
-        case TimerHookIdentifier::TimeGetTime:
-            g_time_get_time_hook_type.store(type);
-            break;
-        case TimerHookIdentifier::GetSystemTime:
-            g_get_system_time_hook_type.store(type);
-            break;
-        case TimerHookIdentifier::GetSystemTimeAsFileTime:
-            g_get_system_time_as_file_time_hook_type.store(type);
-            break;
+        case TimerHookIdentifier::QueryPerformanceCounter: g_query_performance_counter_hook_type.store(type); break;
+        case TimerHookIdentifier::GetTickCount:            g_get_tick_count_hook_type.store(type); break;
+        case TimerHookIdentifier::GetTickCount64:          g_get_tick_count64_hook_type.store(type); break;
+        case TimerHookIdentifier::TimeGetTime:             g_time_get_time_hook_type.store(type); break;
+        case TimerHookIdentifier::GetSystemTime:           g_get_system_time_hook_type.store(type); break;
+        case TimerHookIdentifier::GetSystemTimeAsFileTime: g_get_system_time_as_file_time_hook_type.store(type); break;
         case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
             g_get_system_time_precise_as_file_time_hook_type.store(type);
             break;
-        case TimerHookIdentifier::GetLocalTime:
-            g_get_local_time_hook_type.store(type);
-            break;
-        case TimerHookIdentifier::NtQuerySystemTime:
-            g_nt_query_system_time_hook_type.store(type);
-            break;
-        default:
-            return; // Invalid identifier
+        case TimerHookIdentifier::GetLocalTime:      g_get_local_time_hook_type.store(type); break;
+        case TimerHookIdentifier::NtQuerySystemTime: g_nt_query_system_time_hook_type.store(type); break;
+        default:                                     return;  // Invalid identifier
     }
 }
 
 // Individual hook type configuration (DLL-safe) - kept for backward compatibility
-void SetTimerHookType(const char *hook_name, TimerHookType type) {
+void SetTimerHookType(const char* hook_name, TimerHookType type) {
     TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
     if (id != TimerHookIdentifier::Count) {
         SetTimerHookTypeById(id, type);
@@ -922,9 +905,7 @@ void SetTimerHookType(const char *hook_name, TimerHookType type) {
 }
 
 // Efficient enum-based functions
-TimerHookType GetTimerHookTypeById(TimerHookIdentifier id) {
-    return GetHookTypeById(id);
-}
+TimerHookType GetTimerHookTypeById(TimerHookIdentifier id) { return GetHookTypeById(id); }
 
 bool IsTimerHookEnabledById(TimerHookIdentifier id) {
     TimerHookType type = GetTimerHookTypeById(id);
@@ -933,81 +914,60 @@ bool IsTimerHookEnabledById(TimerHookIdentifier id) {
 
 uint64_t GetTimerHookCallCountById(TimerHookIdentifier id) {
     switch (id) {
-        case TimerHookIdentifier::QueryPerformanceCounter:
-            return g_qpc_call_count.load(std::memory_order_relaxed);
-        case TimerHookIdentifier::GetTickCount:
-            return g_get_tick_count_call_count.load(std::memory_order_relaxed);
-        case TimerHookIdentifier::GetTickCount64:
-            return g_get_tick_count64_call_count.load(std::memory_order_relaxed);
-        case TimerHookIdentifier::TimeGetTime:
-            return g_time_get_time_call_count.load(std::memory_order_relaxed);
-        case TimerHookIdentifier::GetSystemTime:
-            return g_get_system_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::QueryPerformanceCounter: return g_qpc_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetTickCount:            return g_get_tick_count_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetTickCount64:          return g_get_tick_count64_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::TimeGetTime:             return g_time_get_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetSystemTime:           return g_get_system_time_call_count.load(std::memory_order_relaxed);
         case TimerHookIdentifier::GetSystemTimeAsFileTime:
             return g_get_system_time_as_file_time_call_count.load(std::memory_order_relaxed);
         case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
             return g_get_system_time_precise_as_file_time_call_count.load(std::memory_order_relaxed);
-        case TimerHookIdentifier::GetLocalTime:
-            return g_get_local_time_call_count.load(std::memory_order_relaxed);
+        case TimerHookIdentifier::GetLocalTime: return g_get_local_time_call_count.load(std::memory_order_relaxed);
         case TimerHookIdentifier::NtQuerySystemTime:
             return g_nt_query_system_time_call_count.load(std::memory_order_relaxed);
-        default:
-            return 0;
+        default: return 0;
     }
 }
 
 // Backward compatibility functions
-TimerHookType GetTimerHookType(const char *hook_name) { return GetHookTypeByName(hook_name); }
+TimerHookType GetTimerHookType(const char* hook_name) { return GetHookTypeByName(hook_name); }
 
-bool IsTimerHookEnabled(const char *hook_name) {
+bool IsTimerHookEnabled(const char* hook_name) {
     TimerHookType type = GetTimerHookType(hook_name);
     return type == TimerHookType::Enabled;
 }
 
-uint64_t GetTimerHookCallCount(const char *hook_name) {
+uint64_t GetTimerHookCallCount(const char* hook_name) {
     TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
     return GetTimerHookCallCountById(id);
 }
 
 // UI helper functions for efficient hook management
-static const TimerHookIdentifier g_all_hook_identifiers[] = {
-    TimerHookIdentifier::QueryPerformanceCounter,
-    TimerHookIdentifier::GetTickCount,
-    TimerHookIdentifier::GetTickCount64,
-    TimerHookIdentifier::TimeGetTime,
-    TimerHookIdentifier::GetSystemTime,
-    TimerHookIdentifier::GetSystemTimeAsFileTime,
-    TimerHookIdentifier::GetSystemTimePreciseAsFileTime,
-    TimerHookIdentifier::GetLocalTime,
-    TimerHookIdentifier::NtQuerySystemTime
-};
+static const TimerHookIdentifier g_all_hook_identifiers[] = {TimerHookIdentifier::QueryPerformanceCounter,
+                                                             TimerHookIdentifier::GetTickCount,
+                                                             TimerHookIdentifier::GetTickCount64,
+                                                             TimerHookIdentifier::TimeGetTime,
+                                                             TimerHookIdentifier::GetSystemTime,
+                                                             TimerHookIdentifier::GetSystemTimeAsFileTime,
+                                                             TimerHookIdentifier::GetSystemTimePreciseAsFileTime,
+                                                             TimerHookIdentifier::GetLocalTime,
+                                                             TimerHookIdentifier::NtQuerySystemTime};
 
-const TimerHookIdentifier* GetAllHookIdentifiers() {
-    return g_all_hook_identifiers;
-}
+const TimerHookIdentifier* GetAllHookIdentifiers() { return g_all_hook_identifiers; }
 
 const char* GetHookNameById(TimerHookIdentifier id) {
     switch (id) {
-        case TimerHookIdentifier::QueryPerformanceCounter:
-            return HOOK_QUERY_PERFORMANCE_COUNTER;
-        case TimerHookIdentifier::GetTickCount:
-            return HOOK_GET_TICK_COUNT;
-        case TimerHookIdentifier::GetTickCount64:
-            return HOOK_GET_TICK_COUNT64;
-        case TimerHookIdentifier::TimeGetTime:
-            return HOOK_TIME_GET_TIME;
-        case TimerHookIdentifier::GetSystemTime:
-            return HOOK_GET_SYSTEM_TIME;
-        case TimerHookIdentifier::GetSystemTimeAsFileTime:
-            return HOOK_GET_SYSTEM_TIME_AS_FILE_TIME;
-        case TimerHookIdentifier::GetSystemTimePreciseAsFileTime:
-            return HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
-        case TimerHookIdentifier::GetLocalTime:
-            return HOOK_GET_LOCAL_TIME;
-        case TimerHookIdentifier::NtQuerySystemTime:
-            return HOOK_NT_QUERY_SYSTEM_TIME;
-        default:
-            return nullptr;
+        case TimerHookIdentifier::QueryPerformanceCounter:        return HOOK_QUERY_PERFORMANCE_COUNTER;
+        case TimerHookIdentifier::GetTickCount:                   return HOOK_GET_TICK_COUNT;
+        case TimerHookIdentifier::GetTickCount64:                 return HOOK_GET_TICK_COUNT64;
+        case TimerHookIdentifier::TimeGetTime:                    return HOOK_TIME_GET_TIME;
+        case TimerHookIdentifier::GetSystemTime:                  return HOOK_GET_SYSTEM_TIME;
+        case TimerHookIdentifier::GetSystemTimeAsFileTime:        return HOOK_GET_SYSTEM_TIME_AS_FILE_TIME;
+        case TimerHookIdentifier::GetSystemTimePreciseAsFileTime: return HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
+        case TimerHookIdentifier::GetLocalTime:                   return HOOK_GET_LOCAL_TIME;
+        case TimerHookIdentifier::NtQuerySystemTime:              return HOOK_NT_QUERY_SYSTEM_TIME;
+        default:                                                  return nullptr;
     }
 }
 
@@ -1044,7 +1004,7 @@ void ClearQPCallingModules() {
 
 bool IsQPCModuleEnabled(HMODULE hModule) {
     if (hModule == nullptr) {
-        return false; // Default disabled
+        return false;  // Default disabled
     }
 
     utils::SRWLockShared lock(g_qpc_modules_srwlock);
@@ -1052,7 +1012,7 @@ bool IsQPCModuleEnabled(HMODULE hModule) {
     if (it != g_qpc_module_enabled_states.end()) {
         return it->second;
     }
-    return false; // Default disabled if not in map
+    return false;  // Default disabled if not in map
 }
 
 void SetQPCModuleEnabled(HMODULE hModule, bool enabled) {
@@ -1102,7 +1062,7 @@ std::string SaveQPCEnabledModulesToSettings() {
 
     std::vector<std::wstring> enabled_modules;
     for (const auto& pair : g_qpc_module_enabled_states) {
-        if (pair.second) { // If enabled
+        if (pair.second) {  // If enabled
             std::wstring module_name = GetModuleNameFromHandle(pair.first);
             if (!module_name.empty() && module_name != L"<null>" && module_name != L"<unknown>") {
                 enabled_modules.push_back(module_name);
@@ -1124,4 +1084,4 @@ std::string SaveQPCEnabledModulesToSettings() {
     return result;
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

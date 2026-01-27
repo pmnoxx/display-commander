@@ -412,7 +412,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
-    bool show_volume = settings::g_mainTabSettings.show_volume.GetValue();
+    bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();

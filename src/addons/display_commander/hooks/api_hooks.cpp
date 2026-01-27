@@ -804,6 +804,9 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
 }
 
 bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
+    if (!enabled_experimental_features) {
+        return true;
+    }
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(d3d11_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(d3d11_module, "ReShadeUnregisterAddon");
@@ -818,9 +821,9 @@ bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
         return true;
     }
 
-    // Check if D3D device hooks should be suppressed
+    // Check if D3D11 device hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
-            display_commanderhooks::HookType::D3D_DEVICE)) {
+            display_commanderhooks::HookType::D3D11_DEVICE)) {
         LogInfo("D3D11 device hooks installation suppressed by user setting");
         return false;
     }
@@ -860,14 +863,17 @@ bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
 
     LogInfo("D3D11 device hooks installed successfully");
 
-    // Mark D3D device hooks as installed
+    // Mark D3D11 device hooks as installed
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
-        display_commanderhooks::HookType::D3D_DEVICE);
+        display_commanderhooks::HookType::D3D11_DEVICE);
 
     return true;
 }
 
 bool InstallD3D12DeviceHooks(HMODULE d3d12_module) {
+    if (!enabled_experimental_features) {
+        return true;
+    }
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(d3d12_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(d3d12_module, "ReShadeUnregisterAddon");
@@ -882,9 +888,9 @@ bool InstallD3D12DeviceHooks(HMODULE d3d12_module) {
         return true;
     }
 
-    // Check if D3D device hooks should be suppressed
+    // Check if D3D12 device hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
-            display_commanderhooks::HookType::D3D_DEVICE)) {
+            display_commanderhooks::HookType::D3D12_DEVICE)) {
         LogInfo("D3D12 device hooks installation suppressed by user setting");
         return false;
     }
@@ -909,9 +915,9 @@ bool InstallD3D12DeviceHooks(HMODULE d3d12_module) {
 
     LogInfo("D3D12 device hooks installed successfully");
 
-    // Mark D3D device hooks as installed
+    // Mark D3D12 device hooks as installed
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
-        display_commanderhooks::HookType::D3D_DEVICE);
+        display_commanderhooks::HookType::D3D12_DEVICE);
 
     return true;
 }

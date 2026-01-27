@@ -231,7 +231,10 @@ DWORD WINAPI WaitForMultipleObjects_Detour(DWORD nCount, const HANDLE* lpHandles
 
 // Install sleep hooks
 bool InstallSleepHooks() {
-    if (DISABLE_SLEEP_HOOKS || true) {
+    if (!enabled_experimental_features) {
+        return true;
+    }
+    if (DISABLE_SLEEP_HOOKS) {
         LogInfo("Sleep hooks are disabled via DISABLE_SLEEP_HOOKS constant");
         return true;  // Return success but don't install hooks
     }

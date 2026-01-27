@@ -231,22 +231,6 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
             if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
                 LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
             }
-
-            if (settings::g_experimentalTabSettings.reuse_swap_chain_experimental_enabled.GetValue()) {
-                /*
-                if (global_dxgi_swapchain.load() == nullptr) {
-                    // Release old swapchain reference if any
-                    dxgi_swapchain->AddRef();
-                    IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(dxgi_swapchain.Get(),
-                std::memory_order_acq_rel); if (old_swapchain != nullptr) {
-                        // This shouldn't happen, but just in case
-                        LogError("Failed to exchange global swapchain reference: 0x%p", old_swapchain);
-                    }
-                }*/
-
-                // Store new swapchain reference
-                LogInfo("Stored global swapchain reference: 0x%p", dxgi_swapchain.Get());
-            }
         } else {
             LogError("Failed to query interface for swapchain: 0x%p", iunknown);
         }

@@ -72,21 +72,12 @@ void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
         return;
     }
 
-    Microsoft::WRL::ComPtr<ID3D11Device> device;
-    HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device));
+    Microsoft::WRL::ComPtr<ID3D11Device5> device5;
+    HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&device5));
     if (FAILED(hr)) {
         g_gpu_fence_failure_reason.store("D3D11: Failed to get device from swapchain");
         return;
     }
-
-    // Try to get ID3D11Device5 for fence support
-    Microsoft::WRL::ComPtr<ID3D11Device5> device5;
-    hr = device.As(&device5);
-    if (FAILED(hr)) {
-        g_gpu_fence_failure_reason.store("D3D11: ID3D11Device5 not supported (requires D3D11.3+ / Windows 10+)");
-        return;  // Fences require D3D11.3+ (Windows 10+)
-    }
-
     // Initialize fence on first use
     if (!g_gpu_state.initialized.load() && !g_gpu_state.initialization_attempted.load()) {
         g_gpu_state.initialization_attempted.store(true);
@@ -116,7 +107,7 @@ void EnqueueGPUCompletionD3D11(IDXGISwapChain* swapchain) {
 
     // Get immediate context and signal fence
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
-    device->GetImmediateContext(&context);
+    device5->GetImmediateContext(&context);
 
     Microsoft::WRL::ComPtr<ID3D11DeviceContext4> context4;
     hr = context.As(&context4);

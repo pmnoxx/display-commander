@@ -168,6 +168,9 @@ class ExperimentalTabSettings {
     BoolSetting perf_suppress_enqueue_gpu_completion;
     BoolSetting perf_suppress_get_independent_flip_state;
 
+    // Show volume overlay setting
+    BoolSetting show_volume;
+
    private:
     std::vector<SettingBase*> all_settings_;
 };

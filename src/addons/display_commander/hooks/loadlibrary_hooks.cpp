@@ -883,8 +883,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         LogInfo("Installing D3D11 device hooks for module: %ws", moduleName.c_str());
         if (InstallD3D11DeviceHooks(hModule)) {
             LogInfo("D3D11 device hooks installed successfully");
-        } else {
-            LogError("Failed to install D3D11 device hooks");
         }
     }
     // d3d12.dll
@@ -892,8 +890,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         LogInfo("Installing D3D12 device hooks for module: %ws", moduleName.c_str());
         if (InstallD3D12DeviceHooks(hModule)) {
             LogInfo("D3D12 device hooks installed successfully");
-        } else {
-            LogError("Failed to install D3D12 device hooks");
         }
     } else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
         // Check if Streamline loading is enabled

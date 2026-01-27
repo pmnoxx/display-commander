@@ -420,10 +420,15 @@ void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain) {
         return;
     }
 
+    if (std::abs(static_cast<long long>(g_global_frame_id.load() - g_last_ui_drawn_frame_id.load())) > 10) {
+        return;
+    }
+    /// xxx123
+
     // Periodically refresh colorspace and enumerate devices (approx every 4
     // seconds at 60fps = 240 frames)
     static int present_after_counter = 0;
-    if (present_after_counter % 256 == 0) {
+    if (present_after_counter % 1 == 0) {
         // Compute DXGI composition state and log on change
         DxgiBypassMode mode = GetIndependentFlipState(dxgi_swapchain);
 

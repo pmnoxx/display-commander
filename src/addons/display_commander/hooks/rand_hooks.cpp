@@ -1,12 +1,12 @@
 #include "rand_hooks.hpp"
-#include "hook_suppression_manager.hpp"
+#include <errno.h>
+#include <MinHook.h>
+#include <atomic>
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include <MinHook.h>
-#include <atomic>
-#include <errno.h>
+#include "hook_suppression_manager.hpp"
 
 namespace display_commanderhooks {
 
@@ -49,7 +49,7 @@ errno_t __cdecl Rand_s_Detour(unsigned int* randomValue) {
     if (settings::g_experimentalTabSettings.rand_s_hook_enabled.GetValue()) {
         // Set the configured constant value
         *randomValue = static_cast<unsigned int>(settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
-        return 0; // Success
+        return 0;  // Success
     }
 
     // Check if randomValue pointer is valid
@@ -68,11 +68,14 @@ errno_t __cdecl Rand_s_Detour(unsigned int* randomValue) {
 
     // Fallback: try to call system rand_s if original is not available
     // Note: This might not work if rand_s is not available
-    return EINVAL; // Return error if we can't call the original
+    return EINVAL;  // Return error if we can't call the original
 }
 
 // Install rand hooks
 bool InstallRandHooks() {
+    if (!enabled_experimental_features) {
+        return true;
+    }
     if (g_rand_hooks_installed.load()) {
         LogInfo("Rand hooks already installed");
         return true;
@@ -107,7 +110,8 @@ bool InstallRandHooks() {
     if (msvcrt_module != nullptr) {
         auto rand_msvcrt = reinterpret_cast<Rand_pfn>(GetProcAddress(msvcrt_module, "rand"));
         if (rand_msvcrt != nullptr) {
-            if (!CreateAndEnableHook(rand_msvcrt, Rand_Detour, reinterpret_cast<LPVOID*>(&Rand_Original), "rand (msvcrt)")) {
+            if (!CreateAndEnableHook(rand_msvcrt, Rand_Detour, reinterpret_cast<LPVOID*>(&Rand_Original),
+                                     "rand (msvcrt)")) {
                 LogWarn("Failed to create and enable rand hook from msvcrt.dll");
             } else {
                 LogInfo("Rand hook from msvcrt.dll created successfully");
@@ -120,7 +124,8 @@ bool InstallRandHooks() {
         // Try to hook rand_s from msvcrt.dll
         auto rand_s_msvcrt = reinterpret_cast<Rand_s_pfn>(GetProcAddress(msvcrt_module, "rand_s"));
         if (rand_s_msvcrt != nullptr) {
-            if (!CreateAndEnableHook(rand_s_msvcrt, Rand_s_Detour, reinterpret_cast<LPVOID*>(&Rand_s_Original), "rand_s (msvcrt)")) {
+            if (!CreateAndEnableHook(rand_s_msvcrt, Rand_s_Detour, reinterpret_cast<LPVOID*>(&Rand_s_Original),
+                                     "rand_s (msvcrt)")) {
                 LogWarn("Failed to create and enable rand_s hook from msvcrt.dll");
             } else {
                 LogInfo("Rand_s hook from msvcrt.dll created successfully");
@@ -140,7 +145,8 @@ bool InstallRandHooks() {
         if (rand_ucrtbase != nullptr) {
             // If we already hooked from msvcrt, we'll hook ucrtbase too (some games use both)
             if (Rand_Original == nullptr) {
-                if (!CreateAndEnableHook(rand_ucrtbase, Rand_Detour, reinterpret_cast<LPVOID*>(&Rand_Original), "rand (ucrtbase)")) {
+                if (!CreateAndEnableHook(rand_ucrtbase, Rand_Detour, reinterpret_cast<LPVOID*>(&Rand_Original),
+                                         "rand (ucrtbase)")) {
                     LogWarn("Failed to create and enable rand hook from ucrtbase.dll");
                 } else {
                     LogInfo("Rand hook from ucrtbase.dll created successfully");
@@ -149,7 +155,8 @@ bool InstallRandHooks() {
             } else {
                 // Hook ucrtbase version separately if msvcrt was already hooked
                 Rand_pfn rand_ucrtbase_original = nullptr;
-                if (!CreateAndEnableHook(rand_ucrtbase, Rand_Detour, reinterpret_cast<LPVOID*>(&rand_ucrtbase_original), "rand (ucrtbase)")) {
+                if (!CreateAndEnableHook(rand_ucrtbase, Rand_Detour, reinterpret_cast<LPVOID*>(&rand_ucrtbase_original),
+                                         "rand (ucrtbase)")) {
                     LogWarn("Failed to create and enable rand hook from ucrtbase.dll (second instance)");
                 } else {
                     LogInfo("Rand hook from ucrtbase.dll created successfully (second instance)");
@@ -165,7 +172,8 @@ bool InstallRandHooks() {
         if (rand_s_ucrtbase != nullptr) {
             // If we already hooked from msvcrt, we'll hook ucrtbase too (some games use both)
             if (Rand_s_Original == nullptr) {
-                if (!CreateAndEnableHook(rand_s_ucrtbase, Rand_s_Detour, reinterpret_cast<LPVOID*>(&Rand_s_Original), "rand_s (ucrtbase)")) {
+                if (!CreateAndEnableHook(rand_s_ucrtbase, Rand_s_Detour, reinterpret_cast<LPVOID*>(&Rand_s_Original),
+                                         "rand_s (ucrtbase)")) {
                     LogWarn("Failed to create and enable rand_s hook from ucrtbase.dll");
                 } else {
                     LogInfo("Rand_s hook from ucrtbase.dll created successfully");
@@ -174,7 +182,8 @@ bool InstallRandHooks() {
             } else {
                 // Hook ucrtbase version separately if msvcrt was already hooked
                 Rand_s_pfn rand_s_ucrtbase_original = nullptr;
-                if (!CreateAndEnableHook(rand_s_ucrtbase, Rand_s_Detour, reinterpret_cast<LPVOID*>(&rand_s_ucrtbase_original), "rand_s (ucrtbase)")) {
+                if (!CreateAndEnableHook(rand_s_ucrtbase, Rand_s_Detour,
+                                         reinterpret_cast<LPVOID*>(&rand_s_ucrtbase_original), "rand_s (ucrtbase)")) {
                     LogWarn("Failed to create and enable rand_s hook from ucrtbase.dll (second instance)");
                 } else {
                     LogInfo("Rand_s hook from ucrtbase.dll created successfully (second instance)");
@@ -254,19 +263,12 @@ void UninstallRandHooks() {
 }
 
 // Check if rand hooks are installed
-bool AreRandHooksInstalled() {
-    return g_rand_hooks_installed.load();
-}
+bool AreRandHooksInstalled() { return g_rand_hooks_installed.load(); }
 
 // Get call count
-uint64_t GetRandCallCount() {
-    return g_rand_call_count.load();
-}
+uint64_t GetRandCallCount() { return g_rand_call_count.load(); }
 
 // Get rand_s call count
-uint64_t GetRand_sCallCount() {
-    return g_rand_s_call_count.load();
-}
+uint64_t GetRand_sCallCount() { return g_rand_s_call_count.load(); }
 
-} // namespace display_commanderhooks
-
+}  // namespace display_commanderhooks

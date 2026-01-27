@@ -2459,6 +2459,27 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                    "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
             }
 
+            // Show backbuffer count increase checkbox if backbuffer count < 3
+            auto desc_ptr = g_last_swapchain_desc.load();
+            if (desc_ptr && desc_ptr->back_buffer_count < 3
+                || settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue()) {
+                ImGui::SameLine();
+                bool increase_backbuffer = settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue();
+                if (ImGui::Checkbox("Increase Backbuffer Count to 3", &increase_backbuffer)) {
+                    settings::g_mainTabSettings.increase_backbuffer_count_to_3.SetValue(increase_backbuffer);
+                    s_restart_needed_vsync_tearing.store(true);
+                    LogInfo(increase_backbuffer ? "Increase Backbuffer Count to 3 enabled"
+                                                : "Increase Backbuffer Count to 3 disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    std::ostringstream tooltip;
+                    tooltip << "Increases backbuffer count from " << desc_ptr->back_buffer_count
+                            << " to 3 (requires restart).\n"
+                            << "Current backbuffer count: " << desc_ptr->back_buffer_count;
+                    ImGui::SetTooltip("%s", tooltip.str().c_str());
+                }
+            }
+
             int current_api = g_last_reshade_device_api.load();
             bool is_d3d9 = current_api == static_cast<int>(reshade::api::device_api::d3d9);
             bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)
@@ -2511,7 +2532,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::Separator();
             ImGui::Spacing();
 
-            auto desc_ptr = g_last_swapchain_desc.load();
             if (desc_ptr) {
                 const auto& desc = *desc_ptr;
 

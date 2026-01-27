@@ -68,6 +68,7 @@ class MainTabSettings {
     ui::new_ui::BoolSettingRef force_vsync_off;
     ui::new_ui::BoolSettingRef prevent_tearing;
     ui::new_ui::BoolSetting limit_real_frames;
+    ui::new_ui::BoolSetting increase_backbuffer_count_to_3;
 
     // Audio Settings
     ui::new_ui::FloatSettingRef audio_volume_percent;

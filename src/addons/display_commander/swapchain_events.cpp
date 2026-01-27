@@ -546,6 +546,13 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
+        // Increase backbuffer count to 3 if enabled and current count < 3
+        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
+            LogInfo("D3D9: Increasing back buffer count from %u to 3", desc.back_buffer_count);
+            desc.back_buffer_count = 3;
+            modified = true;
+        }
+
         // Apply FLIPEX if all requirements are met
         if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
             && desc.present_mode != D3DSWAPEFFECT_FLIPEX) {
@@ -627,6 +634,13 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         // DXGI-specific settings (only for D3D10/11/12)
         if (s_prevent_tearing.load() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
             desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+            modified = true;
+        }
+
+        // Increase backbuffer count to 3 if enabled and current count < 3
+        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
+            LogInfo("Increasing back buffer count from %u to 3", desc.back_buffer_count);
+            desc.back_buffer_count = 3;
             modified = true;
         }
 
@@ -799,6 +813,13 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
+        // Increase backbuffer count to 3 if enabled and current count < 3
+        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
+            LogInfo("OpenGL: Increasing back buffer count from %u to 3", desc.back_buffer_count);
+            desc.back_buffer_count = 3;
+            modified = true;
+        }
+
         // Apply backbuffer format override if enabled (all APIs)
         if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
@@ -874,6 +895,13 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
+        // Increase backbuffer count to 3 if enabled and current count < 3
+        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
+            LogInfo("Vulkan: Increasing back buffer count from %u to 3", desc.back_buffer_count);
+            desc.back_buffer_count = 3;
+            modified = true;
+        }
+
         // Apply backbuffer format override if enabled (all APIs)
         if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
@@ -934,13 +962,13 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
 
     */
 
+    if (desc.back_buffer.texture.width < 640) {
+        return false;
+    }
     auto res = OnCreateSwapchainCapture2(api, desc, hwnd);
 
     // Store swapchain description for UI display
     auto initial_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
-    if (desc.back_buffer.texture.width < 640) {
-        return false;
-    }
     g_last_swapchain_desc.store(initial_desc_copy);
     return res;
 }

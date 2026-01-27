@@ -713,6 +713,9 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 }
 
 bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
+    if (!enabled_experimental_features) {
+        return true;
+    }
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(dxgi_module, "ReShadeRegisterAddon");

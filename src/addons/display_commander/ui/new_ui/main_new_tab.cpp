@@ -801,6 +801,37 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    // Streamline slUpgradeInterface warning when FG mode is active
+    HMODULE sl_interposer = GetModuleHandleW(L"sl.interposer.dll");
+    if (sl_interposer != nullptr) {
+        uint32_t sl_upgrade_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].load();
+        if (sl_upgrade_count == 0) {
+            // Check if FG mode is active
+            const DLSSGSummary dlssg_summary = GetDLSSGSummary();
+            bool fg_mode_active =
+                (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x");
+
+            if (fg_mode_active) {
+                ImGui::Spacing();
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                                   " WARNING: FG Fps limiter can't be implemented due to ReShade limitations");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Streamline's sl.interposer.dll is loaded, but slUpgradeInterface has not been called.\n"
+                        "Frame Generation (FG) mode is currently active.\n\n"
+                        "FG can't be supported due to ReShade limitations.\n"
+                        "This may indicate that Streamline is not properly integrated with the game's swapchain,\n"
+                        "which could cause issues with Frame Generation functionality.");
+                }
+                // Recommendation use Nvidia Control Panel or Special-K
+                ImGui::TextColored(
+                    ui::colors::TEXT_LABEL,
+                    "Recommendation: Use Nvidia Control Panel or Special-K if you need to use FG Fps limiter");
+                ImGui::Spacing();
+            }
+        }
+    }
+
     // Version and build information at the top
     // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -3000,7 +3031,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
                             // ETW Session status
                             if (!pm_debug_info.etw_session_name.empty()) {
-                                ImGui::Text("  ETW Session: %s [%s]", pm_debug_info.etw_session_status.c_str(), pm_debug_info.etw_session_name.c_str());
+                                ImGui::Text("  ETW Session: %s [%s]", pm_debug_info.etw_session_status.c_str(),
+                                            pm_debug_info.etw_session_name.c_str());
                             } else {
                                 ImGui::Text("  ETW Session: %s", pm_debug_info.etw_session_status.c_str());
                             }

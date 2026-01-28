@@ -2999,7 +2999,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                             }
 
                             // ETW Session status
-                            ImGui::Text("  ETW Session: %s", pm_debug_info.etw_session_status.c_str());
+                            if (!pm_debug_info.etw_session_name.empty()) {
+                                ImGui::Text("  ETW Session: %s [%s]", pm_debug_info.etw_session_status.c_str(), pm_debug_info.etw_session_name.c_str());
+                            } else {
+                                ImGui::Text("  ETW Session: %s", pm_debug_info.etw_session_status.c_str());
+                            }
                             if (pm_debug_info.etw_session_active) {
                                 ImGui::SameLine();
                                 ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK);

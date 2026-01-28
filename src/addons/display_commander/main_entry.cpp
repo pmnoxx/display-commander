@@ -2801,7 +2801,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up fake NVAPI
             nvapi::g_fakeNvapiManager.Cleanup();
 
-            // Clean up PresentMon
+            // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
+            // ETW sessions are system-wide and persist until explicitly stopped
+            // If not stopped, they can interfere with future processes
             presentmon::g_presentMonManager.StopWorker();
 
             // Shutdown DisplayCommander logger (must be last to capture all cleanup messages)

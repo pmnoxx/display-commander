@@ -327,7 +327,19 @@ bool PresentMonManager::GetFlipCompatibility(PresentMonFlipCompatibility& out) c
 }
 
 PresentMonManager::~PresentMonManager() {
+    // Always stop worker and ETW session, even if StopWorker wasn't called explicitly
+    // This ensures ETW sessions don't leak system-wide resources
     StopWorker();
+    
+    // Double-check: if session name exists but handle is lost, try to stop by name
+    // This handles edge cases where the destructor runs but StopWorker didn't fully clean up
+    if (m_session_name[0] != 0) {
+        uint64_t sh = m_etw_session_handle.load();
+        if (sh == 0) {
+            // Handle was lost, try to stop by name as last resort
+            StopEtwSessionByName(m_session_name);
+        }
+    }
 
     // Clean up string pointers
     delete m_present_mode_str.load();
@@ -465,6 +477,13 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
 
     auto etw_status_ptr = m_etw_session_status.load();
     debug_info.etw_session_status = etw_status_ptr ? *etw_status_ptr : "Unknown";
+    
+    // Include session name
+    if (m_session_name[0] != 0) {
+        debug_info.etw_session_name = Narrow(std::wstring(m_session_name));
+    } else {
+        debug_info.etw_session_name = "";
+    }
 
     auto error_ptr = m_last_error.load();
     debug_info.last_error = error_ptr ? *error_ptr : "";
@@ -502,6 +521,9 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
     debug_info.last_graphics_event_name = last_gevent_name_ptr ? *last_gevent_name_ptr : "";
     auto last_gprops_ptr = m_last_graphics_props.load();
     debug_info.last_graphics_props = last_gprops_ptr ? *last_gprops_ptr : "";
+
+    // Enumerate ETW sessions starting with "DC_"
+    GetEtwSessionsWithPrefix(L"DC_", debug_info.dc_etw_sessions);
 }
 
 void PresentMonManager::UpdateFlipState(DxgiBypassMode mode, const std::string& present_mode_str, const std::string& debug_info) {
@@ -573,12 +595,121 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
 
 void PresentMonManager::RequestStopEtw() {
     uint64_t sh = m_etw_session_handle.load();
-    if (sh == 0 || m_session_name[0] == 0) return;
+    if (m_session_name[0] == 0) return;
 
-    // Stop session; ignore errors (may already be stopped)
-    EVENT_TRACE_PROPERTIES props = {};
-    props.Wnode.BufferSize = sizeof(EVENT_TRACE_PROPERTIES);
-    ControlTraceW(static_cast<TRACEHANDLE>(sh), m_session_name, &props, EVENT_TRACE_CONTROL_STOP);
+    // If we have a handle, use it; otherwise try to stop by name
+    if (sh != 0) {
+        // Stop session using handle
+        EVENT_TRACE_PROPERTIES props = {};
+        props.Wnode.BufferSize = sizeof(EVENT_TRACE_PROPERTIES);
+        ULONG status = ControlTraceW(static_cast<TRACEHANDLE>(sh), m_session_name, &props, EVENT_TRACE_CONTROL_STOP);
+        if (status == ERROR_SUCCESS || status == ERROR_WMI_INSTANCE_NOT_FOUND) {
+            // Successfully stopped or already stopped
+            m_etw_session_handle.store(0);
+        }
+    } else {
+        // No handle available, try to stop by name (fallback for cleanup)
+        StopEtwSessionByName(m_session_name);
+    }
+}
+
+bool PresentMonManager::QueryEtwSessionByName(const wchar_t* session_name, TRACEHANDLE& out_handle) {
+    out_handle = 0;
+    if (session_name == nullptr || session_name[0] == 0) return false;
+
+    // Query existing session by name
+    ULONG props_size = sizeof(EVENT_TRACE_PROPERTIES) + 512;
+    std::unique_ptr<uint8_t[]> props_buf(new (std::nothrow) uint8_t[props_size]);
+    if (!props_buf) return false;
+
+    ZeroMemory(props_buf.get(), props_size);
+    auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(props_buf.get());
+    props->Wnode.BufferSize = props_size;
+    props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+    // Set GUID for query (can be zero GUID for private sessions)
+    ZeroMemory(&props->Wnode.Guid, sizeof(GUID));
+
+    // Query the session - use NULL handle with session name
+    ULONG status = ControlTraceW(NULL, session_name, props, EVENT_TRACE_CONTROL_QUERY);
+    if (status == ERROR_SUCCESS) {
+        // Session exists, extract handle from Wnode.HistoricalContext
+        // Note: HistoricalContext contains the session handle for controlling the session
+        out_handle = reinterpret_cast<TRACEHANDLE>(static_cast<ULONG_PTR>(props->Wnode.HistoricalContext));
+        return true;
+    }
+    
+    return false;
+}
+
+void PresentMonManager::StopEtwSessionByName(const wchar_t* session_name) {
+    if (session_name == nullptr || session_name[0] == 0) return;
+
+    // Try to stop the session by name (useful when handle is lost)
+    ULONG props_size = sizeof(EVENT_TRACE_PROPERTIES) + 512;
+    std::unique_ptr<uint8_t[]> props_buf(new (std::nothrow) uint8_t[props_size]);
+    if (!props_buf) return;
+
+    ZeroMemory(props_buf.get(), props_size);
+    auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(props_buf.get());
+    props->Wnode.BufferSize = props_size;
+    props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+
+    // Use NULL handle with session name to stop by name
+    ULONG status = ControlTraceW(NULL, session_name, props, EVENT_TRACE_CONTROL_STOP);
+    // Ignore errors - session may not exist or may already be stopped
+    (void)status;
+}
+
+void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names) {
+    out_session_names.clear();
+    if (prefix == nullptr || prefix[0] == 0) return;
+
+    // QueryAllTracesW can return up to 64 sessions (or more on Windows 10+)
+    constexpr ULONG max_sessions = 128;
+    ULONG session_count = 0;
+
+    // Allocate buffer for session properties
+    // Each session needs space for EVENT_TRACE_PROPERTIES + session name + log file name
+    constexpr ULONG props_size = sizeof(EVENT_TRACE_PROPERTIES) + 2048; // Extra space for names
+    std::vector<std::unique_ptr<uint8_t[]>> prop_buffers(max_sessions);
+    std::vector<PEVENT_TRACE_PROPERTIES> prop_ptrs(max_sessions);
+
+    for (ULONG i = 0; i < max_sessions; ++i) {
+        prop_buffers[i] = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[props_size]);
+        if (!prop_buffers[i]) {
+            // Out of memory, return what we have
+            return;
+        }
+        ZeroMemory(prop_buffers[i].get(), props_size);
+        auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(prop_buffers[i].get());
+        props->Wnode.BufferSize = props_size;
+        props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+        props->LogFileNameOffset = sizeof(EVENT_TRACE_PROPERTIES) + 1024; // Session name max ~1024 chars
+        prop_ptrs[i] = props;
+    }
+
+    // Query all ETW sessions
+    ULONG status = QueryAllTracesW(prop_ptrs.data(), max_sessions, &session_count);
+    if (status != ERROR_SUCCESS && status != ERROR_MORE_DATA) {
+        // Failed to query sessions (may not have permissions)
+        return;
+    }
+
+    // Filter sessions by prefix
+    const size_t prefix_len = wcslen(prefix);
+    for (ULONG i = 0; i < session_count && i < max_sessions; ++i) {
+        auto* props = prop_ptrs[i];
+        if (props == nullptr) continue;
+
+        // Extract session name from properties
+        const wchar_t* session_name = reinterpret_cast<const wchar_t*>(
+            reinterpret_cast<const uint8_t*>(props) + props->LoggerNameOffset);
+        
+        if (session_name != nullptr && _wcsnicmp(session_name, prefix, prefix_len) == 0) {
+            // Session name starts with prefix, add it to output
+            out_session_names.push_back(Narrow(std::wstring(session_name)));
+        }
+    }
 }
 
 void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record) {
@@ -1136,10 +1267,30 @@ int PresentMonManager::PresentMonMain() {
     TRACEHANDLE session_handle = 0;
     ULONG status = StartTraceW(&session_handle, m_session_name, props);
     if (status != ERROR_SUCCESS) {
-        char err[128] = {};
-        StringCchPrintfA(err, std::size(err), "StartTrace failed: %lu", status);
-        UpdateDebugInfo("Running", "Failed", err, 0, 0);
-        return 2;
+        // If session already exists, try to reuse it instead of stopping/recreating
+        if (status == ERROR_ALREADY_EXISTS) {
+            LogInfo("[PresentMon] ETW session already exists, attempting to reuse: %ls", m_session_name);
+            if (QueryEtwSessionByName(m_session_name, session_handle)) {
+                // Successfully queried existing session handle
+                LogInfo("[PresentMon] Reusing existing ETW session handle: 0x%p", reinterpret_cast<void*>(session_handle));
+                status = ERROR_SUCCESS;
+            } else {
+                // Query failed, session might be in invalid state, stop and recreate
+                LogWarn("[PresentMon] Failed to query existing session, stopping and recreating: %ls", m_session_name);
+                StopEtwSessionByName(m_session_name);
+                // Wait a bit for the session to fully stop
+                Sleep(100);
+                // Try again
+                status = StartTraceW(&session_handle, m_session_name, props);
+            }
+        }
+        
+        if (status != ERROR_SUCCESS) {
+            char err[128] = {};
+            StringCchPrintfA(err, std::size(err), "StartTrace failed: %lu", status);
+            UpdateDebugInfo("Running", "Failed", err, 0, 0);
+            return 2;
+        }
     }
 
     m_etw_session_handle.store(static_cast<uint64_t>(session_handle));

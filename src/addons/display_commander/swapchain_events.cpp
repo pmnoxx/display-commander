@@ -1108,6 +1108,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
 void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track render thread ID
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
     DWORD current_thread_id = GetCurrentThreadId();
     DWORD previous_render_thread_id = g_render_thread_id.load();
     g_render_thread_id.store(current_thread_id);
@@ -1222,7 +1223,9 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
                                              target_fps);
             if (settings::g_developerTabSettings.reflex_enable_sleep.GetValue()
                 && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
+                perf_timer.pause();
                 g_latencyManager->Sleep();
+                perf_timer.resume();
             }
         } else {
             s_reflex_enable_current_frame.store(false);
@@ -1485,6 +1488,13 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                            const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentUpdateBefore)) {
+        return;
+    }
+
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::OnPresentUpdateBefore);
+
     if (swapchain == nullptr) {
         return;
     }
@@ -1572,15 +1582,19 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
             // Flush command queue using native DirectX APIs (DX11 only) - don't rely on ReShade runtime
+            perf_timer.pause();
             display_commanderhooks::FlushCommandQueueFromSwapchain(dxgi_swapchain.Get(), DeviceTypeDC::DX11);
+            EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
+            perf_timer.resume();
         }
     } else if (api == reshade::api::device_api::d3d12) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+            perf_timer.pause();
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
+            perf_timer.resume();
         }
     }
 
@@ -1602,6 +1616,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         }
     }
 
+    perf_timer.pause();
     // vulkan fps limiter
     if (api == reshade::api::device_api::vulkan) {
         command_queue->flush_immediate_command_list();
@@ -1609,6 +1624,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         OnPresentFlags2(&present_flags, DeviceTypeDC::Vulkan, true, false);  // Called from present_detour
         display_commanderhooks::dxgi::HandlePresentBefore2();
     }
+    perf_timer.resume();
 
     // Update VRR status once per second (if enabled in settings)
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();

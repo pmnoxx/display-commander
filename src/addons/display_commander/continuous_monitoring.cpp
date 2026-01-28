@@ -340,6 +340,21 @@ void every1s_checks() {
         }
         g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
     }
+
+    // Update volume values from audio APIs (runs every second)
+    {
+        // Get current game volume
+        float current_volume = 0.0f;
+        if (GetVolumeForCurrentProcess(&current_volume)) {
+            s_audio_volume_percent.store(current_volume);
+        }
+
+        // Get current system volume
+        float system_volume = 0.0f;
+        if (GetSystemVolume(&system_volume)) {
+            s_system_volume_percent.store(system_volume);
+        }
+    }
 }
 
 void HandleKeyboardShortcuts() {

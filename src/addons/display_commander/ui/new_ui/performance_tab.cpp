@@ -99,20 +99,27 @@ void DrawPerformanceTab() {
         row("Performance overlay (draw)", perf_measurement::Metric::Overlay,
             settings::g_experimentalTabSettings.perf_measure_overlay_enabled, "##perf_overlay",
             settings::g_experimentalTabSettings.perf_suppress_overlay, "##suppress_overlay");
+        row("  -- Show Volume", perf_measurement::Metric::OverlayShowVolume,
+            settings::g_experimentalTabSettings.perf_measure_overlay_show_volume_enabled, "##perf_overlay_show_volume",
+            settings::g_experimentalTabSettings.perf_suppress_overlay_show_volume, "##suppress_overlay_show_volume");
+        row("  -- Show VRR Status", perf_measurement::Metric::OverlayShowVrrStatus,
+            settings::g_experimentalTabSettings.perf_measure_overlay_show_vrr_status_enabled,
+            "##perf_overlay_show_vrr_status", settings::g_experimentalTabSettings.perf_suppress_overlay_show_vrr_status,
+            "##suppress_overlay_show_vrr_status");
         row("HandlePresentBefore", perf_measurement::Metric::HandlePresentBefore,
             settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled, "##perf_handle_before",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_before, "##suppress_handle_before");
-        row("  └─ Device Query", perf_measurement::Metric::HandlePresentBefore_DeviceQuery,
+        row("  -- Device Query", perf_measurement::Metric::HandlePresentBefore_DeviceQuery,
             settings::g_experimentalTabSettings.perf_measure_handle_present_before_device_query_enabled,
             "##perf_handle_before_device_query",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_before_device_query,
             "##suppress_handle_before_device_query");
-        row("  └─ RecordFrameTime", perf_measurement::Metric::HandlePresentBefore_RecordFrameTime,
+        row("  -- RecordFrameTime", perf_measurement::Metric::HandlePresentBefore_RecordFrameTime,
             settings::g_experimentalTabSettings.perf_measure_handle_present_before_record_frame_time_enabled,
             "##perf_handle_before_record_frame_time",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_before_record_frame_time,
             "##suppress_handle_before_record_frame_time");
-        row("  └─ Frame Statistics", perf_measurement::Metric::HandlePresentBefore_FrameStatistics,
+        row("  -- Frame Statistics", perf_measurement::Metric::HandlePresentBefore_FrameStatistics,
             settings::g_experimentalTabSettings.perf_measure_handle_present_before_frame_statistics_enabled,
             "##perf_handle_before_frame_statistics",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_before_frame_statistics,
@@ -147,4 +154,4 @@ void DrawPerformanceTab() {
     ImGui::TextDisabled("Tip: Enable master measurement first, then disable individual metrics to reduce overhead.");
 }
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

@@ -11,6 +11,8 @@ namespace perf_measurement {
 
 enum class Metric : std::uint8_t {
     Overlay = 0,
+    OverlayShowVolume,
+    OverlayShowVrrStatus,
     HandlePresentBefore,
     HandlePresentBefore_DeviceQuery,
     HandlePresentBefore_RecordFrameTime,
@@ -41,6 +43,10 @@ inline bool IsMetricEnabled(Metric metric) {
     switch (metric) {
     case Metric::Overlay:
         return settings::g_experimentalTabSettings.perf_measure_overlay_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::OverlayShowVolume:
+        return settings::g_experimentalTabSettings.perf_measure_overlay_show_volume_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::OverlayShowVrrStatus:
+        return settings::g_experimentalTabSettings.perf_measure_overlay_show_vrr_status_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentBefore:
         return settings::g_experimentalTabSettings.perf_measure_handle_present_before_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentBefore_DeviceQuery:
@@ -77,6 +83,10 @@ inline bool IsMetricSuppressed(Metric metric) {
     switch (metric) {
     case Metric::Overlay:
         return settings::g_experimentalTabSettings.perf_suppress_overlay.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::OverlayShowVolume:
+        return settings::g_experimentalTabSettings.perf_suppress_overlay_show_volume.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::OverlayShowVrrStatus:
+        return settings::g_experimentalTabSettings.perf_suppress_overlay_show_vrr_status.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentBefore:
         return settings::g_experimentalTabSettings.perf_suppress_handle_present_before.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentBefore_DeviceQuery:

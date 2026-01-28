@@ -138,6 +138,8 @@ class ExperimentalTabSettings {
     BoolSetting performance_measurement_enabled;
     // Per-metric toggles (default on)
     BoolSetting perf_measure_overlay_enabled;
+    BoolSetting perf_measure_overlay_show_volume_enabled;
+    BoolSetting perf_measure_overlay_show_vrr_status_enabled;
     BoolSetting perf_measure_handle_present_before_enabled;
     BoolSetting perf_measure_handle_present_before_device_query_enabled;
     BoolSetting perf_measure_handle_present_before_record_frame_time_enabled;
@@ -155,6 +157,8 @@ class ExperimentalTabSettings {
     // sessions.
     BoolSetting performance_suppression_enabled;
     BoolSetting perf_suppress_overlay;
+    BoolSetting perf_suppress_overlay_show_volume;
+    BoolSetting perf_suppress_overlay_show_vrr_status;
     BoolSetting perf_suppress_handle_present_before;
     BoolSetting perf_suppress_handle_present_before_device_query;
     BoolSetting perf_suppress_handle_present_before_record_frame_time;

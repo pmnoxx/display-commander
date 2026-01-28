@@ -38,6 +38,7 @@
 #include "utils/display_commander_logger.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
+#include "utils/perf_measurement.hpp"
 #include "utils/platform_api_detector.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "utils/timing.hpp"
@@ -564,10 +565,11 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (enabled_experimental_features) {
+    {
         bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
 
         if (show_vrr_status || show_vrr_debug_mode) {
+            perf_measurement::ScopedTimer overlay_show_vrr_status_timer(perf_measurement::Metric::OverlayShowVrrStatus);
             static bool cached_vrr_active = false;
             static LONGLONG last_update_ns = 0;
             static LONGLONG last_valid_sample_ns = 0;
@@ -915,20 +917,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
     if (show_volume) {
-        // Get current game volume
-        float current_volume = 0.0f;
-        if (!GetVolumeForCurrentProcess(&current_volume)) {
-            // If we can't get current volume, use stored value
-            current_volume = s_audio_volume_percent.load();
-        }
-
-        // Get current system volume
-        float system_volume = 0.0f;
-        if (!GetSystemVolume(&system_volume)) {
-            system_volume = s_system_volume_percent.load();
-        } else {
-            s_system_volume_percent.store(system_volume);
-        }
+        perf_measurement::ScopedTimer overlay_show_volume_timer(perf_measurement::Metric::OverlayShowVolume);
+        // Get volume values from atomic variables (updated by continuous monitoring thread)
+        float current_volume = s_audio_volume_percent.load();
+        float system_volume = s_system_volume_percent.load();
 
         // Check if audio is muted
         bool is_muted = g_muted_applied.load();

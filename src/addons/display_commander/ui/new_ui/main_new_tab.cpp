@@ -3606,7 +3606,7 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
-        if (enabled_experimental_features) {
+        {
             // Show VRR Status
             bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
             if (ImGui::Checkbox("VRR Status", &show_vrr_status)) {
@@ -3777,11 +3777,11 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows a graph of refresh rate frame times (display refresh intervals) in the overlay.");
         }
-        if (enabled_experimental_features) {
+        {
             ImGui::NextColumn();
 
             // Show Volume Control (experimental feature)
-            if (settings::g_mainTabSettings.show_experimental_tab.GetValue()) {
+            {
                 bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
                 if (ImGui::Checkbox("Show volume", &show_volume)) {
                     settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);

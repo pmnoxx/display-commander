@@ -21,6 +21,7 @@ enum class Metric : std::uint8_t {
     FlushCommandQueueFromSwapchain,
     EnqueueGPUCompletion,
     GetIndependentFlipState,
+    OnPresentUpdateBefore,
     Count
 };
 
@@ -60,6 +61,8 @@ inline bool IsMetricEnabled(Metric metric) {
         return settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::GetIndependentFlipState:
         return settings::g_experimentalTabSettings.perf_measure_get_independent_flip_state_enabled.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::OnPresentUpdateBefore:
+        return settings::g_experimentalTabSettings.perf_measure_on_present_update_before_enabled.GetAtomic().load(std::memory_order_relaxed);
     default:
         return false;
     }
@@ -94,6 +97,8 @@ inline bool IsMetricSuppressed(Metric metric) {
         return settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion.GetAtomic().load(std::memory_order_relaxed);
     case Metric::GetIndependentFlipState:
         return settings::g_experimentalTabSettings.perf_suppress_get_independent_flip_state.GetAtomic().load(std::memory_order_relaxed);
+    case Metric::OnPresentUpdateBefore:
+        return settings::g_experimentalTabSettings.perf_suppress_on_present_update_before.GetAtomic().load(std::memory_order_relaxed);
     default:
         return false;
     }
@@ -111,19 +116,45 @@ class ScopedTimer {
             return;
         }
         active_ = true;
+        paused_ = false;
+        accumulated_ns_ = 0;
         start_ns_ = static_cast<std::uint64_t>(utils::get_now_ns());
     }
 
     ScopedTimer(const ScopedTimer &) = delete;
     ScopedTimer &operator=(const ScopedTimer &) = delete;
 
-    ~ScopedTimer() {
-        if (!active_) {
+    void pause() {
+        if (!active_ || paused_) {
             return;
         }
         const std::uint64_t end_ns = static_cast<std::uint64_t>(utils::get_now_ns());
         const std::uint64_t dt_ns = (end_ns >= start_ns_) ? (end_ns - start_ns_) : 0ULL;
-        Record(metric_, dt_ns);
+        accumulated_ns_ += dt_ns;
+        paused_ = true;
+    }
+
+    void resume() {
+        if (!active_ || !paused_) {
+            return;
+        }
+        start_ns_ = static_cast<std::uint64_t>(utils::get_now_ns());
+        paused_ = false;
+    }
+
+    ~ScopedTimer() {
+        if (!active_) {
+            return;
+        }
+        std::uint64_t total_ns = accumulated_ns_;
+        if (!paused_) {
+            const std::uint64_t end_ns = static_cast<std::uint64_t>(utils::get_now_ns());
+            const std::uint64_t dt_ns = (end_ns >= start_ns_) ? (end_ns - start_ns_) : 0ULL;
+            total_ns += dt_ns;
+        }
+        if (total_ns > 0) {
+            Record(metric_, total_ns);
+        }
     }
 
   private:
@@ -131,6 +162,8 @@ class ScopedTimer {
 
     Metric metric_;
     bool active_ = false;
+    bool paused_ = false;
+    std::uint64_t accumulated_ns_ = 0;
     std::uint64_t start_ns_ = 0;
 };
 

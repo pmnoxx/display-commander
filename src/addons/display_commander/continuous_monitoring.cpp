@@ -6,6 +6,7 @@
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
+#include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "settings/developer_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
@@ -354,6 +355,12 @@ void every1s_checks() {
         if (GetSystemVolume(&system_volume)) {
             s_system_volume_percent.store(system_volume);
         }
+    }
+
+    // Update refresh rate statistics (runs every second)
+    {
+        auto stats = dxgi::fps_limiter::GetRefreshRateStats();
+        g_cached_refresh_rate_stats.store(std::make_shared<const dxgi::fps_limiter::RefreshRateStats>(stats));
     }
 }
 

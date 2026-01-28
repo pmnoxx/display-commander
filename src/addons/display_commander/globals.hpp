@@ -1287,6 +1287,15 @@ extern std::atomic<bool> g_ngx_presets_initialized;
 // Cached frame statistics (updated in present detour, read by monitoring thread)
 extern std::atomic<std::shared_ptr<DXGI_FRAME_STATISTICS>> g_cached_frame_stats;
 
+// Forward declaration for refresh rate stats (full type needed for shared_ptr)
+namespace dxgi::fps_limiter {
+struct RefreshRateStats;
+}
+
+// Cached refresh rate statistics (updated in continuous monitoring thread, read by render/UI threads)
+// Note: Using forward declaration works here because shared_ptr only needs the type for storage
+extern std::atomic<std::shared_ptr<const dxgi::fps_limiter::RefreshRateStats>> g_cached_refresh_rate_stats;
+
 // Swapchain wrapper statistics
 // Frame time ring buffer capacity (must be power of 2 for efficient modulo)
 constexpr size_t kSwapchainFrameTimeCapacity = 256;

@@ -4130,8 +4130,13 @@ void DrawImportantInfo() {
         std::string status = dxgi::fps_limiter::GetRefreshRateStatusString();
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status.c_str());
 
-        // Get refresh rate statistics
-        auto stats = dxgi::fps_limiter::GetRefreshRateStats();
+        // Get refresh rate statistics from continuous monitoring thread cache
+        auto shared_stats = g_cached_refresh_rate_stats.load();
+        if (!shared_stats) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No refresh rate data available");
+            return;
+        }
+        const auto& stats = *shared_stats;
 
         if (stats.is_valid && stats.sample_count > 0) {
             ImGui::Spacing();

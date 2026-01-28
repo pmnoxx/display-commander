@@ -540,27 +540,16 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
     if (show_refresh_rate) {
-        static double cached_refresh_rate = 0.0;
-        static LONGLONG last_update_ns = 0;
-        const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 200ms in nanoseconds
-
-        LONGLONG now_ns = utils::get_now_ns();
-
-        // Update cached value every 50ms
-        if (now_ns - last_update_ns >= update_interval_ns) {
-            auto stats = dxgi::fps_limiter::GetRefreshRateStats();
-            if (stats.is_valid && stats.sample_count > 0) {
-                cached_refresh_rate = stats.smoothed_rate;
-                last_update_ns = now_ns;
-            }
-        }
-
-        // Display cached value
-        if (cached_refresh_rate > 0.0) {
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                ImGui::Text("%.1fHz", cached_refresh_rate);
-            } else {
-                ImGui::Text("%.1f", cached_refresh_rate);
+        // Get refresh rate stats from continuous monitoring thread cache
+        auto cached_stats = g_cached_refresh_rate_stats.load();
+        if (cached_stats && cached_stats->is_valid && cached_stats->sample_count > 0) {
+            double refresh_rate = cached_stats->smoothed_rate;
+            if (refresh_rate > 0.0) {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("%.1fHz", refresh_rate);
+                } else {
+                    ImGui::Text("%.1f", refresh_rate);
+                }
             }
         }
     }
@@ -584,16 +573,13 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
             LONGLONG now_ns = utils::get_now_ns();
 
-            // Update cached value every 100ms
-            if (now_ns - last_update_ns >= update_interval_ns) {
-                auto stats = dxgi::fps_limiter::GetRefreshRateStats();
-                if (stats.is_valid && stats.sample_count > 0) {
-                    // VRR is active if refresh rate varies (max > min + 1.0 Hz threshold)
-                    cached_vrr_active = (stats.max_rate > stats.min_rate + 2.0);
-                    cached_stats = stats;
-                    last_update_ns = now_ns;
-                    last_valid_sample_ns = now_ns;
-                }
+            // Get refresh rate stats from continuous monitoring thread cache
+            auto shared_stats = g_cached_refresh_rate_stats.load();
+            if (shared_stats && shared_stats->is_valid && shared_stats->sample_count > 0) {
+                // Update cached values from shared stats
+                cached_vrr_active = (shared_stats->max_rate > shared_stats->min_rate + 2.0);
+                cached_stats = *shared_stats;
+                last_valid_sample_ns = now_ns;
             }
 
             // Check if we got a sample within the last 1 second

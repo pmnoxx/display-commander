@@ -781,6 +781,9 @@ std::atomic<bool> g_swapchain_wrapper_present1_called{false};
 // Cached frame statistics (updated in present detour, read by monitoring thread)
 std::atomic<std::shared_ptr<DXGI_FRAME_STATISTICS>> g_cached_frame_stats{nullptr};
 
+// Cached refresh rate statistics (updated in continuous monitoring thread, read by render/UI threads)
+std::atomic<std::shared_ptr<const dxgi::fps_limiter::RefreshRateStats>> g_cached_refresh_rate_stats{nullptr};
+
 // Get DLSS Model Profile
 DLSSModelProfile GetDLSSModelProfile() {
     DLSSModelProfile profile;

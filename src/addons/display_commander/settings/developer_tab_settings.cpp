@@ -87,7 +87,7 @@ DeveloperTabSettings::DeveloperTabSettings()
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
-      enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander") {}
+      enable_presentmon_tracing("EnablePresentMonTracing", false, "DisplayCommander") {}
 
 void DeveloperTabSettings::LoadAll() {
     // Get all settings for smart logging

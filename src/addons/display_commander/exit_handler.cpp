@@ -5,6 +5,7 @@
 #include <sstream>
 #include "config/display_commander_config.hpp"
 #include "display_restore.hpp"
+#include "presentmon/presentmon_manager.hpp"
 #include "utils.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
@@ -30,6 +31,8 @@ void WriteToDebugLog(const std::string& message) {
 }
 
 void OnHandleExit(ExitSource source, const std::string& message) {
+    presentmon::g_presentMonManager.StopWorker();
+
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();
     // Use atomic compare_exchange to ensure only one thread handles exit

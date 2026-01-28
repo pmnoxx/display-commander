@@ -22,6 +22,7 @@
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
+#include <windows.h>
 
 // External atomic variables from settings
 extern std::atomic<bool> s_nvapi_auto_enable_enabled;
@@ -247,7 +248,64 @@ void DrawDeveloperSettings() {
 
         ImGui::TextColored(ui::colors::TEXT_LABEL, "ETW Status:");
         ImGui::SameLine();
-        ImGui::Text("%s", pm_debug_info.etw_session_status.c_str());
+        if (!pm_debug_info.etw_session_name.empty()) {
+            ImGui::Text("%s [%s]", pm_debug_info.etw_session_status.c_str(), pm_debug_info.etw_session_name.c_str());
+        } else {
+            ImGui::Text("%s", pm_debug_info.etw_session_status.c_str());
+        }
+
+        // Display list of DC_ ETW sessions
+        if (!pm_debug_info.dc_etw_sessions.empty()) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "DC_ ETW Sessions (%zu):", pm_debug_info.dc_etw_sessions.size());
+            ImGui::Indent();
+            for (const auto& session_name : pm_debug_info.dc_etw_sessions) {
+                ImGui::PushID(session_name.c_str());
+                
+                // Check if this is the current session
+                bool is_current_session = (session_name == pm_debug_info.etw_session_name);
+                
+                // Display session name
+                ImGui::Text("  • %s", session_name.c_str());
+                ImGui::SameLine();
+                
+                // Add close button (X) - disable for current session
+                if (is_current_session) {
+                    ImGui::BeginDisabled();
+                }
+                
+                // Small button with X icon
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 0.6f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 0.8f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+                
+                if (ImGui::SmallButton(ICON_FK_CANCEL)) {
+                    // Convert narrow string to wide string for StopEtwSessionByName
+                    int wide_len = MultiByteToWideChar(CP_UTF8, 0, session_name.c_str(), -1, nullptr, 0);
+                    if (wide_len > 0) {
+                        std::vector<wchar_t> wide_name(wide_len);
+                        MultiByteToWideChar(CP_UTF8, 0, session_name.c_str(), -1, wide_name.data(), wide_len);
+                        presentmon::PresentMonManager::StopEtwSessionByName(wide_name.data());
+                        LogInfo("Stopped ETW session: %s", session_name.c_str());
+                    }
+                }
+                
+                ImGui::PopStyleColor(3);
+                
+                if (is_current_session) {
+                    ImGui::EndDisabled();
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Cannot stop current session");
+                    }
+                } else {
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Stop ETW session: %s", session_name.c_str());
+                    }
+                }
+                
+                ImGui::PopID();
+            }
+            ImGui::Unindent();
+        }
 
         if (!pm_debug_info.last_error.empty()) {
             ImGui::TextColored(ui::colors::TEXT_ERROR, "Last Error: %s", pm_debug_info.last_error.c_str());

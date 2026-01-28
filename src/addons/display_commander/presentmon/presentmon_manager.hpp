@@ -81,6 +81,7 @@ struct PresentMonDebugInfo {
     bool etw_session_active;
     std::string thread_status;
     std::string etw_session_status;
+    std::string etw_session_name;
     std::string last_error;
     uint64_t events_processed;
     uint64_t events_processed_for_current_pid;
@@ -106,6 +107,9 @@ struct PresentMonDebugInfo {
     std::string last_graphics_provider_name;
     std::string last_graphics_event_name;
     std::string last_graphics_props;
+
+    // List of ETW sessions starting with "DC_" prefix
+    std::vector<std::string> dc_etw_sessions;
 };
 
 // PresentMon manager for ETW-based presentation tracking
@@ -143,6 +147,12 @@ public:
     // Recent DWM flip-compatibility surfaces (best-effort)
     void GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out, uint64_t within_ms) const;
 
+    // Get list of ETW sessions starting with specified prefix (e.g., "DC_")
+    static void GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names);
+
+    // Stop ETW session by name (public for UI cleanup)
+    static void StopEtwSessionByName(const wchar_t* session_name);
+
     // Update flip state (called from ETW consumer thread when implemented)
     void UpdateFlipState(DxgiBypassMode mode, const std::string& present_mode_str, const std::string& debug_info = "");
 
@@ -160,6 +170,10 @@ private:
 
     // Stop ETW session if running
     void RequestStopEtw();
+
+    // Query existing ETW session by name and get its handle
+    // Returns true if session exists and handle was retrieved, false otherwise
+    static bool QueryEtwSessionByName(const wchar_t* session_name, TRACEHANDLE& out_handle);
 
     // ETW event callback (static trampoline)
     static void WINAPI EtwEventRecordCallback(PEVENT_RECORD event_record);

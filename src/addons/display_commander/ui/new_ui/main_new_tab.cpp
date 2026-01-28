@@ -4130,6 +4130,23 @@ void DrawImportantInfo() {
         std::string status = dxgi::fps_limiter::GetRefreshRateStatusString();
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status.c_str());
 
+        // Display DXGI output device name
+        if (g_got_device_name.load()) {
+            auto device_name_ptr = g_dxgi_output_device_name.load();
+            if (device_name_ptr != nullptr) {
+                ImGui::Spacing();
+                ImGui::Text("DXGI Output Device:");
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
+            } else {
+                ImGui::Spacing();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
+            }
+        } else {
+            ImGui::Spacing();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
+        }
+
         // Get refresh rate statistics from continuous monitoring thread cache
         auto shared_stats = g_cached_refresh_rate_stats.load();
         if (!shared_stats) {

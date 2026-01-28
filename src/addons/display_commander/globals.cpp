@@ -209,6 +209,10 @@ std::atomic<LONGLONG> last_nvapi_update_ns{0};
 wchar_t cached_output_device_name[32] = {};
 }  // namespace vrr_status
 
+// DXGI output device name tracking (shared between swapchain_events and continuous_monitoring)
+std::atomic<bool> g_got_device_name{false};
+std::atomic<std::shared_ptr<const std::wstring>> g_dxgi_output_device_name{nullptr};
+
 // Backbuffer dimensions
 std::atomic<int> g_last_backbuffer_width{0};
 std::atomic<int> g_last_backbuffer_height{0};

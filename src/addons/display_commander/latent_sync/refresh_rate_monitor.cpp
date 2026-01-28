@@ -466,29 +466,26 @@ uint32_t RefreshRateMonitor::CountSamplesBelowThreshold(double fixed_refresh_hz)
 }
 
 void RefreshRateMonitor::MonitoringThread() {
-    if (true) {
-        return;
-    }
     LogInfo("Refresh rate monitoring thread: entering main loop");
     LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via WaitForVBlank");
 
     // Wait a bit for the system to stabilize
-  //  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Reset statistics
- //   m_measured_refresh_rate = 0.0;
- //   m_smoothed_refresh_rate = 0.0;
-  //  m_min_refresh_rate = 0.0;
-  ////  m_max_refresh_rate = 0.0;
-   //m_sample_count = 0;
-  //  m_first_sample = true;
+    m_measured_refresh_rate = 0.0;
+    m_smoothed_refresh_rate = 0.0;
+    m_min_refresh_rate = 0.0;
+    m_max_refresh_rate = 0.0;
+    m_sample_count = 0;
+    m_first_sample = true;
 
     // Clear recent samples
-  // {
-  //      m_recent_samples_write_index.store(0, std::memory_order_release);
-    //    m_recent_samples_count.store(0, std::memory_order_release);
-  //      m_recent_samples.fill(0.0);
-  //  }
+    {
+        m_recent_samples_write_index.store(0, std::memory_order_release);
+        m_recent_samples_count.store(0, std::memory_order_release);
+        m_recent_samples.fill({});
+    }
 
 
 

@@ -48,6 +48,9 @@
 #include <dxgi1_4.h>
 #include <minwindef.h>
 
+// Forward declaration for VRR status query function (moved to continuous_monitoring.cpp)
+// Function is in nvapi namespace, declared in nvapi/vrr_status.hpp
+
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -1626,58 +1629,32 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     }
     perf_timer.resume();
 
-    // Update VRR status once per second (if enabled in settings)
-    bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-    bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-    if (show_vrr_status || show_vrr_debug_mode) {
-        static LONGLONG last_nvapi_update_ns = 0;
-        const LONGLONG nvapi_update_interval_ns = 1000 * utils::NS_TO_MS;  // 1s in nanoseconds
-        LONGLONG now_ns = utils::get_now_ns();
-
-        if (now_ns - last_nvapi_update_ns >= nvapi_update_interval_ns) {
-            // Extract DXGI output device name from swapchain
-            wchar_t output_device_name[32] = {};
-            bool got_device_name = false;
-
-            auto api = swapchain->get_device()->get_api();
-            if (api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12
-                || api == reshade::api::device_api::d3d10) {
-                IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-                if (iunknown != nullptr) {
-                    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
-                    if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                        Microsoft::WRL::ComPtr<IDXGIOutput> output;
-                        if (SUCCEEDED(dxgi_swapchain->GetContainingOutput(&output))) {
-                            Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-                            if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6)))) {
-                                DXGI_OUTPUT_DESC1 desc1 = {};
-                                if (SUCCEEDED(output6->GetDesc1(&desc1))) {
-                                    wcsncpy_s(output_device_name, 32, desc1.DeviceName, _TRUNCATE);
-                                    got_device_name = (output_device_name[0] != L'\0');
+    // Extract DXGI output device name from swapchain (only once, shared via atomic)
+    // if (!g_got_device_name.load())
+    {
+        auto api = swapchain->get_device()->get_api();
+        if (api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12
+            || api == reshade::api::device_api::d3d10) {
+            IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
+            if (iunknown != nullptr) {
+                Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+                if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+                    Microsoft::WRL::ComPtr<IDXGIOutput> output;
+                    if (SUCCEEDED(dxgi_swapchain->GetContainingOutput(&output))) {
+                        Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+                        if (SUCCEEDED(output->QueryInterface(IID_PPV_ARGS(&output6)))) {
+                            DXGI_OUTPUT_DESC1 desc1 = {};
+                            if (SUCCEEDED(output6->GetDesc1(&desc1))) {
+                                if (desc1.DeviceName[0] != L'\0') {
+                                    auto device_name = std::make_shared<const std::wstring>(desc1.DeviceName);
+                                    g_dxgi_output_device_name.store(device_name);
+                                    g_got_device_name.store(true);
                                 }
                             }
                         }
                     }
                 }
             }
-
-            if (got_device_name) {
-                // If output changed, force refresh
-                if (wcscmp(output_device_name, vrr_status::cached_output_device_name) != 0) {
-                    wcsncpy_s(vrr_status::cached_output_device_name, 32, output_device_name, _TRUNCATE);
-                }
-
-                nvapi::VrrStatus vrr{};
-                bool ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(vrr_status::cached_output_device_name, vrr);
-                vrr_status::cached_nvapi_ok.store(ok);
-                vrr_status::cached_nvapi_vrr = vrr;
-            } else {
-                vrr_status::cached_nvapi_ok.store(false);
-                vrr_status::cached_nvapi_vrr = nvapi::VrrStatus{};
-                vrr_status::cached_output_device_name[0] = L'\0';
-            }
-            vrr_status::last_nvapi_update_ns.store(now_ns);
-            last_nvapi_update_ns = now_ns;
         }
     }
 

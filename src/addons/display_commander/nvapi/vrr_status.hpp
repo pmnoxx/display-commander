@@ -31,6 +31,8 @@ struct VrrStatus {
 
 // DXGI output DeviceName is typically "\\\\.\\DISPLAY1". NVAPI expects "\\DISPLAY1".
 // This helper queries VRR state via NvAPI_Disp_GetVRRInfo.
+// NOTE: Function implementation moved to continuous_monitoring.cpp
+// Forward declaration for external use
 bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t *dxgi_output_device_name, VrrStatus &out_status);
 
 } // namespace nvapi

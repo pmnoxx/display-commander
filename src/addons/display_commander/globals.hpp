@@ -610,6 +610,10 @@ extern std::atomic<LONGLONG> last_nvapi_update_ns;
 extern wchar_t cached_output_device_name[32];
 }  // namespace vrr_status
 
+// DXGI output device name tracking (shared between swapchain_events and continuous_monitoring)
+extern std::atomic<bool> g_got_device_name;
+extern std::atomic<std::shared_ptr<const std::wstring>> g_dxgi_output_device_name;
+
 // Present duration tracking
 extern std::atomic<LONGLONG> g_present_duration_ns;
 

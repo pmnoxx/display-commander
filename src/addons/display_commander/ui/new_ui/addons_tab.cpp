@@ -8,6 +8,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/reshade_global_config.hpp"
+#include "../../utils/version_check.hpp"
 
 #include <psapi.h>
 #include <ShlObj.h>
@@ -34,127 +35,133 @@ std::atomic<bool> g_show_addon_restart_warning(false);
 
 // Get the global addons directory path
 std::filesystem::path GetGlobalAddonsDirectory() {
-    wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
-    std::filesystem::path documents_dir(documents_path);
-    return documents_dir / L"Display Commander" / L"Reshade" / L"Addons";
+    std::filesystem::path localappdata_dir(localappdata_path);
+    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Addons";
 }
 
 // Get the shaders directory path
 std::filesystem::path GetShadersDirectory() {
-    wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
-    std::filesystem::path documents_dir(documents_path);
-    return documents_dir / L"Display Commander" / L"Reshade" / L"Shaders";
+    std::filesystem::path localappdata_dir(localappdata_path);
+    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Shaders";
 }
 
 // Get the textures directory path
 std::filesystem::path GetTexturesDirectory() {
-    wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
-    std::filesystem::path documents_dir(documents_path);
-    return documents_dir / L"Display Commander" / L"Reshade" / L"Textures";
+    std::filesystem::path localappdata_dir(localappdata_path);
+    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Textures";
 }
 
-// Get the Documents folder path
+// Get the LocalAppData folder path
 std::filesystem::path GetDocumentsDirectory() {
-    wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
-    return std::filesystem::path(documents_path);
+    return std::filesystem::path(localappdata_path);
 }
 
 // Get the Reshade directory path (where reshade64.dll/reshade32.dll are located)
 std::filesystem::path GetReshadeDirectory() {
-    wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
-    std::filesystem::path documents_dir(documents_path);
-    return documents_dir / L"Display Commander" / L"Reshade";
+    std::filesystem::path localappdata_dir(localappdata_path);
+    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
 }
 
-// Convert full path to path relative to Documents (masks username)
-// Example: "C:\Users\Piotr\Documents\Display Commander\Reshade" -> "Documents\Display Commander\Reshade"
+// Convert full path to path relative to LocalAppData (masks username)
+// Example: "C:\Users\Piotr\AppData\Local\Programs\Display Commander\Reshade" -> "%localappdata%\\Programs\\Display
+// Commander\\Reshade"
 std::string GetPathRelativeToDocuments(const std::filesystem::path& full_path) {
-    std::filesystem::path documents_dir = GetDocumentsDirectory();
-    if (documents_dir.empty()) {
+    std::filesystem::path localappdata_dir = GetDocumentsDirectory();
+    if (localappdata_dir.empty()) {
         return full_path.string();
     }
 
     // Convert to strings and normalize path separators to backslashes for Windows
     std::string full_str = full_path.string();
-    std::string docs_str = documents_dir.string();
+    std::string localappdata_str = localappdata_dir.string();
     std::replace(full_str.begin(), full_str.end(), '/', '\\');
-    std::replace(docs_str.begin(), docs_str.end(), '/', '\\');
+    std::replace(localappdata_str.begin(), localappdata_str.end(), '/', '\\');
 
-    // Check if full_path is exactly Documents directory
-    if (full_str == docs_str) {
-        return "Documents";
+    // Check if full_path is exactly LocalAppData directory
+    if (full_str == localappdata_str) {
+        return "%localappdata%";
     }
 
-    // Check if full_path is within Documents directory
-    if (full_str.length() > docs_str.length()) {
-        // Check if it starts with docs_str followed by a path separator
-        if (full_str.substr(0, docs_str.length()) == docs_str && (full_str[docs_str.length()] == '\\')) {
-            // Remove the documents_dir part and the leading path separator
-            std::string relative = full_str.substr(docs_str.length() + 1);
-            // Prepend "Documents" to maintain clarity
-            return "Documents\\" + relative;
+    // Check if full_path is within LocalAppData directory
+    if (full_str.length() > localappdata_str.length()) {
+        // Check if it starts with localappdata_str followed by a path separator
+        if (full_str.substr(0, localappdata_str.length()) == localappdata_str
+            && (full_str[localappdata_str.length()] == '\\')) {
+            // Remove the localappdata_dir part and the leading path separator
+            std::string relative = full_str.substr(localappdata_str.length() + 1);
+            // Prepend "%localappdata%\\" to maintain clarity
+            return "%localappdata%\\" + relative;
         }
     }
 
-    // Path is not under Documents, return original
+    // Path is not under LocalAppData, return original
     return full_path.string();
 }
 
-// Check if Reshade64.dll exists in Documents folder
+// Check if Reshade64.dll exists in LocalAppData folder
 bool Reshade64DllExists() {
-    std::filesystem::path documents_dir = GetDocumentsDirectory();
-    if (documents_dir.empty()) {
+    std::filesystem::path localappdata_dir = GetDocumentsDirectory();
+    if (localappdata_dir.empty()) {
         return false;
     }
-    std::filesystem::path reshade64_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
+    std::filesystem::path reshade64_path =
+        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
     return std::filesystem::exists(reshade64_path);
 }
 
-// Check if Reshade32.dll exists in Documents folder
+// Check if Reshade32.dll exists in LocalAppData folder
 bool Reshade32DllExists() {
-    std::filesystem::path documents_dir = GetDocumentsDirectory();
-    if (documents_dir.empty()) {
+    std::filesystem::path localappdata_dir = GetDocumentsDirectory();
+    if (localappdata_dir.empty()) {
         return false;
     }
-    std::filesystem::path reshade32_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
+    std::filesystem::path reshade32_path =
+        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
     return std::filesystem::exists(reshade32_path);
 }
 
-// Get Reshade64.dll version from Documents folder
+// Get Reshade64.dll version from LocalAppData folder
 std::string GetReshade64Version() {
-    std::filesystem::path documents_dir = GetDocumentsDirectory();
-    if (documents_dir.empty()) {
+    std::filesystem::path localappdata_dir = GetDocumentsDirectory();
+    if (localappdata_dir.empty()) {
         return "";
     }
-    std::filesystem::path reshade64_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
+    std::filesystem::path reshade64_path =
+        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
     if (!std::filesystem::exists(reshade64_path)) {
         return "";
     }
     return GetDLLVersionString(reshade64_path.wstring());
 }
 
-// Get Reshade32.dll version from Documents folder
+// Get Reshade32.dll version from LocalAppData folder
 std::string GetReshade32Version() {
-    std::filesystem::path documents_dir = GetDocumentsDirectory();
-    if (documents_dir.empty()) {
+    std::filesystem::path localappdata_dir = GetDocumentsDirectory();
+    if (localappdata_dir.empty()) {
         return "";
     }
-    std::filesystem::path reshade32_path = documents_dir / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
+    std::filesystem::path reshade32_path =
+        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
     if (!std::filesystem::exists(reshade32_path)) {
         return "";
     }
@@ -663,7 +670,7 @@ void DrawAddonsTab() {
                            "Note: Changes to ReShade config settings may require a game restart to take effect.");
     }
 
-    // Global ReShade Subsection (only show if ReShade DLL exists in Documents)
+    // Global ReShade Subsection (only show if ReShade DLL exists in LocalAppData)
     bool reshade64_exists = Reshade64DllExists();
     bool reshade32_exists = Reshade32DllExists();
 

@@ -290,12 +290,12 @@ std::string ParseVersionString(const std::string& version_str) {
 }
 
 std::filesystem::path GetDownloadDirectory() {
-    wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
-    std::filesystem::path documents_dir(documents_path);
-    return documents_dir / L"Display Commander";
+    std::filesystem::path base(localappdata_path);
+    return base / L"Programs" / L"Display Commander";
 }
 
 void CheckForUpdates() {

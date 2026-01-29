@@ -11,6 +11,7 @@
 #include "debug_output_hooks.hpp"
 #include "dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
+#include "dpi_hooks.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "dxgi_factory_wrapper.hpp"
 #include "globals.hpp"
@@ -1069,6 +1070,9 @@ bool InstallApiHooks() {
     // Install display settings hooks
     InstallDisplaySettingsHooks();
 
+    // Install DPI hooks
+    display_commanderhooks::dpi::InstallDpiHooks();
+
     // Install debug output hooks
     debug_output::InstallDebugOutputHooks();
 
@@ -1121,6 +1125,9 @@ void UninstallApiHooks() {
 
     // Uninstall debug output hooks
     debug_output::UninstallDebugOutputHooks();
+
+    // Uninstall DPI hooks
+    display_commanderhooks::dpi::UninstallDpiHooks();
 
     // Uninstall rand hooks
     UninstallRandHooks();

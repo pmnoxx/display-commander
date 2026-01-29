@@ -21,8 +21,8 @@
 #include <string>
 
 #include <dxgi1_6.h>
-#include <wrl/client.h>
 #include <windows.h>
+#include <wrl/client.h>
 
 // External atomic variables from settings
 extern std::atomic<bool> s_nvapi_auto_enable_enabled;
@@ -260,24 +260,24 @@ void DrawDeveloperSettings() {
             ImGui::Indent();
             for (const auto& session_name : pm_debug_info.dc_etw_sessions) {
                 ImGui::PushID(session_name.c_str());
-                
+
                 // Check if this is the current session
                 bool is_current_session = (session_name == pm_debug_info.etw_session_name);
-                
+
                 // Display session name
                 ImGui::Text("  • %s", session_name.c_str());
                 ImGui::SameLine();
-                
+
                 // Add close button (X) - disable for current session
                 if (is_current_session) {
                     ImGui::BeginDisabled();
                 }
-                
+
                 // Small button with X icon
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 0.6f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 0.8f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
-                
+
                 if (ImGui::SmallButton(ICON_FK_CANCEL)) {
                     // Convert narrow string to wide string for StopEtwSessionByName
                     int wide_len = MultiByteToWideChar(CP_UTF8, 0, session_name.c_str(), -1, nullptr, 0);
@@ -288,9 +288,9 @@ void DrawDeveloperSettings() {
                         LogInfo("Stopped ETW session: %s", session_name.c_str());
                     }
                 }
-                
+
                 ImGui::PopStyleColor(3);
-                
+
                 if (is_current_session) {
                     ImGui::EndDisabled();
                     if (ImGui::IsItemHovered()) {
@@ -301,7 +301,7 @@ void DrawDeveloperSettings() {
                         ImGui::SetTooltip("Stop ETW session: %s", session_name.c_str());
                     }
                 }
-                
+
                 ImGui::PopID();
             }
             ImGui::Unindent();
@@ -649,6 +649,20 @@ void DrawHdrDisplaySettings() {
             "This setting requires a game restart to take effect.\n"
             "Only works with DirectX 10/11/12 (DXGI) games.");
     }
+
+    // Disable DPI Scaling checkbox
+    if (CheckboxSetting(settings::g_developerTabSettings.disable_dpi_scaling, "Disable DPI scaling")) {
+        LogInfo("Disable DPI scaling setting changed to: %s",
+                settings::g_developerTabSettings.disable_dpi_scaling.GetValue() ? "true" : "false");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Makes the process DPI-aware to prevent Windows from bitmap-scaling the application.\n"
+            "Uses AppCompat registry for persistence across restarts.\n"
+            "Requires a game restart to take full effect.");
+    }
+
+    ImGui::Spacing();
 
     // Auto Color Space checkbox
     bool auto_colorspace = settings::g_developerTabSettings.auto_colorspace.GetValue();

@@ -13,6 +13,7 @@
 #include "../../utils/timing.hpp"
 #include "../api_hooks.hpp"  // For GetGameWindow and other functions
 #include "../hook_suppression_manager.hpp"
+#include "../window_proc_hooks.hpp"  // For ProcessWindowMessage
 
 namespace display_commanderhooks {
 
@@ -320,6 +321,19 @@ void SuppressMessage(LPMSG lpMsg) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmicrosoft-cast"
 
+// Helper function to check if HWND belongs to current process
+static bool IsWindowFromCurrentProcess(HWND hwnd) {
+    if (hwnd == nullptr) {
+        return false;
+    }
+    DWORD window_process_id = 0;
+    DWORD window_thread_id = GetWindowThreadProcessId(hwnd, &window_process_id);
+    if (window_thread_id == 0) {
+        return false;
+    }
+    return window_process_id == GetCurrentProcessId();
+}
+
 // Hooked GetMessageA function
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -332,6 +346,17 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
+        // Process window messages for windows belonging to current process
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
+            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+                // Message was suppressed by ProcessWindowMessage
+                SuppressMessage(lpMsg);
+                // Track suppressed message in history
+                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+                return result;  // Return the result but message is suppressed
+            }
+        }
+
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
@@ -361,6 +386,17 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
+        // Process window messages for windows belonging to current process
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
+            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+                // Message was suppressed by ProcessWindowMessage
+                SuppressMessage(lpMsg);
+                // Track suppressed message in history
+                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+                return result;  // Return the result but message is suppressed
+            }
+        }
+
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
@@ -389,17 +425,27 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
     BOOL result = PeekMessageA_Original ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
                                         : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
 
-    // Track unsuppressed calls (when we call the original function)
-    g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
-
     // If we got a message
     if (result && lpMsg != nullptr) {
+        // Process window messages for windows belonging to current process
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
+            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+                // Message was suppressed by ProcessWindowMessage
+                SuppressMessage(lpMsg);
+                // Track suppressed message in history
+                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+                return result;  // Return the result but message is suppressed
+            }
+        }
+
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
             // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         } else {
+            // Track unsuppressed calls (when we call the original function)
+            g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
             // Track unsuppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }
@@ -418,17 +464,27 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
     BOOL result = PeekMessageW_Original ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
                                         : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
 
-    // Track unsuppressed calls (when we call the original function)
-    g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
-
     // If we got a message
     if (result && lpMsg != nullptr) {
+        // Process window messages for windows belonging to current process
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
+            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+                // Message was suppressed by ProcessWindowMessage
+                SuppressMessage(lpMsg);
+                // Track suppressed message in history
+                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+                return result;  // Return the result but message is suppressed
+            }
+        }
+
         // Check if we should suppress this message (input blocking)
         if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
             // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         } else {
+            // Track unsuppressed calls (when we call the original function)
+            g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
             // Track unsuppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
         }

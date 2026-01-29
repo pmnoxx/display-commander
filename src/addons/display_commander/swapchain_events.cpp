@@ -312,23 +312,18 @@ void DoInitializationWithHwnd(HWND hwnd) {
     if (hwnd != nullptr && IsWindow(hwnd)) {
         LogInfo("DoInitialization: Setting up window hooks for HWND: 0x%p", hwnd);
 
-        // Set the game window for API hooks
-        display_commanderhooks::SetGameWindow(hwnd);
+        // Install window procedure hooks (this also sets the game window)
+        if (display_commanderhooks::InstallWindowProcHooks(hwnd)) {
+            LogInfo("Window procedure hooks installed successfully");
+        } else {
+            LogError("Failed to install window procedure hooks");
+        }
 
         // Save the display device ID for the game window
         settings::SaveGameWindowDisplayDeviceId(hwnd);
     }
 
     LogInfo("DoInitialization: Initialization completed");
-    // Set the game window for API hooks
-    display_commanderhooks::SetGameWindow(hwnd);
-
-    // Install window procedure hooks
-    if (display_commanderhooks::InstallWindowProcHooks(hwnd)) {
-        LogInfo("Window procedure hooks installed successfully");
-    } else {
-        LogError("Failed to install window procedure hooks");
-    }
 
     // Install Streamline hooks
     if (InstallStreamlineHooks(nullptr)) {

@@ -1,20 +1,23 @@
 #include "updates_tab.hpp"
+#include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/version_check.hpp"
+#include "../../version.hpp"
+
 #include <Windows.h>
-#include <ShlObj.h>
+
 #include <shellapi.h>
-#include <imgui.h>
-#include <reshade.hpp>
+#include <ShlObj.h>
 #include <chrono>
 #include <ctime>
 #include <filesystem>
 #include <string>
 #include <thread>
 #include <vector>
-#include "../../res/forkawesome.h"
-#include "../../res/ui_colors.hpp"
-#include "../../utils/logging.hpp"
-#include "../../utils/version_check.hpp"
-#include "../../version.hpp"
+
+#include <imgui.h>
+#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -323,7 +326,8 @@ void DrawUpdatesTab() {
     ImGui::Spacing();
 
     if (downloaded_updates.empty()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No downloaded updates found in Documents\\Display Commander");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                           "No downloaded updates found in %%localappdata%%\\Programs\\Display Commander");
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
                            "Downloaded updates will appear here after downloading from the Main tab or this tab.");

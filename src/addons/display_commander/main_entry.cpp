@@ -1337,10 +1337,10 @@ void OverrideReShadeSettings() {
 
     // Add Display Commander ReShade paths to EffectSearchPaths and TextureSearchPaths
     {
-        wchar_t documents_path[MAX_PATH];
-        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
-            std::filesystem::path documents_dir(documents_path);
-            std::filesystem::path dc_base_dir = documents_dir / L"Display Commander" / L"Reshade";
+        wchar_t localappdata_path[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+            std::filesystem::path localappdata_dir(localappdata_path);
+            std::filesystem::path dc_base_dir = localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
             std::filesystem::path shaders_dir = dc_base_dir / L"Shaders";
             std::filesystem::path textures_dir = dc_base_dir / L"Textures";
 
@@ -1470,17 +1470,17 @@ static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::s
     return false;
 }
 
-// Function to load enabled .addon64/.addon32 files from Documents\Display Commander\Reshade\Addons
+// Function to load enabled .addon64/.addon32 files from %localappdata%\Programs\Display Commander\Reshade\Addons
 void LoadAddonsFromPluginsDirectory() {
     OutputDebugStringA("Loading addons from Addons directory");
-    wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
-        LogWarn("Failed to get Documents folder path, skipping addon loading from Addons directory");
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+        LogWarn("Failed to get LocalAppData folder path, skipping addon loading from Addons directory");
         return;
     }
 
-    std::filesystem::path documents_dir(documents_path);
-    std::filesystem::path addons_dir = documents_dir / L"Display Commander" / L"Reshade" / L"Addons";
+    std::filesystem::path localappdata_dir(localappdata_path);
+    std::filesystem::path addons_dir = localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Addons";
 
     // Create Addons directory if it doesn't exist
     try {
@@ -2503,13 +2503,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
                 // Only try Documents folder and show message box if platform detected, proxy found, or whitelisted
                 if (!detected_platforms.empty() || found_proxy || whitelist) {
-                    // Try to find Reshade DLL in Documents folder
-                    wchar_t documents_path[MAX_PATH];
+                    // Try to find Reshade DLL in LocalAppData folder
+                    wchar_t localappdata_path[MAX_PATH];
 
-                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT,
-                                                   documents_path))) {
-                        std::filesystem::path documents_dir(documents_path);
-                        std::filesystem::path dc_reshade_dir = documents_dir / L"Display Commander" / L"Reshade";
+                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
+                                                   localappdata_path))) {
+                        std::filesystem::path localappdata_dir(localappdata_path);
+                        std::filesystem::path dc_reshade_dir =
+                            localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
 #ifdef _WIN64
                         std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
                         const char* dll_name = "Reshade64.dll";
@@ -2617,18 +2618,19 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                         const char* dll_name_msg = "Reshade32.dll";
 #endif
 
-                        // Get Documents folder path with Display Commander subdirectory
-                        std::string documents_path_str = "your Documents folder";
-                        wchar_t documents_path[MAX_PATH];
-                        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT,
-                                                       documents_path))) {
-                            std::filesystem::path documents_dir(documents_path);
-                            std::filesystem::path dc_reshade_dir = documents_dir / L"Display Commander" / L"Reshade";
+                        // Get LocalAppData folder path with Display Commander subdirectory
+                        std::string localappdata_path_str = "%localappdata%\\Programs\\Display Commander\\Reshade";
+                        wchar_t localappdata_path[MAX_PATH];
+                        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
+                                                       localappdata_path))) {
+                            std::filesystem::path localappdata_dir(localappdata_path);
+                            std::filesystem::path dc_reshade_dir =
+                                localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
                             // Convert wide string to narrow string
-                            char documents_path_narrow[MAX_PATH];
-                            WideCharToMultiByte(CP_ACP, 0, dc_reshade_dir.c_str(), -1, documents_path_narrow, MAX_PATH,
-                                                nullptr, nullptr);
-                            documents_path_str = documents_path_narrow;
+                            char localappdata_path_narrow[MAX_PATH];
+                            WideCharToMultiByte(CP_ACP, 0, dc_reshade_dir.c_str(), -1, localappdata_path_narrow,
+                                                MAX_PATH, nullptr, nullptr);
+                            localappdata_path_str = localappdata_path_narrow;
                         }
 
                         std::string message = "Display Commander detected a game platform (" + platform_names
@@ -2636,7 +2638,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                         message += "ReShade is required for Display Commander to function.\n\n";
                         message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
                         message += "1. In the game's installation folder, or\n";
-                        message += "2. In " + documents_path_str + "\n\n";
+                        message += "2. In " + localappdata_path_str + "\n\n";
                         message += "Download ReShade from: https://reshade.me/";
 
                         MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
@@ -3017,12 +3019,13 @@ static DWORD WINAPI LoadingThreadFunc(loading_data* arg) {
 // Helper function to get ReShade DLL path based on architecture
 static std::wstring GetReShadeDllPath(bool is_wow64) {
     wchar_t documents_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_MYDOCUMENTS, nullptr, SHGFP_TYPE_CURRENT, documents_path))) {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return L"";
     }
 
-    std::filesystem::path documents_dir(documents_path);
-    std::filesystem::path dc_reshade_dir = documents_dir / L"Display Commander" / L"Reshade";
+    std::filesystem::path localappdata_dir(localappdata_path);
+    std::filesystem::path dc_reshade_dir = localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
 
     std::filesystem::path reshade_path;
 #ifdef _WIN64

@@ -20,7 +20,7 @@ This feature automatically upgrades Direct3D 9 applications to use the enhanced 
    - Added `s_enable_d3d9_upgrade` - Enable/disable the upgrade feature
    - Added `s_d3d9e_upgrade_successful` - Track upgrade success status
 
-2. **settings/developer_tab_settings.hpp / .cpp**
+2. **settings/advanced_tab_settings.hpp / .cpp**
    - Added `enable_d3d9e_upgrade` setting with persistence
    - Default value: `true` (enabled)
 
@@ -33,7 +33,7 @@ This feature automatically upgrades Direct3D 9 applications to use the enhanced 
    - Registered `create_device` event handler
    - Runs early in initialization before device creation
 
-5. **ui/new_ui/developer_new_tab.cpp**
+5. **ui/new_ui/advanced_tab.cpp**
    - Added UI controls in "HDR and Display Settings" section
    - Shows upgrade status with visual feedback
    - Provides detailed tooltips
@@ -160,4 +160,3 @@ Potential improvements:
 - ReShade API: `include/reshade_events.hpp` (line 1756)
 - D3D9 Implementation: `external/reshade/source/d3d9/d3d9.cpp` (line 289)
 - Microsoft D3D9Ex Documentation: https://docs.microsoft.com/en-us/windows/win32/direct3d9/d3d9ex-improvements
-

@@ -3,13 +3,12 @@
 #include <windows.h>
 #include <wingdi.h>
 #include "../globals.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
-
 
 // Original function pointers
 ChangeDisplaySettingsA_pfn ChangeDisplaySettingsA_Original = nullptr;
@@ -31,7 +30,7 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         LogInfo("ChangeDisplaySettingsA blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -45,7 +44,7 @@ LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         LogInfo("ChangeDisplaySettingsW blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -60,7 +59,7 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         LogInfo("ChangeDisplaySettingsExA blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -75,7 +74,7 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         LogInfo("ChangeDisplaySettingsExW blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -91,7 +90,7 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         // Prevent maximize operations that could lead to fullscreen
         if (nCmdShow == SW_MAXIMIZE || nCmdShow == SW_SHOWMAXIMIZED) {
             LogInfo("ShowWindow blocked maximize attempt - forcing normal window");

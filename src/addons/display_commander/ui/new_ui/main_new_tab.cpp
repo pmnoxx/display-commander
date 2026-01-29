@@ -16,7 +16,7 @@
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
-#include "../../settings/developer_tab_settings.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
@@ -669,9 +669,9 @@ void DrawAdvancedSettings() {
     ImGui::Indent();
 
     if (ui::new_ui::g_tab_manager.HasTab("advanced")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_developer_tab, "Show Advanced Tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_advanced_tab, "Show Advanced Tab")) {
             LogInfo("Show Advanced tab %s",
-                    settings::g_mainTabSettings.show_developer_tab.GetValue() ? "enabled" : "disabled");
+                    settings::g_mainTabSettings.show_advanced_tab.GetValue() ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
@@ -1630,8 +1630,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Indent();
 
         // Continue Rendering
-        if (CheckboxSetting(settings::g_developerTabSettings.continue_rendering, "Continue Rendering in Background")) {
-            bool new_value = settings::g_developerTabSettings.continue_rendering.GetValue();
+        if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background")) {
+            bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
             s_continue_rendering.store(new_value);
             LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
 
@@ -1926,7 +1926,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             } else if (mode == FpsLimiterMode::kReflex) {
                 LogInfo("FPS Limiter: Reflex");
                 s_reflex_auto_configure.store(true);
-                settings::g_developerTabSettings.reflex_auto_configure.SetValue(true);
+                settings::g_advancedTabSettings.reflex_auto_configure.SetValue(true);
             } else if (mode == FpsLimiterMode::kOnPresentSync) {
                 LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
             } else if (mode == FpsLimiterMode::kLatentSync) {
@@ -1935,7 +1935,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
             if (mode == FpsLimiterMode::kReflex && prev_item != static_cast<int>(FpsLimiterMode::kReflex)) {
                 // reset the reflex auto configure setting
-                settings::g_developerTabSettings.reflex_auto_configure.SetValue(false);
+                settings::g_advancedTabSettings.reflex_auto_configure.SetValue(false);
                 s_reflex_auto_configure.store(false);
             }
         }
@@ -2136,18 +2136,18 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 // Show Boost checkbox for both native and injected Reflex
                 ImGui::Spacing();
 #if 0
-                bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
+                bool reflex_low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
                 if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
-                    settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+                    settings::g_advancedTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
                 }
                 ImGui::SameLine();
 #endif
-                bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
+                bool reflex_boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
                 if (ImGui::Checkbox("Boost", &reflex_boost)) {
-                    settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
+                    settings::g_advancedTabSettings.reflex_boost.SetValue(reflex_boost);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
@@ -2170,12 +2170,12 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         "installed.\nWorks with Reflex and OnPresent sync modes.");
                 }
             }
-            if (IsNativeReflexActive() || settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+            if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
-                if (CheckboxSetting(settings::g_developerTabSettings.reflex_supress_native,
+                if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
                                     ICON_FK_WARNING " Suppress Native Reflex")) {
                     LogInfo("Suppress Native Reflex %s",
-                            settings::g_developerTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
+                            settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
@@ -2368,7 +2368,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
                                  && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
-                             || settings::g_developerTabSettings.reflex_enable.GetValue();
+                             || settings::g_advancedTabSettings.reflex_enable.GetValue();
 
     {
         if (!fps_limit_enabled) {
@@ -2556,7 +2556,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)
                            || current_api == static_cast<int>(reshade::api::device_api::d3d11)
                            || current_api == static_cast<int>(reshade::api::device_api::d3d12);
-            bool enable_flip = settings::g_developerTabSettings.enable_flip_chain.GetValue();
+            bool enable_flip = settings::g_advancedTabSettings.enable_flip_chain.GetValue();
 
             bool is_flip = g_last_swapchain_desc.load()
                            && (g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
@@ -2568,7 +2568,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 ImGui::SameLine();
 
                 if (ImGui::Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
-                    settings::g_developerTabSettings.enable_flip_chain.SetValue(enable_flip);
+                    settings::g_advancedTabSettings.enable_flip_chain.SetValue(enable_flip);
                     s_enable_flip_chain.store(enable_flip);
                     s_restart_needed_vsync_tearing.store(true);
                     LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");

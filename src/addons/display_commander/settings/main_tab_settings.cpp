@@ -62,6 +62,7 @@ MainTabSettings::MainTabSettings()
            "25% Display / 75% Input", "12.5% Display / 87.5% Input", "0% Display / 100% Input"},
           "DisplayCommander"),  // Default to 100% Display / 0% Input (current behavior)
       pcl_stats_enabled("pcl_stats_enabled", false, "DisplayCommander"),
+      experimental_fg_native_fps_limiter("experimental_fg_native_fps_limiter", false, "DisplayCommander"),
       force_vsync_on("force_vsync_on", s_force_vsync_on, s_force_vsync_on.load(), "DisplayCommander"),
       force_vsync_off("force_vsync_off", s_force_vsync_off, s_force_vsync_off.load(), "DisplayCommander"),
       prevent_tearing("prevent_tearing", s_prevent_tearing, s_prevent_tearing.load(), "DisplayCommander"),
@@ -171,6 +172,7 @@ MainTabSettings::MainTabSettings()
         &suppress_reflex_sleep,
         &onpresent_sync_low_latency_ratio,
         &pcl_stats_enabled,
+        &experimental_fg_native_fps_limiter,
         &force_vsync_on,
         &force_vsync_off,
         &prevent_tearing,

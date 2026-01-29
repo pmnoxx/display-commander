@@ -229,7 +229,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = Flags;  // to fix crash
-    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames) {
+    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
+                           && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue();
+    if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);
             OnPresentFlags2(&flagsCopy, state.device_type, false, true);  // Called from wrapper, not present_detour
@@ -243,7 +245,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
 
-    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames && baseSwapChain.Get() != nullptr) {
+    if (use_fps_limiter && baseSwapChain.Get() != nullptr) {
         display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
     }
 
@@ -324,7 +326,10 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = PresentFlags;  // to fix crash
-    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames) {
+
+    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
+                           && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue();
+    if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check
             OnPresentFlags2(&flagsCopy, state.device_type, false, true);      // Called from wrapper, not present_detour
@@ -338,7 +343,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
 
     HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
-    if (m_swapChainHookType == SwapChainHook::Native && limit_real_frames && baseSwapChain.Get() != nullptr) {
+    if (use_fps_limiter && baseSwapChain.Get() != nullptr) {
         display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
     }
 

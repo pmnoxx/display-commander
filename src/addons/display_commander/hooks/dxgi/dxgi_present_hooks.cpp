@@ -384,7 +384,7 @@ PresentCommonState HandlePresentBefore(SwapChainType* This) {
         const bool suppress_section =
             perf_measurement::IsSuppressionEnabled()
             && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
-        if (!suppress_section) {
+        if (!suppress_section && This != nullptr) {
             perf_measurement::ScopedTimer device_query_timer(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
             This->GetDevice(IID_PPV_ARGS(&state.device));
             if (state.device != nullptr) {

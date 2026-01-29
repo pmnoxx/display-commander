@@ -2218,6 +2218,21 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
 
+        // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected)
+        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+            if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
+                                "Experimental FG native fps limiter")) {
+                LogInfo(
+                    "Experimental FG native fps limiter %s",
+                    settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() ? "enabled" : "disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
+                    "Experimental; may improve frame pacing with FG.");
+            }
+        }
+
         // Limit Real Frames indicator (only visible if OnPresentSync mode is selected)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {

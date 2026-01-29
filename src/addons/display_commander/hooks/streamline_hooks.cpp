@@ -1,18 +1,20 @@
 #include "streamline_hooks.hpp"
-#include "hook_suppression_manager.hpp"
-#include "dxgi_factory_wrapper.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../config/display_commander_config.hpp"
 #include "../globals.hpp"
+#include "../settings/developer_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/detour_call_tracker.hpp"
 #include "../utils/timing.hpp"
-#include "../config/display_commander_config.hpp"
+#include "dxgi_factory_wrapper.hpp"
+#include "hook_suppression_manager.hpp"
 
-#include <MinHook.h>
+
 #include <dxgi.h>
 #include <dxgi1_6.h>
+#include <MinHook.h>
 #include <cstdint>
+
 
 // Streamline function pointers
 using slInit_pfn = int (*)(void* pref, uint64_t sdkVersion);
@@ -49,7 +51,7 @@ int slInit_Detour(void* pref, uint64_t sdkVersion) {
         return slInit_Original(pref, sdkVersion);
     }
 
-    return -1; // Error if original not available
+    return -1;  // Error if original not available
 }
 
 int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
@@ -57,7 +59,6 @@ int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-
 
     static int log_count = 0;
     if (log_count < 30) {
@@ -71,7 +72,7 @@ int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
         return slIsFeatureSupported_Original(feature, adapterInfo);
     }
 
-    return -1; // Error if original not available
+    return -1;  // Error if original not available
 }
 
 int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
@@ -88,11 +89,11 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
         return slGetNativeInterface_Original(proxyInterface, baseInterface);
     }
 
-    return -1; // Error if original not available
+    return -1;  // Error if original not available
 }
 
-
-// Reference: https://github.com/NVIDIA-RTX/Streamline/blob/b998246a3d499c08765c5681b229c9e6b4513348/source/core/sl.api/sl.cpp#L625
+// Reference:
+// https://github.com/NVIDIA-RTX/Streamline/blob/b998246a3d499c08765c5681b229c9e6b4513348/source/core/sl.api/sl.cpp#L625
 int slUpgradeInterface_Detour(void** baseInterface) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
@@ -103,9 +104,8 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     bool prevent_slupgrade_interface = g_prevent_slupgrade_interface.load();
     LogInfo("prevent_slupgrade_interface: %d", static_cast<int>(prevent_slupgrade_interface));
 
-
     if (slUpgradeInterface_Original == nullptr) {
-        return -1; // Error if original not available
+        return -1;  // Error if original not available
     }
     auto result = slUpgradeInterface_Original(baseInterface);
     auto* unknown = static_cast<IUnknown*>(*baseInterface);
@@ -116,8 +116,9 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory7))) && dxgi_factory7 != nullptr) {
         LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
 
-        //auto* factory_wrapper = dxgi_factory7.Get();
-        //new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Proxy);
+        // auto* factory_wrapper = dxgi_factory7.Get();
+        // new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(),
+        // display_commanderhooks::SwapChainHook::Proxy);
         //..factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
         //..factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
 
@@ -126,7 +127,8 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 
         LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
         // Create wrapper to ensure it doesn't pass active queue for swapchain creation
-        auto* factory_wrapper2 = new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Native);
+        auto* factory_wrapper2 = new display_commanderhooks::DXGIFactoryWrapper(
+            dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Native);
 
         // Release the original factory reference
         unknown->Release();
@@ -136,7 +138,6 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         // TODO(user): Set command queue map when available
 
         *baseInterface = factory_wrapper2;
-
 
         // ComPtr will automatically release when it goes out of scope
     } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
@@ -153,20 +154,24 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 void InitializePreventSLUpgradeInterface() {
     bool prevent_slupgrade_interface = false;
 
-    if (display_commander::config::get_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface", prevent_slupgrade_interface)) {
+    if (display_commander::config::get_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface",
+                                                    prevent_slupgrade_interface)) {
         g_prevent_slupgrade_interface.store(prevent_slupgrade_interface);
-        LogInfo("Loaded PreventSLUpgradeInterface from config: %s", prevent_slupgrade_interface ? "enabled" : "disabled");
+        LogInfo("Loaded PreventSLUpgradeInterface from config: %s",
+                prevent_slupgrade_interface ? "enabled" : "disabled");
     } else {
         // Default to false if not found in config
         g_prevent_slupgrade_interface.store(false);
-        display_commander::config::set_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface", prevent_slupgrade_interface);
+        display_commander::config::set_config_value("DisplayCommander.Safemode", "PreventSLUpgradeInterface",
+                                                    prevent_slupgrade_interface);
         LogInfo("PreventSLUpgradeInterface not found in config, using default: disabled");
     }
 }
 
 bool InstallStreamlineHooks(HMODULE streamline_module) {
     // Check if Streamline hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::STREAMLINE)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::STREAMLINE)) {
         LogInfo("Streamline hooks installation suppressed by user setting");
         return false;
     }
@@ -194,27 +199,27 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
     LogInfo("Installing Streamline hooks...");
 
     // Hook slInit
-    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slInit"),
-                             reinterpret_cast<LPVOID>(slInit_Detour),
+    if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slInit"), reinterpret_cast<LPVOID>(slInit_Detour),
                              reinterpret_cast<LPVOID*>(&slInit_Original), "slInit")) {
         LogError("Failed to create and enable slInit hook");
-      //  return false;
+        //  return false;
     }
 
+    /*
     // Hook slUpgradeInterface
     if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slUpgradeInterface"),
                              reinterpret_cast<LPVOID>(slUpgradeInterface_Detour),
                              reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original), "slUpgradeInterface")) {
         LogError("Failed to create and enable slUpgradeInterface hook");
      //   return false;
-    }
+    }*/
 
     // Hook slIsFeatureSupported
     if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slIsFeatureSupported"),
                              reinterpret_cast<LPVOID>(slIsFeatureSupported_Detour),
                              reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original), "slIsFeatureSupported")) {
         LogError("Failed to create and enable slIsFeatureSupported hook");
-   //     return false;
+        //     return false;
     }
 
     // Hook slGetNativeInterface
@@ -222,20 +227,17 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
                              reinterpret_cast<LPVOID>(slGetNativeInterface_Detour),
                              reinterpret_cast<LPVOID*>(&slGetNativeInterface_Original), "slGetNativeInterface")) {
         LogError("Failed to create and enable slGetNativeInterface hook");
-    //    return false;
+        //    return false;
     }
-
 
     LogInfo("Streamline hooks installed successfully");
 
     // Mark Streamline hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::STREAMLINE);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::STREAMLINE);
 
     return true;
 }
 
-
 // Get last SDK version from slInit calls
-uint64_t GetLastStreamlineSDKVersion() {
-    return g_last_sdk_version.load();
-}
+uint64_t GetLastStreamlineSDKVersion() { return g_last_sdk_version.load(); }

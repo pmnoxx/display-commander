@@ -136,7 +136,9 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         return NVAPI_OK;
     }
 
-    if (settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
+    bool use_fps_limiter = settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue());
+    if (use_fps_limiter) {
         static display_commanderhooks::dxgi::PresentCommonState fg_limiter_state = {};
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {

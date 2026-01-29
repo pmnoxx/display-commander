@@ -7,6 +7,7 @@
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
+#include "display/dpi_management.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
@@ -2169,6 +2170,12 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
 
     // Log current logging level (always logs, even if logging is disabled)
     LogCurrentLogLevel();
+
+    // Disable DPI scaling early (before hooks) if enabled
+    if (settings::g_developerTabSettings.disable_dpi_scaling.GetValue()) {
+        display_commander::display::dpi::DisableDPIScaling();
+        LogInfo("DPI scaling disabled - process is now DPI-aware");
+    }
 
     HandleSafemode();
 

@@ -231,11 +231,14 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     auto flagsCopy = Flags;  // to fix crash
     auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
                            && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue());
+                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+                                && g_native_frame_pacing_frame_id.load() > 0);
+
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);
-            OnPresentFlags2(&flagsCopy, state.device_type, false, true);  // Called from wrapper, not present_detour
+            OnPresentFlags2(&flagsCopy, state.device_type, false,
+                            true);  // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
@@ -330,7 +333,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
 
     auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
                            && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue());
+                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+                                && g_native_frame_pacing_frame_id.load() > 0);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check

@@ -62,7 +62,7 @@ MainTabSettings::MainTabSettings()
            "25% Display / 75% Input", "12.5% Display / 87.5% Input", "0% Display / 100% Input"},
           "DisplayCommander"),  // Default to 100% Display / 0% Input (current behavior)
       pcl_stats_enabled("pcl_stats_enabled", false, "DisplayCommander"),
-      experimental_fg_native_fps_limiter("experimental_fg_native_fps_limiter", false, "DisplayCommander"),
+      experimental_fg_native_fps_limiter("experimental_fg_native_fps_limiter", true, "DisplayCommander"),
       experimental_safe_mode_fps_limiter("experimental_safe_mode_fps_limiter", false, "DisplayCommander"),
       force_vsync_on("force_vsync_on", s_force_vsync_on, s_force_vsync_on.load(), "DisplayCommander"),
       force_vsync_off("force_vsync_off", s_force_vsync_off, s_force_vsync_off.load(), "DisplayCommander"),

@@ -8,6 +8,7 @@
 #include <dxgi1_5.h>
 #include <dxgi1_6.h>
 #include <initguid.h>
+#include <cmath>
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../swapchain_events.hpp"
@@ -229,10 +230,12 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = Flags;  // to fix crash
-    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-                                && g_native_frame_pacing_frame_id.load() > 0);
+    auto use_fps_limiter =
+        m_swapChainHookType == SwapChainHook::Native && limit_real_frames
+        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
+        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
+                    <= 3);
 
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
@@ -331,10 +334,12 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = PresentFlags;  // to fix crash
 
-    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-                                && g_native_frame_pacing_frame_id.load() > 0);
+    auto use_fps_limiter =
+        m_swapChainHookType == SwapChainHook::Native && limit_real_frames
+        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
+        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
+                    <= 3);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check

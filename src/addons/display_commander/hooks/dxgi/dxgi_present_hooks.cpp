@@ -21,6 +21,7 @@
 #include <d3d11_4.h>
 #include <d3d12.h>
 #include <wrl/client.h>
+#include <cmath>
 #include <string>
 
 // Forward declaration for g_sim_start_ns from swapchain_events.cpp
@@ -492,11 +493,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    bool use_fps_limiter = !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
-                             && settings::g_mainTabSettings.limit_real_frames.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-                                && g_native_frame_pacing_frame_id.load() > 0);
+    bool use_fps_limiter =
+        !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
+          && settings::g_mainTabSettings.limit_real_frames.GetValue())
+        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
+        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
+                    <= 3);
     // Skip common present logic if wrapper is handling it
     PresentCommonState state;
     if (use_fps_limiter) {
@@ -541,11 +544,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     g_swapchain_event_total_count.fetch_add(1);
 
     // Skip common present logic if wrapper is handling it
-    bool use_fps_limiter = !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
-                             && settings::g_mainTabSettings.limit_real_frames.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-                                && g_native_frame_pacing_frame_id.load() > 0);
+    bool use_fps_limiter =
+        !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
+          && settings::g_mainTabSettings.limit_real_frames.GetValue())
+        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
+        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
+                    <= 3);
 
     PresentCommonState state;
     if (use_fps_limiter) {

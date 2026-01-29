@@ -3,11 +3,13 @@
 #include "../globals.hpp"
 #include "../settings/developer_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
+#include "../swapchain_events.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
+#include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 
 #include <MinHook.h>
@@ -132,6 +134,26 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     if (hModRTSS != nullptr && calling_module == hModRTSS) {
         // Ignore RTSS calls - it's not native Reflex
         return NVAPI_OK;
+    }
+
+    if (settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
+        static display_commanderhooks::dxgi::PresentCommonState fg_limiter_state = {};
+        if (pSetLatencyMarkerParams != nullptr
+            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
+            // fg_limiter_state = display_commanderhooks::dxgi::HandlePresentBefore<IDXGISwapChain>(
+            //    nullptr);  // Present1 needs D3D10 check
+            uint32_t flagsCopy = 0;
+            fg_limiter_state.device_type = DeviceTypeDC::DX12;
+            OnPresentFlags2(&flagsCopy, fg_limiter_state.device_type, false,
+                            true);  // Called from wrapper, not present_detour
+
+            // Record native frame time for frames shown to display
+            RecordNativeFrameTime();
+        }
+        if (pSetLatencyMarkerParams != nullptr
+            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+            display_commanderhooks::dxgi::HandlePresentAfter(nullptr, fg_limiter_state, true);
+        }
     }
 
     // Detect native Reflex: if the game calls SetLatencyMarker, it's using native Reflex

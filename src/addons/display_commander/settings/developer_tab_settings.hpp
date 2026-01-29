@@ -94,6 +94,9 @@ class DeveloperTabSettings {
     // PresentMon ETW tracing setting
     BoolSetting enable_presentmon_tracing;
 
+    // DPI scaling disable setting
+    BoolSetting disable_dpi_scaling;
+
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();
 };

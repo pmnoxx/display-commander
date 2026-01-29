@@ -59,4 +59,4 @@ void DrawDLLBlockingControls();
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

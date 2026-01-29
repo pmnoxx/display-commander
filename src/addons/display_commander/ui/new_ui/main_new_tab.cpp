@@ -169,7 +169,8 @@ void DrawFrameTimeGraph() {
 // Draw DLSS information (same format as performance overlay)
 void DrawDLSSInfo() {
     const DLSSGSummary dlssg_summary = GetDLSSGSummary();
-    auto any_dlss_active = dlssg_summary.dlss_active || dlssg_summary.ray_reconstruction_active;
+    auto any_dlss_active =
+        dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
     // FG Mode
     if (any_dlss_active

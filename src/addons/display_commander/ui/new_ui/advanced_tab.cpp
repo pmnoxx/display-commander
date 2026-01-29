@@ -1,4 +1,5 @@
 #include "advanced_tab.hpp"
+#include "../../display/dpi_management.hpp"
 #include "../../globals.hpp"
 #include "../../latency/latency_manager.hpp"
 #include "../../nvapi/fake_nvapi_manager.hpp"
@@ -658,8 +659,14 @@ void DrawHdrDisplaySettings() {
 
     // Disable DPI Scaling checkbox
     if (CheckboxSetting(settings::g_advancedTabSettings.disable_dpi_scaling, "Disable DPI scaling")) {
-        LogInfo("Disable DPI scaling setting changed to: %s",
-                settings::g_advancedTabSettings.disable_dpi_scaling.GetValue() ? "true" : "false");
+        bool enabled = settings::g_advancedTabSettings.disable_dpi_scaling.GetValue();
+        LogInfo("Disable DPI scaling setting changed to: %s", enabled ? "true" : "false");
+
+        if (enabled) {
+            display_commander::display::dpi::DisableDPIScaling();
+        } else {
+            display_commander::display::dpi::EnableDPIScaling();
+        }
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(

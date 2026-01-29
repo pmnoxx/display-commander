@@ -238,4 +238,15 @@ void DisableDPIScaling() {
     SetProcessDPIAware();
 }
 
+void EnableDPIScaling() {
+    bool bWasAppCompatAware = IsDPIAwarenessUsingAppCompat();
+
+    // Remove DPI awareness registry entry
+    ForceDPIAwarenessUsingAppCompat(false);
+
+    if (bWasAppCompatAware && !IsDPIAwarenessUsingAppCompat()) {
+        LogInfo("DPI awareness registry entry removed. A game restart may be required for full effect.");
+    }
+}
+
 }  // namespace display_commander::display::dpi

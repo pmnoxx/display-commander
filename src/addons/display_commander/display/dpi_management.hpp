@@ -17,4 +17,8 @@ void SetMonitorDPIAwareness(bool bOnlyIfWin10);
 // Uses AppCompat for persistence and sets per-monitor awareness
 void DisableDPIScaling();
 
+// Enable DPI scaling by removing AppCompat registry entry
+// Removes the HIGHDPIAWARE flag from the registry
+void EnableDPIScaling();
+
 }  // namespace display_commander::display::dpi

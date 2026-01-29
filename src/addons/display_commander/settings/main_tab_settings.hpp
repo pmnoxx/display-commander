@@ -149,7 +149,7 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnumRef<LogLevel> log_level;
 
     // Individual Tab Visibility Settings
-    ui::new_ui::BoolSetting show_developer_tab;
+    ui::new_ui::BoolSetting show_advanced_tab;
     ui::new_ui::BoolSetting show_window_info_tab;
     ui::new_ui::BoolSetting show_swapchain_tab;
     ui::new_ui::BoolSetting show_important_info_tab;

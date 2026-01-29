@@ -15,11 +15,11 @@ using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
 using ui::new_ui::StringSetting;
 
-// Developer tab settings manager
-class DeveloperTabSettings {
+// Advanced tab settings manager
+class AdvancedTabSettings {
    public:
-    DeveloperTabSettings();
-    ~DeveloperTabSettings() = default;
+    AdvancedTabSettings();
+    ~AdvancedTabSettings() = default;
 
     // Load all settings from DisplayCommander config
     void LoadAll();
@@ -102,6 +102,6 @@ class DeveloperTabSettings {
 };
 
 // Global instance
-extern DeveloperTabSettings g_developerTabSettings;
+extern AdvancedTabSettings g_advancedTabSettings;
 
 }  // namespace settings

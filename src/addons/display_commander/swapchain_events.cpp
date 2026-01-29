@@ -24,7 +24,7 @@
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "performance_types.hpp"
 #include "reshade_api_device.hpp"
-#include "settings/developer_tab_settings.hpp"
+#include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 
@@ -83,7 +83,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
         return false;
     }
 
-    if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         LogWarn("D3D9: Fullscreen state change blocked by developer settings");
         return false;
     }
@@ -382,7 +382,7 @@ void HandleRenderStartAndEndTimes() {
                 UpdateRollingAverage(g_simulation_duration_ns_new, g_simulation_duration_ns.load()));
 
             if (s_reflex_enable_current_frame.load()) {
-                if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
+                if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
                     if (g_latencyManager->IsInitialized()) {
                         g_latencyManager->SetMarker(SIMULATION_END);
                         g_latencyManager->SetMarker(RENDERSUBMIT_START);
@@ -538,8 +538,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         bool modified = false;
-        if (desc.fullscreen_state && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-            if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        if (desc.fullscreen_state && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+            if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
                 LogWarn("D3D9: Fullscreen state change blocked by developer settings");
                 return false;
             }
@@ -796,8 +796,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         bool prev_fullscreen_state = desc.fullscreen_state;
         reshade::api::format prev_format = desc.back_buffer.texture.format;
 
-        if (desc.fullscreen_state && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-            if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        if (desc.fullscreen_state && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+            if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
                 LogWarn("OpenGL Swapchain: Fullscreen state change blocked by developer settings");
                 return false;
             }
@@ -878,8 +878,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         bool prev_fullscreen_state = desc.fullscreen_state;
         reshade::api::format prev_format = desc.back_buffer.texture.format;
 
-        if (desc.fullscreen_state && settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
-            if (!settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+        if (desc.fullscreen_state && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+            if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
                 LogWarn("Vulkan Swapchain: Fullscreen state change blocked by developer settings");
                 return false;
             }
@@ -1136,7 +1136,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     g_swapchain_event_total_count.fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
+        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
             if (g_latencyManager->IsInitialized()) {
                 g_latencyManager->SetMarker(PRESENT_END);
             }
@@ -1196,13 +1196,13 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     // g_last_swapchain_ptr_unsafe from background thread)
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
     // Optionally delay enabling Reflex for the first N frames
-    const bool delay_first_500_frames = settings::g_developerTabSettings.reflex_delay_first_500_frames.GetValue();
+    const bool delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
     const uint64_t current_frame_id = g_global_frame_id.load();
 
     // Enable Reflex if:
-    // 1. Developer tab Reflex is enabled, OR
+    // 1. Advanced tab Reflex is enabled, OR
     // 2. OnPresentSync mode is selected AND onpresent_sync_enable_reflex is enabled
-    bool should_enable_reflex = settings::g_developerTabSettings.reflex_enable.GetValue()
+    bool should_enable_reflex = settings::g_advancedTabSettings.reflex_enable.GetValue()
                                 || (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync)
                                        && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
 
@@ -1225,11 +1225,10 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
                     target_fps = 0.0f;
                 }
             }
-            g_latencyManager->ApplySleepMode(settings::g_developerTabSettings.reflex_low_latency.GetValue(),
-                                             settings::g_developerTabSettings.reflex_boost.GetValue(),
-                                             settings::g_developerTabSettings.reflex_use_markers.GetValue(),
-                                             target_fps);
-            if (settings::g_developerTabSettings.reflex_enable_sleep.GetValue()
+            g_latencyManager->ApplySleepMode(settings::g_advancedTabSettings.reflex_low_latency.GetValue(),
+                                             settings::g_advancedTabSettings.reflex_boost.GetValue(),
+                                             settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
+            if (settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()
                 && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 perf_timer.pause();
                 g_latencyManager->Sleep();
@@ -1248,7 +1247,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     g_global_frame_id.fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
+        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
             g_latencyManager->SetMarker(SIMULATION_START);
         }
     }
@@ -1566,7 +1565,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     HandleEndRenderSubmit();
     // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
+        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
             g_latencyManager->SetMarker(RENDERSUBMIT_END);
         }
     }
@@ -1727,7 +1726,7 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
     HandleFpsLimiterPre(from_present_detour, from_wrapper);
 
     if (s_reflex_enable_current_frame.load()) {
-        if (settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
+        if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
             if (g_latencyManager->IsInitialized()) {
                 g_latencyManager->SetMarker(PRESENT_START);
             }

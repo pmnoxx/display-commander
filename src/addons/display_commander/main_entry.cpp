@@ -24,7 +24,7 @@
 #include "proxy_dll/proxy_detection.hpp"
 #include "res/forkawesome.h"
 #include "res/ui_colors.hpp"
-#include "settings/developer_tab_settings.hpp"
+#include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
 #include "settings/main_tab_settings.hpp"
@@ -2034,10 +2034,10 @@ bool CheckReShadeVersionCompatibility() {
 // Safemode function - handles safemode logic
 void HandleSafemode() {
     // Developer settings already loaded at startup
-    bool safemode_enabled = settings::g_developerTabSettings.safemode.GetValue();
+    bool safemode_enabled = settings::g_advancedTabSettings.safemode.GetValue();
 
     // Wait for DLLs to load before Display Commander
-    std::string dlls_to_load = settings::g_developerTabSettings.dlls_to_load_before.GetValue();
+    std::string dlls_to_load = settings::g_advancedTabSettings.dlls_to_load_before.GetValue();
     if (!dlls_to_load.empty()) {
         LogInfo("Waiting for DLLs to load before Display Commander: %s", dlls_to_load.c_str());
 
@@ -2088,15 +2088,15 @@ void HandleSafemode() {
     }
 
     // Apply DLL loading delay if configured
-    int delay_ms = settings::g_developerTabSettings.dll_loading_delay_ms.GetValue();
+    int delay_ms = settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue();
     if (delay_ms > 0) {
         LogInfo("DLL loading delay: waiting %d ms before installing LoadLibrary hooks", delay_ms);
         Sleep(delay_ms);
         LogInfo("DLL loading delay complete, proceeding with initialization");
     }
-    // rewrite settings::g_developerTabSettings.dll_loading_delay_ms
-    settings::g_developerTabSettings.dll_loading_delay_ms.SetValue(
-        settings::g_developerTabSettings.dll_loading_delay_ms.GetValue());
+    // rewrite settings::g_advancedTabSettings.dll_loading_delay_ms
+    settings::g_advancedTabSettings.dll_loading_delay_ms.SetValue(
+        settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue());
 
     if (safemode_enabled) {
         LogInfo(
@@ -2105,9 +2105,9 @@ void HandleSafemode() {
             "Streamline loading");
 
         // Set safemode to 0 (force set to 0)
-        // settings::g_developerTabSettings.safemode.SetValue(false);
-        settings::g_developerTabSettings.prevent_fullscreen.SetValue(false);
-        settings::g_developerTabSettings.continue_rendering.SetValue(false);
+        // settings::g_advancedTabSettings.safemode.SetValue(false);
+        settings::g_advancedTabSettings.prevent_fullscreen.SetValue(false);
+        settings::g_advancedTabSettings.continue_rendering.SetValue(false);
 
         settings::g_mainTabSettings.fps_limiter_mode.SetValue((int)FpsLimiterMode::kDisabled);
 
@@ -2120,10 +2120,10 @@ void HandleSafemode() {
         settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(true);
 
         // Enable MinHook suppression
-        // settings::g_developerTabSettings.suppress_minhook.SetValue(true);
+        // settings::g_advancedTabSettings.suppress_minhook.SetValue(true);
 
         // Save the changes
-        settings::g_developerTabSettings.SaveAll();
+        settings::g_advancedTabSettings.SaveAll();
 
         LogInfo(
             "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter set to "
@@ -2132,13 +2132,13 @@ void HandleSafemode() {
             "disabled, XInput loading disabled");
     } else {
         // If unset, force set to 0 so it appears in config
-        settings::g_developerTabSettings.safemode.SetValue(false);
+        settings::g_advancedTabSettings.safemode.SetValue(false);
 
         // forces entry to be saved to config
         if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
             settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(false);
         }
-        settings::g_developerTabSettings.SaveAll();
+        settings::g_advancedTabSettings.SaveAll();
 
         LogInfo("Safemode not enabled - setting to 0 for config visibility");
     }
@@ -2172,7 +2172,7 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     LogCurrentLogLevel();
 
     // Disable DPI scaling early (before hooks) if enabled
-    if (settings::g_developerTabSettings.disable_dpi_scaling.GetValue()) {
+    if (settings::g_advancedTabSettings.disable_dpi_scaling.GetValue()) {
         display_commander::display::dpi::DisableDPIScaling();
         LogInfo("DPI scaling disabled - process is now DPI-aware");
     }

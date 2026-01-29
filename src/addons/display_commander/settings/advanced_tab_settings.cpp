@@ -1,11 +1,11 @@
-#include "developer_tab_settings.hpp"
+#include "advanced_tab_settings.hpp"
 #include "../globals.hpp"
 
 #include <minwindef.h>
 
 #include <atomic>
 
-// Atomic variables for developer tab settings
+// Atomic variables for advanced tab settings
 std::atomic<bool> s_continue_rendering{false};  // Disabled by default
 std::atomic<bool> s_hide_hdr_capabilities{false};
 std::atomic<bool> s_enable_flip_chain{false};
@@ -35,7 +35,7 @@ std::atomic<bool> s_input_blocking_toggle{false};
 namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
-DeveloperTabSettings::DeveloperTabSettings()
+AdvancedTabSettings::AdvancedTabSettings()
     : prevent_fullscreen("PreventFullscreen", true, "DisplayCommander"),
       continue_rendering("ContinueRendering", s_continue_rendering, s_continue_rendering.load(), "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
@@ -90,17 +90,17 @@ DeveloperTabSettings::DeveloperTabSettings()
       enable_presentmon_tracing("EnablePresentMonTracing", false, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
 
-void DeveloperTabSettings::LoadAll() {
+void AdvancedTabSettings::LoadAll() {
     // Get all settings for smart logging
     auto all_settings = GetAllSettings();
 
     // Use smart logging to show only changed settings
-    ui::new_ui::LoadTabSettingsWithSmartLogging(all_settings, "Developer Tab");
+    ui::new_ui::LoadTabSettingsWithSmartLogging(all_settings, "Advanced Tab");
 
     // All Ref classes automatically sync with global variables
 }
 
-void DeveloperTabSettings::SaveAll() {
+void AdvancedTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();
     enable_hotkeys.Save();
@@ -117,7 +117,7 @@ void DeveloperTabSettings::SaveAll() {
     // All Ref classes automatically save when values change
 }
 
-std::vector<ui::new_ui::SettingBase*> DeveloperTabSettings::GetAllSettings() {
+std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
     return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top, &hide_hdr_capabilities,
             &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,

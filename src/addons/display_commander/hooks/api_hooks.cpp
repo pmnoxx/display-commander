@@ -3,7 +3,7 @@
 #include <d3d12.h>
 #include <MinHook.h>
 #include <wrl/client.h>
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -202,7 +202,7 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_game_window) {
-        ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
+        ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
     // Call original function with unmodified value
@@ -217,7 +217,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
     // Check if fullscreen prevention is enabled
     if (hWnd == g_game_window) {
-        ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
+        ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
     // Call original function with unmodified value
@@ -231,7 +231,7 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     g_display_settings_hook_total_count.fetch_add(1);
     // Check if fullscreen prevention is enabled
     if (hWnd == g_game_window) {
-        ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
+        ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
     return SetWindowLongW_Original(hWnd, nIndex, dwNewLong);
@@ -244,10 +244,10 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    // if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    // if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
     // Prevent window style changes that enable fullscreen
     if (hWnd == g_game_window) {
-        ModifyWindowStyle(nIndex, dwNewLong, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
+        ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
     // }
 
@@ -258,7 +258,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
-    if (hWnd == g_game_window && settings::g_developerTabSettings.prevent_always_on_top.GetValue()
+    if (hWnd == g_game_window && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
         && hWndInsertAfter != HWND_NOTOPMOST) {
         hWndInsertAfter = HWND_NOTOPMOST;
         // uFlags |= SWP_FRAMECHANGED; perhaphs not needed
@@ -462,7 +462,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
 
     // Apply debug layer flag if enabled
     UINT modifiedFlags = Flags;
-    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         modifiedFlags |= D3D11_CREATE_DEVICE_DEBUG;
         LogInfo("  Debug layer enabled - Modified Flags: 0x%08X", modifiedFlags);
     }
@@ -505,7 +505,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
         Microsoft::WRL::ComPtr<ID3D11Debug> debug_device;
         HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
@@ -514,7 +514,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
             HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
             if (SUCCEEDED(info_hr)) {
                 // Only set break on severity if the setting is enabled
-                if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
+                if (settings::g_advancedTabSettings.debug_break_on_severity.GetValue()) {
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
@@ -572,7 +572,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
 
     // Apply debug layer flag if enabled
     UINT modifiedFlags = Flags;
-    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         modifiedFlags |= D3D11_CREATE_DEVICE_DEBUG;
         LogInfo("  Debug layer enabled - Modified Flags: 0x%08X", modifiedFlags);
     }
@@ -594,7 +594,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         ID3D11Device* device = static_cast<ID3D11Device*>(*ppDevice);
         Microsoft::WRL::ComPtr<ID3D11Debug> debug_device;
         HRESULT debug_hr = device->QueryInterface(IID_PPV_ARGS(&debug_device));
@@ -603,7 +603,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
             HRESULT info_hr = debug_device->QueryInterface(IID_PPV_ARGS(&info_queue));
             if (SUCCEEDED(info_hr)) {
                 // Only set break on severity if the setting is enabled
-                if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
+                if (settings::g_advancedTabSettings.debug_break_on_severity.GetValue()) {
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_ERROR, true);
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_CORRUPTION, true);
                     info_queue->SetBreakOnSeverity(D3D11_MESSAGE_SEVERITY_WARNING, true);
@@ -657,7 +657,7 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
 
     // Enable debug layer if setting is enabled and device creation was successful
-    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         LogInfo("  Enabling D3D12 debug layer...");
 
         // Get D3D12 debug interface
@@ -688,7 +688,7 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
             HRESULT info_hr = device->QueryInterface(IID_PPV_ARGS(&info_queue));
             if (SUCCEEDED(info_hr)) {
                 // Only set break on severity if the setting is enabled
-                if (settings::g_developerTabSettings.debug_break_on_severity.GetValue()) {
+                if (settings::g_advancedTabSettings.debug_break_on_severity.GetValue()) {
                     info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
                     info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
                     info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);

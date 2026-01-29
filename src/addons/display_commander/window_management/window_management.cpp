@@ -2,11 +2,12 @@
 #include "../addon.hpp"
 #include "../display_cache.hpp"
 #include "../globals.hpp"
+#include "../settings/advanced_tab_settings.hpp"
+#include "../settings/main_tab_settings.hpp"
+#include "../ui/ui_display_tab.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../settings/developer_tab_settings.hpp"
-#include "../ui/ui_display_tab.hpp"
+
 
 #include <sstream>
 
@@ -36,8 +37,10 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
     local_state.new_ex_style = local_state.current_ex_style;
 
     // Apply window style modifications using the shared helper function
-    ModifyWindowStyle(GWL_STYLE, local_state.new_style, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
-    ModifyWindowStyle(GWL_EXSTYLE, local_state.new_ex_style, settings::g_developerTabSettings.prevent_always_on_top.GetValue());
+    ModifyWindowStyle(GWL_STYLE, local_state.new_style,
+                      settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
+    ModifyWindowStyle(GWL_EXSTYLE, local_state.new_ex_style,
+                      settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
 
     if (local_state.current_style != local_state.new_style) {
         local_state.style_changed = true;
@@ -202,8 +205,10 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
     // Log suppression hint once (only if setting is not already enabled)
     static bool suppression_hint_logged = false;
-    if (!suppression_hint_logged && !settings::g_developerTabSettings.suppress_window_changes.GetValue()) {
-        LogInfo("To suppress ApplyWindowChange, set SuppressWindowChanges=1 in [DisplayCommander] section of DisplayCommander.ini");
+    if (!suppression_hint_logged && !settings::g_advancedTabSettings.suppress_window_changes.GetValue()) {
+        LogInfo(
+            "To suppress ApplyWindowChange, set SuppressWindowChanges=1 in [DisplayCommander] section of "
+            "DisplayCommander.ini");
         suppression_hint_logged = true;
     }
 
@@ -225,14 +230,16 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
             // print error
             auto result = SetWindowLongPtrW(hwnd, GWL_STYLE, s.new_style);
             if (result == 0) {
-                LogError("ApplyWindowChange: SetWindowLongPtrW failed with error %lu (0x%lx)", GetLastError(), GetLastError());
+                LogError("ApplyWindowChange: SetWindowLongPtrW failed with error %lu (0x%lx)", GetLastError(),
+                         GetLastError());
             }
         }
         if (s.style_changed_ex) {
             LogDebug("ApplyWindowChange: Setting new ex style %d -> %d", s.current_ex_style, s.new_ex_style);
             auto result = SetWindowLongPtrW(hwnd, GWL_EXSTYLE, s.new_ex_style);
             if (result == 0) {
-                LogError("ApplyWindowChange: SetWindowLongPtrW failed with error %lu (0x%lx)", GetLastError(), GetLastError());
+                LogError("ApplyWindowChange: SetWindowLongPtrW failed with error %lu (0x%lx)", GetLastError(),
+                         GetLastError());
             }
         }
 
@@ -259,8 +266,10 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
                 const auto* disp = display_cache::g_displayCache.GetDisplay(s.current_monitor_index);
                 if (disp != nullptr) {
                     float dpi = disp->GetDpiScaling();
-                    LogInfo("ApplyWindowChange: Setting window position and size, target_x: %d, target_y: %d, target_w: %d, target_h: %d, dpi: %f", s.target_x, s.target_y, s.target_w, s.target_h,
-                        dpi);
+                    LogInfo(
+                        "ApplyWindowChange: Setting window position and size, target_x: %d, target_y: %d, target_w: "
+                        "%d, target_h: %d, dpi: %f",
+                        s.target_x, s.target_y, s.target_w, s.target_h, dpi);
                 }
 
                 // Print DPI using GetDpiForWindow with g_last_swapchain_hwnd
@@ -275,8 +284,8 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
                 UINT modern_system_dpi = GetDpiForSystem();
                 if (modern_system_dpi > 0) {
                     float modern_scaling = (static_cast<float>(modern_system_dpi) / 96.0f) * 100.0f;
-                    LogInfo("ApplyWindowChange: Modern System DPI - DPI: %u, Scaling: %.0f%%",
-                           modern_system_dpi, modern_scaling);
+                    LogInfo("ApplyWindowChange: Modern System DPI - DPI: %u, Scaling: %.0f%%", modern_system_dpi,
+                            modern_scaling);
                 }
                 // Query Windows display scaling settings
                 // Method 1: System DPI using GetDeviceCaps (works on all Windows versions)
@@ -297,25 +306,27 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
                     // Prevent division by zero
                     if (physical_width > 0 && physical_height > 0) {
-                        scaling_percentage_width = static_cast<float>(virtual_width) / static_cast<float>(physical_width);
-                        scaling_percentage_height = static_cast<float>(virtual_height) / static_cast<float>(physical_height);
+                        scaling_percentage_width =
+                            static_cast<float>(virtual_width) / static_cast<float>(physical_width);
+                        scaling_percentage_height =
+                            static_cast<float>(virtual_height) / static_cast<float>(physical_height);
                     } else {
-                        LogWarn("ApplyWindowChange: Invalid physical resolution %dx%d, using default scaling", physical_width, physical_height);
+                        LogWarn("ApplyWindowChange: Invalid physical resolution %dx%d, using default scaling",
+                                physical_width, physical_height);
                         scaling_percentage_width = 1.0f;
                         scaling_percentage_height = 1.0f;
                     }
                     LogInfo("ApplyWindowChange: Windows Display Scaling - Width: %.2f%%, Height: %.2f%%",
-                           100.0f * scaling_percentage_width, 100.0f * scaling_percentage_height);
+                            100.0f * scaling_percentage_width, 100.0f * scaling_percentage_height);
                     float scaling_percentage = (static_cast<float>(system_dpi_x) / 96.0f) * 100.0f;
-                    LogInfo("ApplyWindowChange: Windows Display Scaling - DPI: %d, Scaling: %.0f%%",
-                           system_dpi_x, scaling_percentage);
+                    LogInfo("ApplyWindowChange: Windows Display Scaling - DPI: %d, Scaling: %.0f%%", system_dpi_x,
+                            scaling_percentage);
                     // local_state.wr_current
                     LogInfo("ApplyWindowChange: width %d -> %d height %d -> %d x: %d -> %d y: %d -> %d",
-                           s.wr_current.right - s.wr_current.left, s.target_w, s.wr_current.bottom - s.wr_current.top, s.target_h,
-                           s.wr_current.left, s.target_x, s.wr_current.top, s.target_y);
-                    LogInfo("ApplyWindowChange: Virtual Resolution: %dx%d, Physical Resolution: %dx%d",
-                           virtual_width, virtual_height, physical_width, physical_height);
-
+                            s.wr_current.right - s.wr_current.left, s.target_w, s.wr_current.bottom - s.wr_current.top,
+                            s.target_h, s.wr_current.left, s.target_x, s.wr_current.top, s.target_y);
+                    LogInfo("ApplyWindowChange: Virtual Resolution: %dx%d, Physical Resolution: %dx%d", virtual_width,
+                            virtual_height, physical_width, physical_height);
                 }
             }
 
@@ -325,12 +336,14 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
 
             // Validate parameters before SetWindowPos call
             if (final_width <= 0 || final_height <= 0) {
-                LogWarn("ApplyWindowChange: Invalid calculated dimensions %dx%d, skipping SetWindowPos", final_width, final_height);
+                LogWarn("ApplyWindowChange: Invalid calculated dimensions %dx%d, skipping SetWindowPos", final_width,
+                        final_height);
                 return;
             }
 
             if (s.target_x < -32768 || s.target_x > 32767 || s.target_y < -32768 || s.target_y > 32767) {
-                LogWarn("ApplyWindowChange: Invalid coordinates (%d, %d), skipping SetWindowPos", s.target_x, s.target_y);
+                LogWarn("ApplyWindowChange: Invalid coordinates (%d, %d), skipping SetWindowPos", s.target_x,
+                        s.target_y);
                 return;
             }
 
@@ -340,8 +353,8 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
                 return;
             }
 
-            LogDebug("ApplyWindowChange: Calling SetWindowPos with x=%d, y=%d, w=%d, h=%d, flags=0x%x",
-                     s.target_x, s.target_y, final_width, final_height, flags);
+            LogDebug("ApplyWindowChange: Calling SetWindowPos with x=%d, y=%d, w=%d, h=%d, flags=0x%x", s.target_x,
+                     s.target_y, final_width, final_height, flags);
 
             BOOL result = SetWindowPos(hwnd, nullptr, s.target_x, s.target_y, final_width, final_height, flags);
             if (result == FALSE) {

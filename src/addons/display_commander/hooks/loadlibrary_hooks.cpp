@@ -8,7 +8,7 @@
 #include <sstream>
 #include <unordered_set>
 #include "../globals.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../settings/streamline_tab_settings.hpp"

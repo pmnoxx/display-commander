@@ -8,7 +8,7 @@
 #include <vector>
 #include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 #include "../globals.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"

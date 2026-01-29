@@ -10,7 +10,7 @@
 #include "../hooks/hook_suppression_manager.hpp"
 #include "globals.hpp"
 #include "logging.hpp"
-#include "settings/developer_tab_settings.hpp"
+#include "settings/advanced_tab_settings.hpp"
 
 // Version.dll dynamic loading
 namespace {
@@ -417,7 +417,7 @@ bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, con
 // MinHook initialization wrapper that checks suppress_minhook setting
 MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
     // Check if MinHook initialization is suppressed
-    if (settings::g_developerTabSettings.suppress_minhook.GetValue()) {
+    if (settings::g_advancedTabSettings.suppress_minhook.GetValue()) {
         LogInfo("MinHook initialization suppressed by suppress_minhook setting for %s hooks",
                 display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
         return MH_ERROR_ALREADY_INITIALIZED;  // Return this to indicate "already initialized" to avoid errors

@@ -1,16 +1,16 @@
 #include "autoclick_manager.hpp"
-#include "../res/forkawesome.h"
+#include <imgui.h>
+#include <windows.h>
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include <thread>
 #include "../globals.hpp"
+#include "../res/forkawesome.h"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
-#include <imgui.h>
-#include <windows.h>
-#include <algorithm>
-#include <thread>
-#include <cmath>
-#include <memory>
 
 namespace autoclick {
 
@@ -77,10 +77,8 @@ void PerformClick(int x, int y, int sequence_num, bool is_test) {
     PostMessage(hwnd, WM_LBUTTONUP, MK_LBUTTON, lParam);
 
     LogInfo("%s click for sequence %d sent to game window at (%d, %d)%s", is_test ? "Test" : "Auto", sequence_num, x, y,
-            g_move_mouse
-                ? (g_mouse_spoofing_enabled ? " - mouse position spoofed"
-                                           : " - mouse moved to screen")
-                : " - mouse not moved");
+            g_move_mouse ? (g_mouse_spoofing_enabled ? " - mouse position spoofed" : " - mouse moved to screen")
+                         : " - mouse not moved");
 }
 
 // Helper function to send keyboard key down message
@@ -93,7 +91,7 @@ void SendKeyDown(HWND hwnd, int vk_code) {
     INPUT input = {};
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = vk_code;
-    input.ki.dwFlags = 0; // Key down
+    input.ki.dwFlags = 0;  // Key down
     input.ki.time = 0;
     input.ki.dwExtraInfo = GetMessageExtraInfo();
     SendInput(1, &input, sizeof(INPUT));
@@ -109,7 +107,7 @@ void SendKeyUp(HWND hwnd, int vk_code) {
     INPUT input = {};
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = vk_code;
-    input.ki.dwFlags = KEYEVENTF_KEYUP; // Key up
+    input.ki.dwFlags = KEYEVENTF_KEYUP;  // Key up
     input.ki.time = 0;
     input.ki.dwExtraInfo = GetMessageExtraInfo();
     SendInput(1, &input, sizeof(INPUT));
@@ -117,7 +115,7 @@ void SendKeyUp(HWND hwnd, int vk_code) {
 
 // Helper function to draw a sequence using settings directly
 void DrawSequence(int sequence_num) {
-    int idx = sequence_num - 1; // Convert to 0-based index
+    int idx = sequence_num - 1;  // Convert to 0-based index
 
     ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%d:", sequence_num);
     ImGui::SameLine();
@@ -129,8 +127,8 @@ void DrawSequence(int sequence_num) {
     int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(idx);
 
     // Debug logging for sequence values
-   // LogInfo("DrawSequence(%d) - enabled=%s, x=%d, y=%d, interval=%d", sequence_num, enabled ? "true" : "false", x, y,
-   //         interval);
+    // LogInfo("DrawSequence(%d) - enabled=%s, x=%d, y=%d, interval=%d", sequence_num, enabled ? "true" : "false", x, y,
+    //         interval);
 
     // Checkbox for enabling this sequence
     if (ImGui::Checkbox(("Enabled##seq" + std::to_string(sequence_num)).c_str(), &enabled)) {
@@ -273,35 +271,37 @@ void AutoClickThread() {
 // Data structures for up/down key press sequence
 enum class GamepadActionType {
     SET_STICK_AND_BUTTONS,  // Set left stick Y and button mask
-    WAIT,                    // Wait for a fixed duration
-    HOLD,                    // Hold current state for a duration with early exit checking
-    CLEAR                    // Clear all overrides
+    WAIT,                   // Wait for a fixed duration
+    HOLD,                   // Hold current state for a duration with early exit checking
+    CLEAR                   // Clear all overrides
 };
 
 struct GamepadAction {
     GamepadActionType type;
     const char* log_message;
-    float left_stick_y;      // For SET_STICK_AND_BUTTONS: stick value (INFINITY = not set)
-    WORD button_mask;         // For SET_STICK_AND_BUTTONS: button mask
-    LONGLONG duration_ms;    // For WAIT/HOLD: duration in milliseconds (0 = use seconds)
-    LONGLONG duration_sec;   // For WAIT/HOLD: duration in seconds (0 = use milliseconds)
+    float left_stick_y;     // For SET_STICK_AND_BUTTONS: stick value (INFINITY = not set)
+    WORD button_mask;       // For SET_STICK_AND_BUTTONS: button mask
+    LONGLONG duration_ms;   // For WAIT/HOLD: duration in milliseconds (0 = use seconds)
+    LONGLONG duration_sec;  // For WAIT/HOLD: duration in seconds (0 = use milliseconds)
 };
 
 // Up/Down key press sequence definition
 static const GamepadAction g_up_down_sequence[] = {
     // Set forward and button Y
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f,
+     XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
 
     // Wait 100ms before adding button A
     {GamepadActionType::WAIT, nullptr, INFINITY, 0, 1000, 0},
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f, 0, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y forward and button Y", 1.0f, 0, 0,
+     0},
 
     // Wait 100ms before adding button A
     {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0},
 
-
     // Add button A (both Y and A pressed)
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Adding button A (Y and A both pressed)", 1.0f, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Adding button A (Y and A both pressed)", 1.0f,
+     XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
 
     // Hold for 10 seconds
     {GamepadActionType::HOLD, nullptr, INFINITY, 0, 0, 10},
@@ -313,7 +313,8 @@ static const GamepadAction g_up_down_sequence[] = {
     {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0},
 
     // Set backward and button Y
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y backward and button Y", -1.0f, 0, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Up/Down gamepad: Setting left stick Y backward and button Y", -1.0f, 0,
+     0, 0},
 
     // Hold for 3 seconds
     {GamepadActionType::HOLD, nullptr, INFINITY, 0, 0, 3},
@@ -322,13 +323,13 @@ static const GamepadAction g_up_down_sequence[] = {
     {GamepadActionType::CLEAR, "Up/Down gamepad: Clearing left stick Y override", INFINITY, 0, 0, 0},
 
     // Wait 100ms before next cycle
-    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0}
-};
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 100, 0}};
 
 // Button-only press sequence definition (Y/A buttons only, no stick movement)
 static const GamepadAction g_button_only_sequence[] = {
     // Add button A (both Y and A pressed)
-    {GamepadActionType::SET_STICK_AND_BUTTONS, "Button-only gamepad: Adding button A (Y and A both pressed)", INFINITY, XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
+    {GamepadActionType::SET_STICK_AND_BUTTONS, "Button-only gamepad: Adding button A (Y and A both pressed)", INFINITY,
+     XINPUT_GAMEPAD_Y | XINPUT_GAMEPAD_A, 0, 0},
 
     // Hold for 10 seconds
     {GamepadActionType::HOLD, nullptr, INFINITY, 0, 1000, 0},
@@ -337,13 +338,13 @@ static const GamepadAction g_button_only_sequence[] = {
     {GamepadActionType::CLEAR, "Button-only gamepad: Clearing button override", INFINITY, 0, 0, 0},
 
     // Wait 100ms before next cycle
-    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 50, 0}
-};
+    {GamepadActionType::WAIT, nullptr, INFINITY, 0, 50, 0}};
 
 // Helper function to execute a single gamepad action
-static bool ExecuteGamepadAction(const GamepadAction& action,
-                                  const std::shared_ptr<display_commander::widgets::xinput_widget::XInputSharedState>& shared_state,
-                                  HANDLE timer_handle) {
+static bool ExecuteGamepadAction(
+    const GamepadAction& action,
+    const std::shared_ptr<display_commander::widgets::xinput_widget::XInputSharedState>& shared_state,
+    HANDLE timer_handle) {
     switch (action.type) {
         case GamepadActionType::SET_STICK_AND_BUTTONS: {
             if (action.log_message != nullptr) {
@@ -358,9 +359,8 @@ static bool ExecuteGamepadAction(const GamepadAction& action,
         }
 
         case GamepadActionType::WAIT: {
-            LONGLONG duration_ns = action.duration_ms > 0
-                ? (action.duration_ms * utils::NS_TO_MS)
-                : (action.duration_sec * utils::SEC_TO_NS);
+            LONGLONG duration_ns = action.duration_ms > 0 ? (action.duration_ms * utils::NS_TO_MS)
+                                                          : (action.duration_sec * utils::SEC_TO_NS);
             LONGLONG wait_start_ns = utils::get_now_ns();
             LONGLONG wait_target_ns = wait_start_ns + duration_ns;
             utils::wait_until_ns(wait_target_ns, timer_handle);
@@ -368,9 +368,8 @@ static bool ExecuteGamepadAction(const GamepadAction& action,
         }
 
         case GamepadActionType::HOLD: {
-            LONGLONG duration_ns = action.duration_ms > 0
-                ? (action.duration_ms * utils::NS_TO_MS)
-                : (action.duration_sec * utils::SEC_TO_NS);
+            LONGLONG duration_ns = action.duration_ms > 0 ? (action.duration_ms * utils::NS_TO_MS)
+                                                          : (action.duration_sec * utils::SEC_TO_NS);
             LONGLONG hold_start_ns = utils::get_now_ns();
             LONGLONG hold_target_ns = hold_start_ns + duration_ns;
 
@@ -380,7 +379,7 @@ static bool ExecuteGamepadAction(const GamepadAction& action,
                     // Clear override on early exit
                     shared_state->override_state.left_stick_y.store(INFINITY);
                     shared_state->override_state.buttons_pressed_mask.store(0);
-                    return false; // Signal early exit
+                    return false;  // Signal early exit
                 }
                 // Wait in 100ms chunks for early exit checking
                 LONGLONG current_ns = utils::get_now_ns();
@@ -399,8 +398,7 @@ static bool ExecuteGamepadAction(const GamepadAction& action,
             return true;
         }
 
-        default:
-            return false;
+        default: return false;
     }
 }
 
@@ -595,8 +593,9 @@ void DrawAutoClickFeature() {
     // Warning about experimental nature
     ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - Use with caution!");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("This feature sends mouse click messages directly to the game window.\nUse responsibly and "
-                          "be aware of game rules and terms of service.");
+        ImGui::SetTooltip(
+            "This feature sends mouse click messages directly to the game window.\nUse responsibly and "
+            "be aware of game rules and terms of service.");
     }
 
     // Master enable/disable checkbox
@@ -611,11 +610,14 @@ void DrawAutoClickFeature() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable/disable all auto-click sequences. Each sequence can be individually configured "
-                          "below.\n\nShortcut: Ctrl+P (can be enabled in Developer tab)\n\nNote: Mouse position spoofing is always enabled for better stealth.");
+        ImGui::SetTooltip(
+            "Enable/disable all auto-click sequences. Each sequence can be individually configured "
+            "below.\n\nShortcut: Ctrl+P (can be enabled in Advanced tab)\n\nNote: Mouse position spoofing is always "
+            "enabled for better stealth.");
     }
     // Mouse position spoofing is always enabled
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), ICON_FK_OK " Mouse position spoofing is always enabled for better stealth");
+    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
+                       ICON_FK_OK " Mouse position spoofing is always enabled for better stealth");
 
     // Show current status
     if (g_auto_click_enabled.load()) {
@@ -633,7 +635,6 @@ void DrawAutoClickFeature() {
     DrawSequence(3);
     DrawSequence(4);
     DrawSequence(5);
-
 
     // Summary information
     int enabled_sequences = 0;
@@ -671,7 +672,10 @@ void DrawAutoClickFeature() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically presses W key for 10 seconds, then S key for 3 seconds, repeating forever.\nSequence: W down → wait 10s → W up → wait 100ms → S down → wait 3s → S up → wait 100ms → repeat.\nUses W and S keys with SendInput API.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
+        ImGui::SetTooltip(
+            "Automatically presses W key for 10 seconds, then S key for 3 seconds, repeating forever.\nSequence: W "
+            "down → wait 10s → W up → wait 100ms → S down → wait 3s → S up → wait 100ms → repeat.\nUses W and S keys "
+            "with SendInput API.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
     }
 
     if (!auto_click_enabled_state) {
@@ -695,7 +699,10 @@ void DrawAutoClickFeature() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically presses Y button, then adds A button (Y+A), holds for 10 seconds, then clears and repeats.\nSequence: Y down → wait 100ms → Y+A down → hold 10s → clear → wait 100ms → repeat.\nNo stick movement - buttons only.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
+        ImGui::SetTooltip(
+            "Automatically presses Y button, then adds A button (Y+A), holds for 10 seconds, then clears and "
+            "repeats.\nSequence: Y down → wait 100ms → Y+A down → hold 10s → clear → wait 100ms → repeat.\nNo stick "
+            "movement - buttons only.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
     }
 
     if (!auto_click_enabled_state) {
@@ -721,7 +728,7 @@ void UpdateLastUIDrawTime() {
 
     // Also update the frame ID when UI is drawn
     g_last_ui_drawn_frame_id.store(g_global_frame_id.load());
-    //LogDebug("Auto-click: UI draw time updated to %lld ns", now_ns);
+    // LogDebug("Auto-click: UI draw time updated to %lld ns", now_ns);
 }
 
-} // namespace autoclick
+}  // namespace autoclick

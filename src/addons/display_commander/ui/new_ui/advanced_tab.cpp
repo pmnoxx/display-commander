@@ -1,4 +1,4 @@
-#include "developer_new_tab.hpp"
+#include "advanced_tab.hpp"
 #include "../../globals.hpp"
 #include "../../latency/latency_manager.hpp"
 #include "../../nvapi/fake_nvapi_manager.hpp"
@@ -6,7 +6,7 @@
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
-#include "../../settings/developer_tab_settings.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
@@ -29,7 +29,13 @@ extern std::atomic<bool> s_nvapi_auto_enable_enabled;
 
 namespace ui::new_ui {
 
-void InitDeveloperNewTab() {
+void DrawFeaturesEnabledByDefault();
+void DrawAdvancedTabSettingsSection();
+void DrawHdrDisplaySettings();
+void DrawNvapiSettings();
+void DrawNewExperimentalFeatures();
+
+void InitAdvancedTab() {
     // Ensure settings are loaded
     static bool settings_loaded = false;
     if (!settings_loaded) {
@@ -38,15 +44,15 @@ void InitDeveloperNewTab() {
     }
 }
 
-void DrawDeveloperNewTab() {
+void DrawAdvancedTab(reshade::api::effect_runtime* /*runtime*/) {
     if (ImGui::CollapsingHeader("Features Enabled By Default", ImGuiTreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault();
     }
     ImGui::Spacing();
 
-    // Developer Settings Section
-    if (ImGui::CollapsingHeader("Developer Settings", ImGuiTreeNodeFlags_None)) {
-        DrawDeveloperSettings();
+    // Advanced Settings Section
+    if (ImGui::CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
+        DrawAdvancedTabSettingsSection();
     }
 
     ImGui::Spacing();
@@ -93,12 +99,12 @@ void DrawFeaturesEnabledByDefault() {
     ImGui::Indent();
 
     // Prevent Fullscreen
-    CheckboxSetting(settings::g_developerTabSettings.prevent_fullscreen, "Prevent Fullscreen");
+    CheckboxSetting(settings::g_advancedTabSettings.prevent_fullscreen, "Prevent Fullscreen");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
     }
 
-    CheckboxSetting(settings::g_developerTabSettings.prevent_always_on_top, "Prevent Always On Top");
+    CheckboxSetting(settings::g_advancedTabSettings.prevent_always_on_top, "Prevent Always On Top");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
@@ -106,13 +112,13 @@ void DrawFeaturesEnabledByDefault() {
     ImGui::Unindent();
 }
 
-void DrawDeveloperSettings() {
+void DrawAdvancedTabSettingsSection() {
     ImGui::Indent();
 
     // Safemode setting
-    if (CheckboxSetting(settings::g_developerTabSettings.safemode, "Safemode (requires restart)")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.safemode, "Safemode (requires restart)")) {
         LogInfo("Safemode setting changed to: %s",
-                settings::g_developerTabSettings.safemode.GetValue() ? "enabled" : "disabled");
+                settings::g_advancedTabSettings.safemode.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -126,11 +132,11 @@ void DrawDeveloperSettings() {
     }
 
     // DLLs to load before Display Commander
-    std::string dlls_to_load = settings::g_developerTabSettings.dlls_to_load_before.GetValue();
+    std::string dlls_to_load = settings::g_advancedTabSettings.dlls_to_load_before.GetValue();
     char dlls_buffer[512] = {0};
     strncpy_s(dlls_buffer, sizeof(dlls_buffer), dlls_to_load.c_str(), _TRUNCATE);
     if (ImGui::InputText("DLLs to Load Before Display Commander", dlls_buffer, sizeof(dlls_buffer))) {
-        settings::g_developerTabSettings.dlls_to_load_before.SetValue(std::string(dlls_buffer));
+        settings::g_advancedTabSettings.dlls_to_load_before.SetValue(std::string(dlls_buffer));
         LogInfo("DLLs to load before set to: %s", dlls_buffer);
     }
     if (ImGui::IsItemHovered()) {
@@ -144,9 +150,9 @@ void DrawDeveloperSettings() {
     }
 
     // DLL loading delay setting
-    int delay_ms = settings::g_developerTabSettings.dll_loading_delay_ms.GetValue();
+    int delay_ms = settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue();
     if (ImGui::SliderInt("DLL Loading Delay (ms)", &delay_ms, 0, 10000, delay_ms == 0 ? "No delay" : "%d ms")) {
-        settings::g_developerTabSettings.dll_loading_delay_ms.SetValue(delay_ms);
+        settings::g_advancedTabSettings.dll_loading_delay_ms.SetValue(delay_ms);
         LogInfo("DLL loading delay set to %d ms", delay_ms);
     }
     if (ImGui::IsItemHovered()) {
@@ -158,9 +164,9 @@ void DrawDeveloperSettings() {
     }
 
     // Suppress MinHook setting
-    if (CheckboxSetting(settings::g_developerTabSettings.suppress_minhook, "Suppress MinHook Initialization")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_minhook, "Suppress MinHook Initialization")) {
         LogInfo("Suppress MinHook setting changed to: %s",
-                settings::g_developerTabSettings.suppress_minhook.GetValue() ? "enabled" : "disabled");
+                settings::g_advancedTabSettings.suppress_minhook.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -174,9 +180,9 @@ void DrawDeveloperSettings() {
     ImGui::Spacing();
 
     // Auto-hide Discord Overlay setting
-    if (CheckboxSetting(settings::g_developerTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay")) {
         LogInfo("Auto-hide Discord Overlay setting changed to: %s",
-                settings::g_developerTabSettings.auto_hide_discord_overlay.GetValue() ? "enabled" : "disabled");
+                settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -189,9 +195,9 @@ void DrawDeveloperSettings() {
     ImGui::Spacing();
 
     // Suppress Window Changes setting
-    if (CheckboxSetting(settings::g_developerTabSettings.suppress_window_changes, "Suppress Window Changes")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_window_changes, "Suppress Window Changes")) {
         LogInfo("Suppress Window Changes setting changed to: %s",
-                settings::g_developerTabSettings.suppress_window_changes.GetValue() ? "enabled" : "disabled");
+                settings::g_advancedTabSettings.suppress_window_changes.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -204,12 +210,12 @@ void DrawDeveloperSettings() {
     ImGui::Spacing();
 
     // PresentMon ETW Tracing setting
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_presentmon_tracing, "Enable PresentMon ETW Tracing")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.enable_presentmon_tracing, "Enable PresentMon ETW Tracing")) {
         LogInfo("PresentMon ETW tracing setting changed to: %s",
-                settings::g_developerTabSettings.enable_presentmon_tracing.GetValue() ? "enabled" : "disabled");
+                settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue() ? "enabled" : "disabled");
 
         // Start or stop PresentMon based on setting
-        if (settings::g_developerTabSettings.enable_presentmon_tracing.GetValue()) {
+        if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
             presentmon::g_presentMonManager.StartWorker();
         } else {
             presentmon::g_presentMonManager.StopWorker();
@@ -239,7 +245,7 @@ void DrawDeveloperSettings() {
             ImGui::SetTooltip("PresentMon worker thread is currently running.");
         }
 
-        // Show detailed debug info when active in developer tab
+        // Show detailed debug info when active in advanced tab
         ImGui::Indent();
         presentmon::PresentMonFlipState pm_flip_state;
         presentmon::PresentMonDebugInfo pm_debug_info;
@@ -557,9 +563,9 @@ void DrawDeveloperSettings() {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "REQUIRES SETUP:");
     ImGui::SameLine();
-    if (CheckboxSetting(settings::g_developerTabSettings.debug_layer_enabled, "Enable DX11/DX12 Debug Layer")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.debug_layer_enabled, "Enable DX11/DX12 Debug Layer")) {
         LogInfo("Debug layer setting changed to: %s",
-                settings::g_developerTabSettings.debug_layer_enabled.GetValue() ? "enabled" : "disabled");
+                settings::g_advancedTabSettings.debug_layer_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(ICON_FK_WARNING
@@ -583,7 +589,7 @@ void DrawDeveloperSettings() {
     }
 
     // Show status when debug layer is enabled
-    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " ACTIVE");
         if (ImGui::IsItemHovered()) {
@@ -597,12 +603,12 @@ void DrawDeveloperSettings() {
     }
 
     // SetBreakOnSeverity checkbox (only shown when debug layer is enabled)
-    if (settings::g_developerTabSettings.debug_layer_enabled.GetValue()) {
+    if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         ImGui::Indent();
-        if (CheckboxSetting(settings::g_developerTabSettings.debug_break_on_severity,
+        if (CheckboxSetting(settings::g_advancedTabSettings.debug_break_on_severity,
                             "SetBreakOnSeverity (All Levels)")) {
             LogInfo("Debug break on severity setting changed to: %s",
-                    settings::g_developerTabSettings.debug_break_on_severity.GetValue() ? "enabled" : "disabled");
+                    settings::g_advancedTabSettings.debug_break_on_severity.GetValue() ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
@@ -626,10 +632,10 @@ void DrawHdrDisplaySettings() {
     ImGui::Indent();
 
     // Hide HDR Capabilities
-    if (CheckboxSetting(settings::g_developerTabSettings.hide_hdr_capabilities, "Hide game's native HDR")) {
-        s_hide_hdr_capabilities.store(settings::g_developerTabSettings.hide_hdr_capabilities.GetValue());
+    if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities, "Hide game's native HDR")) {
+        s_hide_hdr_capabilities.store(settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue());
         LogInfo("HDR hiding setting changed to: %s",
-                settings::g_developerTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
+                settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -638,10 +644,10 @@ void DrawHdrDisplaySettings() {
     }
 
     // Enable Flip Chain
-    if (CheckboxSetting(settings::g_developerTabSettings.enable_flip_chain, "Enable flip chain")) {
-        s_enable_flip_chain.store(settings::g_developerTabSettings.enable_flip_chain.GetValue());
+    if (CheckboxSetting(settings::g_advancedTabSettings.enable_flip_chain, "Enable flip chain")) {
+        s_enable_flip_chain.store(settings::g_advancedTabSettings.enable_flip_chain.GetValue());
         LogInfo("Enable flip chain setting changed to: %s",
-                settings::g_developerTabSettings.enable_flip_chain.GetValue() ? "true" : "false");
+                settings::g_advancedTabSettings.enable_flip_chain.GetValue() ? "true" : "false");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -651,9 +657,9 @@ void DrawHdrDisplaySettings() {
     }
 
     // Disable DPI Scaling checkbox
-    if (CheckboxSetting(settings::g_developerTabSettings.disable_dpi_scaling, "Disable DPI scaling")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.disable_dpi_scaling, "Disable DPI scaling")) {
         LogInfo("Disable DPI scaling setting changed to: %s",
-                settings::g_developerTabSettings.disable_dpi_scaling.GetValue() ? "true" : "false");
+                settings::g_advancedTabSettings.disable_dpi_scaling.GetValue() ? "true" : "false");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -665,9 +671,9 @@ void DrawHdrDisplaySettings() {
     ImGui::Spacing();
 
     // Auto Color Space checkbox
-    bool auto_colorspace = settings::g_developerTabSettings.auto_colorspace.GetValue();
+    bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
     if (ImGui::Checkbox("Auto color space", &auto_colorspace)) {
-        settings::g_developerTabSettings.auto_colorspace.SetValue(auto_colorspace);
+        settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -710,12 +716,11 @@ void DrawNvapiSettings() {
         if (ImGui::CollapsingHeader("NVAPI Settings", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
             // NVAPI Auto-enable checkbox
-            if (CheckboxSetting(settings::g_developerTabSettings.nvapi_auto_enable_enabled,
+            if (CheckboxSetting(settings::g_advancedTabSettings.nvapi_auto_enable_enabled,
                                 "Enable NVAPI Auto-enable for Games")) {
-                s_nvapi_auto_enable_enabled.store(
-                    settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue());
+                s_nvapi_auto_enable_enabled.store(settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue());
                 LogInfo("NVAPI Auto-enable setting changed to: %s",
-                        settings::g_developerTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
+                        settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Automatically enable NVAPI features for supported games when they are launched.");
@@ -808,18 +813,18 @@ void DrawNvapiSettings() {
                 "performance issues. Check the game's graphics settings first.");
         }
 
-        bool reflex_auto_configure = settings::g_developerTabSettings.reflex_auto_configure.GetValue();
-        bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
-        bool reflex_delay_first_500_frames = settings::g_developerTabSettings.reflex_delay_first_500_frames.GetValue();
+        bool reflex_auto_configure = settings::g_advancedTabSettings.reflex_auto_configure.GetValue();
+        bool reflex_enable = settings::g_advancedTabSettings.reflex_enable.GetValue();
+        bool reflex_delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
 
-        bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
-        bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
-        bool reflex_use_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
-        bool reflex_generate_markers = settings::g_developerTabSettings.reflex_generate_markers.GetValue();
-        bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
+        bool reflex_low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
+        bool reflex_boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
+        bool reflex_use_markers = settings::g_advancedTabSettings.reflex_use_markers.GetValue();
+        bool reflex_generate_markers = settings::g_advancedTabSettings.reflex_generate_markers.GetValue();
+        bool reflex_enable_sleep = settings::g_advancedTabSettings.reflex_enable_sleep.GetValue();
 
         if (ImGui::Checkbox("Delay Reflex for first 500 frames", &reflex_delay_first_500_frames)) {
-            settings::g_developerTabSettings.reflex_delay_first_500_frames.SetValue(reflex_delay_first_500_frames);
+            settings::g_advancedTabSettings.reflex_delay_first_500_frames.SetValue(reflex_delay_first_500_frames);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
@@ -829,14 +834,14 @@ void DrawNvapiSettings() {
         }
 
         if (ImGui::Checkbox("Auto Configure Reflex", &reflex_auto_configure)) {
-            settings::g_developerTabSettings.reflex_auto_configure.SetValue(reflex_auto_configure);
+            settings::g_advancedTabSettings.reflex_auto_configure.SetValue(reflex_auto_configure);
             s_reflex_auto_configure.store(reflex_auto_configure);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Automatically configure Reflex settings on startup");
         }
         if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
-            settings::g_developerTabSettings.reflex_enable.SetValue(reflex_enable);
+            settings::g_advancedTabSettings.reflex_enable.SetValue(reflex_enable);
         }
         if (reflex_auto_configure) {
             ImGui::EndDisabled();
@@ -844,29 +849,29 @@ void DrawNvapiSettings() {
         }
         if (reflex_enable) {
             if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
-                settings::g_developerTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+                settings::g_advancedTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
             }
             if (ImGui::Checkbox("Boost", &reflex_boost)) {
-                settings::g_developerTabSettings.reflex_boost.SetValue(reflex_boost);
+                settings::g_advancedTabSettings.reflex_boost.SetValue(reflex_boost);
             }
             if (reflex_auto_configure) {
                 ImGui::BeginDisabled();
             }
             if (ImGui::Checkbox("Use Reflex Markers", &reflex_use_markers)) {
-                settings::g_developerTabSettings.reflex_use_markers.SetValue(reflex_use_markers);
+                settings::g_advancedTabSettings.reflex_use_markers.SetValue(reflex_use_markers);
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Tell NVIDIA Reflex to use markers for optimization");
             }
 
             if (ImGui::Checkbox("Generate Reflex Markers", &reflex_generate_markers)) {
-                settings::g_developerTabSettings.reflex_generate_markers.SetValue(reflex_generate_markers);
+                settings::g_advancedTabSettings.reflex_generate_markers.SetValue(reflex_generate_markers);
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Generate markers in the frame timeline for latency measurement");
             }
             // Warning about enabling Reflex when game already has it
-            if (is_native_reflex_active && settings::g_developerTabSettings.reflex_generate_markers.GetValue()) {
+            if (is_native_reflex_active && settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
                 ImGui::SameLine();
                 ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
                                    " Warning: Do not enable 'Generate Reflex Markers' if the game already has built-in "
@@ -874,9 +879,9 @@ void DrawNvapiSettings() {
             }
 
             if (ImGui::Checkbox("Enable Reflex Sleep Mode", &reflex_enable_sleep)) {
-                settings::g_developerTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
+                settings::g_advancedTabSettings.reflex_enable_sleep.SetValue(reflex_enable_sleep);
             }
-            if (is_native_reflex_active && settings::g_developerTabSettings.reflex_enable_sleep.GetValue()) {
+            if (is_native_reflex_active && settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()) {
                 ImGui::SameLine();
                 ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
                                    " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has "
@@ -888,9 +893,9 @@ void DrawNvapiSettings() {
             if (reflex_auto_configure) {
                 ImGui::EndDisabled();
             }
-            bool reflex_logging = settings::g_developerTabSettings.reflex_logging.GetValue();
+            bool reflex_logging = settings::g_advancedTabSettings.reflex_logging.GetValue();
             if (ImGui::Checkbox("Enable Reflex Logging", &reflex_logging)) {
-                settings::g_developerTabSettings.reflex_logging.SetValue(reflex_logging);
+                settings::g_advancedTabSettings.reflex_logging.SetValue(reflex_logging);
                 s_enable_reflex_logging.store(reflex_logging);
             }
             if (ImGui::IsItemHovered()) {
@@ -1120,10 +1125,10 @@ void DrawNvapiSettings() {
         ImGui::Indent();
         ImGui::TextColored(ui::colors::TEXT_WARNING, "Load AL2/AL+/XeLL through nvapi64.dll");
 
-        bool fake_nvapi_enabled = settings::g_developerTabSettings.fake_nvapi_enabled.GetValue();
+        bool fake_nvapi_enabled = settings::g_advancedTabSettings.fake_nvapi_enabled.GetValue();
         if (ImGui::Checkbox("Enable (requires restart)", &fake_nvapi_enabled)) {
-            settings::g_developerTabSettings.fake_nvapi_enabled.SetValue(fake_nvapi_enabled);
-            settings::g_developerTabSettings.fake_nvapi_enabled.Save();
+            settings::g_advancedTabSettings.fake_nvapi_enabled.SetValue(fake_nvapi_enabled);
+            settings::g_advancedTabSettings.fake_nvapi_enabled.Save();
             s_restart_needed_nvapi.store(true);
         }
         if (ImGui::IsItemHovered()) {

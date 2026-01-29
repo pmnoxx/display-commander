@@ -1,7 +1,7 @@
 #include "streamline_hooks.hpp"
 #include "../config/display_commander_config.hpp"
 #include "../globals.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -9,12 +9,10 @@
 #include "dxgi_factory_wrapper.hpp"
 #include "hook_suppression_manager.hpp"
 
-
 #include <dxgi.h>
 #include <dxgi1_6.h>
 #include <MinHook.h>
 #include <cstdint>
-
 
 // Streamline function pointers
 using slInit_pfn = int (*)(void* pref, uint64_t sdkVersion);

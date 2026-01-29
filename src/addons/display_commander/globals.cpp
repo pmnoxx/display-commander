@@ -5,7 +5,7 @@
 #include "dxgi/custom_fps_limiter.hpp"
 #include "latency/latency_manager.hpp"
 #include "nvapi/vrr_status.hpp"
-#include "settings/developer_tab_settings.hpp"
+#include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
 #include "settings/hotkeys_tab_settings.hpp"
@@ -460,7 +460,7 @@ HWND g_proxy_hwnd = nullptr;
 // Experimental tab settings global instance
 namespace settings {
 ExperimentalTabSettings g_experimentalTabSettings;
-DeveloperTabSettings g_developerTabSettings;
+AdvancedTabSettings g_advancedTabSettings;
 MainTabSettings g_mainTabSettings;
 SwapchainTabSettings g_swapchainTabSettings;
 StreamlineTabSettings g_streamlineTabSettings;
@@ -469,7 +469,7 @@ HookSuppressionSettings g_hook_suppression_settings;
 ReShadeTabSettings g_reshadeTabSettings;
 // Function to load all settings at startup
 void LoadAllSettingsAtStartup() {
-    g_developerTabSettings.LoadAll();
+    g_advancedTabSettings.LoadAll();
     g_experimentalTabSettings.LoadAll();
     g_mainTabSettings.LoadSettings();
     g_swapchainTabSettings.LoadAll();

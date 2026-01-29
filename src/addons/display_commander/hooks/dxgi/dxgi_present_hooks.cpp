@@ -3,7 +3,7 @@
 #include "../../globals.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../performance_types.hpp"
-#include "../../settings/developer_tab_settings.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../ui/new_ui/new_ui_tabs.hpp"
@@ -832,7 +832,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
     g_last_set_fullscreen_state.store(Fullscreen);
 
     // Check if fullscreen prevention is enabled and we're trying to go fullscreen
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue()) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         return IDXGISwapChain_SetFullscreenState_Original(This, false, pTarget);
     }
 
@@ -847,7 +847,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
     auto hr = IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
 
     // NOTE: we assume that ppTarget is g_last_set_fullscreen_target.load()
-    if (settings::g_developerTabSettings.prevent_fullscreen.GetValue() && g_last_set_fullscreen_state.load() != -1) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue() && g_last_set_fullscreen_state.load() != -1) {
         *pFullscreen = g_last_set_fullscreen_state.load();
     }
 

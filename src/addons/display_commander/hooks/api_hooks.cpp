@@ -1064,7 +1064,7 @@ bool InstallApiHooks() {
     InstallDirectInputHooks();
 
     // Install OpenGL hooks
-    InstallOpenGLHooks();
+    // InstallOpenGLHooks();
 
     // Install display settings hooks
     InstallDisplaySettingsHooks();

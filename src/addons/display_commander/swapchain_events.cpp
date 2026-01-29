@@ -1050,7 +1050,8 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
     RECORD_DETOUR_CALL(utils::get_now_ns());
     reshade::api::device_api api = swapchain->get_device()->get_api();
 
-    bool use_fps_limiter = api == reshade::api::device_api::vulkan
+    bool use_fps_limiter = api == reshade::api::device_api::vulkan || api == reshade::api::device_api::opengl
+                           || api == reshade::api::device_api::d3d9
                            || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue();
 
     if (use_fps_limiter) {
@@ -1626,7 +1627,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     perf_timer.pause();
     // vulkan fps limiter
 
-    bool use_fps_limiter = api == reshade::api::device_api::vulkan
+    bool use_fps_limiter = api == reshade::api::device_api::vulkan || api == reshade::api::device_api::opengl
+                           || api == reshade::api::device_api::d3d9
                            || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue();
     if (use_fps_limiter) {
         command_queue->flush_immediate_command_list();

@@ -19,13 +19,14 @@ bool IsContinueRenderingEnabled();
 // Fake activation functions
 void SendFakeActivationMessages(HWND hwnd);
 
-// Set the target window to hook
-void SetTargetWindow(HWND hwnd);
-
-// Get the currently hooked window
+// Get the currently hooked window (backward compatibility - uses game window)
 HWND GetHookedWindow();
 
 // Message detouring function (similar to Special-K's SK_DetourWindowProc)
 LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-} // namespace display_commanderhooks
+// Process window message - returns true if message should be suppressed
+// Called from message retrieval hooks (GetMessage/PeekMessage) when hwnd belongs to current process
+bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+}  // namespace display_commanderhooks

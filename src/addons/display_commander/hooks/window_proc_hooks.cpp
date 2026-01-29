@@ -1,61 +1,52 @@
 /*
  * Copyright (C) 2024 Display Commander
- * Window procedure hooks implementation using SetWindowLongPtr
+ * Window procedure hooks implementation - logic moved to message retrieval hooks
  */
 
 #include "window_proc_hooks.hpp"
 #include <atomic>
-#include <map>
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
-#include "../settings/main_tab_settings.hpp"
 #include "../ui/new_ui/window_info_tab.hpp"
-#include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../utils/timing.hpp"
-#include "hook_suppression_manager.hpp"
+#include "api_hooks.hpp"  // For GetGameWindow
 
 #include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 
 namespace display_commanderhooks {
 
 // Global variables for hook state
-static std::atomic<bool> g_hooks_installed{false};
-static HWND g_target_window = nullptr;
-static SRWLOCK g_window_proc_map_lock = SRWLOCK_INIT;
-static std::map<HWND, WNDPROC> g_original_window_proc;
+static std::atomic<bool> g_sent_activate{false};
 
-// Hooked window procedure
-// TODO remove WindowProc_Detour and migrate to use GetMessageA_Detour/GetMessageW_Detour
-LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+// Helper function to check if HWND belongs to current process
+static bool IsWindowFromCurrentProcess(HWND hwnd) {
+    if (hwnd == nullptr) {
+        return false;
+    }
+    DWORD window_process_id = 0;
+    DWORD window_thread_id = GetWindowThreadProcessId(hwnd, &window_process_id);
+    if (window_thread_id == 0) {
+        return false;
+    }
+    return window_process_id == GetCurrentProcessId();
+}
+
+// Process window message - returns true if message should be suppressed
+// This function contains the logic previously in WindowProc_Detour
+bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Check if continue rendering is enabled
     // Special-K style: set ping signal when ping message is received, inject marker on next SIMULATION_START
     if (PCLSTATS_IS_PING_MSG_ID(uMsg)) {
         g_pclstats_ping_signal.store(true, std::memory_order_release);
     }
-    bool continue_rendering_enabled = s_continue_rendering.load();
-    if (!continue_rendering_enabled) {
-        // Call the original window procedure
-        WNDPROC original_proc = nullptr;
-        {
-            utils::SRWLockShared lock(g_window_proc_map_lock);
-            auto it = g_original_window_proc.find(hwnd);
-            if (it != g_original_window_proc.end()) {
-                original_proc = it->second;
-            }
-        }
 
-        if (original_proc) {
-            return CallWindowProc(original_proc, hwnd, uMsg, wParam, lParam);
-        }
-        return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
-    static bool sent_activate = false;
-    if (continue_rendering_enabled && g_target_window == hwnd && !sent_activate) {
+    bool continue_rendering_enabled = s_continue_rendering.load();
+
+    // Send fake activation messages once when continue rendering is enabled
+    HWND game_window = GetGameWindow();
+    if (continue_rendering_enabled && game_window == hwnd && !g_sent_activate.load()) {
         SendFakeActivationMessages(hwnd);
-        sent_activate = true;
+        g_sent_activate.store(true);
     }
 
     // Handle specific window messages here
@@ -68,7 +59,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                     LogInfo("Suppressed window deactivation message due to continue rendering - HWND: 0x%p", hwnd);
                     // Update the message history to show this was suppressed
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
-                    return 0;  // Suppress the message
+                    return true;  // Suppress the message
                 }
             }
             break;
@@ -85,7 +76,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 // Update the message history to show this was suppressed
                 ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                 SendFakeActivationMessages(hwnd);
-                return 0;  // Suppress the message
+                return true;  // Suppress the message
             }
             LogInfo("Window focus lost message received - HWND: 0x%p", hwnd);
             break;
@@ -99,7 +90,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                     // Send fake activation to keep the game thinking it's active
                     SendFakeActivationMessages(hwnd);
-                    return 0;  // Suppress the message
+                    return true;  // Suppress the message
                 } else {
                     // Application is being activated - ensure proper state
                     LogInfo("WM_ACTIVATEAPP: Application activated - ensuring continued rendering - HWND: 0x%p", hwnd);
@@ -117,27 +108,31 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                     LogInfo("WM_NCACTIVATE: Window activated - ensuring continued rendering - HWND: 0x%p", hwnd);
                     // Send fake focus message to maintain active state
                     DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
-                    return 0;
+                    return true;  // Suppress the message
                 } else {
                     // Non-client area is being deactivated - suppress and fake activation
                     LogInfo("WM_NCACTIVATE: Suppressing deactivation - HWND: 0x%p", hwnd);
                     // Update the message history to show this was suppressed
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
-                    //     SendFakeActivationMessages(hwnd);
-                    return 0;  // Suppress the message
+                    return true;  // Suppress the message
                 }
             }
             break;
 
         case WM_WINDOWPOSCHANGING: {
             // Handle window position changes
-            WINDOWPOS* pWp = (WINDOWPOS*)lParam;
-
-            // Check if this is a minimize/restore operation that might affect focus
-            if (continue_rendering_enabled && (pWp->flags & SWP_SHOWWINDOW)) {
-                // Check if window is being minimized
-                if (IsIconic(hwnd)) {
-                    pWp->flags &= ~SWP_SHOWWINDOW;  // Remove show window flag
+            // Note: In message hooks, we can't modify the WINDOWPOS structure directly
+            // We can only suppress the message, which prevents the window position change
+            if (continue_rendering_enabled) {
+                WINDOWPOS* pWp = reinterpret_cast<WINDOWPOS*>(lParam);
+                if (pWp != nullptr && (pWp->flags & SWP_SHOWWINDOW)) {
+                    // Check if window is being minimized
+                    if (IsIconic(hwnd)) {
+                        // Suppress the message to prevent minimization
+                        LogInfo("WM_WINDOWPOSCHANGING: Suppressing minimize - HWND: 0x%p", hwnd);
+                        ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
+                        return true;  // Suppress the message
+                    }
                 }
             }
             break;
@@ -152,8 +147,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                     LogInfo("WM_WINDOWPOSCHANGED: Suppressing window hide - HWND: 0x%p", hwnd);
                     // Update the message history to show this was suppressed
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
-                    //      SendFakeActivationMessages(hwnd);
-                    return 0;  // Suppress the message
+                    return true;  // Suppress the message
                 }
             }
             break;
@@ -164,9 +158,7 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                 // Suppress window hide messages when continue rendering is enabled
                 // Update the message history to show this was suppressed
                 ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
-                // Send fake activation to keep the game thinking it's active
-                //     SendFakeActivationMessages(hwnd);
-                return 0;  // Suppress the message
+                return true;  // Suppress the message
             }
             break;
 
@@ -174,17 +166,10 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
             // Handle mouse activation
             if (continue_rendering_enabled) {
                 LogInfo("WM_MOUSEACTIVATE: Activating and eating message - HWND: 0x%p", hwnd);
-                // Always activate and eat the message to prevent focus loss
-                return MA_ACTIVATEANDEAT;  // Activate and eat the message
+                // Note: We can't return MA_ACTIVATEANDEAT from message hooks, so we suppress the message
+                // The game will handle activation through other means
+                return true;  // Suppress the message
             }
-            break;
-
-        case WM_STYLECHANGING:
-            // Handle style changes
-            break;
-
-        case WM_STYLECHANGED:
-            // Handle style changes
             break;
 
         case WM_SYSCOMMAND:
@@ -195,17 +180,9 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
                     LogInfo("WM_SYSCOMMAND: Suppressing minimize command - HWND: 0x%p", hwnd);
                     // Update the message history to show this was suppressed
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
-                    //     SendFakeActivationMessages(hwnd);
-                    return 0;  // Suppress the message
+                    return true;  // Suppress the message
                 }
             }
-            break;
-
-        case WM_ENTERSIZEMOVE: break;
-
-        case WM_EXITSIZEMOVE:
-            // Handle window exiting size/move mode
-            // SendFakeActivationMessages(hwnd);
             break;
 
         case WM_QUIT:
@@ -229,133 +206,27 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
         default: break;
     }
 
-    // Track message as not suppressed (since we're calling the original procedure)
+    // Track message as not suppressed
     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, false);
 
-    // Call the original window procedure
-    WNDPROC original_proc = nullptr;
-    {
-        utils::SRWLockShared lock(g_window_proc_map_lock);
-        auto it = g_original_window_proc.find(hwnd);
-        if (it != g_original_window_proc.end()) {
-            original_proc = it->second;
-        }
-    }
-
-    if (original_proc) {
-        return CallWindowProc(original_proc, hwnd, uMsg, wParam, lParam);
-    }
-
-    // Fallback to default window procedure
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    return false;  // Don't suppress the message
 }
 
 bool InstallWindowProcHooks(HWND target_hwnd) {
-    // TODO remove InstallWindowProcHooks and migrate to use GetMessageA_Detour/GetMessageW_Detour
-    LogInfo("InstallWindowProcHooks called for HWND: 0x%p", target_hwnd);
-
-    // Allow installation if continue rendering is enabled OR if PCL stats is enabled
-    bool continue_rendering_enabled = s_continue_rendering.load();
-    bool pcl_stats_enabled = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
-    if (!continue_rendering_enabled && !pcl_stats_enabled) {
-        LogInfo(
-            "Window procedure hooks installation skipped - continue rendering is disabled and PCL stats is disabled");
-        return false;
+    // Window proc hooks are now handled via message retrieval hooks (GetMessage/PeekMessage)
+    // This function is kept for compatibility but just sets the game window
+    // Logic has been moved to ProcessWindowMessage() which is called from message hooks
+    if (target_hwnd != nullptr) {
+        SetGameWindow(target_hwnd);
+        g_sent_activate.store(false);  // Reset activation flag when game window changes
     }
-
-    // Check if window proc hooks should be suppressed
-    if (HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOW_PROC)) {
-        LogInfo("Window procedure hooks installation suppressed by user setting");
-        return false;
-    }
-
-    if (target_hwnd == nullptr) {
-        LogError("No target window set for window procedure hooks");
-        return false;
-    }
-
-    if (!IsWindow(target_hwnd)) {
-        LogError("Target window is not valid - HWND: 0x%p", target_hwnd);
-        return false;
-    }
-
-    // Check if this window is already hooked
-    {
-        utils::SRWLockShared lock(g_window_proc_map_lock);
-        if (g_original_window_proc.find(target_hwnd) != g_original_window_proc.end()) {
-            LogInfo("Window procedure hooks already installed for HWND: 0x%p", target_hwnd);
-            return true;
-        }
-    }
-
-    // Get the current window procedure
-    WNDPROC current_proc = (WNDPROC)GetWindowLongPtr(target_hwnd, GWLP_WNDPROC);
-    if (current_proc == nullptr) {
-        LogError("Failed to get original window procedure for window - HWND: 0x%p", target_hwnd);
-        return false;
-    }
-
-    // Use SetWindowLongPtr to replace the window procedure instead of MinHook
-    // This is more reliable for window procedures as they can be system procedures
-    // TODO remove WindowProc_Detour and migrate to use GetMessageA_Detour/GetMessageW_Detour
-    WNDPROC new_proc = (WNDPROC)SetWindowLongPtr(target_hwnd, GWLP_WNDPROC, (LONG_PTR)WindowProc_Detour);
-    if (new_proc == nullptr) {
-        DWORD error = GetLastError();
-        LogError("Failed to set window procedure - Error: %lu (0x%lx)", error, error);
-        return false;
-    }
-
-    // Store the original procedure for restoration
-    {
-        utils::SRWLockExclusive lock(g_window_proc_map_lock);
-        g_original_window_proc[target_hwnd] = new_proc;
-    }
-
-    g_hooks_installed.store(true);
-    LogInfo("Window procedure hooks installed successfully for window - HWND: 0x%p", target_hwnd);
-
-    // Mark window proc hooks as installed
-    HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::WINDOW_PROC);
-
-    // Debug: Show current continue rendering state
-    bool current_state = s_continue_rendering.load();
-    LogInfo("Window procedure hooks installed - continue_rendering state: %s", current_state ? "enabled" : "disabled");
-
     return true;
 }
 
 void UninstallWindowProcHooks() {
-    if (!g_hooks_installed.load()) {
-        LogInfo("Window procedure hooks not installed");
-        return;
-    }
-
-    // Restore all original window procedures
-    {
-        utils::SRWLockExclusive lock(g_window_proc_map_lock);
-        for (auto it = g_original_window_proc.begin(); it != g_original_window_proc.end(); ++it) {
-            HWND hwnd = it->first;
-            WNDPROC original_proc = it->second;
-
-            if (hwnd && IsWindow(hwnd) && original_proc) {
-                WNDPROC restored_proc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)original_proc);
-                if (restored_proc == nullptr) {
-                    DWORD error = GetLastError();
-                    LogWarn("Failed to restore original window procedure for HWND: 0x%p - Error: %lu (0x%lx)", hwnd,
-                            error, error);
-                } else {
-                    LogInfo("Original window procedure restored successfully for HWND: 0x%p", hwnd);
-                }
-            }
-        }
-        g_original_window_proc.clear();
-    }
-
-    // Clean up
-    g_target_window = nullptr;
-
-    g_hooks_installed.store(false);
-    LogInfo("Window procedure hooks uninstalled successfully");
+    // Window proc hooks are now handled via message retrieval hooks
+    // Just reset the activation flag
+    g_sent_activate.store(false);
 }
 
 bool IsContinueRenderingEnabled() { return s_continue_rendering.load(); }
@@ -376,19 +247,8 @@ void SendFakeActivationMessages(HWND hwnd) {
     LogInfo("Sent fake activation messages to window - HWND: 0x%p", hwnd);
 }
 
-// Set the target window to hook
-void SetTargetWindow(HWND hwnd) {
-    if (g_hooks_installed.load()) {
-        LogWarn("Cannot change target window while hooks are installed");
-        return;
-    }
-
-    g_target_window = hwnd;
-    LogInfo("Target window set for window procedure hooks - HWND: 0x%p", hwnd);
-}
-
-// Get the currently hooked window
-HWND GetHookedWindow() { return g_target_window; }
+// Get the currently hooked window (backward compatibility - uses game window)
+HWND GetHookedWindow() { return GetGameWindow(); }
 
 // Message detouring function (similar to Special-K's SK_DetourWindowProc)
 LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

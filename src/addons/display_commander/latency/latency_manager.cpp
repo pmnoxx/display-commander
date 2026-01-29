@@ -19,12 +19,9 @@ extern float GetTargetFps();
 // Namespace alias for cleaner code
 namespace timing = utils;
 
-LatencyManager::LatencyManager() { PCLSTATS_INIT(0); }
+LatencyManager::LatencyManager() {}
 
-LatencyManager::~LatencyManager() {
-    PCLSTATS_SHUTDOWN();
-    Shutdown();
-}
+LatencyManager::~LatencyManager() { Shutdown(); }
 
 bool LatencyManager::Initialize(reshade::api::device* device, LatencyTechnology technology) {
     if (initialized_.load(std::memory_order_acquire)) {

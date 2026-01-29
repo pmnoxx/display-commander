@@ -2190,7 +2190,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            if (g_native_frame_pacing_frame_id.load() > 0) {
+            if (std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
+                <= 3) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
                                     "Native Frame Pacing (Experimental)")) {
                     LogInfo("Experimental FG native fps limiter %s",

@@ -198,6 +198,9 @@ std::atomic<uint64_t> g_last_xinput_detected_frame_id{0};
 // Global frame ID when NvAPI_D3D_SetSleepMode_Direct was last called
 std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id{0};
 
+// Native frame pacing frame ID (frames shown to display via native swapchain Present)
+std::atomic<uint64_t> g_native_frame_pacing_frame_id{0};
+
 // Global Swapchain Tracking Manager instance
 SwapchainTrackingManager g_swapchainTrackingManager;
 

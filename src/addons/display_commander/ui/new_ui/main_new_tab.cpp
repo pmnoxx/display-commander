@@ -2220,31 +2220,35 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
         // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
-                                "Experimental FG native fps limiter")) {
-                LogInfo(
-                    "Experimental FG native fps limiter %s",
-                    settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() ? "enabled" : "disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
-                    "Experimental; may improve frame pacing with FG.");
+            if (g_native_frame_pacing_frame_id.load() > 0) {
+                if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
+                                    "Native Frame Pacing (Experimental)")) {
+                    LogInfo("Experimental FG native fps limiter %s",
+                            settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() ? "enabled"
+                                                                                                      : "disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
+                        "Experimental; may improve frame pacing with FG.");
+                }
             }
         }
 
         // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
-        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            if (CheckboxSetting(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter,
-                                "Experimental Safe Mode fps limiter")) {
-                LogInfo(
-                    "Experimental Safe Mode fps limiter %s",
-                    settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Uses a safer FPS limiting path with reduced risk of stutter or instability.\n"
-                    "Experimental; may have slightly higher latency than the default limiter.");
+        if (enabled_experimental_features) {
+            if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+                if (CheckboxSetting(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter,
+                                    "Experimental Safe Mode fps limiter")) {
+                    LogInfo("Experimental Safe Mode fps limiter %s",
+                            settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue() ? "enabled"
+                                                                                                      : "disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Uses a safer FPS limiting path with reduced risk of stutter or instability.\n"
+                        "Experimental; may have slightly higher latency than the default limiter.");
+                }
             }
         }
 
@@ -2338,18 +2342,24 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-        ImGui::Spacing();
-        bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-        if (ImGui::Checkbox("Limit Real Frames", &limit_real)) {
-            settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
-            LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
+    if (enabled_experimental_features) {
+        if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+            ImGui::Spacing();
+            bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+            if (ImGui::Checkbox("Limit Real Frames", &limit_real)) {
+                settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
+                LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Limit real frames when using DLSS Frame Generation.\n"
+                    "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
+                    "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
+            }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Limit real frames when using DLSS Frame Generation.\n"
-                "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
-                "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
+    } else {
+        if (settings::g_mainTabSettings.limit_real_frames.GetValue()) {
+            settings::g_mainTabSettings.limit_real_frames.SetValue(false);
         }
     }
     ImGui::Spacing();

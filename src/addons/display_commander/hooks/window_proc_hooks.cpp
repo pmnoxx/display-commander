@@ -27,6 +27,7 @@ static SRWLOCK g_window_proc_map_lock = SRWLOCK_INIT;
 static std::map<HWND, WNDPROC> g_original_window_proc;
 
 // Hooked window procedure
+// TODO remove WindowProc_Detour and migrate to use GetMessageA_Detour/GetMessageW_Detour
 LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Check if continue rendering is enabled
@@ -250,13 +251,15 @@ LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 }
 
 bool InstallWindowProcHooks(HWND target_hwnd) {
+    // TODO remove InstallWindowProcHooks and migrate to use GetMessageA_Detour/GetMessageW_Detour
     LogInfo("InstallWindowProcHooks called for HWND: 0x%p", target_hwnd);
 
     // Allow installation if continue rendering is enabled OR if PCL stats is enabled
     bool continue_rendering_enabled = s_continue_rendering.load();
     bool pcl_stats_enabled = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
     if (!continue_rendering_enabled && !pcl_stats_enabled) {
-        LogInfo("Window procedure hooks installation skipped - continue rendering is disabled and PCL stats is disabled");
+        LogInfo(
+            "Window procedure hooks installation skipped - continue rendering is disabled and PCL stats is disabled");
         return false;
     }
 
@@ -294,6 +297,7 @@ bool InstallWindowProcHooks(HWND target_hwnd) {
 
     // Use SetWindowLongPtr to replace the window procedure instead of MinHook
     // This is more reliable for window procedures as they can be system procedures
+    // TODO remove WindowProc_Detour and migrate to use GetMessageA_Detour/GetMessageW_Detour
     WNDPROC new_proc = (WNDPROC)SetWindowLongPtr(target_hwnd, GWLP_WNDPROC, (LONG_PTR)WindowProc_Detour);
     if (new_proc == nullptr) {
         DWORD error = GetLastError();

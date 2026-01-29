@@ -1,14 +1,16 @@
 #include "presentmon_manager.hpp"
+#include "../globals.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
-#include "../globals.hpp"
+
 
 #include <evntrace.h>
-#include <tdh.h>
 #include <strsafe.h>
-#include <memory>
-#include <cctype>
+#include <tdh.h>
 #include <algorithm>
+#include <cctype>
+#include <memory>
+
 
 namespace presentmon {
 
@@ -50,8 +52,8 @@ bool ProviderGuidByName(const wchar_t* provider_name, GUID& out_guid) {
 
     for (ULONG i = 0; i < providers->NumberOfProviders; ++i) {
         auto& p = providers->TraceProviderInfoArray[i];
-        const wchar_t* name = reinterpret_cast<const wchar_t*>(
-            reinterpret_cast<const uint8_t*>(providers) + p.ProviderNameOffset);
+        const wchar_t* name =
+            reinterpret_cast<const wchar_t*>(reinterpret_cast<const uint8_t*>(providers) + p.ProviderNameOffset);
         if (name != nullptr && _wcsicmp(name, provider_name) == 0) {
             out_guid = p.ProviderGuid;
             return true;
@@ -166,7 +168,8 @@ static bool TryGetEventPropertyU64(PEVENT_RECORD event_record, const wchar_t* pr
     return true;
 }
 
-static std::string FormatPropValueBestEffort(PEVENT_RECORD event_record, const std::wstring& prop_name, USHORT in_type) {
+static std::string FormatPropValueBestEffort(PEVENT_RECORD event_record, const std::wstring& prop_name,
+                                             USHORT in_type) {
     std::string out;
 
     // Prefer known string/int extraction
@@ -184,9 +187,7 @@ static std::string FormatPropValueBestEffort(PEVENT_RECORD event_record, const s
     return {};
 }
 
-static std::string ProviderGuidToString(const GUID& guid) {
-    return Narrow(GuidToWString(guid));
-}
+static std::string ProviderGuidToString(const GUID& guid) { return Narrow(GuidToWString(guid)); }
 
 static uint64_t HashEventTypeKey(const GUID& provider, uint16_t event_id, uint16_t task, uint8_t opcode) {
     // FNV-1a 64-bit
@@ -202,7 +203,7 @@ static uint64_t HashEventTypeKey(const GUID& provider, uint16_t event_id, uint16
     fnv(static_cast<uint8_t>(task & 0xFF));
     fnv(static_cast<uint8_t>((task >> 8) & 0xFF));
     fnv(opcode);
-    if (h == 0) h = 1; // avoid sentinel
+    if (h == 0) h = 1;  // avoid sentinel
     return h;
 }
 
@@ -237,7 +238,7 @@ static ULONGLONG GetProviderKeywordMaskBestEffort(const GUID& provider_guid) {
     // Enumerate provider keyword fields and OR all keyword values together.
     // Some providers appear to ignore/behave oddly with 0xFFFF.. masks; using only declared keyword bits can help.
     ULONG buffer_size = 0;
-    GUID guid = provider_guid; // TDH API takes non-const GUID*
+    GUID guid = provider_guid;  // TDH API takes non-const GUID*
     ULONG st = TdhEnumerateProviderFieldInformation(&guid, EventKeywordInformation, nullptr, &buffer_size);
     if (st != ERROR_INSUFFICIENT_BUFFER || buffer_size == 0) {
         // Fallback: match everything
@@ -263,23 +264,43 @@ static ULONGLONG GetProviderKeywordMaskBestEffort(const GUID& provider_guid) {
     return mask;
 }
 
-} // namespace
+}  // namespace
 
 PresentMonManager::PresentMonManager()
-    : m_running(false), m_should_stop(false),
-      m_flip_mode(DxgiBypassMode::kUnset), m_flip_state_valid(false), m_flip_state_update_time(0),
-      m_present_mode_str(new std::string("Unknown")), m_debug_info_str(new std::string("")),
-      m_thread_started(false), m_etw_session_active(false),
-      m_thread_status(new std::string("Not started")), m_etw_session_status(new std::string("Not initialized")),
-      m_last_error(new std::string("")), m_events_processed(0), m_events_processed_for_current_pid(0), m_events_lost(0), m_last_event_time(0),
+    : m_running(false),
+      m_should_stop(false),
+      m_flip_mode(DxgiBypassMode::kUnset),
+      m_flip_state_valid(false),
+      m_flip_state_update_time(0),
+      m_present_mode_str(new std::string("Unknown")),
+      m_debug_info_str(new std::string("")),
+      m_thread_started(false),
+      m_etw_session_active(false),
+      m_thread_status(new std::string("Not started")),
+      m_etw_session_status(new std::string("Not initialized")),
+      m_last_error(new std::string("")),
+      m_events_processed(0),
+      m_events_processed_for_current_pid(0),
+      m_events_lost(0),
+      m_last_event_time(0),
       m_last_event_pid(0),
-      m_last_provider(new std::string("")), m_last_event_id(0), m_last_present_mode_value(new std::string("")),
-      m_last_provider_name(new std::string("")), m_last_event_name(new std::string("")),
-      m_last_interesting_props(new std::string("")), m_last_schema_update_time_ns(0),
-      m_events_dxgkrnl(0), m_events_dxgi(0), m_events_dwm(0),
-      m_last_graphics_provider(new std::string("")), m_last_graphics_event_id(0), m_last_graphics_event_pid(0),
-      m_last_graphics_provider_name(new std::string("")), m_last_graphics_event_name(new std::string("")),
-      m_last_graphics_props(new std::string("")), m_last_graphics_schema_update_time_ns(0),
+      m_last_provider(new std::string("")),
+      m_last_event_id(0),
+      m_last_present_mode_value(new std::string("")),
+      m_last_provider_name(new std::string("")),
+      m_last_event_name(new std::string("")),
+      m_last_interesting_props(new std::string("")),
+      m_last_schema_update_time_ns(0),
+      m_events_dxgkrnl(0),
+      m_events_dxgi(0),
+      m_events_dwm(0),
+      m_last_graphics_provider(new std::string("")),
+      m_last_graphics_event_id(0),
+      m_last_graphics_event_pid(0),
+      m_last_graphics_provider_name(new std::string("")),
+      m_last_graphics_event_name(new std::string("")),
+      m_last_graphics_props(new std::string("")),
+      m_last_graphics_schema_update_time_ns(0),
       m_flip_compat_valid(false),
       m_flip_compat_last_update_ns(0),
       m_flip_compat_surface_luid(0),
@@ -293,7 +314,8 @@ PresentMonManager::PresentMonManager()
       m_flip_compat_is_overlay(0),
       m_flip_compat_is_overlay_required(0),
       m_flip_compat_no_overlapping(0),
-      m_etw_session_handle(0), m_etw_trace_handle(0) {
+      m_etw_session_handle(0),
+      m_etw_trace_handle(0) {
     m_session_name[0] = 0;
     ZeroMemory(&m_guid_dxgkrnl, sizeof(m_guid_dxgkrnl));
     ZeroMemory(&m_guid_dxgi, sizeof(m_guid_dxgi));
@@ -330,7 +352,7 @@ PresentMonManager::~PresentMonManager() {
     // Always stop worker and ETW session, even if StopWorker wasn't called explicitly
     // This ensures ETW sessions don't leak system-wide resources
     StopWorker();
-    
+
     // Double-check: if session name exists but handle is lost, try to stop by name
     // This handles edge cases where the destructor runs but StopWorker didn't fully clean up
     if (m_session_name[0] != 0) {
@@ -426,9 +448,7 @@ void PresentMonManager::StopWorker() {
     LogInfo("PresentMon: Worker thread stopped");
 }
 
-bool PresentMonManager::IsRunning() const {
-    return m_running.load();
-}
+bool PresentMonManager::IsRunning() const { return m_running.load(); }
 
 bool PresentMonManager::IsNeeded() const {
     // PresentMon is needed for:
@@ -477,7 +497,7 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
 
     auto etw_status_ptr = m_etw_session_status.load();
     debug_info.etw_session_status = etw_status_ptr ? *etw_status_ptr : "Unknown";
-    
+
     // Include session name
     if (m_session_name[0] != 0) {
         debug_info.etw_session_name = Narrow(std::wstring(m_session_name));
@@ -526,7 +546,8 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
     GetEtwSessionsWithPrefix(L"DC_", debug_info.dc_etw_sessions);
 }
 
-void PresentMonManager::UpdateFlipState(DxgiBypassMode mode, const std::string& present_mode_str, const std::string& debug_info) {
+void PresentMonManager::UpdateFlipState(DxgiBypassMode mode, const std::string& present_mode_str,
+                                        const std::string& debug_info) {
     m_flip_mode.store(mode);
     m_flip_state_valid.store(true);
     m_flip_state_update_time.store(utils::get_now_ns());
@@ -539,7 +560,7 @@ void PresentMonManager::UpdateFlipState(DxgiBypassMode mode, const std::string& 
 }
 
 void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const std::string& etw_status,
-                                       const std::string& error, uint64_t events_processed, uint64_t events_lost) {
+                                        const std::string& error, uint64_t events_processed, uint64_t events_lost) {
     std::string* new_thread_status = new std::string(thread_status);
     delete m_thread_status.exchange(new_thread_status);
 
@@ -565,14 +586,14 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
     manager->UpdateDebugInfo("Running", "Starting ETW session...", "", 0, 0);
 
     // Set thread description for debugging (Windows 10+)
-    typedef HRESULT(WINAPI* SetThreadDescriptionProc)(HANDLE, PCWSTR);
+    typedef HRESULT(WINAPI * SetThreadDescriptionProc)(HANDLE, PCWSTR);
     static SetThreadDescriptionProc set_thread_description_func = nullptr;
     static bool checked = false;
     if (!checked) {
         HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
         if (kernel32 != nullptr) {
-            set_thread_description_func = reinterpret_cast<SetThreadDescriptionProc>(
-                GetProcAddress(kernel32, "SetThreadDescription"));
+            set_thread_description_func =
+                reinterpret_cast<SetThreadDescriptionProc>(GetProcAddress(kernel32, "SetThreadDescription"));
         }
         checked = true;
     }
@@ -588,7 +609,8 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
     LogInfo("[PresentMon] Worker thread exiting with code %d", result);
 
     // Update thread status
-    manager->UpdateDebugInfo("Exited", "Stopped", "", manager->m_events_processed.load(), manager->m_events_lost.load());
+    manager->UpdateDebugInfo("Exited", "Stopped", "", manager->m_events_processed.load(),
+                             manager->m_events_lost.load());
 
     manager->m_running.store(false);
 }
@@ -634,10 +656,10 @@ bool PresentMonManager::QueryEtwSessionByName(const wchar_t* session_name, TRACE
     if (status == ERROR_SUCCESS) {
         // Session exists, extract handle from Wnode.HistoricalContext
         // Note: HistoricalContext contains the session handle for controlling the session
-        out_handle = reinterpret_cast<TRACEHANDLE>(static_cast<ULONG_PTR>(props->Wnode.HistoricalContext));
+        out_handle = static_cast<TRACEHANDLE>(props->Wnode.HistoricalContext);
         return true;
     }
-    
+
     return false;
 }
 
@@ -670,7 +692,7 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
 
     // Allocate buffer for session properties
     // Each session needs space for EVENT_TRACE_PROPERTIES + session name + log file name
-    constexpr ULONG props_size = sizeof(EVENT_TRACE_PROPERTIES) + 2048; // Extra space for names
+    constexpr ULONG props_size = sizeof(EVENT_TRACE_PROPERTIES) + 2048;  // Extra space for names
     std::vector<std::unique_ptr<uint8_t[]>> prop_buffers(max_sessions);
     std::vector<PEVENT_TRACE_PROPERTIES> prop_ptrs(max_sessions);
 
@@ -684,7 +706,7 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
         auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(prop_buffers[i].get());
         props->Wnode.BufferSize = props_size;
         props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
-        props->LogFileNameOffset = sizeof(EVENT_TRACE_PROPERTIES) + 1024; // Session name max ~1024 chars
+        props->LogFileNameOffset = sizeof(EVENT_TRACE_PROPERTIES) + 1024;  // Session name max ~1024 chars
         prop_ptrs[i] = props;
     }
 
@@ -702,9 +724,9 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
         if (props == nullptr) continue;
 
         // Extract session name from properties
-        const wchar_t* session_name = reinterpret_cast<const wchar_t*>(
-            reinterpret_cast<const uint8_t*>(props) + props->LoggerNameOffset);
-        
+        const wchar_t* session_name =
+            reinterpret_cast<const wchar_t*>(reinterpret_cast<const uint8_t*>(props) + props->LoggerNameOffset);
+
         if (session_name != nullptr && _wcsnicmp(session_name, prefix, prefix_len) == 0) {
             // Session name starts with prefix, add it to output
             out_session_names.push_back(Narrow(std::wstring(session_name)));
@@ -739,13 +761,13 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
 
     // Track graphics-relevant providers separately (DxgKrnl/DXGI/DWM)
     const bool is_dxgkrnl = m_have_dxgkrnl && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dxgkrnl);
-    const bool is_dxgi    = m_have_dxgi    && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dxgi);
-    const bool is_dwm     = m_have_dwm     && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dwm);
+    const bool is_dxgi = m_have_dxgi && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dxgi);
+    const bool is_dwm = m_have_dwm && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dwm);
     const bool is_graphics_provider = (is_dxgkrnl || is_dxgi || is_dwm);
 
     if (is_dxgkrnl) m_events_dxgkrnl.fetch_add(1);
-    if (is_dxgi)    m_events_dxgi.fetch_add(1);
-    if (is_dwm)     m_events_dwm.fetch_add(1);
+    if (is_dxgi) m_events_dxgi.fetch_add(1);
+    if (is_dwm) m_events_dwm.fetch_add(1);
 
     if (is_graphics_provider) {
         std::string* p = new std::string(ProviderGuidToString(event_record->EventHeader.ProviderId));
@@ -770,8 +792,8 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
     // Occasionally introspect schema + interesting properties (rate-limited)
     {
         uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-        uint64_t last_ns = is_graphics_provider ? m_last_graphics_schema_update_time_ns.load()
-                                                : m_last_schema_update_time_ns.load();
+        uint64_t last_ns =
+            is_graphics_provider ? m_last_graphics_schema_update_time_ns.load() : m_last_schema_update_time_ns.load();
         const uint64_t one_sec_ns = 1000000000ULL;
         if (now_ns - last_ns > one_sec_ns) {
             if (is_graphics_provider) {
@@ -806,12 +828,12 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                         {
                             // Always include core descriptor bits (helps mapping unknown events)
                             char hdr[256] = {};
-                            StringCchPrintfA(hdr, std::size(hdr),
-                                             "task=%u opcode=%u level=%u keyword=0x%llx",
-                                             static_cast<unsigned int>(event_record->EventHeader.EventDescriptor.Task),
-                                             static_cast<unsigned int>(event_record->EventHeader.EventDescriptor.Opcode),
-                                             static_cast<unsigned int>(event_record->EventHeader.EventDescriptor.Level),
-                                             static_cast<unsigned long long>(event_record->EventHeader.EventDescriptor.Keyword));
+                            StringCchPrintfA(
+                                hdr, std::size(hdr), "task=%u opcode=%u level=%u keyword=0x%llx",
+                                static_cast<unsigned int>(event_record->EventHeader.EventDescriptor.Task),
+                                static_cast<unsigned int>(event_record->EventHeader.EventDescriptor.Opcode),
+                                static_cast<unsigned int>(event_record->EventHeader.EventDescriptor.Level),
+                                static_cast<unsigned long long>(event_record->EventHeader.EventDescriptor.Keyword));
                             summary = hdr;
                         }
 
@@ -822,14 +844,12 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                             if (prop_name.empty()) continue;
 
                             // Filter to properties likely to contain present/flip/composition information
-                            if (!(StringContainsI_w(prop_name, L"present") ||
-                                  StringContainsI_w(prop_name, L"flip") ||
-                                  StringContainsI_w(prop_name, L"composition") ||
-                                  StringContainsI_w(prop_name, L"independent") ||
-                                  StringContainsI_w(prop_name, L"overlay") ||
-                                  StringContainsI_w(prop_name, L"dwm") ||
-                                  StringContainsI_w(prop_name, L"tearing") ||
-                                  StringContainsI_w(prop_name, L"sync"))) {
+                            if (!(StringContainsI_w(prop_name, L"present") || StringContainsI_w(prop_name, L"flip")
+                                  || StringContainsI_w(prop_name, L"composition")
+                                  || StringContainsI_w(prop_name, L"independent")
+                                  || StringContainsI_w(prop_name, L"overlay") || StringContainsI_w(prop_name, L"dwm")
+                                  || StringContainsI_w(prop_name, L"tearing")
+                                  || StringContainsI_w(prop_name, L"sync"))) {
                                 continue;
                             }
 
@@ -884,27 +904,33 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
 
                         // Try infer from common numeric/bool fields if present
                         uint64_t u = 0;
-                        if (TryGetEventPropertyU64(event_record, L"IndependentFlip", u) ||
-                            TryGetEventPropertyU64(event_record, L"IsIndependentFlip", u)) {
-                            if (u != 0) UpdateFlipState(DxgiBypassMode::kIndependentFlip, "IndependentFlip=1", "ETW bool field");
+                        if (TryGetEventPropertyU64(event_record, L"IndependentFlip", u)
+                            || TryGetEventPropertyU64(event_record, L"IsIndependentFlip", u)) {
+                            if (u != 0)
+                                UpdateFlipState(DxgiBypassMode::kIndependentFlip, "IndependentFlip=1",
+                                                "ETW bool field");
                         }
-                        if (TryGetEventPropertyU64(event_record, L"Overlay", u) ||
-                            TryGetEventPropertyU64(event_record, L"IsOverlay", u)) {
+                        if (TryGetEventPropertyU64(event_record, L"Overlay", u)
+                            || TryGetEventPropertyU64(event_record, L"IsOverlay", u)) {
                             if (u != 0) UpdateFlipState(DxgiBypassMode::kOverlay, "Overlay=1", "ETW bool field");
                         }
-                        if (TryGetEventPropertyU64(event_record, L"Composed", u) ||
-                            TryGetEventPropertyU64(event_record, L"IsComposed", u)) {
+                        if (TryGetEventPropertyU64(event_record, L"Composed", u)
+                            || TryGetEventPropertyU64(event_record, L"IsComposed", u)) {
                             if (u != 0) UpdateFlipState(DxgiBypassMode::kComposed, "Composed=1", "ETW bool field");
                         }
 
                         // PresentMode numeric mapping (best-effort)
                         if (TryGetEventPropertyU64(event_record, L"PresentMode", u)) {
                             char buf[64] = {};
-                            StringCchPrintfA(buf, std::size(buf), "PresentMode=%llu", static_cast<unsigned long long>(u));
+                            StringCchPrintfA(buf, std::size(buf), "PresentMode=%llu",
+                                             static_cast<unsigned long long>(u));
                             delete m_last_present_mode_value.exchange(new std::string(buf));
-                            if (u == 0) UpdateFlipState(DxgiBypassMode::kComposed, buf, "ETW PresentMode numeric");
-                            else if (u == 1) UpdateFlipState(DxgiBypassMode::kOverlay, buf, "ETW PresentMode numeric");
-                            else if (u == 2) UpdateFlipState(DxgiBypassMode::kIndependentFlip, buf, "ETW PresentMode numeric");
+                            if (u == 0)
+                                UpdateFlipState(DxgiBypassMode::kComposed, buf, "ETW PresentMode numeric");
+                            else if (u == 1)
+                                UpdateFlipState(DxgiBypassMode::kOverlay, buf, "ETW PresentMode numeric");
+                            else if (u == 2)
+                                UpdateFlipState(DxgiBypassMode::kIndependentFlip, buf, "ETW PresentMode numeric");
                         }
                     }
                 }
@@ -916,12 +942,11 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
     // We intentionally use a best-effort approach based on property names, so we don't depend on
     // a copied manifest table.
     std::string present_mode;
-    if (TryGetEventPropertyString(event_record, L"PresentMode", present_mode) ||
-        TryGetEventPropertyString(event_record, L"presentMode", present_mode) ||
-        TryGetEventPropertyString(event_record, L"Present_Mode", present_mode) ||
-        TryGetEventPropertyString(event_record, L"CompositionMode", present_mode) ||
-        TryGetEventPropertyString(event_record, L"compositionMode", present_mode)) {
-
+    if (TryGetEventPropertyString(event_record, L"PresentMode", present_mode)
+        || TryGetEventPropertyString(event_record, L"presentMode", present_mode)
+        || TryGetEventPropertyString(event_record, L"Present_Mode", present_mode)
+        || TryGetEventPropertyString(event_record, L"CompositionMode", present_mode)
+        || TryGetEventPropertyString(event_record, L"compositionMode", present_mode)) {
         // Store last seen present mode-like value for UI/debugging
         {
             std::string* v = new std::string(present_mode);
@@ -943,12 +968,12 @@ void PresentMonManager::UpdateSurfaceWindowMappingFromEvent(PEVENT_RECORD event_
     uint64_t hwnd = 0;
 
     // Try common spellings
-    bool has_surface = TryGetEventPropertyU64(event_record, L"surfaceLuid", surface_luid) ||
-                       TryGetEventPropertyU64(event_record, L"luidSurface", surface_luid) ||
-                       TryGetEventPropertyU64(event_record, L"luid", surface_luid);
-    bool has_hwnd = TryGetEventPropertyU64(event_record, L"hwnd", hwnd) ||
-                    TryGetEventPropertyU64(event_record, L"hWnd", hwnd) ||
-                    TryGetEventPropertyU64(event_record, L"HWND", hwnd);
+    bool has_surface = TryGetEventPropertyU64(event_record, L"surfaceLuid", surface_luid)
+                       || TryGetEventPropertyU64(event_record, L"luidSurface", surface_luid)
+                       || TryGetEventPropertyU64(event_record, L"luid", surface_luid);
+    bool has_hwnd = TryGetEventPropertyU64(event_record, L"hwnd", hwnd)
+                    || TryGetEventPropertyU64(event_record, L"hWnd", hwnd)
+                    || TryGetEventPropertyU64(event_record, L"HWND", hwnd);
 
     if (!has_surface || !has_hwnd || surface_luid == 0 || hwnd == 0) {
         return;
@@ -1077,7 +1102,8 @@ void PresentMonManager::UpdateFlipCompatibilityFromDwmEvent(PEVENT_RECORD event_
     }
 }
 
-void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out, uint64_t within_ms) const {
+void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out,
+                                                           uint64_t within_ms) const {
     out.clear();
     const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
     const uint64_t within_ns = within_ms * 1000000ULL;
@@ -1113,9 +1139,10 @@ void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMo
         out.push_back(std::move(s));
     }
 
-    std::sort(out.begin(), out.end(), [](const PresentMonSurfaceCompatibilitySummary& a, const PresentMonSurfaceCompatibilitySummary& b) {
-        return a.last_update_time_ns > b.last_update_time_ns;
-    });
+    std::sort(out.begin(), out.end(),
+              [](const PresentMonSurfaceCompatibilitySummary& a, const PresentMonSurfaceCompatibilitySummary& b) {
+                  return a.last_update_time_ns > b.last_update_time_ns;
+              });
 }
 
 void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graphics_provider) {
@@ -1222,11 +1249,12 @@ void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSum
             // Filter by known provider names when available; fallback to GUID match
             bool ok = false;
             if (!s.provider_name.empty()) {
-                ok = StringContainsI(s.provider_name, "dxgkrnl") || StringContainsI(s.provider_name, "dxgi") || StringContainsI(s.provider_name, "dwm");
+                ok = StringContainsI(s.provider_name, "dxgkrnl") || StringContainsI(s.provider_name, "dxgi")
+                     || StringContainsI(s.provider_name, "dwm");
             } else {
-                ok = (s.provider_guid == ProviderGuidToString(m_guid_dxgkrnl) ||
-                      s.provider_guid == ProviderGuidToString(m_guid_dxgi) ||
-                      s.provider_guid == ProviderGuidToString(m_guid_dwm));
+                ok = (s.provider_guid == ProviderGuidToString(m_guid_dxgkrnl)
+                      || s.provider_guid == ProviderGuidToString(m_guid_dxgi)
+                      || s.provider_guid == ProviderGuidToString(m_guid_dwm));
             }
             if (!ok) continue;
         }
@@ -1255,14 +1283,14 @@ int PresentMonManager::PresentMonMain() {
     auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(props_buf.get());
     props->Wnode.BufferSize = props_size;
     props->Wnode.Flags = WNODE_FLAG_TRACED_GUID;
-    props->Wnode.ClientContext = 1; // QPC
+    props->Wnode.ClientContext = 1;  // QPC
     props->LogFileMode = EVENT_TRACE_REAL_TIME_MODE;
     props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
     // Reasonable defaults (in KB / counts). Some systems behave better with explicit values.
-    props->BufferSize = 256;        // 256 KB
+    props->BufferSize = 256;  // 256 KB
     props->MinimumBuffers = 64;
     props->MaximumBuffers = 256;
-    props->FlushTimer = 1;          // 1 second
+    props->FlushTimer = 1;  // 1 second
 
     TRACEHANDLE session_handle = 0;
     ULONG status = StartTraceW(&session_handle, m_session_name, props);
@@ -1272,7 +1300,8 @@ int PresentMonManager::PresentMonMain() {
             LogInfo("[PresentMon] ETW session already exists, attempting to reuse: %ls", m_session_name);
             if (QueryEtwSessionByName(m_session_name, session_handle)) {
                 // Successfully queried existing session handle
-                LogInfo("[PresentMon] Reusing existing ETW session handle: 0x%p", reinterpret_cast<void*>(session_handle));
+                LogInfo("[PresentMon] Reusing existing ETW session handle: 0x%p",
+                        reinterpret_cast<void*>(session_handle));
                 status = ERROR_SUCCESS;
             } else {
                 // Query failed, session might be in invalid state, stop and recreate
@@ -1284,7 +1313,7 @@ int PresentMonManager::PresentMonMain() {
                 status = StartTraceW(&session_handle, m_session_name, props);
             }
         }
-        
+
         if (status != ERROR_SUCCESS) {
             char err[128] = {};
             StringCchPrintfA(err, std::size(err), "StartTrace failed: %lu", status);
@@ -1315,8 +1344,8 @@ int PresentMonManager::PresentMonMain() {
         // Prefer declared keyword bits; fallback to match-all.
         ULONGLONG keyword_any = GetProviderKeywordMaskBestEffort(guid);
         // Use VERBOSE to avoid filtering out most graphics events (many are TRACE_LEVEL_VERBOSE).
-        ULONG st = EnableTraceEx2(session_handle, &guid, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
-                                 TRACE_LEVEL_VERBOSE, keyword_any, 0, 0, &params);
+        ULONG st = EnableTraceEx2(session_handle, &guid, EVENT_CONTROL_CODE_ENABLE_PROVIDER, TRACE_LEVEL_VERBOSE,
+                                  keyword_any, 0, 0, &params);
         if (st != ERROR_SUCCESS) {
             char msg[256] = {};
             StringCchPrintfA(msg, std::size(msg), "EnableTraceEx2 failed for %ls: %lu", name, st);
@@ -1327,14 +1356,13 @@ int PresentMonManager::PresentMonMain() {
     };
 
     ULONG st_dxgkrnl = m_have_dxgkrnl ? enable_provider(m_guid_dxgkrnl, L"Microsoft-Windows-DxgKrnl") : ERROR_NOT_FOUND;
-    ULONG st_dxgi    = m_have_dxgi    ? enable_provider(m_guid_dxgi,    L"Microsoft-Windows-DXGI")    : ERROR_NOT_FOUND;
-    ULONG st_dwm     = m_have_dwm     ? enable_provider(m_guid_dwm,     L"Microsoft-Windows-Dwm-Core") : ERROR_NOT_FOUND;
+    ULONG st_dxgi = m_have_dxgi ? enable_provider(m_guid_dxgi, L"Microsoft-Windows-DXGI") : ERROR_NOT_FOUND;
+    ULONG st_dwm = m_have_dwm ? enable_provider(m_guid_dwm, L"Microsoft-Windows-Dwm-Core") : ERROR_NOT_FOUND;
 
     {
         char status_msg[256] = {};
-        StringCchPrintfA(status_msg, std::size(status_msg),
-                         "ETW active (DxgKrnl=%lu, DXGI=%lu, DWM=%lu)",
-                         st_dxgkrnl, st_dxgi, st_dwm);
+        StringCchPrintfA(status_msg, std::size(status_msg), "ETW active (DxgKrnl=%lu, DXGI=%lu, DWM=%lu)", st_dxgkrnl,
+                         st_dxgi, st_dwm);
         UpdateDebugInfo("Running", status_msg, "", 0, 0);
     }
 
@@ -1366,4 +1394,3 @@ int PresentMonManager::PresentMonMain() {
 }
 
 }  // namespace presentmon
-

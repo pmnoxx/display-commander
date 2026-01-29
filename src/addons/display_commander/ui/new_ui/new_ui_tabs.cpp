@@ -7,7 +7,7 @@
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "addons_tab.hpp"
-#include "developer_new_tab.hpp"
+#include "advanced_tab.hpp"
 #include "experimental_tab.hpp"
 #include "hook_stats_tab.hpp"
 #include "hotkeys_tab.hpp"
@@ -111,7 +111,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
 
             // Check individual tab setting or fall back to "Show All Tabs"
             if (tab_id == "advanced") {
-                tab_enabled = settings::g_mainTabSettings.show_developer_tab.GetValue();
+                tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
             } else if (tab_id == "window_info") {
                 tab_enabled = settings::g_mainTabSettings.show_window_info_tab.GetValue();
             } else if (tab_id == "swapchain") {
@@ -167,7 +167,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
 
                 // Check individual tab setting or fall back to "Show All Tabs"
                 if (tab_id == "advanced") {
-                    tab_enabled = settings::g_mainTabSettings.show_developer_tab.GetValue();
+                    tab_enabled = settings::g_mainTabSettings.show_advanced_tab.GetValue();
                 } else if (tab_id == "window_info") {
                     tab_enabled = settings::g_mainTabSettings.show_window_info_tab.GetValue();
                 } else if (tab_id == "swapchain") {
@@ -218,7 +218,7 @@ void InitializeNewUI() {
 
     // Ensure settings for main and advanced tabs are loaded at UI init time
     ui::new_ui::InitMainNewTab();
-    ui::new_ui::InitDeveloperNewTab();
+    ui::new_ui::InitAdvancedTab();
     ui::new_ui::InitSwapchainTab();
     ui::new_ui::InitHotkeysTab();
     ui::new_ui::InitAddonsTab();
@@ -246,7 +246,7 @@ void InitializeNewUI() {
         "Advanced", "advanced",
         [](reshade::api::effect_runtime* runtime) {
             try {
-                ui::new_ui::DrawDeveloperNewTab();
+                ui::new_ui::DrawAdvancedTab(runtime);
             } catch (const std::exception& e) {
                 LogError("Error drawing advanced tab: %s", e.what());
             } catch (...) {

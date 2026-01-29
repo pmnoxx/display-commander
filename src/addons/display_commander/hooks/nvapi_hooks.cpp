@@ -1,7 +1,7 @@
 #include "nvapi_hooks.hpp"
 #include "../../../external/nvapi/nvapi_interface.h"
 #include "../globals.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../swapchain_events.hpp"
 #include "../utils/detour_call_tracker.hpp"
@@ -162,7 +162,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
 
     // Detect native Reflex: if the game calls SetLatencyMarker, it's using native Reflex
     // This follows Special-K's detection approach
-    if (pSetLatencyMarkerParams != nullptr && !settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+    if (pSetLatencyMarkerParams != nullptr && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         if (!g_native_reflex_detected.exchange(true)) {
             // First time detection - log it
             LogInfo("Native Reflex detected via SetLatencyMarker call (MarkerType: %d)",
@@ -170,7 +170,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         }
     }
 
-    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;
     }
 
@@ -198,7 +198,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;
     }
 
@@ -382,7 +382,7 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
         return NVAPI_OK;
     }
 
-    if (settings::g_developerTabSettings.reflex_supress_native.GetValue()) {
+    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;
     }
 

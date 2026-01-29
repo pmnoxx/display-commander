@@ -35,7 +35,7 @@ struct NVSDK_NGX_Parameter;
 #include "nvapi/vrr_status.hpp"
 
 // Settings
-#include "settings/developer_tab_settings.hpp"
+#include "settings/advanced_tab_settings.hpp"
 #include "settings/hotkeys_tab_settings.hpp"
 
 // Constants
@@ -741,7 +741,7 @@ extern std::atomic<bool> s_suppress_dinput_hooks;
 // Logging level control
 extern std::atomic<LogLevel> g_min_log_level;
 
-// External declarations for atomic variables moved to developer_tab_settings.cpp
+// External declarations for atomic variables moved to advanced_tab_settings.cpp
 extern std::atomic<bool> s_continue_rendering;
 extern std::atomic<bool> s_hide_hdr_capabilities;
 extern std::atomic<bool> s_enable_flip_chain;
@@ -766,7 +766,7 @@ extern std::atomic<bool> s_enable_performance_overlay_shortcut;
 // Forward declaration for tab settings
 namespace settings {
 class ExperimentalTabSettings;
-class DeveloperTabSettings;
+class AdvancedTabSettings;
 class MainTabSettings;
 class SwapchainTabSettings;
 class StreamlineTabSettings;
@@ -774,7 +774,7 @@ class HotkeysTabSettings;
 class HookSuppressionSettings;
 class ReShadeTabSettings;
 extern ExperimentalTabSettings g_experimentalTabSettings;
-extern DeveloperTabSettings g_developerTabSettings;
+extern AdvancedTabSettings g_advancedTabSettings;
 extern MainTabSettings g_mainTabSettings;
 extern HotkeysTabSettings g_hotkeysTabSettings;
 extern SwapchainTabSettings g_swapchainTabSettings;
@@ -1263,7 +1263,7 @@ extern std::atomic<LONGLONG> g_reflex_sleep_status_last_update_ns;   // Last upd
 // Now detects native Reflex only via SetLatencyMarker calls (following Special-K approach)
 inline bool IsNativeReflexActive(uint64_t now_ns) {
     (void)now_ns;  // Unused parameter, kept for backward compatibility
-    return g_native_reflex_detected.load() && !settings::g_developerTabSettings.reflex_supress_native.GetValue();
+    return g_native_reflex_detected.load() && !settings::g_advancedTabSettings.reflex_supress_native.GetValue();
 }
 // Backward-compatible overload (calls the above with current time)
 inline bool IsNativeReflexActive() { return IsNativeReflexActive(utils::get_now_ns()); }

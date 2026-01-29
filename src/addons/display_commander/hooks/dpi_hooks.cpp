@@ -1,5 +1,5 @@
 #include "dpi_hooks.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 
@@ -21,7 +21,7 @@ SetProcessDpiAwarenessContext_pfn SetProcessDpiAwarenessContext_Original = nullp
 
 // Helper to set DPI awareness context before calling original API
 static void EnsureDpiAwarenessContext() {
-    if (!settings::g_developerTabSettings.disable_dpi_scaling.GetValue()) {
+    if (!settings::g_advancedTabSettings.disable_dpi_scaling.GetValue()) {
         return;
     }
 

@@ -6,8 +6,6 @@ namespace ui::new_ui {
 
 void InitMainNewTab();
 
-void InitDeveloperNewTab();
-
 // Draw the main new tab content
 void DrawMainNewTab(reshade::api::effect_runtime* runtime);
 

@@ -1,6 +1,6 @@
 #include "fake_nvapi_manager.hpp"
 #include "../globals.hpp"
-#include "../settings/developer_tab_settings.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
@@ -28,7 +28,7 @@ bool FakeNvapiManager::Initialize() {
     }
 
     // Check if fake NVAPI is enabled in settings
-    if (!settings::g_developerTabSettings.fake_nvapi_enabled.GetValue()) {
+    if (!settings::g_advancedTabSettings.fake_nvapi_enabled.GetValue()) {
         LogInfo("Fake NVAPI disabled in settings");
         return false;
     }

@@ -9,7 +9,7 @@
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "nvapi/vrr_status.hpp"
-#include "settings/developer_tab_settings.hpp"
+#include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
@@ -46,7 +46,7 @@ HWND GetCurrentForeGroundWindow() {
 
 void HandleReflexAutoConfigure() {
     // Only run if auto-configure is enabled
-    if (!settings::g_developerTabSettings.reflex_auto_configure.GetValue()) {
+    if (!settings::g_advancedTabSettings.reflex_auto_configure.GetValue()) {
         return;
     }
 
@@ -61,16 +61,16 @@ void HandleReflexAutoConfigure() {
             && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue());
 
     // Get current settings
-    bool reflex_enable = settings::g_developerTabSettings.reflex_enable.GetValue();
-    bool reflex_low_latency = settings::g_developerTabSettings.reflex_low_latency.GetValue();
-    bool reflex_boost = settings::g_developerTabSettings.reflex_boost.GetValue();
-    bool reflex_use_markers = settings::g_developerTabSettings.reflex_use_markers.GetValue();
-    bool reflex_generate_markers = settings::g_developerTabSettings.reflex_generate_markers.GetValue();
-    bool reflex_enable_sleep = settings::g_developerTabSettings.reflex_enable_sleep.GetValue();
+    bool reflex_enable = settings::g_advancedTabSettings.reflex_enable.GetValue();
+    bool reflex_low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
+    bool reflex_boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
+    bool reflex_use_markers = settings::g_advancedTabSettings.reflex_use_markers.GetValue();
+    bool reflex_generate_markers = settings::g_advancedTabSettings.reflex_generate_markers.GetValue();
+    bool reflex_enable_sleep = settings::g_advancedTabSettings.reflex_enable_sleep.GetValue();
 
     // Auto-configure Reflex settings
     if (reflex_enable != is_reflex_mode) {
-        settings::g_developerTabSettings.reflex_enable.SetValue(is_reflex_mode);
+        settings::g_advancedTabSettings.reflex_enable.SetValue(is_reflex_mode);
 
         if (is_reflex_mode == false) {
             // TODO move logic to Con
@@ -80,26 +80,26 @@ void HandleReflexAutoConfigure() {
     }
 
     if (!reflex_low_latency) {
-        settings::g_developerTabSettings.reflex_low_latency.SetValue(true);
+        settings::g_advancedTabSettings.reflex_low_latency.SetValue(true);
     }
     /*
          if (!reflex_boost) {
-             settings::g_developerTabSettings.reflex_boost.SetValue(true);
+             settings::g_advancedTabSettings.reflex_boost.SetValue(true);
          } */
     {
-        if (!settings::g_developerTabSettings.reflex_use_markers.GetValue()) {
-            settings::g_developerTabSettings.reflex_use_markers.SetValue(true);
+        if (!settings::g_advancedTabSettings.reflex_use_markers.GetValue()) {
+            settings::g_advancedTabSettings.reflex_use_markers.SetValue(true);
         }
     }
 
     if (reflex_generate_markers == is_native_reflex_active
-        && settings::g_developerTabSettings.reflex_generate_markers.GetValue() != !is_native_reflex_active) {
-        settings::g_developerTabSettings.reflex_generate_markers.SetValue(!is_native_reflex_active);
+        && settings::g_advancedTabSettings.reflex_generate_markers.GetValue() != !is_native_reflex_active) {
+        settings::g_advancedTabSettings.reflex_generate_markers.SetValue(!is_native_reflex_active);
     }
 
     if (reflex_enable_sleep == is_native_reflex_active
-        && settings::g_developerTabSettings.reflex_enable_sleep.GetValue() != !is_native_reflex_active) {
-        settings::g_developerTabSettings.reflex_enable_sleep.SetValue(!is_native_reflex_active);
+        && settings::g_advancedTabSettings.reflex_enable_sleep.GetValue() != !is_native_reflex_active) {
+        settings::g_advancedTabSettings.reflex_enable_sleep.SetValue(!is_native_reflex_active);
     }
 }
 
@@ -161,7 +161,7 @@ void check_is_background() {
 
     // Apply window changes - the function will automatically determine what needs to be changed
     // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
-    if (!settings::g_developerTabSettings.suppress_window_changes.GetValue()
+    if (!settings::g_advancedTabSettings.suppress_window_changes.GetValue()
         && s_window_mode.load() != WindowMode::kNoChanges) {
         ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
     }
@@ -176,7 +176,7 @@ void check_is_background() {
 
 void HandleDiscordOverlayAutoHide() {
     // Only run if auto-hide is enabled
-    if (!settings::g_developerTabSettings.auto_hide_discord_overlay.GetValue()) {
+    if (!settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue()) {
         return;
     }
 
@@ -382,7 +382,7 @@ void every1s_checks() {
                     auto device_name_ptr = g_dxgi_output_device_name.load();
                     if (device_name_ptr != nullptr) {
                         const wchar_t* output_device_name = device_name_ptr->c_str();
-                        
+
                         // If output changed, force refresh
                         if (wcscmp(output_device_name, vrr_status::cached_output_device_name) != 0) {
                             wcsncpy_s(vrr_status::cached_output_device_name, 32, output_device_name, _TRUNCATE);
@@ -432,7 +432,7 @@ bool EnsureNvApiInitialized() {
     return true;
 }
 
-std::string WideToUtf8(const wchar_t *wstr) {
+std::string WideToUtf8(const wchar_t* wstr) {
     if (wstr == nullptr) {
         return {};
     }
@@ -461,7 +461,7 @@ std::string NormalizeDxgiDeviceNameForNvapi(std::string name) {
     return name;
 }
 
-NvAPI_Status ResolveDisplayIdByNameWithReinit(const std::string &display_name, NvU32 &out_display_id) {
+NvAPI_Status ResolveDisplayIdByNameWithReinit(const std::string& display_name, NvU32& out_display_id) {
     out_display_id = 0;
 
     NvAPI_Status st = NvAPI_DISP_GetDisplayIdByDisplayName(display_name.c_str(), &out_display_id);
@@ -477,11 +477,11 @@ NvAPI_Status ResolveDisplayIdByNameWithReinit(const std::string &display_name, N
     return st;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 namespace nvapi {
 
-bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t *dxgi_output_device_name, VrrStatus &out_status) {
+bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t* dxgi_output_device_name, VrrStatus& out_status) {
     out_status = nvapi::VrrStatus{};
 
     if (!EnsureNvApiInitialized()) {
@@ -495,22 +495,23 @@ bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t *dxgi_output_device
     const std::string nvapi_name = NormalizeDxgiDeviceNameForNvapi(raw_name);
 
     std::string stripped = raw_name;
-    if (stripped.size() >= 4 && stripped[0] == '\\' && stripped[1] == '\\' && stripped[2] == '.' && stripped[3] == '\\') {
-        stripped.erase(0, 4); // "DISPLAY1"
+    if (stripped.size() >= 4 && stripped[0] == '\\' && stripped[1] == '\\' && stripped[2] == '.'
+        && stripped[3] == '\\') {
+        stripped.erase(0, 4);  // "DISPLAY1"
     } else if (stripped.size() >= 2 && stripped[0] == '\\' && stripped[1] == '\\') {
-        stripped.erase(0, 2); // best-effort
+        stripped.erase(0, 2);  // best-effort
     }
 
     const std::string candidates[] = {
-        nvapi_name, // "\\DISPLAY1"
-        raw_name,   // "\\.\DISPLAY1"
-        stripped,   // "DISPLAY1"
+        nvapi_name,  // "\\DISPLAY1"
+        raw_name,    // "\\.\DISPLAY1"
+        stripped,    // "DISPLAY1"
     };
 
     NvU32 display_id = 0;
     NvAPI_Status resolve_st = NVAPI_ERROR;
     bool resolved = false;
-    for (const auto &candidate : candidates) {
+    for (const auto& candidate : candidates) {
         if (candidate.empty()) {
             continue;
         }
@@ -553,7 +554,7 @@ bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t *dxgi_output_device
     return true;
 }
 
-} // namespace nvapi
+}  // namespace nvapi
 
 // Main monitoring thread function
 void ContinuousMonitoringThread() {

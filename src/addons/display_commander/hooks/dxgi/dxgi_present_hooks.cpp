@@ -495,7 +495,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     bool use_fps_limiter = !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
                              && settings::g_mainTabSettings.limit_real_frames.GetValue())
                            && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue());
+                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+                                && g_native_frame_pacing_frame_id.load() > 0);
     // Skip common present logic if wrapper is handling it
     PresentCommonState state;
     if (use_fps_limiter) {
@@ -543,7 +544,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     bool use_fps_limiter = !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
                              && settings::g_mainTabSettings.limit_real_frames.GetValue())
                            && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue());
+                           && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+                                && g_native_frame_pacing_frame_id.load() > 0);
 
     PresentCommonState state;
     if (use_fps_limiter) {

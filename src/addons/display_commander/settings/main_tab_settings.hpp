@@ -63,6 +63,7 @@ class MainTabSettings {
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting experimental_fg_native_fps_limiter;
+    ui::new_ui::BoolSetting experimental_safe_mode_fps_limiter;
 
     // VSync & Tearing
     ui::new_ui::BoolSettingRef force_vsync_on;

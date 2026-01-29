@@ -2233,6 +2233,21 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
 
+        // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
+        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+            if (CheckboxSetting(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter,
+                                "Experimental Safe Mode fps limiter")) {
+                LogInfo(
+                    "Experimental Safe Mode fps limiter %s",
+                    settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Uses a safer FPS limiting path with reduced risk of stutter or instability.\n"
+                    "Experimental; may have slightly higher latency than the default limiter.");
+            }
+        }
+
         // Limit Real Frames indicator (only visible if OnPresentSync mode is selected)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {

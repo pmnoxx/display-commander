@@ -507,7 +507,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         state = HandlePresentBefore(This);
         ::OnPresentFlags2(&Flags, state.device_type, true, false);  // Called from present_detour
     }
-    display_commanderhooks::dxgi::HandlePresentBefore2();
+    if (!(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())) {
+        display_commanderhooks::dxgi::HandlePresentBefore2();
+    }
 
     if (IDXGISwapChain_Present_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
@@ -558,7 +560,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
         state = HandlePresentBefore(This);
         ::OnPresentFlags2(&PresentFlags, state.device_type, true, false);  // Called from present_detour
     }
-    display_commanderhooks::dxgi::HandlePresentBefore2();
+    if (!(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())) {
+        display_commanderhooks::dxgi::HandlePresentBefore2();
+    }
 
     if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");

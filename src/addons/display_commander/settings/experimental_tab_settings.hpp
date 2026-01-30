@@ -176,6 +176,9 @@ class ExperimentalTabSettings {
 
     // Translate mouse position from window resolution to render resolution (e.g. 3840x2160 -> 1920x1080)
     BoolSetting translate_mouse_position;
+    // Override width/height when non-zero; when either is 0 use render width/height
+    IntSetting translate_mouse_position_override_width;
+    IntSetting translate_mouse_position_override_height;
 
     // Spoof WM_SIZE/WM_DISPLAYCHANGE lParam with game render resolution (g_game_render_width/height)
     BoolSetting spoof_game_resolution_in_size_messages;

@@ -425,6 +425,27 @@ void ApplyTranslateMousePositionToCursorPos(LPPOINT lpPoint) {
     lpPoint->y = (std::max)(0L, (std::min)(lpPoint->y, render_h - 1));
 }
 
+// If spoof-game-resolution-in-size-messages is on, replace WM_SIZE/WM_DISPLAYCHANGE lParam with
+// game render size so the game sees a stable resolution (e.g. when moving between monitors).
+void ApplySpoofGameResolutionInSizeMessages(LPMSG lpMsg) {
+    if (lpMsg == nullptr || !settings::g_experimentalTabSettings.spoof_game_resolution_in_size_messages.GetValue()) {
+        return;
+    }
+    if (lpMsg->message != WM_SIZE && lpMsg->message != WM_DISPLAYCHANGE) {
+        return;
+    }
+    if (lpMsg->hwnd != g_last_swapchain_hwnd.load()) {
+        return;
+    }
+    const int override_w = settings::g_experimentalTabSettings.spoof_game_resolution_override_width.GetValue();
+    const int override_h = settings::g_experimentalTabSettings.spoof_game_resolution_override_height.GetValue();
+    const int w = (override_w > 0 && override_h > 0) ? override_w : g_game_render_width.load();
+    const int h = (override_w > 0 && override_h > 0) ? override_h : g_game_render_height.load();
+    if (w > 0 && h > 0) {
+        lpMsg->lParam = MAKELPARAM(static_cast<UINT>(w), static_cast<UINT>(h));
+    }
+}
+
 // Hooked GetMessageA function
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -434,6 +455,7 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
     // Call original function first
     BOOL result = GetMessageA_Original ? GetMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
                                        : GetMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    ApplySpoofGameResolutionInSizeMessages(lpMsg);
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
@@ -497,6 +519,7 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
     // Call original function first
     BOOL result = GetMessageW_Original ? GetMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
                                        : GetMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    ApplySpoofGameResolutionInSizeMessages(lpMsg);
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
@@ -561,6 +584,7 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
     // Call original function first
     BOOL result = PeekMessageA_Original ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
                                         : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    ApplySpoofGameResolutionInSizeMessages(lpMsg);
 
     // If we got a message
     if (result && lpMsg != nullptr) {
@@ -623,6 +647,7 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
     // Call original function first
     BOOL result = PeekMessageW_Original ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
                                         : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    ApplySpoofGameResolutionInSizeMessages(lpMsg);
 
     // If we got a message
     if (result && lpMsg != nullptr) {

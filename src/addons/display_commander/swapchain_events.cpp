@@ -511,8 +511,19 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     g_game_render_width.store(desc.back_buffer.texture.width);
     g_game_render_height.store(desc.back_buffer.texture.height);
-    LogInfo("OnCreateSwapchainCapture2 - Game render resolution: %ux%u", 
-            desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+    auto apply_changes = settings::g_experimentalTabSettings.apply_changes_on_create_swapchain.GetValue();
+    LogInfo("OnCreateSwapchainCapture2 - Game render resolution: %ux%u, apply changes: %s",
+            desc.back_buffer.texture.width, desc.back_buffer.texture.height, apply_changes ? "YES" : "NO");
+
+    if (apply_changes) {
+        desc.back_buffer.texture.width =
+            settings::g_experimentalTabSettings.spoof_game_resolution_override_width.GetValue();
+        desc.back_buffer.texture.height =
+            settings::g_experimentalTabSettings.spoof_game_resolution_override_height.GetValue();
+
+        LogInfo("OnCreateSwapchainCapture2 - Game render resolution overridden: %ux%u", desc.back_buffer.texture.width,
+                desc.back_buffer.texture.height);
+    }
 
     // Check if this is a supported API (D3D9, D3D10, D3D11, D3D12)
     const bool is_d3d9 = (api == reshade::api::device_api::d3d9);
@@ -1014,11 +1025,11 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
                 g_game_render_width.store(desc.texture.width);
                 g_game_render_height.store(desc.texture.height);
                 if (resize) {
-                    LogInfo("OnInitSwapchain (resize) - Game render resolution: %ux%u", 
-                            desc.texture.width, desc.texture.height);
+                    LogInfo("OnInitSwapchain (resize) - Game render resolution: %ux%u", desc.texture.width,
+                            desc.texture.height);
                 } else {
-                    LogInfo("OnInitSwapchain (create) - Game render resolution: %ux%u", 
-                            desc.texture.width, desc.texture.height);
+                    LogInfo("OnInitSwapchain (create) - Game render resolution: %ux%u", desc.texture.width,
+                            desc.texture.height);
                 }
             }
         }

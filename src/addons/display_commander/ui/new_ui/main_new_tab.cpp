@@ -641,7 +641,7 @@ void DrawAdvancedSettings() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Enable advanced settings to show advanced tabs (Advanced, Experimental, HID Input, etc.).\n"
+                "Enable advanced settings to show advanced tabs (Advanced, Debug, HID Input, etc.).\n"
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
     }
@@ -700,16 +700,6 @@ void DrawAdvancedSettings() {
         }
     }
 
-    if (ui::new_ui::g_tab_manager.HasTab("important_info")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_important_info_tab, "Show Important Info Tab")) {
-            LogInfo("Show Important Info tab %s",
-                    settings::g_mainTabSettings.show_important_info_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Important Info tab even when 'Show All Tabs' is disabled.");
-        }
-    }
-
     if (ui::new_ui::g_tab_manager.HasTab("controller")) {
         if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab")) {
             LogInfo("Show Controller tab %s",
@@ -718,16 +708,6 @@ void DrawAdvancedSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Shows the Controller tab (XInput monitoring and remapping) even when 'Show All Tabs' is disabled.");
-        }
-    }
-
-    if (ui::new_ui::g_tab_manager.HasTab("hook_stats")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_hook_stats_tab, "Show Hook Statistics Tab")) {
-            LogInfo("Show Hook Statistics tab %s",
-                    settings::g_mainTabSettings.show_hook_stats_tab.GetValue() ? "enabled" : "disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Hook Statistics tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -742,12 +722,12 @@ void DrawAdvancedSettings() {
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("experimental")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Experimental Tab")) {
-            LogInfo("Show Experimental tab %s",
+        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Debug Tab")) {
+            LogInfo("Show Debug tab %s",
                     settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Experimental tab even when 'Show All Tabs' is disabled.");
+            ImGui::SetTooltip("Shows the Debug tab even when 'Show All Tabs' is disabled.");
         }
     }
 

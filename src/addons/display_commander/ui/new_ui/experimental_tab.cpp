@@ -1,4 +1,10 @@
 #include "experimental_tab.hpp"
+#include "hook_stats_tab.hpp"
+#include "main_new_tab.hpp"
+#include "streamline_tab.hpp"
+#include "swapchain_tab.hpp"
+#include "updates_tab.hpp"
+#include "window_info_tab.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
@@ -78,7 +84,7 @@ void InitExperimentalTab() {
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
 
-void DrawExperimentalTab() {
+void DrawExperimentalTab(reshade::api::effect_runtime* runtime) {
     if (!ImGui::BeginTabBar("ExperimentalSubTabs")) {
         return;
     }
@@ -256,6 +262,38 @@ void DrawExperimentalTab() {
             }
         }
 
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Window Info")) {
+        DrawWindowInfoTab();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Swapchain")) {
+        DrawSwapchainTab(runtime);
+        ImGui::EndTabItem();
+    }
+
+    if (GetModuleHandleW(L"sl.interposer.dll") != nullptr) {
+        if (ImGui::BeginTabItem("Streamline")) {
+            DrawStreamlineTab();
+            ImGui::EndTabItem();
+        }
+    }
+
+    if (ImGui::BeginTabItem("Hook Statistics")) {
+        DrawHookStatsTab();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Updates")) {
+        DrawUpdatesTab();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Important Info")) {
+        DrawImportantInfo();
         ImGui::EndTabItem();
     }
 

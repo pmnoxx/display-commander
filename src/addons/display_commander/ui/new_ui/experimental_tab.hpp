@@ -1,12 +1,18 @@
 #pragma once
 
+namespace reshade {
+namespace api {
+struct effect_runtime;
+}
+}  // namespace reshade
+
 namespace ui::new_ui {
 
 // Initialize experimental tab
 void InitExperimentalTab();
 
 // Draw the experimental tab content
-void DrawExperimentalTab();
+void DrawExperimentalTab(reshade::api::effect_runtime* runtime);
 
 // Draw auto-click feature section
 void DrawAutoClickFeature();

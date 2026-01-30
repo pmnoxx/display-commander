@@ -290,7 +290,7 @@ enum class DxgiBypassMode : std::uint8_t {
 };
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
 enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kDisabled = 2, kLatentSync = 3 };
-enum class WindowMode : std::uint8_t { kNoChanges = 0, kFullscreen = 1, kAspectRatio = 2 };
+enum class WindowMode : std::uint8_t { kNoChanges = 0, kFullscreen = 1, kAspectRatio = 2, kBorderlessFullscreenAutoRes = 3 };
 enum class AspectRatioType : std::uint8_t {
     k3_2 = 0,     // 3:2
     k4_3 = 1,     // 4:3

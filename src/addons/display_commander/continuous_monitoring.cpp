@@ -3,6 +3,7 @@
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
 #include "background_window.hpp"
+#include "display_cache.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
@@ -368,6 +369,85 @@ void every1s_checks() {
     {
         auto stats = dxgi::fps_limiter::GetRefreshRateStats();
         g_cached_refresh_rate_stats.store(std::make_shared<const dxgi::fps_limiter::RefreshRateStats>(stats));
+    }
+
+    // Handle kBorderlessFullscreenAutoRes mode: change resolution to match game render resolution
+    {
+        if (s_window_mode.load() == WindowMode::kBorderlessFullscreenAutoRes) {
+            HWND hwnd = g_last_swapchain_hwnd.load();
+            if (hwnd != nullptr && IsWindow(hwnd) != FALSE) {
+                int render_w = g_last_backbuffer_width.load();
+                int render_h = g_last_backbuffer_height.load();
+                if (render_w > 0 && render_h > 0) {
+                    // Get the monitor that contains the window
+                    HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                    if (hmon != nullptr) {
+                        // Get display cache info
+                        if (!display_cache::g_displayCache.IsInitialized()) {
+                            display_cache::g_displayCache.Initialize();
+                        }
+                        
+                        // Find display index for this monitor
+                        auto displays = display_cache::g_displayCache.GetDisplays();
+                        int target_display_index = -1;
+                        if (displays) {
+                            for (size_t i = 0; i < displays->size(); ++i) {
+                                if ((*displays)[i] && (*displays)[i]->monitor_handle == hmon) {
+                                    target_display_index = static_cast<int>(i);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (target_display_index >= 0) {
+                            const auto* disp = display_cache::g_displayCache.GetDisplay(target_display_index);
+                            if (disp != nullptr) {
+                                const int display_width = disp->width;
+                                const int display_height = disp->height;
+                                
+                                // Check if resolution change is needed
+                                if (display_width != render_w || display_height != render_h) {
+                                    namespace res_widget = display_commander::widgets::resolution_widget;
+                                    
+                                    // Ensure resolution widget is initialized
+                                    if (!res_widget::g_resolution_widget) {
+                                        res_widget::InitializeResolutionWidget();
+                                    }
+                                    
+                                    if (res_widget::g_resolution_widget) {
+                                        LogInfo("Continuous monitoring (kBorderlessFullscreenAutoRes): Changing resolution to match game render resolution: %dx%d",
+                                                render_w, render_h);
+                                        
+                                        // Get current refresh rate
+                                        display_cache::RationalRefreshRate current_refresh = disp->current_refresh_rate;
+                                        
+                                        // Use ResolutionWidget to change resolution
+                                        bool success = res_widget::g_resolution_widget->ApplyResolution(
+                                            target_display_index, render_w, render_h,
+                                            static_cast<int>(current_refresh.numerator),
+                                            static_cast<int>(current_refresh.denominator));
+                                        
+                                        if (success) {
+                                            LogInfo("Continuous monitoring (kBorderlessFullscreenAutoRes): Resolution changed successfully to %dx%d",
+                                                    render_w, render_h);
+                                            // Update display cache after resolution change
+                                            display_cache::g_displayCache.Refresh();
+                                            // Trigger window resize after resolution change
+                                            ApplyWindowChange(hwnd, "kBorderlessFullscreenAutoRes_resolution_change");
+                                        } else {
+                                            LogWarn("Continuous monitoring (kBorderlessFullscreenAutoRes): Failed to change resolution to %dx%d",
+                                                    render_w, render_h);
+                                        }
+                                    } else {
+                                        LogWarn("Continuous monitoring (kBorderlessFullscreenAutoRes): Resolution widget not available");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Update VRR status via NVAPI (runs every second, if enabled in settings)

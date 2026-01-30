@@ -611,6 +611,19 @@ bool ResolutionWidget::ApplyCurrentSelection() {
     return TryApplyResolution(actual_display, resolution, refresh);
 }
 
+bool ResolutionWidget::ApplyResolution(int display_index, int width, int height, int refresh_numerator,
+                                       int refresh_denominator) {
+    ResolutionData resolution(width, height);
+    ResolutionData refresh;
+    if (refresh_numerator > 0 && refresh_denominator > 0) {
+        refresh = ResolutionData(0, 0, refresh_numerator, refresh_denominator);
+    } else {
+        // Use current refresh rate if not specified
+        refresh.is_current = true;
+    }
+    return TryApplyResolution(display_index, resolution, refresh);
+}
+
 void ResolutionWidget::PrepareForAutoApply() {
     // Ensure widget is initialized
     if (!is_initialized_) {

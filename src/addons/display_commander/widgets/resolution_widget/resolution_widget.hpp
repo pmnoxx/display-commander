@@ -30,6 +30,9 @@ class ResolutionWidget {
     // Apply current selection (public for auto-apply on start)
     bool ApplyCurrentSelection();
     
+    // Apply a specific resolution (public for programmatic use)
+    bool ApplyResolution(int display_index, int width, int height, int refresh_numerator = 0, int refresh_denominator = 0);
+    
     // Prepare widget for auto-apply (ensures initialization and settings are loaded)
     void PrepareForAutoApply();
 

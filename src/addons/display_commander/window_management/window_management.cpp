@@ -110,6 +110,10 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
         const int display_width = disp->width;
         const int display_height = disp->height;
 
+        // Get desired dimensions and position from global settings
+        // Use manual or aspect ratio mode
+        ComputeDesiredSize(display_width, display_height, local_state.desired_width, local_state.desired_height);
+
         if (local_state.desired_width > display_width) {
             std::ostringstream oss;
             oss << "CalculateWindowState: Desired width " << local_state.desired_width << " exceeds monitor width "
@@ -117,9 +121,6 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
             LogInfo(oss.str().c_str());
             local_state.desired_width = display_width;
         }
-        // Get desired dimensions and position from global settings
-        // Use manual or aspect ratio mode
-        ComputeDesiredSize(display_width, display_height, local_state.desired_width, local_state.desired_height);
 
         if (local_state.desired_height > display_height) {
             std::ostringstream oss;

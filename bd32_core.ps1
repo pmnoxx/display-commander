@@ -74,7 +74,7 @@ if ($LASTEXITCODE -eq 0) {
     # Find the 32-bit addon file
     $addon32File = Get-ChildItem -Path "build32\src" -Recurse -Name "zzz_display_commander.addon32" | Select-Object -First 1
     if ($addon32File) {
-        $sourcePath = "build32\$addon32File"
+        $sourcePath = "build32\src\$addon32File"
         Copy-Item $sourcePath "build32\zzz_display_commander.addon32" -Force
         Write-Host "Copied 32-bit addon to: build32\zzz_display_commander.addon32" -ForegroundColor Cyan
 

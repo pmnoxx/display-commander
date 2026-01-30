@@ -32,9 +32,11 @@ std::atomic<int> s_cpu_cores{0};  // 0 = default (no change), max = all cores
 namespace settings {
 
 MainTabSettings::MainTabSettings()
-    : window_mode("window_mode", s_window_mode, static_cast<int>(WindowMode::kNoChanges),
-                  {"No changes mode", "Borderless Fullscreen", "Borderless Windowed (Aspect Ratio)"},
-                  "DisplayCommander"),
+    : window_mode(
+          "window_mode", s_window_mode, static_cast<int>(WindowMode::kNoChanges),
+          {"No changes mode", "Borderless Fullscreen (resize to fullscreen)", "Borderless Windowed (Aspect Ratio)",
+           "Borderless fullscreen (auto change resolution to game render resolution)"},
+          "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9
       window_aspect_width("aspect_width", s_aspect_width, 0,

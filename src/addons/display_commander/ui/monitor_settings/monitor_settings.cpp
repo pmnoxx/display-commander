@@ -3,20 +3,20 @@
 #include "../../display_restore.hpp"
 #include "../ui_display_tab.hpp"
 
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <iomanip>
+#include <reshade_imgui.hpp>
+#include <sstream>
+#include <thread>
 #include "../../globals.hpp"
+#include "../../hooks/display_settings_hooks.hpp"
 #include "../../resolution_helpers.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
-#include "../../hooks/display_settings_hooks.hpp"
 #include "../new_ui/settings_wrapper.hpp"
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <reshade_imgui.hpp>
-#include <iomanip>
-#include <sstream>
-#include <thread>
 
 namespace ui::monitor_settings {
 
@@ -36,40 +36,29 @@ static ui::new_ui::RefreshRatePairSetting g_setting_selected_refresh_1("Selected
 static ui::new_ui::RefreshRatePairSetting g_setting_selected_refresh_2("SelectedRefreshIndex_2", 0, 0);
 static ui::new_ui::RefreshRatePairSetting g_setting_selected_refresh_3("SelectedRefreshIndex_3", 0, 0);
 
-static ui::new_ui::ResolutionPairSetting &GetResSettingForDisplay(int display_index) {
+static ui::new_ui::ResolutionPairSetting& GetResSettingForDisplay(int display_index) {
     switch (display_index) {
-    case 0:
-        return g_setting_selected_resolution_0;
-    case 1:
-        return g_setting_selected_resolution_1;
-    case 2:
-        return g_setting_selected_resolution_2;
-    case 3:
-        return g_setting_selected_resolution_3;
-    default:
-        return g_setting_selected_resolution_0;
+        case 0:  return g_setting_selected_resolution_0;
+        case 1:  return g_setting_selected_resolution_1;
+        case 2:  return g_setting_selected_resolution_2;
+        case 3:  return g_setting_selected_resolution_3;
+        default: return g_setting_selected_resolution_0;
     }
 }
 
-static ui::new_ui::RefreshRatePairSetting &GetRefreshSettingForDisplay(int display_index) {
+static ui::new_ui::RefreshRatePairSetting& GetRefreshSettingForDisplay(int display_index) {
     switch (display_index) {
-    case 0:
-        return g_setting_selected_refresh_0;
-    case 1:
-        return g_setting_selected_refresh_1;
-    case 2:
-        return g_setting_selected_refresh_2;
-    case 3:
-        return g_setting_selected_refresh_3;
-    default:
-        return g_setting_selected_refresh_0;
+        case 0:  return g_setting_selected_refresh_0;
+        case 1:  return g_setting_selected_refresh_1;
+        case 2:  return g_setting_selected_refresh_2;
+        case 3:  return g_setting_selected_refresh_3;
+        default: return g_setting_selected_refresh_0;
     }
 }
 
 static void EnsurePersistentSettingsLoadedOnce() {
     static bool loaded = false;
-    if (loaded)
-        return;
+    if (loaded) return;
     loaded = true;
 
     // Load new format settings
@@ -98,8 +87,8 @@ static std::atomic<bool> g_resolution_auto_apply_failed{false};
 static std::atomic<bool> g_refresh_auto_apply_failed{false};
 
 // Helper: Apply current selection (DXGI first, then legacy) and return success
-static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width, int &out_height,
-                                         display_cache::RationalRefreshRate &out_refresh_rate) {
+static bool TryApplyCurrentSelectionOnce(int& out_monitor_index, int& out_width, int& out_height,
+                                         display_cache::RationalRefreshRate& out_refresh_rate) {
     // Determine monitor index
     int actual_monitor_index = static_cast<int>(s_selected_monitor_index.load());
     if (s_selected_monitor_index.load() == 0) {
@@ -108,7 +97,7 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
             HMONITOR current_monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
             if (current_monitor) {
                 for (int j = 0; j < static_cast<int>(display_cache::g_displayCache.GetDisplayCount()); j++) {
-                    const auto *display = display_cache::g_displayCache.GetDisplay(j);
+                    const auto* display = display_cache::g_displayCache.GetDisplay(j);
                     if (display && display->monitor_handle == current_monitor) {
                         actual_monitor_index = j;
                         break;
@@ -126,8 +115,8 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
 
     // Get resolution from new pair-based settings
     int persist_slot = (actual_monitor_index < 0) ? 0 : ((actual_monitor_index > 3) ? 3 : actual_monitor_index);
-    auto &resSetting = GetResSettingForDisplay(persist_slot);
-    auto &refreshSetting = GetRefreshSettingForDisplay(persist_slot);
+    auto& resSetting = GetResSettingForDisplay(persist_slot);
+    auto& refreshSetting = GetRefreshSettingForDisplay(persist_slot);
 
     int width = resSetting.GetWidth();
     int height = resSetting.GetHeight();
@@ -166,14 +155,12 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
     }
 
     // Fallback: legacy ChangeDisplaySettingsExW
-    const auto *display = display_cache::g_displayCache.GetDisplay(actual_monitor_index);
-    if (!display)
-        return false;
+    const auto* display = display_cache::g_displayCache.GetDisplay(actual_monitor_index);
+    if (!display) return false;
     HMONITOR hmon = display->monitor_handle;
     MONITORINFOEXW mi;
     mi.cbSize = sizeof(mi);
-    if (!GetMonitorInfoW(hmon, &mi))
-        return false;
+    if (!GetMonitorInfoW(hmon, &mi)) return false;
 
     DEVMODEW dm;
     ZeroMemory(&dm, sizeof(dm));
@@ -197,7 +184,7 @@ static bool TryApplyCurrentSelectionOnce(int &out_monitor_index, int &out_width,
 }
 
 // Forward declaration for confirmation countdown used below
-static void BeginConfirmationCountdown(int display_index, const std::string &label, int seconds);
+static void BeginConfirmationCountdown(int display_index, const std::string& label, int seconds);
 
 static void StartResolutionAutoApplyWithBackoff() {
     uint64_t task_id = g_resolution_apply_task_id.fetch_add(1) + 1;
@@ -206,8 +193,7 @@ static void StartResolutionAutoApplyWithBackoff() {
         const int delays_sec[5] = {1, 2, 4, 8, 16};
         for (int i = 0; i < 5; ++i) {
             // Cancellation check
-            if (g_resolution_apply_task_id.load() != task_id)
-                return;
+            if (g_resolution_apply_task_id.load() != task_id) return;
             int mon = -1, w = 0, h = 0;
             display_cache::RationalRefreshRate rr{};
             if (TryApplyCurrentSelectionOnce(mon, w, h, rr)) {
@@ -219,8 +205,7 @@ static void StartResolutionAutoApplyWithBackoff() {
             // Wait before next attempt
             int remaining_ms = delays_sec[i] * 1000;
             while (remaining_ms > 0) {
-                if (g_resolution_apply_task_id.load() != task_id)
-                    return;
+                if (g_resolution_apply_task_id.load() != task_id) return;
                 int step = (std::min)(remaining_ms, 100);
                 std::this_thread::sleep_for(std::chrono::milliseconds(step));
                 remaining_ms -= step;
@@ -240,8 +225,7 @@ static void StartRefreshAutoApplyWithBackoff() {
     std::thread([task_id]() {
         const int delays_sec[5] = {1, 2, 4, 8, 16};
         for (int i = 0; i < 5; ++i) {
-            if (g_refresh_apply_task_id.load() != task_id)
-                return;
+            if (g_refresh_apply_task_id.load() != task_id) return;
             int mon = -1, w = 0, h = 0;
             display_cache::RationalRefreshRate rr{};
             if (TryApplyCurrentSelectionOnce(mon, w, h, rr)) {
@@ -252,8 +236,7 @@ static void StartRefreshAutoApplyWithBackoff() {
             }
             int remaining_ms = delays_sec[i] * 1000;
             while (remaining_ms > 0) {
-                if (g_refresh_apply_task_id.load() != task_id)
-                    return;
+                if (g_refresh_apply_task_id.load() != task_id) return;
                 int step = (std::min)(remaining_ms, 100);
                 std::this_thread::sleep_for(std::chrono::milliseconds(step));
                 remaining_ms -= step;
@@ -270,10 +253,10 @@ static void StartRefreshAutoApplyWithBackoff() {
 static std::atomic<bool> g_has_pending_confirmation{false};
 static std::atomic<int> g_confirm_seconds_remaining{0};
 static std::atomic<uint64_t> g_confirm_session_id{0};
-static int g_last_applied_display_index = -1; // cache index used when applying
+static int g_last_applied_display_index = -1;  // cache index used when applying
 static std::string g_last_applied_label;
 
-static void BeginConfirmationCountdown(int display_index, const std::string &label, int seconds = 15) {
+static void BeginConfirmationCountdown(int display_index, const std::string& label, int seconds = 15) {
     g_last_applied_display_index = display_index;
     g_last_applied_label = label;
     g_confirm_seconds_remaining.store(seconds);
@@ -281,8 +264,7 @@ static void BeginConfirmationCountdown(int display_index, const std::string &lab
     uint64_t session_id = g_confirm_session_id.fetch_add(1) + 1;
     std::thread([session_id]() {
         while (g_has_pending_confirmation.load()) {
-            if (g_confirm_session_id.load() != session_id)
-                return; // superseded
+            if (g_confirm_session_id.load() != session_id) return;  // superseded
             int remaining = g_confirm_seconds_remaining.load();
             if (remaining <= 0) {
                 // Time up: auto-revert
@@ -292,8 +274,7 @@ static void BeginConfirmationCountdown(int display_index, const std::string &lab
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
             // decrement if still same session
-            if (g_confirm_session_id.load() != session_id)
-                return;
+            if (g_confirm_session_id.load() != session_id) return;
             g_confirm_seconds_remaining.store(remaining - 1);
         }
     }).detach();
@@ -301,8 +282,7 @@ static void BeginConfirmationCountdown(int display_index, const std::string &lab
 
 // Render UI and actions for pending confirmation
 void HandlePendingConfirmationUI() {
-    if (!g_has_pending_confirmation.load())
-        return;
+    if (!g_has_pending_confirmation.load()) return;
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -341,21 +321,21 @@ void HandleAutoDetection() {
 
             if (monitor_index >= 0) {
                 // Found matching monitor by device ID
-                s_selected_monitor_index.store(static_cast<float>(monitor_index)); // Set to direct monitor index
+                s_selected_monitor_index.store(static_cast<float>(monitor_index));  // Set to direct monitor index
                 LogInfo("Auto-detection: Found monitor by device ID: %s (index %d)", saved_device_id.c_str(),
                         monitor_index);
 
                 // Prefer saved indices for this display (0..3). If out of range, fallback to closest
                 if (monitor_index >= 0 && monitor_index <= 3) {
-                    auto &resSetting = GetResSettingForDisplay(monitor_index);
-                    auto &refSetting = GetRefreshSettingForDisplay(monitor_index);
+                    auto& resSetting = GetResSettingForDisplay(monitor_index);
+                    auto& refSetting = GetRefreshSettingForDisplay(monitor_index);
                     // For new format, we need to find the matching index
                     // For now, default to current resolution/refresh rate
                     s_selected_resolution_index.store(0);
                     s_selected_refresh_rate_index.store(0);
                 } else {
                     // Use the new methods to find closest supported modes to current settings
-                    const auto *display = display_cache::g_displayCache.GetDisplay(monitor_index);
+                    const auto* display = display_cache::g_displayCache.GetDisplay(monitor_index);
                     if (display) {
                         auto closest_resolution_index = display->FindClosestResolutionIndex();
                         if (closest_resolution_index.has_value()) {
@@ -378,7 +358,7 @@ void HandleAutoDetection() {
 
                     // Find which monitor index this corresponds to
                     for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
-                        const auto *display = display_cache::g_displayCache.GetDisplay(i);
+                        const auto* display = display_cache::g_displayCache.GetDisplay(i);
                         if (display && display->monitor_handle == current_monitor) {
                             // Set to direct monitor index
                             s_selected_monitor_index.store(static_cast<float>(i));
@@ -386,8 +366,8 @@ void HandleAutoDetection() {
 
                             // Prefer saved indices for this display (0..3). If out of range, fallback to closest
                             if (i >= 0 && i <= 3) {
-                                auto &resSetting = GetResSettingForDisplay(i);
-                                auto &refSetting = GetRefreshSettingForDisplay(i);
+                                auto& resSetting = GetResSettingForDisplay(i);
+                                auto& refSetting = GetRefreshSettingForDisplay(i);
                                 // For new format, we need to find the matching index
                                 // For now, default to current resolution/refresh rate
                                 s_selected_resolution_index.store(0);
@@ -415,11 +395,11 @@ void HandleAutoDetection() {
 }
 
 // Handle monitor selection UI
-void HandleMonitorSelection(const std::vector<std::string> &monitor_labels) {
+void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
     // Check if current monitor is primary
     std::string monitor_label = "Monitor";
     if (s_selected_monitor_index >= 0 && s_selected_monitor_index < static_cast<int>(monitor_labels.size())) {
-        const auto *display = display_cache::g_displayCache.GetDisplay(static_cast<int>(s_selected_monitor_index));
+        const auto* display = display_cache::g_displayCache.GetDisplay(static_cast<int>(s_selected_monitor_index));
         if (display && display->monitor_handle) {
             // Use cached primary monitor flag instead of calling GetMonitorInfoW
             if (display->is_primary) {
@@ -444,12 +424,12 @@ void HandleMonitorSelection(const std::vector<std::string> &monitor_labels) {
                             // Find which monitor index this corresponds to in the display cache
                             for (int j = 0; j < static_cast<int>(display_cache::g_displayCache.GetDisplayCount());
                                  j++) {
-                                const auto *display = display_cache::g_displayCache.GetDisplay(j);
+                                const auto* display = display_cache::g_displayCache.GetDisplay(j);
                                 if (display && display->monitor_handle == current_monitor) {
                                     // Prefer saved indices for this display (0..3)
                                     if (j >= 0 && j <= 3) {
-                                        auto &resSetting = GetResSettingForDisplay(j);
-                                        auto &refSetting = GetRefreshSettingForDisplay(j);
+                                        auto& resSetting = GetResSettingForDisplay(j);
+                                        auto& refSetting = GetRefreshSettingForDisplay(j);
                                         // For new format, we need to find the matching index
                                         // For now, default to current resolution/refresh rate
                                         s_selected_resolution_index.store(0);
@@ -473,13 +453,13 @@ void HandleMonitorSelection(const std::vector<std::string> &monitor_labels) {
                 } else {
                     // Regular monitor selected - auto-select closest resolution and refresh rate for the newly selected
                     // monitor
-                    const auto *display =
-                        display_cache::g_displayCache.GetDisplay(i - 1); // -1 because monitors start at index 1 now
+                    const auto* display =
+                        display_cache::g_displayCache.GetDisplay(i - 1);  // -1 because monitors start at index 1 now
                     if (display) {
                         int actual = i - 1;
                         if (actual >= 0 && actual <= 3) {
-                            auto &resSetting = GetResSettingForDisplay(actual);
-                            auto &refSetting = GetRefreshSettingForDisplay(actual);
+                            auto& resSetting = GetResSettingForDisplay(actual);
+                            auto& refSetting = GetRefreshSettingForDisplay(actual);
                             // For new format, we need to find the matching index
                             // For now, default to current resolution/refresh rate
                             s_selected_resolution_index.store(0);
@@ -518,7 +498,7 @@ void HandleResolutionSelection(int selected_monitor_index) {
             if (current_monitor) {
                 // Find which monitor index this corresponds to in the display cache
                 for (int j = 0; j < static_cast<int>(display_cache::g_displayCache.GetDisplayCount()); j++) {
-                    const auto *display = display_cache::g_displayCache.GetDisplay(j);
+                    const auto* display = display_cache::g_displayCache.GetDisplay(j);
                     if (display && display->monitor_handle == current_monitor) {
                         actual_monitor_index = j;
                         break;
@@ -533,13 +513,13 @@ void HandleResolutionSelection(int selected_monitor_index) {
 
     // Determine persistence slot (0..3)
     int persist_slot = (actual_monitor_index < 0) ? 0 : ((actual_monitor_index > 3) ? 3 : actual_monitor_index);
-    auto &resSetting = GetResSettingForDisplay(persist_slot);
-    auto &refSetting = GetRefreshSettingForDisplay(persist_slot);
+    auto& resSetting = GetResSettingForDisplay(persist_slot);
+    auto& refSetting = GetRefreshSettingForDisplay(persist_slot);
 
     auto resolution_labels = display_cache::g_displayCache.GetResolutionLabels(actual_monitor_index);
     if (!resolution_labels.empty()) {
         // Find current selection index based on stored resolution values
-        int current_selection_index = 0; // Default to "Current Resolution"
+        int current_selection_index = 0;  // Default to "Current Resolution"
 
         int stored_width = resSetting.GetWidth();
         int stored_height = resSetting.GetHeight();
@@ -568,7 +548,7 @@ void HandleResolutionSelection(int selected_monitor_index) {
                 const bool is_selected = (i == current_selection_index);
                 if (ImGui::Selectable(resolution_labels[i].c_str(), is_selected)) {
                     s_selected_resolution_index.store(static_cast<float>(i));
-                    s_selected_refresh_rate_index.store(0); // Reset refresh rate when resolution changes
+                    s_selected_refresh_rate_index.store(0);  // Reset refresh rate when resolution changes
 
                     if (i == 0) {
                         // Current resolution
@@ -579,7 +559,7 @@ void HandleResolutionSelection(int selected_monitor_index) {
                         int width, height;
                         if (sscanf_s(resolution_labels[i].c_str(), "%d x %d", &width, &height) == 2) {
                             resSetting.SetResolution(width, height);
-                            refSetting.SetCurrentRefreshRate(); // Reset to current refresh rate
+                            refSetting.SetCurrentRefreshRate();  // Reset to current refresh rate
                         }
                     }
 
@@ -614,7 +594,7 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                 if (current_monitor) {
                     // Find which monitor index this corresponds to in the display cache
                     for (int j = 0; j < static_cast<int>(display_cache::g_displayCache.GetDisplayCount()); j++) {
-                        const auto *display = display_cache::g_displayCache.GetDisplay(j);
+                        const auto* display = display_cache::g_displayCache.GetDisplay(j);
                         if (display && display->monitor_handle == current_monitor) {
                             actual_monitor_index = j;
                             break;
@@ -629,7 +609,7 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
 
         // Determine persistence slot (0..3)
         int persist_slot = (actual_monitor_index < 0) ? 0 : ((actual_monitor_index > 3) ? 3 : actual_monitor_index);
-        auto &refSetting = GetRefreshSettingForDisplay(persist_slot);
+        auto& refSetting = GetRefreshSettingForDisplay(persist_slot);
 
         auto resolution_labels = display_cache::g_displayCache.GetResolutionLabels(actual_monitor_index);
         if (s_selected_resolution_index < static_cast<int>(resolution_labels.size())) {
@@ -637,7 +617,7 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                 display_cache::g_displayCache.GetRefreshRateLabels(actual_monitor_index, selected_resolution_index);
             if (!refresh_rate_labels.empty()) {
                 // Find current selection index based on stored refresh rate values
-                int current_refresh_index = 0; // Default to "Current Refresh Rate"
+                int current_refresh_index = 0;  // Default to "Current Refresh Rate"
 
                 int stored_numerator = refSetting.GetNumerator();
                 int stored_denominator = refSetting.GetDenominator();
@@ -703,33 +683,6 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
         }
     }
 }
-
-// Handle apply display settings at start checkbox
-void HandleApplyDisplaySettingsAtStartCheckbox() {
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    bool apply_display_settings_at_start = s_apply_display_settings_at_start.load();
-    if (ImGui::Checkbox("Apply display settings at game start", &apply_display_settings_at_start)) {
-        s_apply_display_settings_at_start.store(apply_display_settings_at_start);
-        g_setting_apply_display_settings_at_start.SetValue(apply_display_settings_at_start);
-        g_setting_apply_display_settings_at_start.Save();
-        // Log the setting change
-        if (apply_display_settings_at_start) {
-            LogInfo("Apply display settings at game start: ENABLED");
-        } else {
-            LogInfo("Apply display settings at game start: DISABLED");
-        }
-    }
-
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "When enabled, automatically applies the selected resolution and refresh rate when the game starts.\nThis "
-            "ensures your preferred display settings are active from the beginning of your gaming session.");
-    }
-}
-
 // Handle auto-restore resolution checkbox
 void HandleAutoRestoreResolutionCheckbox() {
     ImGui::Spacing();
@@ -757,15 +710,14 @@ void HandleDXGIAPIApplyButton() {
     // DXGI API Button (Alternative Fractional Method)
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Uses DXGI SetFullscreenState + ResizeTarget to set fractional refresh rates.\nThis method "
-                          "creates a temporary swap chain to apply the mode.");
+        ImGui::SetTooltip(
+            "Uses DXGI SetFullscreenState + ResizeTarget to set fractional refresh rates.\nThis method "
+            "creates a temporary swap chain to apply the mode.");
     }
     bool pending = g_has_pending_confirmation.load();
-    if (pending)
-        ImGui::BeginDisabled();
+    if (pending) ImGui::BeginDisabled();
     bool clicked = ImGui::Button("Apply with DXGI API");
-    if (pending)
-        ImGui::EndDisabled();
+    if (pending) ImGui::EndDisabled();
     if (clicked) {
         if (g_has_pending_confirmation.load()) {
             // Ignore clicks while confirmation is pending
@@ -782,7 +734,7 @@ void HandleDXGIAPIApplyButton() {
                     if (current_monitor) {
                         // Find which monitor index this corresponds to in the display cache
                         for (int j = 0; j < static_cast<int>(display_cache::g_displayCache.GetDisplayCount()); j++) {
-                            const auto *display = display_cache::g_displayCache.GetDisplay(j);
+                            const auto* display = display_cache::g_displayCache.GetDisplay(j);
                             if (display && display->monitor_handle == current_monitor) {
                                 actual_monitor_index = j;
                                 break;
@@ -801,8 +753,8 @@ void HandleDXGIAPIApplyButton() {
 
             // Get the selected resolution from the cache
             auto resolution_labels = display_cache::g_displayCache.GetResolutionLabels(actual_monitor_index);
-            if (s_selected_resolution_index >= 0 &&
-                s_selected_resolution_index < static_cast<int>(resolution_labels.size())) {
+            if (s_selected_resolution_index >= 0
+                && s_selected_resolution_index < static_cast<int>(resolution_labels.size())) {
                 int width = 0, height = 0;
                 if (static_cast<int>(s_selected_resolution_index) == 0) {
                     // Current Resolution
@@ -823,8 +775,8 @@ void HandleDXGIAPIApplyButton() {
                 // Use selected refresh rate from cache
                 auto refresh_rate_labels = display_cache::g_displayCache.GetRefreshRateLabels(
                     actual_monitor_index, static_cast<int>(s_selected_resolution_index));
-                if (s_selected_refresh_rate_index >= 0 &&
-                    s_selected_refresh_rate_index < static_cast<int>(refresh_rate_labels.size())) {
+                if (s_selected_refresh_rate_index >= 0
+                    && s_selected_refresh_rate_index < static_cast<int>(refresh_rate_labels.size())) {
                     // Get rational refresh rate values from the cache
                     has_rational = display_cache::g_displayCache.GetRationalRefreshRate(
                         actual_monitor_index, static_cast<int>(s_selected_resolution_index),
@@ -862,8 +814,8 @@ void HandleDXGIAPIApplyButton() {
                         DWORD error = GetLastError();
                         if (error != 0) {
                             LPSTR messageBuffer = nullptr;
-                            size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                                                             FORMAT_MESSAGE_IGNORE_INSERTS,
+                            size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
+                                                             | FORMAT_MESSAGE_IGNORE_INSERTS,
                                                          NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                                                          (LPSTR)&messageBuffer, 0, NULL);
 
@@ -876,7 +828,7 @@ void HandleDXGIAPIApplyButton() {
                         }
 
                         // Fallback to legacy API
-                        const auto *display = display_cache::g_displayCache.GetDisplay(actual_monitor_index);
+                        const auto* display = display_cache::g_displayCache.GetDisplay(actual_monitor_index);
                         if (display) {
                             HMONITOR hmon = display->monitor_handle;
 
@@ -895,10 +847,11 @@ void HandleDXGIAPIApplyButton() {
                                 // Round the refresh rate to the nearest integer for DEVMODE fallback
                                 dm.dmDisplayFrequency = static_cast<DWORD>(std::round(refresh_rate.ToHz()));
 
-                                LogInfo("HandleDXGIAPIApplyButton() - ChangeDisplaySettingsExW_Direct: %S", device_name.c_str());
+                                LogInfo("HandleDXGIAPIApplyButton() - ChangeDisplaySettingsExW_Direct: %S",
+                                        device_name.c_str());
                                 // Apply the changes using legacy API (direct, bypasses hooks)
                                 LONG result = ChangeDisplaySettingsExW_Direct(device_name.c_str(), &dm, nullptr,
-                                                                       CDS_UPDATEREGISTRY, nullptr);
+                                                                              CDS_UPDATEREGISTRY, nullptr);
 
                                 if (result == DISP_CHANGE_SUCCESSFUL) {
                                     std::ostringstream label;
@@ -925,4 +878,4 @@ void HandleDXGIAPIApplyButton() {
         }).detach();
     }
 }
-} // namespace ui::monitor_settings
+}  // namespace ui::monitor_settings

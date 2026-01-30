@@ -65,8 +65,14 @@ InjectorService::InjectorService()
         run_tmp_dir = module_dir + L"\\..\\..\\..\\run_tmp";
     }
 
-    reshade_dll_path_32bit_ = std::string(run_tmp_dir.begin(), run_tmp_dir.end()) + "\\ReShade32.dll";
-    reshade_dll_path_64bit_ = std::string(run_tmp_dir.begin(), run_tmp_dir.end()) + "\\ReShade64.dll";
+    // Convert wide string to narrow string
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, run_tmp_dir.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string run_tmp_dir_narrow(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, run_tmp_dir.c_str(), -1, &run_tmp_dir_narrow[0], size_needed, nullptr, nullptr);
+    run_tmp_dir_narrow.resize(size_needed - 1); // Remove null terminator
+
+    reshade_dll_path_32bit_ = run_tmp_dir_narrow + "\\ReShade32.dll";
+    reshade_dll_path_64bit_ = run_tmp_dir_narrow + "\\ReShade64.dll";
 
     // Debug logging for path resolution
     if (verbose_logging_.load()) {
@@ -220,7 +226,10 @@ void InjectorService::monitoringLoop() {
                     // .. if (!target.enabled) continue;
 
                     // Convert to wide string for comparison
-                    std::wstring exe_name_wide(target.exe_name.begin(), target.exe_name.end());
+                    int size_needed = MultiByteToWideChar(CP_UTF8, 0, target.exe_name.c_str(), -1, nullptr, 0);
+                    std::wstring exe_name_wide(size_needed, 0);
+                    MultiByteToWideChar(CP_UTF8, 0, target.exe_name.c_str(), -1, &exe_name_wide[0], size_needed);
+                    exe_name_wide.resize(size_needed - 1); // Remove null terminator
 
                     if (_wcsicmp(process.szExeFile, exe_name_wide.c_str()) == 0) {
                         // Check if we've already injected into this PID
@@ -303,7 +312,11 @@ bool InjectorService::injectIntoProcess(DWORD pid, const TargetProcess& target) 
         return false;
     }
 
-    std::wstring reshade_path_wide(reshade_path.begin(), reshade_path.end());
+    // Convert narrow string to wide string
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, reshade_path.c_str(), -1, nullptr, 0);
+    std::wstring reshade_path_wide(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, reshade_path.c_str(), -1, &reshade_path_wide[0], size_needed);
+    reshade_path_wide.resize(size_needed - 1); // Remove null terminator
     wcscpy_s(arg.load_path, reshade_path_wide.c_str());
 
     if (GetFileAttributesW(arg.load_path) == INVALID_FILE_ATTRIBUTES) {
@@ -427,7 +440,12 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
     std::wstring process_path_str(process_path);
     size_t last_slash = process_path_str.find_last_of(L"\\/");
     if (last_slash == std::wstring::npos) {
-        logError("Invalid process path for display commander copy: " + std::string(process_path_str.begin(), process_path_str.end()));
+        // Convert wide string to narrow string for error message
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, process_path_str.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        std::string process_path_narrow(size_needed, 0);
+        WideCharToMultiByte(CP_UTF8, 0, process_path_str.c_str(), -1, &process_path_narrow[0], size_needed, nullptr, nullptr);
+        process_path_narrow.resize(size_needed - 1); // Remove null terminator
+        logError("Invalid process path for display commander copy: " + process_path_narrow);
         return false;
     }
 
@@ -447,7 +465,11 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
 
     logMessage("Attempting to copy display commander addon: " + display_commander_path);
 
-    std::wstring display_commander_path_wide(display_commander_path.begin(), display_commander_path.end());
+    // Convert narrow string to wide string
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, display_commander_path.c_str(), -1, nullptr, 0);
+    std::wstring display_commander_path_wide(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, display_commander_path.c_str(), -1, &display_commander_path_wide[0], size_needed);
+    display_commander_path_wide.resize(size_needed - 1); // Remove null terminator
 
     // Get the filename from the display commander path
     std::wstring display_commander_filename = display_commander_path_wide;
@@ -480,7 +502,12 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
     }
 
     if (verbose_logging_.load()) {
-        logMessage("Copied display commander addon to game folder: " + std::string(destination_path.begin(), destination_path.end()));
+        // Convert wide string to narrow string for log message
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, destination_path.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        std::string destination_path_narrow(size_needed, 0);
+        WideCharToMultiByte(CP_UTF8, 0, destination_path.c_str(), -1, &destination_path_narrow[0], size_needed, nullptr, nullptr);
+        destination_path_narrow.resize(size_needed - 1); // Remove null terminator
+        logMessage("Copied display commander addon to game folder: " + destination_path_narrow);
     }
 
     return true;

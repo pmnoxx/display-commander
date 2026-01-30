@@ -320,4 +320,34 @@ bool IsKeyPressed(int vKey);
 
 }  // namespace keyboard_tracker
 
+// Exclusive key groups management
+namespace exclusive_key_groups {
+
+// Check if a key should be suppressed due to exclusive key groups
+// Returns true if the key should be suppressed (another key in its group is down)
+bool ShouldSuppressKey(int vKey);
+
+// Update tracked state - mark a key as down in its exclusive group
+// Records the timestamp when the key was pressed
+void MarkKeyDown(int vKey);
+
+// Update tracked state - mark a key as up in its exclusive group
+// When a key is released, checks which keys are still actually pressed and keeps only the most recently pressed one
+void MarkKeyUp(int vKey);
+
+// Check if a key is actually pressed (not simulated)
+bool IsKeyActuallyPressed(int vKey);
+
+// Initialize exclusive key groups system
+void Initialize();
+
+// Update exclusive key groups state (call each frame from ProcessHotkeys)
+// Simulates key presses for keys that became active but were previously suppressed
+void Update();
+
+// Update cached list of keys belonging to active groups (call once per second from continuous monitoring)
+void UpdateCachedActiveKeys();
+
+}  // namespace exclusive_key_groups
+
 }  // namespace display_commanderhooks

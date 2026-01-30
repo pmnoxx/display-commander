@@ -1,9 +1,12 @@
 #include "windows_message_hooks.hpp"
 #include <MinHook.h>
+#include <algorithm>
 #include <array>
+#include <sstream>
 #include "../../globals.hpp"                             // For s_continue_rendering
 #include "../../process_exit_hooks.hpp"                  // For UnhandledExceptionHandler
 #include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
+#include "../../settings/hotkeys_tab_settings.hpp"       // For exclusive key groups
 #include "../../settings/main_tab_settings.hpp"
 #include "../../ui/new_ui/window_info_tab.hpp"  // For message history tracking
 #include "../../utils.hpp"
@@ -262,7 +265,13 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
             case WM_CHAR:
             case WM_SYSCHAR:
             case WM_DEADCHAR:
-            case WM_SYSDEADCHAR: return ShouldBlockKeyboardInput(true);
+            case WM_SYSDEADCHAR:
+                // Test setting: Block keyboard messages
+                if (settings::g_experimentalTabSettings.test_block_keyboard_messages.GetValue()) {
+                    return true;
+                }
+                // Note: Exclusive key group check is done in GetMessage/PeekMessage where we have access to wParam
+                return ShouldBlockKeyboardInput(true);
             // Mouse DOWN messages only
             case WM_LBUTTONDOWN:
             case WM_RBUTTONDOWN:
@@ -272,7 +281,12 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
             case WM_MOUSEWHEEL:
             case WM_MOUSEHWHEEL:
             // Cursor messages
-            case WM_SETCURSOR: return ShouldBlockMouseInput(true);
+            case WM_SETCURSOR:
+                // Test setting: Block mouse messages
+                if (settings::g_experimentalTabSettings.test_block_mouse_messages.GetValue()) {
+                    return true;
+                }
+                return ShouldBlockMouseInput(true);
             // Allow UP events to pass through to clear stuck keys/buttons
             case WM_KEYUP:
             case WM_SYSKEYUP:
@@ -357,14 +371,30 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             }
         }
 
+        // Exclusive key groups: Check if keyboard message should be suppressed
+        if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
+            && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
+            SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            // Mark key as down in exclusive groups (even though we're suppressing the message)
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        }
         // Check if we should suppress this message (input blocking)
-        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
+        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
             // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         }
         // Check if we should intercept it for other purposes
         else {
+            // Update exclusive key groups state for keyboard messages
+            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+            }
+
             g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
             // Track unsuppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
@@ -397,14 +427,30 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             }
         }
 
+        // Exclusive key groups: Check if keyboard message should be suppressed
+        if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
+            && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
+            SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            // Mark key as down in exclusive groups (even though we're suppressing the message)
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        }
         // Check if we should suppress this message (input blocking)
-        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
+        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
             // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         }
         // Check if we should intercept it for other purposes
         else {
+            // Update exclusive key groups state for keyboard messages
+            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+            }
+
             // Track unsuppressed calls
             g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
             // Track unsuppressed message in history
@@ -438,12 +484,28 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
             }
         }
 
+        // Exclusive key groups: Check if keyboard message should be suppressed
+        if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
+            && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
+            SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            // Mark key as down in exclusive groups (even though we're suppressing the message)
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        }
         // Check if we should suppress this message (input blocking)
-        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
+        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
             // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         } else {
+            // Update exclusive key groups state for keyboard messages
+            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+            }
+
             // Track unsuppressed calls (when we call the original function)
             g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
             // Track unsuppressed message in history
@@ -477,12 +539,28 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
             }
         }
 
+        // Exclusive key groups: Check if keyboard message should be suppressed
+        if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
+            && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
+            SuppressMessage(lpMsg);
+            // Track suppressed message in history
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            // Mark key as down in exclusive groups (even though we're suppressing the message)
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        }
         // Check if we should suppress this message (input blocking)
-        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
+        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             SuppressMessage(lpMsg);
             // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
         } else {
+            // Update exclusive key groups state for keyboard messages
+            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+            }
+
             // Track unsuppressed calls (when we call the original function)
             g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
             // Track unsuppressed message in history
@@ -584,6 +662,14 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
     // Track unsuppressed calls (when we call the original function)
     g_hook_stats[HOOK_GetKeyboardState].increment_unsuppressed();
 
+    // Test setting: Block GetKeyboardState
+    if (result && lpKeyState != nullptr
+        && settings::g_experimentalTabSettings.test_block_keyboard_getkeyboardstate.GetValue()) {
+        // Clear all key states to simulate no keys being pressed
+        memset(lpKeyState, 0, 256);  // 256 bytes for all virtual keys
+        return result;
+    }
+
     // If keyboard input blocking is enabled and we got valid key state data
     if (result && lpKeyState != nullptr && ShouldBlockKeyboardInput()) {
         // Clear all key states to simulate no keys being pressed
@@ -595,6 +681,23 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
         int count = clear_counter.fetch_add(1);
         if (count % 1000 == 0) {
             LogInfo("Cleared keyboard state for input blocking");
+        }
+    }
+    // Exclusive key groups: Clear keys that should be suppressed
+    if (result && lpKeyState != nullptr) {
+        for (int vKey = 0; vKey < 256; ++vKey) {
+            if ((lpKeyState[vKey] & 0x80) != 0) {
+                // Key is down, mark it in exclusive groups
+                exclusive_key_groups::MarkKeyDown(vKey);
+            } else {
+                exclusive_key_groups::MarkKeyUp(vKey);
+            }
+        }
+
+        for (int vKey = 0; vKey < 256; ++vKey) {
+            if (exclusive_key_groups::ShouldSuppressKey(vKey)) {
+                lpKeyState[vKey] = 0;  // Clear suppressed key state
+            }
         }
     }
 
@@ -645,6 +748,11 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     //    lpRect = nullptr;
     //}
 
+    // Test setting: Block ClipCursor
+    if (settings::g_experimentalTabSettings.test_block_mouse_clipcursor.GetValue()) {
+        return TRUE;  // Block cursor clipping
+    }
+
     // supress clip cursor if enabled
     if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
         return TRUE;
@@ -662,6 +770,12 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetCursorPos].increment_total();
+
+    // Test setting: Block GetCursorPos
+    if (settings::g_experimentalTabSettings.test_block_mouse_getcursorpos.GetValue() && lpPoint != nullptr) {
+        *lpPoint = s_last_cursor_position;
+        return TRUE;
+    }
 
     // If mouse position spoofing is enabled AND auto-click is enabled, return spoofed position
     if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue() && lpPoint != nullptr) {
@@ -703,6 +817,11 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
     s_last_cursor_position.x = X;
     s_last_cursor_position.y = Y;
 
+    // Test setting: Block SetCursorPos
+    if (settings::g_experimentalTabSettings.test_block_mouse_setcursorpos.GetValue()) {
+        return TRUE;  // Block the cursor position change
+    }
+
     // If mouse position spoofing is enabled AND auto-click is enabled, update spoofed position instead of moving cursor
     if (settings::g_experimentalTabSettings.mouse_spoofing_enabled.GetValue()) {
         // Check if auto-click is enabled
@@ -730,6 +849,21 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
     // Track total calls
     g_hook_stats[HOOK_GetKeyState].increment_total();
 
+    // Exclusive key groups: Check if key should be suppressed
+    if (exclusive_key_groups::ShouldSuppressKey(vKey)) {
+        return 0;  // Suppress key due to exclusive group
+    }
+
+    // Test settings: Block GetKeyState for keyboard or mouse
+    if (settings::g_experimentalTabSettings.test_block_keyboard_getkeystate.GetValue()
+        && (vKey >= 0x08 && vKey <= 0xFF)) {
+        return 0;  // Block keyboard input
+    }
+    if (settings::g_experimentalTabSettings.test_block_mouse_getkeystate.GetValue()
+        && (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+        return 0;  // Block mouse input
+    }
+
     // If input blocking is enabled, return 0 for all keys
     if (ShouldBlockKeyboardInput() && (vKey >= 0x08 && vKey <= 0xFF)) {
         return 0;  // Block input
@@ -742,7 +876,16 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetKeyState].increment_unsuppressed();
 
     // Call original function
-    return GetKeyState_Original ? GetKeyState_Original(vKey) : GetKeyState(vKey);
+    SHORT result = GetKeyState_Original ? GetKeyState_Original(vKey) : GetKeyState(vKey);
+
+    // If key is down, mark it in exclusive groups
+    if ((result & 0x8000) != 0) {
+        exclusive_key_groups::MarkKeyDown(vKey);
+    } else {
+        exclusive_key_groups::MarkKeyUp(vKey);
+    }
+
+    return result;
 }
 
 // Hooked GetAsyncKeyState function
@@ -750,6 +893,21 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetAsyncKeyState].increment_total();
+
+    // Exclusive key groups: Check if key should be suppressed
+    if (exclusive_key_groups::ShouldSuppressKey(vKey)) {
+        return 0;  // Suppress key due to exclusive group
+    }
+
+    // Test settings: Block GetAsyncKeyState for keyboard or mouse
+    if (settings::g_experimentalTabSettings.test_block_keyboard_getasynckeystate.GetValue()
+        && (vKey >= 0x08 && vKey <= 0xFF)) {
+        return 0;  // Block keyboard input
+    }
+    if (settings::g_experimentalTabSettings.test_block_mouse_getkeystate.GetValue()
+        && (vKey >= VK_LBUTTON && vKey <= VK_XBUTTON2)) {
+        return 0;  // Block mouse input
+    }
 
     // If input blocking is enabled, return 0 for all keys
     if (ShouldBlockKeyboardInput() && (vKey >= 0x08 && vKey <= 0xFF)) {
@@ -763,7 +921,16 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetAsyncKeyState].increment_unsuppressed();
 
     // Call original function
-    return GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
+    SHORT result = GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
+
+    // If key is down, mark it in exclusive groups
+    if ((result & 0x8000) != 0) {
+        exclusive_key_groups::MarkKeyDown(vKey);
+    } else {
+        exclusive_key_groups::MarkKeyUp(vKey);
+    }
+
+    return result;
 }
 
 // Hooked SetWindowsHookExA function
@@ -855,9 +1022,29 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
             // Check if this input should be replaced
             bool should_replace = false;
 
-            if (current->header.dwType == RIM_TYPEKEYBOARD && ShouldBlockKeyboardInput()) {
+            // Test settings: Block raw input for keyboard or mouse
+            bool test_block_keyboard = settings::g_experimentalTabSettings.test_block_keyboard_rawinput.GetValue();
+            bool test_block_mouse = settings::g_experimentalTabSettings.test_block_mouse_rawinput.GetValue();
+
+            // Exclusive key groups: Check if keyboard key should be suppressed
+            if (current->header.dwType == RIM_TYPEKEYBOARD
+                && !(current->data.keyboard.Flags & RI_KEY_BREAK)) {  // Key DOWN event
+                int vKey = current->data.keyboard.VKey;
+                if (exclusive_key_groups::ShouldSuppressKey(vKey)) {
+                    should_replace = true;  // Suppress key due to exclusive group
+                } else {
+                    // Mark key as down in exclusive groups
+                    exclusive_key_groups::MarkKeyDown(vKey);
+                }
+            } else if (current->header.dwType == RIM_TYPEKEYBOARD
+                       && (current->data.keyboard.Flags & RI_KEY_BREAK)) {  // Key UP event
+                int vKey = current->data.keyboard.VKey;
+                exclusive_key_groups::MarkKeyUp(vKey);
+            }
+
+            if (current->header.dwType == RIM_TYPEKEYBOARD && (test_block_keyboard || ShouldBlockKeyboardInput())) {
                 should_replace = true;  // Replace all keyboard input
-            } else if (current->header.dwType == RIM_TYPEMOUSE && ShouldBlockMouseInput()) {
+            } else if (current->header.dwType == RIM_TYPEMOUSE && (test_block_mouse || ShouldBlockMouseInput())) {
                 should_replace = true;  // Replace all mouse input
             }
 
@@ -928,6 +1115,13 @@ BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
     // Track total calls
     g_hook_stats[HOOK_TranslateMessage].increment_total();
 
+    // Exclusive key groups: Check if keyboard message should be suppressed
+    if (lpMsg != nullptr && (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
+        && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
+        // Don't translate suppressed messages
+        return FALSE;
+    }
+
     // If input blocking is enabled, don't translate messages that should be blocked
     if (lpMsg != nullptr) {
         // Check if this message should be suppressed
@@ -949,6 +1143,15 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DispatchMessageA].increment_total();
+
+    // Exclusive key groups: Check if keyboard message should be suppressed
+    if (lpMsg != nullptr && (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
+        && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
+        // Track suppressed message in history
+        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+        // Return 0 to indicate the message was "processed" (suppressed)
+        return 0;
+    }
 
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (lpMsg != nullptr) {
@@ -976,6 +1179,15 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DispatchMessageW].increment_total();
+
+    // Exclusive key groups: Check if keyboard message should be suppressed
+    if (lpMsg != nullptr && (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
+        && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
+        // Track suppressed message in history
+        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+        // Return 0 to indicate the message was "processed" (suppressed)
+        return 0;
+    }
 
     // If input blocking is enabled, don't dispatch messages that should be blocked
     if (lpMsg != nullptr) {
@@ -1016,8 +1228,34 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
         if (uiCommand == RID_INPUT) {
             RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
 
+            // Exclusive key groups: Check if keyboard key should be suppressed
+            if (rawInput->header.dwType == RIM_TYPEKEYBOARD
+                && !(rawInput->data.keyboard.Flags & RI_KEY_BREAK)) {  // Key DOWN event
+                int vKey = rawInput->data.keyboard.VKey;
+                if (exclusive_key_groups::ShouldSuppressKey(vKey)) {
+                    // Suppress key due to exclusive group - replace with neutral data
+                    rawInput->data.keyboard.MakeCode = 0;
+                    rawInput->data.keyboard.Flags = 0;
+                    rawInput->data.keyboard.Reserved = 0;
+                    rawInput->data.keyboard.VKey = 0;
+                    rawInput->data.keyboard.Message = 0;
+                    rawInput->data.keyboard.ExtraInformation = 0;
+                } else {
+                    // Mark key as down in exclusive groups
+                    exclusive_key_groups::MarkKeyDown(vKey);
+                }
+            } else if (rawInput->header.dwType == RIM_TYPEKEYBOARD
+                       && (rawInput->data.keyboard.Flags & RI_KEY_BREAK)) {  // Key UP event
+                int vKey = rawInput->data.keyboard.VKey;
+                exclusive_key_groups::MarkKeyUp(vKey);
+            }
+
+            // Test settings: Block raw input for keyboard or mouse
+            bool test_block_keyboard = settings::g_experimentalTabSettings.test_block_keyboard_rawinput.GetValue();
+            bool test_block_mouse = settings::g_experimentalTabSettings.test_block_mouse_rawinput.GetValue();
+
             // Only block DOWN events, allow UP events to clear stuck keys/buttons
-            if (rawInput->header.dwType == RIM_TYPEKEYBOARD && ShouldBlockKeyboardInput()) {
+            if (rawInput->header.dwType == RIM_TYPEKEYBOARD && (test_block_keyboard || ShouldBlockKeyboardInput())) {
                 // Only block key DOWN events, allow UP events to clear stuck keys
                 if (rawInput->data.keyboard.Flags & RI_KEY_BREAK) {
                     // This is a key UP event, don't block it - let it pass through
@@ -1032,7 +1270,7 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
                     rawInput->data.keyboard.Message = 0;  // No message
                     rawInput->data.keyboard.ExtraInformation = 0;
                 }
-            } else if (rawInput->header.dwType == RIM_TYPEMOUSE && ShouldBlockMouseInput()) {
+            } else if (rawInput->header.dwType == RIM_TYPEMOUSE && (test_block_mouse || ShouldBlockMouseInput())) {
                 // Only block mouse DOWN events, allow UP events to clear stuck buttons
                 if (rawInput->data.mouse.usButtonFlags
                     & (RI_MOUSE_LEFT_BUTTON_UP | RI_MOUSE_RIGHT_BUTTON_UP | RI_MOUSE_MIDDLE_BUTTON_UP
@@ -1258,8 +1496,11 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
     // Track total calls
     g_hook_stats[HOOK_SendInput].increment_total();
 
+    // Test setting: Block SendInput for keyboard
+    bool test_block = settings::g_experimentalTabSettings.test_block_keyboard_sendinput.GetValue();
+
     // If keyboard input blocking is enabled, selectively block DOWN events
-    if (ShouldBlockKeyboardInput() && pInputs != nullptr) {
+    if ((test_block || ShouldBlockKeyboardInput()) && pInputs != nullptr) {
         UINT allowed_inputs = 0;
 
         // Filter inputs - only allow UP events to pass through
@@ -1267,8 +1508,20 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
             bool should_block = false;
 
             if (pInputs[i].type == INPUT_KEYBOARD) {
-                // Block key DOWN events, allow UP events
-                if (!(pInputs[i].ki.dwFlags & KEYEVENTF_KEYUP)) {
+                int vKey = pInputs[i].ki.wVk;
+                // Exclusive key groups: Check if key should be suppressed
+                if (!(pInputs[i].ki.dwFlags & KEYEVENTF_KEYUP) && exclusive_key_groups::ShouldSuppressKey(vKey)) {
+                    should_block = true;  // Suppress key due to exclusive group
+                } else if (!(pInputs[i].ki.dwFlags & KEYEVENTF_KEYUP)) {
+                    // Key DOWN event - mark in exclusive groups
+                    exclusive_key_groups::MarkKeyDown(vKey);
+                } else {
+                    // Key UP event - mark in exclusive groups
+                    exclusive_key_groups::MarkKeyUp(vKey);
+                }
+
+                // Block key DOWN events, allow UP events (for input blocking)
+                if (!(pInputs[i].ki.dwFlags & KEYEVENTF_KEYUP) && (test_block || ShouldBlockKeyboardInput())) {
                     should_block = true;  // This is a key DOWN event
                 }
             } else if (pInputs[i].type == INPUT_MOUSE) {
@@ -1320,8 +1573,17 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
     // Track total calls
     g_hook_stats[HOOK_keybd_event].increment_total();
 
+    // Exclusive key groups: Check if key should be suppressed
+    if (!(dwFlags & KEYEVENTF_KEYUP) && exclusive_key_groups::ShouldSuppressKey(bVk)) {
+        // Suppress key DOWN event due to exclusive group
+        return;  // Block keyboard DOWN event generation
+    }
+
+    // Test setting: Block keybd_event
+    bool test_block = settings::g_experimentalTabSettings.test_block_keyboard_keybdevent.GetValue();
+
     // If keyboard input blocking is enabled, selectively block DOWN events
-    if (ShouldBlockKeyboardInput()) {
+    if (test_block || ShouldBlockKeyboardInput()) {
         // Only block key DOWN events, allow UP events to clear stuck keys
         if (!(dwFlags & KEYEVENTF_KEYUP)) {
             // This is a key DOWN event, block it
@@ -1335,6 +1597,13 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
         // This is a key UP event, allow it through to clear stuck keys
     } else {
         g_hook_stats[HOOK_keybd_event].increment_unsuppressed();
+    }
+
+    // Update exclusive key groups state
+    if (!(dwFlags & KEYEVENTF_KEYUP)) {
+        exclusive_key_groups::MarkKeyDown(bVk);
+    } else {
+        exclusive_key_groups::MarkKeyUp(bVk);
     }
 
     // Call original function
@@ -1351,8 +1620,11 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
     // Track total calls
     g_hook_stats[HOOK_mouse_event].increment_total();
 
+    // Test setting: Block mouse_event
+    bool test_block = settings::g_experimentalTabSettings.test_block_mouse_mouseevent.GetValue();
+
     // If mouse input blocking is enabled, selectively block DOWN events
-    if (ShouldBlockMouseInput()) {
+    if (test_block || ShouldBlockMouseInput()) {
         // Only block mouse DOWN events, allow UP events to clear stuck buttons
         if (dwFlags
             & (MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_MIDDLEDOWN | MOUSEEVENTF_XDOWN
@@ -1383,6 +1655,12 @@ HWND WINAPI SetCapture_Detour(HWND hWnd) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetCapture].increment_total();
+
+    // Test setting: Block SetCapture
+    if (settings::g_experimentalTabSettings.test_block_mouse_capture.GetValue() && hWnd != nullptr) {
+        // Block capture by returning NULL
+        return nullptr;
+    }
 
     // if (hWnd != nullptr && ShouldBlockMouseInput()) {
     //     ReleaseCapture();
@@ -1957,6 +2235,12 @@ void Initialize() {
         s_key_pressed[i].store(false);
         s_prev_key_state[i] = false;
     }
+
+    // Initialize exclusive key groups
+    exclusive_key_groups::Initialize();
+    
+    // Initialize cache (will be updated once per second in continuous monitoring)
+    exclusive_key_groups::UpdateCachedActiveKeys();
 }
 
 void Update() {
@@ -2009,6 +2293,383 @@ bool IsKeyPressed(int vKey) {
 }
 
 }  // namespace keyboard_tracker
+
+// Exclusive key groups management
+namespace exclusive_key_groups {
+
+// Track which keys are currently down in exclusive groups
+// Key: vKey code, Value: which other key in the group is currently down (0 = none)
+static std::array<std::atomic<int>, 256> s_exclusive_group_active_key{};
+
+// Track when each key was last pressed (nanoseconds timestamp)
+static std::array<std::atomic<LONGLONG>, 256> s_key_press_timestamp{};
+
+// Track which keys are actually pressed (not simulated)
+static std::array<std::atomic<bool>, 256> s_key_actually_pressed{};
+
+// Track which keys need to be simulated as pressed down on next frame
+// When active key changes, we need to simulate the new active key being pressed
+static std::array<std::atomic<bool>, 256> s_key_needs_simulate_press{};
+
+// Cached set of keys that belong to active exclusive groups (updated once per second)
+// This avoids calling GetActiveGroups() repeatedly in hot paths
+static std::array<std::atomic<bool>, 256> s_key_in_active_group{};
+// Map from key to its group index (for quick lookup)
+static std::array<std::atomic<int>, 256> s_key_to_group_index{};
+// Cached groups (updated once per second) - atomic shared_ptr for thread-safe access
+static std::atomic<std::shared_ptr<std::vector<std::vector<int>>>> s_cached_active_groups{};
+
+void Initialize() {
+    for (int i = 0; i < 256; ++i) {
+        s_exclusive_group_active_key[i].store(0);
+        s_key_press_timestamp[i].store(0);
+        s_key_actually_pressed[i].store(false);
+        s_key_needs_simulate_press[i].store(false);
+        s_key_in_active_group[i].store(false);
+        s_key_to_group_index[i].store(-1);
+    }
+    // Initialize with empty groups
+    s_cached_active_groups.store(std::make_shared<std::vector<std::vector<int>>>());
+}
+
+// Get active exclusive groups from settings
+static std::vector<std::vector<int>> GetActiveGroups() {
+    std::vector<std::vector<int>> active_groups;
+
+    // Check if hotkeys are enabled
+    if (!s_enable_hotkeys.load()) {
+        return active_groups;
+    }
+
+    // Check if game is in foreground OR UI is open
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    HWND foreground_hwnd = GetForegroundWindow();
+    bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
+    bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+
+    if (!is_game_in_foreground && !is_ui_open) {
+        return active_groups;
+    }
+
+    auto& hotkey_settings = settings::g_hotkeysTabSettings;
+
+    // Predefined AD group
+    if (hotkey_settings.exclusive_keys_ad_enabled.GetValue()) {
+        active_groups.push_back({'A', 'D'});
+    }
+
+    // Predefined WS group
+    if (hotkey_settings.exclusive_keys_ws_enabled.GetValue()) {
+        active_groups.push_back({'W', 'S'});
+    }
+
+    // Predefined AWSD group
+    if (hotkey_settings.exclusive_keys_awsd_enabled.GetValue()) {
+        active_groups.push_back({'A', 'W', 'S', 'D'});
+    }
+
+    // Parse custom groups
+    std::string custom_groups_str = hotkey_settings.exclusive_keys_custom_groups.GetValue();
+    if (!custom_groups_str.empty()) {
+        // Split by | to get individual groups
+        std::istringstream iss(custom_groups_str);
+        std::string group_str;
+        while (std::getline(iss, group_str, '|')) {
+            // Split by comma to get keys in this group
+            std::istringstream group_iss(group_str);
+            std::string key_str;
+            std::vector<int> group_keys;
+            while (std::getline(group_iss, key_str, ',')) {
+                // Parse key name to vkey
+                std::string lower = key_str;
+                std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+                lower.erase(0, lower.find_first_not_of(" \t"));
+                lower.erase(lower.find_last_not_of(" \t") + 1);
+
+                int vkey = 0;
+                if (lower.length() == 1 && lower[0] >= 'a' && lower[0] <= 'z') {
+                    vkey = std::toupper(static_cast<unsigned char>(lower[0]));
+                } else if (lower == "left") {
+                    vkey = VK_LEFT;
+                } else if (lower == "right") {
+                    vkey = VK_RIGHT;
+                } else if (lower == "up") {
+                    vkey = VK_UP;
+                } else if (lower == "down") {
+                    vkey = VK_DOWN;
+                }
+
+                if (vkey > 0) {
+                    group_keys.push_back(vkey);
+                }
+            }
+            if (group_keys.size() >= 2) {
+                active_groups.push_back(group_keys);
+            }
+        }
+    }
+
+    return active_groups;
+}
+
+// Update cached list of keys belonging to active groups
+void UpdateCachedActiveKeys() {
+    // Clear previous cache
+    for (int i = 0; i < 256; ++i) {
+        s_key_in_active_group[i].store(false);
+        s_key_to_group_index[i].store(-1);
+    }
+    
+    // Get active groups
+    std::vector<std::vector<int>> active_groups = GetActiveGroups();
+    
+    // Create new shared_ptr with active groups
+    auto new_groups = std::make_shared<std::vector<std::vector<int>>>(std::move(active_groups));
+    
+    // Atomically swap the shared_ptr
+    s_cached_active_groups.store(new_groups);
+    
+    // Mark all keys that belong to active groups
+    for (size_t group_idx = 0; group_idx < new_groups->size(); ++group_idx) {
+        const auto& group = (*new_groups)[group_idx];
+        for (int key : group) {
+            if (key >= 0 && key < 256) {
+                s_key_in_active_group[key].store(true);
+                s_key_to_group_index[key].store(static_cast<int>(group_idx));
+            }
+        }
+    }
+}
+
+// Find which group a key belongs to (using cached data)
+static int FindKeyGroupCached(int vKey) {
+    if (vKey < 0 || vKey >= 256) {
+        return -1;
+    }
+    if (s_key_in_active_group[vKey].load()) {
+        return s_key_to_group_index[vKey].load();
+    }
+    return -1;
+}
+
+// Find which group a key belongs to
+static int FindKeyGroup(int vKey, const std::vector<std::vector<int>>& groups) {
+    for (size_t i = 0; i < groups.size(); ++i) {
+        for (int key : groups[i]) {
+            if (key == vKey) {
+                return static_cast<int>(i);
+            }
+        }
+    }
+    return -1;  // Not in any group
+}
+
+bool ShouldSuppressKey(int vKey) {
+    if (vKey < 0 || vKey >= 256) {
+        return false;
+    }
+    
+    // Use cached data for fast lookup
+    if (!s_key_in_active_group[vKey].load()) {
+        return false;  // Key not in any exclusive group
+    }
+    
+    int group_index = FindKeyGroupCached(vKey);
+    auto cached_groups = s_cached_active_groups.load();
+    if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
+        return false;
+    }
+    
+    const auto& group = (*cached_groups)[group_index];
+
+    for (int key : group) {
+        if (key == vKey) {
+            continue;
+        }
+        if (s_key_actually_pressed[key].load()) {
+            return true;
+        }
+        LONGLONG this_key_time = s_key_press_timestamp[vKey].load();
+        LONGLONG active_key_time = s_key_press_timestamp[key].load();
+        if (active_key_time > this_key_time) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void MarkKeyDown(int vKey) {
+    if (vKey < 0 || vKey >= 256) {
+        return;
+    }
+
+    // Record timestamp and mark as actually pressed
+    LONGLONG now_ns = utils::get_now_ns();
+    s_key_press_timestamp[vKey].store(now_ns);
+    s_key_actually_pressed[vKey].store(true);
+    
+    // Use cached data for fast lookup
+    if (!s_key_in_active_group[vKey].load()) {
+        return;  // Key not in any exclusive group
+    }
+    
+    int group_index = FindKeyGroupCached(vKey);
+    auto cached_groups = s_cached_active_groups.load();
+    if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
+        return;
+    }
+    
+    const auto& group = (*cached_groups)[group_index];
+    
+    // Find the most recently pressed key in this group that is still actually pressed
+    int most_recent_key = vKey;
+    LONGLONG most_recent_time = now_ns;
+
+    for (int key : group) {
+        if (s_key_actually_pressed[key].load()) {
+            LONGLONG key_time = s_key_press_timestamp[key].load();
+            if (key_time > most_recent_time) {
+                most_recent_time = key_time;
+                most_recent_key = key;
+            }
+        }
+    }
+
+    // Check if the active key changed
+    int old_active_key = s_exclusive_group_active_key[vKey].load();
+
+    // Mark the most recently pressed key as active for all keys in the group
+    for (int key : group) {
+        s_exclusive_group_active_key[key].store(most_recent_key);
+    }
+
+    // If the active key changed and the new active key is different from the old one,
+    // and the new active key is actually pressed, we need to simulate it being pressed down
+    if (old_active_key != most_recent_key && most_recent_key > 0) {
+        // The new active key needs to be simulated as pressed down on next frame
+        // This is because it might have been suppressed earlier, so the game never saw it as pressed
+        s_key_needs_simulate_press[most_recent_key].store(true);
+    }
+}
+
+void MarkKeyUp(int vKey) {
+    if (vKey < 0 || vKey >= 256) {
+        return;
+    }
+
+    // Mark as not actually pressed
+    s_key_actually_pressed[vKey].store(false);
+    
+    // Use cached data for fast lookup
+    if (!s_key_in_active_group[vKey].load()) {
+        return;  // Key not in any exclusive group
+    }
+    
+    int group_index = FindKeyGroupCached(vKey);
+    auto cached_groups = s_cached_active_groups.load();
+    if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
+        return;
+    }
+    
+    const auto& group = (*cached_groups)[group_index];
+    
+    // Find which keys are still actually pressed in this group
+    std::vector<int> still_pressed;
+    for (int key : group) {
+        if (s_key_actually_pressed[key].load()) {
+            still_pressed.push_back(key);
+        }
+    }
+
+    if (still_pressed.empty()) {
+        // No keys are pressed anymore, clear active key for all keys in the group
+        for (int key : group) {
+            s_exclusive_group_active_key[key].store(0);
+        }
+    } else {
+        // Find the most recently pressed key among those still pressed
+        int most_recent_key = still_pressed[0];
+        LONGLONG most_recent_time = s_key_press_timestamp[most_recent_key].load();
+
+        for (int key : still_pressed) {
+            LONGLONG key_time = s_key_press_timestamp[key].load();
+            if (key_time > most_recent_time) {
+                most_recent_time = key_time;
+                most_recent_key = key;
+            }
+        }
+
+        // Check if the active key changed
+        int old_active_key = s_exclusive_group_active_key[group[0]].load();
+
+        // Mark the most recently pressed key as active for all keys in the group
+        for (int key : group) {
+            s_exclusive_group_active_key[key].store(most_recent_key);
+        }
+
+        // If the active key changed and the new active key is different from the old one,
+        // we need to simulate it being pressed down on next frame
+        if (old_active_key != most_recent_key && most_recent_key > 0) {
+            // The new active key needs to be simulated as pressed down on next frame
+            // This is because it might have been suppressed earlier, so the game never saw it as pressed
+            s_key_needs_simulate_press[most_recent_key].store(true);
+        }
+    }
+}
+
+bool IsKeyActuallyPressed(int vKey) {
+    if (vKey < 0 || vKey >= 256) {
+        return false;
+    }
+    return s_key_actually_pressed[vKey].load();
+}
+
+void Update() {
+    // This is called from ProcessHotkeys to simulate key presses for keys that became active
+    // When the active key changes, we need to simulate the new active key being pressed down
+    // because it might have been suppressed earlier, so the game never saw it as pressed
+
+    for (int vKey = 0; vKey < 256; ++vKey) {
+        if (s_key_needs_simulate_press[vKey].load()) {
+            // Check if this key is still actually pressed and still the active key
+            if (s_key_actually_pressed[vKey].load()) {
+                // Use cached data to verify this key is still in an active group
+                if (s_key_in_active_group[vKey].load()) {
+                    int group_index = FindKeyGroupCached(vKey);
+                    auto cached_groups = s_cached_active_groups.load();
+                    if (group_index >= 0 && cached_groups && group_index < static_cast<int>(cached_groups->size())) {
+                        // Verify this key is still the active key
+                        int active_key = s_exclusive_group_active_key[vKey].load();
+                        if (active_key == vKey) {
+                            // Simulate key down event for this key
+                            INPUT input;
+                            input.type = INPUT_KEYBOARD;
+                            input.ki.wVk = static_cast<WORD>(vKey);
+                            input.ki.wScan = 0;
+                            input.ki.dwFlags = 0;  // Key down
+                            input.ki.time = 0;
+                            input.ki.dwExtraInfo = 0;
+                            
+                            // Use original SendInput to avoid hook recursion
+                            if (SendInput_Original) {
+                                SendInput_Original(1, &input, sizeof(INPUT));
+                            } else {
+                                SendInput(1, &input, sizeof(INPUT));
+                            }
+                            
+                            LogDebug("Exclusive keys: Simulated key down for %c (became active)", vKey);
+                        }
+                    }
+                }
+            }
+
+            // Clear the flag
+            s_key_needs_simulate_press[vKey].store(false);
+        }
+    }
+}
+
+}  // namespace exclusive_key_groups
 
 }  // namespace display_commanderhooks
 

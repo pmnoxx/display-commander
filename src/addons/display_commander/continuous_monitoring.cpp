@@ -569,6 +569,7 @@ void ContinuousMonitoringThread() {
         LONGLONG last_cache_refresh_ns = start_time;
         LONGLONG last_60fps_update_ns = start_time;
         LONGLONG last_1s_update_ns = start_time;
+        LONGLONG last_exclusive_keys_cache_update_ns = start_time;
         const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
         while (g_monitoring_thread_running.load()) {
@@ -665,6 +666,9 @@ void ContinuousMonitoringThread() {
             if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
                 last_1s_update_ns = now_ns;
                 every1s_checks();
+
+                // Update cached list of keys belonging to active exclusive groups (once per second)
+                display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
 
                 // Auto-hide Discord Overlay (runs every second)
                 HandleDiscordOverlayAutoHide();

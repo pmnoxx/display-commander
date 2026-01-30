@@ -873,12 +873,17 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 api_version = 0x9100;  // due to reshade's bug.
             }
 
-            // Display API with version/feature level if available
+            // Display API with version/feature level and bitness
+#ifdef _WIN64
+            const char* bitness_label = "64-bit";
+#else
+            const char* bitness_label = "32-bit";
+#endif
             if (api_version != 0) {
                 std::string api_string = GetDeviceApiVersionString(api, api_version);
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", api_string.c_str());
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, api_string.c_str());
             } else {
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "| Graphics API: %s", GetDeviceApiString(api));
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, GetDeviceApiString(api));
             }
         }
 

@@ -23,6 +23,10 @@ class ReflexProvider : public ILatencyProvider {
     LatencyTechnology GetTechnology() const override { return LatencyTechnology::NVIDIA_Reflex; }
     const char* GetTechnologyName() const override { return "NVIDIA Reflex"; }
 
+    // PCLStats initialization helper (lazy initialization)
+    static void EnsurePCLStatsInitialized();
+
    private:
     ReflexManager reflex_manager_;
+    static bool _is_pcl_initialized;
 };

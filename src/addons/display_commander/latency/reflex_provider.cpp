@@ -1,24 +1,36 @@
 #include "reflex_provider.hpp"
 #include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 #include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../utils/logging.hpp"
+
+// Static member initialization
+bool ReflexProvider::_is_pcl_initialized = false;
 
 ReflexProvider::ReflexProvider() = default;
 ReflexProvider::~ReflexProvider() = default;
 
-bool ReflexProvider::Initialize(reshade::api::device* device) {
-    PCLSTATS_INIT(0);
-    return reflex_manager_.Initialize(device);
-}
+bool ReflexProvider::Initialize(reshade::api::device* device) { return reflex_manager_.Initialize(device); }
 
 bool ReflexProvider::InitializeNative(void* native_device, DeviceTypeDC device_type) {
-    PCLSTATS_INIT(0);
     return reflex_manager_.InitializeNative(native_device, device_type);
 }
 
 void ReflexProvider::Shutdown() {
-    PCLSTATS_SHUTDOWN();
+    // Only shutdown PCLStats if it was initialized
+    if (_is_pcl_initialized) {
+        PCLSTATS_SHUTDOWN();
+        _is_pcl_initialized = false;
+    }
     reflex_manager_.Shutdown();
+}
+
+void ReflexProvider::EnsurePCLStatsInitialized() {
+    // Only initialize if feature is enabled and not already initialized
+    if (!_is_pcl_initialized && settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+        PCLSTATS_INIT(0);
+        _is_pcl_initialized = true;
+    }
 }
 
 bool ReflexProvider::IsInitialized() const { return reflex_manager_.IsInitialized(); }

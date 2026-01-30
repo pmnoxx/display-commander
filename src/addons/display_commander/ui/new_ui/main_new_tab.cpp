@@ -9,6 +9,7 @@
 #include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
+#include "../../latency/reflex_provider.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../nvapi/reflex_manager.hpp"

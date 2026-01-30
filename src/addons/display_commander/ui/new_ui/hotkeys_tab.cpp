@@ -529,6 +529,109 @@ void DrawHotkeysTab() {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"ctrl+t\", \"ctrl+shift+backspace\"");
     }
 
+    // Exclusive Keys Section
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    if (ImGui::CollapsingHeader("Exclusive Keys", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextWrapped(
+            "Exclusive key groups ensure that when one key in a group is pressed, other keys in the same group are "
+            "automatically released. Useful for strafe macros and preventing conflicting key states.");
+        ImGui::Spacing();
+
+        // Predefined groups
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Predefined Groups:");
+        ImGui::Spacing();
+
+        CheckboxSetting(settings.exclusive_keys_ad_enabled, "AD Group (A and D keys)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When A is pressed, D is released. When D is pressed, A is released.");
+        }
+
+        CheckboxSetting(settings.exclusive_keys_ws_enabled, "WS Group (W and S keys)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When W is pressed, S is released. When S is pressed, W is released.");
+        }
+
+        CheckboxSetting(settings.exclusive_keys_awsd_enabled, "AWSD Group (A, W, S, D keys)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Custom groups
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Custom Groups:");
+        ImGui::Spacing();
+        ImGui::TextWrapped("Format: Groups separated by |, keys within groups separated by commas");
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"A,S|Q,E|Left,Right\"");
+        ImGui::Spacing();
+
+        // Parse and display custom groups as individual entries
+        std::string custom_groups = settings.exclusive_keys_custom_groups.GetValue();
+        std::vector<std::string> group_list;
+        if (!custom_groups.empty()) {
+            std::istringstream iss(custom_groups);
+            std::string group_str;
+            while (std::getline(iss, group_str, '|')) {
+                if (!group_str.empty()) {
+                    group_list.push_back(group_str);
+                }
+            }
+        }
+
+        // Display existing groups with delete buttons
+        for (size_t i = 0; i < group_list.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
+            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 80);
+            char group_buffer[256] = {0};
+            strncpy_s(group_buffer, sizeof(group_buffer), group_list[i].c_str(), _TRUNCATE);
+            if (ImGui::InputText("##GroupEdit", group_buffer, sizeof(group_buffer))) {
+                group_list[i] = std::string(group_buffer);
+                // Rebuild custom groups string
+                std::ostringstream oss;
+                for (size_t j = 0; j < group_list.size(); ++j) {
+                    if (j > 0) oss << "|";
+                    oss << group_list[j];
+                }
+                settings.exclusive_keys_custom_groups.SetValue(oss.str());
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Delete")) {
+                group_list.erase(group_list.begin() + i);
+                // Rebuild custom groups string
+                std::ostringstream oss;
+                for (size_t j = 0; j < group_list.size(); ++j) {
+                    if (j > 0) oss << "|";
+                    oss << group_list[j];
+                }
+                settings.exclusive_keys_custom_groups.SetValue(oss.str());
+                ImGui::PopID();
+                break;  // Exit loop after deletion
+            }
+            ImGui::PopID();
+        }
+
+        // Add new group button
+        if (ImGui::Button("Add Group")) {
+            group_list.push_back("Key1,Key2");
+            // Rebuild custom groups string
+            std::ostringstream oss;
+            for (size_t j = 0; j < group_list.size(); ++j) {
+                if (j > 0) oss << "|";
+                oss << group_list[j];
+            }
+            settings.exclusive_keys_custom_groups.SetValue(oss.str());
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Add a new custom exclusive key group");
+        }
+    }
+
     // Debug Information Section
     ImGui::Spacing();
     ImGui::Separator();
@@ -635,6 +738,138 @@ void DrawHotkeysTab() {
     }
 }
 
+// Parse a key name string to virtual key code
+int ParseKeyNameToVKey(const std::string& key_name) {
+    std::string lower = key_name;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    
+    // Trim whitespace
+    lower.erase(0, lower.find_first_not_of(" \t"));
+    lower.erase(lower.find_last_not_of(" \t") + 1);
+    
+    if (lower.length() == 1 && lower[0] >= 'a' && lower[0] <= 'z') {
+        return std::toupper(static_cast<unsigned char>(lower[0]));
+    } else if (lower == "left") {
+        return VK_LEFT;
+    } else if (lower == "right") {
+        return VK_RIGHT;
+    } else if (lower == "up") {
+        return VK_UP;
+    } else if (lower == "down") {
+        return VK_DOWN;
+    }
+    
+    return 0;  // Invalid key
+}
+
+// Process exclusive key groups - automatically release other keys in a group when one is pressed
+void ProcessExclusiveKeyGroups() {
+    // Check if hotkeys are enabled globally (exclusive keys are part of hotkeys system)
+    bool hotkeys_enabled = s_enable_hotkeys.load();
+    if (!hotkeys_enabled) {
+        return;
+    }
+
+    // Check if game is in foreground OR UI is open (same conditions as ProcessHotkeys)
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    HWND foreground_hwnd = GetForegroundWindow();
+    bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
+    bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+    
+    if (!is_game_in_foreground && !is_ui_open) {
+        return;
+    }
+
+    auto& settings = settings::g_hotkeysTabSettings;
+    
+    // Build list of active exclusive groups
+    std::vector<std::vector<int>> active_groups;
+    
+    // Predefined AD group
+    if (settings.exclusive_keys_ad_enabled.GetValue()) {
+        active_groups.push_back({'A', 'D'});
+    }
+    
+    // Predefined WS group
+    if (settings.exclusive_keys_ws_enabled.GetValue()) {
+        active_groups.push_back({'W', 'S'});
+    }
+    
+    // Predefined AWSD group
+    if (settings.exclusive_keys_awsd_enabled.GetValue()) {
+        active_groups.push_back({'A', 'W', 'S', 'D'});
+    }
+    
+    // Parse custom groups
+    std::string custom_groups_str = settings.exclusive_keys_custom_groups.GetValue();
+    if (!custom_groups_str.empty()) {
+        // Split by | to get individual groups
+        std::istringstream iss(custom_groups_str);
+        std::string group_str;
+        while (std::getline(iss, group_str, '|')) {
+            // Split by comma to get keys in this group
+            std::istringstream group_iss(group_str);
+            std::string key_str;
+            std::vector<int> group_keys;
+            while (std::getline(group_iss, key_str, ',')) {
+                int vkey = ParseKeyNameToVKey(key_str);
+                if (vkey > 0) {
+                    group_keys.push_back(vkey);
+                }
+            }
+            if (group_keys.size() >= 2) {  // At least 2 keys needed for exclusivity
+                active_groups.push_back(group_keys);
+            }
+        }
+    }
+    
+    // Process each active group
+    for (const auto& group : active_groups) {
+        // Check if any key in this group was just pressed
+        for (int pressed_key : group) {
+            if (display_commanderhooks::keyboard_tracker::IsKeyPressed(pressed_key)) {
+                // This key was just pressed - release all other keys in the group
+                INPUT inputs[256];
+                int input_count = 0;
+                
+                for (int other_key : group) {
+                    if (other_key != pressed_key) {
+                        // Check if the other key is currently down
+                        if (display_commanderhooks::keyboard_tracker::IsKeyDown(other_key)) {
+                            // Send key up event for this key
+                            inputs[input_count].type = INPUT_KEYBOARD;
+                            inputs[input_count].ki.wVk = static_cast<WORD>(other_key);
+                            inputs[input_count].ki.wScan = 0;
+                            inputs[input_count].ki.dwFlags = KEYEVENTF_KEYUP;
+                            inputs[input_count].ki.time = 0;
+                            inputs[input_count].ki.dwExtraInfo = 0;
+                            input_count++;
+                        }
+                    }
+                }
+                
+                // Send all key up events at once
+                if (input_count > 0) {
+                    SendInput(static_cast<UINT>(input_count), inputs, sizeof(INPUT));
+                    LogDebug("Exclusive keys: Released %d keys when %c was pressed", input_count, pressed_key);
+                }
+                
+                // Mark the pressed key as active in exclusive groups
+                // This records the timestamp and updates the active key to be the most recently pressed one
+                display_commanderhooks::exclusive_key_groups::MarkKeyDown(pressed_key);
+                
+                // Only process one key press per group per frame
+                break;
+            }
+        }
+        
+        // Check for keys that were released (not simulated releases, but actual releases)
+        // MarkKeyUp will be called from the hooks when keys are actually released,
+        // which will automatically update the active key to be the most recently pressed one
+        // that's still actually pressed
+    }
+}
+
 // Process all hotkeys (call from continuous monitoring loop)
 void ProcessHotkeys() {
     // Update debug info - always track when this function is called
@@ -681,6 +916,12 @@ void ProcessHotkeys() {
     // Successfully passed all checks - update successful call time
     g_hotkey_debug_info.last_successful_call_time_ns = now_ns;
     g_hotkey_debug_info.last_block_reason = "";
+
+    // Process exclusive key groups first (before hotkeys)
+    ProcessExclusiveKeyGroups();
+    
+    // Update exclusive key groups - simulate key presses for keys that became active
+    display_commanderhooks::exclusive_key_groups::Update();
 
     // Process each hotkey definition
     for (auto& def : g_hotkey_definitions) {

@@ -137,7 +137,24 @@ ExperimentalTabSettings::ExperimentalTabSettings()
                                                "DisplayCommander.Experimental"),
       perf_suppress_on_present_update_before("PerfSuppressOnPresentUpdateBefore", false,
                                              "DisplayCommander.Experimental"),
-      show_volume("ShowVolume", false, "DisplayCommander.Experimental") {
+      show_volume("ShowVolume", false, "DisplayCommander.Experimental"),
+      // Input testing settings - Mouse
+      test_block_mouse_messages("TestBlockMouseMessages", false, "DisplayCommander.Experimental"),
+      test_block_mouse_getcursorpos("TestBlockMouseGetCursorPos", false, "DisplayCommander.Experimental"),
+      test_block_mouse_setcursorpos("TestBlockMouseSetCursorPos", false, "DisplayCommander.Experimental"),
+      test_block_mouse_getkeystate("TestBlockMouseGetKeyState", false, "DisplayCommander.Experimental"),
+      test_block_mouse_rawinput("TestBlockMouseRawInput", false, "DisplayCommander.Experimental"),
+      test_block_mouse_mouseevent("TestBlockMouseMouseEvent", false, "DisplayCommander.Experimental"),
+      test_block_mouse_clipcursor("TestBlockMouseClipCursor", false, "DisplayCommander.Experimental"),
+      test_block_mouse_capture("TestBlockMouseCapture", false, "DisplayCommander.Experimental"),
+      // Input testing settings - Keyboard
+      test_block_keyboard_messages("TestBlockKeyboardMessages", false, "DisplayCommander.Experimental"),
+      test_block_keyboard_getkeystate("TestBlockKeyboardGetKeyState", false, "DisplayCommander.Experimental"),
+      test_block_keyboard_getasynckeystate("TestBlockKeyboardGetAsyncKeyState", false, "DisplayCommander.Experimental"),
+      test_block_keyboard_getkeyboardstate("TestBlockKeyboardGetKeyboardState", false, "DisplayCommander.Experimental"),
+      test_block_keyboard_rawinput("TestBlockKeyboardRawInput", false, "DisplayCommander.Experimental"),
+      test_block_keyboard_keybdevent("TestBlockKeyboardKeybdEvent", false, "DisplayCommander.Experimental"),
+      test_block_keyboard_sendinput("TestBlockKeyboardSendInput", false, "DisplayCommander.Experimental") {
     // Initialize the all_settings_ vector
     all_settings_ = {
         &auto_click_enabled,
@@ -229,6 +246,23 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_suppress_get_independent_flip_state,
         &perf_suppress_on_present_update_before,
         &show_volume,
+        // Input testing settings - Mouse
+        &test_block_mouse_messages,
+        &test_block_mouse_getcursorpos,
+        &test_block_mouse_setcursorpos,
+        &test_block_mouse_getkeystate,
+        &test_block_mouse_rawinput,
+        &test_block_mouse_mouseevent,
+        &test_block_mouse_clipcursor,
+        &test_block_mouse_capture,
+        // Input testing settings - Keyboard
+        &test_block_keyboard_messages,
+        &test_block_keyboard_getkeystate,
+        &test_block_keyboard_getasynckeystate,
+        &test_block_keyboard_getkeyboardstate,
+        &test_block_keyboard_rawinput,
+        &test_block_keyboard_keybdevent,
+        &test_block_keyboard_sendinput,
     };
 }
 

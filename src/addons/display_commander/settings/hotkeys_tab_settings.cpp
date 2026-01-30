@@ -18,7 +18,11 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_volume_up("HotkeyVolumeUp", "ctrl+shift+up", "DisplayCommander"),
       hotkey_volume_down("HotkeyVolumeDown", "ctrl+shift+down", "DisplayCommander"),
       hotkey_system_volume_up("HotkeySystemVolumeUp", "ctrl+alt+up", "DisplayCommander"),
-      hotkey_system_volume_down("HotkeySystemVolumeDown", "ctrl+alt+down", "DisplayCommander") {}
+      hotkey_system_volume_down("HotkeySystemVolumeDown", "ctrl+alt+down", "DisplayCommander"),
+      exclusive_keys_ad_enabled("ExclusiveKeysADEnabled", false, "DisplayCommander"),
+      exclusive_keys_ws_enabled("ExclusiveKeysWSEnabled", false, "DisplayCommander"),
+      exclusive_keys_awsd_enabled("ExclusiveKeysAWSDEnabled", false, "DisplayCommander"),
+      exclusive_keys_custom_groups("ExclusiveKeysCustomGroups", "", "DisplayCommander") {}
 
 void HotkeysTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -47,13 +51,18 @@ void HotkeysTabSettings::SaveAll() {
     hotkey_volume_down.Save();
     hotkey_system_volume_up.Save();
     hotkey_system_volume_down.Save();
+    exclusive_keys_ad_enabled.Save();
+    exclusive_keys_ws_enabled.Save();
+    exclusive_keys_awsd_enabled.Save();
+    exclusive_keys_custom_groups.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
     return {&enable_hotkeys, &hotkey_mute_unmute, &hotkey_background_toggle, &hotkey_timeslowdown,
             &hotkey_adhd_toggle, &hotkey_autoclick, &hotkey_input_blocking, &hotkey_display_commander_ui,
             &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up, &hotkey_volume_down,
-            &hotkey_system_volume_up, &hotkey_system_volume_down};
+            &hotkey_system_volume_up, &hotkey_system_volume_down, &exclusive_keys_ad_enabled,
+            &exclusive_keys_ws_enabled, &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups};
 }
 
 }  // namespace settings

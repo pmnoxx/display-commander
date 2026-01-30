@@ -508,6 +508,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
 
+    // Capture game-requested resolution (before any modifications)
+    g_game_requested_width.store(desc.back_buffer.texture.width);
+    g_game_requested_height.store(desc.back_buffer.texture.height);
+    LogInfo("OnCreateSwapchainCapture2 - Game requested resolution: %ux%u", 
+            desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+
     // Check if this is a supported API (D3D9, D3D10, D3D11, D3D12)
     const bool is_d3d9 = (api == reshade::api::device_api::d3d9);
     const bool is_dxgi = (api == reshade::api::device_api::d3d12 || api == reshade::api::device_api::d3d11

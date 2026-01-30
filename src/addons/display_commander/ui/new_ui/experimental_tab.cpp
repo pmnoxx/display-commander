@@ -15,6 +15,7 @@
 #include "../../hooks/rand_hooks.hpp"
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -294,6 +295,11 @@ void DrawExperimentalTab(reshade::api::effect_runtime* runtime) {
 
     if (ImGui::BeginTabItem("Important Info")) {
         DrawImportantInfo();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Input")) {
+        DrawInputTestTab();
         ImGui::EndTabItem();
     }
 
@@ -2251,6 +2257,221 @@ void DrawDLLBlockingControls() {
     }
 
     ImGui::Unindent();
+}
+
+void DrawInputTestTab() {
+    ImGui::Text("Input Testing - Determine which input APIs the game uses");
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    ImGui::TextWrapped(
+        "Enable individual input blocking methods to test which APIs the game uses for input. "
+        "When a method is enabled, that specific input API will be blocked. "
+        "If the game stops responding to input when you enable a method, the game likely uses that API.");
+    ImGui::Spacing();
+
+    // Mouse input testing section
+    if (ImGui::CollapsingHeader("Mouse Input Testing", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mouse Input Blocking Methods:");
+        ImGui::Spacing();
+
+        // Windows Messages
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_messages, "Block Mouse Messages");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks WM_MOUSEMOVE, WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, "
+                             "WM_XBUTTONDOWN, WM_MOUSEWHEEL, WM_MOUSEHWHEEL messages");
+        }
+
+        // GetCursorPos
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_getcursorpos, "Block GetCursorPos");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks GetCursorPos API - returns last known position");
+        }
+
+        // SetCursorPos
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_setcursorpos, "Block SetCursorPos");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks SetCursorPos API - prevents cursor position changes");
+        }
+
+        // GetKeyState/GetAsyncKeyState for mouse buttons
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_getkeystate, "Block GetKeyState (Mouse)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks GetKeyState/GetAsyncKeyState for mouse buttons (VK_LBUTTON, VK_RBUTTON, etc.)");
+        }
+
+        // Raw Input
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_rawinput, "Block Raw Input (Mouse)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks GetRawInputData/GetRawInputBuffer for mouse input");
+        }
+
+        // mouse_event
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_mouseevent, "Block mouse_event");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks mouse_event API");
+        }
+
+        // ClipCursor
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_clipcursor, "Block ClipCursor");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks ClipCursor API - prevents cursor clipping");
+        }
+
+        // SetCapture/ReleaseCapture
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_capture, "Block SetCapture");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks SetCapture/ReleaseCapture APIs");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Mouse hook statistics
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Mouse Hook Statistics:");
+        ImGui::Spacing();
+
+        const auto& mouse_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetCursorPos);
+        ImGui::Text("GetCursorPos: Total=%llu, Unsuppressed=%llu", mouse_stats.total_calls.load(),
+                    mouse_stats.unsuppressed_calls.load());
+
+        const auto& setcursor_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_SetCursorPos);
+        ImGui::Text("SetCursorPos: Total=%llu, Unsuppressed=%llu", setcursor_stats.total_calls.load(),
+                    setcursor_stats.unsuppressed_calls.load());
+
+        const auto& keystate_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyState);
+        ImGui::Text("GetKeyState: Total=%llu, Unsuppressed=%llu", keystate_stats.total_calls.load(),
+                    keystate_stats.unsuppressed_calls.load());
+
+        const auto& asynckeystate_stats =
+            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetAsyncKeyState);
+        ImGui::Text("GetAsyncKeyState: Total=%llu, Unsuppressed=%llu", asynckeystate_stats.total_calls.load(),
+                    asynckeystate_stats.unsuppressed_calls.load());
+
+        const auto& rawinput_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetRawInputData);
+        ImGui::Text("GetRawInputData: Total=%llu, Unsuppressed=%llu", rawinput_stats.total_calls.load(),
+                    rawinput_stats.unsuppressed_calls.load());
+
+        const auto& mouseevent_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_mouse_event);
+        ImGui::Text("mouse_event: Total=%llu, Unsuppressed=%llu", mouseevent_stats.total_calls.load(),
+                    mouseevent_stats.unsuppressed_calls.load());
+
+        const auto& clipcursor_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_ClipCursor);
+        ImGui::Text("ClipCursor: Total=%llu, Unsuppressed=%llu", clipcursor_stats.total_calls.load(),
+                    clipcursor_stats.unsuppressed_calls.load());
+
+        const auto& setcapture_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_SetCapture);
+        ImGui::Text("SetCapture: Total=%llu, Unsuppressed=%llu", setcapture_stats.total_calls.load(),
+                    setcapture_stats.unsuppressed_calls.load());
+
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+
+    // Keyboard input testing section
+    if (ImGui::CollapsingHeader("Keyboard Input Testing", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Keyboard Input Blocking Methods:");
+        ImGui::Spacing();
+
+        // Windows Messages
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_messages, "Block Keyboard Messages");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks WM_KEYDOWN, WM_KEYUP, WM_CHAR, WM_SYSKEYDOWN, WM_SYSKEYUP messages");
+        }
+
+        // GetKeyState
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getkeystate, "Block GetKeyState");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks GetKeyState API for keyboard keys");
+        }
+
+        // GetAsyncKeyState
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getasynckeystate, "Block GetAsyncKeyState");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks GetAsyncKeyState API for keyboard keys");
+        }
+
+        // GetKeyboardState
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getkeyboardstate, "Block GetKeyboardState");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks GetKeyboardState API - clears all keyboard state");
+        }
+
+        // Raw Input
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_rawinput, "Block Raw Input (Keyboard)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks GetRawInputData/GetRawInputBuffer for keyboard input");
+        }
+
+        // keybd_event
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_keybdevent, "Block keybd_event");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks keybd_event API");
+        }
+
+        // SendInput
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_sendinput, "Block SendInput");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Blocks SendInput API for keyboard input");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Keyboard hook statistics
+        ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Keyboard Hook Statistics:");
+        ImGui::Spacing();
+
+        const auto& keyboard_state_stats =
+            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyboardState);
+        ImGui::Text("GetKeyboardState: Total=%llu, Unsuppressed=%llu", keyboard_state_stats.total_calls.load(),
+                    keyboard_state_stats.unsuppressed_calls.load());
+
+        const auto& kbd_keystate_stats =
+            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyState);
+        ImGui::Text("GetKeyState: Total=%llu, Unsuppressed=%llu", kbd_keystate_stats.total_calls.load(),
+                    kbd_keystate_stats.unsuppressed_calls.load());
+
+        const auto& kbd_asynckeystate_stats =
+            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetAsyncKeyState);
+        ImGui::Text("GetAsyncKeyState: Total=%llu, Unsuppressed=%llu", kbd_asynckeystate_stats.total_calls.load(),
+                    kbd_asynckeystate_stats.unsuppressed_calls.load());
+
+        const auto& kbd_rawinput_stats =
+            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetRawInputData);
+        ImGui::Text("GetRawInputData: Total=%llu, Unsuppressed=%llu", kbd_rawinput_stats.total_calls.load(),
+                    kbd_rawinput_stats.unsuppressed_calls.load());
+
+        const auto& keybdevent_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_keybd_event);
+        ImGui::Text("keybd_event: Total=%llu, Unsuppressed=%llu", keybdevent_stats.total_calls.load(),
+                    keybdevent_stats.unsuppressed_calls.load());
+
+        const auto& sendinput_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_SendInput);
+        ImGui::Text("SendInput: Total=%llu, Unsuppressed=%llu", sendinput_stats.total_calls.load(),
+                    sendinput_stats.unsuppressed_calls.load());
+
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Reset statistics button
+    if (ImGui::Button("Reset All Hook Statistics")) {
+        display_commanderhooks::ResetAllHookStats();
+        LogInfo("Reset all hook statistics");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Reset all hook call statistics to zero");
+    }
 }
 
 }  // namespace ui::new_ui

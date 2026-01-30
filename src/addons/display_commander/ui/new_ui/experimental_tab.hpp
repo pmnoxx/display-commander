@@ -62,6 +62,9 @@ void DrawAnisotropicFilteringUpgrade();
 // Draw DLL blocking controls section
 void DrawDLLBlockingControls();
 
+// Draw input test tab
+void DrawInputTestTab();
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

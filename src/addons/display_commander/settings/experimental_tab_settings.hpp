@@ -174,6 +174,25 @@ class ExperimentalTabSettings {
     // Show volume overlay setting
     BoolSetting show_volume;
 
+    // Input testing settings - Mouse
+    BoolSetting test_block_mouse_messages;           // WM_MOUSEMOVE, WM_LBUTTONDOWN, etc.
+    BoolSetting test_block_mouse_getcursorpos;       // GetCursorPos
+    BoolSetting test_block_mouse_setcursorpos;      // SetCursorPos
+    BoolSetting test_block_mouse_getkeystate;       // GetKeyState/GetAsyncKeyState for mouse buttons
+    BoolSetting test_block_mouse_rawinput;          // GetRawInputData/GetRawInputBuffer for mouse
+    BoolSetting test_block_mouse_mouseevent;        // mouse_event
+    BoolSetting test_block_mouse_clipcursor;        // ClipCursor
+    BoolSetting test_block_mouse_capture;           // SetCapture/ReleaseCapture
+
+    // Input testing settings - Keyboard
+    BoolSetting test_block_keyboard_messages;       // WM_KEYDOWN, WM_CHAR, etc.
+    BoolSetting test_block_keyboard_getkeystate;    // GetKeyState
+    BoolSetting test_block_keyboard_getasynckeystate; // GetAsyncKeyState
+    BoolSetting test_block_keyboard_getkeyboardstate; // GetKeyboardState
+    BoolSetting test_block_keyboard_rawinput;       // GetRawInputData/GetRawInputBuffer for keyboard
+    BoolSetting test_block_keyboard_keybdevent;     // keybd_event
+    BoolSetting test_block_keyboard_sendinput;      // SendInput
+
    private:
     std::vector<SettingBase*> all_settings_;
 };

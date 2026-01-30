@@ -530,6 +530,14 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CH
                                                  IDXGISwapChain** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChain called");
 
+    // Capture game-requested resolution (before any modifications)
+    if (pDesc != nullptr) {
+        g_game_requested_width.store(pDesc->BufferDesc.Width);
+        g_game_requested_height.store(pDesc->BufferDesc.Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChain - Game requested resolution: %ux%u", 
+                pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
+    }
+
     if (ShouldInterceptSwapChainCreation()) {
         LogInfo("DXGIFactoryWrapper: Intercepting swapchain creation for Streamline compatibility");
         // TODO(user): Implement swapchain interception logic
@@ -581,6 +589,14 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown* pDevice, HWND 
                                                         IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd called");
 
+    // Capture game-requested resolution (before any modifications)
+    if (pDesc != nullptr) {
+        g_game_requested_width.store(pDesc->Width);
+        g_game_requested_height.store(pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd - Game requested resolution: %ux%u", 
+                pDesc->Width, pDesc->Height);
+    }
+
     if (ShouldInterceptSwapChainCreation()) {
         LogInfo("DXGIFactoryWrapper: Intercepting CreateSwapChainForHwnd for Streamline compatibility");
         // TODO(user): Implement swapchain interception logic
@@ -613,6 +629,14 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown* pDevice,
                                                               IDXGIOutput* pRestrictToOutput,
                                                               IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow called");
+
+    // Capture game-requested resolution (before any modifications)
+    if (pDesc != nullptr) {
+        g_game_requested_width.store(pDesc->Width);
+        g_game_requested_height.store(pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow - Game requested resolution: %ux%u", 
+                pDesc->Width, pDesc->Height);
+    }
 
     if (ShouldInterceptSwapChainCreation()) {
         LogInfo("DXGIFactoryWrapper: Intercepting CreateSwapChainForCoreWindow for Streamline compatibility");
@@ -673,6 +697,14 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown* pDevice
                                                                IDXGIOutput* pRestrictToOutput,
                                                                IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition called");
+
+    // Capture game-requested resolution (before any modifications)
+    if (pDesc != nullptr) {
+        g_game_requested_width.store(pDesc->Width);
+        g_game_requested_height.store(pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition - Game requested resolution: %ux%u", 
+                pDesc->Width, pDesc->Height);
+    }
 
     if (ShouldInterceptSwapChainCreation()) {
         LogInfo("DXGIFactoryWrapper: Intercepting CreateSwapChainForComposition for Streamline compatibility");

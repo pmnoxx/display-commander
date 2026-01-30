@@ -174,6 +174,9 @@ class ExperimentalTabSettings {
     // Show volume overlay setting
     BoolSetting show_volume;
 
+    // Translate mouse position from window resolution to render resolution (e.g. 3840x2160 -> 1920x1080)
+    BoolSetting translate_mouse_position;
+
     // Input testing settings - Mouse
     BoolSetting test_block_mouse_messages;           // WM_MOUSEMOVE, WM_LBUTTONDOWN, etc.
     BoolSetting test_block_mouse_getcursorpos;       // GetCursorPos

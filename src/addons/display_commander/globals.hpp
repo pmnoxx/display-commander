@@ -646,6 +646,22 @@ extern std::atomic<int> g_last_backbuffer_height;
 extern std::atomic<int> g_game_render_width;
 extern std::atomic<int> g_game_render_height;
 
+// Translate-mouse-position debug (recorded in ApplyTranslateMousePositionToCursorPos, read by UI; atomics only)
+extern std::atomic<std::uint64_t> g_translate_mouse_debug_seq;
+extern std::atomic<uintptr_t> g_translate_mouse_debug_hwnd;
+extern std::atomic<int> g_translate_mouse_debug_num_x;
+extern std::atomic<int> g_translate_mouse_debug_denom_x;
+extern std::atomic<int> g_translate_mouse_debug_num_y;
+extern std::atomic<int> g_translate_mouse_debug_denom_y;
+extern std::atomic<int> g_translate_mouse_debug_screen_in_x;
+extern std::atomic<int> g_translate_mouse_debug_screen_in_y;
+extern std::atomic<int> g_translate_mouse_debug_client_x;
+extern std::atomic<int> g_translate_mouse_debug_client_y;
+extern std::atomic<int> g_translate_mouse_debug_render_x;
+extern std::atomic<int> g_translate_mouse_debug_render_y;
+extern std::atomic<int> g_translate_mouse_debug_screen_out_x;
+extern std::atomic<int> g_translate_mouse_debug_screen_out_y;
+
 // Background/foreground state
 extern std::atomic<bool> g_app_in_background;
 

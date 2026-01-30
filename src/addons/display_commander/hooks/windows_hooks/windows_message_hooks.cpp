@@ -348,6 +348,83 @@ static bool IsWindowFromCurrentProcess(HWND hwnd) {
     return window_process_id == GetCurrentProcessId();
 }
 
+// Mouse position translation: window resolution -> render resolution (e.g. 3840x2160 -> 1920x1080)
+static bool IsMouseMessageWithClientCoords(UINT msg) {
+    return (msg == WM_MOUSEMOVE || msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN || msg == WM_MBUTTONDOWN
+            || msg == WM_XBUTTONDOWN || msg == WM_LBUTTONUP || msg == WM_RBUTTONUP || msg == WM_MBUTTONUP
+            || msg == WM_XBUTTONUP);
+}
+
+// Returns true if translation is active and scale factors are written; window/client sizes must be valid.
+static bool GetMouseTranslateScale(HWND game_hwnd, int* out_scale_num_x, int* out_scale_denom_x, int* out_scale_num_y,
+                                   int* out_scale_denom_y) {
+    if (game_hwnd == nullptr || !IsWindow(game_hwnd)
+        || !settings::g_experimentalTabSettings.translate_mouse_position.GetValue()) {
+        return false;
+    }
+    RECT client_rect = {};
+    if (!GetClientRect(game_hwnd, &client_rect)) {
+        return false;
+    }
+    const int window_w = client_rect.right - client_rect.left;
+    const int window_h = client_rect.bottom - client_rect.top;
+    const int render_w = g_last_backbuffer_width.load();
+    const int render_h = g_last_backbuffer_height.load();
+    if (window_w <= 0 || window_h <= 0 || render_w <= 0 || render_h <= 0) {
+        return false;
+    }
+    if (window_w == render_w && window_h == render_h) {
+        return false;
+    }
+    *out_scale_num_x = window_w;
+    *out_scale_denom_x = render_w;
+    *out_scale_num_y = window_h;
+    *out_scale_denom_y = render_h;
+    return true;
+}
+
+// Scale window client (x,y) to render space. Returns scaled lParam (LOWORD=x, HIWORD=y).
+static LPARAM TranslateMouseLParam(HWND game_hwnd, LPARAM lParam) {
+    int num_x, denom_x, num_y, denom_y;
+    if (!GetMouseTranslateScale(game_hwnd, &num_x, &denom_x, &num_y, &denom_y)) {
+        return lParam;
+    }
+    const int wx = static_cast<int>(static_cast<SHORT>(LOWORD(lParam)));
+    const int wy = static_cast<int>(static_cast<SHORT>(HIWORD(lParam)));
+    const int rx = (wx * denom_x) / num_x;
+    const int ry = (wy * denom_y) / num_y;
+    return MAKELPARAM(static_cast<UINT>(rx & 0xFFFFu), static_cast<UINT>(ry & 0xFFFFu));
+}
+
+// If translate-mouse-position is on and cursor is over game window, spoof lpPoint to render-space screen coords.
+void ApplyTranslateMousePositionToCursorPos(LPPOINT lpPoint) {
+    if (lpPoint == nullptr || !settings::g_experimentalTabSettings.translate_mouse_position.GetValue()) {
+        return;
+    }
+
+    const auto game_hwnd = g_last_swapchain_hwnd.load();
+    RECT client_rect = {};
+    if (!GetClientRect(game_hwnd, &client_rect)) {
+        return;
+    }
+
+    POINT client_topleft = {0, 0};
+    if (!ClientToScreen(game_hwnd, &client_topleft)) {
+        return;
+    }
+
+    const long window_w = client_rect.right - client_rect.left;
+    const long window_h = client_rect.bottom - client_rect.top;
+    const long render_w = g_game_render_width.load();
+    const long render_h = g_game_render_height.load();
+
+    lpPoint->x = (lpPoint->x - client_topleft.x) * render_w / (std::max)(1L, window_w);
+    lpPoint->y = (lpPoint->y - client_topleft.y) * render_h / (std::max)(1L, window_h);
+
+    lpPoint->x = (std::max)(0L, (std::min)(lpPoint->x, render_w - 1));
+    lpPoint->y = (std::max)(0L, (std::min)(lpPoint->y, render_h - 1));
+}
+
 // Hooked GetMessageA function
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -398,6 +475,13 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
             // Track unsuppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+            // Translate mouse position from window resolution to render resolution
+            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+                HWND game_hwnd = g_last_swapchain_hwnd.load();
+                if (lpMsg->hwnd == game_hwnd) {
+                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
+                }
+            }
         }
     }
 
@@ -455,6 +539,13 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
             // Track unsuppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+            // Translate mouse position from window resolution to render resolution
+            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+                HWND game_hwnd = g_last_swapchain_hwnd.load();
+                if (lpMsg->hwnd == game_hwnd) {
+                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
+                }
+            }
         }
     }
 
@@ -510,6 +601,13 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
             g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
             // Track unsuppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+            // Translate mouse position from window resolution to render resolution
+            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+                HWND game_hwnd = g_last_swapchain_hwnd.load();
+                if (lpMsg->hwnd == game_hwnd) {
+                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
+                }
+            }
         }
     }
 
@@ -565,6 +663,13 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
             g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
             // Track unsuppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+            // Translate mouse position from window resolution to render resolution
+            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+                HWND game_hwnd = g_last_swapchain_hwnd.load();
+                if (lpMsg->hwnd == game_hwnd) {
+                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
+                }
+            }
         }
     }
 
@@ -606,9 +711,18 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     // Track unsuppressed message in history
     ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, false);
 
+    // Translate mouse position from window resolution to render resolution when posting to game window
+    LPARAM effective_lParam = lParam;
+    if (IsMouseMessageWithClientCoords(Msg)) {
+        HWND game_hwnd = g_last_swapchain_hwnd.load();
+        if (hWnd == game_hwnd) {
+            effective_lParam = TranslateMouseLParam(game_hwnd, lParam);
+        }
+    }
+
     // Call original function
-    return PostMessageA_Original ? PostMessageA_Original(hWnd, Msg, wParam, lParam)
-                                 : PostMessageA(hWnd, Msg, wParam, lParam);
+    return PostMessageA_Original ? PostMessageA_Original(hWnd, Msg, wParam, effective_lParam)
+                                 : PostMessageA(hWnd, Msg, wParam, effective_lParam);
 }
 
 // Hooked PostMessageW function
@@ -645,9 +759,18 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
     // Track unsuppressed message in history
     ui::new_ui::AddMessageToHistoryIfKnown(Msg, wParam, lParam, false);
 
+    // Translate mouse position from window resolution to render resolution when posting to game window
+    LPARAM effective_lParam = lParam;
+    if (IsMouseMessageWithClientCoords(Msg)) {
+        HWND game_hwnd = g_last_swapchain_hwnd.load();
+        if (hWnd == game_hwnd) {
+            effective_lParam = TranslateMouseLParam(game_hwnd, lParam);
+        }
+    }
+
     // Call original function
-    return PostMessageW_Original ? PostMessageW_Original(hWnd, Msg, wParam, lParam)
-                                 : PostMessageW(hWnd, Msg, wParam, lParam);
+    return PostMessageW_Original ? PostMessageW_Original(hWnd, Msg, wParam, effective_lParam)
+                                 : PostMessageW(hWnd, Msg, wParam, effective_lParam);
 }
 
 // Hooked GetKeyboardState function
@@ -774,6 +897,7 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     // Test setting: Block GetCursorPos
     if (settings::g_experimentalTabSettings.test_block_mouse_getcursorpos.GetValue() && lpPoint != nullptr) {
         *lpPoint = s_last_cursor_position;
+        ApplyTranslateMousePositionToCursorPos(lpPoint);  // Spoof for translate-mouse-position feature
         return TRUE;
     }
 
@@ -790,6 +914,7 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     // If mouse input blocking is enabled, return last known cursor position
     if (ShouldBlockMouseInput() && lpPoint != nullptr) {
         *lpPoint = s_last_cursor_position;
+        ApplyTranslateMousePositionToCursorPos(lpPoint);  // Spoof for translate-mouse-position feature
         return TRUE;
     }
 
@@ -802,6 +927,8 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     // Update last known cursor position
     if (result && lpPoint != nullptr) {
         s_last_cursor_position = *lpPoint;
+        // Spoof GetCursorPos for translate-mouse-position: return render-space coords when cursor over game window
+        ApplyTranslateMousePositionToCursorPos(lpPoint);
     }
 
     return result;
@@ -2238,7 +2365,7 @@ void Initialize() {
 
     // Initialize exclusive key groups
     exclusive_key_groups::Initialize();
-    
+
     // Initialize cache (will be updated once per second in continuous monitoring)
     exclusive_key_groups::UpdateCachedActiveKeys();
 }
@@ -2419,16 +2546,16 @@ void UpdateCachedActiveKeys() {
         s_key_in_active_group[i].store(false);
         s_key_to_group_index[i].store(-1);
     }
-    
+
     // Get active groups
     std::vector<std::vector<int>> active_groups = GetActiveGroups();
-    
+
     // Create new shared_ptr with active groups
     auto new_groups = std::make_shared<std::vector<std::vector<int>>>(std::move(active_groups));
-    
+
     // Atomically swap the shared_ptr
     s_cached_active_groups.store(new_groups);
-    
+
     // Mark all keys that belong to active groups
     for (size_t group_idx = 0; group_idx < new_groups->size(); ++group_idx) {
         const auto& group = (*new_groups)[group_idx];
@@ -2468,18 +2595,18 @@ bool ShouldSuppressKey(int vKey) {
     if (vKey < 0 || vKey >= 256) {
         return false;
     }
-    
+
     // Use cached data for fast lookup
     if (!s_key_in_active_group[vKey].load()) {
         return false;  // Key not in any exclusive group
     }
-    
+
     int group_index = FindKeyGroupCached(vKey);
     auto cached_groups = s_cached_active_groups.load();
     if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
         return false;
     }
-    
+
     const auto& group = (*cached_groups)[group_index];
 
     for (int key : group) {
@@ -2507,20 +2634,20 @@ void MarkKeyDown(int vKey) {
     LONGLONG now_ns = utils::get_now_ns();
     s_key_press_timestamp[vKey].store(now_ns);
     s_key_actually_pressed[vKey].store(true);
-    
+
     // Use cached data for fast lookup
     if (!s_key_in_active_group[vKey].load()) {
         return;  // Key not in any exclusive group
     }
-    
+
     int group_index = FindKeyGroupCached(vKey);
     auto cached_groups = s_cached_active_groups.load();
     if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
         return;
     }
-    
+
     const auto& group = (*cached_groups)[group_index];
-    
+
     // Find the most recently pressed key in this group that is still actually pressed
     int most_recent_key = vKey;
     LONGLONG most_recent_time = now_ns;
@@ -2559,20 +2686,20 @@ void MarkKeyUp(int vKey) {
 
     // Mark as not actually pressed
     s_key_actually_pressed[vKey].store(false);
-    
+
     // Use cached data for fast lookup
     if (!s_key_in_active_group[vKey].load()) {
         return;  // Key not in any exclusive group
     }
-    
+
     int group_index = FindKeyGroupCached(vKey);
     auto cached_groups = s_cached_active_groups.load();
     if (group_index < 0 || !cached_groups || group_index >= static_cast<int>(cached_groups->size())) {
         return;
     }
-    
+
     const auto& group = (*cached_groups)[group_index];
-    
+
     // Find which keys are still actually pressed in this group
     std::vector<int> still_pressed;
     for (int key : group) {
@@ -2649,14 +2776,14 @@ void Update() {
                             input.ki.dwFlags = 0;  // Key down
                             input.ki.time = 0;
                             input.ki.dwExtraInfo = 0;
-                            
+
                             // Use original SendInput to avoid hook recursion
                             if (SendInput_Original) {
                                 SendInput_Original(1, &input, sizeof(INPUT));
                             } else {
                                 SendInput(1, &input, sizeof(INPUT));
                             }
-                            
+
                             LogDebug("Exclusive keys: Simulated key down for %c (became active)", vKey);
                         }
                     }

@@ -138,6 +138,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       perf_suppress_on_present_update_before("PerfSuppressOnPresentUpdateBefore", false,
                                              "DisplayCommander.Experimental"),
       show_volume("ShowVolume", false, "DisplayCommander.Experimental"),
+      translate_mouse_position("TranslateMousePosition", false, "DisplayCommander.Experimental"),
       // Input testing settings - Mouse
       test_block_mouse_messages("TestBlockMouseMessages", false, "DisplayCommander.Experimental"),
       test_block_mouse_getcursorpos("TestBlockMouseGetCursorPos", false, "DisplayCommander.Experimental"),
@@ -246,6 +247,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_suppress_get_independent_flip_state,
         &perf_suppress_on_present_update_before,
         &show_volume,
+        &translate_mouse_position,
         // Input testing settings - Mouse
         &test_block_mouse_messages,
         &test_block_mouse_getcursorpos,

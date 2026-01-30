@@ -1,10 +1,4 @@
 #include "experimental_tab.hpp"
-#include "hook_stats_tab.hpp"
-#include "main_new_tab.hpp"
-#include "streamline_tab.hpp"
-#include "swapchain_tab.hpp"
-#include "updates_tab.hpp"
-#include "window_info_tab.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
@@ -23,7 +17,13 @@
 #include "../../utils/stack_trace.hpp"
 #include "../../utils/timing.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
+#include "hook_stats_tab.hpp"
+#include "main_new_tab.hpp"
 #include "settings_wrapper.hpp"
+#include "streamline_tab.hpp"
+#include "swapchain_tab.hpp"
+#include "updates_tab.hpp"
+#include "window_info_tab.hpp"
 
 #include <psapi.h>
 #include <windows.h>
@@ -2277,11 +2277,57 @@ void DrawInputTestTab() {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mouse Input Blocking Methods:");
         ImGui::Spacing();
 
+        // Translate mouse position (window resolution -> render resolution)
+        CheckboxSetting(settings::g_experimentalTabSettings.translate_mouse_position, "Translate Mouse Position");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "When window resolution is larger than render resolution (e.g. 3840x2160 window, "
+                "1920x1080 render), scale mouse coordinates so the game sees render-space coordinates.");
+        }
+
+        const auto game_hwnd = g_last_swapchain_hwnd.load();
+        POINT client_topleft = {0, 0};
+        if (ClientToScreen(game_hwnd, &client_topleft)) {
+            ImGui::Text("Client Top Left: %ld, %ld", client_topleft.x, client_topleft.y);
+        }
+        RECT client_rect = {};
+        if (GetClientRect(game_hwnd, &client_rect)) {
+            ImGui::Text("Client Rect: %ld, %ld, %ld, %ld", client_rect.left, client_rect.top, client_rect.right,
+                        client_rect.bottom);
+        }
+        RECT window_rect = {};
+        if (GetWindowRect(game_hwnd, &window_rect)) {
+            ImGui::Text("Window Rect: %ld, %ld, %ld, %ld", window_rect.left, window_rect.top, window_rect.right,
+                        window_rect.bottom);
+        }
+        // WindoPos
+        POINT window_pos;
+        const int window_w = client_rect.right - client_rect.left;
+        const int window_h = client_rect.bottom - client_rect.top;
+        const int render_w = g_game_render_width.load();
+        const int render_h = g_game_render_height.load();
+        POINT cursor_pos;
+        if (display_commanderhooks::GetCursorPos_Original) {
+            display_commanderhooks::GetCursorPos_Original(&cursor_pos);
+        } else {
+            GetCursorPos(&cursor_pos);
+        }
+        ImGui::Text("Cursor Position: %ld, %ld", cursor_pos.x, cursor_pos.y);
+        display_commanderhooks::ApplyTranslateMousePositionToCursorPos(&cursor_pos);
+        ImGui::Text("Translated Cursor Position: %ld, %ld", cursor_pos.x, cursor_pos.y);
+
+        ImGui::Text("Game Window: %p", game_hwnd);
+        ImGui::Text("Window Size: %dx%d", window_w, window_h);
+        ImGui::Text("Render Size: %dx%d", render_w, render_h);
+
+        ImGui::Spacing();
+
         // Windows Messages
         CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_messages, "Block Mouse Messages");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Blocks WM_MOUSEMOVE, WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, "
-                             "WM_XBUTTONDOWN, WM_MOUSEWHEEL, WM_MOUSEHWHEEL messages");
+            ImGui::SetTooltip(
+                "Blocks WM_MOUSEMOVE, WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, "
+                "WM_XBUTTONDOWN, WM_MOUSEWHEEL, WM_MOUSEHWHEEL messages");
         }
 
         // GetCursorPos
@@ -2392,13 +2438,15 @@ void DrawInputTestTab() {
         }
 
         // GetAsyncKeyState
-        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getasynckeystate, "Block GetAsyncKeyState");
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getasynckeystate,
+                        "Block GetAsyncKeyState");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks GetAsyncKeyState API for keyboard keys");
         }
 
         // GetKeyboardState
-        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getkeyboardstate, "Block GetKeyboardState");
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getkeyboardstate,
+                        "Block GetKeyboardState");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Blocks GetKeyboardState API - clears all keyboard state");
         }
@@ -2434,8 +2482,7 @@ void DrawInputTestTab() {
         ImGui::Text("GetKeyboardState: Total=%llu, Unsuppressed=%llu", keyboard_state_stats.total_calls.load(),
                     keyboard_state_stats.unsuppressed_calls.load());
 
-        const auto& kbd_keystate_stats =
-            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyState);
+        const auto& kbd_keystate_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyState);
         ImGui::Text("GetKeyState: Total=%llu, Unsuppressed=%llu", kbd_keystate_stats.total_calls.load(),
                     kbd_keystate_stats.unsuppressed_calls.load());
 

@@ -223,6 +223,23 @@ std::atomic<int> g_last_backbuffer_height{0};
 // Game render resolution (before any modifications) - matches Special K's render_x/render_y
 std::atomic<int> g_game_render_width{0};
 std::atomic<int> g_game_render_height{0};
+
+// Translate-mouse-position debug (atomics only, no locks)
+std::atomic<std::uint64_t> g_translate_mouse_debug_seq{0};
+std::atomic<uintptr_t> g_translate_mouse_debug_hwnd{0};
+std::atomic<int> g_translate_mouse_debug_num_x{0};
+std::atomic<int> g_translate_mouse_debug_denom_x{0};
+std::atomic<int> g_translate_mouse_debug_num_y{0};
+std::atomic<int> g_translate_mouse_debug_denom_y{0};
+std::atomic<int> g_translate_mouse_debug_screen_in_x{0};
+std::atomic<int> g_translate_mouse_debug_screen_in_y{0};
+std::atomic<int> g_translate_mouse_debug_client_x{0};
+std::atomic<int> g_translate_mouse_debug_client_y{0};
+std::atomic<int> g_translate_mouse_debug_render_x{0};
+std::atomic<int> g_translate_mouse_debug_render_y{0};
+std::atomic<int> g_translate_mouse_debug_screen_out_x{0};
+std::atomic<int> g_translate_mouse_debug_screen_out_y{0};
+
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
 

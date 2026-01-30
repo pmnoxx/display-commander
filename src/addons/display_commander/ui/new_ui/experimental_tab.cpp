@@ -1495,6 +1495,77 @@ void DrawDeveloperTools() {
 
     ImGui::Spacing();
 
+    // Apply changes in create_swapchain event (OnCreateSwapchainCapture2)
+    CheckboxSetting(settings::g_experimentalTabSettings.apply_changes_on_create_swapchain,
+                    "Apply changes in OnCreateSwapchain (create_swapchain event)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "When enabled, OnCreateSwapchainCapture2 applies all modifications (prevent fullscreen, backbuffer "
+            "count, FLIPEX, format override, resolution upgrade, etc.). When disabled, only capture of game "
+            "resolution is done.");
+    }
+
+    ImGui::Spacing();
+
+    // Spoof game resolution in WM_SIZE/WM_DISPLAYCHANGE (like SpecialK res override)
+    CheckboxSetting(settings::g_experimentalTabSettings.spoof_game_resolution_in_size_messages,
+                    "Spoof game resolution in size messages");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "When enabled, WM_SIZE and WM_DISPLAYCHANGE report the game's render resolution (from swap chain) instead "
+            "of the real window size. Can help keep the swap chain from resizing when moving between monitors or "
+            "resizing the window (similar to SpecialK's resolution override).");
+    }
+    if (settings::g_experimentalTabSettings.spoof_game_resolution_in_size_messages.GetValue()) {
+        ImGui::Indent();
+        int override_x = settings::g_experimentalTabSettings.spoof_game_resolution_override_width.GetValue();
+        if (ImGui::InputInt("Override X", &override_x, 0, 0)) {
+            override_x = std::clamp(override_x,
+                                    settings::g_experimentalTabSettings.spoof_game_resolution_override_width.GetMin(),
+                                    settings::g_experimentalTabSettings.spoof_game_resolution_override_width.GetMax());
+            settings::g_experimentalTabSettings.spoof_game_resolution_override_width.SetValue(override_x);
+            settings::g_experimentalTabSettings.spoof_game_resolution_override_width.Save();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Width to report (0 = use game render width).");
+        }
+        int override_y = settings::g_experimentalTabSettings.spoof_game_resolution_override_height.GetValue();
+        if (ImGui::InputInt("Override Y", &override_y, 0, 0)) {
+            override_y = std::clamp(override_y,
+                                    settings::g_experimentalTabSettings.spoof_game_resolution_override_height.GetMin(),
+                                    settings::g_experimentalTabSettings.spoof_game_resolution_override_height.GetMax());
+            settings::g_experimentalTabSettings.spoof_game_resolution_override_height.SetValue(override_y);
+            settings::g_experimentalTabSettings.spoof_game_resolution_override_height.Save();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Height to report (0 = use game render height). When both X and Y are non-zero, these "
+                "values are used; otherwise game render size is used.");
+        }
+        // Button to request swap chain resize to override (or current render) size
+        if (ImGui::Button("Resize swap chain to override values")) {
+            const HWND hwnd = g_last_swapchain_hwnd.load();
+            const int override_w = settings::g_experimentalTabSettings.spoof_game_resolution_override_width.GetValue();
+            const int override_h = settings::g_experimentalTabSettings.spoof_game_resolution_override_height.GetValue();
+            const int w = (override_w > 0 && override_h > 0) ? override_w : g_game_render_width.load();
+            const int h = (override_w > 0 && override_h > 0) ? override_h : g_game_render_height.load();
+            if (w > 0 && h > 0 && IsWindow(hwnd)) {
+                PostMessage(hwnd, WM_SIZE, SIZE_RESTORED, MAKELPARAM(static_cast<UINT>(w), static_cast<UINT>(h)));
+                LogInfo("Posted WM_SIZE %dx%d to game window to request swap chain resize", w, h);
+            } else {
+                LogWarn("Resize swap chain: invalid size (%dx%d) or no game window", w, h);
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Sends WM_SIZE to the game window so the game resizes the swap chain. Uses Override X/Y when both "
+                "are non-zero, otherwise uses current game render size.");
+        }
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+
     // Debugger Trigger Button
     if (ImGui::Button("Trigger Debugger Break")) {
         LogInfo("Debugger break triggered by user");

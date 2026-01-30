@@ -368,8 +368,10 @@ static bool GetMouseTranslateScale(HWND game_hwnd, int* out_scale_num_x, int* ou
     }
     const int window_w = client_rect.right - client_rect.left;
     const int window_h = client_rect.bottom - client_rect.top;
-    const int render_w = g_last_backbuffer_width.load();
-    const int render_h = g_last_backbuffer_height.load();
+    const int override_w = settings::g_experimentalTabSettings.translate_mouse_position_override_width.GetValue();
+    const int override_h = settings::g_experimentalTabSettings.translate_mouse_position_override_height.GetValue();
+    const int render_w = (override_w > 0 && override_h > 0) ? override_w : g_last_backbuffer_width.load();
+    const int render_h = (override_w > 0 && override_h > 0) ? override_h : g_last_backbuffer_height.load();
     if (window_w <= 0 || window_h <= 0 || render_w <= 0 || render_h <= 0) {
         return false;
     }
@@ -415,8 +417,10 @@ void ApplyTranslateMousePositionToCursorPos(LPPOINT lpPoint) {
 
     const long window_w = client_rect.right - client_rect.left;
     const long window_h = client_rect.bottom - client_rect.top;
-    const long render_w = g_game_render_width.load();
-    const long render_h = g_game_render_height.load();
+    const int override_w = settings::g_experimentalTabSettings.translate_mouse_position_override_width.GetValue();
+    const int override_h = settings::g_experimentalTabSettings.translate_mouse_position_override_height.GetValue();
+    const long render_w = (override_w > 0 && override_h > 0) ? override_w : g_game_render_width.load();
+    const long render_h = (override_w > 0 && override_h > 0) ? override_h : g_game_render_height.load();
 
     lpPoint->x = (lpPoint->x - client_topleft.x) * render_w / (std::max)(1L, window_w);
     lpPoint->y = (lpPoint->y - client_topleft.y) * render_h / (std::max)(1L, window_h);

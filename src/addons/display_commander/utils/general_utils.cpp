@@ -131,22 +131,6 @@ void ComputeDesiredSize(int display_width, int display_height, int& out_w, int& 
         return;
     }
 
-    if (s_window_mode.load() == WindowMode::kBorderlessFullscreenAutoRes) {
-        // kBorderlessFullscreenAutoRes: Borderless fullscreen with auto resolution change
-        // Use game render resolution (will be set before window resize)
-        int render_w = g_last_backbuffer_width.load();
-        int render_h = g_last_backbuffer_height.load();
-        if (render_w > 0 && render_h > 0) {
-            out_w = render_w;
-            out_h = render_h;
-        } else {
-            // Fallback to display dimensions if render resolution not available
-            out_w = display_width;
-            out_h = display_height;
-        }
-        return;
-    }
-
     // kAspectRatio: Borderless Windowed (Aspect Ratio) - aspect mode
     // Get the selected width from the dropdown
     const int want_w = GetAspectWidthValue(display_width);

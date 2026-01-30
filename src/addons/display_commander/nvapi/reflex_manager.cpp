@@ -1,6 +1,7 @@
 #include "reflex_manager.hpp"
 #include "../globals.hpp"
 #include "../hooks/nvapi_hooks.hpp"
+#include "../latency/reflex_provider.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
@@ -132,6 +133,8 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     // Emit PCLStats marker (ETW) using the same marker type / frame id we sent to NVAPI.
     // Only emit if PCL stats reporting is enabled
     if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+        // Ensure PCLSTATS is initialized if setting is enabled (lazy initialization)
+        ReflexProvider::EnsurePCLStatsInitialized();
         PCLSTATS_MARKER(static_cast<PCLSTATS_LATENCY_MARKER_TYPE>(marker), static_cast<uint64_t>(mp.frameID));
     }
     return true;

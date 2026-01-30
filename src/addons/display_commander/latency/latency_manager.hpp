@@ -44,7 +44,10 @@ class ILatencyProvider {
     virtual bool Sleep() = 0;
 
     // Get sleep status (optional, returns false if not supported)
-    virtual bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) { (void)status_params; return false; }
+    virtual bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
+        (void)status_params;
+        return false;
+    }
 
     // Technology-specific info
     virtual LatencyTechnology GetTechnology() const = 0;

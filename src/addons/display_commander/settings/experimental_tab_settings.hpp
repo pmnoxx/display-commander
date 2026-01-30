@@ -177,24 +177,34 @@ class ExperimentalTabSettings {
     // Translate mouse position from window resolution to render resolution (e.g. 3840x2160 -> 1920x1080)
     BoolSetting translate_mouse_position;
 
+    // Spoof WM_SIZE/WM_DISPLAYCHANGE lParam with game render resolution (g_game_render_width/height)
+    BoolSetting spoof_game_resolution_in_size_messages;
+    // Override X/Y when non-zero; when either is 0 use g_game_render_width/height
+    IntSetting spoof_game_resolution_override_width;
+    IntSetting spoof_game_resolution_override_height;
+
+    // When true, OnCreateSwapchainCapture2 applies all modifications (prevent fullscreen, FLIPEX, format override,
+    // resolution upgrade, etc.). When false, only capture of game resolution is done.
+    BoolSetting apply_changes_on_create_swapchain;
+
     // Input testing settings - Mouse
-    BoolSetting test_block_mouse_messages;           // WM_MOUSEMOVE, WM_LBUTTONDOWN, etc.
-    BoolSetting test_block_mouse_getcursorpos;       // GetCursorPos
-    BoolSetting test_block_mouse_setcursorpos;      // SetCursorPos
-    BoolSetting test_block_mouse_getkeystate;       // GetKeyState/GetAsyncKeyState for mouse buttons
-    BoolSetting test_block_mouse_rawinput;          // GetRawInputData/GetRawInputBuffer for mouse
-    BoolSetting test_block_mouse_mouseevent;        // mouse_event
-    BoolSetting test_block_mouse_clipcursor;        // ClipCursor
-    BoolSetting test_block_mouse_capture;           // SetCapture/ReleaseCapture
+    BoolSetting test_block_mouse_messages;      // WM_MOUSEMOVE, WM_LBUTTONDOWN, etc.
+    BoolSetting test_block_mouse_getcursorpos;  // GetCursorPos
+    BoolSetting test_block_mouse_setcursorpos;  // SetCursorPos
+    BoolSetting test_block_mouse_getkeystate;   // GetKeyState/GetAsyncKeyState for mouse buttons
+    BoolSetting test_block_mouse_rawinput;      // GetRawInputData/GetRawInputBuffer for mouse
+    BoolSetting test_block_mouse_mouseevent;    // mouse_event
+    BoolSetting test_block_mouse_clipcursor;    // ClipCursor
+    BoolSetting test_block_mouse_capture;       // SetCapture/ReleaseCapture
 
     // Input testing settings - Keyboard
-    BoolSetting test_block_keyboard_messages;       // WM_KEYDOWN, WM_CHAR, etc.
-    BoolSetting test_block_keyboard_getkeystate;    // GetKeyState
-    BoolSetting test_block_keyboard_getasynckeystate; // GetAsyncKeyState
-    BoolSetting test_block_keyboard_getkeyboardstate; // GetKeyboardState
-    BoolSetting test_block_keyboard_rawinput;       // GetRawInputData/GetRawInputBuffer for keyboard
-    BoolSetting test_block_keyboard_keybdevent;     // keybd_event
-    BoolSetting test_block_keyboard_sendinput;      // SendInput
+    BoolSetting test_block_keyboard_messages;          // WM_KEYDOWN, WM_CHAR, etc.
+    BoolSetting test_block_keyboard_getkeystate;       // GetKeyState
+    BoolSetting test_block_keyboard_getasynckeystate;  // GetAsyncKeyState
+    BoolSetting test_block_keyboard_getkeyboardstate;  // GetKeyboardState
+    BoolSetting test_block_keyboard_rawinput;          // GetRawInputData/GetRawInputBuffer for keyboard
+    BoolSetting test_block_keyboard_keybdevent;        // keybd_event
+    BoolSetting test_block_keyboard_sendinput;         // SendInput
 
    private:
     std::vector<SettingBase*> all_settings_;

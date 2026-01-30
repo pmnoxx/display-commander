@@ -67,25 +67,25 @@ void DrawBasicWindowInfo() {
             ImGui::Separator();
             ImGui::Text("Backbuffer Size: %dx%d", bb_w, bb_h);
             
-            // Display game-requested resolution (before any modifications)
-            int game_req_w = g_game_requested_width.load();
-            int game_req_h = g_game_requested_height.load();
-            if (game_req_w > 0 && game_req_h > 0) {
+            // Display game render resolution (before any modifications) - matches Special K's render_x/render_y
+            int game_render_w = g_game_render_width.load();
+            int game_render_h = g_game_render_height.load();
+            if (game_render_w > 0 && game_render_h > 0) {
                 ImGui::Separator();
-                ImGui::Text("Game Requested Resolution: %dx%d", game_req_w, game_req_h);
+                ImGui::Text("Game Render Resolution: %dx%d", game_render_w, game_render_h);
                 
-                // Show difference if backbuffer differs from requested
-                if (bb_w != game_req_w || bb_h != game_req_h) {
+                // Show difference if backbuffer differs from render resolution
+                if (bb_w != game_render_w || bb_h != game_render_h) {
                     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), 
-                        "  (Modified: Backbuffer differs from requested)");
+                        "  (Modified: Backbuffer differs from render resolution)");
                 } else {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 
-                        "  (Unmodified: Backbuffer matches requested)");
+                        "  (Unmodified: Backbuffer matches render resolution)");
                 }
             } else {
                 ImGui::Separator();
                 ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
-                    "Game Requested Resolution: Not captured yet");
+                    "Game Render Resolution: Not captured yet");
             }
         } else {
             ImGui::Text("No window available");

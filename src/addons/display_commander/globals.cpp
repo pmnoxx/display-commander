@@ -220,9 +220,9 @@ std::atomic<std::shared_ptr<const std::wstring>> g_dxgi_output_device_name{nullp
 std::atomic<int> g_last_backbuffer_width{0};
 std::atomic<int> g_last_backbuffer_height{0};
 
-// Game-requested resolution (before any modifications)
-std::atomic<int> g_game_requested_width{0};
-std::atomic<int> g_game_requested_height{0};
+// Game render resolution (before any modifications) - matches Special K's render_x/render_y
+std::atomic<int> g_game_render_width{0};
+std::atomic<int> g_game_render_height{0};
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
 

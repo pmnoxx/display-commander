@@ -881,6 +881,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain* Th
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZEBUFFERS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+    
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
+    if (Width != 0 && Height != 0) {
+        g_game_render_width.store(Width);
+        g_game_render_height.store(Height);
+        LogInfo("IDXGISwapChain_ResizeBuffers_Detour - Game render resolution: %ux%u", Width, Height);
+    }
+    
     return IDXGISwapChain_ResizeBuffers_Original(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 }
 
@@ -889,6 +897,17 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain* Thi
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_RESIZETARGET].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+    
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
+    if (pNewTargetParameters != nullptr) {
+        if (pNewTargetParameters->Width != 0 && pNewTargetParameters->Height != 0) {
+            g_game_render_width.store(pNewTargetParameters->Width);
+            g_game_render_height.store(pNewTargetParameters->Height);
+            LogInfo("IDXGISwapChain_ResizeTarget_Detour - Game render resolution: %ux%u", 
+                    pNewTargetParameters->Width, pNewTargetParameters->Height);
+        }
+    }
+    
     return IDXGISwapChain_ResizeTarget_Original(This, pNewTargetParameters);
 }
 
@@ -1085,6 +1104,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3* 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_RESIZEBUFFERS1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+    
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
+    if (Width != 0 && Height != 0) {
+        g_game_render_width.store(Width);
+        g_game_render_height.store(Height);
+        LogInfo("IDXGISwapChain_ResizeBuffers1_Detour - Game render resolution: %ux%u", Width, Height);
+    }
+    
     return IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags,
                                                   pCreationNodeMask, ppPresentQueue);
 }

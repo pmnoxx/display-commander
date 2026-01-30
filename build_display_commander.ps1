@@ -10,12 +10,14 @@ param(
 Write-Host "Building Display Commander addon with configuration: $BuildType..." -ForegroundColor Green
 
 # Build CMake command with conditional experimental features flag
+# Unset cached EXPERIMENTAL_FEATURES first to force update
 $cmakeArgs = @(
     "-S", ".",
     "-B", "build",
     "-G", "Ninja",
     "-DCMAKE_BUILD_TYPE=$BuildType",
-    "-DEXPERIMENTAL_TAB=ON"
+    "-DEXPERIMENTAL_TAB=ON",
+    "-UEXPERIMENTAL_FEATURES"
 )
 
 if ($Experimental) {

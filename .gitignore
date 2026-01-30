@@ -39,6 +39,7 @@ Desktop.ini
 *.log
 
 bd.ps1
+bd32.ps1
 
 # tmp
 tmp/

@@ -1736,6 +1736,47 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     auto now = utils::get_now_ns();
     {
+        // Game Render Resolution display (matches Special K's render_x/render_y)
+        int game_render_w = g_game_render_width.load();
+        int game_render_h = g_game_render_height.load();
+        if (game_render_w > 0 && game_render_h > 0) {
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Game Render Resolution:");
+            ImGui::SameLine();
+            ImGui::Text("%dx%d", game_render_w, game_render_h);
+            
+            // Get bit depth from swapchain format
+            auto desc_ptr = g_last_swapchain_desc.load();
+            if (desc_ptr != nullptr) {
+                const char* bit_depth_str = nullptr;
+                switch (desc_ptr->back_buffer.texture.format) {
+                    case reshade::api::format::r8g8b8a8_unorm:
+                    case reshade::api::format::b8g8r8a8_unorm:
+                        bit_depth_str = "8-bit";
+                        break;
+                    case reshade::api::format::r10g10b10a2_unorm:
+                        bit_depth_str = "10-bit";
+                        break;
+                    case reshade::api::format::r16g16b16a16_float:
+                        bit_depth_str = "16-bit";
+                        break;
+                    default:
+                        break;
+                }
+                
+                if (bit_depth_str != nullptr) {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " (%s)", bit_depth_str);
+                }
+            }
+            
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("The resolution the game requested for rendering (before any modifications).\n"
+                                  "Matches Special K's render_x/render_y values.\n"
+                                  "Bit depth indicates color precision (8-bit = SDR, 10-bit/16-bit = HDR).");
+            }
+            ImGui::Spacing();
+        }
+
         // Target Display dropdown
         // Use device ID-based approach for better reliability
 

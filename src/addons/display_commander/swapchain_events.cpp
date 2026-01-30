@@ -508,10 +508,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
 
-    // Capture game-requested resolution (before any modifications)
-    g_game_requested_width.store(desc.back_buffer.texture.width);
-    g_game_requested_height.store(desc.back_buffer.texture.height);
-    LogInfo("OnCreateSwapchainCapture2 - Game requested resolution: %ux%u", 
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
+    g_game_render_width.store(desc.back_buffer.texture.width);
+    g_game_render_height.store(desc.back_buffer.texture.height);
+    LogInfo("OnCreateSwapchainCapture2 - Game render resolution: %ux%u", 
             desc.back_buffer.texture.width, desc.back_buffer.texture.height);
 
     // Check if this is a supported API (D3D9, D3D10, D3D11, D3D12)
@@ -995,7 +995,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     {
         static int log_count = 0;
         if (log_count < 3) {
-            LogInfo("OnInitSwapchain: swapchain: 0x%p", swapchain);
+            LogInfo("OnInitSwapchain: swapchain: 0x%p, resize: %s", swapchain, resize ? "true" : "false");
             log_count++;
         }
     }
@@ -1003,6 +1003,28 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_INIT_SWAPCHAIN].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
+
+    // Capture game render resolution after swapchain creation/resize - matches Special K's render_x/render_y
+    // Get the current back buffer to determine the actual render resolution
+    try {
+        reshade::api::resource back_buffer = swapchain->get_current_back_buffer();
+        if (back_buffer != 0) {
+            reshade::api::resource_desc desc = swapchain->get_device()->get_resource_desc(back_buffer);
+            if (desc.texture.width > 0 && desc.texture.height > 0) {
+                g_game_render_width.store(desc.texture.width);
+                g_game_render_height.store(desc.texture.height);
+                if (resize) {
+                    LogInfo("OnInitSwapchain (resize) - Game render resolution: %ux%u", 
+                            desc.texture.width, desc.texture.height);
+                } else {
+                    LogInfo("OnInitSwapchain (create) - Game render resolution: %ux%u", 
+                            desc.texture.width, desc.texture.height);
+                }
+            }
+        }
+    } catch (...) {
+        // If getting back buffer fails, silently continue
+    }
 
     // backbuffer desc
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());

@@ -530,11 +530,11 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CH
                                                  IDXGISwapChain** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChain called");
 
-    // Capture game-requested resolution (before any modifications)
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     if (pDesc != nullptr) {
-        g_game_requested_width.store(pDesc->BufferDesc.Width);
-        g_game_requested_height.store(pDesc->BufferDesc.Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChain - Game requested resolution: %ux%u", 
+        g_game_render_width.store(pDesc->BufferDesc.Width);
+        g_game_render_height.store(pDesc->BufferDesc.Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChain - Game render resolution: %ux%u", 
                 pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
     }
 
@@ -589,11 +589,11 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown* pDevice, HWND 
                                                         IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd called");
 
-    // Capture game-requested resolution (before any modifications)
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     if (pDesc != nullptr) {
-        g_game_requested_width.store(pDesc->Width);
-        g_game_requested_height.store(pDesc->Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd - Game requested resolution: %ux%u", 
+        g_game_render_width.store(pDesc->Width);
+        g_game_render_height.store(pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd - Game render resolution: %ux%u", 
                 pDesc->Width, pDesc->Height);
     }
 
@@ -630,11 +630,11 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown* pDevice,
                                                               IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow called");
 
-    // Capture game-requested resolution (before any modifications)
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     if (pDesc != nullptr) {
-        g_game_requested_width.store(pDesc->Width);
-        g_game_requested_height.store(pDesc->Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow - Game requested resolution: %ux%u", 
+        g_game_render_width.store(pDesc->Width);
+        g_game_render_height.store(pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow - Game render resolution: %ux%u", 
                 pDesc->Width, pDesc->Height);
     }
 
@@ -698,11 +698,11 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown* pDevice
                                                                IDXGISwapChain1** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition called");
 
-    // Capture game-requested resolution (before any modifications)
+    // Capture game render resolution (before any modifications) - matches Special K's render_x/render_y
     if (pDesc != nullptr) {
-        g_game_requested_width.store(pDesc->Width);
-        g_game_requested_height.store(pDesc->Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition - Game requested resolution: %ux%u", 
+        g_game_render_width.store(pDesc->Width);
+        g_game_render_height.store(pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition - Game render resolution: %ux%u", 
                 pDesc->Width, pDesc->Height);
     }
 

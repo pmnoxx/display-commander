@@ -642,9 +642,9 @@ extern std::atomic<LONGLONG> g_submit_start_time_ns;
 extern std::atomic<int> g_last_backbuffer_width;
 extern std::atomic<int> g_last_backbuffer_height;
 
-// Game-requested resolution (before any modifications)
-extern std::atomic<int> g_game_requested_width;
-extern std::atomic<int> g_game_requested_height;
+// Game render resolution (before any modifications) - matches Special K's render_x/render_y
+extern std::atomic<int> g_game_render_width;
+extern std::atomic<int> g_game_render_height;
 
 // Background/foreground state
 extern std::atomic<bool> g_app_in_background;

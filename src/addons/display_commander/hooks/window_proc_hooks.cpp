@@ -38,6 +38,9 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Special-K style: set ping signal when ping message is received, inject marker on next SIMULATION_START
     if (PCLSTATS_IS_PING_MSG_ID(uMsg)) {
         g_pclstats_ping_signal.store(true, std::memory_order_release);
+
+        // We assume frame id is equal to frame before simulation_end
+        PCLSTATS_MARKER(PC_LATENCY_PING, g_pclstats_frame_id.load());
     }
 
     bool continue_rendering_enabled = s_continue_rendering.load();

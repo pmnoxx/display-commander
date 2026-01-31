@@ -590,6 +590,9 @@ extern std::unique_ptr<LatencyManager> g_latencyManager;
 // Global frame ID for latency management
 extern std::atomic<uint64_t> g_global_frame_id;
 
+// Global frame ID for pclstats frame id
+extern std::atomic<uint64_t> g_pclstats_frame_id;
+
 // Global frame ID for UI drawing tracking
 extern std::atomic<uint64_t> g_last_ui_drawn_frame_id;
 

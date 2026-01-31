@@ -188,6 +188,9 @@ std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManag
 // Global frame ID for latency management
 std::atomic<uint64_t> g_global_frame_id{0};
 
+// Global frame ID for pclstats frame id
+std::atomic<uint64_t> g_pclstats_frame_id{0};
+
 // Global frame ID for UI drawing tracking
 std::atomic<uint64_t> g_last_ui_drawn_frame_id{0};
 
@@ -202,13 +205,11 @@ std::atomic<uint64_t> g_native_frame_pacing_frame_id{0};
 
 bool IsNativeFramePacingInSync() {
     return g_native_frame_pacing_frame_id.load() > 0
-           && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
-                  <= 3;
+           && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load())) <= 3;
 }
 
 bool ShouldUseNativeFpsLimiterFromFramePacing() {
-    return settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-           && IsNativeFramePacingInSync();
+    return settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() && IsNativeFramePacingInSync();
 }
 
 // Global Swapchain Tracking Manager instance

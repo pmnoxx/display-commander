@@ -497,9 +497,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
           && settings::g_mainTabSettings.limit_real_frames.GetValue())
         && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
-                    <= 3);
+        && !ShouldUseNativeFpsLimiterFromFramePacing();
     // Skip common present logic if wrapper is handling it
     PresentCommonState state;
     if (use_fps_limiter) {
@@ -550,9 +548,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
         !(g_swapchain_wrapper_present_called.load(std::memory_order_acquire)
           && settings::g_mainTabSettings.limit_real_frames.GetValue())
         && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
-                    <= 3);
+        && !ShouldUseNativeFpsLimiterFromFramePacing();
 
     PresentCommonState state;
     if (use_fps_limiter) {

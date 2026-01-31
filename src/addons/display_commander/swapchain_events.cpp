@@ -2,7 +2,6 @@
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
 #include "display_initial_state.hpp"
-#include "dcomposition/dcomposition_refresh_rate_monitor.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
@@ -163,11 +162,6 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
     // Remove the runtime from the global runtime vector
     RemoveReShadeRuntime(runtime);
     LogInfo("Removed runtime from global runtime vector");
-
-    // Only stop DComp when the last runtime is destroyed (multiple runtimes can exist)
-    if (GetReShadeRuntimeCount() == 0 && display_commander::dcomposition::IsDCompRefreshRateMonitoringActive()) {
-        display_commander::dcomposition::StopDCompRefreshRateMonitoring();
-    }
 
     // Reset any runtime-specific state
     // Note: Most cleanup is handled in DLL_PROCESS_DETACH, but this provides

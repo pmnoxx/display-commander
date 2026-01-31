@@ -1782,10 +1782,16 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 }
             }
 
-            // Refresh rate on same line: "Refresh rate: XXX" (actual NVAPI when available, else selected display)
-            double refresh_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
-            if (refresh_hz <= 0.0 && selected_index >= 0 && selected_index < static_cast<int>(display_info.size())
-                && !display_info[selected_index].current_refresh_rate.empty()) {
+            // Refresh rate on same line: "Refresh rate: XXX" (actual NVAPI smoothed alpha 0.02, else selected display)
+            static double s_smoothed_actual_hz = 0.0;
+            constexpr double k_alpha = 0.02;
+            double raw_actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+            double refresh_hz = 0.0;
+            if (raw_actual_hz > 0.0) {
+                s_smoothed_actual_hz = k_alpha * raw_actual_hz + (1.0 - k_alpha) * s_smoothed_actual_hz;
+                refresh_hz = s_smoothed_actual_hz;
+            } else if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())
+                       && !display_info[selected_index].current_refresh_rate.empty()) {
                 std::string rate_str = display_info[selected_index].current_refresh_rate;
                 try {
                     double parsed = std::stod(rate_str);
@@ -1798,7 +1804,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (refresh_hz > 0.0) {
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
                 ImGui::SameLine();
-                ImGui::Text("%.1f Hz", refresh_hz);
+
             } else {
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
                 ImGui::SameLine();

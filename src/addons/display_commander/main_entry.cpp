@@ -558,15 +558,14 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    // Actual refresh rate (NVAPI Adaptive Sync flip data) - replaces old "Refresh rate" (WaitForVBlank) in overlay
+    // Actual refresh rate (NVAPI Adaptive Sync flip data) - smoothed for display (alpha 0.02)
     if (show_actual_refresh_rate) {
+        static double s_smoothed_actual_hz = 0.0;
+        constexpr double k_alpha = 0.02;
         double actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
         if (actual_hz > 0.0) {
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                ImGui::Text("Actual: %.1f Hz", actual_hz);
-            } else {
-                ImGui::Text("%.1f Hz", actual_hz);
-            }
+            s_smoothed_actual_hz = k_alpha * actual_hz + (1.0 - k_alpha) * s_smoothed_actual_hz;
+            ImGui::Text("%.1f Hz", s_smoothed_actual_hz);
             if (ImGui::IsItemHovered() && show_tooltips) {
                 ImGui::SetTooltip("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
             }

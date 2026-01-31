@@ -1,5 +1,6 @@
 #include "advanced_tab.hpp"
 #include "../../display/dpi_management.hpp"
+#include "../../dcomposition/dcomposition_refresh_rate_monitor.hpp"
 #include "../../globals.hpp"
 #include "../../latency/latency_manager.hpp"
 #include "../../nvapi/fake_nvapi_manager.hpp"
@@ -48,6 +49,12 @@ void InitAdvancedTab() {
         if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
             LogInfo("InitAdvancedTab() - PresentMon tracing setting is enabled, starting worker");
             presentmon::g_presentMonManager.StartWorker();
+        }
+        // Start DComp refresh rate monitoring if setting is on and a runtime already exists
+        if (settings::g_advancedTabSettings.enable_dcomposition_refresh_rate_monitoring.GetValue()
+            && GetFirstReShadeRuntime() != nullptr) {
+            LogInfo("InitAdvancedTab() - DComp refresh rate monitoring setting is enabled, starting");
+            display_commander::dcomposition::StartDCompRefreshRateMonitoring();
         }
     }
 }
@@ -243,6 +250,44 @@ void DrawAdvancedTabSettingsSection() {
             "- Flip mode is best-effort (depends on ETW provider fields)\n"
             "- Default: enabled\n\n"
             "Note: Requires appropriate Windows permissions for ETW tracing.");
+    }
+
+    // DirectComposition refresh rate monitoring
+    if (CheckboxSetting(settings::g_advancedTabSettings.enable_dcomposition_refresh_rate_monitoring,
+                       "Enable DirectComposition refresh rate monitoring")) {
+        LogInfo("DComp refresh rate monitoring setting changed to: %s",
+                settings::g_advancedTabSettings.enable_dcomposition_refresh_rate_monitoring.GetValue() ? "enabled"
+                                                                                                    : "disabled");
+        if (settings::g_advancedTabSettings.enable_dcomposition_refresh_rate_monitoring.GetValue()) {
+            if (GetFirstReShadeRuntime() != nullptr) {
+                display_commander::dcomposition::StartDCompRefreshRateMonitoring();
+            }
+        } else {
+            display_commander::dcomposition::StopDCompRefreshRateMonitoring();
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Monitor composition engine refresh rate using DirectComposition GetFrameStatistics.\n"
+            "Shows DWM/composition rate (frames per second), not necessarily the physical display rate.\n\n"
+            "FEATURES:\n"
+            "- Composition rate: from currentCompositionRate (API)\n"
+            "- Measured rate: actual refresh count over a 1s window (lastFrameTime changes)\n\n"
+            "Default: off.");
+    }
+    if (display_commander::dcomposition::IsDCompRefreshRateMonitoringActive()) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " ACTIVE");
+        double rate_hz = display_commander::dcomposition::GetDCompCompositionRateHz();
+        double measured_hz = display_commander::dcomposition::GetDCompMeasuredRefreshRateHz();
+        if (rate_hz > 0.0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Composition: %.2f Hz", rate_hz);
+        }
+        if (measured_hz > 0.0) {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Measured: %.2f Hz", measured_hz);
+        }
     }
 
     // Show PresentMon status

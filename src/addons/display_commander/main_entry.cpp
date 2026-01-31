@@ -270,7 +270,8 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         AddReShadeRuntime(runtime);
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
-        if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
+        if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
+            || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
             display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
         }
 
@@ -416,7 +417,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
     // Check which overlay components are enabled
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
-    bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
     bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
@@ -432,8 +432,9 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
-    // Start/stop NVAPI actual refresh rate monitor based on overlay checkbox
-    if (show_actual_refresh_rate) {
+    // Start/stop NVAPI actual refresh rate monitor when overlay shows actual refresh rate or the refresh rate graph
+    bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
+    if (show_actual_refresh_rate || show_refresh_rate_frame_times) {
         if (!display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
             display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
         }
@@ -557,17 +558,22 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (show_refresh_rate) {
-        // Get refresh rate stats from continuous monitoring thread cache
-        auto cached_stats = g_cached_refresh_rate_stats.load();
-        if (cached_stats && cached_stats->is_valid && cached_stats->sample_count > 0) {
-            double refresh_rate = cached_stats->smoothed_rate;
-            if (refresh_rate > 0.0) {
-                if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                    ImGui::Text("%.1fHz", refresh_rate);
-                } else {
-                    ImGui::Text("%.1f", refresh_rate);
-                }
+    // Actual refresh rate (NVAPI Adaptive Sync flip data) - replaces old "Refresh rate" (WaitForVBlank) in overlay
+    if (show_actual_refresh_rate) {
+        double actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+        if (actual_hz > 0.0) {
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("Actual: %.1f Hz", actual_hz);
+            } else {
+                ImGui::Text("%.1f Hz", actual_hz);
+            }
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
+            }
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Actual: -- Hz");
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("Waiting for NVAPI display or samples.");
             }
         }
     }
@@ -665,25 +671,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
                     }
                 }
-            }
-        }
-    }
-
-    if (show_actual_refresh_rate) {
-        double actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
-        if (actual_hz > 0.0) {
-            if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "Actual: %.1f Hz", actual_hz);
-            } else {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.1f Hz", actual_hz);
-            }
-            if (ImGui::IsItemHovered() && show_tooltips) {
-                ImGui::SetTooltip("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
-            }
-        } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Actual: -- Hz");
-            if (ImGui::IsItemHovered() && show_tooltips) {
-                ImGui::SetTooltip("Waiting for NVAPI display or samples.");
             }
         }
     }

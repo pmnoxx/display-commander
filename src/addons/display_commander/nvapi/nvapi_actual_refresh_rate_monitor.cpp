@@ -4,6 +4,7 @@
 
 #include <nvapi.h>
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -15,15 +16,31 @@ namespace {
 constexpr unsigned POLL_MS = 8;
 // lastFlipTimeStamp is in 100ns units (Windows FILETIME style). 1e7 units = 1 second.
 constexpr double TIMESTAMP_UNITS_PER_SEC = 1e7;
+constexpr size_t RECENT_SAMPLES_SIZE = 256;
 
 std::atomic<bool> g_active{false};
 std::atomic<bool> g_stop_monitor{false};
 std::atomic<double> g_actual_refresh_rate_hz{0.0};
 std::thread g_monitor_thread;
 
+// Ring buffer of recent actual refresh rate samples (Hz) for the time graph
+std::array<double, RECENT_SAMPLES_SIZE> g_recent_samples{};
+std::atomic<size_t> g_recent_write_index{0};
+std::atomic<size_t> g_recent_count{0};
+
 uint32_t g_prev_count = 0;
 uint64_t g_prev_timestamp = 0;
 bool g_has_prev = false;
+
+void PushSample(double rate_hz) {
+    size_t idx = g_recent_write_index.load(std::memory_order_relaxed) % RECENT_SAMPLES_SIZE;
+    g_recent_samples[idx] = rate_hz;
+    g_recent_write_index.store((idx + 1) % RECENT_SAMPLES_SIZE, std::memory_order_release);
+    size_t c = g_recent_count.load(std::memory_order_relaxed);
+    if (c < RECENT_SAMPLES_SIZE) {
+        g_recent_count.store(c + 1, std::memory_order_release);
+    }
+}
 
 void MonitorThreadFunc() {
     while (!g_stop_monitor.load(std::memory_order_relaxed)) {
@@ -59,6 +76,7 @@ void MonitorThreadFunc() {
                     // Sanity: typical range 24–240 Hz
                     if (rate_hz >= 1.0 && rate_hz <= 500.0) {
                         g_actual_refresh_rate_hz.store(rate_hz, std::memory_order_relaxed);
+                        PushSample(rate_hz);
                     }
                 }
             }
@@ -68,6 +86,25 @@ void MonitorThreadFunc() {
         g_prev_timestamp = timestamp;
         g_has_prev = true;
     }
+}
+
+size_t GetRecentCount() {
+    return g_recent_count.load(std::memory_order_acquire);
+}
+
+double GetRecentSampleAtLogical(size_t logical_index) {
+    size_t count = g_recent_count.load(std::memory_order_acquire);
+    size_t write_index = g_recent_write_index.load(std::memory_order_acquire);
+    if (logical_index >= count) {
+        return 0.0;
+    }
+    size_t physical;
+    if (count < RECENT_SAMPLES_SIZE) {
+        physical = logical_index;
+    } else {
+        physical = (write_index + logical_index) % RECENT_SAMPLES_SIZE;
+    }
+    return g_recent_samples[physical];
 }
 
 }  // namespace
@@ -91,6 +128,7 @@ void StopNvapiActualRefreshRateMonitoring() {
         g_monitor_thread.join();
     }
     g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
+    g_recent_count.store(0, std::memory_order_release);
 }
 
 bool IsNvapiActualRefreshRateMonitoringActive() {
@@ -99,6 +137,14 @@ bool IsNvapiActualRefreshRateMonitoringActive() {
 
 double GetNvapiActualRefreshRateHz() {
     return g_actual_refresh_rate_hz.load(std::memory_order_relaxed);
+}
+
+size_t GetNvapiActualRefreshRateRecentCount() {
+    return GetRecentCount();
+}
+
+double GetNvapiActualRefreshRateRecentSampleAt(size_t logical_index) {
+    return GetRecentSampleAtLogical(logical_index);
 }
 
 }  // namespace display_commander::nvapi

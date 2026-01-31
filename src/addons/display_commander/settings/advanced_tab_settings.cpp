@@ -88,7 +88,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       enable_presentmon_tracing("EnablePresentMonTracing", false, "DisplayCommander"),
-      enable_dcomposition_refresh_rate_monitoring("EnableDCompositionRefreshRateMonitoring", false, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
@@ -113,7 +112,6 @@ void AdvancedTabSettings::SaveAll() {
     auto_hide_discord_overlay.Save();
     suppress_window_changes.Save();
     enable_presentmon_tracing.Save();
-    enable_dcomposition_refresh_rate_monitoring.Save();
     disable_dpi_scaling.Save();
 
     // All Ref classes automatically save when values change
@@ -135,7 +133,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
             &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled, &debug_break_on_severity,
             &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing,
-            &enable_dcomposition_refresh_rate_monitoring, &disable_dpi_scaling};
+            &disable_dpi_scaling};
 }
 
 }  // namespace settings

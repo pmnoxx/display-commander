@@ -389,12 +389,22 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     std::reverse(frame_times.begin(), frame_times.end());
 
     // Calculate statistics for the graph
+    float min_frame_time = *std::ranges::min_element(frame_times);
     float max_frame_time = *std::ranges::max_element(frame_times);
     float avg_frame_time = 0.0f;
     for (float ft : frame_times) {
         avg_frame_time += ft;
     }
     avg_frame_time /= static_cast<float>(frame_times.size());
+
+    // Calculate standard deviation
+    float variance = 0.0f;
+    for (float ft : frame_times) {
+        float diff = ft - avg_frame_time;
+        variance += diff * diff;
+    }
+    variance /= static_cast<float>(frame_times.size());
+    float std_deviation = std::sqrt(variance);
 
     // Fixed width for overlay (compact) - apply user scale
     float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
@@ -423,6 +433,13 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 
     // Restore original style color
     ImGui::PopStyleColor();
+
+    // Display refresh rate time statistics if enabled
+    bool show_refresh_rate_frame_time_stats = settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
+    if (show_refresh_rate_frame_time_stats) {
+        ImGui::Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
+                    min_frame_time, max_frame_time);
+    }
 
     if (ImGui::IsItemHovered() && show_tooltips) {
         ImGui::SetTooltip(
@@ -1798,7 +1815,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     if (parsed >= 1.0 && parsed <= 500.0) {
                         refresh_hz = parsed;
                     }
-                } catch (...) {}
+                } catch (...) {
+                }
             }
             ImGui::SameLine();
             if (refresh_hz > 0.0) {
@@ -4006,13 +4024,13 @@ void DrawImportantInfo() {
 
             // Actual refresh rate (NVAPI Adaptive Sync) - replaces old "Refresh rate" in overlay
             bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-            if (ImGui::Checkbox("Actual refresh rate", &show_actual_refresh_rate)) {
+            if (ImGui::Checkbox("Refresh rate", &show_actual_refresh_rate)) {
                 settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
-                    "Also feeds the refresh rate time graph when \"Show refresh rate frame times\" is on.");
+                    "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on.");
             }
             ImGui::NextColumn();
 
@@ -4168,15 +4186,26 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
-        // Show Refresh Rate Frame Times Graph Control
+        // Refresh Rate Time Graph Control
         bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-        if (ImGui::Checkbox("Show refresh rate frame times", &show_refresh_rate_frame_times)) {
+        if (ImGui::Checkbox("Refresh rate time graph", &show_refresh_rate_frame_times)) {
             settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
                 "Requires NVAPI and a resolved display.");
+        }
+        ImGui::NextColumn();
+
+        // Show Refresh Rate Time Stats Control
+        bool show_refresh_rate_frame_time_stats =
+            settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
+        if (ImGui::Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
+            settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows refresh rate time statistics (avg, deviation, min, max) in the overlay.");
         }
         {
             ImGui::NextColumn();

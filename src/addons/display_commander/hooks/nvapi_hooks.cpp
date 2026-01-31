@@ -47,6 +47,7 @@ NvU32 GetNvAPIFunctionId(const char* functionName) {
     LogInfo("NVAPI hooks: Function '%s' not found in interface table", functionName);
     return 0;
 }
+
 }  // namespace
 
 // Hooked NvAPI_Disp_GetHdrCapabilities function
@@ -136,10 +137,15 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         return NVAPI_OK;
     }
 
-    g_native_frame_pacing_frame_id.store(g_global_frame_id.load());
+    // only for first 6 latency marker types
+    if (pSetLatencyMarkerParams != nullptr
+        && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
+        g_native_frame_pacing_frame_id.store(g_global_frame_id.load());
+    }
 
-    bool use_fps_limiter = settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue());
+    bool use_fps_limiter =
+        ShouldUseNativeFpsLimiterFromFramePacing()
+        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue());
     if (use_fps_limiter) {
         static display_commanderhooks::dxgi::PresentCommonState fg_limiter_state = {};
         if (pSetLatencyMarkerParams != nullptr

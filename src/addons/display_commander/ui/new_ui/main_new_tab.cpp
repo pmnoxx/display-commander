@@ -2209,10 +2209,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
 
-        // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected)
+        // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected and in sync)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            if (std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
-                <= 3) {
+            if (::IsNativeFramePacingInSync()) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
                                     "Native Frame Pacing (Experimental)")) {
                     LogInfo("Experimental FG native fps limiter %s",
@@ -3982,6 +3981,18 @@ void DrawImportantInfo() {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
+            }
+            ImGui::NextColumn();
+
+            // Show actual refresh rate (NVAPI Adaptive Sync flip data)
+            bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
+            if (ImGui::Checkbox("Actual refresh rate", &show_actual_refresh_rate)) {
+                settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Shows actual refresh rate derived from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp). "
+                    "Requires NVAPI and a resolved display; queried from a background thread.");
             }
             ImGui::NextColumn();
 

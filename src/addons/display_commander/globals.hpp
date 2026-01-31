@@ -602,6 +602,11 @@ extern std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id;
 // Native frame pacing frame ID (frames shown to display via native swapchain Present)
 extern std::atomic<uint64_t> g_native_frame_pacing_frame_id;
 
+/** True when native frame pacing is active and in sync (frame id > 0, within 3 frames of global). */
+bool IsNativeFramePacingInSync();
+/** True when native FPS limiter from frame pacing should be used (setting on, and IsNativeFramePacingInSync()). */
+bool ShouldUseNativeFpsLimiterFromFramePacing();
+
 // Global Swapchain Tracking Manager instance
 extern SwapchainTrackingManager g_swapchainTrackingManager;
 

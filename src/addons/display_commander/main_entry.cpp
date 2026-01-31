@@ -18,6 +18,7 @@
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
+#include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
@@ -273,6 +274,9 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         if (settings::g_advancedTabSettings.enable_dcomposition_refresh_rate_monitoring.GetValue()) {
             display_commander::dcomposition::StartDCompRefreshRateMonitoring();
         }
+        if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
+            display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
+        }
 
         static bool initialized_with_hwnd = false;
         if (!initialized_with_hwnd) {
@@ -418,6 +422,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
     bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
     bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
@@ -430,6 +435,17 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
+
+    // Start/stop NVAPI actual refresh rate monitor based on overlay checkbox
+    if (show_actual_refresh_rate) {
+        if (!display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
+            display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
+        }
+    } else {
+        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
+            display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
+        }
+    }
 
     // Apply spacing offsets for stream overlay text compatibility
     float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
@@ -673,6 +689,25 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
                     }
                 }
+            }
+        }
+    }
+
+    if (show_actual_refresh_rate) {
+        double actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+        if (actual_hz > 0.0) {
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "Actual: %.1f Hz", actual_hz);
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.1f Hz", actual_hz);
+            }
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
+            }
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Actual: -- Hz");
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("Waiting for NVAPI display or samples.");
             }
         }
     }
@@ -2817,6 +2852,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up DirectComposition refresh rate monitoring
             display_commander::dcomposition::StopDCompRefreshRateMonitoring();
+
+            // Clean up NVAPI actual refresh rate monitoring
+            display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
 
             // Clean up experimental tab threads
             ui::new_ui::CleanupExperimentalTab();

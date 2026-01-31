@@ -24,6 +24,7 @@
 
 #include <array>
 #include <atomic>
+#include <cmath>
 
 // Global variables
 // UI mode removed - now using new tab system
@@ -198,6 +199,17 @@ std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id{0};
 
 // Native frame pacing frame ID (frames shown to display via native swapchain Present)
 std::atomic<uint64_t> g_native_frame_pacing_frame_id{0};
+
+bool IsNativeFramePacingInSync() {
+    return g_native_frame_pacing_frame_id.load() > 0
+           && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
+                  <= 3;
+}
+
+bool ShouldUseNativeFpsLimiterFromFramePacing() {
+    return settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
+           && IsNativeFramePacingInSync();
+}
 
 // Global Swapchain Tracking Manager instance
 SwapchainTrackingManager g_swapchainTrackingManager;

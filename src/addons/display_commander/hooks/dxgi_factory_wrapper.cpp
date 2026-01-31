@@ -233,9 +233,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     auto use_fps_limiter =
         m_swapChainHookType == SwapChainHook::Native && limit_real_frames
         && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
-                    <= 3);
+        && !ShouldUseNativeFpsLimiterFromFramePacing();
 
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
@@ -337,9 +335,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     auto use_fps_limiter =
         m_swapChainHookType == SwapChainHook::Native && limit_real_frames
         && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-        && !(settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()
-             && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load()))
-                    <= 3);
+        && !ShouldUseNativeFpsLimiterFromFramePacing();
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check

@@ -31,5 +31,4 @@ bool SaveGlobalSettings(const ReShadeGlobalSettings& settings);
 // Set LoadFromDllMain setting in ReShade
 bool SetLoadFromDllMain(bool enabled);
 
-} // namespace utils
-
+}  // namespace utils

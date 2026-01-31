@@ -1,21 +1,21 @@
 #include "display_commander_config.hpp"
-#include "../utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/display_commander_logger.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../globals.hpp"
-#include <fstream>
-#include <sstream>
-#include <filesystem>
-#include <cstring>
 #include <algorithm>
 #include <cctype>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include "../globals.hpp"
+#include "../utils.hpp"
+#include "../utils/display_commander_logger.hpp"
+#include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 
 namespace display_commander::config {
 
 // Simple INI file parser/writer
 class IniFile {
-public:
+   public:
     struct Section {
         std::string name;
         std::vector<std::pair<std::string, std::string>> key_values;
@@ -105,9 +105,9 @@ public:
                         value = kv.second;
 
                         // Migration: Check if this is a device ID setting that was saved as an integer
-                        if ((key.find("device_id") != std::string::npos || key.find("display_device_id") != std::string::npos ||
-                             key == "target_display") && !value.empty() &&
-                            std::all_of(value.begin(), value.end(), ::isdigit)) {
+                        if ((key.find("device_id") != std::string::npos
+                             || key.find("display_device_id") != std::string::npos || key == "target_display")
+                            && !value.empty() && std::all_of(value.begin(), value.end(), ::isdigit)) {
                             // This is likely an old integer value, return empty string to trigger default
                             value = "";
                             // Mark for removal from config file
@@ -170,7 +170,7 @@ public:
         SetValue(section, key, value_str);
     }
 
-private:
+   private:
     std::vector<Section> sections_;
 };
 
@@ -190,9 +190,17 @@ void DisplayCommanderConfigManager::Initialize() {
     config_path_ = GetConfigFilePath();
     config_file_ = std::make_unique<IniFile>();
 
-    // Initialize logger with DisplayCommander.log in the same directory as config
-    std::filesystem::path config_dir = std::filesystem::path(config_path_).parent_path();
-    std::string log_path = (config_dir / "DisplayCommander.log").string();
+    // Initialize logger with DisplayCommander.log in the main executable directory
+    char exe_path[MAX_PATH];
+    DWORD path_length = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
+    std::filesystem::path exe_dir;
+    if (path_length > 0) {
+        exe_dir = std::filesystem::path(exe_path).parent_path();
+    } else {
+        // Fallback to config directory if we can't get exe path
+        exe_dir = std::filesystem::path(config_path_).parent_path();
+    }
+    std::string log_path = (exe_dir / "DisplayCommander.log").string();
     display_commander::logger::Initialize(log_path);
 
     // Test the logger
@@ -279,7 +287,8 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     return false;
 }
 
-bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const char* key, std::vector<std::string>& values) {
+bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const char* key,
+                                                   std::vector<std::string>& values) {
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
@@ -287,7 +296,8 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     return config_file_->GetValue(section != nullptr ? section : "", key != nullptr ? key : "", values);
 }
 
-void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, std::string& value, const std::string& default_value) {
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, std::string& value,
+                                                               const std::string& default_value) {
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
@@ -296,7 +306,8 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     }
 }
 
-void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, int& value, int default_value) {
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, int& value,
+                                                               int default_value) {
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
@@ -305,7 +316,8 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     }
 }
 
-void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, uint32_t& value, uint32_t default_value) {
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, uint32_t& value,
+                                                               uint32_t default_value) {
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
@@ -314,7 +326,8 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     }
 }
 
-void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, float& value, float default_value) {
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, float& value,
+                                                               float default_value) {
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
@@ -323,7 +336,8 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     }
 }
 
-void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, double& value, double default_value) {
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, double& value,
+                                                               double default_value) {
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
@@ -332,7 +346,8 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
     }
 }
 
-void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, bool& value, bool default_value) {
+void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* section, const char* key, bool& value,
+                                                               bool default_value) {
     if (!GetConfigValue(section, key, value)) {
         // Value doesn't exist, set default and save
         SetConfigValue(section, key, default_value);
@@ -377,7 +392,8 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
     SetConfigValue(section, key, value ? 1 : 0);
 }
 
-void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const std::vector<std::string>& values) {
+void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key,
+                                                   const std::vector<std::string>& values) {
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
@@ -406,16 +422,15 @@ void DisplayCommanderConfigManager::SaveConfig(const char* reason) {
         g_config_save_failure_path.store(std::make_shared<const std::string>(config_path_));
 
         if (reason != nullptr && reason[0] != '\0') {
-            LogError("DisplayCommanderConfigManager: Failed to save config to %s (reason: %s)", config_path_.c_str(), reason);
+            LogError("DisplayCommanderConfigManager: Failed to save config to %s (reason: %s)", config_path_.c_str(),
+                     reason);
         } else {
             LogError("DisplayCommanderConfigManager: Failed to save config to %s", config_path_.c_str());
         }
     }
 }
 
-std::string DisplayCommanderConfigManager::GetConfigPath() const {
-    return config_path_;
-}
+std::string DisplayCommanderConfigManager::GetConfigPath() const { return config_path_; }
 
 void DisplayCommanderConfigManager::SetAutoFlushLogs(bool enabled) {
     auto_flush_logs_.store(enabled);
@@ -425,9 +440,7 @@ void DisplayCommanderConfigManager::SetAutoFlushLogs(bool enabled) {
     }
 }
 
-bool DisplayCommanderConfigManager::GetAutoFlushLogs() const {
-    return auto_flush_logs_.load();
-}
+bool DisplayCommanderConfigManager::GetAutoFlushLogs() const { return auto_flush_logs_.load(); }
 
 void DisplayCommanderConfigManager::EnsureConfigFileExists() {
     if (config_path_.empty()) {
@@ -442,22 +455,18 @@ void DisplayCommanderConfigManager::EnsureConfigFileExists() {
 }
 
 std::string DisplayCommanderConfigManager::GetConfigFilePath() {
-    // Get the directory where the addon is located
-    char module_path[MAX_PATH];
+    // Get the directory where the main executable is located
+    char exe_path[MAX_PATH];
 
-    // Try to get the module handle using a static variable address
-    static int dummy = 0;
-    HMODULE hModule = nullptr;
-    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                          reinterpret_cast<LPCSTR>(&dummy), &hModule) != 0) {
-        GetModuleFileNameA(hModule, module_path, MAX_PATH);
-    } else {
+    // Get the main executable path (nullptr = current process)
+    DWORD path_length = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
+    if (path_length == 0) {
         // Fallback to current directory
-        GetCurrentDirectoryA(MAX_PATH, module_path);
+        GetCurrentDirectoryA(MAX_PATH, exe_path);
     }
 
-    std::filesystem::path addon_dir = std::filesystem::path(module_path).parent_path();
-    return (addon_dir / "DisplayCommander.ini").string();
+    std::filesystem::path exe_dir = std::filesystem::path(exe_path).parent_path();
+    return (exe_dir / "DisplayCommander.ini").string();
 }
 
 // Global function implementations
@@ -535,11 +544,10 @@ void set_config_value(const char* section, const char* key, const std::vector<st
     DisplayCommanderConfigManager::GetInstance().SetConfigValue(section, key, values);
 }
 
-void save_config(const char* reason) {
-    DisplayCommanderConfigManager::GetInstance().SaveConfig(reason);
-}
+void save_config(const char* reason) { DisplayCommanderConfigManager::GetInstance().SaveConfig(reason); }
 
-void get_config_value_ensure_exists(const char* section, const char* key, std::string& value, const std::string& default_value) {
+void get_config_value_ensure_exists(const char* section, const char* key, std::string& value,
+                                    const std::string& default_value) {
     DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
 }
 
@@ -563,4 +571,4 @@ void get_config_value_ensure_exists(const char* section, const char* key, bool& 
     DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
 }
 
-} // namespace display_commander::config
+}  // namespace display_commander::config

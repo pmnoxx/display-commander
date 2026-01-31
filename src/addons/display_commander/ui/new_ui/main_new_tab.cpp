@@ -382,6 +382,11 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     });
 
     if (frame_times.empty()) {
+        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive() &&
+            display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                "NvAPI_DISP_GetAdaptiveSyncData failing repeatedly — no refresh rate data.");
+        }
         return;  // Don't show anything if no valid data (monitor not active or no samples yet)
     }
 
@@ -4045,6 +4050,15 @@ void DrawImportantInfo() {
                     "overlay.");
             }
             ImGui::NextColumn();
+        }
+
+        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive() &&
+            display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+            ImGui::Columns(1);
+            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
+                "Refresh rate and refresh rate time graph may show no data.");
+            ImGui::Columns(4, "overlay_checkboxes", false);
         }
 
         // Show CPU Usage

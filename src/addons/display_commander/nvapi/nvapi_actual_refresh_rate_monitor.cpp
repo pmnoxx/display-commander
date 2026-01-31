@@ -19,8 +19,11 @@ constexpr unsigned POLL_MS = 1;
 // lastFlipTimeStamp is in 100ns units (Windows FILETIME style). 1e7 units = 1 second.
 constexpr double TIMESTAMP_UNITS_PER_SEC = 1e7;
 constexpr size_t RECENT_SAMPLES_SIZE = 256;
+// After this many consecutive NvAPI_DISP_GetAdaptiveSyncData failures, UI shows a warning.
+constexpr uint32_t FAILURE_WARNING_THRESHOLD = 1000;
 
 std::atomic<bool> g_active{false};
+std::atomic<uint32_t> g_consecutive_failures{0};
 std::atomic<bool> g_stop_monitor{false};
 std::atomic<double> g_actual_refresh_rate_hz{0.0};
 std::thread g_monitor_thread;
@@ -53,6 +56,7 @@ void MonitorThreadFunc() {
         if (!resolved || display_id == 0) {
             g_has_prev = false;
             g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
+            g_consecutive_failures.store(0, std::memory_order_relaxed);
             continue;
         }
 
@@ -60,10 +64,16 @@ void MonitorThreadFunc() {
         data.version = NV_GET_ADAPTIVE_SYNC_DATA_VER;
         NvAPI_Status st = NvAPI_DISP_GetAdaptiveSyncData(display_id, &data);
         if (st != NVAPI_OK) {
+            uint32_t prev = g_consecutive_failures.load(std::memory_order_relaxed);
+            if (prev < FAILURE_WARNING_THRESHOLD) {
+                g_consecutive_failures.store(prev + 1, std::memory_order_release);
+            }
             g_has_prev = false;
             g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
             continue;
         }
+
+        g_consecutive_failures.store(0, std::memory_order_release);
 
         const uint32_t count = data.lastFlipRefreshCount;
         const uint64_t timestamp = data.lastFlipTimeStamp;
@@ -118,6 +128,7 @@ void StartNvapiActualRefreshRateMonitoring() {
     g_stop_monitor.store(false);
     g_has_prev = false;
     g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
+    g_consecutive_failures.store(0, std::memory_order_release);
     g_monitor_thread = std::thread(MonitorThreadFunc);
 }
 
@@ -131,9 +142,14 @@ void StopNvapiActualRefreshRateMonitoring() {
     }
     g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
     g_recent_count.store(0, std::memory_order_release);
+    g_consecutive_failures.store(0, std::memory_order_release);
 }
 
 bool IsNvapiActualRefreshRateMonitoringActive() { return g_active.load(std::memory_order_relaxed); }
+
+bool IsNvapiGetAdaptiveSyncDataFailingRepeatedly() {
+    return g_consecutive_failures.load(std::memory_order_acquire) >= FAILURE_WARNING_THRESHOLD;
+}
 
 double GetNvapiActualRefreshRateHz() { return g_actual_refresh_rate_hz.load(std::memory_order_relaxed); }
 

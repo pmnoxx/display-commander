@@ -14,6 +14,10 @@ void StopNvapiActualRefreshRateMonitoring();
 
 bool IsNvapiActualRefreshRateMonitoringActive();
 
+// True if NvAPI_DISP_GetAdaptiveSyncData has failed at least FAILURE_WARNING_THRESHOLD times
+// in a row (e.g. driver/display not supporting it). UI can show a warning.
+bool IsNvapiGetAdaptiveSyncDataFailingRepeatedly();
+
 // Actual refresh rate in Hz from Adaptive Sync flip data. Returns 0.0 if not
 // active, no display_id, or query/sample failed.
 double GetNvapiActualRefreshRateHz();

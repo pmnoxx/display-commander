@@ -368,9 +368,13 @@ std::atomic<LONGLONG> g_render_submit_duration_ns{0};
 void HandleRenderStartAndEndTimes() {
     LONGLONG expected = 0;
     if (g_submit_start_time_ns.load() == 0) {
+        // we will use this frame id for pclstats frame id
+        // From this point we will use frame.
+
         LONGLONG now_ns = utils::get_now_ns();
         LONGLONG present_after_end_time_ns = g_sim_start_ns.load();
         if (present_after_end_time_ns > 0 && g_submit_start_time_ns.compare_exchange_strong(expected, now_ns)) {
+            g_pclstats_frame_id.store(g_global_frame_id.load() + 1, std::memory_order_release);
             // Compare to g_present_after_end_time
             LONGLONG g_simulation_duration_ns_new = (now_ns - present_after_end_time_ns);
             g_simulation_duration_ns.store(
@@ -1285,7 +1289,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
             g_latencyManager->SetMarker(SIMULATION_START);
             if (g_pclstats_ping_signal.exchange(false, std::memory_order_acq_rel)) {
                 // Inject ping marker through the provider (which will emit both NVAPI and ETW markers)
-                g_latencyManager->SetMarker(PC_LATENCY_PING);
+                // g_latencyManager->SetMarker(PC_LATENCY_PING);
             }
         }
     }

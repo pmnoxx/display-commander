@@ -164,6 +164,8 @@ class MainTabSettings {
 
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;
+    // Auto-apply MaxMDL 1000 HDR metadata on swapchain init (DXGI SetHDRMetaData)
+    ui::new_ui::BoolSetting auto_apply_maxmdl_1000_hdr_metadata;
 
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;

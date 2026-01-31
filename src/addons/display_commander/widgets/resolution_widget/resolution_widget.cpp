@@ -5,15 +5,16 @@
 #include <reshade_imgui.hpp>
 #include <sstream>
 #include <string>
+#include "../../display/hdr_control.hpp"
 #include "../../display/query_display.hpp"
 #include "../../display_cache.hpp"
-#include "../../display/hdr_control.hpp"
-#include "../../settings/main_tab_settings.hpp"
 #include "../../display_initial_state.hpp"
 #include "../../display_restore.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/display_settings_hooks.hpp"
 #include "../../resolution_helpers.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 #include "utils/timing.hpp"
@@ -107,11 +108,6 @@ void ResolutionWidget::OnDraw() {
         //     refresh=%d",
         //             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
     }
-
-    // Draw the resolution widget UI
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "=== Resolution Control ===");
-    ImGui::Spacing();
-
     // Auto-apply checkbox
     DrawAutoApplyCheckbox();
     ImGui::Spacing();
@@ -1206,6 +1202,28 @@ void ResolutionWidget::DrawAutoRestoreCheckbox() {
 }
 
 void ResolutionWidget::DrawHdrSection() {
+    bool auto_maxmdl = settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue();
+    if (ImGui::Checkbox("Auto-apply HDR1000 Metadata Profile", &auto_maxmdl)) {
+        settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.SetValue(auto_maxmdl);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "When enabled, injects HDR10 metadata (MaxMDL 1000 nits, Rec. 2020) on the swapchain when the game starts. "
+            "Use for games that do not set metadata or use low values.");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Apply")) {
+        const bool applied = ApplyHdr1000MetadataToCurrentSwapchain();
+        if (!applied) {
+            LogInfo("Apply HDR1000: no active DXGI swapchain or apply failed");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Apply HDR1000 metadata (MaxMDL 1000 nits, Rec. 2020) to the current swapchain once. "
+            "Same effect as the checkbox above but not saved to config.");
+    }
+
     bool auto_hdr = settings::g_mainTabSettings.auto_enable_disable_hdr.GetValue();
     if (ImGui::Checkbox("Auto enable/disable HDR", &auto_hdr)) {
         settings::g_mainTabSettings.auto_enable_disable_hdr.SetValue(auto_hdr);
@@ -1219,20 +1237,20 @@ void ResolutionWidget::DrawHdrSection() {
     int actual_display = GetActualDisplayIndex();
     bool hdr_supported = false;
     bool hdr_enabled = false;
-    bool got_state =
-        display_commander::display::hdr_control::GetHdrStateForDisplayIndex(actual_display, &hdr_supported, &hdr_enabled);
+    bool got_state = display_commander::display::hdr_control::GetHdrStateForDisplayIndex(actual_display, &hdr_supported,
+                                                                                         &hdr_enabled);
 
     if (got_state) {
         ImGui::SameLine();
         ImGui::TextColored(hdr_supported ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                          "Display HDR capable: %s", hdr_supported ? "Yes" : "No");
+                           "Display HDR capable: %s", hdr_supported ? "Yes" : "No");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Whether the selected display supports Windows HDR (advanced color).");
         }
         if (hdr_supported) {
             ImGui::SameLine();
-            ImGui::TextColored(hdr_enabled ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.8f, 0.8f, 0.5f, 1.0f),
-                              "HDR: %s", hdr_enabled ? "On" : "Off");
+            ImGui::TextColored(hdr_enabled ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.8f, 0.8f, 0.5f, 1.0f), "HDR: %s",
+                               hdr_enabled ? "On" : "Off");
             ImGui::SameLine();
             if (ImGui::Button(hdr_enabled ? "Disable HDR" : "Enable HDR")) {
                 if (display_commander::display::hdr_control::SetHdrForDisplayIndex(actual_display, !hdr_enabled)) {

@@ -63,17 +63,6 @@ bool ProviderGuidByName(const wchar_t* provider_name, GUID& out_guid) {
     return false;
 }
 
-// Returns true if a process with the given PID exists.
-bool IsProcessRunning(DWORD pid) {
-    if (pid == 0) return false;
-    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-    if (h != nullptr) {
-        CloseHandle(h);
-        return true;
-    }
-    return false;
-}
-
 std::wstring Widen(const std::string& s) {
     if (s.empty()) return {};
     int len = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
@@ -422,8 +411,8 @@ void PresentMonManager::StartWorker() {
     std::string* status = new std::string("Starting...");
     delete m_thread_status.exchange(status);
 
-    // Close any orphaned DC_ ETW sessions (from previous crashed/exited instances) before starting ours
-    CloseOrphanedDcEtwSessions();
+    // Stop all DC_ ETW sessions so we can start ours clean (no PID check)
+    StopAllDcEtwSessions();
 
     // Precompute session name (unique per process)
     DWORD pid = GetCurrentProcessId();
@@ -432,7 +421,7 @@ void PresentMonManager::StartWorker() {
     // Start worker thread
     m_worker_thread = std::thread(&PresentMonManager::WorkerThread, this);
 
-    // Start cleanup thread: every 10s close DC_ sessions whose process no longer exists
+    // Start cleanup thread: every 10s, if no events for 10s, kill other DC_ sessions
     m_cleanup_thread = std::thread(&PresentMonManager::CleanupThread, this);
 
     LogInfo("PresentMon: Worker thread started");
@@ -766,38 +755,42 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
     }
 }
 
-void PresentMonManager::CloseOrphanedDcEtwSessions() {
+void PresentMonManager::StopAllDcEtwSessions() {
     std::vector<std::string> sessions;
     GetEtwSessionsWithPrefix(L"DC_", sessions);
 
     for (const std::string& name : sessions) {
-        // Session names are e.g. DC_PresentMon_12345; PID is the number after the last '_'
-        size_t last_underscore = name.find_last_of('_');
-        if (last_underscore == std::string::npos || last_underscore + 1 >= name.size()) {
-            continue;
-        }
-        const std::string suffix = name.substr(last_underscore + 1);
-        char* end = nullptr;
-        const unsigned long pid = std::strtoul(suffix.c_str(), &end, 10);
-        if (end == nullptr || end == suffix.c_str() || *end != '\0') {
-            continue;  // Not a valid PID
-        }
-        if (pid == 0) {
-            continue;  // PID 0 is invalid
-        }
-        if (IsProcessRunning(static_cast<DWORD>(pid))) {
-            continue;  // Process still exists, keep session
-        }
         std::wstring wide_name = Widen(name);
         if (!wide_name.empty()) {
             StopEtwSessionByName(wide_name.c_str());
-            LogInfo("PresentMon: Stopped orphan ETW session %s (process %lu no longer exists)", name.c_str(),
-                    static_cast<unsigned long>(pid));
+            LogInfo("PresentMon: Stopped DC_ ETW session %s (startup cleanup)", name.c_str());
+        }
+    }
+}
+
+void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) {
+    if (our_session_name == nullptr || our_session_name[0] == L'\0') return;
+
+    std::string our_name_narrow = Narrow(std::wstring(our_session_name));
+    if (our_name_narrow.empty()) return;
+
+    std::vector<std::string> sessions;
+    GetEtwSessionsWithPrefix(L"DC_", sessions);
+
+    for (const std::string& name : sessions) {
+        if (name == our_name_narrow) continue;  // Keep our own session
+
+        std::wstring wide_name = Widen(name);
+        if (!wide_name.empty()) {
+            StopEtwSessionByName(wide_name.c_str());
+            LogInfo("PresentMon: Stopped other DC_ ETW session %s (no events for 10s)", name.c_str());
         }
     }
 }
 
 void PresentMonManager::CleanupThread(PresentMonManager* manager) {
+    constexpr int64_t k_no_events_interval_ns = 10LL * 1000000000LL;  // 10 seconds
+
     while (!manager->m_should_stop.load()) {
         for (int i = 0; i < 10; ++i) {
             if (manager->m_should_stop.load()) {
@@ -805,7 +798,13 @@ void PresentMonManager::CleanupThread(PresentMonManager* manager) {
             }
             Sleep(1000);
         }
-        CloseOrphanedDcEtwSessions();
+
+        // If we haven't seen any events for 10s, try to kill all other DC_ sessions (they may be blocking us)
+        int64_t now_ns = static_cast<int64_t>(utils::get_now_ns());
+        int64_t last_ns = static_cast<int64_t>(manager->m_last_event_time.load());
+        if (last_ns > 0 && (now_ns - last_ns) >= k_no_events_interval_ns) {
+            StopOtherDcEtwSessions(manager->m_session_name);
+        }
     }
 }
 

@@ -57,6 +57,7 @@ class ResolutionWidget {
     void DrawAutoApplyOnStart();
     void DrawOriginalSettingsInfo();
     void DrawAutoRestoreCheckbox();
+    void DrawHdrSection();
     void DrawDebugMenu();
 
     // Data management

@@ -2,8 +2,8 @@
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 
-#include <Windows.h>
 #include <ShlObj.h>
+#include <Windows.h>
 #include <reshade.hpp>
 
 #include <algorithm>
@@ -17,35 +17,13 @@ namespace {
 // Define the additional settings to track (section -> keys)
 // These are organized as pairs of (section, key) that we want to save/load
 const std::map<std::string, std::vector<std::string>> TRACKED_SETTINGS = {
-    {"INPUT", {
-        "KeyEffects",
-        "KeyFPS",
-        "KeyFrametime",
-        "KeyNextPreset",
-        "KeyOverlay",
-        "KeyPerformanceMode",
-        "KeyPreviousPreset",
-        "KeyReload",
-        "KeyScreenshot"
-    }},
-    {"GENERAL", {
-        "EffectSearchPaths",
-        "TextureSearchPaths",
-        "NoEffectCache",
-        "NoReloadOnInit",
-        "PerformanceMode",
-        "NoDebugInfo",
-        "LoadFromDllMain"
-    }},
-    {"OVERLAY", {
-        "ClockFormat",
-        "ShowClock",
-        "ShowFrameTime",
-        "ShowFPS",
-        "ShowForceLoadEffectsButton",
-        "FPSPosition"
-    }}
-};
+    {"INPUT",
+     {"KeyEffects", "KeyFPS", "KeyFrametime", "KeyNextPreset", "KeyOverlay", "KeyPerformanceMode", "KeyPreviousPreset",
+      "KeyReload", "KeyScreenshot"}},
+    {"GENERAL",
+     {"EffectSearchPaths", "TextureSearchPaths", "NoEffectCache", "NoReloadOnInit", "PerformanceMode", "NoDebugInfo",
+      "LoadFromDllMain"}},
+    {"OVERLAY", {"ClockFormat", "ShowClock", "ShowFrameTime", "ShowFPS", "ShowForceLoadEffectsButton", "FPSPosition"}}};
 
 // Helper function to parse INI line
 bool ParseIniLine(const std::string& line, std::string& key, std::string& value) {
@@ -106,7 +84,7 @@ std::string JoinPaths(const std::vector<std::string>& paths) {
     return result;
 }
 
-} // anonymous namespace
+}  // anonymous namespace
 
 std::filesystem::path GetDisplayCommanderConfigPath() {
     // Get user's home directory using Windows API
@@ -244,8 +222,7 @@ bool LoadGlobalSettings(ReShadeGlobalSettings& settings) {
     for (const auto& [section, keys_values] : settings.additional_settings) {
         total_settings += keys_values.size();
     }
-    LogInfo("  Loaded %zu settings across %zu sections",
-            total_settings, settings.additional_settings.size());
+    LogInfo("  Loaded %zu settings across %zu sections", total_settings, settings.additional_settings.size());
 
     return true;
 }
@@ -292,8 +269,7 @@ bool SaveGlobalSettings(const ReShadeGlobalSettings& settings) {
         for (const auto& [section, keys_values] : settings.additional_settings) {
             total_settings += keys_values.size();
         }
-        LogInfo("  Saved %zu settings across %zu sections",
-                total_settings, settings.additional_settings.size());
+        LogInfo("  Saved %zu settings across %zu sections", total_settings, settings.additional_settings.size());
 
         return true;
     } catch (const std::exception& e) {
@@ -308,7 +284,7 @@ bool SetLoadFromDllMain(bool enabled) {
     const char* value = enabled ? "1" : "0";
 
     try {
-        //reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", value);
+        // reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", value);
         LogInfo("Set LoadFromDllMain to %s in ReShade configuration", value);
         return true;
     } catch (...) {
@@ -317,5 +293,4 @@ bool SetLoadFromDllMain(bool enabled) {
     }
 }
 
-} // namespace utils
-
+}  // namespace utils

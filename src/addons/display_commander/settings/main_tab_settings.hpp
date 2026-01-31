@@ -102,6 +102,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_native_fps;
     ui::new_ui::BoolSetting show_refresh_rate;
     ui::new_ui::BoolSetting show_vrr_status;
+    ui::new_ui::BoolSetting show_actual_refresh_rate;
     ui::new_ui::BoolSetting vrr_debug_mode;
     ui::new_ui::BoolSetting show_flip_status;
     ui::new_ui::BoolSetting show_display_commander_ui;

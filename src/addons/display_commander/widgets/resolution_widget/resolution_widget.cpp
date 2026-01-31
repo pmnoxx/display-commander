@@ -14,7 +14,6 @@
 #include "../../hooks/display_settings_hooks.hpp"
 #include "../../resolution_helpers.hpp"
 #include "../../settings/main_tab_settings.hpp"
-#include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 #include "utils/timing.hpp"
@@ -1202,28 +1201,6 @@ void ResolutionWidget::DrawAutoRestoreCheckbox() {
 }
 
 void ResolutionWidget::DrawHdrSection() {
-    bool auto_maxmdl = settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue();
-    if (ImGui::Checkbox("Auto-apply HDR1000 Metadata Profile", &auto_maxmdl)) {
-        settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.SetValue(auto_maxmdl);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "When enabled, injects HDR10 metadata (MaxMDL 1000 nits, Rec. 2020) on the swapchain when the game starts. "
-            "Use for games that do not set metadata or use low values.");
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Apply")) {
-        const bool applied = ApplyHdr1000MetadataToCurrentSwapchain();
-        if (!applied) {
-            LogInfo("Apply HDR1000: no active DXGI swapchain or apply failed");
-        }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Apply HDR1000 metadata (MaxMDL 1000 nits, Rec. 2020) to the current swapchain once. "
-            "Same effect as the checkbox above but not saved to config.");
-    }
-
     bool auto_hdr = settings::g_mainTabSettings.auto_enable_disable_hdr.GetValue();
     if (ImGui::Checkbox("Auto enable/disable HDR", &auto_hdr)) {
         settings::g_mainTabSettings.auto_enable_disable_hdr.SetValue(auto_hdr);
@@ -1265,6 +1242,21 @@ void ResolutionWidget::DrawHdrSection() {
     } else {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Display HDR: N/A");
+    }
+
+    // Details/Advanced: Samsung tonemapping fix (HDR1000 metadata), hidden by default like SpecialK's Advanced sections
+    if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+        bool auto_maxmdl = settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue();
+        if (ImGui::Checkbox("Samsung tonemapping fix", &auto_maxmdl)) {
+            settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.SetValue(auto_maxmdl);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "When enabled, injects HDR10 metadata with HDR1000 profile (most displays ignore those settings). "
+                "Use for Samsung and other TVs which have invalid HDR metadata or tonemapping issues.");
+        }
+        ImGui::Unindent();
     }
 }
 

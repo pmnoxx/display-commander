@@ -123,6 +123,14 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     // Reserved fields (rsvd0 and rsvd[56]) are zero-initialized by = {}
     // Explicitly zero rsvd0 for clarity (though = {} already handles it)
     mp.rsvd0 = 0;
+    if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+        // Ensure PCLSTATS is initialized if setting is enabled (lazy initialization)
+        ReflexProvider::EnsurePCLStatsInitialized();
+        PCLSTATS_MARKER(static_cast<PCLSTATS_LATENCY_MARKER_TYPE>(marker), static_cast<uint64_t>(mp.frameID));
+    }
+    if (marker == PC_LATENCY_PING) {
+        return true;
+    }
 
     const auto st = NvAPI_D3D_SetLatencyMarker_Direct(d3d_device_, &mp);
     if (st != NVAPI_OK) {
@@ -132,11 +140,6 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
 
     // Emit PCLStats marker (ETW) using the same marker type / frame id we sent to NVAPI.
     // Only emit if PCL stats reporting is enabled
-    if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
-        // Ensure PCLSTATS is initialized if setting is enabled (lazy initialization)
-        ReflexProvider::EnsurePCLStatsInitialized();
-        PCLSTATS_MARKER(static_cast<PCLSTATS_LATENCY_MARKER_TYPE>(marker), static_cast<uint64_t>(mp.frameID));
-    }
     return true;
 }
 

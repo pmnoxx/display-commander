@@ -1283,6 +1283,10 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
             g_latencyManager->SetMarker(SIMULATION_START);
+            if (g_pclstats_ping_signal.exchange(false, std::memory_order_acq_rel)) {
+                // Inject ping marker through the provider (which will emit both NVAPI and ETW markers)
+                g_latencyManager->SetMarker(PC_LATENCY_PING);
+            }
         }
     }
 

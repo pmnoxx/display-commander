@@ -42,6 +42,13 @@ void InitAdvancedTab() {
     if (!settings_loaded) {
         // Settings already loaded at startup
         settings_loaded = true;
+
+        // Start PresentMon worker if the setting is already enabled
+        // This ensures PresentMon starts on game restart if the setting was previously enabled
+        if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
+            LogInfo("InitAdvancedTab() - PresentMon tracing setting is enabled, starting worker");
+            presentmon::g_presentMonManager.StartWorker();
+        }
     }
 }
 
@@ -419,9 +426,9 @@ void DrawAdvancedTabSettingsSection() {
                 show_bool("fNoOverlappingContent", pm_flip_compat.no_overlapping_content);
 
                 ImGui::Spacing();
-                if (ImGui::CollapsingHeader("Recent surfaces (last 10s)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::CollapsingHeader("Recent surfaces (last 1h)", ImGuiTreeNodeFlags_DefaultOpen)) {
                     std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
-                    presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 10000);
+                    presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 3600000);
 
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "Surfaces: %d", static_cast<int>(surfaces.size()));
 

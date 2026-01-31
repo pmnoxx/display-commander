@@ -1748,36 +1748,30 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::TextColored(ui::colors::TEXT_LABEL, "Game Render Resolution:");
             ImGui::SameLine();
             ImGui::Text("%dx%d", game_render_w, game_render_h);
-            
+
             // Get bit depth from swapchain format
             auto desc_ptr = g_last_swapchain_desc.load();
             if (desc_ptr != nullptr) {
                 const char* bit_depth_str = nullptr;
                 switch (desc_ptr->back_buffer.texture.format) {
                     case reshade::api::format::r8g8b8a8_unorm:
-                    case reshade::api::format::b8g8r8a8_unorm:
-                        bit_depth_str = "8-bit";
-                        break;
-                    case reshade::api::format::r10g10b10a2_unorm:
-                        bit_depth_str = "10-bit";
-                        break;
-                    case reshade::api::format::r16g16b16a16_float:
-                        bit_depth_str = "16-bit";
-                        break;
-                    default:
-                        break;
+                    case reshade::api::format::b8g8r8a8_unorm:     bit_depth_str = "8-bit"; break;
+                    case reshade::api::format::r10g10b10a2_unorm:  bit_depth_str = "10-bit"; break;
+                    case reshade::api::format::r16g16b16a16_float: bit_depth_str = "16-bit"; break;
+                    default:                                       break;
                 }
-                
+
                 if (bit_depth_str != nullptr) {
                     ImGui::SameLine();
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, " (%s)", bit_depth_str);
                 }
             }
-            
+
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("The resolution the game requested for rendering (before any modifications).\n"
-                                  "Matches Special K's render_x/render_y values.\n"
-                                  "Bit depth indicates color precision (8-bit = SDR, 10-bit/16-bit = HDR).");
+                ImGui::SetTooltip(
+                    "The resolution the game requested for rendering (before any modifications).\n"
+                    "Matches Special K's render_x/render_y values.\n"
+                    "Bit depth indicates color precision (8-bit = SDR, 10-bit/16-bit = HDR).");
             }
             ImGui::Spacing();
         }
@@ -2801,8 +2795,190 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     }
 
                     ImGui::TextColored(flip_color, "Status: %s", flip_state_str);
+                    bool status_hovered = ImGui::IsItemHovered();
 
-                    if (ImGui::IsItemHovered()) {
+                    // PresentMon status indicator
+                    if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
+                        && presentmon::g_presentMonManager.IsRunning()) {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "PresentMon: ON");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("PresentMon ETW tracing is active and monitoring presentation events.");
+                        }
+
+                        // Display surface and flip state for current game HWND
+                        HWND game_hwnd = g_last_swapchain_hwnd.load();
+                        if (game_hwnd != nullptr && IsWindow(game_hwnd)) {
+                            // Get recent surfaces and find one matching our HWND
+                            std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
+                            presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces,
+                                                                                               3600000);  // Last 1 hour
+
+                            const presentmon::PresentMonSurfaceCompatibilitySummary* found_surface = nullptr;
+                            for (const auto& surface : surfaces) {
+                                if (surface.hwnd == reinterpret_cast<uint64_t>(game_hwnd)) {
+                                    found_surface = &surface;
+                                    break;
+                                }
+                            }
+
+                            if (found_surface != nullptr) {
+                                // Determine flip mode from surface fields
+                                DxgiBypassMode determined_flip_mode = DxgiBypassMode::kComposed;
+                                if (found_surface->is_overlay_compatible
+                                    && (found_surface->is_overlay_required || found_surface->no_overlapping_content)) {
+                                    determined_flip_mode = DxgiBypassMode::kOverlay;
+                                } else if (found_surface->is_advanced_direct_flip_compatible) {
+                                    determined_flip_mode = DxgiBypassMode::kIndependentFlip;
+                                } else if (found_surface->is_direct_flip_compatible) {
+                                    determined_flip_mode = DxgiBypassMode::kIndependentFlip;
+                                } else {
+                                    determined_flip_mode = DxgiBypassMode::kComposed;
+                                }
+
+                                const char* flip_str = DxgiBypassModeToString(determined_flip_mode);
+                                ImVec4 flip_color;
+                                if (determined_flip_mode == DxgiBypassMode::kComposed) {
+                                    flip_color = ui::colors::FLIP_COMPOSED;
+                                } else if (determined_flip_mode == DxgiBypassMode::kOverlay
+                                           || determined_flip_mode == DxgiBypassMode::kIndependentFlip) {
+                                    flip_color = ui::colors::FLIP_INDEPENDENT;
+                                } else {
+                                    flip_color = ui::colors::FLIP_UNKNOWN;
+                                }
+
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface: 0x%llX",
+                                                   found_surface->surface_luid);
+
+                                // Tooltip with surface delays and information
+                                if (ImGui::IsItemHovered()) {
+                                    ImGui::BeginTooltip();
+                                    ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Surface Information:");
+                                    ImGui::Separator();
+
+                                    // Surface information
+                                    ImGui::Text("Surface LUID: 0x%llX", found_surface->surface_luid);
+                                    ImGui::Text("Surface Size: %ux%u", found_surface->surface_width,
+                                                found_surface->surface_height);
+                                    if (found_surface->pixel_format != 0) {
+                                        ImGui::Text("Pixel Format: 0x%X", found_surface->pixel_format);
+                                    }
+                                    if (found_surface->flags != 0) {
+                                        ImGui::Text("Flags: 0x%X", found_surface->flags);
+                                    }
+                                    if (found_surface->color_space != 0) {
+                                        ImGui::Text("Color Space: 0x%X", found_surface->color_space);
+                                    }
+
+                                    ImGui::Separator();
+
+                                    // Surface delays
+                                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface Delays:");
+                                    if (found_surface->last_update_time_ns > 0) {
+                                        LONGLONG now_ns = utils::get_now_ns();
+                                        LONGLONG age_ns =
+                                            now_ns - static_cast<LONGLONG>(found_surface->last_update_time_ns);
+                                        double age_ms = static_cast<double>(age_ns) / 1000000.0;
+                                        if (age_ms < 1000.0) {
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago",
+                                                               age_ms);
+                                        } else {
+                                            double age_s = age_ms / 1000.0;
+                                            ImGui::TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago",
+                                                               age_s);
+                                        }
+                                    } else {
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Last Update: Unknown");
+                                    }
+                                    if (found_surface->count > 0) {
+                                        ImGui::Text("Event Count: %llu", found_surface->count);
+                                        // Average delay between events (if we have multiple events)
+                                        if (found_surface->count > 1 && found_surface->last_update_time_ns > 0) {
+                                            // Estimate: assume events are spread over the time window
+                                            double avg_delay_ms =
+                                                static_cast<double>(found_surface->last_update_time_ns) / 1000000.0
+                                                / static_cast<double>(found_surface->count);
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Avg Delay: ~%.2f ms",
+                                                               avg_delay_ms);
+                                        }
+                                    }
+
+                                    ImGui::Separator();
+
+                                    // Flip compatibility flags
+                                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
+                                    if (found_surface->is_direct_flip_compatible) {
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
+                                    } else {
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
+                                    }
+                                    if (found_surface->is_advanced_direct_flip_compatible) {
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                           "  " ICON_FK_OK " Advanced Direct Flip Compatible");
+                                    } else {
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                           "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
+                                    }
+                                    if (found_surface->is_overlay_compatible) {
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
+                                    } else {
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
+                                    }
+                                    if (found_surface->is_overlay_required) {
+                                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
+                                    }
+                                    if (found_surface->no_overlapping_content) {
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
+                                    } else {
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
+                                    }
+
+                                    ImGui::Separator();
+
+                                    // Flip state determined from surface fields
+                                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip State (from surface):");
+                                    ImGui::TextColored(flip_color, "Mode: %s", flip_str);
+
+                                    ImGui::EndTooltip();
+                                }
+
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                                ImGui::SameLine();
+                                ImGui::TextColored(flip_color, "Flip: %s", flip_str);
+                            } else {
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                                ImGui::SameLine();
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED, "Surface: nullptr");
+                            }
+                        } else {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                            ImGui::SameLine();
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "HWND: nullptr");
+                        }
+                    } else {
+                        // present mon off
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF (not enabled by default)");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::BeginTooltip();
+                            ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon: OFF");
+                            ImGui::Separator();
+                            ImGui::Text("To enable PresentMon ETW tracing:");
+                            ImGui::BulletText("Go to the Advanced tab");
+                            ImGui::BulletText("Enable 'Enable PresentMon ETW Tracing'");
+                            ImGui::BulletText("PresentMon will start automatically");
+                            ImGui::Separator();
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon provides detailed flip mode");
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "and surface compatibility information.");
+                            ImGui::EndTooltip();
+                        }
+                    }
+
+                    if (status_hovered) {
                         ImGui::BeginTooltip();
                         ImGui::TextColored(ui::colors::TEXT_LABEL, "Swapchain Information:");
                         ImGui::Separator();
@@ -3050,6 +3226,110 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last PresentMode-like: %s",
                                                        pm_debug_info.last_present_mode_value.c_str());
                                 }
+                            }
+
+                            ImGui::Spacing();
+
+                            // Layer information for current game HWND
+                            HWND game_hwnd = g_last_swapchain_hwnd.load();
+                            if (game_hwnd != nullptr && IsWindow(game_hwnd)) {
+                                ImGui::Separator();
+                                ImGui::Spacing();
+                                ImGui::TextColored(ui::colors::TEXT_LABEL,
+                                                   "Layer Information (Game HWND: 0x%p):", game_hwnd);
+
+                                // Get recent surfaces and find one matching our HWND
+                                std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
+                                presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(
+                                    surfaces, 3600000);  // Last 1 hour
+
+                                bool found_layer = false;
+                                for (const auto& surface : surfaces) {
+                                    if (surface.hwnd == reinterpret_cast<uint64_t>(game_hwnd)) {
+                                        found_layer = true;
+                                        ImGui::Indent();
+
+                                        // Surface information
+                                        ImGui::Text("Surface LUID: 0x%llX", surface.surface_luid);
+                                        ImGui::Text("Surface Size: %ux%u", surface.surface_width,
+                                                    surface.surface_height);
+                                        if (surface.pixel_format != 0) {
+                                            ImGui::Text("Pixel Format: 0x%X", surface.pixel_format);
+                                        }
+                                        if (surface.color_space != 0) {
+                                            ImGui::Text("Color Space: 0x%X", surface.color_space);
+                                        }
+
+                                        ImGui::Spacing();
+
+                                        // Flip compatibility flags
+                                        ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
+                                        if (surface.is_direct_flip_compatible) {
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
+                                        } else {
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
+                                        }
+                                        if (surface.is_advanced_direct_flip_compatible) {
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                               "  " ICON_FK_OK " Advanced Direct Flip Compatible");
+                                        } else {
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                               "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
+                                        }
+                                        if (surface.is_overlay_compatible) {
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
+                                        } else {
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
+                                        }
+                                        if (surface.is_overlay_required) {
+                                            ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
+                                        }
+                                        if (surface.no_overlapping_content) {
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
+                                        } else {
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
+                                        }
+
+                                        // Show update time
+                                        if (surface.last_update_time_ns > 0) {
+                                            LONGLONG now_ns = utils::get_now_ns();
+                                            LONGLONG age_ns =
+                                                now_ns - static_cast<LONGLONG>(surface.last_update_time_ns);
+                                            double age_ms = static_cast<double>(age_ns) / 1000000.0;
+                                            ImGui::Spacing();
+                                            if (age_ms < 1000.0) {
+                                                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago",
+                                                                   age_ms);
+                                            } else {
+                                                ImGui::TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago",
+                                                                   age_ms / 1000.0);
+                                            }
+                                        }
+
+                                        // Show event count
+                                        if (surface.count > 0) {
+                                            ImGui::Text("Event Count: %llu", surface.count);
+                                        }
+
+                                        ImGui::Unindent();
+                                        break;  // Found matching layer, no need to continue
+                                    }
+                                }
+
+                                if (!found_layer) {
+                                    ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                       "  No layer information found for this HWND");
+                                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Waiting for PresentMon events...");
+                                    if (!surfaces.empty()) {
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                           "  (%zu surfaces tracked, none match)", surfaces.size());
+                                    }
+                                }
+                            } else {
+                                ImGui::Separator();
+                                ImGui::Spacing();
+                                ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                   "Layer Information: Game window not available");
                             }
 
                             ImGui::Spacing();

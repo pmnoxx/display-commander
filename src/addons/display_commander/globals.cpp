@@ -134,8 +134,8 @@ std::atomic<bool> s_initial_auto_selection_done{false};  // Track if we've done 
 std::atomic<bool> s_auto_restore_resolution_on_close{true};  // Enabled by default
 
 // Auto-apply resolution and refresh rate changes
-std::atomic<bool> s_auto_apply_resolution_change{false};    // Disabled by default
-std::atomic<bool> s_auto_apply_refresh_rate_change{false};  // Disabled by default
+std::atomic<bool> s_auto_apply_resolution_change{false};     // Disabled by default
+std::atomic<bool> s_auto_apply_refresh_rate_change{false};   // Disabled by default
 std::atomic<bool> s_apply_display_settings_at_start{false};  // Disabled by default
 
 // Track if resolution was successfully applied at least once

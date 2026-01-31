@@ -2323,6 +2323,17 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             g_hmodule = h_module;
             g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
 
+            // Refuse to load if SpecialK is already loaded (incompatible with Display Commander)
+            if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
+                reshade::log::message(reshade::log::level::error,
+                    "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
+                    "load Display Commander.");
+                OutputDebugStringA(
+                    "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
+                    "load Display Commander.\n");
+                return FALSE;  // Refuse to load
+            }
+
             // Detect multiple Display Commander instances - refuse to load if multiple versions found
             if (DetectMultipleDisplayCommanderVersions()) {
                 // log to reshade log

@@ -31,6 +31,14 @@ extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule
 
 namespace display_commanderhooks {
 
+// Helper function to check if a DLL is SpecialK (always blocked - incompatible with Display Commander)
+bool ShouldBlockSpecialKDLL(const std::wstring& dll_path) {
+    std::filesystem::path path(dll_path);
+    std::wstring filename = path.filename().wstring();
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+    return (filename == L"specialk32.dll" || filename == L"specialk64.dll");
+}
+
 // Helper function to check if a DLL should be blocked (Ansel libraries)
 bool ShouldBlockAnselDLL(const std::wstring& dll_path) {
     // Check if Ansel skip is enabled
@@ -172,6 +180,16 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
     LogInfo("[%s] LoadLibraryA called: %s", timestamp.c_str(), dll_name.c_str());
 
+    // Check for SpecialK blocking (incompatible with Display Commander)
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockSpecialKDLL(w_dll_name)) {
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
+        }
+    }
+
     // Check for Ansel blocking
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
@@ -268,6 +286,16 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
     LogInfo("[%s] LoadLibraryW called: %s", timestamp.c_str(), dll_name.c_str());
+
+    // Check for SpecialK blocking (incompatible with Display Commander)
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockSpecialKDLL(w_dll_name)) {
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
+        }
+    }
 
     // Check for Ansel blocking
     if (lpLibFileName) {
@@ -366,6 +394,16 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
     LogInfo("[%s] LoadLibraryExA called: %s, hFile: 0x%p, dwFlags: 0x%08X", timestamp.c_str(), dll_name.c_str(), hFile,
             dwFlags);
+
+    // Check for SpecialK blocking (incompatible with Display Commander)
+    if (lpLibFileName) {
+        std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
+        if (ShouldBlockSpecialKDLL(w_dll_name)) {
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
+        }
+    }
 
     // Check for Ansel blocking
     if (lpLibFileName) {
@@ -475,6 +513,16 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 
     LogInfo("[%s] LoadLibraryExW called: %s, hFile: 0x%p, dwFlags: 0x%08X", timestamp.c_str(), dll_name.c_str(), hFile,
             dwFlags);
+
+    // Check for SpecialK blocking (incompatible with Display Commander)
+    if (lpLibFileName) {
+        std::wstring w_dll_name = lpLibFileName;
+        if (ShouldBlockSpecialKDLL(w_dll_name)) {
+            LogInfo("[%s] SpecialK Block: Blocking %s from loading", timestamp.c_str(), dll_name.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
+        }
+    }
 
     // Check for Ansel blocking
     if (lpLibFileName) {

@@ -164,7 +164,7 @@ class MainTabSettings {
 
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;
-    // Samsung tonemapping fix: auto-apply MaxMDL 1000 HDR metadata on swapchain init (DXGI SetHDRMetaData)
+    // Override HDR static metadata (ignore source MaxCLL/MaxFALL): inject MaxMDL 1000 on swapchain init (DXGI SetHDRMetaData). Sony/display fix.
     ui::new_ui::BoolSetting auto_apply_maxmdl_1000_hdr_metadata;
 
     // Ansel Control

@@ -7,6 +7,8 @@
 #include <string>
 #include "../../display/query_display.hpp"
 #include "../../display_cache.hpp"
+#include "../../display/hdr_control.hpp"
+#include "../../settings/main_tab_settings.hpp"
 #include "../../display_initial_state.hpp"
 #include "../../display_restore.hpp"
 #include "../../globals.hpp"
@@ -124,6 +126,10 @@ void ResolutionWidget::OnDraw() {
 
     // Debug menu
     DrawDebugMenu();
+    ImGui::Spacing();
+
+    // HDR auto enable/disable and display HDR capable
+    DrawHdrSection();
     ImGui::Spacing();
 
     // Original settings info
@@ -1196,6 +1202,51 @@ void ResolutionWidget::DrawAutoRestoreCheckbox() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Automatically restore original display settings when the game closes");
+    }
+}
+
+void ResolutionWidget::DrawHdrSection() {
+    bool auto_hdr = settings::g_mainTabSettings.auto_enable_disable_hdr.GetValue();
+    if (ImGui::Checkbox("Auto enable/disable HDR", &auto_hdr)) {
+        settings::g_mainTabSettings.auto_enable_disable_hdr.SetValue(auto_hdr);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "When enabled, automatically turn Windows HDR on for the game display when the game starts, "
+            "and turn it off when the game exits.");
+    }
+
+    int actual_display = GetActualDisplayIndex();
+    bool hdr_supported = false;
+    bool hdr_enabled = false;
+    bool got_state =
+        display_commander::display::hdr_control::GetHdrStateForDisplayIndex(actual_display, &hdr_supported, &hdr_enabled);
+
+    if (got_state) {
+        ImGui::SameLine();
+        ImGui::TextColored(hdr_supported ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                          "Display HDR capable: %s", hdr_supported ? "Yes" : "No");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Whether the selected display supports Windows HDR (advanced color).");
+        }
+        if (hdr_supported) {
+            ImGui::SameLine();
+            ImGui::TextColored(hdr_enabled ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.8f, 0.8f, 0.5f, 1.0f),
+                              "HDR: %s", hdr_enabled ? "On" : "Off");
+            ImGui::SameLine();
+            if (ImGui::Button(hdr_enabled ? "Disable HDR" : "Enable HDR")) {
+                if (display_commander::display::hdr_control::SetHdrForDisplayIndex(actual_display, !hdr_enabled)) {
+                    display_cache::g_displayCache.Refresh();
+                    needs_refresh_ = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Turn Windows HDR (advanced color) on or off for the selected display.");
+            }
+        }
+    } else {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Display HDR: N/A");
     }
 }
 

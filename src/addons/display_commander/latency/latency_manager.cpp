@@ -125,23 +125,17 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
     if (!result) {
         return result;
     }
-    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     // Special-K style: on SIMULATION_START, optionally inject PC_LATENCY_PING when signaled.
     // This is gated inside pclstats_etw (user enable + ETW provider enable + not Reflex-native).
     // CRITICAL: Special K sends PC_LATENCY_PING through NVAPI first, which then gets emitted via ETW.
     // This ensures proper correlation and timing for PCL/AV stats calculation.
-    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     switch (marker) {
         case SIMULATION_START: {
             g_reflex_marker_simulation_start_count.fetch_add(1, std::memory_order_relaxed);
             // Special-K style: inject PC_LATENCY_PING on SIMULATION_START when ping signal is set
             // This ensures proper timing correlation with the frame boundary
-            if (g_pclstats_ping_signal.exchange(false, std::memory_order_acq_rel)) {
-                // Inject ping marker through the provider (which will emit both NVAPI and ETW markers)
-                provider_->SetMarker(PC_LATENCY_PING);
-            }
             break;
         }
         case SIMULATION_END: g_reflex_marker_simulation_end_count.fetch_add(1, std::memory_order_relaxed); break;
@@ -155,7 +149,6 @@ bool LatencyManager::SetMarker(LatencyMarkerType marker) {
         case PC_LATENCY_PING:  break;
         default:               break;
     }
-    RECORD_DETOUR_CALL(utils::get_now_ns());
     return result;
 }
 

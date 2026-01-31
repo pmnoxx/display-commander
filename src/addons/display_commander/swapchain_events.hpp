@@ -50,6 +50,10 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC device_type, bool fro
 // Auto color space helper
 void AutoSetColorSpace(reshade::api::swapchain* swapchain);
 
+// Apply HDR1000 metadata (Rec. 2020, MaxMDL 1000 nits) to the current swapchain once. Returns true if applied.
+// Does not persist any setting; for one-shot use from UI (e.g. Apply button).
+bool ApplyHdr1000MetadataToCurrentSwapchain();
+
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,
                       reshade::api::subresource_data* initial_data, reshade::api::resource_usage usage);

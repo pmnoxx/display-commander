@@ -1016,6 +1016,65 @@ void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     }
 }
 
+namespace {
+
+bool ApplyHdr1000MetadataToDxgi(IDXGISwapChain4* swapchain4) {
+    if (swapchain4 == nullptr) {
+        return false;
+    }
+    DXGI_HDR_METADATA_HDR10 hdr10 = {};
+    hdr10.RedPrimary[0] = static_cast<UINT16>(0.708 * 65535);
+    hdr10.RedPrimary[1] = static_cast<UINT16>(0.292 * 65535);
+    hdr10.GreenPrimary[0] = static_cast<UINT16>(0.170 * 65535);
+    hdr10.GreenPrimary[1] = static_cast<UINT16>(0.797 * 65535);
+    hdr10.BluePrimary[0] = static_cast<UINT16>(0.131 * 65535);
+    hdr10.BluePrimary[1] = static_cast<UINT16>(0.046 * 65535);
+    hdr10.WhitePoint[0] = static_cast<UINT16>(0.3127 * 65535);
+    hdr10.WhitePoint[1] = static_cast<UINT16>(0.3290 * 65535);
+    hdr10.MaxMasteringLuminance = 1000;
+    hdr10.MinMasteringLuminance = 0;
+    hdr10.MaxContentLightLevel = 1000;
+    hdr10.MaxFrameAverageLightLevel = 100;
+    const HRESULT hr =
+        swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10), &hdr10);
+    if (SUCCEEDED(hr)) {
+        LogInfo("HDR metadata (MaxMDL 1000 nits, Rec. 2020) applied to swapchain");
+        return true;
+    }
+    return false;
+}
+
+void ApplyHdr1000MetadataToSwapchain(reshade::api::swapchain* swapchain) {
+    const auto api = swapchain->get_device()->get_api();
+    if (api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d12) {
+        return;
+    }
+    IUnknown* const iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+    if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
+        ApplyHdr1000MetadataToDxgi(swapchain4.Get());
+    }
+}
+
+}  // namespace
+
+bool ApplyHdr1000MetadataToCurrentSwapchain() {
+    reshade::api::effect_runtime* const runtime = GetFirstReShadeRuntime();
+    if (runtime == nullptr) {
+        return false;
+    }
+    const auto api = runtime->get_device()->get_api();
+    if (api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d12) {
+        return false;
+    }
+    IUnknown* const iunknown = reinterpret_cast<IUnknown*>(runtime->get_native());
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+    if (iunknown == nullptr || FAILED(iunknown->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
+        return false;
+    }
+    return ApplyHdr1000MetadataToDxgi(swapchain4.Get());
+}
+
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
@@ -1102,6 +1161,11 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
                 }
             }
         }
+    }
+
+    // Auto-apply MaxMDL 1000 HDR metadata when enabled (inject HDR10 metadata on swapchain init)
+    if (!resize && settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue()) {
+        ApplyHdr1000MetadataToSwapchain(swapchain);
     }
 }
 

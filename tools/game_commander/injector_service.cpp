@@ -1,21 +1,20 @@
 #include "injector_service.h"
-#include "game_list.h"
-#include "srwlock_wrapper.h"
-#include <fstream>
-#include <iostream>
+#include <AclAPI.h>
+#include <sddl.h>
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
-#include <array>
-#include <algorithm>
-#include <sddl.h>
-#include <AclAPI.h>
+#include <iostream>
+#include "game_list.h"
+#include "srwlock_wrapper.h"
 
 // Forward declarations
 static void update_acl_for_uwp(LPWSTR path);
 
-struct loading_data
-{
+struct loading_data {
     WCHAR load_path[MAX_PATH] = L"";
     decltype(&GetLastError) GetLastError = nullptr;
     decltype(&LoadLibraryW) LoadLibraryW = nullptr;
@@ -24,27 +23,22 @@ struct loading_data
     decltype(&SetEnvironmentVariableW) SetEnvironmentVariableW = nullptr;
 };
 
-struct scoped_handle
-{
+struct scoped_handle {
     HANDLE handle;
 
     scoped_handle() : handle(INVALID_HANDLE_VALUE) {}
     scoped_handle(HANDLE handle) : handle(handle) {}
-    scoped_handle(scoped_handle &&other) : handle(other.handle) {
-        other.handle = NULL;
-    }
+    scoped_handle(scoped_handle&& other) : handle(other.handle) { other.handle = NULL; }
     ~scoped_handle() {
-        if (handle != NULL && handle != INVALID_HANDLE_VALUE)
-            CloseHandle(handle);
+        if (handle != NULL && handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
     }
 
     operator HANDLE() const { return handle; }
-    HANDLE *operator&() { return &handle; }
-    const HANDLE *operator&() const { return &handle; }
+    HANDLE* operator&() { return &handle; }
+    const HANDLE* operator&() const { return &handle; }
 };
 
-InjectorService::InjectorService()
-    : running_(false), verbose_logging_(true) {
+InjectorService::InjectorService() : running_(false), verbose_logging_(true) {
     // Set default ReShade DLL paths to run_tmp directory
     wchar_t module_path[MAX_PATH];
     GetModuleFileNameW(nullptr, module_path, MAX_PATH);
@@ -69,24 +63,23 @@ InjectorService::InjectorService()
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, run_tmp_dir.c_str(), -1, nullptr, 0, nullptr, nullptr);
     std::string run_tmp_dir_narrow(size_needed, 0);
     WideCharToMultiByte(CP_UTF8, 0, run_tmp_dir.c_str(), -1, &run_tmp_dir_narrow[0], size_needed, nullptr, nullptr);
-    run_tmp_dir_narrow.resize(size_needed - 1); // Remove null terminator
+    run_tmp_dir_narrow.resize(size_needed - 1);  // Remove null terminator
 
     reshade_dll_path_32bit_ = run_tmp_dir_narrow + "\\ReShade32.dll";
     reshade_dll_path_64bit_ = run_tmp_dir_narrow + "\\ReShade64.dll";
 
     // Debug logging for path resolution
     if (verbose_logging_.load()) {
-        logMessage("Default ReShade DLL paths set to: " + reshade_dll_path_32bit_ + " (32-bit), " + reshade_dll_path_64bit_ + " (64-bit)");
+        logMessage("Default ReShade DLL paths set to: " + reshade_dll_path_32bit_ + " (32-bit), "
+                   + reshade_dll_path_64bit_ + " (64-bit)");
     }
 }
 
-InjectorService::~InjectorService() {
-    stop();
-}
+InjectorService::~InjectorService() { stop(); }
 
 bool InjectorService::start() {
     if (running_.load()) {
-        return true; // Already running
+        return true;  // Already running
     }
 
     if (targets_.empty()) {
@@ -161,14 +154,12 @@ void InjectorService::setDisplayCommanderPaths(const std::string& path_32bit, co
     display_commander_path_64bit_ = path_64bit;
 
     if (verbose_logging_.load()) {
-        logMessage("Display Commander paths set - 32-bit: " + (path_32bit.empty() ? "not configured" : path_32bit) +
-                  ", 64-bit: " + (path_64bit.empty() ? "not configured" : path_64bit));
+        logMessage("Display Commander paths set - 32-bit: " + (path_32bit.empty() ? "not configured" : path_32bit)
+                   + ", 64-bit: " + (path_64bit.empty() ? "not configured" : path_64bit));
     }
 }
 
-void InjectorService::setVerboseLogging(bool enabled) {
-    verbose_logging_.store(enabled);
-}
+void InjectorService::setVerboseLogging(bool enabled) { verbose_logging_.store(enabled); }
 
 size_t InjectorService::getInjectedProcessCount() const {
     game_commander::SRWLockShared lock(targets_srwlock_);
@@ -207,7 +198,7 @@ void InjectorService::monitoringLoop() {
         // Check for new processes
         const scoped_handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if (snapshot != INVALID_HANDLE_VALUE) {
-            PROCESSENTRY32W process = { sizeof(process) };
+            PROCESSENTRY32W process = {sizeof(process)};
             for (BOOL next = Process32FirstW(snapshot, &process); next; next = Process32NextW(snapshot, &process)) {
                 if (!running_.load()) break;
 
@@ -229,12 +220,13 @@ void InjectorService::monitoringLoop() {
                     int size_needed = MultiByteToWideChar(CP_UTF8, 0, target.exe_name.c_str(), -1, nullptr, 0);
                     std::wstring exe_name_wide(size_needed, 0);
                     MultiByteToWideChar(CP_UTF8, 0, target.exe_name.c_str(), -1, &exe_name_wide[0], size_needed);
-                    exe_name_wide.resize(size_needed - 1); // Remove null terminator
+                    exe_name_wide.resize(size_needed - 1);  // Remove null terminator
 
                     if (_wcsicmp(process.szExeFile, exe_name_wide.c_str()) == 0) {
                         // Check if we've already injected into this PID
                         if (target.injected_pids.find(pid) == target.injected_pids.end()) {
-                            logMessage("Found new " + target.display_name + " process (PID " + std::to_string(pid) + ")");
+                            logMessage("Found new " + target.display_name + " process (PID " + std::to_string(pid)
+                                       + ")");
 
                             // Attempt injection only if not using local injection
                             if (!target.use_local_injection) {
@@ -255,11 +247,13 @@ void InjectorService::monitoringLoop() {
                                 }
                             }
                             // Copy display commander addon if path is configured and not using local injection
-                            if (!target.use_local_injection && (!display_commander_path_32bit_.empty() || !display_commander_path_64bit_.empty())) {
+                            if (!target.use_local_injection
+                                && (!display_commander_path_32bit_.empty() || !display_commander_path_64bit_.empty())) {
                                 copyDisplayCommanderToGameFolder(pid);
                             }
                             if (verbose_logging_.load()) {
-                                logMessage("Found new " + target.display_name + " process (PID " + std::to_string(pid) + ")");
+                                logMessage("Found new " + target.display_name + " process (PID " + std::to_string(pid)
+                                           + ")");
                             }
                         }
                     }
@@ -282,8 +276,8 @@ bool InjectorService::injectIntoProcess(DWORD pid, const TargetProcess& target) 
 
     // Open target application process
     const scoped_handle remote_process = OpenProcess(
-        PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ |
-        PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION, FALSE, pid);
+        PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION,
+        FALSE, pid);
 
     if (remote_process == nullptr) {
         logError("Failed to open target application process (PID " + std::to_string(pid) + ")", GetLastError());
@@ -308,7 +302,8 @@ bool InjectorService::injectIntoProcess(DWORD pid, const TargetProcess& target) 
     }
 
     if (reshade_path.empty()) {
-        logError("No ReShade DLL configured for " + std::string(remote_is_wow64 ? "32-bit" : "64-bit") + " process (PID " + std::to_string(pid) + ")");
+        logError("No ReShade DLL configured for " + std::string(remote_is_wow64 ? "32-bit" : "64-bit")
+                 + " process (PID " + std::to_string(pid) + ")");
         return false;
     }
 
@@ -316,7 +311,7 @@ bool InjectorService::injectIntoProcess(DWORD pid, const TargetProcess& target) 
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, reshade_path.c_str(), -1, nullptr, 0);
     std::wstring reshade_path_wide(size_needed, 0);
     MultiByteToWideChar(CP_UTF8, 0, reshade_path.c_str(), -1, &reshade_path_wide[0], size_needed);
-    reshade_path_wide.resize(size_needed - 1); // Remove null terminator
+    reshade_path_wide.resize(size_needed - 1);  // Remove null terminator
     wcscpy_s(arg.load_path, reshade_path_wide.c_str());
 
     if (GetFileAttributesW(arg.load_path) == INVALID_FILE_ATTRIBUTES) {
@@ -333,20 +328,23 @@ bool InjectorService::injectIntoProcess(DWORD pid, const TargetProcess& target) 
     arg.SetEnvironmentVariableW = SetEnvironmentVariableW;
 
     // Allocate memory in target process
-    const auto load_param = VirtualAllocEx(remote_process, nullptr,
-        sizeof(arg), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    const auto load_param =
+        VirtualAllocEx(remote_process, nullptr, sizeof(arg), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 
     if (load_param == nullptr || !WriteProcessMemory(remote_process, load_param, &arg, sizeof(arg), nullptr)) {
-        logError("Failed to allocate and write 'LoadLibrary' argument in target application (PID " + std::to_string(pid) + ")", GetLastError());
+        logError("Failed to allocate and write 'LoadLibrary' argument in target application (PID " + std::to_string(pid)
+                     + ")",
+                 GetLastError());
         return false;
     }
 
     // Execute 'LoadLibrary' in target application
-    const scoped_handle load_thread = CreateRemoteThread(remote_process, nullptr, 0,
-        reinterpret_cast<LPTHREAD_START_ROUTINE>(arg.LoadLibraryW), load_param, 0, nullptr);
+    const scoped_handle load_thread = CreateRemoteThread(
+        remote_process, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(arg.LoadLibraryW), load_param, 0, nullptr);
 
     if (load_thread == nullptr) {
-        logError("Failed to execute 'LoadLibrary' in target application (PID " + std::to_string(pid) + ")", GetLastError());
+        logError("Failed to execute 'LoadLibrary' in target application (PID " + std::to_string(pid) + ")",
+                 GetLastError());
         return false;
     }
 
@@ -367,13 +365,11 @@ bool InjectorService::injectIntoProcess(DWORD pid, const TargetProcess& target) 
 
 bool InjectorService::isProcessRunning(DWORD pid) {
     const scoped_handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE)
-        return false;
+    if (snapshot == INVALID_HANDLE_VALUE) return false;
 
-    PROCESSENTRY32W process = { sizeof(process) };
+    PROCESSENTRY32W process = {sizeof(process)};
     for (BOOL next = Process32FirstW(snapshot, &process); next; next = Process32NextW(snapshot, &process)) {
-        if (process.th32ProcessID == pid)
-            return true;
+        if (process.th32ProcessID == pid) return true;
     }
     return false;
 }
@@ -386,7 +382,8 @@ void InjectorService::cleanupInjectedPids() {
         while (it != target.injected_pids.end()) {
             if (!isProcessRunning(*it)) {
                 if (verbose_logging_.load()) {
-                    logMessage("Process " + target.display_name + " (PID " + std::to_string(*it) + ") has terminated, removing from tracking");
+                    logMessage("Process " + target.display_name + " (PID " + std::to_string(*it)
+                               + ") has terminated, removing from tracking");
                 }
                 it = target.injected_pids.erase(it);
             } else {
@@ -402,9 +399,8 @@ void InjectorService::logMessage(const std::string& message) {
     struct tm tm;
     localtime_s(&tm, &time_t);
 
-    std::cout << "[" << std::setfill('0') << std::setw(2) << tm.tm_hour << ":"
-              << std::setfill('0') << std::setw(2) << tm.tm_min << ":"
-              << std::setfill('0') << std::setw(2) << tm.tm_sec << "] "
+    std::cout << "[" << std::setfill('0') << std::setw(2) << tm.tm_hour << ":" << std::setfill('0') << std::setw(2)
+              << tm.tm_min << ":" << std::setfill('0') << std::setw(2) << tm.tm_sec << "] "
               << "[Injector] " << message << std::endl;
 }
 
@@ -419,7 +415,7 @@ void InjectorService::logError(const std::string& message, DWORD error_code) {
 bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
     // Check if at least one display commander path is configured
     if (display_commander_path_32bit_.empty() && display_commander_path_64bit_.empty()) {
-        return true; // Nothing to copy
+        return true;  // Nothing to copy
     }
 
     // Get the process executable path
@@ -432,7 +428,8 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
     wchar_t process_path[MAX_PATH];
     DWORD path_size = MAX_PATH;
     if (QueryFullProcessImageNameW(process_handle, 0, process_path, &path_size) == 0) {
-        logError("Failed to get process path for display commander copy (PID " + std::to_string(pid) + ")", GetLastError());
+        logError("Failed to get process path for display commander copy (PID " + std::to_string(pid) + ")",
+                 GetLastError());
         return false;
     }
 
@@ -443,8 +440,9 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
         // Convert wide string to narrow string for error message
         int size_needed = WideCharToMultiByte(CP_UTF8, 0, process_path_str.c_str(), -1, nullptr, 0, nullptr, nullptr);
         std::string process_path_narrow(size_needed, 0);
-        WideCharToMultiByte(CP_UTF8, 0, process_path_str.c_str(), -1, &process_path_narrow[0], size_needed, nullptr, nullptr);
-        process_path_narrow.resize(size_needed - 1); // Remove null terminator
+        WideCharToMultiByte(CP_UTF8, 0, process_path_str.c_str(), -1, &process_path_narrow[0], size_needed, nullptr,
+                            nullptr);
+        process_path_narrow.resize(size_needed - 1);  // Remove null terminator
         logError("Invalid process path for display commander copy: " + process_path_narrow);
         return false;
     }
@@ -459,8 +457,9 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
     // Choose the appropriate display commander path based on architecture
     std::string display_commander_path = is_32bit ? display_commander_path_32bit_ : display_commander_path_64bit_;
     if (display_commander_path.empty()) {
-        logMessage("No display commander addon configured for " + std::string(is_32bit ? "32-bit" : "64-bit") + " process (PID " + std::to_string(pid) + ") - skipping display commander copy");
-        return true; // Not an error, just skip copying
+        logMessage("No display commander addon configured for " + std::string(is_32bit ? "32-bit" : "64-bit")
+                   + " process (PID " + std::to_string(pid) + ") - skipping display commander copy");
+        return true;  // Not an error, just skip copying
     }
 
     logMessage("Attempting to copy display commander addon: " + display_commander_path);
@@ -469,7 +468,7 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
     int size_needed = MultiByteToWideChar(CP_UTF8, 0, display_commander_path.c_str(), -1, nullptr, 0);
     std::wstring display_commander_path_wide(size_needed, 0);
     MultiByteToWideChar(CP_UTF8, 0, display_commander_path.c_str(), -1, &display_commander_path_wide[0], size_needed);
-    display_commander_path_wide.resize(size_needed - 1); // Remove null terminator
+    display_commander_path_wide.resize(size_needed - 1);  // Remove null terminator
 
     // Get the filename from the display commander path
     std::wstring display_commander_filename = display_commander_path_wide;
@@ -492,7 +491,8 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
         if (error == ERROR_FILE_EXISTS) {
             // File already exists, try to overwrite
             if (CopyFileW(display_commander_path_wide.c_str(), destination_path.c_str(), TRUE) == 0) {
-                logError("Failed to overwrite display commander addon (PID " + std::to_string(pid) + ")", GetLastError());
+                logError("Failed to overwrite display commander addon (PID " + std::to_string(pid) + ")",
+                         GetLastError());
                 return false;
             }
         } else {
@@ -505,8 +505,9 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
         // Convert wide string to narrow string for log message
         int size_needed = WideCharToMultiByte(CP_UTF8, 0, destination_path.c_str(), -1, nullptr, 0, nullptr, nullptr);
         std::string destination_path_narrow(size_needed, 0);
-        WideCharToMultiByte(CP_UTF8, 0, destination_path.c_str(), -1, &destination_path_narrow[0], size_needed, nullptr, nullptr);
-        destination_path_narrow.resize(size_needed - 1); // Remove null terminator
+        WideCharToMultiByte(CP_UTF8, 0, destination_path.c_str(), -1, &destination_path_narrow[0], size_needed, nullptr,
+                            nullptr);
+        destination_path_narrow.resize(size_needed - 1);  // Remove null terminator
         logMessage("Copied display commander addon to game folder: " + destination_path_narrow);
     }
 
@@ -515,18 +516,20 @@ bool InjectorService::copyDisplayCommanderToGameFolder(DWORD pid) {
 
 // UWP ACL update function (simplified version from enhanced_injector.cpp)
 static void update_acl_for_uwp(LPWSTR path) {
-    OSVERSIONINFOEX verinfo_windows7 = { sizeof(OSVERSIONINFOEX), 6, 1 };
+    OSVERSIONINFOEX verinfo_windows7 = {sizeof(OSVERSIONINFOEX), 6, 1};
     const bool is_windows7 = VerifyVersionInfo(&verinfo_windows7, VER_MAJORVERSION | VER_MINORVERSION,
-        VerSetConditionMask(VerSetConditionMask(0, VER_MAJORVERSION, VER_EQUAL), VER_MINORVERSION, VER_EQUAL)) != FALSE;
-    if (is_windows7)
-        return; // There is no UWP on Windows 7, so no need to update DACL
+                                               VerSetConditionMask(VerSetConditionMask(0, VER_MAJORVERSION, VER_EQUAL),
+                                                                   VER_MINORVERSION, VER_EQUAL))
+                             != FALSE;
+    if (is_windows7) return;  // There is no UWP on Windows 7, so no need to update DACL
 
     PACL old_acl = nullptr, new_acl = nullptr;
     PSECURITY_DESCRIPTOR sd = nullptr;
     SECURITY_INFORMATION siInfo = DACL_SECURITY_INFORMATION;
 
     // Get the existing DACL for the file
-    if (GetNamedSecurityInfoW(path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &old_acl, nullptr, &sd) != ERROR_SUCCESS)
+    if (GetNamedSecurityInfoW(path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &old_acl, nullptr, &sd)
+        != ERROR_SUCCESS)
         return;
 
     // Get the SID for 'ALL_APPLICATION_PACKAGES'
@@ -574,13 +577,13 @@ bool InjectorService::performLocalInjection(const Game& game) {
         file.read(header, 2);
         if (header[0] == 'M' && header[1] == 'Z') {
             // PE file, check machine type
-            file.seekg(60); // Offset to PE header
+            file.seekg(60);  // Offset to PE header
             uint32_t pe_offset;
             file.read(reinterpret_cast<char*>(&pe_offset), 4);
-            file.seekg(pe_offset + 4); // Machine type offset
+            file.seekg(pe_offset + 4);  // Machine type offset
             uint16_t machine_type;
             file.read(reinterpret_cast<char*>(&machine_type), 2);
-            is_32bit = (machine_type == 0x014c); // IMAGE_FILE_MACHINE_I386
+            is_32bit = (machine_type == 0x014c);  // IMAGE_FILE_MACHINE_I386
         }
         file.close();
     }
@@ -607,7 +610,8 @@ bool InjectorService::performLocalInjection(const Game& game) {
 
         try {
             // Copy the ReShade DLL as the proxy DLL
-            std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+            std::filesystem::copy_file(reshade_dll_path, proxy_dll_path,
+                                       std::filesystem::copy_options::overwrite_existing);
             success_message += proxy_dll_name + " ";
         } catch (const std::exception& e) {
             logError("Failed to copy ReShade DLL as " + proxy_dll_name + ": " + e.what());
@@ -645,7 +649,7 @@ bool InjectorService::performLocalInjection(const Game& game) {
 }
 
 bool InjectorService::performLocalInjection(const TargetProcess& target) {
-    if (!target.use_local_injection || target.proxy_dll_type == 0) { // 0 = ProxyDllType::None
+    if (!target.use_local_injection || target.proxy_dll_type == 0) {  // 0 = ProxyDllType::None
         return false;
     }
 
@@ -666,13 +670,13 @@ bool InjectorService::performLocalInjection(const TargetProcess& target) {
         file.read(header, 2);
         if (header[0] == 'M' && header[1] == 'Z') {
             // PE file, check machine type
-            file.seekg(60); // Offset to PE header
+            file.seekg(60);  // Offset to PE header
             uint32_t pe_offset;
             file.read(reinterpret_cast<char*>(&pe_offset), 4);
-            file.seekg(pe_offset + 4); // Machine type offset
+            file.seekg(pe_offset + 4);  // Machine type offset
             uint16_t machine_type;
             file.read(reinterpret_cast<char*>(&machine_type), 2);
-            is_32bit = (machine_type == 0x014c); // IMAGE_FILE_MACHINE_I386
+            is_32bit = (machine_type == 0x014c);  // IMAGE_FILE_MACHINE_I386
         }
         file.close();
     }
@@ -699,7 +703,8 @@ bool InjectorService::performLocalInjection(const TargetProcess& target) {
 
         try {
             // Copy the ReShade DLL as the proxy DLL
-            std::filesystem::copy_file(reshade_dll_path, proxy_dll_path, std::filesystem::copy_options::overwrite_existing);
+            std::filesystem::copy_file(reshade_dll_path, proxy_dll_path,
+                                       std::filesystem::copy_options::overwrite_existing);
             success_message += proxy_dll_name + " ";
         } catch (const std::exception& e) {
             logError("Failed to copy ReShade DLL as " + proxy_dll_name + ": " + e.what());

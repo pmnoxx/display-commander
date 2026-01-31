@@ -8,7 +8,6 @@
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 
-
 #include <sstream>
 
 // Forward declaration

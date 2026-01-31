@@ -2359,9 +2359,9 @@ void DrawInputTestTab() {
             ImGui::Indent();
             int override_w = settings::g_experimentalTabSettings.translate_mouse_position_override_width.GetValue();
             if (ImGui::InputInt("Override Width", &override_w, 0, 0)) {
-                override_w = std::clamp(override_w,
-                                        settings::g_experimentalTabSettings.translate_mouse_position_override_width.GetMin(),
-                                        settings::g_experimentalTabSettings.translate_mouse_position_override_width.GetMax());
+                override_w = std::clamp(
+                    override_w, settings::g_experimentalTabSettings.translate_mouse_position_override_width.GetMin(),
+                    settings::g_experimentalTabSettings.translate_mouse_position_override_width.GetMax());
                 settings::g_experimentalTabSettings.translate_mouse_position_override_width.SetValue(override_w);
                 settings::g_experimentalTabSettings.translate_mouse_position_override_width.Save();
             }
@@ -2370,9 +2370,9 @@ void DrawInputTestTab() {
             }
             int override_h = settings::g_experimentalTabSettings.translate_mouse_position_override_height.GetValue();
             if (ImGui::InputInt("Override Height", &override_h, 0, 0)) {
-                override_h = std::clamp(override_h,
-                                        settings::g_experimentalTabSettings.translate_mouse_position_override_height.GetMin(),
-                                        settings::g_experimentalTabSettings.translate_mouse_position_override_height.GetMax());
+                override_h = std::clamp(
+                    override_h, settings::g_experimentalTabSettings.translate_mouse_position_override_height.GetMin(),
+                    settings::g_experimentalTabSettings.translate_mouse_position_override_height.GetMax());
                 settings::g_experimentalTabSettings.translate_mouse_position_override_height.SetValue(override_h);
                 settings::g_experimentalTabSettings.translate_mouse_position_override_height.Save();
             }

@@ -2,6 +2,7 @@
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
 #include "display_initial_state.hpp"
+#include "display/hdr_control.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
@@ -992,13 +993,27 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     return res;
 }
 
+namespace {
+HMONITOR s_hdr_auto_enabled_monitor = nullptr;
+std::atomic<bool> s_we_auto_enabled_hdr{false};
+}  // namespace
+
 void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
         return;
     }
-    // Swapchain destruction tracking
-    // Add any cleanup logic here if needed
+    if (s_we_auto_enabled_hdr.load() && s_hdr_auto_enabled_monitor != nullptr) {
+        HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+        if (hwnd) {
+            HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            if (monitor == s_hdr_auto_enabled_monitor) {
+                display_commander::display::hdr_control::SetHdrForMonitor(monitor, false);
+                s_we_auto_enabled_hdr.store(false);
+                s_hdr_auto_enabled_monitor = nullptr;
+            }
+        }
+    }
 }
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
@@ -1073,6 +1088,21 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 
     // needed for quick fps limit selector to work // TODO rework this later
     CalculateWindowState(hwnd, "OnInitSwapchain");
+
+    // Auto enable Windows HDR for the game display when enabled in settings (only on first init, not resize)
+    if (!resize && settings::g_mainTabSettings.auto_enable_disable_hdr.GetValue()) {
+        HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (monitor) {
+            bool supported = false, enabled = false;
+            if (display_commander::display::hdr_control::GetHdrStateForMonitor(monitor, &supported, &enabled)
+                && supported && !enabled) {
+                if (display_commander::display::hdr_control::SetHdrForMonitor(monitor, true)) {
+                    s_hdr_auto_enabled_monitor = monitor;
+                    s_we_auto_enabled_hdr.store(true);
+                }
+            }
+        }
+    }
 }
 
 HANDLE g_timer_handle = nullptr;

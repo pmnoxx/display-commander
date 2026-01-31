@@ -153,8 +153,11 @@ public:
     // Stop ETW session by name (public for UI cleanup)
     static void StopEtwSessionByName(const wchar_t* session_name);
 
-    // Close ETW sessions with DC_ prefix whose owning process no longer exists (called on start and periodically)
-    static void CloseOrphanedDcEtwSessions();
+    // Stop all ETW sessions starting with DC_ (used at start to clear the deck before creating ours)
+    static void StopAllDcEtwSessions();
+
+    // Stop all DC_ ETW sessions except the one with the given name (used when no events for 10s to clear conflicting sessions)
+    static void StopOtherDcEtwSessions(const wchar_t* our_session_name);
 
     // Update flip state (called from ETW consumer thread when implemented)
     void UpdateFlipState(DxgiBypassMode mode, const std::string& present_mode_str, const std::string& debug_info = "");
@@ -168,7 +171,7 @@ private:
     // Worker thread function
     static void WorkerThread(PresentMonManager* manager);
 
-    // Cleanup thread: every 10s closes orphaned DC_ ETW sessions
+    // Cleanup thread: every 10s, if no events seen for 10s, stop all other DC_ ETW sessions
     static void CleanupThread(PresentMonManager* manager);
 
     // PresentMon ETW main loop (our own implementation; no Special-K code)

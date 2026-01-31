@@ -162,6 +162,9 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_reshade_tab;
     ui::new_ui::BoolSetting show_performance_tab;
 
+    // HDR Control (Resolution Control / auto enable-disable Windows HDR)
+    ui::new_ui::BoolSetting auto_enable_disable_hdr;
+
     // Ansel Control
     ui::new_ui::BoolSetting skip_ansel_loading;
 

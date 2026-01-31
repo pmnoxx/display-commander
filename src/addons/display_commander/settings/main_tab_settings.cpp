@@ -159,7 +159,8 @@ MainTabSettings::MainTabSettings()
       upgrade_min_mag_linear_mip_point("upgrade_min_mag_linear_mip_point", true, "DisplayCommander"),
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
-      force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander") {
+      force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
+      auto_enable_disable_hdr("auto_enable_disable_hdr", false, "DisplayCommander") {
     // Initialize the all_settings_ vector
     all_settings_ = {
         &window_mode,
@@ -254,6 +255,7 @@ MainTabSettings::MainTabSettings()
         &upgrade_compare_min_mag_linear_mip_point,
         &max_anisotropy,
         &force_mipmap_lod_bias,
+        &auto_enable_disable_hdr,
     };
 }
 

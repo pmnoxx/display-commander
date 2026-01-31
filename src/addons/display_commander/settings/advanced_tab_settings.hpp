@@ -94,6 +94,9 @@ class AdvancedTabSettings {
     // PresentMon ETW tracing setting
     BoolSetting enable_presentmon_tracing;
 
+    // DirectComposition refresh rate monitoring (composition engine rate)
+    BoolSetting enable_dcomposition_refresh_rate_monitoring;
+
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;
 

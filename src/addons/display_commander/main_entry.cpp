@@ -7,6 +7,7 @@
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
+#include "dcomposition/dcomposition_refresh_rate_monitor.hpp"
 #include "display/dpi_management.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
@@ -268,6 +269,10 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         }
         AddReShadeRuntime(runtime);
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
+
+        if (settings::g_advancedTabSettings.enable_dcomposition_refresh_rate_monitoring.GetValue()) {
+            display_commander::dcomposition::StartDCompRefreshRateMonitoring();
+        }
 
         static bool initialized_with_hwnd = false;
         if (!initialized_with_hwnd) {
@@ -551,6 +556,26 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
                 } else {
                     ImGui::Text("%.1f", refresh_rate);
                 }
+            }
+        }
+    }
+
+    // Show DirectComposition composition rate in overlay when DComp monitoring is enabled (Advanced tab)
+    if (display_commander::dcomposition::IsDCompRefreshRateMonitoringActive()) {
+        double dcomp_hz = display_commander::dcomposition::GetDCompCompositionRateHz();
+        double dcomp_measured_hz = display_commander::dcomposition::GetDCompMeasuredRefreshRateHz();
+        if (dcomp_hz > 0.0) {
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("DComp: %.1f Hz", dcomp_hz);
+            } else {
+                ImGui::Text("DComp: %.1f", dcomp_hz);
+            }
+        }
+        if (dcomp_measured_hz > 0.0) {
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("DComp measured: %.1f Hz", dcomp_measured_hz);
+            } else {
+                ImGui::Text("DComp measured: %.1f", dcomp_measured_hz);
             }
         }
     }
@@ -2789,6 +2814,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up refresh rate monitoring
             dxgi::fps_limiter::StopRefreshRateMonitoring();
+
+            // Clean up DirectComposition refresh rate monitoring
+            display_commander::dcomposition::StopDCompRefreshRateMonitoring();
 
             // Clean up experimental tab threads
             ui::new_ui::CleanupExperimentalTab();

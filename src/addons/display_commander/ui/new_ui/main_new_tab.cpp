@@ -2910,9 +2910,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                     // Flip compatibility flags
                                     ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
                                     if (found_surface->is_direct_flip_compatible) {
-                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                           "  " ICON_FK_OK " Direct Flip Compatible");
                                     } else {
-                                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                           "  " ICON_FK_CANCEL " Direct Flip Compatible");
                                     }
                                     if (found_surface->is_advanced_direct_flip_compatible) {
                                         ImGui::TextColored(ui::colors::TEXT_SUCCESS,
@@ -2922,17 +2924,22 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                                            "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
                                     }
                                     if (found_surface->is_overlay_compatible) {
-                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                           "  " ICON_FK_OK " Overlay Compatible");
                                     } else {
-                                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                           "  " ICON_FK_CANCEL " Overlay Compatible");
                                     }
                                     if (found_surface->is_overlay_required) {
-                                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
+                                        ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                                           "  " ICON_FK_WARNING " Overlay Required");
                                     }
                                     if (found_surface->no_overlapping_content) {
-                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
+                                        ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                           "  " ICON_FK_OK " No Overlapping Content");
                                     } else {
-                                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
+                                        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                           "  " ICON_FK_CANCEL " No Overlapping Content");
                                     }
 
                                     ImGui::Separator();
@@ -3265,9 +3272,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                         // Flip compatibility flags
                                         ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
                                         if (surface.is_direct_flip_compatible) {
-                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                               "  " ICON_FK_OK " Direct Flip Compatible");
                                         } else {
-                                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                               "  " ICON_FK_CANCEL " Direct Flip Compatible");
                                         }
                                         if (surface.is_advanced_direct_flip_compatible) {
                                             ImGui::TextColored(ui::colors::TEXT_SUCCESS,
@@ -3277,17 +3286,22 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                                                "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
                                         }
                                         if (surface.is_overlay_compatible) {
-                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                               "  " ICON_FK_OK " Overlay Compatible");
                                         } else {
-                                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                               "  " ICON_FK_CANCEL " Overlay Compatible");
                                         }
                                         if (surface.is_overlay_required) {
-                                            ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
+                                            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                                                               "  " ICON_FK_WARNING " Overlay Required");
                                         }
                                         if (surface.no_overlapping_content) {
-                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
+                                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                                               "  " ICON_FK_OK " No Overlapping Content");
                                         } else {
-                                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
+                                            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                                               "  " ICON_FK_CANCEL " No Overlapping Content");
                                         }
 
                                         // Show update time

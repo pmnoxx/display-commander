@@ -1244,17 +1244,18 @@ void ResolutionWidget::DrawHdrSection() {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Display HDR: N/A");
     }
 
-    // Details/Advanced: Samsung tonemapping fix (HDR1000 metadata), hidden by default like SpecialK's Advanced sections
-    if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+    // Details/Advanced: Override HDR static metadata (ignore source MaxCLL/MaxFALL) - Sony/display fix
+    if (ImGui::CollapsingHeader("Miscellaneous", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         bool auto_maxmdl = settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue();
-        if (ImGui::Checkbox("Samsung tonemapping fix", &auto_maxmdl)) {
+        if (ImGui::Checkbox("Override HDR metadata (ignore source MaxCLL/MaxFALL)", &auto_maxmdl)) {
             settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.SetValue(auto_maxmdl);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "When enabled, injects HDR10 metadata with HDR1000 profile (most displays ignore those settings). "
-                "Use for Samsung and other TVs which have invalid HDR metadata or tonemapping issues.");
+                "Inject HDR10 static metadata (e.g. 1000 nits) instead of using source values. "
+                "Use when HDR looks dim or washed out on PC. TVs that often need this: Samsung, Sony, Panasonic "
+                "(they handle MaxCLL/MaxFALL differently or ignore source metadata).");
         }
         ImGui::Unindent();
     }

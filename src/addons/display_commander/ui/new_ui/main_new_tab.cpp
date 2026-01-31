@@ -12,6 +12,7 @@
 #include "../../latency/reflex_provider.hpp"
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
+#include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../performance_types.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
@@ -366,14 +367,14 @@ void DrawNativeFrameTimeGraph() {
     }
 }
 
-// Draw refresh rate frame times graph (display refresh intervals)
+// Draw refresh rate frame times graph (actual refresh rate from NVAPI Adaptive Sync)
 void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
-    // Convert refresh rates to frame times (ms) - lock-free iteration
+    // Use actual refresh rate samples (NVAPI) - lock-free iteration
     static std::vector<float> frame_times;
     frame_times.clear();
     frame_times.reserve(256);  // Reserve for max samples
 
-    ::dxgi::fps_limiter::ForEachRefreshRateSample([&](double rate) {
+    display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate) {
         if (rate > 0.0) {
             // Convert Hz to frame time in milliseconds
             frame_times.push_back(static_cast<float>(1000.0 / rate));
@@ -381,8 +382,11 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     });
 
     if (frame_times.empty()) {
-        return;  // Don't show anything if no valid data
+        return;  // Don't show anything if no valid data (monitor not active or no samples yet)
     }
+
+    // PlotLines draws index 0 on the left: reverse so newest (present) is on the left, oldest (past) on the right
+    std::reverse(frame_times.begin(), frame_times.end());
 
     // Calculate statistics for the graph
     float max_frame_time = *std::ranges::max_element(frame_times);
@@ -422,7 +426,7 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 
     if (ImGui::IsItemHovered() && show_tooltips) {
         ImGui::SetTooltip(
-            "Refresh rate frame time graph showing display refresh intervals in milliseconds.\n"
+            "Actual refresh rate frame time graph (NvAPI_DISP_GetAdaptiveSyncData) in milliseconds.\n"
             "Lower values = higher refresh rate.\n"
             "Spikes indicate refresh rate variations (VRR, power management, etc.).");
     }
@@ -1741,15 +1745,26 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     auto now = utils::get_now_ns();
     {
-        // Game Render Resolution display (matches Special K's render_x/render_y)
+        // Target Display list and selection (needed for refresh rate fallback on same line as Game Render Resolution)
+        auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
+        std::string current_device_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
+        int selected_index = 0;
+        for (size_t i = 0; i < display_info.size(); ++i) {
+            if (display_info[i].extended_device_id == current_device_id) {
+                selected_index = static_cast<int>(i);
+                break;
+            }
+        }
+
+        // Render resolution and refresh rate on the same line: "Render resolution: XXX Refresh rate: XXX"
         int game_render_w = g_game_render_width.load();
         int game_render_h = g_game_render_height.load();
         if (game_render_w > 0 && game_render_h > 0) {
-            ImGui::TextColored(ui::colors::TEXT_LABEL, "Game Render Resolution:");
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "Render resolution:");
             ImGui::SameLine();
             ImGui::Text("%dx%d", game_render_w, game_render_h);
 
-            // Get bit depth from swapchain format
+            // Get bit depth from swapchain format (optional, in parens)
             auto desc_ptr = g_last_swapchain_desc.load();
             if (desc_ptr != nullptr) {
                 const char* bit_depth_str = nullptr;
@@ -1767,33 +1782,42 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 }
             }
 
+            // Refresh rate on same line: "Refresh rate: XXX" (actual NVAPI when available, else selected display)
+            double refresh_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+            if (refresh_hz <= 0.0 && selected_index >= 0 && selected_index < static_cast<int>(display_info.size())
+                && !display_info[selected_index].current_refresh_rate.empty()) {
+                std::string rate_str = display_info[selected_index].current_refresh_rate;
+                try {
+                    double parsed = std::stod(rate_str);
+                    if (parsed >= 1.0 && parsed <= 500.0) {
+                        refresh_hz = parsed;
+                    }
+                } catch (...) {}
+            }
+            ImGui::SameLine();
+            if (refresh_hz > 0.0) {
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
+                ImGui::SameLine();
+                ImGui::Text("%.1f Hz", refresh_hz);
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "—");
+            }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "The resolution the game requested for rendering (before any modifications).\n"
-                    "Matches Special K's render_x/render_y values.\n"
-                    "Bit depth indicates color precision (8-bit = SDR, 10-bit/16-bit = HDR).");
+                    "Render resolution: the resolution the game requested (before any modifications). "
+                    "Matches Special K's render_x/render_y.\n"
+                    "Refresh rate: actual (NVAPI) when available, else selected display's configured rate.");
             }
             ImGui::Spacing();
         }
 
         // Target Display dropdown
-        // Use device ID-based approach for better reliability
-
-        auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
         std::vector<const char*> monitor_c_labels;
         monitor_c_labels.reserve(display_info.size());
         for (const auto& info : display_info) {
             monitor_c_labels.push_back(info.display_label.c_str());
-        }
-
-        // Find current selection by device ID
-        std::string current_device_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
-        int selected_index = 0;  // Default to first display
-        for (size_t i = 0; i < display_info.size(); ++i) {
-            if (display_info[i].extended_device_id == current_device_id) {
-                selected_index = static_cast<int>(i);
-                break;
-            }
         }
 
         if (ImGui::Combo("Target Display", &selected_index, monitor_c_labels.data(),
@@ -3951,16 +3975,6 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
-        // Show Refresh Rate
-        bool show_refresh_rate = settings::g_mainTabSettings.show_refresh_rate.GetValue();
-        if (ImGui::Checkbox("Refresh Rate", &show_refresh_rate)) {
-            settings::g_mainTabSettings.show_refresh_rate.SetValue(show_refresh_rate);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the current display refresh rate in the main ReShade overlay.");
-        }
-        ImGui::NextColumn();
-
         // Show Flip Status
         bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
         if (ImGui::Checkbox("Flip Status", &show_flip_status)) {
@@ -3984,15 +3998,15 @@ void DrawImportantInfo() {
             }
             ImGui::NextColumn();
 
-            // Show actual refresh rate (NVAPI Adaptive Sync flip data)
+            // Actual refresh rate (NVAPI Adaptive Sync) - replaces old "Refresh rate" in overlay
             bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
             if (ImGui::Checkbox("Actual refresh rate", &show_actual_refresh_rate)) {
                 settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "Shows actual refresh rate derived from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp). "
-                    "Requires NVAPI and a resolved display; queried from a background thread.");
+                    "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
+                    "Also feeds the refresh rate time graph when \"Show refresh rate frame times\" is on.");
             }
             ImGui::NextColumn();
 
@@ -4154,7 +4168,9 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows a graph of refresh rate frame times (display refresh intervals) in the overlay.");
+            ImGui::SetTooltip(
+                "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
+                "Requires NVAPI and a resolved display.");
         }
         {
             ImGui::NextColumn();

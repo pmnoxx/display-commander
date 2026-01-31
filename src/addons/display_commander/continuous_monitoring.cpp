@@ -372,12 +372,13 @@ void every1s_checks() {
     }
 
     // Update VRR status via NVAPI (runs every second, if enabled in settings)
-    // Also run when show_actual_refresh_rate is on so display_id is resolved for the monitor thread
+    // Also run when actual refresh rate or its graph is on so display_id is resolved for the monitor thread
     {
         bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
         bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
         bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-        if (show_vrr_status || show_vrr_debug_mode || show_actual_refresh_rate) {
+        bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
+        if (show_vrr_status || show_vrr_debug_mode || show_actual_refresh_rate || show_refresh_rate_frame_times) {
             LONGLONG now_ns = utils::get_now_ns();
             static LONGLONG last_nvapi_update_ns = 0;
             const LONGLONG nvapi_update_interval_ns = 1 * utils::SEC_TO_NS;  // 1 second in nanoseconds

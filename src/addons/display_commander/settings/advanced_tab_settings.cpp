@@ -87,7 +87,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
-      enable_presentmon_tracing("EnablePresentMonTracing", false, "DisplayCommander"),
+      enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
@@ -132,8 +132,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
             &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled, &debug_break_on_severity,
-            &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing,
-            &disable_dpi_scaling};
+            &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing, &disable_dpi_scaling};
 }
 
 }  // namespace settings

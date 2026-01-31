@@ -4548,31 +4548,36 @@ void DrawImportantInfo() {
 
     ImGui::Spacing();
 
-    // Refresh Rate Monitor Section
+    // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
     if (ImGui::CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
-        // Start/Stop monitoring controls
-        bool is_monitoring = dxgi::fps_limiter::IsRefreshRateMonitoringActive();
+        bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
 
         if (ImGui::Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
             if (is_monitoring) {
-                dxgi::fps_limiter::StopRefreshRateMonitoring();
+                display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
             } else {
-                dxgi::fps_limiter::StartRefreshRateMonitoring();
+                display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
             }
         }
 
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Measures actual display refresh rate by calling WaitForVBlank in a loop.\n"
-                "This shows the real refresh rate which may differ from the configured rate\n"
-                "due to VRR, power management, or other factors.");
+                "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
+                "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
+                "from the configured rate due to VRR, power management, or other factors.");
         }
 
         ImGui::SameLine();
 
         // Status display
-        std::string status = dxgi::fps_limiter::GetRefreshRateStatusString();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status.c_str());
+        const char* status_str = is_monitoring ? "Active" : "Inactive";
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
+
+        if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+            ImGui::Spacing();
+            ImGui::TextColored(ui::colors::TEXT_WARNING,
+                "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
+        }
 
         // Display DXGI output device name
         if (g_got_device_name.load()) {
@@ -4591,32 +4596,44 @@ void DrawImportantInfo() {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
         }
 
-        // Get refresh rate statistics from continuous monitoring thread cache
-        auto shared_stats = g_cached_refresh_rate_stats.load();
-        if (!shared_stats) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No refresh rate data available");
-            return;
-        }
-        const auto& stats = *shared_stats;
+        // Refresh rate data from NVAPI actual refresh rate monitor (recent samples)
+        double current_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+        size_t sample_count = 0;
+        double min_hz = 0.0;
+        double max_hz = 0.0;
+        double sum_hz = 0.0;
+        display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate_hz) {
+            if (rate_hz > 0.0) {
+                if (sample_count == 0) {
+                    min_hz = max_hz = rate_hz;
+                } else {
+                    min_hz = (std::min)(min_hz, rate_hz);
+                    max_hz = (std::max)(max_hz, rate_hz);
+                }
+                sum_hz += rate_hz;
+                ++sample_count;
+            }
+        });
+        double avg_hz = (sample_count > 0) ? (sum_hz / static_cast<double>(sample_count)) : 0.0;
 
-        if (stats.is_valid && stats.sample_count > 0) {
+        if (sample_count > 0) {
             ImGui::Spacing();
 
             // Current refresh rate (large, prominent display)
             ImGui::Text("Measured Refresh Rate:");
             ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", stats.smoothed_rate);
+            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
 
             // Detailed statistics
             ImGui::Indent();
-            ImGui::Text("Current: %.1f Hz", stats.current_rate);
-            ImGui::Text("Min: %.1f Hz", stats.min_rate);
-            ImGui::Text("Max: %.1f Hz", stats.max_rate);
-            ImGui::Text("Samples: %u", stats.sample_count);
+            ImGui::Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+            ImGui::Text("Min: %.1f Hz", min_hz);
+            ImGui::Text("Max: %.1f Hz", max_hz);
+            ImGui::Text("Samples: %zu", sample_count);
             ImGui::Unindent();
 
             // VRR detection hint
-            if (stats.max_rate > stats.min_rate + 1.0) {
+            if (max_hz > min_hz + 1.0) {
                 ImGui::Spacing();
                 ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
                 ImGui::TextUnformatted(ICON_FK_OK);
@@ -4627,6 +4644,9 @@ void DrawImportantInfo() {
         } else if (is_monitoring) {
             ImGui::Spacing();
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
+        } else {
+            ImGui::Spacing();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No refresh rate data (start monitoring or enable overlay refresh rate).");
         }
         ImGui::Unindent();  // Unindent content
     }

@@ -809,6 +809,21 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    // Multiple swapchains (ReShade runtimes) warning
+    const size_t runtime_count = GetReShadeRuntimeCount();
+    if (runtime_count > 1) {
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_WARNING,
+                           ICON_FK_WARNING " WARNING: Multiple swapchains detected (%zu ReShade runtimes)",
+                           runtime_count);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "More than one swapchain/runtime is active. Some features may target only the first runtime. "
+                "This can happen with multi-window or multi-context games.");
+        }
+        ImGui::Spacing();
+    }
+
     // Version and build information at the top
     // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
     {

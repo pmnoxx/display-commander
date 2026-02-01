@@ -16,9 +16,9 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <algorithm>
-#include <cmath>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <map>
 #include <reshade_imgui.hpp>
 #include <sstream>
@@ -37,7 +37,7 @@ DXGI_HDR_METADATA_HDR10 last_hdr_metadata = {
     .RedPrimary = {32000, 16500},    // Rec. 709 red (0.64, 0.33)
     .GreenPrimary = {15000, 30000},  // Rec. 709 green (0.30, 0.60)
     .BluePrimary = {7500, 3000},     // Rec. 709 blue (0.15, 0.06)
-    .WhitePoint = {15635, 16450},   // D65 (0.3127, 0.3290)
+    .WhitePoint = {15635, 16450},    // D65 (0.3127, 0.3290)
     .MaxMasteringLuminance = 1000,
     .MinMasteringLuminance = 0,
     .MaxContentLightLevel = 1000,
@@ -1784,18 +1784,26 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
             if (ImGui::Button("Set to Rec. 2020 defaults")) {
                 // Set HDR10 metadata to Rec. 2020 default values (CTA-861 scale 50000)
                 DXGI_HDR_METADATA_HDR10 hdr10_metadata = {};
-                hdr10_metadata.RedPrimary[0] = static_cast<UINT16>(std::round(0.708 * HDR10_CHROMATICITY_SCALE));    // Rec. 2020 red x
-                hdr10_metadata.RedPrimary[1] = static_cast<UINT16>(std::round(0.292 * HDR10_CHROMATICITY_SCALE));    // Rec. 2020 red y
-                hdr10_metadata.GreenPrimary[0] = static_cast<UINT16>(std::round(0.170 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 green x
-                hdr10_metadata.GreenPrimary[1] = static_cast<UINT16>(std::round(0.797 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 green y
-                hdr10_metadata.BluePrimary[0] = static_cast<UINT16>(std::round(0.131 * HDR10_CHROMATICITY_SCALE));   // Rec. 2020 blue x
-                hdr10_metadata.BluePrimary[1] = static_cast<UINT16>(std::round(0.046 * HDR10_CHROMATICITY_SCALE));   // Rec. 2020 blue y
-                hdr10_metadata.WhitePoint[0] = static_cast<UINT16>(std::round(0.3127 * HDR10_CHROMATICITY_SCALE));   // D65 white x
-                hdr10_metadata.WhitePoint[1] = static_cast<UINT16>(std::round(0.3290 * HDR10_CHROMATICITY_SCALE));   // D65 white y
-                hdr10_metadata.MaxMasteringLuminance = 1000;     // 1000 nits
-                hdr10_metadata.MinMasteringLuminance = 0;        // 0 nits
-                hdr10_metadata.MaxContentLightLevel = 1000;      // 1000 nits
-                hdr10_metadata.MaxFrameAverageLightLevel = 100;  // 100 nits
+                hdr10_metadata.RedPrimary[0] =
+                    static_cast<UINT16>(std::round(0.708 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 red x
+                hdr10_metadata.RedPrimary[1] =
+                    static_cast<UINT16>(std::round(0.292 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 red y
+                hdr10_metadata.GreenPrimary[0] =
+                    static_cast<UINT16>(std::round(0.170 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 green x
+                hdr10_metadata.GreenPrimary[1] =
+                    static_cast<UINT16>(std::round(0.797 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 green y
+                hdr10_metadata.BluePrimary[0] =
+                    static_cast<UINT16>(std::round(0.131 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 blue x
+                hdr10_metadata.BluePrimary[1] =
+                    static_cast<UINT16>(std::round(0.046 * HDR10_CHROMATICITY_SCALE));  // Rec. 2020 blue y
+                hdr10_metadata.WhitePoint[0] =
+                    static_cast<UINT16>(std::round(0.3127 * HDR10_CHROMATICITY_SCALE));  // D65 white x
+                hdr10_metadata.WhitePoint[1] =
+                    static_cast<UINT16>(std::round(0.3290 * HDR10_CHROMATICITY_SCALE));  // D65 white y
+                hdr10_metadata.MaxMasteringLuminance = 1000;                             // 1000 nits
+                hdr10_metadata.MinMasteringLuminance = 0;                                // 0 nits
+                hdr10_metadata.MaxContentLightLevel = 1000;                              // 1000 nits
+                hdr10_metadata.MaxFrameAverageLightLevel = 100;                          // 100 nits
 
                 HRESULT hr =
                     swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10_metadata), &hdr10_metadata);
@@ -1930,14 +1938,22 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     hdr10_metadata = last_hdr_metadata;
                 } else {
                     // Default Rec. 709 / sRGB values (CTA-861 scale 50000)
-                    hdr10_metadata.RedPrimary[0] = static_cast<UINT16>(std::round(0.6400 * HDR10_CHROMATICITY_SCALE));   // Rec. 709 red x
-                    hdr10_metadata.RedPrimary[1] = static_cast<UINT16>(std::round(0.3300 * HDR10_CHROMATICITY_SCALE));   // Rec. 709 red y
-                    hdr10_metadata.GreenPrimary[0] = static_cast<UINT16>(std::round(0.3000 * HDR10_CHROMATICITY_SCALE)); // Rec. 709 green x
-                    hdr10_metadata.GreenPrimary[1] = static_cast<UINT16>(std::round(0.6000 * HDR10_CHROMATICITY_SCALE)); // Rec. 709 green y
-                    hdr10_metadata.BluePrimary[0] = static_cast<UINT16>(std::round(0.1500 * HDR10_CHROMATICITY_SCALE));  // Rec. 709 blue x
-                    hdr10_metadata.BluePrimary[1] = static_cast<UINT16>(std::round(0.0600 * HDR10_CHROMATICITY_SCALE)); // Rec. 709 blue y
-                    hdr10_metadata.WhitePoint[0] = static_cast<UINT16>(std::round(0.3127 * HDR10_CHROMATICITY_SCALE));   // D65 white x
-                    hdr10_metadata.WhitePoint[1] = static_cast<UINT16>(std::round(0.3290 * HDR10_CHROMATICITY_SCALE));   // D65 white y
+                    hdr10_metadata.RedPrimary[0] =
+                        static_cast<UINT16>(std::round(0.6400 * HDR10_CHROMATICITY_SCALE));  // Rec. 709 red x
+                    hdr10_metadata.RedPrimary[1] =
+                        static_cast<UINT16>(std::round(0.3300 * HDR10_CHROMATICITY_SCALE));  // Rec. 709 red y
+                    hdr10_metadata.GreenPrimary[0] =
+                        static_cast<UINT16>(std::round(0.3000 * HDR10_CHROMATICITY_SCALE));  // Rec. 709 green x
+                    hdr10_metadata.GreenPrimary[1] =
+                        static_cast<UINT16>(std::round(0.6000 * HDR10_CHROMATICITY_SCALE));  // Rec. 709 green y
+                    hdr10_metadata.BluePrimary[0] =
+                        static_cast<UINT16>(std::round(0.1500 * HDR10_CHROMATICITY_SCALE));  // Rec. 709 blue x
+                    hdr10_metadata.BluePrimary[1] =
+                        static_cast<UINT16>(std::round(0.0600 * HDR10_CHROMATICITY_SCALE));  // Rec. 709 blue y
+                    hdr10_metadata.WhitePoint[0] =
+                        static_cast<UINT16>(std::round(0.3127 * HDR10_CHROMATICITY_SCALE));  // D65 white x
+                    hdr10_metadata.WhitePoint[1] =
+                        static_cast<UINT16>(std::round(0.3290 * HDR10_CHROMATICITY_SCALE));  // D65 white y
                 }
 
                 // Set all the custom values
@@ -1955,22 +1971,30 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                     last_metadata_source = "Custom HDR Values";
 
                     // Save HDR metadata to DisplayCommander config (normalized 0-1 from CTA-861 scale)
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_x",
-                                                                hdr10_metadata.RedPrimary[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_red_y",
-                                                                hdr10_metadata.RedPrimary[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_x",
-                                                                hdr10_metadata.GreenPrimary[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_green_y",
-                                                                hdr10_metadata.GreenPrimary[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_x",
-                                                                hdr10_metadata.BluePrimary[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "prim_blue_y",
-                                                                hdr10_metadata.BluePrimary[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_x",
-                                                                hdr10_metadata.WhitePoint[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
-                    display_commander::config::set_config_value("ReShade_HDR_Metadata", "white_point_y",
-                                                                hdr10_metadata.WhitePoint[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "prim_red_x",
+                        hdr10_metadata.RedPrimary[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "prim_red_y",
+                        hdr10_metadata.RedPrimary[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "prim_green_x",
+                        hdr10_metadata.GreenPrimary[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "prim_green_y",
+                        hdr10_metadata.GreenPrimary[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "prim_blue_x",
+                        hdr10_metadata.BluePrimary[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "prim_blue_y",
+                        hdr10_metadata.BluePrimary[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "white_point_x",
+                        hdr10_metadata.WhitePoint[0] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
+                    display_commander::config::set_config_value(
+                        "ReShade_HDR_Metadata", "white_point_y",
+                        hdr10_metadata.WhitePoint[1] / static_cast<double>(HDR10_CHROMATICITY_SCALE));
                     display_commander::config::set_config_value(
                         "ReShade_HDR_Metadata", "max_mdl", static_cast<int32_t>(hdr10_metadata.MaxMasteringLuminance));
                     display_commander::config::set_config_value("ReShade_HDR_Metadata", "min_mdl",

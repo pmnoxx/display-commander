@@ -641,7 +641,7 @@ extern SwapchainTrackingManager g_swapchainTrackingManager;
 // VRR Status caching (updated from OnPresentUpdateBefore with direct swapchain access)
 namespace vrr_status {
 extern std::atomic<bool> cached_nvapi_ok;
-extern nvapi::VrrStatus cached_nvapi_vrr;
+extern std::atomic<std::shared_ptr<nvapi::VrrStatus>> cached_nvapi_vrr;
 extern std::atomic<LONGLONG> last_nvapi_update_ns;
 extern wchar_t cached_output_device_name[32];
 }  // namespace vrr_status

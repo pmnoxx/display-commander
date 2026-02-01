@@ -193,8 +193,8 @@ bool DisplayCommanderLogger::ShouldRotateLog() {
 
     try {
         // Use Windows API to get file last write time
-        HANDLE hFile = CreateFileA(log_path_.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                   nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        HANDLE hFile = CreateFileA(log_path_.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                                   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
             return false;  // Can't open file, don't rotate
         }
@@ -294,5 +294,11 @@ void LogError(const char* msg, ...) {
 void Shutdown() { DisplayCommanderLogger::GetInstance().Shutdown(); }
 
 void FlushLogs() { DisplayCommanderLogger::GetInstance().FlushLogs(); }
+
+bool DisplayCommanderLogger::IsWriteLockHeld() {
+    return utils::TryIsSRWLockHeld(write_lock_);
+}
+
+bool IsWriteLockHeld() { return DisplayCommanderLogger::GetInstance().IsWriteLockHeld(); }
 
 }  // namespace display_commander::logger

@@ -592,7 +592,7 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             // NVAPI VRR (more authoritative on NVIDIA). Status is now updated from OnPresentUpdateBefore
             // with direct swapchain access, so we just read the cached values here.
             bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
-            nvapi::VrrStatus cached_nvapi_vrr = vrr_status::cached_nvapi_vrr;  // Copy for thread safety
+            std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
 
             LONGLONG now_ns = utils::get_now_ns();
 
@@ -611,13 +611,13 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             // Display VRR status (only if show_vrr_status is enabled)
             if (show_vrr_status) {
                 // Prefer NVAPI when available; fall back to the existing DXGI heuristic otherwise.
-                if (cached_nvapi_ok) {
-                    if (cached_nvapi_vrr.is_display_in_vrr_mode && cached_nvapi_vrr.is_vrr_enabled) {
+                if (cached_nvapi_ok && cached_nvapi_vrr) {
+                    if (cached_nvapi_vrr->is_display_in_vrr_mode && cached_nvapi_vrr->is_vrr_enabled) {
                         ImGui::TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
 
-                    } else if (cached_nvapi_vrr.is_display_in_vrr_mode) {
+                    } else if (cached_nvapi_vrr->is_display_in_vrr_mode) {
                         ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Capable");
-                    } else if (cached_nvapi_vrr.is_vrr_requested) {
+                    } else if (cached_nvapi_vrr->is_vrr_requested) {
                         ImGui::TextColored(ui::colors::TEXT_WARNING, "VRR: Requested");
                     } else {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
@@ -644,29 +644,29 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
             }
 
             // NVAPI debug info (optional, shown only in VRR debug mode)
-            if (show_vrr_debug_mode) {
-                if (!cached_nvapi_vrr.nvapi_initialized) {
+            if (show_vrr_debug_mode && cached_nvapi_vrr) {
+                if (!cached_nvapi_vrr->nvapi_initialized) {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
-                } else if (!cached_nvapi_vrr.display_id_resolved) {
+                } else if (!cached_nvapi_vrr->display_id_resolved) {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
-                                       (int)cached_nvapi_vrr.resolve_status);
-                    if (!cached_nvapi_vrr.nvapi_display_name.empty()) {
+                                       (int)cached_nvapi_vrr->resolve_status);
+                    if (!cached_nvapi_vrr->nvapi_display_name.empty()) {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
-                                           cached_nvapi_vrr.nvapi_display_name.c_str());
+                                           cached_nvapi_vrr->nvapi_display_name.c_str());
                     }
                 } else if (!cached_nvapi_ok) {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
-                                       (int)cached_nvapi_vrr.query_status);
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr.display_id);
+                                       (int)cached_nvapi_vrr->query_status);
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr->display_id);
                 } else {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
-                                       (int)cached_nvapi_vrr.is_vrr_enabled, (int)cached_nvapi_vrr.is_vrr_requested,
-                                       (int)cached_nvapi_vrr.is_vrr_possible,
-                                       (int)cached_nvapi_vrr.is_display_in_vrr_mode);
+                                       (int)cached_nvapi_vrr->is_vrr_enabled, (int)cached_nvapi_vrr->is_vrr_requested,
+                                       (int)cached_nvapi_vrr->is_vrr_possible,
+                                       (int)cached_nvapi_vrr->is_display_in_vrr_mode);
                     // Show which field is causing "VRR: On" to display
-                    if (cached_nvapi_vrr.is_display_in_vrr_mode) {
+                    if (cached_nvapi_vrr->is_display_in_vrr_mode) {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
-                    } else if (cached_nvapi_vrr.is_vrr_enabled) {
+                    } else if (cached_nvapi_vrr->is_vrr_enabled) {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
                     }
                 }
@@ -2325,7 +2325,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Refuse to load if SpecialK is already loaded (incompatible with Display Commander)
             if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
-                reshade::log::message(reshade::log::level::error,
+                reshade::log::message(
+                    reshade::log::level::error,
                     "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
                     "load Display Commander.");
                 OutputDebugStringA(

@@ -51,8 +51,9 @@ void MonitorThreadFunc() {
     while (!g_stop_monitor.load(std::memory_order_relaxed)) {
         std::this_thread::sleep_for(std::chrono::milliseconds(POLL_MS));
 
-        NvU32 display_id = vrr_status::cached_nvapi_vrr.display_id;
-        bool resolved = vrr_status::cached_nvapi_vrr.display_id_resolved;
+        std::shared_ptr<nvapi::VrrStatus> vrr = vrr_status::cached_nvapi_vrr.load();
+        NvU32 display_id = vrr ? vrr->display_id : 0;
+        bool resolved = vrr && vrr->display_id_resolved;
         if (!resolved || display_id == 0) {
             g_has_prev = false;
             g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);

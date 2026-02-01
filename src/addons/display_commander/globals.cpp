@@ -229,7 +229,7 @@ namespace vrr_status {
 std::atomic<bool> cached_nvapi_ok{false};
 std::atomic<std::shared_ptr<nvapi::VrrStatus>> cached_nvapi_vrr{std::make_shared<nvapi::VrrStatus>()};
 std::atomic<LONGLONG> last_nvapi_update_ns{0};
-wchar_t cached_output_device_name[32] = {};
+std::atomic<std::shared_ptr<const std::wstring>> cached_output_device_name{nullptr};
 }  // namespace vrr_status
 
 // DXGI output device name tracking (shared between swapchain_events and continuous_monitoring)
@@ -262,6 +262,7 @@ std::atomic<int> g_translate_mouse_debug_screen_out_y{0};
 
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
+std::atomic<LONGLONG> g_last_foreground_background_switch_ns{0};
 
 // FPS limiter mode: 0 = Disabled, 1 = Reflex, 2 = OnPresentSync, 3 = OnPresentSyncLowLatency, 4 = VBlank Scanline Sync
 // (VBlank)

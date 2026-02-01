@@ -1,23 +1,18 @@
 #pragma once
 
 #include <windows.h>
-#include <string>
-#include <fstream>
 #include <atomic>
+#include <fstream>
+#include <string>
 
 namespace display_commander::logger {
 
 // Log levels
-enum class LogLevel {
-    Debug,
-    Info,
-    Warning,
-    Error
-};
+enum class LogLevel { Debug, Info, Warning, Error };
 
 // Thread-safe logger class with buffered ostream
 class DisplayCommanderLogger {
-public:
+   public:
     static DisplayCommanderLogger& GetInstance();
 
     // Initialize logger with log file path
@@ -38,7 +33,10 @@ public:
     // Flush buffered logs to disk
     void FlushLogs();
 
-private:
+    // Diagnostic: returns true if write_lock_ is currently held (for stuck-detection reporting)
+    bool IsWriteLockHeld();
+
+   private:
     DisplayCommanderLogger();
     ~DisplayCommanderLogger();
 
@@ -71,4 +69,7 @@ void LogError(const char* msg, ...);
 void Shutdown();
 void FlushLogs();
 
-} // namespace display_commander::logger
+// Diagnostic: returns true if logger write lock is currently held
+bool IsWriteLockHeld();
+
+}  // namespace display_commander::logger

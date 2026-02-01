@@ -35,3 +35,6 @@ NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown *pDev, NV_GET_SLEEP_STATUS
 // Hook management
 bool InstallNVAPIHooks(HMODULE nvapi_module = nullptr);
 void UninstallNVAPIHooks();
+
+// SRWLOCK diagnostic for stuck-detection (returns true if lock is currently held)
+bool IsNvapiLockHeld();

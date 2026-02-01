@@ -230,10 +230,10 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = Flags;  // to fix crash
-    auto use_fps_limiter =
-        m_swapChainHookType == SwapChainHook::Native && limit_real_frames
-        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-        && !ShouldUseNativeFpsLimiterFromFramePacing();
+    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
+                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
+                           && !ShouldUseNativeFpsLimiterFromFramePacing();
+    RecordFpsLimiterCallSite(FpsLimiterCallSite::dxgi_factory_wrapper);
 
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
@@ -332,10 +332,10 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = PresentFlags;  // to fix crash
 
-    auto use_fps_limiter =
-        m_swapChainHookType == SwapChainHook::Native && limit_real_frames
-        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-        && !ShouldUseNativeFpsLimiterFromFramePacing();
+    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
+                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
+                           && !ShouldUseNativeFpsLimiterFromFramePacing();
+    RecordFpsLimiterCallSite(FpsLimiterCallSite::dxgi_factory_wrapper);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check
@@ -530,8 +530,8 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CH
     if (pDesc != nullptr) {
         g_game_render_width.store(pDesc->BufferDesc.Width);
         g_game_render_height.store(pDesc->BufferDesc.Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChain - Game render resolution: %ux%u", 
-                pDesc->BufferDesc.Width, pDesc->BufferDesc.Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChain - Game render resolution: %ux%u", pDesc->BufferDesc.Width,
+                pDesc->BufferDesc.Height);
     }
 
     if (ShouldInterceptSwapChainCreation()) {
@@ -589,8 +589,8 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown* pDevice, HWND 
     if (pDesc != nullptr) {
         g_game_render_width.store(pDesc->Width);
         g_game_render_height.store(pDesc->Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd - Game render resolution: %ux%u", 
-                pDesc->Width, pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForHwnd - Game render resolution: %ux%u", pDesc->Width,
+                pDesc->Height);
     }
 
     if (ShouldInterceptSwapChainCreation()) {
@@ -630,8 +630,8 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown* pDevice,
     if (pDesc != nullptr) {
         g_game_render_width.store(pDesc->Width);
         g_game_render_height.store(pDesc->Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow - Game render resolution: %ux%u", 
-                pDesc->Width, pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForCoreWindow - Game render resolution: %ux%u", pDesc->Width,
+                pDesc->Height);
     }
 
     if (ShouldInterceptSwapChainCreation()) {
@@ -698,8 +698,8 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown* pDevice
     if (pDesc != nullptr) {
         g_game_render_width.store(pDesc->Width);
         g_game_render_height.store(pDesc->Height);
-        LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition - Game render resolution: %ux%u", 
-                pDesc->Width, pDesc->Height);
+        LogInfo("DXGIFactoryWrapper::CreateSwapChainForComposition - Game render resolution: %ux%u", pDesc->Width,
+                pDesc->Height);
     }
 
     if (ShouldInterceptSwapChainCreation()) {

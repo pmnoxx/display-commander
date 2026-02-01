@@ -1,8 +1,8 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
-#include "display_initial_state.hpp"
 #include "display/hdr_control.hpp"
+#include "display_initial_state.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
@@ -1026,20 +1026,19 @@ bool ApplyHdr1000MetadataToDxgi(IDXGISwapChain4* swapchain4) {
         return false;
     }
     DXGI_HDR_METADATA_HDR10 hdr10 = {};
-    hdr10.RedPrimary[0] = static_cast<UINT16>(std::round(0.708 * kHdr10ChromaticityScale));   // Rec. 2020 red x
-    hdr10.RedPrimary[1] = static_cast<UINT16>(std::round(0.292 * kHdr10ChromaticityScale));   // Rec. 2020 red y
-    hdr10.GreenPrimary[0] = static_cast<UINT16>(std::round(0.170 * kHdr10ChromaticityScale)); // Rec. 2020 green x
-    hdr10.GreenPrimary[1] = static_cast<UINT16>(std::round(0.797 * kHdr10ChromaticityScale)); // Rec. 2020 green y
-    hdr10.BluePrimary[0] = static_cast<UINT16>(std::round(0.131 * kHdr10ChromaticityScale));  // Rec. 2020 blue x
-    hdr10.BluePrimary[1] = static_cast<UINT16>(std::round(0.046 * kHdr10ChromaticityScale));  // Rec. 2020 blue y
+    hdr10.RedPrimary[0] = static_cast<UINT16>(std::round(0.708 * kHdr10ChromaticityScale));    // Rec. 2020 red x
+    hdr10.RedPrimary[1] = static_cast<UINT16>(std::round(0.292 * kHdr10ChromaticityScale));    // Rec. 2020 red y
+    hdr10.GreenPrimary[0] = static_cast<UINT16>(std::round(0.170 * kHdr10ChromaticityScale));  // Rec. 2020 green x
+    hdr10.GreenPrimary[1] = static_cast<UINT16>(std::round(0.797 * kHdr10ChromaticityScale));  // Rec. 2020 green y
+    hdr10.BluePrimary[0] = static_cast<UINT16>(std::round(0.131 * kHdr10ChromaticityScale));   // Rec. 2020 blue x
+    hdr10.BluePrimary[1] = static_cast<UINT16>(std::round(0.046 * kHdr10ChromaticityScale));   // Rec. 2020 blue y
     hdr10.WhitePoint[0] = static_cast<UINT16>(std::round(0.3127 * kHdr10ChromaticityScale));   // D65 white x
     hdr10.WhitePoint[1] = static_cast<UINT16>(std::round(0.3290 * kHdr10ChromaticityScale));   // D65 white y
     hdr10.MaxMasteringLuminance = 1000;
     hdr10.MinMasteringLuminance = 0;
     hdr10.MaxContentLightLevel = 1000;
     hdr10.MaxFrameAverageLightLevel = 100;
-    const HRESULT hr =
-        swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10), &hdr10);
+    const HRESULT hr = swapchain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(hdr10), &hdr10);
     if (SUCCEEDED(hr)) {
         LogInfo("HDR metadata (MaxMDL 1000 nits, Rec. 2020) applied to swapchain");
         return true;
@@ -1187,7 +1186,9 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 
     bool use_fps_limiter = api == reshade::api::device_api::vulkan || api == reshade::api::device_api::opengl
                            || api == reshade::api::device_api::d3d9
-                           || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue();
+                           || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue()
+                           || !IsDxgiSwapChainGettingCalled() && !IsNativeFramePacingInSync();
+    RecordFpsLimiterCallSite(FpsLimiterCallSite::reshade_addon_event);
 
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::PresentCommonState state;
@@ -1767,7 +1768,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     bool use_fps_limiter = api == reshade::api::device_api::vulkan || api == reshade::api::device_api::opengl
                            || api == reshade::api::device_api::d3d9
-                           || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue();
+                           || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue()
+                           || !IsDxgiSwapChainGettingCalled() && !ShouldUseNativeFpsLimiterFromFramePacing();
+    RecordFpsLimiterCallSite(FpsLimiterCallSite::reshade_addon_event);
     if (use_fps_limiter) {
         command_queue->flush_immediate_command_list();
         uint32_t present_flags = 0;

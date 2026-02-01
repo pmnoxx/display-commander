@@ -159,6 +159,7 @@ std::atomic<bool> g_muted_applied{false};
 // Continuous monitoring system
 std::atomic<bool> g_monitoring_thread_running{false};
 std::thread g_monitoring_thread;
+std::thread g_stuck_check_watchdog_thread;
 
 // Render thread tracking
 std::atomic<DWORD> g_render_thread_id{0};
@@ -186,7 +187,7 @@ std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<Latent
 std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManager>();
 
 // Global frame ID for latency management
-std::atomic<uint64_t> g_global_frame_id{0};
+std::atomic<uint64_t> g_global_frame_id{1};
 
 // Global frame ID for pclstats frame id
 std::atomic<uint64_t> g_pclstats_frame_id{0};
@@ -200,12 +201,20 @@ std::atomic<uint64_t> g_last_xinput_detected_frame_id{0};
 // Global frame ID when NvAPI_D3D_SetSleepMode_Direct was last called
 std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id{0};
 
-// Native frame pacing frame ID (frames shown to display via native swapchain Present)
-std::atomic<uint64_t> g_native_frame_pacing_frame_id{0};
+// Last frame_id at which each FPS limiter call site was hit
+std::atomic<uint64_t> g_fps_limiter_last_frame_id[kFpsLimiterCallSiteCount] = {};
 
 bool IsNativeFramePacingInSync() {
-    return g_native_frame_pacing_frame_id.load() > 0
-           && std::abs(static_cast<long long>(g_native_frame_pacing_frame_id.load() - g_global_frame_id.load())) <= 3;
+    const uint64_t reflex_frame =
+        g_fps_limiter_last_frame_id[static_cast<size_t>(FpsLimiterCallSite::reflex_marker)].load();
+    return reflex_frame > 0
+           && std::abs(static_cast<long long>(reflex_frame - g_global_frame_id.load())) <= 3;
+}
+
+bool IsDxgiSwapChainGettingCalled() {
+    const uint64_t reflex_frame =
+        g_fps_limiter_last_frame_id[static_cast<size_t>(FpsLimiterCallSite::dxgi_swapchain)].load();
+    return reflex_frame > 0 && std::abs(static_cast<long long>(reflex_frame - g_global_frame_id.load())) <= 3;
 }
 
 bool ShouldUseNativeFpsLimiterFromFramePacing() {
@@ -805,6 +814,14 @@ void OnReshadeUnload() {
     g_reshade_runtimes.clear();
     LogInfo("OnReshadeUnload: Cleared all ReShade runtimes");
 }
+
+bool SwapchainTrackingManager::IsLockHeldForDiagnostics() const {
+    return utils::TryIsSRWLockHeld(const_cast<SRWLOCK&>(lock_));
+}
+
+bool IsReshadeRuntimesLockHeld() { return utils::TryIsSRWLockHeld(g_reshade_runtimes_lock); }
+
+bool IsSwapchainTrackingLockHeld() { return g_swapchainTrackingManager.IsLockHeldForDiagnostics(); }
 
 // NGX preset initialization tracking
 std::atomic<bool> g_ngx_presets_initialized{false};

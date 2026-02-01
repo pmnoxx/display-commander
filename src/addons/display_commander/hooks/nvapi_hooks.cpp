@@ -140,12 +140,11 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     // only for first 6 latency marker types
     if (pSetLatencyMarkerParams != nullptr
         && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-        g_native_frame_pacing_frame_id.store(g_global_frame_id.load());
+        RecordFpsLimiterCallSite(FpsLimiterCallSite::reflex_marker);
     }
 
-    bool use_fps_limiter =
-        ShouldUseNativeFpsLimiterFromFramePacing()
-        && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue());
+    bool use_fps_limiter = ShouldUseNativeFpsLimiterFromFramePacing()
+                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue());
     if (use_fps_limiter) {
         static display_commanderhooks::dxgi::PresentCommonState fg_limiter_state = {};
         if (pSetLatencyMarkerParams != nullptr
@@ -555,3 +554,5 @@ void UninstallNVAPIHooks() {
         NvAPI_D3D_GetLatency_Original = nullptr;
     }
 }
+
+bool IsNvapiLockHeld() { return utils::TryIsSRWLockHeld(g_nvapi_lock); }

@@ -207,8 +207,7 @@ std::atomic<uint64_t> g_fps_limiter_last_frame_id[kFpsLimiterCallSiteCount] = {}
 bool IsNativeFramePacingInSync() {
     const uint64_t reflex_frame =
         g_fps_limiter_last_frame_id[static_cast<size_t>(FpsLimiterCallSite::reflex_marker)].load();
-    return reflex_frame > 0
-           && std::abs(static_cast<long long>(reflex_frame - g_global_frame_id.load())) <= 3;
+    return reflex_frame > 0 && std::abs(static_cast<long long>(reflex_frame - g_global_frame_id.load())) <= 3;
 }
 
 bool IsDxgiSwapChainGettingCalled() {
@@ -710,7 +709,10 @@ DLSSGSummary GetDLSSGSummary() {
 
     // Get DLL versions for DLSS and DLSS-G
     // Check for nvngx_dlss.dll (DLSS Super FResolution)
-    HMODULE dlss_handle = GetModuleHandleW(L"nvngx_dlss.dll");
+    static HMODULE dlss_handle = nullptr;
+    if (dlss_handle == nullptr) {
+        dlss_handle = GetModuleHandleW(L"nvngx_dlss.dll");
+    }
     if (dlss_handle != nullptr) {
         wchar_t dlss_path[MAX_PATH];
         DWORD path_length = GetModuleFileNameW(dlss_handle, dlss_path, MAX_PATH);
@@ -724,7 +726,10 @@ DLSSGSummary GetDLSSGSummary() {
     }
 
     // Check for nvngx_dlssg.dll (DLSS Frame Generation)
-    HMODULE dlssg_handle = GetModuleHandleW(L"nvngx_dlssg.dll");
+    static HMODULE dlssg_handle = nullptr;
+    if (dlssg_handle == nullptr) {
+        dlssg_handle = GetModuleHandleW(L"nvngx_dlssg.dll");
+    }
     if (dlssg_handle != nullptr) {
         wchar_t dlssg_path[MAX_PATH];
         DWORD path_length = GetModuleFileNameW(dlssg_handle, dlssg_path, MAX_PATH);
@@ -738,7 +743,10 @@ DLSSGSummary GetDLSSGSummary() {
     }
 
     // Check for nvngx_dlssd.dll (DLSS Denoising)
-    HMODULE dlssd_handle = GetModuleHandleW(L"nvngx_dlssd.dll");
+    static HMODULE dlssd_handle = nullptr;
+    if (dlssd_handle == nullptr) {
+        dlssd_handle = GetModuleHandleW(L"nvngx_dlssd.dll");
+    }
     if (dlssd_handle != nullptr) {
         wchar_t dlssd_path[MAX_PATH];
         DWORD path_length = GetModuleFileNameW(dlssd_handle, dlssd_path, MAX_PATH);
@@ -757,6 +765,34 @@ DLSSGSummary GetDLSSGSummary() {
     // Determine supported DLSS RR presets based on DLSS DLL version
     summary.supported_dlss_rr_presets = GetSupportedDLSSRRPresetsFromVersionString(summary.dlss_dll_version);
 
+    return summary;
+}
+
+// Lite version: only dlss_g_active + fg_mode (call every frame from FPS limiter)
+DLSSGSummaryLite GetDLSSGSummaryLite() {
+    DLSSGSummaryLite summary;
+    summary.dlss_g_active = g_dlssg_enabled.load();
+
+    int enable_interp;
+    if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp)) {
+        if (enable_interp == 1) {
+            unsigned int multi_frame_count;
+            if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
+                switch (multi_frame_count) {
+                    case 1: summary.fg_mode = DLSSGFgMode::k2x; break;
+                    case 2: summary.fg_mode = DLSSGFgMode::k3x; break;
+                    case 3: summary.fg_mode = DLSSGFgMode::k4x; break;
+                    default: summary.fg_mode = DLSSGFgMode::Other; break;
+                }
+            } else {
+                summary.fg_mode = DLSSGFgMode::ActiveUnknown;
+            }
+        } else {
+            summary.fg_mode = DLSSGFgMode::Off;
+        }
+    } else {
+        summary.fg_mode = DLSSGFgMode::Unknown;
+    }
     return summary;
 }
 

@@ -1293,6 +1293,24 @@ struct DLSSModelProfile {
 // Function to get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary();
 
+// DLSS-G frame generation mode (used by FPS limiter; call GetDLSSGSummaryLite every frame)
+enum class DLSSGFgMode : std::uint8_t {
+    Off = 0,         // Disabled
+    Unknown,         // API did not return
+    ActiveUnknown,   // Active but MultiFrameCount unknown
+    k2x,
+    k3x,
+    k4x,
+    Other            // 5x, 6x, etc.
+};
+
+// Lite summary for FPS limiter: dlss_g_active + fg_mode (call every frame)
+struct DLSSGSummaryLite {
+    bool dlss_g_active = false;
+    DLSSGFgMode fg_mode = DLSSGFgMode::Off;
+};
+DLSSGSummaryLite GetDLSSGSummaryLite();
+
 // Function to get DLSS Model Profile
 DLSSModelProfile GetDLSSModelProfile();
 

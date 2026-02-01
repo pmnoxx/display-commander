@@ -1198,14 +1198,15 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 }
 
 void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    auto now = utils::get_now_ns();
+    RECORD_DETOUR_CALL(now);
     float target_fps = GetTargetFps();
 
     if (target_fps <= 0.0f) {
         return;
     }
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
-        auto now = utils::get_now_ns();
+        RECORD_DETOUR_CALL(now);
         auto sleep_until_ns = g_post_sleep_ns.load();
         if (sleep_until_ns > now) {
             utils::wait_until_ns(sleep_until_ns, g_timer_handle);
@@ -1213,39 +1214,6 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
         } else {
             g_onpresent_sync_post_sleep_ns.store(0);
         }
-        /*
-                float delay_bias = g_onpresent_sync_delay_bias.load();
-                LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
-
-                if (delay_bias > 0.0f && frame_time_ns > 0) {
-                    // Calculate post-sleep time: delay_bias * frame_time
-                    LONGLONG post_sleep_ns = static_cast<LONGLONG>(delay_bias * frame_time_ns);
-
-                    // Account for any late amount (if we're behind schedule)
-                    LONGLONG late_ns = late_amount_ns.load();
-                    post_sleep_ns = (std::max)(post_sleep_ns - late_ns, 0LL);
-
-                    // Sleep after present if we have time remaining
-                    if (post_sleep_ns > 0) {
-                        LONGLONG post_sleep_start_ns = utils::get_now_ns();
-                        LONGLONG sleep_until_ns = post_sleep_start_ns + post_sleep_ns;
-                        utils::wait_until_ns(sleep_until_ns, g_timer_handle);
-                        LONGLONG post_sleep_end_ns = utils::get_now_ns();
-                        LONGLONG actual_post_sleep_ns = post_sleep_end_ns - post_sleep_start_ns;
-                        g_onpresent_sync_post_sleep_ns.store(actual_post_sleep_ns);
-
-                        // Record when this frame ended (for next frame's pre-sleep calculation)
-                        g_onpresent_sync_last_frame_end_ns.store(post_sleep_end_ns);
-                    } else {
-                        // No post-sleep - frame ends now
-                        g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
-                        g_onpresent_sync_post_sleep_ns.store(0);
-                    }
-                } else {
-                    // delay_bias = 0 or no frame time - no post-sleep
-                    g_onpresent_sync_last_frame_end_ns.store(utils::get_now_ns());
-                    g_onpresent_sync_post_sleep_ns.store(0);
-                }*/
     }
 }
 
@@ -1434,16 +1402,13 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
 
     if (from_wrapper) {
         RECORD_DETOUR_CALL(now_ns);
-        // TODO optimize GetDLSSGSummary call by replacing with simplified function
-        const DLSSGSummary dlssg_summary = GetDLSSGSummary();
-        RECORD_DETOUR_CALL(now_ns);
-        if (dlssg_summary.dlss_g_active) {
-            if (dlssg_summary.fg_mode == "2x") {
-                target_fps /= 2.0f;
-            } else if (dlssg_summary.fg_mode == "3x") {
-                target_fps /= 3.0f;
-            } else if (dlssg_summary.fg_mode == "4x") {
-                target_fps /= 4.0f;
+        const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
+        if (lite.dlss_g_active) {
+            switch (lite.fg_mode) {
+                case DLSSGFgMode::k2x: target_fps /= 2.0f; break;
+                case DLSSGFgMode::k3x: target_fps /= 3.0f; break;
+                case DLSSGFgMode::k4x: target_fps /= 4.0f; break;
+                default:               break;
             }
         }
     }

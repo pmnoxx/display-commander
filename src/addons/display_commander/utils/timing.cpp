@@ -172,13 +172,13 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
     }
     static __declspec(align(64)) uint64_t monitor = 0ULL;
     LONGLONG current_time_qpc = get_now_qpc();
-    RECORD_DETOUR_CALL(0);
+    RECORD_DETOUR_CALL(current_time_qpc * 100);
 
     // If target time has already passed, return immediately
     if (target_qpc <= current_time_qpc) return;
 
     // Create timer handle if it doesn't exist or is invalid
-    if (reinterpret_cast<LONG_PTR>(timer_handle) < 0) {
+    if (timer_handle == nullptr) {
         // Try to create a high-resolution waitable timer if available
         timer_handle = CreateWaitableTimerEx(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
 
@@ -192,7 +192,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
 
     // Use kernel waitable timer for longer waits (more than ~2ms)
     // This prevents completely consuming a CPU core during long waits
-    if (timer_handle && (time_to_wait_qpc >= 3 * timer_res_qpc)) {
+    if (timer_handle && (time_to_wait_qpc >= 2.5 * timer_res_qpc)) {
         // Schedule timer to wake up slightly before target time
         // Leave some time for busy waiting to achieve precise timing
         LONGLONG delay_qpc = time_to_wait_qpc - 1 * timer_res_qpc;

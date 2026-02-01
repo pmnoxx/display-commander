@@ -217,13 +217,12 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
         if (!once) {
             auto timer_res_is_ms = static_cast<double>(timer_res_qpc) / QPC_TO_MS;
             LogInfo("timer_res_qpc: %lld timer_res_is_ms: %f", timer_res_qpc, timer_res_is_ms);
+            once = true;
 
             if (timer_res_is_ms > 1.0) {
                 LogError("timer_res_qpc is too high!!! timer_res_is_ms: %.3fms > 1.0ms", timer_res_is_ms);
                 return;
             }
-
-            once = true;
         }
     }
 

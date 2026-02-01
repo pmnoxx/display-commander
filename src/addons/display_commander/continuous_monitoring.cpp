@@ -133,6 +133,8 @@ void check_is_background() {
 
     if (app_in_background != g_app_in_background.load()) {
         g_app_in_background.store(app_in_background);
+        g_last_foreground_background_switch_ns.store(static_cast<LONGLONG>(utils::get_now_ns()),
+                                                     std::memory_order_release);
 
         if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
             if (app_in_background) {
@@ -380,15 +382,19 @@ void every1s_checks() {
         g_cached_refresh_rate_stats.store(std::make_shared<const dxgi::fps_limiter::RefreshRateStats>(stats));
     }
 
-    // Update VRR status via NVAPI (runs every second, if enabled in settings)
+    // Update VRR status via NVAPI (runs every second, only within 5s of foreground<->background switch when enabled)
     // Also run when actual refresh rate or its graph is on so display_id is resolved for the monitor thread
     {
         bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
         bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
         bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
         bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-        if (show_vrr_status || show_vrr_debug_mode || show_actual_refresh_rate || show_refresh_rate_frame_times) {
-            LONGLONG now_ns = utils::get_now_ns();
+        LONGLONG now_ns = utils::get_now_ns();
+        LONGLONG last_switch_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
+        constexpr LONGLONG vrr_update_window_ns = 5 * utils::SEC_TO_NS;
+        bool within_5s_of_switch = (last_switch_ns != 0 && (now_ns - last_switch_ns <= vrr_update_window_ns));
+        if ((show_vrr_status || show_vrr_debug_mode || show_actual_refresh_rate || show_refresh_rate_frame_times)
+            && within_5s_of_switch) {
             static LONGLONG last_nvapi_update_ns = 0;
             const LONGLONG nvapi_update_interval_ns = 1 * utils::SEC_TO_NS;  // 1 second in nanoseconds
 
@@ -399,8 +405,10 @@ void every1s_checks() {
                         const wchar_t* output_device_name = device_name_ptr->c_str();
 
                         // If output changed, force refresh
-                        if (wcscmp(output_device_name, vrr_status::cached_output_device_name) != 0) {
-                            wcsncpy_s(vrr_status::cached_output_device_name, 32, output_device_name, _TRUNCATE);
+                        auto cached_name = vrr_status::cached_output_device_name.load();
+                        if (!cached_name || *cached_name != *device_name_ptr) {
+                            vrr_status::cached_output_device_name.store(
+                                std::make_shared<const std::wstring>(*device_name_ptr));
                         }
 
                         nvapi::VrrStatus vrr{};
@@ -410,12 +418,12 @@ void every1s_checks() {
                     } else {
                         vrr_status::cached_nvapi_ok.store(false);
                         vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
-                        vrr_status::cached_output_device_name[0] = L'\0';
+                        vrr_status::cached_output_device_name.store(nullptr);
                     }
                 } else {
                     vrr_status::cached_nvapi_ok.store(false);
                     vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
-                    vrr_status::cached_output_device_name[0] = L'\0';
+                    vrr_status::cached_output_device_name.store(nullptr);
                 }
                 vrr_status::last_nvapi_update_ns.store(now_ns);
                 last_nvapi_update_ns = now_ns;

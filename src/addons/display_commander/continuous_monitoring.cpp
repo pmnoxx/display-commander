@@ -15,6 +15,7 @@
 #include "settings/main_tab_settings.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
+#include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
 #include "utils/overlay_window_detector.hpp"
 #include "utils/timing.hpp"
@@ -562,6 +563,63 @@ bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t* dxgi_output_device
 
 }  // namespace nvapi
 
+namespace {
+
+// Stuck methods detection: if g_global_frame_id does not increase for 15s, log undestroyed detour guards
+// (indicates a detour may be stuck and helps identify which call path is blocking the render thread).
+void CheckStuckMethodsAndLogUndestroyedGuards() {
+    constexpr LONGLONG STUCK_THRESHOLD_NS = 25 * utils::SEC_TO_NS;
+
+    static uint64_t s_last_frame_id = 0;
+    static LONGLONG s_last_frame_change_real_ns = 0;
+    static bool s_stuck_logged_this_period = false;
+
+    uint64_t current_frame_id = g_global_frame_id.load(std::memory_order_acquire);
+    LONGLONG now_real_ns = utils::get_real_time_ns();
+
+    if (current_frame_id != s_last_frame_id) {
+        s_last_frame_id = current_frame_id;
+        s_last_frame_change_real_ns = now_real_ns;
+        s_stuck_logged_this_period = false;
+        return;
+    }
+
+    // No new frame since last check; only report stuck after we have seen at least one frame
+    if (s_last_frame_id == 0) {
+        return;
+    }
+    LONGLONG elapsed_ns = now_real_ns - s_last_frame_change_real_ns;
+    if (elapsed_ns < STUCK_THRESHOLD_NS) {
+        return;
+    }
+
+    if (s_stuck_logged_this_period) {
+        return;  // Already printed guards for this stuck period; avoid spam
+    }
+    s_stuck_logged_this_period = true;
+
+    LogInfo("=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu) ===",
+            static_cast<uint64_t>(current_frame_id));
+    std::string undestroyed_info = detour_call_tracker::FormatUndestroyedGuards(static_cast<uint64_t>(now_real_ns));
+    if (!undestroyed_info.empty()) {
+        std::istringstream iss(undestroyed_info);
+        std::string line;
+        while (std::getline(iss, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (!line.empty()) {
+                LogInfo("%s", line.c_str());
+            }
+        }
+    } else {
+        LogInfo("Undestroyed Detour Guards: 0");
+    }
+    LogInfo("=== END STUCK METHODS (undestroyed guards) ===");
+}
+
+}  // namespace
+
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
 #ifdef TRY_CATCH_BLOCKS
@@ -670,6 +728,7 @@ void ContinuousMonitoringThread() {
             if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
                 last_1s_update_ns = now_ns;
                 every1s_checks();
+                CheckStuckMethodsAndLogUndestroyedGuards();
 
                 // Update cached list of keys belonging to active exclusive groups (once per second)
                 display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();

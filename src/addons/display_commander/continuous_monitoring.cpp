@@ -17,8 +17,8 @@
 #include "settings/main_tab_settings.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
-#include "utils/display_commander_logger.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
 #include "utils/overlay_window_detector.hpp"
 #include "utils/timing.hpp"
@@ -406,15 +406,15 @@ void every1s_checks() {
                         nvapi::VrrStatus vrr{};
                         bool ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(output_device_name, vrr);
                         vrr_status::cached_nvapi_ok.store(ok);
-                        vrr_status::cached_nvapi_vrr = vrr;
+                        vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>(vrr));
                     } else {
                         vrr_status::cached_nvapi_ok.store(false);
-                        vrr_status::cached_nvapi_vrr = nvapi::VrrStatus{};
+                        vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
                         vrr_status::cached_output_device_name[0] = L'\0';
                     }
                 } else {
                     vrr_status::cached_nvapi_ok.store(false);
-                    vrr_status::cached_nvapi_vrr = nvapi::VrrStatus{};
+                    vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
                     vrr_status::cached_output_device_name[0] = L'\0';
                 }
                 vrr_status::last_nvapi_update_ns.store(now_ns);

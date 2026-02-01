@@ -338,7 +338,7 @@ enum class CursorState {
 };
 
 // Test callback for reshade_overlay event
-void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
+void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui;  // only show tooltips if the UI is visible
@@ -411,10 +411,6 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
     }
 
     // Check the setting from main tab first
-    if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
-        return;
-    }
-
     // Check which overlay components are enabled
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
@@ -434,7 +430,8 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
 
     // Start/stop NVAPI actual refresh rate monitor when overlay shows actual refresh rate or the refresh rate graph
     bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-    if (show_actual_refresh_rate || show_refresh_rate_frame_times) {
+    auto show_performance_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
+    if (show_performance_overlay && (show_actual_refresh_rate || show_refresh_rate_frame_times)) {
         if (!display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
             display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
         }
@@ -442,6 +439,10 @@ void OnReShadeOverlayTest(reshade::api::effect_runtime* runtime) {
         if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
             display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
         }
+    }
+
+    if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
+        return;
     }
 
     // Apply spacing offsets for stream overlay text compatibility
@@ -2239,7 +2240,7 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
 void DoInitializationWithoutHwnd(HMODULE h_module) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Register reshade_overlay event for test code
-    reshade::register_event<reshade::addon_event::reshade_overlay>(OnReShadeOverlayTest);
+    reshade::register_event<reshade::addon_event::reshade_overlay>(OnPerformanceOverlay);
 
     // Register device creation event for D3D9 to D3D9Ex upgrade
     reshade::register_event<reshade::addon_event::create_device>(OnCreateDevice);

@@ -6,6 +6,8 @@
 #include "display_cache.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/loadlibrary_hooks.hpp"
+#include "hooks/nvapi_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/reflex_manager.hpp"
@@ -15,6 +17,7 @@
 #include "settings/main_tab_settings.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
+#include "utils/display_commander_logger.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
 #include "utils/overlay_window_detector.hpp"
@@ -36,6 +39,11 @@
 
 // External reference to screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
+
+// Stuck detection: last time the continuous monitoring loop started an iteration (real time ns)
+static std::atomic<LONGLONG> g_last_continuous_monitoring_loop_real_ns{0};
+// Current section of the loop (so when stuck we know where; "sleeping" = in sleep_for)
+static std::atomic<const char*> g_continuous_monitoring_section{nullptr};
 
 HWND GetCurrentForeGroundWindow() {
     HWND foreground_window = display_commanderhooks::GetForegroundWindow_Direct();
@@ -600,6 +608,32 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
 
     LogInfo("=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu) ===",
             static_cast<uint64_t>(current_frame_id));
+
+    LONGLONG last_loop_ns = g_last_continuous_monitoring_loop_real_ns.load(std::memory_order_acquire);
+    const char* section = g_continuous_monitoring_section.load(std::memory_order_acquire);
+    if (last_loop_ns > 0) {
+        LONGLONG loop_ago_ns = now_real_ns - last_loop_ns;
+        double loop_ago_s = static_cast<double>(loop_ago_ns) / 1e9;
+        LogInfo("Continuous monitoring last looped: %.2f s ago", loop_ago_s);
+    } else {
+        LogInfo("Continuous monitoring: no iteration completed yet");
+    }
+    if (section != nullptr && section[0] != '\0') {
+        LogInfo("Continuous monitoring current section: %s (stuck here if not sleeping)", section);
+    }
+
+    // Report SRWLOCK status (HELD = lock is in use; helps diagnose deadlocks / stuck on logger etc.)
+    {
+        std::ostringstream oss;
+        oss << "SRWLOCK logger write_lock: " << (display_commander::logger::IsWriteLockHeld() ? "HELD" : "free")
+            << " | reshade_runtimes: " << (IsReshadeRuntimesLockHeld() ? "HELD" : "free")
+            << " | swapchain_tracking: " << (IsSwapchainTrackingLockHeld() ? "HELD" : "free")
+            << " | loadlibrary module: " << (display_commanderhooks::IsModuleSrwlockHeld() ? "HELD" : "free")
+            << " | loadlibrary blocked_dlls: " << (display_commanderhooks::IsBlockedDllsSrwlockHeld() ? "HELD" : "free")
+            << " | nvapi: " << (IsNvapiLockHeld() ? "HELD" : "free");
+        LogInfo("%s", oss.str().c_str());
+    }
+
     std::string undestroyed_info = detour_call_tracker::FormatUndestroyedGuards(static_cast<uint64_t>(now_real_ns));
     if (!undestroyed_info.empty()) {
         std::istringstream iss(undestroyed_info);
@@ -616,6 +650,22 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         LogInfo("Undestroyed Detour Guards: 0");
     }
     LogInfo("=== END STUCK METHODS (undestroyed guards) ===");
+}
+
+// Dedicated thread that periodically calls CheckStuckMethodsAndLogUndestroyedGuards
+// so we can detect if the main continuous monitoring loop is stuck (it runs independently).
+void StuckCheckWatchdogThread() {
+    LogInfo("Stuck-check watchdog thread started");
+    constexpr auto WATCHDOG_INTERVAL = std::chrono::seconds(5);
+    while (g_monitoring_thread_running.load(std::memory_order_acquire)) {
+        std::this_thread::sleep_for(WATCHDOG_INTERVAL);
+        if (!g_monitoring_thread_running.load(std::memory_order_acquire)) {
+            break;
+        }
+        CheckStuckMethodsAndLogUndestroyedGuards();
+        display_commander::logger::FlushLogs();
+    }
+    LogInfo("Stuck-check watchdog thread stopped");
 }
 
 }  // namespace
@@ -635,15 +685,21 @@ void ContinuousMonitoringThread() {
         const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
         while (g_monitoring_thread_running.load()) {
+            g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
             std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
+            g_last_continuous_monitoring_loop_real_ns.store(utils::get_real_time_ns(), std::memory_order_release);
+            g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
+
             // Periodic display cache refresh off the UI thread
             {
                 LONGLONG now_ns = utils::get_now_ns();
                 if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
+                    g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
                     display_cache::g_displayCache.Refresh();
                     last_cache_refresh_ns = now_ns;
                     // No longer need to cache monitor labels - UI calls GetDisplayInfoForUI() directly
                 }
+                g_continuous_monitoring_section.store("after_cache_refresh", std::memory_order_release);
             }
             // Wait for 1 second to start
             if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
@@ -703,10 +759,13 @@ void ContinuousMonitoringThread() {
                     }
                 }
             }
+            g_continuous_monitoring_section.store("after_cpu_affinity", std::memory_order_release);
+
             // Auto-apply is always enabled (checkbox removed)
             // 60 FPS updates (every ~16.67ms)
             LONGLONG now_ns = utils::get_now_ns();
             if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
+                g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
                 check_is_background();
                 last_60fps_update_ns = now_ns;
                 adhd_multi_monitor::api::Initialize();
@@ -724,29 +783,35 @@ void ContinuousMonitoringThread() {
                 // Reset keyboard frame states for next frame
                 display_commanderhooks::keyboard_tracker::ResetFrame();
             }
+            g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
 
             if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
                 last_1s_update_ns = now_ns;
+                g_continuous_monitoring_section.store("every1s_checks", std::memory_order_release);
                 every1s_checks();
-                CheckStuckMethodsAndLogUndestroyedGuards();
 
                 // Update cached list of keys belonging to active exclusive groups (once per second)
+                g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
                 display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
 
                 // Auto-hide Discord Overlay (runs every second)
+                g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
                 HandleDiscordOverlayAutoHide();
 
                 // wait 10s before configuring reflex
+                g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
                 if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
                     HandleReflexAutoConfigure();
                 }
 
                 // Call auto-apply HDR metadata trigger
+                g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
                 ui::new_ui::AutoApplyTrigger();
 
                 // Auto-apply resolution on game start
                 static bool auto_apply_on_start_done = false;
                 namespace res_widget = display_commander::widgets::resolution_widget;
+                g_continuous_monitoring_section.store("auto_apply_on_start", std::memory_order_release);
                 if (!auto_apply_on_start_done && res_widget::g_resolution_settings) {
                     if (res_widget::g_resolution_settings->GetAutoApplyOnStart()) {
                         LONGLONG game_start_time_ns = g_game_start_time_ns.load();
@@ -781,6 +846,7 @@ void ContinuousMonitoringThread() {
                     }
                 }
             }
+            g_continuous_monitoring_section.store("end_of_loop", std::memory_order_release);
         }
 #ifdef TRY_CATCH_BLOCKS
     } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -806,6 +872,13 @@ void StartContinuousMonitoring() {
 
     g_monitoring_thread = std::thread(ContinuousMonitoringThread);
 
+    // Separate thread to call CheckStuckMethodsAndLogUndestroyedGuards so we can detect
+    // if the main monitoring loop is stuck (watchdog runs independently).
+    if (g_stuck_check_watchdog_thread.joinable()) {
+        g_stuck_check_watchdog_thread.join();
+    }
+    g_stuck_check_watchdog_thread = std::thread(StuckCheckWatchdogThread);
+
     LogInfo("Continuous monitoring started");
 }
 
@@ -818,7 +891,11 @@ void StopContinuousMonitoring() {
 
     g_monitoring_thread_running.store(false);
 
-    // Wait for thread to finish
+    // Wait for watchdog thread first (it only sleeps and checks; exits when flag is false)
+    if (g_stuck_check_watchdog_thread.joinable()) {
+        g_stuck_check_watchdog_thread.join();
+    }
+    // Wait for main monitoring thread to finish
     if (g_monitoring_thread.joinable()) {
         g_monitoring_thread.join();
     }

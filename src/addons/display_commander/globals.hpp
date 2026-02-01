@@ -457,6 +457,9 @@ class SwapchainTrackingManager {
             callback(swapchain);
         }
     }
+
+    // Diagnostic: returns true if lock_ is currently held (for stuck-detection reporting)
+    bool IsLockHeldForDiagnostics() const;
 };
 
 // Performance stats structure
@@ -538,6 +541,10 @@ extern std::atomic<bool> g_auto_click_enabled;
 // ReShade Integration
 extern std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 extern SRWLOCK g_reshade_runtimes_lock;
+
+// SRWLOCK diagnostics for stuck-detection reporting (returns true if lock is currently held)
+bool IsReshadeRuntimesLockHeld();
+bool IsSwapchainTrackingLockHeld();
 extern HMODULE g_reshade_module;
 extern void (*g_custom_fps_limiter_callback)();
 
@@ -602,11 +609,29 @@ extern std::atomic<uint64_t> g_last_xinput_detected_frame_id;
 // Global frame ID when NvAPI_D3D_SetSleepMode_Direct was last called
 extern std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id;
 
-// Native frame pacing frame ID (frames shown to display via native swapchain Present)
-extern std::atomic<uint64_t> g_native_frame_pacing_frame_id;
+/** Entry points where use_fps_limiter is computed; last frame_id per site is tracked to know which paths are available.
+ */
+enum class FpsLimiterCallSite {
+    reflex_marker,         // NVAPI SetLatencyMarker path
+    dxgi_swapchain,        // DXGI Present/Present1 detour or wrapper
+    reshade_addon_event,   // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
+    dxgi_factory_wrapper,  // Currently unused in practice
+};
 
-/** True when native frame pacing is active and in sync (frame id > 0, within 3 frames of global). */
+constexpr size_t kFpsLimiterCallSiteCount = 4;
+
+/** Last frame_id at which each FPS limiter call site was hit (0 = never). */
+extern std::atomic<uint64_t> g_fps_limiter_last_frame_id[kFpsLimiterCallSiteCount];
+
+/** Record that the given call site was hit this frame (stores current g_global_frame_id for that site). */
+inline void RecordFpsLimiterCallSite(FpsLimiterCallSite site) {
+    g_fps_limiter_last_frame_id[static_cast<size_t>(site)].store(g_global_frame_id.load(std::memory_order_relaxed),
+                                                                  std::memory_order_relaxed);
+}
+
+/** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 3 frames of global). */
 bool IsNativeFramePacingInSync();
+bool IsDxgiSwapChainGettingCalled();
 /** True when native FPS limiter from frame pacing should be used (setting on, and IsNativeFramePacingInSync()). */
 bool ShouldUseNativeFpsLimiterFromFramePacing();
 
@@ -759,6 +784,7 @@ extern std::atomic<float> s_sleep_after_present_frame_time_percentage;
 // Monitoring thread
 extern std::atomic<bool> g_monitoring_thread_running;
 extern std::thread g_monitoring_thread;
+extern std::thread g_stuck_check_watchdog_thread;
 
 // Render thread tracking
 extern std::atomic<DWORD> g_render_thread_id;

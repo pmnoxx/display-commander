@@ -71,4 +71,8 @@ void SetDLLBlocked(const std::wstring& module_name, bool blocked);
 bool CanBlockDLL(const ModuleInfo& module_info);
 std::vector<std::wstring> GetBlockedDLLs();
 
-} // namespace display_commanderhooks
+// SRWLOCK diagnostics for stuck-detection (returns true if lock is currently held)
+bool IsModuleSrwlockHeld();
+bool IsBlockedDllsSrwlockHeld();
+
+}  // namespace display_commanderhooks

@@ -1127,4 +1127,8 @@ bool CanBlockDLL(const ModuleInfo& module_info) {
     return true;
 }
 
+bool IsModuleSrwlockHeld() { return utils::TryIsSRWLockHeld(g_module_srwlock); }
+
+bool IsBlockedDllsSrwlockHeld() { return utils::TryIsSRWLockHeld(g_blocked_dlls_srwlock); }
+
 }  // namespace display_commanderhooks

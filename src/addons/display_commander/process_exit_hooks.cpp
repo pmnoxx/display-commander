@@ -343,6 +343,25 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
 
     exit_handler::WriteToDebugLog("=== END RECENT DETOUR CALLS ===");
 
+    // Print undestroyed detour guards (helps identify which call path was active at crash)
+    std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(crash_timestamp_ns);
+    exit_handler::WriteToDebugLog("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
+    if (!undestroyed_guards_info.empty()) {
+        std::istringstream iss_guards(undestroyed_guards_info);
+        std::string line;
+        while (std::getline(iss_guards, line)) {
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back();
+            }
+            if (!line.empty()) {
+                exit_handler::WriteToDebugLog(line);
+            }
+        }
+    } else {
+        exit_handler::WriteToDebugLog("Undestroyed Detour Guards: 0");
+    }
+    exit_handler::WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
+
     // Print stack trace to DbgView using exception context
     exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");
     CONTEXT* exception_context = nullptr;

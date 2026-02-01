@@ -1018,19 +1018,22 @@ void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
 
 namespace {
 
+// CTA-861-G / DXGI HDR10: chromaticity encoded as 0-50000 for 0.00000-0.50000 (0.00001 steps)
+constexpr UINT32 kHdr10ChromaticityScale = 50000u;
+
 bool ApplyHdr1000MetadataToDxgi(IDXGISwapChain4* swapchain4) {
     if (swapchain4 == nullptr) {
         return false;
     }
     DXGI_HDR_METADATA_HDR10 hdr10 = {};
-    hdr10.RedPrimary[0] = static_cast<UINT16>(0.708 * 65535);
-    hdr10.RedPrimary[1] = static_cast<UINT16>(0.292 * 65535);
-    hdr10.GreenPrimary[0] = static_cast<UINT16>(0.170 * 65535);
-    hdr10.GreenPrimary[1] = static_cast<UINT16>(0.797 * 65535);
-    hdr10.BluePrimary[0] = static_cast<UINT16>(0.131 * 65535);
-    hdr10.BluePrimary[1] = static_cast<UINT16>(0.046 * 65535);
-    hdr10.WhitePoint[0] = static_cast<UINT16>(0.3127 * 65535);
-    hdr10.WhitePoint[1] = static_cast<UINT16>(0.3290 * 65535);
+    hdr10.RedPrimary[0] = static_cast<UINT16>(std::round(0.708 * kHdr10ChromaticityScale));   // Rec. 2020 red x
+    hdr10.RedPrimary[1] = static_cast<UINT16>(std::round(0.292 * kHdr10ChromaticityScale));   // Rec. 2020 red y
+    hdr10.GreenPrimary[0] = static_cast<UINT16>(std::round(0.170 * kHdr10ChromaticityScale)); // Rec. 2020 green x
+    hdr10.GreenPrimary[1] = static_cast<UINT16>(std::round(0.797 * kHdr10ChromaticityScale)); // Rec. 2020 green y
+    hdr10.BluePrimary[0] = static_cast<UINT16>(std::round(0.131 * kHdr10ChromaticityScale));  // Rec. 2020 blue x
+    hdr10.BluePrimary[1] = static_cast<UINT16>(std::round(0.046 * kHdr10ChromaticityScale));  // Rec. 2020 blue y
+    hdr10.WhitePoint[0] = static_cast<UINT16>(std::round(0.3127 * kHdr10ChromaticityScale));   // D65 white x
+    hdr10.WhitePoint[1] = static_cast<UINT16>(std::round(0.3290 * kHdr10ChromaticityScale));   // D65 white y
     hdr10.MaxMasteringLuminance = 1000;
     hdr10.MinMasteringLuminance = 0;
     hdr10.MaxContentLightLevel = 1000;

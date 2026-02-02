@@ -419,36 +419,6 @@ void HandlePresentBefore2() {
             RecordFrameTime(FrameTimeMode::kPresent);
         }
     }
-    // Getting refresh rate data is disabled for now, it breaks nvidia overlay stats
-    // TODO: consider fixing this
-    /*
-    // Get and cache frame statistics for refresh rate monitoring
-    // Only query GetFrameStatistics when UI is open (main tab) to avoid performance overhead
-    {
-        const bool suppress_section =
-            perf_measurement::IsSuppressionEnabled() &&
-            perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_FrameStatistics);
-
-
-        // overlay is open and vrr status is enabled or display commander's UI has been opened within last 1s
-
-        auto frames_ago_ui_opened = g_global_frame_id.load() - g_last_ui_drawn_frame_id.load();
-        bool should_query_frame_stats = settings::g_mainTabSettings.show_test_overlay.GetValue() &&
-    settings::g_mainTabSettings.show_vrr_status.GetValue()
-            || frames_ago_ui_opened >= 0 && frames_ago_ui_opened < 30;
-
-        // Check if UI is open and main tab is active
-
-        if (!suppress_section && should_query_frame_stats) {
-            perf_measurement::ScopedTimer
-    frame_stats_timer(perf_measurement::Metric::HandlePresentBefore_FrameStatistics); DXGI_FRAME_STATISTICS stats = {};
-            if (SUCCEEDED(This->GetFrameStatistics(&stats))) {
-                // Use memory_order_release to ensure the shared_ptr is fully constructed before other threads see it
-                g_cached_frame_stats.store(std::make_shared<DXGI_FRAME_STATISTICS>(stats), std::memory_order_release);
-                ::dxgi::fps_limiter::ProcessFrameStatistics(stats);
-            }
-        }
-    }*/
 }
 
 // Helper function for common Present/Present1 logic after calling original
@@ -460,15 +430,6 @@ void HandlePresentAfter(IDXGISwapChain* baseSwapChain, const PresentCommonState&
     }
 
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
-
-    // Query DXGI composition state (moved from ReShade present events)
-    //::QueryDxgiCompositionState(baseSwapChain);
-
-    // Signal refresh rate monitoring thread (after DWM flush)
-    //   ::dxgi::fps_limiter::SignalRefreshRateMonitor();
-
-    // Note: GPU completion measurement is now enqueued earlier in OnPresentUpdateBefore
-    // (before flush_command_queue) for more accurate timing
 
     // Get device from swapchain for latency manager
     ::OnPresentUpdateAfter2(state.device.Get(), state.device_type, from_wrapper);
@@ -493,17 +454,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    bool use_fps_limiter = !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !ShouldUseNativeFpsLimiterFromFramePacing();
-    RecordFpsLimiterCallSite(FpsLimiterCallSite::dxgi_swapchain);
+    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_swapchain);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain);
     // Skip common present logic if wrapper is handling it
     PresentCommonState state;
     if (use_fps_limiter) {
         // Handle common before logic
         state = HandlePresentBefore(This);
         ::OnPresentFlags2(&Flags, state.device_type, true, false);  // Called from present_detour
-    }
-    if (!(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())) {
         display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
@@ -541,18 +499,14 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Skip common present logic if wrapper is handling it
-    bool use_fps_limiter = !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !ShouldUseNativeFpsLimiterFromFramePacing();
-    RecordFpsLimiterCallSite(FpsLimiterCallSite::dxgi_swapchain);
+    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_swapchain);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain);
 
     PresentCommonState state;
     if (use_fps_limiter) {
         // Handle common before logic (with D3D10 check enabled)
         state = HandlePresentBefore(This);
         ::OnPresentFlags2(&PresentFlags, state.device_type, true, false);  // Called from present_detour
-    }
-    if (!(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())) {
         display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 

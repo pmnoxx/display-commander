@@ -382,10 +382,10 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     });
 
     if (frame_times.empty()) {
-        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive() &&
-            display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
+            && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
             ImGui::TextColored(ui::colors::TEXT_WARNING,
-                "NvAPI_DISP_GetAdaptiveSyncData failing repeatedly — no refresh rate data.");
+                               "NvAPI_DISP_GetAdaptiveSyncData failing repeatedly — no refresh rate data.");
         }
         return;  // Don't show anything if no valid data (monitor not active or no samples yet)
     }
@@ -972,142 +972,143 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    if (enabled_experimental_features) {
-        // Gamma Control Warning
-        uint32_t gamma_control_calls = g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].load();
-        if (gamma_control_calls > 0) {
-            ImGui::Spacing();
+    /*
+if (enabled_experimental_features) {
+    // Gamma Control Warning
+    uint32_t gamma_control_calls = g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].load();
+    if (gamma_control_calls > 0) {
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_WARNING,
+                           ICON_FK_WARNING
+                           " WARNING: Game is using gamma control (SetGammaControl called %u times)",
+                           gamma_control_calls);
+        LogInfo("TODO: Implement supressing SetGammaControl calls feature.");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "The game is actively modifying display gamma settings. This may affect color accuracy and HDR "
+                "functionality. Check the Swapchain tab for more details.");
+        }
+        ImGui::Spacing();
+    }
+
+    // NVIDIA Ansel/Camera SDK Warning (check for all possible DLL names)
+    bool ansel_loaded = display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll")
+                        || display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll")
+                        || display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll")
+                        || display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll")
+                        || display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll");
+
+    // Also check full paths in case modules are stored with full paths instead of just filenames
+    if (!ansel_loaded) {
+        auto loaded_modules = display_commanderhooks::GetLoadedModules();
+        for (const auto& module : loaded_modules) {
+            std::wstring module_name_lower = module.moduleName;
+            std::wstring module_path_lower = module.fullPath;
+            std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(),
+                           ::towlower);
+            std::transform(module_path_lower.begin(), module_path_lower.end(), module_path_lower.begin(),
+                           ::towlower);
+
+            if (module_name_lower.find(L"anselsdk64.dll") != std::wstring::npos
+                || module_name_lower.find(L"nvanselsdk.dll") != std::wstring::npos
+                || module_name_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos
+                || module_name_lower.find(L"nvcameraapi64.dll") != std::wstring::npos
+                || module_name_lower.find(L"gfexperiencecore.dll") != std::wstring::npos
+                || module_path_lower.find(L"anselsdk64.dll") != std::wstring::npos
+                || module_path_lower.find(L"nvanselsdk.dll") != std::wstring::npos
+                || module_path_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos
+                || module_path_lower.find(L"nvcameraapi64.dll") != std::wstring::npos
+                || module_path_lower.find(L"gfexperiencecore.dll") != std::wstring::npos) {
+                ansel_loaded = true;
+                break;
+            }
+        }
+    }
+
+    // Debug logging for Ansel detection
+    static bool debug_logged = false;
+    if (!debug_logged) {
+        LogInfo(
+            "Ansel detection check: NvAnselSDK.dll=%s, AnselSDK64.dll=%s, NvCameraSDK64.dll=%s, "
+            "NvCameraAPI64.dll=%s, GFExperienceCore.dll=%s",
+            display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll") ? "YES" : "NO",
+            display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll") ? "YES" : "NO",
+            display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll") ? "YES" : "NO",
+            display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll") ? "YES" : "NO",
+            display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll") ? "YES" : "NO");
+
+        LogInfo("Fallback Ansel detection result: %s", ansel_loaded ? "YES" : "NO");
+
+        // Also log all loaded modules for debugging
+        auto loaded_modules = display_commanderhooks::GetLoadedModules();
+        LogInfo("Total loaded modules: %zu", loaded_modules.size());
+        for (const auto& module : loaded_modules) {
+            // Check if module name contains Ansel, Camera, or GFExperience (case insensitive)
+            std::wstring module_name_lower = module.moduleName;
+            std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(),
+                           ::towlower);
+
+            if (module_name_lower.find(L"ansel") != std::wstring::npos
+                || module_name_lower.find(L"camera") != std::wstring::npos
+                || module_name_lower.find(L"gfexperience") != std::wstring::npos) {
+                LogInfo("Found Ansel/Camera related module: %S (path: %S)", module.moduleName.c_str(),
+                        module.fullPath.c_str());
+            }
+        }
+        debug_logged = true;
+    }
+
+    if (ansel_loaded) {
+        ImGui::Spacing();
+        bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
+        if (skip_ansel) {
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                               " WARNING: NVIDIA Ansel/Camera SDK is loaded (Skip enabled but already loaded)");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "NVIDIA Ansel/Camera SDK was already loaded before the skip setting could take effect. Restart "
+                    "the game to apply the skip setting.");
+            }
+        } else {
             ImGui::TextColored(ui::colors::TEXT_WARNING,
-                               ICON_FK_WARNING
-                               " WARNING: Game is using gamma control (SetGammaControl called %u times)",
-                               gamma_control_calls);
-            LogInfo("TODO: Implement supressing SetGammaControl calls feature.");
+                               ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "The game is actively modifying display gamma settings. This may affect color accuracy and HDR "
-                    "functionality. Check the Swapchain tab for more details.");
-            }
-            ImGui::Spacing();
-        }
-
-        // NVIDIA Ansel/Camera SDK Warning (check for all possible DLL names)
-        bool ansel_loaded = display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll")
-                            || display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll")
-                            || display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll")
-                            || display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll")
-                            || display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll");
-
-        // Also check full paths in case modules are stored with full paths instead of just filenames
-        if (!ansel_loaded) {
-            auto loaded_modules = display_commanderhooks::GetLoadedModules();
-            for (const auto& module : loaded_modules) {
-                std::wstring module_name_lower = module.moduleName;
-                std::wstring module_path_lower = module.fullPath;
-                std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(),
-                               ::towlower);
-                std::transform(module_path_lower.begin(), module_path_lower.end(), module_path_lower.begin(),
-                               ::towlower);
-
-                if (module_name_lower.find(L"anselsdk64.dll") != std::wstring::npos
-                    || module_name_lower.find(L"nvanselsdk.dll") != std::wstring::npos
-                    || module_name_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos
-                    || module_name_lower.find(L"nvcameraapi64.dll") != std::wstring::npos
-                    || module_name_lower.find(L"gfexperiencecore.dll") != std::wstring::npos
-                    || module_path_lower.find(L"anselsdk64.dll") != std::wstring::npos
-                    || module_path_lower.find(L"nvanselsdk.dll") != std::wstring::npos
-                    || module_path_lower.find(L"nvcamerasdk64.dll") != std::wstring::npos
-                    || module_path_lower.find(L"nvcameraapi64.dll") != std::wstring::npos
-                    || module_path_lower.find(L"gfexperiencecore.dll") != std::wstring::npos) {
-                    ansel_loaded = true;
-                    break;
-                }
+                    "NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, "
+                    "NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR "
+                    "functionality. Enable 'Skip Loading Ansel Libraries' to prevent this.");
             }
         }
+        ImGui::Spacing();
+    }
 
-        // Debug logging for Ansel detection
-        static bool debug_logged = false;
-        if (!debug_logged) {
-            LogInfo(
-                "Ansel detection check: NvAnselSDK.dll=%s, AnselSDK64.dll=%s, NvCameraSDK64.dll=%s, "
-                "NvCameraAPI64.dll=%s, GFExperienceCore.dll=%s",
-                display_commanderhooks::IsModuleLoaded(L"NvAnselSDK.dll") ? "YES" : "NO",
-                display_commanderhooks::IsModuleLoaded(L"AnselSDK64.dll") ? "YES" : "NO",
-                display_commanderhooks::IsModuleLoaded(L"NvCameraSDK64.dll") ? "YES" : "NO",
-                display_commanderhooks::IsModuleLoaded(L"NvCameraAPI64.dll") ? "YES" : "NO",
-                display_commanderhooks::IsModuleLoaded(L"GFExperienceCore.dll") ? "YES" : "NO");
-
-            LogInfo("Fallback Ansel detection result: %s", ansel_loaded ? "YES" : "NO");
-
-            // Also log all loaded modules for debugging
-            auto loaded_modules = display_commanderhooks::GetLoadedModules();
-            LogInfo("Total loaded modules: %zu", loaded_modules.size());
-            for (const auto& module : loaded_modules) {
-                // Check if module name contains Ansel, Camera, or GFExperience (case insensitive)
-                std::wstring module_name_lower = module.moduleName;
-                std::transform(module_name_lower.begin(), module_name_lower.end(), module_name_lower.begin(),
-                               ::towlower);
-
-                if (module_name_lower.find(L"ansel") != std::wstring::npos
-                    || module_name_lower.find(L"camera") != std::wstring::npos
-                    || module_name_lower.find(L"gfexperience") != std::wstring::npos) {
-                    LogInfo("Found Ansel/Camera related module: %S (path: %S)", module.moduleName.c_str(),
-                            module.fullPath.c_str());
-                }
-            }
-            debug_logged = true;
+    // Ansel Control Section
+    if (ansel_loaded || settings::g_mainTabSettings.skip_ansel_loading.GetValue()) {
+        bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
+        if (ImGui::Checkbox("Skip Loading Ansel Libraries", &skip_ansel)) {
+            settings::g_mainTabSettings.skip_ansel_loading.SetValue(skip_ansel);
+            LogInfo("Skip Ansel loading %s", skip_ansel ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Prevents Ansel-related DLLs from being loaded by the game. This can help avoid conflicts with "
+                "display settings and HDR functionality. Requires restart to take effect.");
         }
 
-        if (ansel_loaded) {
-            ImGui::Spacing();
-            bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
-            if (skip_ansel) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
-                                   " WARNING: NVIDIA Ansel/Camera SDK is loaded (Skip enabled but already loaded)");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "NVIDIA Ansel/Camera SDK was already loaded before the skip setting could take effect. Restart "
-                        "the game to apply the skip setting.");
-                }
+        if (skip_ansel) {
+            ImGui::SameLine();
+            if (ansel_loaded) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Already Loaded");
             } else {
-                ImGui::TextColored(ui::colors::TEXT_WARNING,
-                                   ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, "
-                        "NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR "
-                        "functionality. Enable 'Skip Loading Ansel Libraries' to prevent this.");
-                }
+                ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Active");
             }
-            ImGui::Spacing();
-        }
-
-        // Ansel Control Section
-        if (ansel_loaded || settings::g_mainTabSettings.skip_ansel_loading.GetValue()) {
-            bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
-            if (ImGui::Checkbox("Skip Loading Ansel Libraries", &skip_ansel)) {
-                settings::g_mainTabSettings.skip_ansel_loading.SetValue(skip_ansel);
-                LogInfo("Skip Ansel loading %s", skip_ansel ? "enabled" : "disabled");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Prevents Ansel-related DLLs from being loaded by the game. This can help avoid conflicts with "
-                    "display settings and HDR functionality. Requires restart to take effect.");
-            }
-
-            if (skip_ansel) {
-                ImGui::SameLine();
-                if (ansel_loaded) {
-                    ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Already Loaded");
-                } else {
-                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Active");
-                }
-            }
-
-            ImGui::Spacing();
         }
 
         ImGui::Spacing();
     }
+
+    ImGui::Spacing();
+}*/
     // Display Settings Section
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
@@ -4067,10 +4068,11 @@ void DrawImportantInfo() {
             ImGui::NextColumn();
         }
 
-        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive() &&
-            display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
+            && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
             ImGui::Columns(1);
-            ImGui::TextColored(ui::colors::TEXT_WARNING,
+            ImGui::TextColored(
+                ui::colors::TEXT_WARNING,
                 "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
                 "Refresh rate and refresh rate time graph may show no data.");
             ImGui::Columns(4, "overlay_checkboxes", false);
@@ -4590,7 +4592,8 @@ void DrawImportantInfo() {
 
         if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
             ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_WARNING,
+            ImGui::TextColored(
+                ui::colors::TEXT_WARNING,
                 "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
         }
 
@@ -4661,7 +4664,8 @@ void DrawImportantInfo() {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
         } else {
             ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No refresh rate data (start monitoring or enable overlay refresh rate).");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                               "No refresh rate data (start monitoring or enable overlay refresh rate).");
         }
         ImGui::Unindent();  // Unindent content
     }

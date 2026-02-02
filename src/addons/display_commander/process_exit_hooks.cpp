@@ -266,11 +266,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
             //          << " already logged, skipping duplicate report";
             // exit_handler::WriteToDebugLog(skip_msg.str());
 
-            // Still chain to last handler
-            LPTOP_LEVEL_EXCEPTION_FILTER last_detour_handler = g_last_detour_handler.load();
-            if (last_detour_handler != nullptr) {
-                return last_detour_handler(exception_info);
-            }
+            // Do not chain to ReShade (or other) crash handler
             return EXCEPTION_EXECUTE_HANDLER;
         }
     }
@@ -382,15 +378,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
     // Print list of loaded modules
     PrintLoadedModules();
 
-    // Log exit detection
-    // exit_handler::OnHandleExit(exit_handler::ExitSource::UNHANDLED_EXCEPTION, "Unhandled exception detected");
-
-    // Chain to last handler set via SetUnhandledExceptionFilter_Detour if any
-    LPTOP_LEVEL_EXCEPTION_FILTER last_detour_handler = g_last_detour_handler.load();
-    if (last_detour_handler != nullptr) {
-        return last_detour_handler(exception_info);
-    }
-
+    // Do not chain to ReShade (or other) crash handler - our log is sufficient
     return EXCEPTION_EXECUTE_HANDLER;
     // assert(IsDebuggerPresent());
     //  return EXCEPTION_CONTINUE_EXECUTION;

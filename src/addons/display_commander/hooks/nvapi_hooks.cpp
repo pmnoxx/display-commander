@@ -144,9 +144,9 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reflex_marker);
     }
 
-    Microsoft::WRL::ComPtr<IDXGISwapChain> pSwapChain = nullptr;
-    if (pDev != nullptr) {
-        pDev->QueryInterface(IID_PPV_ARGS(&pSwapChain));
+    if (pSetLatencyMarkerParams != nullptr && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END
+        && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+        NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
     }
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
     if (use_fps_limiter) {
@@ -160,7 +160,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
             display_commanderhooks::dxgi::HandlePresentBefore2();
         }
         if (pSetLatencyMarkerParams != nullptr
-            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
             display_commanderhooks::dxgi::HandlePresentAfter(true);
         }
     }
@@ -178,6 +178,10 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;
     }
+    if (pSetLatencyMarkerParams != nullptr
+        && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
+        return NVAPI_OK;
+    }
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -187,12 +191,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         log_count++;
     }
 
-    // Call original function
-    if (NvAPI_D3D_SetLatencyMarker_Original != nullptr) {
-        return NvAPI_D3D_SetLatencyMarker_Original(pDev, pSetLatencyMarkerParams);
-    }
-
-    return NVAPI_NO_IMPLEMENTATION;
+    return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
 }
 
 // Hooked NvAPI_D3D_SetSleepMode function

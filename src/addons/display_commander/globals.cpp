@@ -243,6 +243,10 @@ void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum) {
 
         FpsLimiterCallSite new_chosen = FpsLimiterCallSite::reshade_addon_event;  // default (guaranteed)
         for (FpsLimiterCallSite site : kFpsLimiterPriorityOrder) {
+            if (site == FpsLimiterCallSite::reflex_marker
+                && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
+                continue;
+            }
             if (IsFpsLimiterSiteEligible(site, frame_id)) {
                 new_chosen = site;
                 break;

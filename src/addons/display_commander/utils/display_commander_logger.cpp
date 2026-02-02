@@ -6,6 +6,16 @@
 #include <sstream>
 #include "srwlock_wrapper.hpp"
 
+namespace {
+
+// Sentinel pushed when FlushLogs() is called; writer flushes without writing content
+const std::string kFlushSentinel("\x01", 1);
+
+// Max enqueued messages; when exceeded we drop the new message to avoid unbounded growth
+constexpr size_t kMaxQueueSize = 16384;
+
+}  // namespace
+
 namespace display_commander::logger {
 
 DisplayCommanderLogger& DisplayCommanderLogger::GetInstance() {
@@ -31,14 +41,15 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
         std::filesystem::create_directories(log_dir);
     }
 
-    // Open log file with buffered ostream
     if (!OpenLogFile()) {
         OutputDebugStringA("DisplayCommander: Failed to open log file\n");
         initialized_ = false;
         return;
     }
 
-    // Write initial log entry
+    shutdown_writer_.store(false);
+    writer_thread_ = std::thread(&DisplayCommanderLogger::WriterLoop, this);
+
     Log(LogLevel::Info, "DisplayCommander Logger initialized");
 }
 
@@ -49,10 +60,14 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
 
     std::string formatted_message = FormatMessage(level, message);
 
-    // Write directly to buffered stream (thread-safe)
     {
-        utils::SRWLockExclusive lock(write_lock_);
-        WriteToFile(formatted_message);
+        utils::SRWLockExclusive lock(queue_lock_);
+        if (queue_.size() >= kMaxQueueSize) {
+            OutputDebugStringA("DisplayCommander: log queue full, dropping message\n");
+            return;
+        }
+        queue_.push_back(std::move(formatted_message));
+        WakeConditionVariable(&queue_cv_);
     }
 }
 
@@ -69,12 +84,10 @@ void DisplayCommanderLogger::FlushLogs() {
         return;
     }
 
-    // Flush ostream buffer
     {
-        utils::SRWLockExclusive lock(write_lock_);
-        if (log_file_.is_open()) {
-            log_file_.flush();
-        }
+        utils::SRWLockExclusive lock(queue_lock_);
+        queue_.push_back(kFlushSentinel);
+        WakeConditionVariable(&queue_cv_);
     }
 }
 
@@ -84,14 +97,41 @@ void DisplayCommanderLogger::Shutdown() {
         return;  // Already shut down or never initialized
     }
 
-    // Write final log entry, flush, and close file
+    std::string shutdown_msg = FormatMessage(LogLevel::Info, "DisplayCommander Logger shutting down");
     {
-        utils::SRWLockExclusive lock(write_lock_);
-        if (log_file_.is_open()) {
-            std::string shutdown_msg = FormatMessage(LogLevel::Info, "DisplayCommander Logger shutting down");
-            log_file_ << shutdown_msg;
-            log_file_.flush();
-            CloseLogFile();
+        utils::SRWLockExclusive lock(queue_lock_);
+        queue_.push_back(std::move(shutdown_msg));
+        shutdown_writer_.store(true);
+        WakeConditionVariable(&queue_cv_);
+    }
+
+    if (writer_thread_.joinable()) {
+        writer_thread_.join();
+    }
+}
+
+void DisplayCommanderLogger::WriterLoop() {
+    for (;;) {
+        std::string msg;
+        {
+            utils::SRWLockExclusive lock(queue_lock_);
+            while (queue_.empty() && !shutdown_writer_.load()) {
+                SleepConditionVariableSRW(&queue_cv_, &queue_lock_, INFINITE, 0);
+            }
+            if (shutdown_writer_.load() && queue_.empty()) {
+                CloseLogFile();
+                return;
+            }
+            msg = std::move(queue_.front());
+            queue_.pop_front();
+        }
+
+        if (msg == kFlushSentinel) {
+            if (log_file_.is_open()) {
+                log_file_.flush();
+            }
+        } else {
+            WriteToFile(msg);
         }
     }
 }
@@ -295,9 +335,7 @@ void Shutdown() { DisplayCommanderLogger::GetInstance().Shutdown(); }
 
 void FlushLogs() { DisplayCommanderLogger::GetInstance().FlushLogs(); }
 
-bool DisplayCommanderLogger::IsWriteLockHeld() {
-    return utils::TryIsSRWLockHeld(write_lock_);
-}
+bool DisplayCommanderLogger::IsWriteLockHeld() { return utils::TryIsSRWLockHeld(queue_lock_); }
 
 bool IsWriteLockHeld() { return DisplayCommanderLogger::GetInstance().IsWriteLockHeld(); }
 

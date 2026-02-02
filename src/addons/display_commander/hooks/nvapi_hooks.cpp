@@ -144,16 +144,15 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reflex_marker);
     }
 
+    Microsoft::WRL::ComPtr<IDXGISwapChain> pSwapChain = nullptr;
+    if (pDev != nullptr) {
+        pDev->QueryInterface(IID_PPV_ARGS(&pSwapChain));
+    }
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
     if (use_fps_limiter) {
-        static display_commanderhooks::dxgi::PresentCommonState fg_limiter_state = {};
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-            // fg_limiter_state = display_commanderhooks::dxgi::HandlePresentBefore<IDXGISwapChain>(
-            //    nullptr);  // Present1 needs D3D10 check
-            uint32_t flagsCopy = 0;
-            fg_limiter_state.device_type = DeviceTypeDC::DX12;
-            OnPresentFlags2(&flagsCopy, fg_limiter_state.device_type, false,
+            OnPresentFlags2(false,
                             true);  // Called from wrapper, not present_detour
 
             // Record native frame time for frames shown to display
@@ -162,7 +161,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         }
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
-            display_commanderhooks::dxgi::HandlePresentAfter(nullptr, fg_limiter_state, true);
+            display_commanderhooks::dxgi::HandlePresentAfter(true);
         }
     }
 
@@ -314,7 +313,7 @@ NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown* pDev, NV_LATENCY_RESULT_PARAM
 
 // Hooked NvAPI_D3D_GetSleepStatus function
 NvAPI_Status __cdecl NvAPI_D3D_GetSleepStatus_Detour(IUnknown* pDev,
-                                                      NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
+                                                     NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);

@@ -12,7 +12,7 @@
 // ============================================================================
 
 // Forward declaration for OnPresentUpdateAfter2
-void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper);
+void OnPresentUpdateAfter2(bool from_wrapper);
 
 // ============================================================================
 // SWAPCHAIN EVENT HANDLERS
@@ -43,9 +43,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* queue, reshade::api::swa
                            const reshade::api::rect* source_rect, const reshade::api::rect* dest_rect,
                            uint32_t dirty_rect_count, const reshade::api::rect* dirty_rects);
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
-void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper = false);
-void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC device_type, bool from_present_detour = true,
-                     bool from_wrapper = false);
+void OnPresentUpdateAfter2(bool from_wrapper = false);
+void OnPresentFlags2(bool from_present_detour = true, bool from_wrapper = false);
 
 // Auto color space helper
 void AutoSetColorSpace(reshade::api::swapchain* swapchain);

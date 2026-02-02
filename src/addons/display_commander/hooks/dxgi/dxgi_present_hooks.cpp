@@ -367,45 +367,6 @@ std::atomic<bool> g_createswapchain_vtable_hooked{false};
 std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
 }  // namespace
 
-// Helper function for common Present/Present1 logic before calling original
-template <typename SwapChainType>
-PresentCommonState HandlePresentBefore(SwapChainType* This) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (perf_measurement::IsSuppressionEnabled()
-        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore)) {
-        PresentCommonState suppressed_state;
-        return suppressed_state;
-    }
-
-    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentBefore);
-
-    PresentCommonState state;
-
-    {
-        const bool suppress_section =
-            perf_measurement::IsSuppressionEnabled()
-            && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
-        if (!suppress_section && This != nullptr) {
-            perf_measurement::ScopedTimer device_query_timer(perf_measurement::Metric::HandlePresentBefore_DeviceQuery);
-            This->GetDevice(IID_PPV_ARGS(&state.device));
-            if (state.device != nullptr) {
-                // Try to determine if it's D3D11 or D3D12
-                Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-                Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
-                if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
-                    state.device_type = DeviceTypeDC::DX11;
-                } else if (SUCCEEDED(state.device->QueryInterface(IID_PPV_ARGS(&d3d12_device)))) {
-                    state.device_type = DeviceTypeDC::DX12;
-                } else {
-                    state.device_type = DeviceTypeDC::DX10;
-                }
-            }
-        }
-    }
-
-    return state;
-}
-
 void HandlePresentBefore2() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Record per-frame FPS sample for background aggregation
@@ -422,7 +383,7 @@ void HandlePresentBefore2() {
 }
 
 // Helper function for common Present/Present1 logic after calling original
-void HandlePresentAfter(IDXGISwapChain* baseSwapChain, const PresentCommonState& state, bool from_wrapper) {
+void HandlePresentAfter(bool from_wrapper) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentAfter)) {
@@ -432,14 +393,8 @@ void HandlePresentAfter(IDXGISwapChain* baseSwapChain, const PresentCommonState&
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
 
     // Get device from swapchain for latency manager
-    ::OnPresentUpdateAfter2(state.device.Get(), state.device_type, from_wrapper);
+    ::OnPresentUpdateAfter2(from_wrapper);
 }
-
-// Explicit template instantiations
-template PresentCommonState HandlePresentBefore<IDXGISwapChain>(IDXGISwapChain*);
-template PresentCommonState HandlePresentBefore<IDXGISwapChain1>(IDXGISwapChain1*);
-template PresentCommonState HandlePresentBefore<display_commanderhooks::DXGISwapChain4Wrapper>(
-    display_commanderhooks::DXGISwapChain4Wrapper*);
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
@@ -457,11 +412,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_swapchain);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain);
     // Skip common present logic if wrapper is handling it
-    PresentCommonState state;
     if (use_fps_limiter) {
-        // Handle common before logic
-        state = HandlePresentBefore(This);
-        ::OnPresentFlags2(&Flags, state.device_type, true, false);  // Called from present_detour
+        ::OnPresentFlags2(true, false);  // Called from present_detour
         display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
@@ -474,7 +426,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
 
     if (use_fps_limiter) {
         // Handle common after logic
-        HandlePresentAfter(This, state, false);
+        HandlePresentAfter(false);
     }
     ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();
@@ -502,11 +454,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_swapchain);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain);
 
-    PresentCommonState state;
     if (use_fps_limiter) {
         // Handle common before logic (with D3D10 check enabled)
-        state = HandlePresentBefore(This);
-        ::OnPresentFlags2(&PresentFlags, state.device_type, true, false);  // Called from present_detour
+        ::OnPresentFlags2(true, false);  // Called from present_detour
         display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
@@ -519,7 +469,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
 
     if (use_fps_limiter) {
         // Handle common after logic
-        HandlePresentAfter(baseSwapChain, state, false);
+        HandlePresentAfter(false);
     }
     ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();

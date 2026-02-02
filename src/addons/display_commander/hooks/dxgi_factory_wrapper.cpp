@@ -30,7 +30,7 @@ DEFINE_GUID(IID_IDXGISwapChain4Wrapper, 0xb2c3d4e5, 0xf6a7, 0x4890, 0xb1, 0x23, 
 namespace display_commanderhooks {
 
 // Helper function to flush command queue from swapchain using native DirectX APIs (DX11 only)
-void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC device_type) {
+void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain) {
     if (swapchain == nullptr) {
         return;
     }
@@ -42,19 +42,16 @@ void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain, DeviceTypeDC devi
 
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::FlushCommandQueueFromSwapchain);
 
-    if (device_type == DeviceTypeDC::DX11) {
-        // For D3D11: Get device, get immediate context, flush it
-        Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-        HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device));
-        if (SUCCEEDED(hr) && d3d11_device) {
-            Microsoft::WRL::ComPtr<ID3D11DeviceContext> immediate_context;
-            d3d11_device->GetImmediateContext(&immediate_context);
-            if (immediate_context) {
-                immediate_context->Flush();
-            }
+    // For D3D11: Get device, get immediate context, flush it
+    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+    HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device));
+    if (SUCCEEDED(hr) && d3d11_device) {
+        Microsoft::WRL::ComPtr<ID3D11DeviceContext> immediate_context;
+        d3d11_device->GetImmediateContext(&immediate_context);
+        if (immediate_context) {
+            immediate_context->Flush();
         }
     }
-    // For DX12, DX10 and other APIs, no flush needed or not applicable
 }
 
 namespace {
@@ -225,7 +222,6 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
     // This avoids duplicate execution in the detour functions
-    display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto flagsCopy = Flags;  // to fix crash
     ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_factory_wrapper);
@@ -233,12 +229,11 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            state = display_commanderhooks::dxgi::HandlePresentBefore(this);
-            OnPresentFlags2(&flagsCopy, state.device_type, false,
+            OnPresentFlags2(false,
                             true);  // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
-            FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
+            FlushCommandQueueFromSwapchain(baseSwapChain.Get());
         }
         // Record native frame time for frames shown to display
         // RecordNativeFrameTime();
@@ -248,7 +243,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
 
     if (use_fps_limiter && baseSwapChain.Get() != nullptr) {
-        display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
+        display_commanderhooks::dxgi::HandlePresentAfter(true);
     }
 
     return res;
@@ -323,7 +318,6 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
 
     // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
     // This avoids duplicate execution in the detour functions
-    display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto flagsCopy = PresentFlags;  // to fix crash
 
@@ -331,11 +325,10 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     auto use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_factory_wrapper);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check
-            OnPresentFlags2(&flagsCopy, state.device_type, false, true);      // Called from wrapper, not present_detour
+            OnPresentFlags2(false, true);  // Called from wrapper, not present_detour
 
             // Flush command queue from swapchain using native DirectX APIs
-            FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
+            FlushCommandQueueFromSwapchain(baseSwapChain.Get());
         }
         // Record native frame time for frames shown to display
         // RecordNativeFrameTime();
@@ -345,7 +338,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);
 
     if (use_fps_limiter && baseSwapChain.Get() != nullptr) {
-        display_commanderhooks::dxgi::HandlePresentAfter(baseSwapChain.Get(), state, true);
+        display_commanderhooks::dxgi::HandlePresentAfter(true);
     }
 
     return res;

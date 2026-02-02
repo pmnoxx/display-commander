@@ -13,7 +13,6 @@
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
 
-
 // WGL function pointers (dynamically loaded)
 static wglSwapBuffers_pfn wglSwapBuffers_ptr = nullptr;
 static wglMakeCurrent_pfn wglMakeCurrent_ptr = nullptr;
@@ -52,8 +51,7 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     g_opengl_hook_total_count.fetch_add(1);
 
     // Call OnPresentFlags2 with flags = 0 (no flags for OpenGL)
-    uint32_t present_flags = 0;
-    OnPresentFlags2(&present_flags, DeviceTypeDC::OpenGL, true);  // Called from present_detour
+    OnPresentFlags2(true);  // Called from present_detour
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
@@ -65,7 +63,7 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     HandleOpenGLGPUCompletion();
 
     // Call OnPresentUpdateAfter2 after the present
-    OnPresentUpdateAfter2(hdc, DeviceTypeDC::OpenGL, false);
+    OnPresentUpdateAfter2(false);
 
     return result;
 }

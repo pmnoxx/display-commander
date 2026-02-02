@@ -239,18 +239,8 @@ bool HookSwapchainNative(IDXGISwapChain* swapchain);
 // Cleanup GPU measurement fences when device is destroyed
 void CleanupGPUMeasurementFences();
 
-// Helper structure to hold common present logic state
-struct PresentCommonState {
-    DeviceTypeDC device_type = DeviceTypeDC::DX10;
-    Microsoft::WRL::ComPtr<IUnknown> device;
-};
-
-// Helper function for common Present/Present1 logic before calling original
-template <typename SwapChainType>
-PresentCommonState HandlePresentBefore(SwapChainType* This);
-
 void HandlePresentBefore2();
 
 // Helper function for common Present/Present1 logic after calling original
-void HandlePresentAfter(IDXGISwapChain* baseSwapChain, const PresentCommonState& state, bool from_wrapper);
+void HandlePresentAfter(bool from_wrapper);
 }  // namespace display_commanderhooks::dxgi

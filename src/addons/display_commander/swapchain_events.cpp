@@ -1183,8 +1183,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
 
     if (use_fps_limiter) {
-        display_commanderhooks::dxgi::PresentCommonState state;
-        HandlePresentAfter(nullptr, state, false);
+        display_commanderhooks::dxgi::HandlePresentAfter(false);
     }
     // Empty for now
 }
@@ -1209,7 +1208,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
     }
 }
 
-void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool from_wrapper) {
+void OnPresentUpdateAfter2(bool from_wrapper) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track render thread ID
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
@@ -1309,7 +1308,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     HandleFpsLimiterPost(false, from_wrapper);
 
     if (should_enable_reflex) {
-        if (g_latencyManager->Initialize(native_device, device_type)) {
+        if (g_latencyManager->IsInitialized()) {
             s_reflex_enable_current_frame.store(true);
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
@@ -1688,7 +1687,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             // Flush command queue using native DirectX APIs (DX11 only) - don't rely on ReShade runtime
             perf_timer.pause();
-            display_commanderhooks::FlushCommandQueueFromSwapchain(dxgi_swapchain.Get(), DeviceTypeDC::DX11);
+            display_commanderhooks::FlushCommandQueueFromSwapchain(dxgi_swapchain.Get());
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
             perf_timer.resume();
         }
@@ -1727,7 +1726,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     if (use_fps_limiter) {
         command_queue->flush_immediate_command_list();
         uint32_t present_flags = 0;
-        OnPresentFlags2(&present_flags, DeviceTypeDC::Vulkan, true, false);  // Called from present_detour
+        OnPresentFlags2(true, false);  // Called from present_detour
         display_commanderhooks::dxgi::HandlePresentBefore2();
     }
     if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
@@ -1789,7 +1788,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 }
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
-void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_present_detour, bool from_wrapper) {
+void OnPresentFlags2(bool from_present_detour, bool from_wrapper) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
@@ -1802,28 +1801,6 @@ void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC api_type, bool from_p
         // Increment event counter
         g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
         g_swapchain_event_total_count.fetch_add(1);
-
-        if (api_type == DeviceTypeDC::DX11 || api_type == DeviceTypeDC::DX12 || api_type == DeviceTypeDC::DX10) {
-            // Always strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING flag
-            if (s_prevent_tearing.load() && *present_flags & DXGI_PRESENT_ALLOW_TEARING) {
-                *present_flags &= ~DXGI_PRESENT_ALLOW_TEARING;
-
-                // Log the flag removal for debugging
-                static int prevent_tearing_log_count = 0;
-                if (prevent_tearing_log_count++ < 10) {
-                    std::ostringstream oss;
-                    oss << "Device Creation Flags callback: Stripped "
-                           "DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, new flags: 0x"
-                        << std::hex << *present_flags;
-                    LogInfo(oss.str().c_str());
-                }
-            }
-            // Don't block presents if continue rendering is enabled
-            if (s_no_present_in_background.load() && g_app_in_background.load(std::memory_order_acquire)
-                && !s_continue_rendering.load()) {
-                *present_flags = DXGI_PRESENT_DO_NOT_SEQUENCE;
-            }
-        }
     }
 
     HandleFpsLimiterPre(from_present_detour, from_wrapper);

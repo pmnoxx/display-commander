@@ -8,16 +8,13 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 
-
 #include <d3d9.h>
 #include <MinHook.h>
 #include <array>
 #include <atomic>
 
-
 // Forward declarations to avoid including headers that cause redefinition
-extern void OnPresentFlags2(uint32_t* present_flags, DeviceTypeDC device_type, bool from_present_detour,
-                            bool from_wrapper);
+extern void OnPresentFlags2(bool from_present_detour, bool from_wrapper);
 
 namespace display_commanderhooks::d3d9 {
 
@@ -51,8 +48,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call OnPresentFlags2 with flags = 0 (no flags for regular Present)
-    uint32_t present_flags = 0;
-    OnPresentFlags2(&present_flags, DeviceTypeDC::DX9, true, false);  // Called from present_detour
+    OnPresentFlags2(true, false);  // Called from present_detour
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
@@ -64,7 +60,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
-        ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9, false);
+        ::OnPresentUpdateAfter2(false);
         return res;
     }
 
@@ -74,7 +70,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     // Handle GPU completion for D3D9 (assumes immediate completion)
     HandleOpenGLGPUCompletion();
 
-    ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9, false);
+    ::OnPresentUpdateAfter2(false);
     return res;
 }
 
@@ -101,8 +97,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
     g_swapchain_event_total_count.fetch_add(1);
 
     // Call OnPresentFlags with the actual flags
-    uint32_t present_flags = static_cast<uint32_t>(dwFlags);
-    OnPresentFlags2(&present_flags, DeviceTypeDC::DX9, true, false);  // Called from present_detour
+    OnPresentFlags2(true, false);  // Called from present_detour
 
     // Record per-frame FPS sample for background aggregation
     RecordFrameTime(FrameTimeMode::kPresent);
@@ -115,7 +110,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
-        ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9, false);
+        ::OnPresentUpdateAfter2(false);
         return res;
     }
 
@@ -127,14 +122,14 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
-        ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9, false);
+        ::OnPresentUpdateAfter2(false);
         return res;
     }
 
     // Handle GPU completion for D3D9 (assumes immediate completion)
     HandleOpenGLGPUCompletion();
 
-    ::OnPresentUpdateAfter2(This, DeviceTypeDC::DX9, false);
+    ::OnPresentUpdateAfter2(false);
     return D3DERR_INVALIDCALL;
 }
 

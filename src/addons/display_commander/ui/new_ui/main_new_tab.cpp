@@ -1843,7 +1843,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             if (refresh_hz > 0.0) {
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
                 ImGui::SameLine();
-
+                ImGui::Text("%.1f Hz", refresh_hz);
             } else {
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
                 ImGui::SameLine();

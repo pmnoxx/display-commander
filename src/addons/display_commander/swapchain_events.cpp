@@ -1335,9 +1335,6 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         }
     } else {
         s_reflex_enable_current_frame.store(false);
-        if (g_latencyManager->IsInitialized()) {
-            g_latencyManager->Shutdown();
-        }
     }
 
     g_global_frame_id.fetch_add(1);

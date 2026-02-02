@@ -21,6 +21,7 @@ extern NvAPI_D3D_SetSleepMode_pfn NvAPI_D3D_SetSleepMode_Original;
 extern NvAPI_D3D_Sleep_pfn NvAPI_D3D_Sleep_Original;
 extern NvAPI_D3D_SetLatencyMarker_pfn NvAPI_D3D_SetLatencyMarker_Original;
 extern NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original;
+extern NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original;
 
 // Hook functions
 NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HDR_CAPABILITIES *pHdrCapabilities);

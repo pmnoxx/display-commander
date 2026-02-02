@@ -155,8 +155,17 @@ bool ReflexManager::Sleep() {
     return st == NVAPI_OK;
 }
 
-bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
-    if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr || status_params == nullptr) {
+bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
+                                    SleepStatusUnavailableReason* out_reason) {
+    if (status_params == nullptr) {
+        return false;
+    }
+    if (!initialized_.load(std::memory_order_acquire)) {
+        if (out_reason) *out_reason = SleepStatusUnavailableReason::kReflexNotInitialized;
+        return false;
+    }
+    if (d3d_device_ == nullptr) {
+        if (out_reason) *out_reason = SleepStatusUnavailableReason::kNoD3DDevice;
         return false;
     }
 
@@ -165,7 +174,15 @@ bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
     status_params->version = NV_GET_SLEEP_STATUS_PARAMS_VER;
 
     const auto st = NvAPI_D3D_GetSleepStatus_Direct(d3d_device_, status_params);
-    return st == NVAPI_OK;
+    if (st == NVAPI_OK) {
+        return true;
+    }
+    if (out_reason) {
+        *out_reason = (st == NVAPI_NO_IMPLEMENTATION)
+                          ? SleepStatusUnavailableReason::kNvApiFunctionUnavailable
+                          : SleepStatusUnavailableReason::kNvApiError;
+    }
+    return false;
 }
 
 // params may be nullptr if no parameters were stored

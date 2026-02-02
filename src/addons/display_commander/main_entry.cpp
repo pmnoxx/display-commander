@@ -2845,9 +2845,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up NVAPI fullscreen prevention
             g_nvapiFullscreenPrevention.Cleanup();
 
-            // Clean up fake NVAPI
-            nvapi::g_fakeNvapiManager.Cleanup();
-
             // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
             // ETW sessions are system-wide and persist until explicitly stopped
             // If not stopped, they can interfere with future processes

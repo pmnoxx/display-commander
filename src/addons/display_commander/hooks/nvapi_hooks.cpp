@@ -31,6 +31,7 @@ NvAPI_D3D_SetLatencyMarker_pfn NvAPI_D3D_SetLatencyMarker_Original = nullptr;
 NvAPI_D3D_SetSleepMode_pfn NvAPI_D3D_SetSleepMode_Original = nullptr;
 NvAPI_D3D_Sleep_pfn NvAPI_D3D_Sleep_Original = nullptr;
 NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
+NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original = nullptr;
 
 // SRWLOCK for thread-safe NVAPI hook access
 static SRWLOCK g_nvapi_lock = SRWLOCK_INIT;
@@ -311,36 +312,24 @@ NvAPI_Status NvAPI_D3D_GetLatency_Direct(IUnknown* pDev, NV_LATENCY_RESULT_PARAM
     return NVAPI_NO_IMPLEMENTATION;
 }
 
-// Direct call to NvAPI_D3D_GetSleepStatus without stats tracking
-// For internal use to query Reflex sleep status
-NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown* pDev, NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
-    // utils::SRWLockExclusive lock(g_nvapi_lock);
-    // Get the function dynamically using QueryInterface (not hooked, so we need to get it each time)
-    static NvAPI_D3D_GetSleepStatus_pfn get_sleep_status_func = nullptr;
-    static std::atomic<bool> initialized{false};
+// Hooked NvAPI_D3D_GetSleepStatus function
+NvAPI_Status __cdecl NvAPI_D3D_GetSleepStatus_Detour(IUnknown* pDev,
+                                                      NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
 
-    if (!initialized.load(std::memory_order_acquire)) {
-        HMODULE nvapi_dll = GetModuleHandleA("nvapi64.dll");
-        if (!nvapi_dll) {
-            nvapi_dll = GetModuleHandleA("nvapi.dll");
-        }
-
-        if (nvapi_dll) {
-            NvAPI_QueryInterface_pfn queryInterface =
-                reinterpret_cast<NvAPI_QueryInterface_pfn>(GetProcAddress(nvapi_dll, "nvapi_QueryInterface"));
-
-            if (queryInterface) {
-                NvU32 functionId = GetNvAPIFunctionId("NvAPI_D3D_GetSleepStatus");
-                if (functionId != 0) {
-                    get_sleep_status_func = reinterpret_cast<NvAPI_D3D_GetSleepStatus_pfn>(queryInterface(functionId));
-                }
-            }
-        }
-        initialized.store(true, std::memory_order_release);
+    if (NvAPI_D3D_GetSleepStatus_Original != nullptr) {
+        return NvAPI_D3D_GetSleepStatus_Original(pDev, pGetSleepStatusParams);
     }
+    return NVAPI_NO_IMPLEMENTATION;
+}
 
-    if (get_sleep_status_func != nullptr) {
-        return get_sleep_status_func(pDev, pGetSleepStatusParams);
+// Direct call to NvAPI_D3D_GetSleepStatus without stats tracking
+// For internal use to query Reflex sleep status (uses hooked original when hooks are installed)
+NvAPI_Status NvAPI_D3D_GetSleepStatus_Direct(IUnknown* pDev, NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
+    if (NvAPI_D3D_GetSleepStatus_Original != nullptr) {
+        return NvAPI_D3D_GetSleepStatus_Original(pDev, pGetSleepStatusParams);
     }
     return NVAPI_NO_IMPLEMENTATION;
 }
@@ -423,22 +412,12 @@ NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown* pDev, NV_LATENCY_RESU
 }
 
 // Install NVAPI hooks
-bool InstallNVAPIHooks(HMODULE nvapi_module) {
+bool InstallNVAPIHooks(HMODULE nvapi_dll) {
     // Check if NVAPI hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::NVAPI)) {
         LogInfo("NVAPI hooks installation suppressed by user setting");
         return false;
-    }
-
-    // Follow Special-K's approach: get NvAPI_QueryInterface first, then use it to get other functions
-    HMODULE nvapi_dll = nvapi_module;
-    if (nvapi_dll == nullptr) {
-        nvapi_dll = GetModuleHandleA("nvapi64.dll");
-        if (!nvapi_dll) {
-            LogInfo("NVAPI hooks: nvapi64.dll not loaded");
-            return false;
-        }
     }
 
     // Get NvAPI_QueryInterface function (this is the key function that Special-K uses)
@@ -482,19 +461,20 @@ bool InstallNVAPIHooks(HMODULE nvapi_module) {
 
     // Install Reflex hooks
     const char* reflex_functions[] = {"NvAPI_D3D_SetLatencyMarker", "NvAPI_D3D_SetSleepMode", "NvAPI_D3D_Sleep",
-                                      "NvAPI_D3D_GetLatency"};
+                                      "NvAPI_D3D_GetLatency", "NvAPI_D3D_GetSleepStatus"};
 
     NvAPI_Status (*detour_functions[])(IUnknown*, void*) = {
         (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_SetLatencyMarker_Detour,
         (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_SetSleepMode_Detour,
         (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_Sleep_Detour,
-        (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_GetLatency_Detour};
+        (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_GetLatency_Detour,
+        (NvAPI_Status (*)(IUnknown*, void*))NvAPI_D3D_GetSleepStatus_Detour};
 
     void** original_functions[] = {(void**)&NvAPI_D3D_SetLatencyMarker_Original,
                                    (void**)&NvAPI_D3D_SetSleepMode_Original, (void**)&NvAPI_D3D_Sleep_Original,
-                                   (void**)&NvAPI_D3D_GetLatency_Original};
+                                   (void**)&NvAPI_D3D_GetLatency_Original, (void**)&NvAPI_D3D_GetSleepStatus_Original};
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         NvU32 functionId = GetNvAPIFunctionId(reflex_functions[i]);
         if (functionId == 0) {
             LogInfo("NVAPI hooks: Failed to get %s function ID", reflex_functions[i]);
@@ -552,6 +532,12 @@ void UninstallNVAPIHooks() {
         MH_DisableHook(NvAPI_D3D_GetLatency_Original);
         MH_RemoveHook(NvAPI_D3D_GetLatency_Original);
         NvAPI_D3D_GetLatency_Original = nullptr;
+    }
+
+    if (NvAPI_D3D_GetSleepStatus_Original) {
+        MH_DisableHook(NvAPI_D3D_GetSleepStatus_Original);
+        MH_RemoveHook(NvAPI_D3D_GetSleepStatus_Original);
+        NvAPI_D3D_GetSleepStatus_Original = nullptr;
     }
 }
 

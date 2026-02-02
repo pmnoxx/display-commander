@@ -293,9 +293,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Check for auto-enable NVAPI features for specific games
     g_nvapiFullscreenPrevention.CheckAndAutoEnable();
 
-    // Initialize fake NVAPI if enabled
-    nvapi::g_fakeNvapiManager.Initialize();
-
     ui::new_ui::InitExperimentalTab();
 
     // Initialize DualSense support
@@ -1312,7 +1309,7 @@ void OnPresentUpdateAfter2(void* native_device, DeviceTypeDC device_type, bool f
     HandleFpsLimiterPost(false, from_wrapper);
 
     if (should_enable_reflex) {
-        if (native_device && g_latencyManager->Initialize(native_device, device_type)) {
+        if (g_latencyManager->Initialize(native_device, device_type)) {
             s_reflex_enable_current_frame.store(true);
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
@@ -1733,6 +1730,14 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         OnPresentFlags2(&present_flags, DeviceTypeDC::Vulkan, true, false);  // Called from present_detour
         display_commanderhooks::dxgi::HandlePresentBefore2();
     }
+    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
+        g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);
+    } else if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11) {
+        g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX11);
+    } else if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d10) {
+        g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX10);
+    }
+
     perf_timer.resume();
 
     // Extract DXGI output device name from swapchain (only once, shared via atomic)

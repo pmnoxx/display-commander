@@ -43,9 +43,12 @@ class ILatencyProvider {
     virtual bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) = 0;
     virtual bool Sleep() = 0;
 
-    // Get sleep status (optional, returns false if not supported)
-    virtual bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
+    // Get sleep status (optional, returns false if not supported).
+    // When returning false, out_reason may be set to explain why (if non-null).
+    virtual bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
+                                SleepStatusUnavailableReason* out_reason = nullptr) {
         (void)status_params;
+        if (out_reason) *out_reason = SleepStatusUnavailableReason::kProviderDoesNotSupport;
         return false;
     }
 
@@ -94,8 +97,10 @@ class LatencyManager {
     // Update cached sleep status (called periodically)
     void UpdateCachedSleepStatus();
 
-    // Get full sleep status (for UI display)
-    bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params);
+    // Get full sleep status (for UI display).
+    // When returning false, out_reason may be set to explain why (if non-null).
+    bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
+                       SleepStatusUnavailableReason* out_reason = nullptr);
 
     // Switch between technologies at runtime
     bool SwitchTechnology(LatencyTechnology technology, reshade::api::device* device);
@@ -109,3 +114,21 @@ class LatencyManager {
     // Create provider for specific technology
     std::unique_ptr<ILatencyProvider> CreateProvider(LatencyTechnology technology);
 };
+
+// Human-readable reason for sleep status being unavailable (for UI)
+inline const char* SleepStatusUnavailableReasonToString(SleepStatusUnavailableReason r) {
+    switch (r) {
+        case SleepStatusUnavailableReason::kNone: return "Available";
+        case SleepStatusUnavailableReason::kNoLatencyManager: return "Latency manager not created";
+        case SleepStatusUnavailableReason::kLatencyManagerNotInitialized:
+            return "Latency manager not initialized (no D3D device yet)";
+        case SleepStatusUnavailableReason::kProviderDoesNotSupport:
+            return "Current latency provider does not support sleep status";
+        case SleepStatusUnavailableReason::kReflexNotInitialized: return "Reflex manager not initialized";
+        case SleepStatusUnavailableReason::kNoD3DDevice: return "No D3D device (device lost or not set)";
+        case SleepStatusUnavailableReason::kNvApiFunctionUnavailable:
+            return "NvAPI_D3D_GetSleepStatus not found in nvapi64";
+        case SleepStatusUnavailableReason::kNvApiError: return "NvAPI GetSleepStatus returned an error";
+        default: return "Unknown";
+    }
+}

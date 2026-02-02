@@ -31,7 +31,6 @@
 struct NVSDK_NGX_Parameter;
 
 // Fake NVAPI manager
-#include "nvapi/fake_nvapi_manager.hpp"
 #include "nvapi/vrr_status.hpp"
 
 // Settings
@@ -321,6 +320,18 @@ enum class InputBlockingMode : std::uint8_t {
     kEnabled = 1,                   // Always enabled
     kEnabledInBackground = 2,       // Only enabled when in background
     kEnabledWhenXInputDetected = 3  // Enabled when XInput gamepad is detected
+};
+
+// Why Reflex Sleep Status is not available (for UI and diagnostics)
+enum class SleepStatusUnavailableReason : std::uint8_t {
+    kNone = 0,                      // Status is available
+    kNoLatencyManager,              // Latency manager not created
+    kLatencyManagerNotInitialized,  // Latency manager exists but not initialized (no D3D device yet)
+    kProviderDoesNotSupport,        // Current latency provider does not support sleep status
+    kReflexNotInitialized,          // Reflex manager not initialized
+    kNoD3DDevice,                   // Reflex has no D3D device (device lost or not set)
+    kNvApiFunctionUnavailable,      // NvAPI_D3D_GetSleepStatus not found in nvapi64
+    kNvApiError                     // NvAPI_D3D_GetSleepStatus returned an error
 };
 
 // Structures
@@ -639,7 +650,8 @@ void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum);
 /** Returns true iff the chosen FPS limiter source for the current decision is caller_enum. */
 bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum);
 
-/** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset". */
+/** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset".
+ */
 const char* GetChosenFpsLimiterSiteName();
 
 /** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 3 frames of global). */
@@ -1067,6 +1079,7 @@ enum NvapiEventIndex {
     NVAPI_EVENT_D3D_SET_SLEEP_MODE,
     NVAPI_EVENT_D3D_SLEEP,
     NVAPI_EVENT_D3D_GET_LATENCY,
+    NVAPI_EVENT_D3D_GET_SLEEP_STATUS,
     NUM_NVAPI_EVENTS
 };
 

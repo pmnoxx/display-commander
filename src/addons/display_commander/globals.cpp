@@ -217,8 +217,7 @@ constexpr std::array<FpsLimiterCallSite, 4> kFpsLimiterPriorityOrder = {
 };
 
 bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t frame_id) {
-    const uint64_t last =
-        g_fps_limiter_last_frame_id[static_cast<size_t>(site)].load(std::memory_order_relaxed);
+    const uint64_t last = g_fps_limiter_last_frame_id[static_cast<size_t>(site)].load(std::memory_order_relaxed);
     if (last == 0) {
         return false;
     }
@@ -227,11 +226,11 @@ bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t frame_id) {
 
 const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
     switch (site) {
-        case FpsLimiterCallSite::reflex_marker: return "reflex_marker";
-        case FpsLimiterCallSite::dxgi_swapchain: return "dxgi_swapchain";
-        case FpsLimiterCallSite::reshade_addon_event: return "reshade_addon_event";
+        case FpsLimiterCallSite::reflex_marker:        return "reflex_marker";
+        case FpsLimiterCallSite::dxgi_swapchain:       return "dxgi_swapchain";
+        case FpsLimiterCallSite::reshade_addon_event:  return "reshade_addon_event";
         case FpsLimiterCallSite::dxgi_factory_wrapper: return "dxgi_factory_wrapper";
-        default: return "?";
+        default:                                       return "?";
     }
 }
 }  // namespace
@@ -254,9 +253,8 @@ void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum) {
         const uint8_t prev = g_chosen_fps_limiter_site.exchange(new_index, std::memory_order_relaxed);
 
         if (prev != new_index) {
-            const char* old_name = (prev == kFpsLimiterChosenUnset)
-                                      ? "unset"
-                                      : FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(prev));
+            const char* old_name =
+                (prev == kFpsLimiterChosenUnset) ? "unset" : FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(prev));
             LogInfo("FPS limiter source: %s -> %s", old_name, FpsLimiterSiteName(new_chosen));
         }
     }
@@ -599,9 +597,6 @@ void LoadAllSettingsAtStartup() {
 }
 
 }  // namespace settings
-
-// Fake NVAPI manager global instance
-nvapi::FakeNvapiManager g_fakeNvapiManager;
 
 // NGX Parameter Storage global instance
 UnifiedParameterMap g_ngx_parameters;

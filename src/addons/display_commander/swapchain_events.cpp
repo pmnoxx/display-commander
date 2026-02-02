@@ -1168,7 +1168,8 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     }
 }
 
-HANDLE g_timer_handle = nullptr;
+HANDLE g_timer_handle_pre = nullptr;
+HANDLE g_timer_handle_post = nullptr;
 LONGLONG TimerPresentPacingDelayStart() { return utils::get_now_ns(); }
 
 LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
@@ -1200,7 +1201,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
         RECORD_DETOUR_CALL(now);
         auto sleep_until_ns = g_post_sleep_ns.load();
         if (sleep_until_ns > now) {
-            utils::wait_until_ns(sleep_until_ns, g_timer_handle);
+            utils::wait_until_ns(sleep_until_ns, g_timer_handle_post);
             g_onpresent_sync_post_sleep_ns.store(sleep_until_ns - now);
         } else {
             g_onpresent_sync_post_sleep_ns.store(0);
@@ -1460,7 +1461,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     RECORD_DETOUR_CALL(now_ns);
                     if (ideal_frame_start_ns > now_ns) {
                         // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
-                        utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
+                        utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle_pre);
                         late_amount_ns.store(0);
                         g_onpresent_sync_pre_sleep_ns.store(ideal_frame_start_ns - now_ns);
                     } else {

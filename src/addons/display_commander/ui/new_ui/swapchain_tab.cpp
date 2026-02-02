@@ -459,7 +459,8 @@ void DrawSwapchainEventCounters() {
                 {NVAPI_EVENT_D3D_SET_LATENCY_MARKER, "NVAPI_EVENT_D3D_SET_LATENCY_MARKER"},
                 {NVAPI_EVENT_D3D_SET_SLEEP_MODE, "NVAPI_EVENT_D3D_SET_SLEEP_MODE"},
                 {NVAPI_EVENT_D3D_SLEEP, "NVAPI_EVENT_D3D_SLEEP"},
-                {NVAPI_EVENT_D3D_GET_LATENCY, "NVAPI_EVENT_D3D_GET_LATENCY"}};
+                {NVAPI_EVENT_D3D_GET_LATENCY, "NVAPI_EVENT_D3D_GET_LATENCY"},
+                {NVAPI_EVENT_D3D_GET_SLEEP_STATUS, "NVAPI_EVENT_D3D_GET_SLEEP_STATUS"}};
 
             uint32_t nvapi_total_events = 0;
 
@@ -478,7 +479,7 @@ void DrawSwapchainEventCounters() {
                  .color = ImVec4(0.6f, 1.0f, 0.6f, 1.0f)},
                 {.name = "NVAPI Reflex Methods",
                  .start_idx = NVAPI_EVENT_D3D_SET_LATENCY_MARKER,
-                 .end_idx = NVAPI_EVENT_D3D_GET_LATENCY,
+                 .end_idx = NVAPI_EVENT_D3D_GET_SLEEP_STATUS,
                  .color = ImVec4(0.6f, 1.0f, 0.8f, 1.0f)}};
 
             for (const auto& group : nvapi_event_groups) {

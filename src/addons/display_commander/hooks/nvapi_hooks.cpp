@@ -140,11 +140,10 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     // only for first 6 latency marker types
     if (pSetLatencyMarkerParams != nullptr
         && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-        RecordFpsLimiterCallSite(FpsLimiterCallSite::reflex_marker);
+        ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reflex_marker);
     }
 
-    bool use_fps_limiter = ShouldUseNativeFpsLimiterFromFramePacing()
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue());
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
     if (use_fps_limiter) {
         static display_commanderhooks::dxgi::PresentCommonState fg_limiter_state = {};
         if (pSetLatencyMarkerParams != nullptr
@@ -158,6 +157,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
 
             // Record native frame time for frames shown to display
             RecordNativeFrameTime();
+            display_commanderhooks::dxgi::HandlePresentBefore2();
         }
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {

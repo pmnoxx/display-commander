@@ -2008,6 +2008,13 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 "consistent - it prioritizes starting frame processing at the same time.\n\nVBlank Scanline Sync "
                 "synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
         }
+        ImGui::SameLine();
+        ImGui::TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Which path is currently applying the FPS limiter this frame.\n"
+                "Priority: reflex_marker > dxgi_swapchain > dxgi_factory_wrapper > reshade_addon_event.");
+        }
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             // Check if we're running on D3D9 and show warning
             int current_api = g_last_reshade_device_api.load();

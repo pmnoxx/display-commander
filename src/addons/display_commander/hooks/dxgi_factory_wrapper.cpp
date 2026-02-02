@@ -225,15 +225,11 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
     // This avoids duplicate execution in the detour functions
-    // Only execute if limit real frames is enabled
     display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
-    auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = Flags;  // to fix crash
-    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !ShouldUseNativeFpsLimiterFromFramePacing();
-    RecordFpsLimiterCallSite(FpsLimiterCallSite::dxgi_factory_wrapper);
+    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_factory_wrapper);
+    auto use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_factory_wrapper);
 
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
@@ -245,7 +241,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
         }
         // Record native frame time for frames shown to display
-        RecordNativeFrameTime();
+        // RecordNativeFrameTime();
+        display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
@@ -326,16 +323,12 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
 
     // For native swapchains, execute common present logic (HandlePresentBefore/OnPresentFlags2/HandlePresentAfter)
     // This avoids duplicate execution in the detour functions
-    // Only execute if limit real frames is enabled
     display_commanderhooks::dxgi::PresentCommonState state;
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
-    auto limit_real_frames = settings::g_mainTabSettings.limit_real_frames.GetValue();
     auto flagsCopy = PresentFlags;  // to fix crash
 
-    auto use_fps_limiter = m_swapChainHookType == SwapChainHook::Native && limit_real_frames
-                           && !(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue())
-                           && !ShouldUseNativeFpsLimiterFromFramePacing();
-    RecordFpsLimiterCallSite(FpsLimiterCallSite::dxgi_factory_wrapper);
+    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_factory_wrapper);
+    auto use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_factory_wrapper);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
             state = display_commanderhooks::dxgi::HandlePresentBefore(this);  // Present1 needs D3D10 check
@@ -345,7 +338,8 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
             FlushCommandQueueFromSwapchain(baseSwapChain.Get(), state.device_type);
         }
         // Record native frame time for frames shown to display
-        RecordNativeFrameTime();
+        // RecordNativeFrameTime();
+        display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
     HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);

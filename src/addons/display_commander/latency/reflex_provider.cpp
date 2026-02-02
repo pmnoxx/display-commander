@@ -59,8 +59,9 @@ bool ReflexProvider::Sleep() {
     return reflex_manager_.Sleep();
 }
 
-bool ReflexProvider::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
+bool ReflexProvider::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
+                                    SleepStatusUnavailableReason* out_reason) {
     if (!IsInitialized() || status_params == nullptr) return false;
 
-    return reflex_manager_.GetSleepStatus(status_params);
+    return reflex_manager_.GetSleepStatus(status_params, out_reason);
 }

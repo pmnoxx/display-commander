@@ -69,6 +69,9 @@ bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, L
         }
         return true;
     }
+    if (native_device == nullptr) {
+        return false;
+    }
 
     // Create provider for the requested technology
     provider_ = CreateProvider(technology);
@@ -313,10 +316,14 @@ void LatencyManager::UpdateCachedSleepStatus() {
     }
 }
 
-bool LatencyManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params) {
-    if (!IsInitialized() || !provider_ || status_params == nullptr) {
+bool LatencyManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
+                                    SleepStatusUnavailableReason* out_reason) {
+    if (status_params == nullptr) {
         return false;
     }
-
-    return provider_->GetSleepStatus(status_params);
+    if (!IsInitialized() || !provider_) {
+        if (out_reason) *out_reason = SleepStatusUnavailableReason::kLatencyManagerNotInitialized;
+        return false;
+    }
+    return provider_->GetSleepStatus(status_params, out_reason);
 }

@@ -2,7 +2,6 @@
 #include "../../display/dpi_management.hpp"
 #include "../../globals.hpp"
 #include "../../latency/latency_manager.hpp"
-#include "../../nvapi/fake_nvapi_manager.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
@@ -928,10 +927,14 @@ void DrawNvapiSettings() {
             sleep_status.version = NV_GET_SLEEP_STATUS_PARAMS_VER;
 
             bool status_available = false;
+            SleepStatusUnavailableReason unavailable_reason = SleepStatusUnavailableReason::kNone;
 
-            // Use latency manager to get sleep status if initialized
-            if (g_latencyManager && g_latencyManager->IsInitialized()) {
-                status_available = g_latencyManager->GetSleepStatus(&sleep_status);
+            if (!g_latencyManager) {
+                unavailable_reason = SleepStatusUnavailableReason::kNoLatencyManager;
+            } else if (!g_latencyManager->IsInitialized()) {
+                unavailable_reason = SleepStatusUnavailableReason::kLatencyManagerNotInitialized;
+            } else {
+                status_available = g_latencyManager->GetSleepStatus(&sleep_status, &unavailable_reason);
             }
 
             if (status_available) {
@@ -984,7 +987,8 @@ void DrawNvapiSettings() {
 
                 ImGui::Unindent();
             } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Sleep status not available");
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Sleep status not available: %s",
+                                   SleepStatusUnavailableReasonToString(unavailable_reason));
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
                         "Sleep status requires an initialized DirectX 11/12 device and NVIDIA GPU with Reflex "
@@ -1071,6 +1075,8 @@ void DrawNvapiSettings() {
             uint32_t native_set_latency_marker_count =
                 ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].load();
             uint32_t native_get_latency_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].load();
+            uint32_t native_get_sleep_status_count =
+                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].load();
             LONGLONG native_sleep_ns = ::g_sleep_reflex_native_ns.load();
             LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
 
@@ -1089,6 +1095,7 @@ void DrawNvapiSettings() {
             ImGui::Text("NvAPI_D3D_SetSleepMode calls: %u", native_set_sleep_mode_count);
             ImGui::Text("NvAPI_D3D_SetLatencyMarker calls: %u", native_set_latency_marker_count);
             ImGui::Text("NvAPI_D3D_GetLatency calls: %u", native_get_latency_count);
+            ImGui::Text("NvAPI_D3D_GetSleepStatus calls: %u", native_get_sleep_status_count);
             ImGui::Unindent();
 
             ImGui::Spacing();
@@ -1100,7 +1107,8 @@ void DrawNvapiSettings() {
                     "- NvAPI_D3D_Sleep: Game's sleep calls for frame pacing\n"
                     "- NvAPI_D3D_SetSleepMode: Game's Reflex configuration calls\n"
                     "- NvAPI_D3D_SetLatencyMarker: Game's latency marker calls\n"
-                    "- NvAPI_D3D_GetLatency: Game's latency query calls\n\n"
+                    "- NvAPI_D3D_GetLatency: Game's latency query calls\n"
+                    "- NvAPI_D3D_GetSleepStatus: Game's sleep status query calls\n\n"
                     "If all counts are 0, the game is not using native Reflex.\n"
                     "If counts are increasing, the game has native Reflex support.");
             }
@@ -1123,6 +1131,7 @@ void DrawNvapiSettings() {
                 ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].store(0);
                 ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].store(0);
                 ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].store(0);
+                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].store(0);
                 ::g_sleep_reflex_native_ns.store(0);
                 ::g_sleep_reflex_native_ns_smooth.store(0);
             }
@@ -1152,60 +1161,6 @@ void DrawNvapiSettings() {
                 "Downlaod from here: https://github.com/emoose/fakenvapi\n");
         }
 
-        // Fake NVAPI Status
-        auto stats = nvapi::g_fakeNvapiManager.GetStatistics();
-        std::string status_msg = nvapi::g_fakeNvapiManager.GetStatusMessage();
-
-        // Show warning if fakenvapi.dll is found (needs renaming)
-        if (fake_nvapi_enabled && stats.fakenvapi_dll_found) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING,
-                               ICON_FK_WARNING " Warning: fakenvapi.dll found - rename to nvapi64.dll");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "fakenvapi.dll was found in the addon directory.\n"
-                    "For newer optiscaler builds, rename fakenvapi.dll to nvapi64.dll\n"
-                    "to ensure proper functionality.");
-            }
-        }
-
-        if (stats.is_nvapi64_loaded && !stats.fake_nvapi_loaded) {
-            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Status: nvapi64.dll was auto-loaded by the game.");
-        } else if (stats.fake_nvapi_loaded) {
-            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Status: nvapi64.dll was loaded by DC from local directory.");
-        } else if (!stats.last_error.empty()) {
-            ImGui::TextColored(ui::colors::TEXT_ERROR, "Status: %s", stats.last_error.c_str());
-        } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_msg.c_str());
-        }
-
-        // Statistics (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
-        // Depth 2: Nested subsection with indentation and distinct colors
-        ImGui::Indent();                       // Indent nested header
-        ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
-        if (ImGui::CollapsingHeader("Fake NVAPI Statistics", ImGuiTreeNodeFlags_None)) {
-            ImGui::Indent();  // Indent content inside subsection
-            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll loaded before DC: %s",
-                               stats.was_nvapi64_loaded_before_dc ? "Yes" : "No");
-            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "nvapi64.dll currently loaded: %s",
-                               stats.is_nvapi64_loaded ? "Yes" : "No");
-            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "libxell.dll loaded: %s",
-                               stats.is_libxell_loaded ? "Yes" : "No");
-            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Fake NVAPI Loaded: %s",
-                               stats.fake_nvapi_loaded ? "Yes" : "No");
-            ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Override Enabled: %s", stats.override_enabled ? "Yes" : "No");
-
-            if (stats.fakenvapi_dll_found) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING,
-                                   ICON_FK_WARNING ": fakenvapi.dll found: Yes (needs renaming to nvapi64.dll)");
-            } else {
-                ImGui::TextColored(ui::colors::TEXT_DEFAULT, "fakenvapi.dll found: No");
-            }
-
-            if (!stats.last_error.empty()) {
-                ImGui::TextColored(ui::colors::TEXT_ERROR, "Last Error: %s", stats.last_error.c_str());
-            }
-            ImGui::Unindent();  // Unindent content
-        }
         ui::colors::PopNestedHeaderColors();  // Restore default header colors
         ImGui::Unindent();                    // Unindent nested header section
 

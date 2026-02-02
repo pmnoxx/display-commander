@@ -633,7 +633,7 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
     // Report SRWLOCK status (HELD = lock is in use; helps diagnose deadlocks / stuck on logger etc.)
     {
         std::ostringstream oss;
-        oss << "SRWLOCK logger write_lock: " << (display_commander::logger::IsWriteLockHeld() ? "HELD" : "free")
+        oss << "SRWLOCK logger queue_lock: " << (display_commander::logger::IsWriteLockHeld() ? "HELD" : "free")
             << " | reshade_runtimes: " << (IsReshadeRuntimesLockHeld() ? "HELD" : "free")
             << " | swapchain_tracking: " << (IsSwapchainTrackingLockHeld() ? "HELD" : "free")
             << " | loadlibrary module: " << (display_commanderhooks::IsModuleSrwlockHeld() ? "HELD" : "free")

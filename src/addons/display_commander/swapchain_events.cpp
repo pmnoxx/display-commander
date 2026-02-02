@@ -1182,13 +1182,8 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
 
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    reshade::api::device_api api = swapchain->get_device()->get_api();
-
-    bool use_fps_limiter = api == reshade::api::device_api::vulkan || api == reshade::api::device_api::opengl
-                           || api == reshade::api::device_api::d3d9
-                           || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue()
-                           || !IsDxgiSwapChainGettingCalled() && !IsNativeFramePacingInSync();
-    RecordFpsLimiterCallSite(FpsLimiterCallSite::reshade_addon_event);
+    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reshade_addon_event);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
 
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::PresentCommonState state;
@@ -1730,12 +1725,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     perf_timer.pause();
     // vulkan fps limiter
-
-    bool use_fps_limiter = api == reshade::api::device_api::vulkan || api == reshade::api::device_api::opengl
-                           || api == reshade::api::device_api::d3d9
-                           || settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue()
-                           || !IsDxgiSwapChainGettingCalled() && !ShouldUseNativeFpsLimiterFromFramePacing();
-    RecordFpsLimiterCallSite(FpsLimiterCallSite::reshade_addon_event);
+    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reshade_addon_event);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
     if (use_fps_limiter) {
         command_queue->flush_immediate_command_list();
         uint32_t present_flags = 0;

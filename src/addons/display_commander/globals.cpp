@@ -204,6 +204,83 @@ std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id{0};
 // Last frame_id at which each FPS limiter call site was hit
 std::atomic<uint64_t> g_fps_limiter_last_frame_id[kFpsLimiterCallSiteCount] = {};
 
+std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
+std::atomic<uint64_t> g_last_fps_limiter_decision_frame_id{0};
+
+namespace {
+// Priority order: reflex_marker, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event (indices 0, 1, 3, 2).
+constexpr std::array<FpsLimiterCallSite, 4> kFpsLimiterPriorityOrder = {
+    FpsLimiterCallSite::reflex_marker,
+    FpsLimiterCallSite::dxgi_swapchain,
+    FpsLimiterCallSite::dxgi_factory_wrapper,
+    FpsLimiterCallSite::reshade_addon_event,
+};
+
+bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t frame_id) {
+    const uint64_t last =
+        g_fps_limiter_last_frame_id[static_cast<size_t>(site)].load(std::memory_order_relaxed);
+    if (last == 0) {
+        return false;
+    }
+    return (frame_id - last) <= 3;
+}
+
+const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
+    switch (site) {
+        case FpsLimiterCallSite::reflex_marker: return "reflex_marker";
+        case FpsLimiterCallSite::dxgi_swapchain: return "dxgi_swapchain";
+        case FpsLimiterCallSite::reshade_addon_event: return "reshade_addon_event";
+        case FpsLimiterCallSite::dxgi_factory_wrapper: return "dxgi_factory_wrapper";
+        default: return "?";
+    }
+}
+}  // namespace
+
+void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum) {
+    // 1. New frame? Make decision based on *previous* frames' data (before recording this call).
+    const uint64_t last_decision = g_last_fps_limiter_decision_frame_id.load(std::memory_order_relaxed);
+    if (frame_id != last_decision) {
+        g_last_fps_limiter_decision_frame_id.store(frame_id, std::memory_order_relaxed);
+
+        FpsLimiterCallSite new_chosen = FpsLimiterCallSite::reshade_addon_event;  // default (guaranteed)
+        for (FpsLimiterCallSite site : kFpsLimiterPriorityOrder) {
+            if (IsFpsLimiterSiteEligible(site, frame_id)) {
+                new_chosen = site;
+                break;
+            }
+        }
+
+        const uint8_t new_index = static_cast<uint8_t>(static_cast<size_t>(new_chosen));
+        const uint8_t prev = g_chosen_fps_limiter_site.exchange(new_index, std::memory_order_relaxed);
+
+        if (prev != new_index) {
+            const char* old_name = (prev == kFpsLimiterChosenUnset)
+                                      ? "unset"
+                                      : FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(prev));
+            LogInfo("FPS limiter source: %s -> %s", old_name, FpsLimiterSiteName(new_chosen));
+        }
+    }
+
+    // 2. Record this call site for this frame (so next frame's decision can use it).
+    g_fps_limiter_last_frame_id[static_cast<size_t>(caller_enum)].store(frame_id, std::memory_order_relaxed);
+}
+
+bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum) {
+    const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
+    if (chosen == kFpsLimiterChosenUnset) {
+        return false;
+    }
+    return static_cast<size_t>(caller_enum) == static_cast<size_t>(chosen);
+}
+
+const char* GetChosenFpsLimiterSiteName() {
+    const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
+    if (chosen == kFpsLimiterChosenUnset) {
+        return "unset";
+    }
+    return FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(chosen));
+}
+
 bool IsNativeFramePacingInSync() {
     const uint64_t reflex_frame =
         g_fps_limiter_last_frame_id[static_cast<size_t>(FpsLimiterCallSite::reflex_marker)].load();
@@ -779,9 +856,9 @@ DLSSGSummaryLite GetDLSSGSummaryLite() {
             unsigned int multi_frame_count;
             if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
                 switch (multi_frame_count) {
-                    case 1: summary.fg_mode = DLSSGFgMode::k2x; break;
-                    case 2: summary.fg_mode = DLSSGFgMode::k3x; break;
-                    case 3: summary.fg_mode = DLSSGFgMode::k4x; break;
+                    case 1:  summary.fg_mode = DLSSGFgMode::k2x; break;
+                    case 2:  summary.fg_mode = DLSSGFgMode::k3x; break;
+                    case 3:  summary.fg_mode = DLSSGFgMode::k4x; break;
                     default: summary.fg_mode = DLSSGFgMode::Other; break;
                 }
             } else {

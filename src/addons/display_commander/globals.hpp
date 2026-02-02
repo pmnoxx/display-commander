@@ -623,11 +623,24 @@ constexpr size_t kFpsLimiterCallSiteCount = 4;
 /** Last frame_id at which each FPS limiter call site was hit (0 = never). */
 extern std::atomic<uint64_t> g_fps_limiter_last_frame_id[kFpsLimiterCallSiteCount];
 
-/** Record that the given call site was hit this frame (stores current g_global_frame_id for that site). */
-inline void RecordFpsLimiterCallSite(FpsLimiterCallSite site) {
-    g_fps_limiter_last_frame_id[static_cast<size_t>(site)].store(g_global_frame_id.load(std::memory_order_relaxed),
-                                                                  std::memory_order_relaxed);
-}
+/** Sentinel for "no FPS limiter source chosen yet". */
+constexpr uint8_t kFpsLimiterChosenUnset = 0xFF;
+
+/** Index of the chosen FPS limiter source (0..3 = FpsLimiterCallSite, kFpsLimiterChosenUnset = unset). */
+extern std::atomic<uint8_t> g_chosen_fps_limiter_site;
+
+/** Frame id for which g_chosen_fps_limiter_site was last computed. */
+extern std::atomic<uint64_t> g_last_fps_limiter_decision_frame_id;
+
+/** Register this call site for the current frame and recompute chosen source when frame changes. Decision is based on
+ * previous frames' data; record is done after the decision. Call before using GetChosenFpsLimiter. */
+void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum);
+
+/** Returns true iff the chosen FPS limiter source for the current decision is caller_enum. */
+bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum);
+
+/** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset". */
+const char* GetChosenFpsLimiterSiteName();
 
 /** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 3 frames of global). */
 bool IsNativeFramePacingInSync();
@@ -1295,13 +1308,13 @@ DLSSGSummary GetDLSSGSummary();
 
 // DLSS-G frame generation mode (used by FPS limiter; call GetDLSSGSummaryLite every frame)
 enum class DLSSGFgMode : std::uint8_t {
-    Off = 0,         // Disabled
-    Unknown,         // API did not return
-    ActiveUnknown,   // Active but MultiFrameCount unknown
+    Off = 0,        // Disabled
+    Unknown,        // API did not return
+    ActiveUnknown,  // Active but MultiFrameCount unknown
     k2x,
     k3x,
     k4x,
-    Other            // 5x, 6x, etc.
+    Other  // 5x, 6x, etc.
 };
 
 // Lite summary for FPS limiter: dlss_g_active + fg_mode (call every frame)

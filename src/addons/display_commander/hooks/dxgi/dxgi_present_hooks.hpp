@@ -239,8 +239,6 @@ bool HookSwapchainNative(IDXGISwapChain* swapchain);
 // Cleanup GPU measurement fences when device is destroyed
 void CleanupGPUMeasurementFences();
 
-void HandlePresentBefore2();
-
 // Helper function for common Present/Present1 logic after calling original
 void HandlePresentAfter(bool from_wrapper);
 }  // namespace display_commanderhooks::dxgi

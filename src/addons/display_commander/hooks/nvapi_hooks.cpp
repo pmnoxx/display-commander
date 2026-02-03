@@ -157,7 +157,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
 
             // Record native frame time for frames shown to display
             RecordNativeFrameTime();
-            display_commanderhooks::dxgi::HandlePresentBefore2();
+            // display_commanderhooks::dxgi::HandlePresentBefore2();
         }
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {

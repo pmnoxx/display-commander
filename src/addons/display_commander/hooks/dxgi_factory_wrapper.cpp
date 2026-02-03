@@ -237,7 +237,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
         }
         // Record native frame time for frames shown to display
         // RecordNativeFrameTime();
-        display_commanderhooks::dxgi::HandlePresentBefore2();
+        // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
@@ -332,7 +332,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
         }
         // Record native frame time for frames shown to display
         // RecordNativeFrameTime();
-        display_commanderhooks::dxgi::HandlePresentBefore2();
+        // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
     HRESULT res = m_originalSwapChain->Present1(SyncInterval, PresentFlags, pPresentParameters);

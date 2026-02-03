@@ -54,7 +54,7 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     OnPresentFlags2(true);  // Called from present_detour
 
     // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::kPresent);
+    // RecordFrameTime(FrameTimeMode::kPresent);
 
     // Call original function
     BOOL result = wglSwapBuffers_Original(hdc);

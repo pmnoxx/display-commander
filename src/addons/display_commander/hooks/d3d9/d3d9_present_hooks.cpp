@@ -51,7 +51,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     OnPresentFlags2(true, false);  // Called from present_detour
 
     // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::kPresent);
+    //..RecordFrameTime(FrameTimeMode::kPresent);
 
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
@@ -100,7 +100,7 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
     OnPresentFlags2(true, false);  // Called from present_detour
 
     // Record per-frame FPS sample for background aggregation
-    RecordFrameTime(FrameTimeMode::kPresent);
+    // RecordFrameTime(FrameTimeMode::kPresent);
 
     // Call original function
     if (IDirect3DDevice9_PresentEx_Original != nullptr) {

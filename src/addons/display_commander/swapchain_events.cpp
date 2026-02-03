@@ -1725,8 +1725,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         command_queue->flush_immediate_command_list();
         uint32_t present_flags = 0;
         OnPresentFlags2(true, false);  // Called from present_detour
-        display_commanderhooks::dxgi::HandlePresentBefore2();
     }
+
+    RecordFrameTime(FrameTimeMode::kPresent);
     if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
         g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);
     } else if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11) {

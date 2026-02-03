@@ -367,21 +367,6 @@ std::atomic<bool> g_createswapchain_vtable_hooked{false};
 std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
 }  // namespace
 
-void HandlePresentBefore2() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Record per-frame FPS sample for background aggregation
-    {
-        const bool suppress_section =
-            perf_measurement::IsSuppressionEnabled()
-            && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
-        if (!suppress_section) {
-            perf_measurement::ScopedTimer record_frame_time_timer(
-                perf_measurement::Metric::HandlePresentBefore_RecordFrameTime);
-            RecordFrameTime(FrameTimeMode::kPresent);
-        }
-    }
-}
-
 // Helper function for common Present/Present1 logic after calling original
 void HandlePresentAfter(bool from_wrapper) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -414,7 +399,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     // Skip common present logic if wrapper is handling it
     if (use_fps_limiter) {
         ::OnPresentFlags2(true, false);  // Called from present_detour
-        display_commanderhooks::dxgi::HandlePresentBefore2();
+        // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
     if (IDXGISwapChain_Present_Original == nullptr) {
@@ -457,7 +442,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     if (use_fps_limiter) {
         // Handle common before logic (with D3D10 check enabled)
         ::OnPresentFlags2(true, false);  // Called from present_detour
-        display_commanderhooks::dxgi::HandlePresentBefore2();
+        // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
 
     if (IDXGISwapChain_Present1_Original == nullptr) {

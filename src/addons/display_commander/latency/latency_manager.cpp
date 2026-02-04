@@ -101,6 +101,7 @@ bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, L
 }
 
 void LatencyManager::Shutdown() {
+    /*
     if (!initialized_.exchange(false, std::memory_order_release)) {
         return;  // Already shutdown
     }
@@ -111,7 +112,7 @@ void LatencyManager::Shutdown() {
     }
 
     config_ = LatencyConfig{};  // Reset config
-    LogInfo("LatencyManager: Shutdown complete");
+    LogInfo("LatencyManager: Shutdown complete");*/
 }
 
 bool LatencyManager::IsInitialized() const {

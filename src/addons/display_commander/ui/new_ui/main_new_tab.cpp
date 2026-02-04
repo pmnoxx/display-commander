@@ -168,6 +168,164 @@ void DrawFrameTimeGraph() {
     }
 }
 
+// Draw a single-frame timeline: one horizontal bar per phase, each on its own row.
+// Uses start/end times (relative to frame start) so bars show when each phase began and ended.
+// Time range (min..max) is computed from all phases so bars stack on the same scale.
+void DrawFrameTimelineBar() {
+    const double frame_time_ns = static_cast<double>(::g_frame_time_ns.load());
+    if (frame_time_ns <= 0.0) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: no frame time data yet.");
+        return;
+    }
+    const double frame_ms = frame_time_ns / utils::NS_TO_MS;
+
+    // Durations in ms (smoothed)
+    const double sim_ms = static_cast<double>(::g_simulation_duration_ns.load()) / utils::NS_TO_MS;
+    const double render_submit_ms = static_cast<double>(::g_render_submit_duration_ns.load()) / utils::NS_TO_MS;
+    const double present_ms = static_cast<double>(::g_present_duration_ns.load()) / utils::NS_TO_MS;
+    const double sleep_before_ms = static_cast<double>(::fps_sleep_before_on_present_ns.load()) / utils::NS_TO_MS;
+    const double sleep_after_ms = static_cast<double>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
+    const double reshade_raw_ms = static_cast<double>(::g_reshade_overhead_duration_ns.load()) / utils::NS_TO_MS;
+    const double reshade_ms = (std::max)(0.0, reshade_raw_ms - sleep_before_ms - sleep_after_ms);
+
+    const bool has_gpu =
+        (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0);
+    const double gpu_ms = has_gpu ? (static_cast<double>(::g_gpu_duration_ns.load()) / utils::NS_TO_MS) : 0.0;
+
+    // Build start/end times (relative to frame start = 0). Order: Sim -> Render Submit -> ReShade -> Present -> Sleep
+    // After -> Sleep Before.
+    double t = 0.0;
+    const double sim_start = t;
+    t += sim_ms;
+    const double render_start = t;
+    t += render_submit_ms;
+    const double reshade_start = t;
+    t += reshade_ms;
+    const double present_start = t;
+    t += present_ms;
+    const double sleep_after_start = t;
+    t += sleep_after_ms;
+    const double sleep_before_start = t;
+    t += sleep_before_ms;
+    // GPU runs after present is submitted (overlaps in wall-clock time with present/sleep)
+    const double gpu_start = present_start;
+    const double gpu_end = present_start + gpu_ms;
+
+    struct Phase {
+        const char* label;
+        double start_ms;
+        double end_ms;
+        ImVec4 color;
+    };
+    const ImVec4 col_sim(0.2f, 0.75f, 0.35f, 1.0f);
+    const ImVec4 col_render(0.35f, 0.55f, 1.0f, 1.0f);
+    const ImVec4 col_reshade(0.75f, 0.4f, 1.0f, 1.0f);
+    const ImVec4 col_present(1.0f, 0.55f, 0.2f, 1.0f);
+    const ImVec4 col_sleep(0.5f, 0.5f, 0.55f, 1.0f);
+    const ImVec4 col_gpu(0.95f, 0.35f, 0.35f, 1.0f);
+
+    std::vector<Phase> phases;
+    phases.push_back({"Simulation", sim_start, sim_start + sim_ms, col_sim});
+    phases.push_back({"Render Submit", render_start, render_start + render_submit_ms, col_render});
+    phases.push_back({"ReShade", reshade_start, reshade_start + reshade_ms, col_reshade});
+    phases.push_back({"Present", present_start, present_start + present_ms, col_present});
+    phases.push_back({"FPS Sleep (after)", sleep_after_start, sleep_after_start + sleep_after_ms, col_sleep});
+    phases.push_back({"FPS Sleep (before)", sleep_before_start, sleep_before_start + sleep_before_ms, col_sleep});
+    if (has_gpu && gpu_ms > 0.0) {
+        phases.push_back({"GPU", gpu_start, gpu_end, col_gpu});
+    }
+
+    // Global time range for the scale (so all bars use the same min/max)
+    double t_min = 0.0;
+    double t_max = frame_ms;
+    for (const auto& p : phases) {
+        if (p.end_ms > t_max) {
+            t_max = p.end_ms;
+        }
+    }
+    if (t_max <= t_min) {
+        t_max = t_min + 1.0;
+    }
+    const double time_range = t_max - t_min;
+
+    ImGui::Text("Frame timeline (start to end, relative time)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Each row = one phase. Bar shows when it started and ended (0 = frame start). "
+            "Same time scale for all rows. Values are smoothed.");
+    }
+    ImGui::Spacing();
+
+    const float row_height = 18.0f;
+    const float bar_rounding = 2.0f;
+    const float label_width = 150.0f;
+
+    if (!ImGui::BeginTable("##FrameTimeline", 2, ImGuiTableFlags_None, ImVec2(-1.0f, 0.0f))) {
+        return;
+    }
+    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
+    ImGui::TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    if (draw_list == nullptr) {
+        ImGui::EndTable();
+        return;
+    }
+
+    for (const auto& p : phases) {
+        const double duration = p.end_ms - p.start_ms;
+        if (duration <= 0.0) {
+            continue;
+        }
+
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted(p.label);
+
+        ImGui::TableNextColumn();
+        const ImVec2 bar_pos = ImGui::GetCursorScreenPos();
+        const float bar_width = ImGui::GetContentRegionAvail().x;
+        const ImVec2 bar_size(bar_width, row_height);
+
+        // Bar in time range: start_ms -> end_ms maps to bar_pos.x -> bar_pos.x + bar_width
+        const double frac_start = (p.start_ms - t_min) / time_range;
+        const double frac_end = (p.end_ms - t_min) / time_range;
+        float x0 = bar_pos.x + static_cast<float>(frac_start * static_cast<double>(bar_width));
+        float x1 = bar_pos.x + static_cast<float>(frac_end * static_cast<double>(bar_width));
+        if (x1 - x0 < 1.0f) {
+            x1 = x0 + 1.0f;
+        }
+        if (x1 > bar_pos.x + bar_width) {
+            x1 = bar_pos.x + bar_width;
+        }
+        if (x0 < bar_pos.x) {
+            x0 = bar_pos.x;
+        }
+
+        draw_list->AddRectFilled(ImVec2(bar_pos.x, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_size.y),
+                                 ImGui::GetColorU32(ImGuiCol_FrameBg), bar_rounding);
+        draw_list->AddRectFilled(ImVec2(x0, bar_pos.y), ImVec2(x1, bar_pos.y + bar_size.y),
+                                 ImGui::ColorConvertFloat4ToU32(p.color), bar_rounding);
+
+        ImGui::Dummy(bar_size);
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s: %.2f ms - %.2f ms (%.2f ms)", p.label, p.start_ms, p.end_ms, duration);
+        }
+    }
+
+    // Time axis row: empty label column, then "0 ms" and "t_max ms" in bar column
+    ImGui::TableNextColumn();
+    ImGui::TextUnformatted("");
+    ImGui::TableNextColumn();
+    const float axis_bar_width = ImGui::GetContentRegionAvail().x;
+    const float axis_cell_x = ImGui::GetCursorPosX();
+    ImGui::TextColored(ui::colors::TEXT_DIMMED, "0 ms");
+    ImGui::SameLine(axis_cell_x + axis_bar_width - 50.0f);
+    ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.1f ms", t_max);
+
+    ImGui::EndTable();
+}
+
 // Draw DLSS information (same format as performance overlay)
 void DrawDLSSInfo() {
     const DLSSGSummary dlssg_summary = GetDLSSGSummary();
@@ -4371,6 +4529,13 @@ void DrawImportantInfo() {
         ImGui::Spacing();
 
         DrawFrameTimeGraph();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Frame timeline bar (Simulation | Render Submit | ReShade | Present | Sleep | GPU)
+        DrawFrameTimelineBar();
 
         ImGui::Spacing();
         ImGui::Separator();

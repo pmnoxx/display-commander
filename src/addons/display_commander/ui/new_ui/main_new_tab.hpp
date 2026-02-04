@@ -29,6 +29,8 @@ void DrawFrameTimeGraph();
 void DrawNativeFrameTimeGraph();
 // Draw single-frame timeline bar (Simulation, Render Submit, Present, etc. segments)
 void DrawFrameTimelineBar();
+// Compact frame timeline bar for performance overlay
+void DrawFrameTimelineBarOverlay(bool show_tooltips = false);
 
 // Draw compact frame time graph for overlay (fixed width)
 void DrawFrameTimeGraphOverlay(bool show_tooltips = false);

@@ -1274,6 +1274,10 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         ui::new_ui::DrawNativeFrameTimeGraphOverlay(show_tooltips);
     }
 
+    if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
+        ui::new_ui::DrawFrameTimelineBarOverlay(show_tooltips);
+    }
+
     if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
         ui::new_ui::DrawRefreshRateFrameTimesGraph(show_tooltips);
     }

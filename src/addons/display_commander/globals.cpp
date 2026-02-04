@@ -236,6 +236,14 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
 }
 }  // namespace
 
+FpsLimiterCallSite GetChosenFrameTimeLocation() {
+    if (IsFpsLimiterSiteEligible(FpsLimiterCallSite::dxgi_swapchain,
+                                 g_global_frame_id.load(std::memory_order_relaxed))) {
+        return FpsLimiterCallSite::dxgi_swapchain;
+    }
+    return FpsLimiterCallSite::reshade_addon_event;
+}
+
 void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum) {
     // 1. New frame? Make decision based on *previous* frames' data (before recording this call).
     const uint64_t last_decision = g_last_fps_limiter_decision_frame_id.load(std::memory_order_relaxed);

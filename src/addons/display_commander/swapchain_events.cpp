@@ -1571,6 +1571,7 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
 void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::api::swapchain* swapchain,
                            const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
+    command_queue->flush_immediate_command_list();
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentUpdateBefore)) {
@@ -1705,12 +1706,16 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reshade_addon_event);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
     if (use_fps_limiter) {
-        command_queue->flush_immediate_command_list();
         uint32_t present_flags = 0;
         OnPresentFlags2(true, false);  // Called from present_detour
+
+        RecordNativeFrameTime();
     }
 
-    RecordFrameTime(FrameTimeMode::kPresent);
+    if (GetChosenFrameTimeLocation() != FpsLimiterCallSite::dxgi_swapchain) {
+        RecordFrameTime(FrameTimeMode::kPresent);
+    }
+
     if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
         g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);
     } else if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11) {

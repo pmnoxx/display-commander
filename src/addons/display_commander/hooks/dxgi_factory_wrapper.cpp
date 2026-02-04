@@ -229,17 +229,16 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            OnPresentFlags2(false,
-                            true);  // Called from wrapper, not present_detour
-
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get());
+            OnPresentFlags2(false,
+                            true);  // Called from wrapper, not present_detour
+            RecordNativeFrameTime();
         }
         // Record native frame time for frames shown to display
         // RecordNativeFrameTime();
         // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
-
     HRESULT res = m_originalSwapChain->Present(SyncInterval, Flags);
 
     if (use_fps_limiter && baseSwapChain.Get() != nullptr) {
@@ -325,10 +324,10 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     auto use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_factory_wrapper);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            OnPresentFlags2(false, true);  // Called from wrapper, not present_detour
-
             // Flush command queue from swapchain using native DirectX APIs
             FlushCommandQueueFromSwapchain(baseSwapChain.Get());
+            OnPresentFlags2(false, true);  // Called from wrapper, not present_detour
+            RecordNativeFrameTime();
         }
         // Record native frame time for frames shown to display
         // RecordNativeFrameTime();

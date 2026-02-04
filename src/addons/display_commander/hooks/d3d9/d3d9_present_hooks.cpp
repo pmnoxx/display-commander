@@ -50,6 +50,8 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     // Call OnPresentFlags2 with flags = 0 (no flags for regular Present)
     OnPresentFlags2(true, false);  // Called from present_detour
 
+    RecordNativeFrameTime();
+
     // Record per-frame FPS sample for background aggregation
     //..RecordFrameTime(FrameTimeMode::kPresent);
 
@@ -98,6 +100,8 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
 
     // Call OnPresentFlags with the actual flags
     OnPresentFlags2(true, false);  // Called from present_detour
+
+    RecordNativeFrameTime();
 
     // Record per-frame FPS sample for background aggregation
     // RecordFrameTime(FrameTimeMode::kPresent);

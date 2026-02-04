@@ -651,6 +651,9 @@ void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum);
 /** Returns true iff the chosen FPS limiter source for the current decision is caller_enum. */
 bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum);
 
+/** Returns the chosen FPS limiter call site for the current frame (dxgi_swapchain or reshade_addon_event). */
+FpsLimiterCallSite GetChosenFrameTimeLocation();
+
 /** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset".
  */
 const char* GetChosenFpsLimiterSiteName();

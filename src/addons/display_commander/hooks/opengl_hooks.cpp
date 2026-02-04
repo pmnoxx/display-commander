@@ -53,6 +53,8 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     // Call OnPresentFlags2 with flags = 0 (no flags for OpenGL)
     OnPresentFlags2(true);  // Called from present_detour
 
+    RecordNativeFrameTime();
+
     // Record per-frame FPS sample for background aggregation
     // RecordFrameTime(FrameTimeMode::kPresent);
 

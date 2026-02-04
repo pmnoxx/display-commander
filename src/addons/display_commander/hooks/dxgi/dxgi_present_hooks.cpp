@@ -399,7 +399,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     // Skip common present logic if wrapper is handling it
     if (use_fps_limiter) {
         ::OnPresentFlags2(true, false);  // Called from present_detour
+        RecordNativeFrameTime();
         // display_commanderhooks::dxgi::HandlePresentBefore2();
+    }
+    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain) {
+        RecordFrameTime(FrameTimeMode::kPresent);
     }
 
     if (IDXGISwapChain_Present_Original == nullptr) {
@@ -442,7 +446,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     if (use_fps_limiter) {
         // Handle common before logic (with D3D10 check enabled)
         ::OnPresentFlags2(true, false);  // Called from present_detour
+        RecordNativeFrameTime();
         // display_commanderhooks::dxgi::HandlePresentBefore2();
+    }
+    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain) {
+        RecordFrameTime(FrameTimeMode::kPresent);
     }
 
     if (IDXGISwapChain_Present1_Original == nullptr) {

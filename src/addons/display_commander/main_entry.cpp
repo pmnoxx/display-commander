@@ -337,12 +337,6 @@ constexpr std::array<std::array<float, 2>, kCursorOutlineSize> kCursorOutline = 
     // {(17.0f + 4.0f) * 0.4f, (8.0f + 20.0f) * 0.4f},
     {4.0f, 20.0f},
 }};
-constexpr std::array<std::array<float, 2>, kCursorOutlineSize> kCursorOutline2 = {{
-    {-1.0f, -1.0f},
-    {17.0f, 8.0f},
-    // {(17.0f + 4.0f) * 0.4f, (8.0f + 20.0f) * 0.4f},
-    {4.0f, 20.0f},
-}};
 
 void DrawCustomCursor() {
     const ImVec2 pos = ImGui::GetIO().MousePos;
@@ -356,15 +350,21 @@ void DrawCustomCursor() {
     const float thickness = 0.5f;
 
     // Build screen-space points from coordinate list
+    double center_x = 0;
+    double center_y = 0;
     ImVec2 pts[kCursorOutlineSize];
     for (size_t i = 0; i < kCursorOutlineSize; ++i) {
         pts[i].x = pos.x + kCursorOutline[i][0] * s;
         pts[i].y = pos.y + kCursorOutline[i][1] * s;
+        center_x += pts[i].x;
+        center_y += pts[i].y;
     }
+    center_x /= kCursorOutlineSize;
+    center_y /= kCursorOutlineSize;
     ImVec2 pts2[kCursorOutlineSize];
     for (size_t i = 0; i < kCursorOutlineSize; ++i) {
-        pts2[i].x = pos.x + kCursorOutline2[i][0] * s;
-        pts2[i].y = pos.y + kCursorOutline2[i][1] * s;
+        pts2[i].x = pts[i].x + (pts[i].x - center_x) * 0.1f;
+        pts2[i].y = pts[i].y + (pts[i].y - center_y) * 0.1f;
     }
 
     // Fill: triangle fan from tip (0) -> (1,2), (2,3), ..., (size-1,1)

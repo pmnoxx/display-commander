@@ -113,6 +113,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_frame_time_graph;
     ui::new_ui::BoolSetting show_frame_time_stats;
     ui::new_ui::BoolSetting show_native_frame_time_graph;
+    ui::new_ui::BoolSetting show_frame_timeline_bar;
     ui::new_ui::BoolSetting show_refresh_rate_frame_times;
     ui::new_ui::BoolSetting show_refresh_rate_frame_time_stats;
     ui::new_ui::BoolSetting show_cpu_usage;
@@ -164,7 +165,8 @@ class MainTabSettings {
 
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;
-    // Override HDR static metadata (ignore source MaxCLL/MaxFALL): inject MaxMDL 1000 on swapchain init (DXGI SetHDRMetaData). Sony/display fix.
+    // Override HDR static metadata (ignore source MaxCLL/MaxFALL): inject MaxMDL 1000 on swapchain init (DXGI
+    // SetHDRMetaData). Sony/display fix.
     ui::new_ui::BoolSetting auto_apply_maxmdl_1000_hdr_metadata;
 
     // Ansel Control

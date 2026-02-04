@@ -1401,6 +1401,39 @@ if (enabled_experimental_features) {
                 "- Press Home + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
         }
 
+        ImGui::Spacing();
+
+        // Continue Rendering in Background
+        if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background")) {
+            bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
+            s_continue_rendering.store(new_value);
+            LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
+
+            // Install or uninstall window proc hooks based on the setting
+            HWND game_window = display_commanderhooks::GetGameWindow();
+            if (new_value) {
+                // Enable: Install hooks if we have a valid window
+                if (game_window != nullptr && IsWindow(game_window)) {
+                    if (display_commanderhooks::InstallWindowProcHooks(game_window)) {
+                        LogInfo("Window procedure hooks installed after enabling continue rendering");
+                    } else {
+                        LogWarn("Failed to install window procedure hooks after enabling continue rendering");
+                    }
+                } else {
+                    LogInfo("Window procedure hooks will be installed when a valid window is available");
+                }
+            } else {
+                // Disable: Uninstall hooks
+                display_commanderhooks::UninstallWindowProcHooks();
+                LogInfo("Window procedure hooks uninstalled after disabling continue rendering");
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
+                "messages to keep games running in background.");
+        }
+
         ImGui::Unindent();
     }
 
@@ -1616,46 +1649,6 @@ if (enabled_experimental_features) {
                 "Shows all visible windows that overlap with the game window.\n"
                 "Windows can be above or below the game in Z-order.\n"
                 "Overlapping windows may cause performance issues.");
-        }
-
-        ImGui::Unindent();
-    }
-
-    ImGui::Spacing();
-
-    // Background Rendering Section
-    if (ImGui::CollapsingHeader("Background Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Indent();
-
-        // Continue Rendering
-        if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background")) {
-            bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
-            s_continue_rendering.store(new_value);
-            LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
-
-            // Install or uninstall window proc hooks based on the setting
-            HWND game_window = display_commanderhooks::GetGameWindow();
-            if (new_value) {
-                // Enable: Install hooks if we have a valid window
-                if (game_window != nullptr && IsWindow(game_window)) {
-                    if (display_commanderhooks::InstallWindowProcHooks(game_window)) {
-                        LogInfo("Window procedure hooks installed after enabling continue rendering");
-                    } else {
-                        LogWarn("Failed to install window procedure hooks after enabling continue rendering");
-                    }
-                } else {
-                    LogInfo("Window procedure hooks will be installed when a valid window is available");
-                }
-            } else {
-                // Disable: Uninstall hooks
-                display_commanderhooks::UninstallWindowProcHooks();
-                LogInfo("Window procedure hooks uninstalled after disabling continue rendering");
-            }
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
-                "messages to keep games running in background.");
         }
 
         ImGui::Unindent();

@@ -958,27 +958,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    /*
-    IDXGISwapChain* old_swapchain = global_dxgi_swapchain.exchange(nullptr, std::memory_order_release);
 
-    // while statistics is used, we need to wait
-    // atomic
-
-    while (global_dxgi_swapchain_inuse.load()) {
-        Sleep(1);
+    if (api == reshade::api::device_api::d3d9) {
+        g_dx9_swapchain_detected.store(true);
     }
-
-    if (old_swapchain != nullptr) {
-        HRESULT hr = old_swapchain->Release();
-        if (old_swapchain->Release() != 0) {
-            global_dxgi_swapchain.exchange(old_swapchain, std::memory_order_acq_rel);
-            old_swapchain->AddRef(); // to do fix this race condition
-        }
-        LogInfo("Released old global swapchain reference: 0x%p", old_swapchain);
-    }
-
-    */
-
     if (desc.back_buffer.texture.width < 640) {
         return false;
     }

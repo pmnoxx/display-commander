@@ -1138,8 +1138,8 @@ bool HookSwapchainNative(IDXGISwapChain* swapchain) {
 
 // Hook a specific swapchain's vtable
 bool HookSwapchain(IDXGISwapChain* swapchain) {
-    if (true) {
-        return true;
+    if (g_dx9_swapchain_detected.load()) {
+        return false;
     }
     // Check if LoadLibrary hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(

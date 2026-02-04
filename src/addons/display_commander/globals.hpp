@@ -512,6 +512,7 @@ extern std::atomic<int> s_aspect_width;
 // extern std::atomic<bool> s_enable_d3d9e_upgrade;
 extern std::atomic<bool> s_d3d9e_upgrade_successful;
 extern std::atomic<bool> g_used_flipex;
+extern std::atomic<bool> g_dx9_swapchain_detected;
 
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed

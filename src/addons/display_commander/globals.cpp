@@ -107,6 +107,7 @@ std::atomic<LogLevel> g_min_log_level{LogLevel::Debug};
 // std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
 std::atomic<bool> s_d3d9e_upgrade_successful{false};  // Track if upgrade was successful
 std::atomic<bool> g_used_flipex{false};               // Track if FLIPEX is currently being used
+std::atomic<bool> g_dx9_swapchain_detected{false};    // Set when D3D9 swapchain is detected (skip DXGI swapchain hooks)
 
 // ReShade runtimes for input blocking (multiple runtimes support)
 // TODO: clear this vector OnReshadeUnload to fix F.E.A.R with DXVK

@@ -330,20 +330,61 @@ bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, resh
 // Direct overlay draw callback (no settings2 indirection)
 namespace {
 
-// Cursor state machine for tracking cursor visibility
-enum class CursorState {
-    Unknown,  // Initial/unknown state
-    Visible,  // Cursor is visible (UI is open)
-    Hidden    // Cursor is hidden (UI is closed)
-};
+constexpr size_t kCursorOutlineSize = 3;
+constexpr std::array<std::array<float, 2>, kCursorOutlineSize> kCursorOutline = {{
+    {0.5f, 0.5f},
+    {17.0f, 8.0f},
+    // {(17.0f + 4.0f) * 0.4f, (8.0f + 20.0f) * 0.4f},
+    {4.0f, 20.0f},
+}};
+constexpr std::array<std::array<float, 2>, kCursorOutlineSize> kCursorOutline2 = {{
+    {-1.0f, -1.0f},
+    {17.0f, 8.0f},
+    // {(17.0f + 4.0f) * 0.4f, (8.0f + 20.0f) * 0.4f},
+    {4.0f, 20.0f},
+}};
+
+void DrawCustomCursor() {
+    const ImVec2 pos = ImGui::GetIO().MousePos;
+    const float s = 1.0f;
+
+    ImDrawList* draw_list = ImGui::GetForegroundDrawList(nullptr);
+    if (draw_list == nullptr) return;
+
+    const ImU32 col_border = IM_COL32(0, 0, 0, 255);
+    const ImU32 col_fill = IM_COL32(255, 255, 255, 255);
+    const float thickness = 0.5f;
+
+    // Build screen-space points from coordinate list
+    ImVec2 pts[kCursorOutlineSize];
+    for (size_t i = 0; i < kCursorOutlineSize; ++i) {
+        pts[i].x = pos.x + kCursorOutline[i][0] * s;
+        pts[i].y = pos.y + kCursorOutline[i][1] * s;
+    }
+    ImVec2 pts2[kCursorOutlineSize];
+    for (size_t i = 0; i < kCursorOutlineSize; ++i) {
+        pts2[i].x = pos.x + kCursorOutline2[i][0] * s;
+        pts2[i].y = pos.y + kCursorOutline2[i][1] * s;
+    }
+
+    // Fill: triangle fan from tip (0) -> (1,2), (2,3), ..., (size-1,1)
+    for (size_t i = 1; i < kCursorOutlineSize - 1; ++i) {
+        draw_list->AddTriangleFilled(pts[0], pts[i], pts[i + 1], col_fill);
+    }
+    draw_list->AddTriangleFilled(pts[0], pts[kCursorOutlineSize - 1], pts[1], col_fill);
+
+    // Outline: closed polygon
+    for (size_t i = 0; i < kCursorOutlineSize; ++i) {
+        const size_t j = (i + 1) % kCursorOutlineSize;
+        draw_list->AddLine(pts2[i], pts2[j], col_border, thickness);
+    }
+}
 
 // Test callback for reshade_overlay event
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui;  // only show tooltips if the UI is visible
-
-    static CursorState last_cursor_state = CursorState::Unknown;
 
     if (show_display_commander_ui) {
         // IMGui window with fixed width and saved position
@@ -368,11 +409,6 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         bool window_open = true;
         if (ImGui::Begin("Display Commander", &window_open,
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
-            last_cursor_state = CursorState::Visible;
-            // Show cursor while overlay is open (same approach as ReShade)
-            ImGuiIO& io = ImGui::GetIO();
-            io.MouseDrawCursor = true;
-
             // Update UI draw time for auto-click optimization
             if (enabled_experimental_features) {
                 autoclick::UpdateLastUIDrawTime();
@@ -401,13 +437,8 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         if (!window_open) {
             settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
         }
-    } else {
-        if (last_cursor_state != CursorState::Hidden) {
-            last_cursor_state = CursorState::Hidden;
-            // Hide cursor when overlay is closed (same approach as ReShade)
-            ImGuiIO& io = ImGui::GetIO();
-            io.MouseDrawCursor = false;
-        }
+        // Draw our own cursor (triangles) so it's visible regardless of game hiding the system cursor
+        DrawCustomCursor();
     }
 
     // Check the setting from main tab first

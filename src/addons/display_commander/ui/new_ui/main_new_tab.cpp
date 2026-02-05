@@ -4231,6 +4231,15 @@ void DrawImportantInfo() {
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
         }
 
+        // Show Labels Control
+        bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
+        if (ImGui::Checkbox("Show labels", &show_labels)) {
+            settings::g_mainTabSettings.show_labels.SetValue(show_labels);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
+        }
+
         // Grid layout for overlay display checkboxes (4 columns)
         ImGui::Columns(4, "overlay_checkboxes", false);
 
@@ -4336,6 +4345,18 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
+        // Show Cpu FPS (current FPS / cpu busy %)
+        bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
+        if (ImGui::Checkbox("Cpu FPS", &show_cpu_fps)) {
+            settings::g_mainTabSettings.show_cpu_fps.SetValue(show_cpu_fps);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Current FPS / (cpu busy %%). Theoretical FPS if CPU were 100%% busy. "
+                "E.g. 100 fps at 50%% busy = 200 cpu fps.");
+        }
+        ImGui::NextColumn();
+
         // Show DLSS-FG Mode
         bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
         if (ImGui::Checkbox("FG Mode", &show_fg_mode)) {
@@ -4410,16 +4431,6 @@ void DrawImportantInfo() {
                 "Measures time from Present call to GPU completion using fences.\n"
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
-        }
-        ImGui::NextColumn();
-
-        // Show Labels Control
-        bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
-        if (ImGui::Checkbox("Show labels", &show_labels)) {
-            settings::g_mainTabSettings.show_labels.SetValue(show_labels);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
         }
         ImGui::NextColumn();
 

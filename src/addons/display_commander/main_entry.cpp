@@ -452,6 +452,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
     bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
+    bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
     bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
     bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
@@ -1062,6 +1063,58 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         }
         //      }
         //    }
+    }
+
+    // Show Cpu FPS: current FPS / (cpu busy %)
+    if (show_cpu_fps) {
+        LONGLONG cpu_time_ns =
+            ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
+        LONGLONG frame_time_ns = ::g_frame_time_ns.load();
+
+        // Current FPS from perf ring (last second)
+        double current_fps = 0.0;
+        const uint32_t count = ::g_perf_ring.GetCount();
+        double total_time = 0.0;
+        uint32_t sample_count = 0;
+        for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
+            const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
+            if (sample.dt == 0.0f || total_time >= 1.0) break;
+            sample_count++;
+            total_time += sample.dt;
+        }
+        if (sample_count > 0 && total_time >= 1.0) {
+            current_fps = sample_count / total_time;
+        }
+
+        if (current_fps > 0.0 && cpu_time_ns > 0 && frame_time_ns > 0) {
+            double cpu_busy_percent =
+                (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+            if (cpu_busy_percent < 0.0) cpu_busy_percent = 0.0;
+            if (cpu_busy_percent > 100.0) cpu_busy_percent = 100.0;
+
+            if (cpu_busy_percent > 0.0) {
+                double cpu_fps_raw = current_fps / (cpu_busy_percent / 100.0);
+                if (cpu_fps_raw > 9999.0) cpu_fps_raw = 9999.0;
+                // Smoothed CPU FPS for display (EMA alpha 0.01, update every 0.2s)
+                static double s_smoothed_cpu_fps = 0.0;
+                static LONGLONG s_cpu_fps_last_update_ns = 0;
+                constexpr double k_cpu_fps_alpha = 0.01;
+                constexpr LONGLONG k_cpu_fps_update_interval_ns =
+                    static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+                LONGLONG now_ns = utils::get_now_ns();
+                if (now_ns - s_cpu_fps_last_update_ns >= k_cpu_fps_update_interval_ns) {
+                    s_cpu_fps_last_update_ns = now_ns;
+                    s_smoothed_cpu_fps =
+                        k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
+                }
+                double cpu_fps = s_smoothed_cpu_fps;
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    ImGui::Text("%.1f cpu fps", cpu_fps);
+                } else {
+                    ImGui::Text("%.1f", cpu_fps);
+                }
+            }
+        }
     }
 
     // Show stopwatch

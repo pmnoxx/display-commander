@@ -117,6 +117,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_refresh_rate_frame_times;
     ui::new_ui::BoolSetting show_refresh_rate_frame_time_stats;
     ui::new_ui::BoolSetting show_cpu_usage;
+    ui::new_ui::BoolSetting show_cpu_fps;
     ui::new_ui::BoolSetting show_fg_mode;
     ui::new_ui::BoolSetting show_dlss_internal_resolution;
     ui::new_ui::BoolSetting show_dlss_status;

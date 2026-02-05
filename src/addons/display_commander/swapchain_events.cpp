@@ -73,7 +73,8 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    LogInfo("OnCreateDevice: api: %d, api_version: 0x%x", api, api_version);
+    LogInfo("OnCreateDevice: api: %d (%s), api_version: 0x%x", static_cast<int>(api),
+            GetDeviceApiString(api), api_version);
     if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
         LogInfo("D3D9 to D3D9Ex upgrade disabled");
         return false;

@@ -906,6 +906,27 @@ bool HasReframeworkPluginModule() {
     return false;
 }
 
+// Returns true if ReShade was loaded from C:\ProgramData\ReShade\ReShade64.dll or ReShade32.dll
+static bool IsReshadeFromProgramData() {
+    HMODULE reshade = g_reshade_module;
+    if (reshade == nullptr) {
+        return false;
+    }
+    wchar_t module_path[MAX_PATH];
+    if (GetModuleFileNameW(reshade, module_path, MAX_PATH) == 0) {
+        return false;
+    }
+    std::wstring path(module_path);
+    // Strip long path prefix if present
+    if (path.size() >= 4 && path.compare(0, 4, L"\\\\?\\") == 0) {
+        path.erase(0, 4);
+    }
+    std::transform(path.begin(), path.end(), path.begin(), ::towlower);
+    static const std::wstring programdata_reshade64(L"c:\\programdata\\reshade\\reshade64.dll");
+    static const std::wstring programdata_reshade32(L"c:\\programdata\\reshade\\reshade32.dll");
+    return (path == programdata_reshade64 || path == programdata_reshade32);
+}
+
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
@@ -919,6 +940,10 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         // Check if any module has "reframework\plugins" in its path
         if (HasReframeworkPluginModule()) {
             LogInfo("Skipping DXGI hooks installation - ReFramework plugin detected");
+        } else if (IsReshadeFromProgramData()) {
+            LogInfo("Skipping DXGI hooks installation - ReShade loaded from ProgramData");
+        } else if (GetModuleHandleW(L"vulkan-1.dll") != nullptr) {
+            LogInfo("Skipping DXGI hooks installation - vulkan-1.dll loaded");
         } else {
             LogInfo("Installing DXGI hooks for module: %ws", moduleName.c_str());
             if (InstallDxgiFactoryHooks(hModule)) {

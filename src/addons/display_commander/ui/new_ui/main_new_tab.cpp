@@ -4324,13 +4324,15 @@ void DrawImportantInfo() {
             ImGui::Columns(4, "overlay_checkboxes", false);
         }
 
-        // Show CPU Usage
+        // Show Cpu busy
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
-        if (ImGui::Checkbox("CPU Usage", &show_cpu_usage)) {
+        if (ImGui::Checkbox("Cpu busy", &show_cpu_usage)) {
             settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows CPU usage as a percentage: (sim duration / frame time) * 100%%");
+            ImGui::SetTooltip(
+                "100%% minus the %% of frame time the FPS limiter spends sleeping. "
+                "Not actual CPU usage: measures how much headroom the game has. 100%% = CPU limited.");
         }
         ImGui::NextColumn();
 

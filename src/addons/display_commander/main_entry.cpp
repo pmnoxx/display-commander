@@ -1055,7 +1055,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
             }
 
             if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                ImGui::Text("%.1f%% cpu (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
+                ImGui::Text("%.1f%% cpu busy (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
             } else {
                 ImGui::Text("%.1f%% (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
             }

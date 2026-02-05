@@ -116,6 +116,11 @@ void DrawFeaturesEnabledByDefault() {
         ImGui::SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
 
+    CheckboxSetting(settings::g_advancedTabSettings.prevent_minimize, "Prevent Minimize");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Prevents the game window from being minimized (e.g. via taskbar or system menu).");
+    }
+
     ImGui::Unindent();
 }
 

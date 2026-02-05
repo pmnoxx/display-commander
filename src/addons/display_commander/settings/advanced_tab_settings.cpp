@@ -39,6 +39,7 @@ AdvancedTabSettings::AdvancedTabSettings()
     : prevent_fullscreen("PreventFullscreen", true, "DisplayCommander"),
       continue_rendering("ContinueRendering", s_continue_rendering, s_continue_rendering.load(), "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
+      prevent_minimize("PreventMinimize", false, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, s_hide_hdr_capabilities.load(),
                             "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", s_enable_flip_chain, s_enable_flip_chain.load(), "DisplayCommander"),
@@ -118,7 +119,7 @@ void AdvancedTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
-    return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top, &hide_hdr_capabilities,
+    return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities,
             &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,
             &nvapi_auto_enable_enabled,

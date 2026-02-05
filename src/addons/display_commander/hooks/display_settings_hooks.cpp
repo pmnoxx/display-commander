@@ -2,6 +2,7 @@
 #include <MinHook.h>
 #include <windows.h>
 #include <wingdi.h>
+#include "api_hooks.hpp"  // GetGameWindow
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
 #include "../utils.hpp"
@@ -96,6 +97,16 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
             LogInfo("ShowWindow blocked maximize attempt - forcing normal window");
             return ShowWindow_Original(hWnd, SW_SHOWNORMAL);
         }
+    }
+
+    // Block minimize when Prevent Minimize or Continue Rendering is enabled (game window only)
+    bool prevent_minimize = settings::g_advancedTabSettings.prevent_minimize.GetValue();
+    bool continue_rendering = s_continue_rendering.load();
+    if (hWnd == display_commanderhooks::GetGameWindow() &&
+        (prevent_minimize || continue_rendering) &&
+        (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED)) {
+        LogInfo("ShowWindow blocked minimize - HWND: 0x%p", hWnd);
+        return ShowWindow_Original(hWnd, SW_SHOW);  // Keep window visible
     }
 
     return ShowWindow_Original(hWnd, nCmdShow);

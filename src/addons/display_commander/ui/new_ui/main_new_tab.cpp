@@ -3002,11 +3002,13 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     }
                     ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
 
-                    // Add DxgiBypassMode on the same line
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                    ImGui::SameLine();
-                    ImGui::TextColored(flip_color, "Status: %s", flip_state_str);
+                    if (flip_state != DxgiBypassMode::kQueryFailedNoMedia) {
+                        // Add DxgiBypassMode on the same line
+                        ImGui::SameLine();
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                        ImGui::SameLine();
+                        ImGui::TextColored(flip_color, "Status: %s", flip_state_str);
+                    }
 
                     // Check for Discord Overlay and show warning
                     static DWORD last_discord_check = 0;

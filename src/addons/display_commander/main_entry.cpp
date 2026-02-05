@@ -1031,10 +1031,19 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
             if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
             if (cpu_usage_percent > 100.0) cpu_usage_percent = 100.0;
 
-            // Apply exponential smoothing with alpha 0.1
+            // Smoothed CPU busy: updated every frame (EMA alpha 0.05), displayed every 0.2s to prevent flickering
             static double smoothed_cpu_usage = cpu_usage_percent;
+            static double displayed_cpu_usage = cpu_usage_percent;
+            static LONGLONG s_cpu_busy_last_display_ns = 0;
             const double alpha = 0.05;
             smoothed_cpu_usage = (1.0 - alpha) * smoothed_cpu_usage + alpha * cpu_usage_percent;
+            LONGLONG now_ns = utils::get_now_ns();
+            const LONGLONG k_cpu_busy_display_interval_ns =
+                static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+            if (now_ns - s_cpu_busy_last_display_ns >= k_cpu_busy_display_interval_ns) {
+                s_cpu_busy_last_display_ns = now_ns;
+                displayed_cpu_usage = smoothed_cpu_usage;
+            }
 
             // Track last 32 CPU usage values for max calculation
             static constexpr size_t kCpuUsageHistorySize = 64;
@@ -1056,9 +1065,9 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
             }
 
             if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                ImGui::Text("%.1f%% cpu busy (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
+                ImGui::Text("%.1f%% cpu busy (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
             } else {
-                ImGui::Text("%.1f%% (max: %.1f%%)", smoothed_cpu_usage, max_cpu_usage);
+                ImGui::Text("%.1f%% (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
             }
         }
         //      }
@@ -1087,27 +1096,28 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         }
 
         if (current_fps > 0.0 && cpu_time_ns > 0 && frame_time_ns > 0) {
-            double cpu_busy_percent =
-                (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+            double cpu_busy_percent = (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
             if (cpu_busy_percent < 0.0) cpu_busy_percent = 0.0;
             if (cpu_busy_percent > 100.0) cpu_busy_percent = 100.0;
 
             if (cpu_busy_percent > 0.0) {
                 double cpu_fps_raw = current_fps / (cpu_busy_percent / 100.0);
                 if (cpu_fps_raw > 9999.0) cpu_fps_raw = 9999.0;
-                // Smoothed CPU FPS for display (EMA alpha 0.01, update every 0.2s)
+                // Smoothed CPU FPS: updated every frame (EMA alpha 0.01), displayed every 0.2s to prevent flickering
                 static double s_smoothed_cpu_fps = 0.0;
-                static LONGLONG s_cpu_fps_last_update_ns = 0;
+                static double s_displayed_cpu_fps = 0.0;
+                static LONGLONG s_cpu_fps_last_display_ns = 0;
                 constexpr double k_cpu_fps_alpha = 0.01;
-                constexpr LONGLONG k_cpu_fps_update_interval_ns =
-                    static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+                s_smoothed_cpu_fps =
+                    k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
                 LONGLONG now_ns = utils::get_now_ns();
-                if (now_ns - s_cpu_fps_last_update_ns >= k_cpu_fps_update_interval_ns) {
-                    s_cpu_fps_last_update_ns = now_ns;
-                    s_smoothed_cpu_fps =
-                        k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
+                const LONGLONG k_cpu_fps_display_interval_ns =
+                    static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+                if (now_ns - s_cpu_fps_last_display_ns >= k_cpu_fps_display_interval_ns) {
+                    s_cpu_fps_last_display_ns = now_ns;
+                    s_displayed_cpu_fps = s_smoothed_cpu_fps;
                 }
-                double cpu_fps = s_smoothed_cpu_fps;
+                double cpu_fps = s_displayed_cpu_fps;
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
                     ImGui::Text("%.1f cpu fps", cpu_fps);
                 } else {

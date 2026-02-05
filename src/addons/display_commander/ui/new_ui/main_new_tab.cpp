@@ -4230,6 +4230,7 @@ void DrawImportantInfo() {
                 "Shows a performance monitoring widget in the main ReShade overlay with frame time graph, "
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
         }
+        ImGui::SameLine();
 
         // Show Labels Control
         bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
@@ -4239,6 +4240,9 @@ void DrawImportantInfo() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
         }
+
+        // Separator
+        ImGui::Separator();
 
         // Grid layout for overlay display checkboxes (4 columns)
         ImGui::Columns(4, "overlay_checkboxes", false);

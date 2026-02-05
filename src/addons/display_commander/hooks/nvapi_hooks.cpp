@@ -141,8 +141,9 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     // only for first 6 latency marker types
     if (pSetLatencyMarkerParams != nullptr
         && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-        ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reflex_marker);
+        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reflex_marker);
     }
+    bool use_present_end = false;
 
     if (pSetLatencyMarkerParams != nullptr && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END
         && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {

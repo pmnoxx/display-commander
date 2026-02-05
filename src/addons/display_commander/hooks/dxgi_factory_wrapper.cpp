@@ -224,7 +224,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
     // This avoids duplicate execution in the detour functions
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto flagsCopy = Flags;  // to fix crash
-    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_factory_wrapper);
+    ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::dxgi_factory_wrapper);
     auto use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_factory_wrapper);
 
     if (use_fps_limiter) {
@@ -320,7 +320,7 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     Microsoft::WRL::ComPtr<IDXGISwapChain> baseSwapChain;
     auto flagsCopy = PresentFlags;  // to fix crash
 
-    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::dxgi_factory_wrapper);
+    ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::dxgi_factory_wrapper);
     auto use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_factory_wrapper);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {

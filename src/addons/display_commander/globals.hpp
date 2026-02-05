@@ -632,8 +632,8 @@ enum class FpsLimiterCallSite {
 
 constexpr size_t kFpsLimiterCallSiteCount = 4;
 
-/** Last frame_id at which each FPS limiter call site was hit (0 = never). */
-extern std::atomic<uint64_t> g_fps_limiter_last_frame_id[kFpsLimiterCallSiteCount];
+/** Last timestamp (ns) at which each FPS limiter call site was hit (0 = never). */
+extern std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount];
 
 /** Sentinel for "no FPS limiter source chosen yet". */
 constexpr uint8_t kFpsLimiterChosenUnset = 0xFF;
@@ -641,12 +641,9 @@ constexpr uint8_t kFpsLimiterChosenUnset = 0xFF;
 /** Index of the chosen FPS limiter source (0..3 = FpsLimiterCallSite, kFpsLimiterChosenUnset = unset). */
 extern std::atomic<uint8_t> g_chosen_fps_limiter_site;
 
-/** Frame id for which g_chosen_fps_limiter_site was last computed. */
-extern std::atomic<uint64_t> g_last_fps_limiter_decision_frame_id;
-
-/** Register this call site for the current frame and recompute chosen source when frame changes. Decision is based on
- * previous frames' data; record is done after the decision. Call before using GetChosenFpsLimiter. */
-void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum);
+/** Register this call site with current timestamp and recompute chosen source. Decision is based on which sites were
+ * hit within the last 1s; record is done after the decision. Call before using GetChosenFpsLimiter. */
+void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum);
 
 /** Returns true iff the chosen FPS limiter source for the current decision is caller_enum. */
 bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum);
@@ -658,7 +655,7 @@ FpsLimiterCallSite GetChosenFrameTimeLocation();
  */
 const char* GetChosenFpsLimiterSiteName();
 
-/** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 3 frames of global). */
+/** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 1s). */
 bool IsNativeFramePacingInSync();
 bool IsDxgiSwapChainGettingCalled();
 /** True when native FPS limiter from frame pacing should be used (setting on, and IsNativeFramePacingInSync()). */

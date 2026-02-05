@@ -73,7 +73,7 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Check if D3D9 upgrade is enabled
+    LogInfo("OnCreateDevice: api: %d, api_version: 0x%x", api, api_version);
     if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
         LogInfo("D3D9 to D3D9Ex upgrade disabled");
         return false;
@@ -107,6 +107,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
 
 void OnInitDevice(reshade::api::device* device) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    LogInfo("OnInitDevice: device: %p", device);
     // Device initialization tracking
     if (device == nullptr) {
         return;
@@ -116,6 +117,7 @@ void OnInitDevice(reshade::api::device* device) {
 
 void OnDestroyDevice(reshade::api::device* device) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    LogInfo("OnDestroyDevice: device: %p", device);
     if (device == nullptr) {
         return;
     }
@@ -1163,7 +1165,7 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
 
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reshade_addon_event);
+    ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reshade_addon_event);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
 
     if (use_fps_limiter) {
@@ -1703,7 +1705,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     perf_timer.pause();
     // vulkan fps limiter
-    ChooseFpsLimiter(g_global_frame_id.load(std::memory_order_relaxed), FpsLimiterCallSite::reshade_addon_event);
+    ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reshade_addon_event);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
     if (use_fps_limiter) {
         uint32_t present_flags = 0;

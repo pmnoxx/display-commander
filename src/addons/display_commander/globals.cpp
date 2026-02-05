@@ -202,11 +202,10 @@ std::atomic<uint64_t> g_last_xinput_detected_frame_id{0};
 // Global frame ID when NvAPI_D3D_SetSleepMode_Direct was last called
 std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id{0};
 
-// Last frame_id at which each FPS limiter call site was hit
-std::atomic<uint64_t> g_fps_limiter_last_frame_id[kFpsLimiterCallSiteCount] = {};
+// Last timestamp (ns) at which each FPS limiter call site was hit (0 = never)
+std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount] = {};
 
 std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
-std::atomic<uint64_t> g_last_fps_limiter_decision_frame_id{0};
 
 namespace {
 // Priority order: reflex_marker, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event (indices 0, 1, 3, 2).
@@ -217,12 +216,13 @@ constexpr std::array<FpsLimiterCallSite, 4> kFpsLimiterPriorityOrder = {
     FpsLimiterCallSite::reshade_addon_event,
 };
 
-bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t frame_id) {
-    const uint64_t last = g_fps_limiter_last_frame_id[static_cast<size_t>(site)].load(std::memory_order_relaxed);
+bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
+    const uint64_t last = g_fps_limiter_last_timestamp_ns[static_cast<size_t>(site)].load(std::memory_order_relaxed);
     if (last == 0) {
         return false;
     }
-    return (frame_id - last) <= 3;
+    const uint64_t delta_ns = timestamp_ns - last;
+    return delta_ns <= static_cast<uint64_t>(utils::SEC_TO_NS);
 }
 
 const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
@@ -237,43 +237,38 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
 }  // namespace
 
 FpsLimiterCallSite GetChosenFrameTimeLocation() {
-    if (IsFpsLimiterSiteEligible(FpsLimiterCallSite::dxgi_swapchain,
-                                 g_global_frame_id.load(std::memory_order_relaxed))) {
+    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
+    if (IsFpsLimiterSiteEligible(FpsLimiterCallSite::dxgi_swapchain, now_ns)) {
         return FpsLimiterCallSite::dxgi_swapchain;
     }
     return FpsLimiterCallSite::reshade_addon_event;
 }
 
-void ChooseFpsLimiter(uint64_t frame_id, FpsLimiterCallSite caller_enum) {
-    // 1. New frame? Make decision based on *previous* frames' data (before recording this call).
-    const uint64_t last_decision = g_last_fps_limiter_decision_frame_id.load(std::memory_order_relaxed);
-    if (frame_id != last_decision) {
-        g_last_fps_limiter_decision_frame_id.store(frame_id, std::memory_order_relaxed);
-
-        FpsLimiterCallSite new_chosen = FpsLimiterCallSite::reshade_addon_event;  // default (guaranteed)
-        for (FpsLimiterCallSite site : kFpsLimiterPriorityOrder) {
-            if (site == FpsLimiterCallSite::reflex_marker
-                && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
-                continue;
-            }
-            if (IsFpsLimiterSiteEligible(site, frame_id)) {
-                new_chosen = site;
-                break;
-            }
+void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
+    // 1. Make decision based on which sites were hit within the last 1s (before recording this call).
+    FpsLimiterCallSite new_chosen = FpsLimiterCallSite::reshade_addon_event;  // default (guaranteed)
+    for (FpsLimiterCallSite site : kFpsLimiterPriorityOrder) {
+        if (site == FpsLimiterCallSite::reflex_marker
+            && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
+            continue;
         }
-
-        const uint8_t new_index = static_cast<uint8_t>(static_cast<size_t>(new_chosen));
-        const uint8_t prev = g_chosen_fps_limiter_site.exchange(new_index, std::memory_order_relaxed);
-
-        if (prev != new_index) {
-            const char* old_name =
-                (prev == kFpsLimiterChosenUnset) ? "unset" : FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(prev));
-            LogInfo("FPS limiter source: %s -> %s", old_name, FpsLimiterSiteName(new_chosen));
+        if (IsFpsLimiterSiteEligible(site, timestamp_ns)) {
+            new_chosen = site;
+            break;
         }
     }
 
-    // 2. Record this call site for this frame (so next frame's decision can use it).
-    g_fps_limiter_last_frame_id[static_cast<size_t>(caller_enum)].store(frame_id, std::memory_order_relaxed);
+    const uint8_t new_index = static_cast<uint8_t>(static_cast<size_t>(new_chosen));
+    const uint8_t prev = g_chosen_fps_limiter_site.exchange(new_index, std::memory_order_relaxed);
+
+    if (prev != new_index) {
+        const char* old_name =
+            (prev == kFpsLimiterChosenUnset) ? "unset" : FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(prev));
+        LogInfo("FPS limiter source: %s -> %s", old_name, FpsLimiterSiteName(new_chosen));
+    }
+
+    // 2. Record this call site with current timestamp (so future decisions see it within 1s).
+    g_fps_limiter_last_timestamp_ns[static_cast<size_t>(caller_enum)].store(timestamp_ns, std::memory_order_relaxed);
 }
 
 bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum) {
@@ -293,15 +288,23 @@ const char* GetChosenFpsLimiterSiteName() {
 }
 
 bool IsNativeFramePacingInSync() {
-    const uint64_t reflex_frame =
-        g_fps_limiter_last_frame_id[static_cast<size_t>(FpsLimiterCallSite::reflex_marker)].load();
-    return reflex_frame > 0 && std::abs(static_cast<long long>(reflex_frame - g_global_frame_id.load())) <= 3;
+    const uint64_t reflex_ts =
+        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::reflex_marker)].load();
+    if (reflex_ts == 0) {
+        return false;
+    }
+    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
+    return (now_ns - reflex_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS);
 }
 
 bool IsDxgiSwapChainGettingCalled() {
-    const uint64_t reflex_frame =
-        g_fps_limiter_last_frame_id[static_cast<size_t>(FpsLimiterCallSite::dxgi_swapchain)].load();
-    return reflex_frame > 0 && std::abs(static_cast<long long>(reflex_frame - g_global_frame_id.load())) <= 3;
+    const uint64_t dxgi_ts =
+        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::dxgi_swapchain)].load();
+    if (dxgi_ts == 0) {
+        return false;
+    }
+    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
+    return (now_ns - dxgi_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS);
 }
 
 bool ShouldUseNativeFpsLimiterFromFramePacing() {

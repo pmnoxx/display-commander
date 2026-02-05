@@ -7,6 +7,7 @@
 #include <atomic>
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../ui/new_ui/window_info_tab.hpp"
 #include "../utils/logging.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
@@ -126,7 +127,8 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // Handle window position changes
             // Note: In message hooks, we can't modify the WINDOWPOS structure directly
             // We can only suppress the message, which prevents the window position change
-            if (continue_rendering_enabled) {
+            bool prevent_minimize_enabled = settings::g_advancedTabSettings.prevent_minimize.GetValue();
+            if (continue_rendering_enabled || prevent_minimize_enabled) {
                 WINDOWPOS* pWp = reinterpret_cast<WINDOWPOS*>(lParam);
                 if (pWp != nullptr && (pWp->flags & SWP_SHOWWINDOW)) {
                     // Check if window is being minimized
@@ -175,10 +177,11 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             }
             break;
 
-        case WM_SYSCOMMAND:
+        case WM_SYSCOMMAND: {
             // Handle system commands
-            if (continue_rendering_enabled) {
-                // Prevent minimization when continue rendering is enabled
+            bool prevent_minimize_enabled = settings::g_advancedTabSettings.prevent_minimize.GetValue();
+            if (continue_rendering_enabled || prevent_minimize_enabled) {
+                // Prevent minimization when continue rendering or prevent minimize is enabled
                 if (wParam == SC_MINIMIZE) {
                     LogInfo("WM_SYSCOMMAND: Suppressing minimize command - HWND: 0x%p", hwnd);
                     // Update the message history to show this was suppressed
@@ -187,6 +190,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 }
             }
             break;
+        }
 
         case WM_QUIT:
             // Handle window quit message

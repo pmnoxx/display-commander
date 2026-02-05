@@ -2713,22 +2713,6 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         }
     }
 
-    // FPS Limiter Warning - Check if OnPresentFlags events are working
-    if (fps_limit_enabled) {
-        uint32_t event_count = g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].load();
-        bool show_warning = (event_count == 0);
-
-        if (show_warning) {
-            ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
-                               " Warning: FPS limiting is enabled but SWAPCHAIN_EVENT_PRESENT_FLAGS events are 0. "
-                               "FPS limiting may not work properly.");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("SWAPCHAIN_EVENT_PRESENT_FLAGS events are required for FPS limiting.");
-            }
-        }
-    }
-
     // No Render in Background checkbox
     {
         bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();

@@ -115,6 +115,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_native_frame_time_graph;
     ui::new_ui::BoolSetting show_frame_timeline_bar;
     ui::new_ui::BoolSetting show_refresh_rate_frame_times;
+    ui::new_ui::IntSetting refresh_rate_monitor_poll_ms;  // Only used when show_refresh_rate_frame_times is true
     ui::new_ui::BoolSetting show_refresh_rate_frame_time_stats;
     ui::new_ui::BoolSetting show_cpu_usage;
     ui::new_ui::BoolSetting show_cpu_fps;

@@ -14,9 +14,8 @@ namespace display_commander::nvapi {
 
 namespace {
 
-// 1 ms needed for FG/high fps: lastFlipRefreshCount is per app frame; at 60 fps an 8 ms poll
-// often sees delta_count == 0.
-constexpr unsigned POLL_MS = 1;
+// When show_refresh_rate_frame_times is false, use 1 s poll (not configurable).
+constexpr unsigned POLL_MS_WHEN_GRAPH_OFF = 1000;
 // lastFlipTimeStamp is in 100ns units (Windows FILETIME style). 1e7 units = 1 second.
 constexpr double TIMESTAMP_UNITS_PER_SEC = 1e7;
 constexpr size_t RECENT_SAMPLES_SIZE = 256;
@@ -50,11 +49,8 @@ void PushSample(double rate_hz) {
 
 void MonitorThreadFunc() {
     while (!g_stop_monitor.load(std::memory_order_relaxed)) {
-        if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(4));
-        } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(POLL_MS));
-        }
+        const int sleep_ms = settings::g_mainTabSettings.refresh_rate_monitor_poll_ms.GetValue();
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
 
         std::shared_ptr<::nvapi::VrrStatus> vrr = vrr_status::cached_nvapi_vrr.load();
         NvU32 display_id = vrr ? vrr->display_id : 0;
@@ -94,7 +90,7 @@ void MonitorThreadFunc() {
                     // Sanity: typical range 24–240 Hz
                     if (rate_hz >= 1.0 && rate_hz <= 1000.0) {
                         g_actual_refresh_rate_hz.store(rate_hz, std::memory_order_relaxed);
-                        for (size_t i = 0; i < (std::min)(2U, delta_count); i++) {
+                        for (size_t i = 0; i < (std::min)(100U, delta_count); i++) {
                             PushSample(rate_hz);
                         }
                     }
@@ -135,6 +131,9 @@ void StartNvapiActualRefreshRateMonitoring() {
     g_has_prev = false;
     g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
     g_consecutive_failures.store(0, std::memory_order_release);
+    if (g_monitor_thread.joinable()) {
+        g_monitor_thread.join();
+    }
     g_monitor_thread = std::thread(MonitorThreadFunc);
 }
 
@@ -143,9 +142,6 @@ void StopNvapiActualRefreshRateMonitoring() {
         return;
     }
     g_stop_monitor.store(true);
-    if (g_monitor_thread.joinable()) {
-        g_monitor_thread.join();
-    }
     g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
     g_recent_count.store(0, std::memory_order_release);
     g_consecutive_failures.store(0, std::memory_order_release);

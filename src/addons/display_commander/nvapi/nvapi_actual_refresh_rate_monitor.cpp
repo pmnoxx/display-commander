@@ -1,5 +1,6 @@
 #include "nvapi_actual_refresh_rate_monitor.hpp"
 #include "../globals.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "vrr_status.hpp"
 
 #include <nvapi.h>
@@ -49,7 +50,11 @@ void PushSample(double rate_hz) {
 
 void MonitorThreadFunc() {
     while (!g_stop_monitor.load(std::memory_order_relaxed)) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_MS));
+        if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(4));
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(POLL_MS));
+        }
 
         std::shared_ptr<::nvapi::VrrStatus> vrr = vrr_status::cached_nvapi_vrr.load();
         NvU32 display_id = vrr ? vrr->display_id : 0;
@@ -89,7 +94,7 @@ void MonitorThreadFunc() {
                     // Sanity: typical range 24–240 Hz
                     if (rate_hz >= 1.0 && rate_hz <= 1000.0) {
                         g_actual_refresh_rate_hz.store(rate_hz, std::memory_order_relaxed);
-                        for (size_t i = 0; i < (std::min)(10U, delta_count); i++) {
+                        for (size_t i = 0; i < (std::min)(2U, delta_count); i++) {
                             PushSample(rate_hz);
                         }
                     }

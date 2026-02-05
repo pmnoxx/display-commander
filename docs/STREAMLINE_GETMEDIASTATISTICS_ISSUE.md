@@ -155,4 +155,3 @@ DxgiBypassMode GetIndependentFlipState(IDXGISwapChain *dxgi_swapchain) {
 - **Streamline Proxy**: `external-src/streamline/source/core/sl.interposer/dxgi/dxgiSwapchain.cpp`
 - **Display Commander Query**: `src/addons/display_commander/dxgi/dxgi_management.cpp` (GetIndependentFlipState)
 - **Display Commander Wrapper**: `src/addons/display_commander/hooks/dxgi_factory_wrapper.cpp` (DXGISwapChain4Wrapper::QueryInterface)
-

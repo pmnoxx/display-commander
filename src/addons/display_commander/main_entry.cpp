@@ -833,13 +833,13 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
         }
 
         if (show_dlss_internal_resolution) {
-            // Show internal resolution -> output resolution if DLSS is active and we have valid data
+            // Show internal resolution -> output resolution -> backbuffer if DLSS is active and we have valid data
             if (any_dlss_active && internal_resolution != "N/A") {
-                std::string res_text;
-                if (output_resolution != "N/A") {
-                    res_text = internal_resolution + " -> " + output_resolution;
-                } else {
-                    res_text = internal_resolution;
+                std::string res_text = internal_resolution;
+                const int bb_w = g_game_render_width.load();
+                const int bb_h = g_game_render_height.load();
+                if (bb_w > 0 && bb_h > 0) {
+                    res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
                 }
                 if (settings::g_mainTabSettings.show_labels.GetValue()) {
                     ImGui::Text("DLSS Res: %s", res_text.c_str());
@@ -1108,8 +1108,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                 static double s_displayed_cpu_fps = 0.0;
                 static LONGLONG s_cpu_fps_last_display_ns = 0;
                 constexpr double k_cpu_fps_alpha = 0.01;
-                s_smoothed_cpu_fps =
-                    k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
+                s_smoothed_cpu_fps = k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
                 LONGLONG now_ns = utils::get_now_ns();
                 const LONGLONG k_cpu_fps_display_interval_ns =
                     static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));

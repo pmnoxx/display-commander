@@ -178,5 +178,3 @@ class ScopedTimer {
 };
 
 } // namespace perf_measurement
-
-

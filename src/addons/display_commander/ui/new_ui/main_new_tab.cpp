@@ -442,13 +442,13 @@ void DrawDLSSInfo() {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
     }
 
-    // DLSS Internal Resolution
+    // DLSS Internal Resolution (same format as performance overlay: internal -> output -> backbuffer)
     if (any_dlss_active && dlssg_summary.internal_resolution != "N/A") {
-        std::string res_text;
-        if (dlssg_summary.output_resolution != "N/A") {
-            res_text = dlssg_summary.internal_resolution + " -> " + dlssg_summary.output_resolution;
-        } else {
-            res_text = dlssg_summary.internal_resolution;
+        std::string res_text = dlssg_summary.internal_resolution;
+        const int bb_w = g_game_render_width.load();
+        const int bb_h = g_game_render_height.load();
+        if (bb_w > 0 && bb_h > 0) {
+            res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
         }
         ImGui::Text("DLSS Res: %s", res_text.c_str());
     } else {
@@ -4494,13 +4494,15 @@ void DrawImportantInfo() {
 
         // Refresh Rate Time Graph Control
         bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-        if (ImGui::Checkbox("Refresh rate time graph", &show_refresh_rate_frame_times)) {
+        // Warning: about this introducing heartbeat issue
+        if (ImGui::Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
             settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
-                "Requires NVAPI and a resolved display.");
+                "Requires NVAPI and a resolved display.\n"
+                "WARNING: This may introduces a heartbeat issue, with frame time spike once a second.");
         }
         ImGui::NextColumn();
 

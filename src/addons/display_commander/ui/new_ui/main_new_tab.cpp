@@ -4504,6 +4504,18 @@ void DrawImportantInfo() {
                 "Requires NVAPI and a resolved display.\n"
                 "WARNING: This may introduces a heartbeat issue, with frame time spike once a second.");
         }
+        if (show_refresh_rate_frame_times || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
+            if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms,
+                                 "Refresh rate monitor poll (ms)", "%d ms")) {
+                // Setting is automatically saved by SliderIntSetting
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
+                    "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
+                    "polling defaults to 1 s and this setting is not used.");
+            }
+        }
         ImGui::NextColumn();
 
         // Show Refresh Rate Time Stats Control

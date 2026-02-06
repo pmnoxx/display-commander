@@ -1299,6 +1299,7 @@ struct DLSSGSummary {
     std::string dlssd_dll_version = "N/A";
     std::string supported_dlss_presets = "N/A";
     std::string supported_dlss_rr_presets = "N/A";
+    std::string auto_exposure = "N/A";  // "On", "Off", or "N/A" (from DLSS Feature Create Flags)
 };
 
 // DLSS Model Profile structure

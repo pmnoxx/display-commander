@@ -1080,8 +1080,7 @@ void DrawNvapiSettings() {
             uint32_t native_set_latency_marker_count =
                 ::g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].load();
             uint32_t native_get_latency_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].load();
-            uint32_t native_get_sleep_status_count =
-                ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].load();
+            uint32_t native_get_sleep_status_count = ::g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].load();
             LONGLONG native_sleep_ns = ::g_sleep_reflex_native_ns.load();
             LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
 

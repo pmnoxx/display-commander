@@ -853,6 +853,13 @@ DLSSGSummary GetDLSSGSummary() {
     // Determine supported DLSS RR presets based on DLSS DLL version
     summary.supported_dlss_rr_presets = GetSupportedDLSSRRPresetsFromVersionString(summary.dlss_dll_version);
 
+    // Auto-exposure from DLSS Feature Create Flags (NVSDK_NGX_DLSS_Feature_Flags_AutoExposure = 1 << 6)
+    int create_flags = 0;
+    if (g_ngx_parameters.get_as_int("DLSS.Feature.Create.Flags", create_flags)) {
+        constexpr unsigned int k_auto_exposure_flag = 1u << 6;
+        summary.auto_exposure = (static_cast<unsigned int>(create_flags) & k_auto_exposure_flag) ? "On" : "Off";
+    }
+
     return summary;
 }
 

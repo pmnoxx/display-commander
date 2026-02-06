@@ -33,6 +33,8 @@ class SwapchainTabSettings {
     BoolSetting dlss_preset_override_enabled;
     StringSetting dlss_sr_preset_override;
     StringSetting dlss_rr_preset_override;
+    // DLSS auto-exposure override: "Game Default", "Force Off", "Force On"
+    StringSetting dlss_forced_auto_exposure;
 
 
   private:

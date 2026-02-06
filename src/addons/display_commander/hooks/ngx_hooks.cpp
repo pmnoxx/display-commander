@@ -3,6 +3,7 @@
 #include <MinHook.h>
 #include <windows.h>
 #include <algorithm>
+#include <cstring>
 #include <map>
 #include <string>
 #include <vector>
@@ -475,6 +476,24 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         }
     }
 
+    // DLSS auto-exposure override (same as Special-K: override DLSS.Feature.Create.Flags)
+    if (InName != nullptr && strcmp(InName, "DLSS.Feature.Create.Flags") == 0) {
+        const std::string force_ae = settings::g_swapchainTabSettings.dlss_forced_auto_exposure.GetValue();
+        const unsigned int flags = static_cast<unsigned int>(InValue);
+        constexpr unsigned int k_auto_exposure = NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+        if (force_ae == "Force Off") {
+            if ((flags & k_auto_exposure) == k_auto_exposure) {
+                InValue = static_cast<int>(flags & ~k_auto_exposure);
+                LogInfo("DLSS auto-exposure override: Force Off");
+            }
+        } else if (force_ae == "Force On") {
+            if ((flags & k_auto_exposure) == 0) {
+                InValue = static_cast<int>(flags | k_auto_exposure);
+                LogInfo("DLSS auto-exposure override: Force On");
+            }
+        }
+    }
+
     // Store parameter in thread-safe storage (store original game value before override check)
     int original_value = InValue;
     if (InName != nullptr) {
@@ -551,6 +570,24 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         }
     }
 
+    // DLSS auto-exposure override (same as Special-K: override DLSS.Feature.Create.Flags)
+    if (InName != nullptr && strcmp(InName, "DLSS.Feature.Create.Flags") == 0) {
+        const std::string force_ae = settings::g_swapchainTabSettings.dlss_forced_auto_exposure.GetValue();
+        unsigned int flags = InValue;
+        constexpr unsigned int k_auto_exposure = NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+        if (force_ae == "Force Off") {
+            if ((flags & k_auto_exposure) == k_auto_exposure) {
+                InValue = flags & ~k_auto_exposure;
+                LogInfo("DLSS auto-exposure override (SetUI): Force Off");
+            }
+        } else if (force_ae == "Force On") {
+            if ((flags & k_auto_exposure) == 0) {
+                InValue = flags | k_auto_exposure;
+                LogInfo("DLSS auto-exposure override (SetUI): Force On");
+            }
+        }
+    }
+
     // Store parameter in thread-safe storage (store original game value before override check)
     unsigned int original_value = InValue;
     if (InName != nullptr) {
@@ -593,6 +630,24 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
     // Increment NGX counters
     g_ngx_counters.parameter_setull_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
+
+    // DLSS auto-exposure override (DLSS.Feature.Create.Flags may be set as 32-bit value in low bits)
+    if (InName != nullptr && strcmp(InName, "DLSS.Feature.Create.Flags") == 0) {
+        const std::string force_ae = settings::g_swapchainTabSettings.dlss_forced_auto_exposure.GetValue();
+        unsigned int flags = static_cast<unsigned int>(InValue & 0xFFFFFFFFu);
+        constexpr unsigned int k_auto_exposure = NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+        if (force_ae == "Force Off") {
+            if ((flags & k_auto_exposure) == k_auto_exposure) {
+                InValue = (InValue & ~0xFFFFFFFFULL) | (flags & ~k_auto_exposure);
+                LogInfo("DLSS auto-exposure override (SetULL): Force Off");
+            }
+        } else if (force_ae == "Force On") {
+            if ((flags & k_auto_exposure) == 0) {
+                InValue = (InValue & ~0xFFFFFFFFULL) | (flags | k_auto_exposure);
+                LogInfo("DLSS auto-exposure override (SetULL): Force On");
+            }
+        }
+    }
 
     // Store parameter in thread-safe storage (store original game value)
     if (InName != nullptr) {

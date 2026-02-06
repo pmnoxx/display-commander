@@ -21,6 +21,7 @@
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
+#include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
@@ -428,10 +429,9 @@ void DrawFrameTimelineBarOverlay(bool show_tooltips) {
     ImGui::EndTable();
 }
 
-// Draw DLSS information (same format as performance overlay)
-void DrawDLSSInfo() {
-    const DLSSGSummary dlssg_summary = GetDLSSGSummary();
-    auto any_dlss_active =
+// Draw DLSS information (same format as performance overlay). Caller must pass pre-fetched summary.
+void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
+    const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
     // FG Mode
@@ -524,11 +524,91 @@ void DrawDLSSInfo() {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
     }
 
-    // DLSS Sharpness
-    if (any_dlss_active && dlssg_summary.sharpness != "N/A") {
-        ImGui::Text("DLSS Sharpness: %s", dlssg_summary.sharpness.c_str());
+    // DLSS.Feature.Create.Flags (own field)
+    if (any_dlss_active) {
+        int create_flags_val = 0;
+        bool has_create_flags = ::g_ngx_parameters.get_as_int("DLSS.Feature.Create.Flags", create_flags_val);
+        std::string create_flags_list;
+        if (has_create_flags) {
+            static const struct {
+                unsigned int mask;
+                const char* name;
+            } k_dlss_feature_bits[] = {
+                {1u << 0, "IsHDR"},         {1u << 1, "MVLowRes"},       {1u << 2, "MVJittered"},
+                {1u << 3, "DepthInverted"}, {1u << 4, "Reserved_0"},     {1u << 5, "DoSharpening"},
+                {1u << 6, "AutoExposure"},  {1u << 7, "AlphaUpscaling"}, {1u << 31, "IsInvalid"},
+            };
+            unsigned int uflags = static_cast<unsigned int>(create_flags_val);
+            unsigned int known_mask = 0;
+            for (const auto& b : k_dlss_feature_bits) {
+                known_mask |= b.mask;
+                if ((uflags & b.mask) != 0u) {
+                    if (!create_flags_list.empty()) create_flags_list += ", ";
+                    create_flags_list += b.name;
+                }
+            }
+            unsigned int unknown_bits = uflags & ~known_mask;
+            if (unknown_bits != 0) {
+                if (!create_flags_list.empty()) create_flags_list += ", ";
+                create_flags_list += "+0x";
+                std::ostringstream oss;
+                oss << std::hex << unknown_bits;
+                create_flags_list += oss.str();
+                create_flags_list += " (other)";
+            }
+            if (create_flags_list.empty()) create_flags_list = "None";
+        }
+        if (has_create_flags) {
+            ImGui::Text("Create.Flags: %d (%s)", create_flags_val, create_flags_list.c_str());
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
+        }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Sharpness: N/A");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
+    }
+    std::string ae_current = settings::g_swapchainTabSettings.dlss_forced_auto_exposure.GetValue();
+
+    static auto original_auto_exposure_setting = ae_current;
+    // Auto Exposure (info + override combo, same as Special-K). Shown only when Create.Flags has
+    // the AutoExposure bit and we have a resolved state (ae_idx != 0, i.e. not N/A).
+    bool show_auto_exposure = false;
+    if (any_dlss_active) {
+        int create_flags_ae = 0;
+        const bool has_create_flags_ae = ::g_ngx_parameters.get_as_int("DLSS.Feature.Create.Flags", create_flags_ae);
+        constexpr unsigned int k_auto_exposure_bit = 1u << 6;
+        const bool flags_have_auto_exposure =
+            has_create_flags_ae && ((static_cast<unsigned int>(create_flags_ae) & k_auto_exposure_bit) != 0u);
+        int ae_idx = 0;  // 0 = N/A, 1 = Off, 2 = On (game state)
+        if (dlssg_summary.auto_exposure == "Off") {
+            ae_idx = 1;
+        } else if (dlssg_summary.auto_exposure == "On") {
+            ae_idx = 2;
+        }
+        show_auto_exposure = (ae_idx != 0 || original_auto_exposure_setting != ae_current) && flags_have_auto_exposure;
+    }
+    if (show_auto_exposure) {
+        ImGui::Text("Auto Exposure: %s", dlssg_summary.auto_exposure.c_str());
+        const char* ae_items[] = {"Game Default", "Force Off", "Force On"};
+        int ae_idx = 0;
+        if (ae_current == "Force Off") {
+            ae_idx = 1;
+        } else if (ae_current == "Force On") {
+            ae_idx = 2;
+        }
+        ImGui::SetNextItemWidth(ImGui::CalcTextSize("Force On").x + (ImGui::GetStyle().FramePadding.x * 2.0f) + 20.0f);
+        if (ImGui::Combo("Auto Exposure Override##DLSS", &ae_idx, ae_items, 3)) {
+            settings::g_swapchainTabSettings.dlss_forced_auto_exposure.SetValue(ae_items[ae_idx]);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Override DLSS auto-exposure. Takes effect when DLSS feature is (re)created.\n"
+                "See Create.Flags field for current DLSS.Feature.Create.Flags value and decoded bits.");
+        }
+        if (original_auto_exposure_setting != ae_current) {
+            ImGui::TextColored(ui::colors::TEXT_WARNING, "Restart required for change to take effect.");
+        }
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Auto Exposure: N/A");
     }
 
     // DLSS DLL Versions
@@ -3791,14 +3871,18 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     DrawDisplaySettings_WindowModeAndApply();
     DrawDisplaySettings_FpsLimiterMode();
     DrawDisplaySettings_FpsAndBackground();
-
-    if (ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
-        DrawDLSSInfo();
-        ImGui::Unindent();
-    }
-
     DrawDisplaySettings_VSyncAndTearing();
+
+    {
+        const DLSSGSummary dlss_summary = GetDLSSGSummary();
+        const bool any_dlss_active =
+            dlss_summary.dlss_active || dlss_summary.dlss_g_active || dlss_summary.ray_reconstruction_active;
+        if (any_dlss_active && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
+            ImGui::Indent();
+            DrawDLSSInfo(dlss_summary);
+            ImGui::Unindent();
+        }
+    }
 }
 
 void DrawAudioSettings() {

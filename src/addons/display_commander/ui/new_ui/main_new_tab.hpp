@@ -12,6 +12,13 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime);
 // Draw display settings section
 void DrawDisplaySettings(reshade::api::effect_runtime* runtime);
 
+// Display settings section helpers (split from DrawDisplaySettings)
+void DrawDisplaySettings_DisplayAndTarget();
+void DrawDisplaySettings_WindowModeAndApply();
+void DrawDisplaySettings_FpsLimiterMode();
+void DrawDisplaySettings_FpsAndBackground();
+void DrawDisplaySettings_VSyncAndTearing();
+
 // Draw audio settings section
 void DrawAudioSettings();
 

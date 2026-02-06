@@ -2030,11 +2030,7 @@ void DrawQuickFpsLimitChanger() {
     }
 }
 
-void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
-    assert(runtime != nullptr);
-    auto native_device = reinterpret_cast<IUnknown*>(runtime->get_device()->get_native());
-
-    auto now = utils::get_now_ns();
+void DrawDisplaySettings_DisplayAndTarget() {
     {
         // Target Display list and selection (needed for refresh rate fallback on same line as Game Render Resolution)
         auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
@@ -2141,7 +2137,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::SetTooltip("%s", tooltip_text.c_str());
         }
     }
+}
 
+void DrawDisplaySettings_WindowModeAndApply() {
     // Window Mode dropdown (with persistent setting)
     if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode")) {
         WindowMode old_mode = s_window_mode.load();
@@ -2220,7 +2218,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Apply the current window size and position settings immediately.");
     }
+}
 
+void DrawDisplaySettings_FpsLimiterMode() {
     ImGui::Spacing();
 
     // FPS Limiter Mode
@@ -2661,7 +2661,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
     }
+}
 
+void DrawDisplaySettings_FpsAndBackground() {
     if (enabled_experimental_features) {
         if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
             ImGui::Spacing();
@@ -2737,16 +2739,14 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 "This can save GPU power and reduce background processing.");
         }
     }
+}
 
-    // DLSS Information (default closed)
-    if (ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
-        DrawDLSSInfo();
-        ImGui::Unindent();
-    }
-
+void DrawDisplaySettings_VSyncAndTearing() {
     // VSync & Tearing controls
     {
+        bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
+                                     && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+                                 || settings::g_advancedTabSettings.reflex_enable.GetValue();
         // Main FPS Limit slider (persisted)
         {
             if (!fps_limit_enabled) {
@@ -3783,6 +3783,22 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             }
         }
     }
+}
+
+void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
+    assert(runtime != nullptr);
+    DrawDisplaySettings_DisplayAndTarget();
+    DrawDisplaySettings_WindowModeAndApply();
+    DrawDisplaySettings_FpsLimiterMode();
+    DrawDisplaySettings_FpsAndBackground();
+
+    if (ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+        DrawDLSSInfo();
+        ImGui::Unindent();
+    }
+
+    DrawDisplaySettings_VSyncAndTearing();
 }
 
 void DrawAudioSettings() {

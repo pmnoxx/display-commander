@@ -2896,8 +2896,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
         bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
         if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
             settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
-                              : "Prevent Tearing disabled");
+            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
@@ -3010,8 +3009,7 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection() {
         }
     } else {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  No flip state data available");
-        ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                           "  Waiting for a PresentMode-like ETW property/event");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Waiting for a PresentMode-like ETW property/event");
         if (!pm_debug_info.last_present_mode_value.empty()) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last PresentMode-like: %s",
                                pm_debug_info.last_present_mode_value.c_str());
@@ -3178,12 +3176,12 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
         RECT window_rect = {};
         RECT client_rect = {};
         if (GetWindowRect(game_window, &window_rect) && GetClientRect(game_window, &client_rect)) {
-            ImGui::Text("Window Rect: (%ld, %ld) to (%ld, %ld)", window_rect.left, window_rect.top,
-                        window_rect.right, window_rect.bottom);
+            ImGui::Text("Window Rect: (%ld, %ld) to (%ld, %ld)", window_rect.left, window_rect.top, window_rect.right,
+                        window_rect.bottom);
             ImGui::Text("Window Size: %ld x %ld", window_rect.right - window_rect.left,
                         window_rect.bottom - window_rect.top);
-            ImGui::Text("Client Rect: (%ld, %ld) to (%ld, %ld)", client_rect.left, client_rect.top,
-                        client_rect.right, client_rect.bottom);
+            ImGui::Text("Client Rect: (%ld, %ld) to (%ld, %ld)", client_rect.left, client_rect.top, client_rect.right,
+                        client_rect.bottom);
             ImGui::Text("Client Size: %ld x %ld", client_rect.right - client_rect.left,
                         client_rect.bottom - client_rect.top);
         }
@@ -3212,9 +3210,8 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
             long window_width = window_rect.right - window_rect.left;
             long window_height = window_rect.bottom - window_rect.top;
             ImGui::Text("Window: %ldx%ld", window_width, window_height);
-            bool size_matches =
-                (static_cast<long>(desc.back_buffer.texture.width) == window_width
-                 && static_cast<long>(desc.back_buffer.texture.height) == window_height);
+            bool size_matches = (static_cast<long>(desc.back_buffer.texture.width) == window_width
+                                 && static_cast<long>(desc.back_buffer.texture.height) == window_height);
             if (size_matches) {
                 ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Sizes match");
             } else {
@@ -3229,17 +3226,15 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
             monitor_info.cbSize = sizeof(MONITORINFOEXW);
             if (GetMonitorInfoW(monitor, &monitor_info)) {
                 ImGui::Text("Monitor Rect: (%ld, %ld) to (%ld, %ld)", monitor_info.rcMonitor.left,
-                            monitor_info.rcMonitor.top, monitor_info.rcMonitor.right,
-                            monitor_info.rcMonitor.bottom);
+                            monitor_info.rcMonitor.top, monitor_info.rcMonitor.right, monitor_info.rcMonitor.bottom);
                 long monitor_width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
                 long monitor_height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
                 ImGui::Text("Monitor Size: %ld x %ld", monitor_width, monitor_height);
                 if (GetWindowRect(game_window, &window_rect)) {
-                    bool covers_monitor =
-                        (window_rect.left == monitor_info.rcMonitor.left
-                         && window_rect.top == monitor_info.rcMonitor.top
-                         && window_rect.right == monitor_info.rcMonitor.right
-                         && window_rect.bottom == monitor_info.rcMonitor.bottom);
+                    bool covers_monitor = (window_rect.left == monitor_info.rcMonitor.left
+                                           && window_rect.top == monitor_info.rcMonitor.top
+                                           && window_rect.right == monitor_info.rcMonitor.right
+                                           && window_rect.bottom == monitor_info.rcMonitor.bottom);
                     if (covers_monitor) {
                         ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Window covers entire monitor");
                     } else {
@@ -3270,16 +3265,15 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
                            "  - MPO Independent Flip (Green): Modern hardware overlay plane");
         ImGui::Text("    Best performance and lowest latency");
     } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
-        ImGui::TextColored(ui::colors::FLIP_INDEPENDENT,
-                           "  - Independent Flip (Green): Legacy direct flip mode");
+        ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  - Independent Flip (Green): Legacy direct flip mode");
         ImGui::Text("    Good performance and low latency");
     } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull) {
         ImGui::TextColored(ui::colors::TEXT_ERROR, "  - Query Failed: Swapchain is null");
         ImGui::Text("    Cannot determine flip state - swapchain not available");
     } else if (flip_state == DxgiBypassMode::kQueryFailedNoMedia) {
         if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
-            ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING
-                               "  - Streamline Interposer detected - Flip State Query not supported");
+            ImGui::TextColored(ui::colors::TEXT_ERROR,
+                               ICON_FK_WARNING "  - Streamline Interposer detected - Flip State Query not supported");
             ImGui::Text("    Cannot determine flip state - call after at least one Present");
         } else {
             ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
@@ -3303,11 +3297,11 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
     ImGui::Text("Back Buffer Size: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
     const char* format_name = "Unknown";
     switch (desc.back_buffer.texture.format) {
-        case reshade::api::format::r10g10b10a2_unorm: format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
+        case reshade::api::format::r10g10b10a2_unorm:  format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
         case reshade::api::format::r16g16b16a16_float: format_name = "R16G16B16A16_FLOAT (HDR 16-bit)"; break;
-        case reshade::api::format::r8g8b8a8_unorm: format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
-        case reshade::api::format::b8g8r8a8_unorm: format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
-        default: format_name = "Unknown Format"; break;
+        case reshade::api::format::r8g8b8a8_unorm:     format_name = "R8G8B8A8_UNORM (SDR 8-bit)"; break;
+        case reshade::api::format::b8g8r8a8_unorm:     format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
+        default:                                       format_name = "Unknown Format"; break;
     }
     ImGui::Text("Back Buffer Format: %s", format_name);
     ImGui::Text("Sync Interval: %u", desc.sync_interval);
@@ -3338,6 +3332,155 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
         }
         if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
             ImGui::Text("  • RESTRICTED_CONTENT");
+        }
+    }
+}
+
+/// Draws PresentMon ON/OFF status line. When PresentMon is ON, also draws surface LUID,
+/// flip-from-surface, and surface tooltip when available (all APIs: DX9, DXGI, Vulkan, OpenGL).
+static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine() {
+    if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
+        && presentmon::g_presentMonManager.IsRunning()) {
+        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "PresentMon: ON");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("PresentMon ETW tracing is active and monitoring presentation events.");
+        }
+        HWND game_hwnd = g_last_swapchain_hwnd.load();
+        if (game_hwnd != nullptr && IsWindow(game_hwnd)) {
+            std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
+            presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 3600000);
+            const presentmon::PresentMonSurfaceCompatibilitySummary* found_surface = nullptr;
+            for (const auto& surface : surfaces) {
+                if (surface.hwnd == reinterpret_cast<uint64_t>(game_hwnd)) {
+                    found_surface = &surface;
+                    break;
+                }
+            }
+            if (found_surface != nullptr) {
+                DxgiBypassMode determined_flip_mode = DxgiBypassMode::kComposed;
+                if (found_surface->is_overlay_compatible
+                    && (found_surface->is_overlay_required || found_surface->no_overlapping_content)) {
+                    determined_flip_mode = DxgiBypassMode::kOverlay;
+                } else if (found_surface->is_advanced_direct_flip_compatible) {
+                    determined_flip_mode = DxgiBypassMode::kIndependentFlip;
+                } else if (found_surface->is_direct_flip_compatible) {
+                    determined_flip_mode = DxgiBypassMode::kIndependentFlip;
+                } else {
+                    determined_flip_mode = DxgiBypassMode::kComposed;
+                }
+                const char* flip_str = DxgiBypassModeToString(determined_flip_mode);
+                ImVec4 flip_color;
+                if (determined_flip_mode == DxgiBypassMode::kComposed) {
+                    flip_color = ui::colors::FLIP_COMPOSED;
+                } else if (determined_flip_mode == DxgiBypassMode::kOverlay
+                           || determined_flip_mode == DxgiBypassMode::kIndependentFlip) {
+                    flip_color = ui::colors::FLIP_INDEPENDENT;
+                } else {
+                    flip_color = ui::colors::FLIP_UNKNOWN;
+                }
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface: 0x%llX", found_surface->surface_luid);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::BeginTooltip();
+                    ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Surface Information:");
+                    ImGui::Separator();
+                    ImGui::Text("Surface LUID: 0x%llX", found_surface->surface_luid);
+                    ImGui::Text("Surface Size: %ux%u", found_surface->surface_width, found_surface->surface_height);
+                    if (found_surface->pixel_format != 0) {
+                        ImGui::Text("Pixel Format: 0x%X", found_surface->pixel_format);
+                    }
+                    if (found_surface->flags != 0) {
+                        ImGui::Text("Flags: 0x%X", found_surface->flags);
+                    }
+                    if (found_surface->color_space != 0) {
+                        ImGui::Text("Color Space: 0x%X", found_surface->color_space);
+                    }
+                    ImGui::Separator();
+                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface Delays:");
+                    if (found_surface->last_update_time_ns > 0) {
+                        LONGLONG now_ns = utils::get_now_ns();
+                        LONGLONG age_ns = now_ns - static_cast<LONGLONG>(found_surface->last_update_time_ns);
+                        double age_ms = static_cast<double>(age_ns) / 1000000.0;
+                        if (age_ms < 1000.0) {
+                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
+                        }
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Last Update: Unknown");
+                    }
+                    if (found_surface->count > 0) {
+                        ImGui::Text("Event Count: %llu", found_surface->count);
+                        if (found_surface->count > 1 && found_surface->last_update_time_ns > 0) {
+                            double avg_delay_ms = static_cast<double>(found_surface->last_update_time_ns) / 1000000.0
+                                                  / static_cast<double>(found_surface->count);
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Avg Delay: ~%.2f ms", avg_delay_ms);
+                        }
+                    }
+                    ImGui::Separator();
+                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
+                    if (found_surface->is_direct_flip_compatible) {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
+                    }
+                    if (found_surface->is_advanced_direct_flip_compatible) {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS,
+                                           "  " ICON_FK_OK " Advanced Direct Flip Compatible");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                           "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
+                    }
+                    if (found_surface->is_overlay_compatible) {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
+                    }
+                    if (found_surface->is_overlay_required) {
+                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
+                    }
+                    if (found_surface->no_overlapping_content) {
+                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
+                    }
+                    ImGui::Separator();
+                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip State (from surface):");
+                    ImGui::TextColored(flip_color, "Mode: %s", flip_str);
+                    ImGui::EndTooltip();
+                }
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                ImGui::SameLine();
+                ImGui::TextColored(flip_color, "Flip: %s", flip_str);
+            } else {
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "Surface: nullptr");
+            }
+        } else {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "HWND: nullptr");
+        }
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF (not enabled by default)");
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon: OFF");
+            ImGui::Separator();
+            ImGui::Text("To enable PresentMon ETW tracing:");
+            ImGui::BulletText("Go to the Advanced tab");
+            ImGui::BulletText("Enable 'Enable PresentMon ETW Tracing'");
+            ImGui::BulletText("PresentMon will start automatically");
+            ImGui::Separator();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon provides detailed flip mode");
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "and surface compatibility information.");
+            ImGui::EndTooltip();
         }
     }
 }
@@ -3391,14 +3534,14 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
             case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
             case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
             case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
-            case DxgiBypassMode::kQueryFailedNoSwapchain1: flip_state_str = "Query Failed: No Swapchain1"; break;
-            case DxgiBypassMode::kQueryFailedNoStats: flip_state_str = "Query Failed: No Stats"; break;
+            case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
+            case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
             case DxgiBypassMode::kUnknown:
             default:
                 flip_state_str = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                                 || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)
-                                    ? "Unknown"
-                                    : "Unavailable";
+                                  || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)
+                                     ? "Unknown"
+                                     : "Unavailable";
                 break;
         }
         ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
@@ -3406,24 +3549,24 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
             ImGui::SameLine();
             ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
             ImGui::SameLine();
-            ImGui::TextColored(flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
-                               : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
-                                     ? ui::colors::FLIP_INDEPENDENT
-                                     : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                                        || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                                        || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                                        || flip_state == DxgiBypassMode::kQueryFailedNoStats)
-                                           ? ui::colors::TEXT_ERROR
-                                           : ui::colors::FLIP_UNKNOWN,
-                             "Status: %s", flip_state_str);
+            ImGui::TextColored(
+                flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
+                : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
+                    ? ui::colors::FLIP_INDEPENDENT
+                : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                   || flip_state == DxgiBypassMode::kQueryFailedNoStats)
+                    ? ui::colors::TEXT_ERROR
+                    : ui::colors::FLIP_UNKNOWN,
+                "Status: %s", flip_state_str);
         }
         bool status_hovered = ImGui::IsItemHovered();
         static DWORD last_discord_check = 0;
         DWORD current_time = GetTickCount();
         static bool discord_overlay_visible = false;
         if (current_time - last_discord_check > 1000) {
-            discord_overlay_visible =
-                display_commander::utils::IsWindowWithTitleVisible(L"Discord Overlay");
+            discord_overlay_visible = display_commander::utils::IsWindowWithTitleVisible(L"Discord Overlay");
             last_discord_check = current_time;
         }
         if (discord_overlay_visible) {
@@ -3438,6 +3581,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
                     "Consider disabling it or setting AllowWindowedMode=true in Special-K.");
             }
         }
+        DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
         if (out_ctx) {
             out_ctx->desc = desc_ptr.get();
             out_ctx->flip_state = flip_state;
@@ -3474,179 +3618,35 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
             case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
             case DxgiBypassMode::kComposed:                 flip_state_str = "Composed"; break;
             case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO iFlip"; break;
-            case DxgiBypassMode::kIndependentFlip:        flip_state_str = "iFlip"; break;
+            case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
             case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
             case DxgiBypassMode::kQueryFailedNoMedia:
-                flip_state_str = (GetModuleHandleA("sl.interposer.dll") != nullptr) ? "(not implemented)"
-                                                                                     : "Query Failed: No Media";
+                flip_state_str =
+                    (GetModuleHandleA("sl.interposer.dll") != nullptr) ? "(not implemented)" : "Query Failed: No Media";
                 break;
             case DxgiBypassMode::kQueryFailedNoSwapchain1: flip_state_str = "Query Failed: No Swapchain1"; break;
-            case DxgiBypassMode::kQueryFailedNoStats: flip_state_str = "Query Failed: No Stats"; break;
+            case DxgiBypassMode::kQueryFailedNoStats:      flip_state_str = "Query Failed: No Stats"; break;
             case DxgiBypassMode::kUnknown:
             default:
                 flip_state_str = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                                 || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)
-                                    ? "Unknown"
-                                    : "Unavailable";
+                                  || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)
+                                     ? "Unknown"
+                                     : "Unavailable";
                 break;
         }
         ImGui::TextColored(flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
                            : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
-                                 ? ui::colors::FLIP_INDEPENDENT
-                                 : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                                    || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                                    || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                                    || flip_state == DxgiBypassMode::kQueryFailedNoStats)
-                                       ? ui::colors::TEXT_ERROR
-                                       : ui::colors::FLIP_UNKNOWN,
-                         "Status: %s", flip_state_str);
+                               ? ui::colors::FLIP_INDEPENDENT
+                           : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                              || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                              || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                              || flip_state == DxgiBypassMode::kQueryFailedNoStats)
+                               ? ui::colors::TEXT_ERROR
+                               : ui::colors::FLIP_UNKNOWN,
+                           "Status: %s", flip_state_str);
         bool status_hovered = ImGui::IsItemHovered();
 
-        if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
-            && presentmon::g_presentMonManager.IsRunning()) {
-            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "PresentMon: ON");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("PresentMon ETW tracing is active and monitoring presentation events.");
-            }
-            HWND game_hwnd = g_last_swapchain_hwnd.load();
-            if (game_hwnd != nullptr && IsWindow(game_hwnd)) {
-                std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
-                presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 3600000);
-                const presentmon::PresentMonSurfaceCompatibilitySummary* found_surface = nullptr;
-                for (const auto& surface : surfaces) {
-                    if (surface.hwnd == reinterpret_cast<uint64_t>(game_hwnd)) {
-                        found_surface = &surface;
-                        break;
-                    }
-                }
-                if (found_surface != nullptr) {
-                    DxgiBypassMode determined_flip_mode = DxgiBypassMode::kComposed;
-                    if (found_surface->is_overlay_compatible
-                        && (found_surface->is_overlay_required || found_surface->no_overlapping_content)) {
-                        determined_flip_mode = DxgiBypassMode::kOverlay;
-                    } else if (found_surface->is_advanced_direct_flip_compatible) {
-                        determined_flip_mode = DxgiBypassMode::kIndependentFlip;
-                    } else if (found_surface->is_direct_flip_compatible) {
-                        determined_flip_mode = DxgiBypassMode::kIndependentFlip;
-                    } else {
-                        determined_flip_mode = DxgiBypassMode::kComposed;
-                    }
-                    const char* flip_str = DxgiBypassModeToString(determined_flip_mode);
-                    ImVec4 flip_color;
-                    if (determined_flip_mode == DxgiBypassMode::kComposed) {
-                        flip_color = ui::colors::FLIP_COMPOSED;
-                    } else if (determined_flip_mode == DxgiBypassMode::kOverlay
-                               || determined_flip_mode == DxgiBypassMode::kIndependentFlip) {
-                        flip_color = ui::colors::FLIP_INDEPENDENT;
-                    } else {
-                        flip_color = ui::colors::FLIP_UNKNOWN;
-                    }
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface: 0x%llX", found_surface->surface_luid);
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::BeginTooltip();
-                        ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Surface Information:");
-                        ImGui::Separator();
-                        ImGui::Text("Surface LUID: 0x%llX", found_surface->surface_luid);
-                        ImGui::Text("Surface Size: %ux%u", found_surface->surface_width, found_surface->surface_height);
-                        if (found_surface->pixel_format != 0) {
-                            ImGui::Text("Pixel Format: 0x%X", found_surface->pixel_format);
-                        }
-                        if (found_surface->flags != 0) {
-                            ImGui::Text("Flags: 0x%X", found_surface->flags);
-                        }
-                        if (found_surface->color_space != 0) {
-                            ImGui::Text("Color Space: 0x%X", found_surface->color_space);
-                        }
-                        ImGui::Separator();
-                        ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface Delays:");
-                        if (found_surface->last_update_time_ns > 0) {
-                            LONGLONG now_ns = utils::get_now_ns();
-                            LONGLONG age_ns = now_ns - static_cast<LONGLONG>(found_surface->last_update_time_ns);
-                            double age_ms = static_cast<double>(age_ns) / 1000000.0;
-                            if (age_ms < 1000.0) {
-                                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
-                            } else {
-                                ImGui::TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
-                            }
-                        } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Last Update: Unknown");
-                        }
-                        if (found_surface->count > 0) {
-                            ImGui::Text("Event Count: %llu", found_surface->count);
-                            if (found_surface->count > 1 && found_surface->last_update_time_ns > 0) {
-                                double avg_delay_ms =
-                                    static_cast<double>(found_surface->last_update_time_ns) / 1000000.0
-                                    / static_cast<double>(found_surface->count);
-                                ImGui::TextColored(ui::colors::TEXT_DIMMED, "Avg Delay: ~%.2f ms", avg_delay_ms);
-                            }
-                        }
-                        ImGui::Separator();
-                        ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
-                        if (found_surface->is_direct_flip_compatible) {
-                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
-                        } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
-                        }
-                        if (found_surface->is_advanced_direct_flip_compatible) {
-                            ImGui::TextColored(ui::colors::TEXT_SUCCESS,
-                                               "  " ICON_FK_OK " Advanced Direct Flip Compatible");
-                        } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                                               "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
-                        }
-                        if (found_surface->is_overlay_compatible) {
-                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
-                        } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
-                        }
-                        if (found_surface->is_overlay_required) {
-                            ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
-                        }
-                        if (found_surface->no_overlapping_content) {
-                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
-                        } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
-                        }
-                        ImGui::Separator();
-                        ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip State (from surface):");
-                        ImGui::TextColored(flip_color, "Mode: %s", flip_str);
-                        ImGui::EndTooltip();
-                    }
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                    ImGui::SameLine();
-                    ImGui::TextColored(flip_color, "Flip: %s", flip_str);
-                } else {
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "Surface: nullptr");
-                }
-            } else {
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "HWND: nullptr");
-            }
-        } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF (not enabled by default)");
-            if (ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon: OFF");
-                ImGui::Separator();
-                ImGui::Text("To enable PresentMon ETW tracing:");
-                ImGui::BulletText("Go to the Advanced tab");
-                ImGui::BulletText("Enable 'Enable PresentMon ETW Tracing'");
-                ImGui::BulletText("PresentMon will start automatically");
-                ImGui::Separator();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon provides detailed flip mode");
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "and surface compatibility information.");
-                ImGui::EndTooltip();
-            }
-        }
+        DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
 
         if (out_ctx) {
             out_ctx->desc = desc_ptr.get();
@@ -3657,8 +3657,10 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
         return status_hovered;
     }
 
-    // Unsupported API
-    present_mode_name = "Unsupported API (WIP)";
+    // Unsupported API (Vulkan, OpenGL, etc.)
+    present_mode_name = "Non-DXGI";
+    ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
+    DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
     if (out_ctx) {
         out_ctx->desc = desc_ptr.get();
         out_ctx->flip_state = DxgiBypassMode::kUnset;
@@ -3693,7 +3695,6 @@ void DrawDisplaySettings_VSyncAndTearing() {
         }
     }
 }
-
 
 void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     assert(runtime != nullptr);

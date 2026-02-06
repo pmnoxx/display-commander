@@ -1,28 +1,29 @@
 #include "audio_management.hpp"
-#include "audio_device_policy.hpp"
+#include <endpointvolume.h>
+#include <mmdeviceapi.h>
+#include <propvarutil.h>
+#include <sstream>
+#include <thread>
 #include "../addon.hpp"
+#include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
-#include "../globals.hpp"
+#include "audio_device_policy.hpp"
+
+#include <windows.h>
+
 #include <Functiondiscoverykeys_devpkey.h>
-#include <mmdeviceapi.h>
-#include <endpointvolume.h>
-#include <propvarutil.h>
-#include <sstream>
-#include <thread>
 
 namespace {
 
 // Helper to convert UTF-16 (wstring) to UTF-8 std::string
-std::string WStringToUtf8(const std::wstring &wstr) {
-    if (wstr.empty())
-        return std::string();
+std::string WStringToUtf8(const std::wstring& wstr) {
+    if (wstr.empty()) return std::string();
 
     int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    if (size <= 0)
-        return std::string();
+    if (size <= 0) return std::string();
 
     std::string result(static_cast<size_t>(size - 1), '\0');
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size, nullptr, nullptr);
@@ -30,19 +31,20 @@ std::string WStringToUtf8(const std::wstring &wstr) {
 }
 
 // Dynamic Windows Runtime function typedefs (avoid extra link deps)
-using RoGetActivationFactory_pfn = HRESULT(WINAPI *)(HSTRING activatableClassId, REFIID iid, void **factory);
-using WindowsCreateStringReference_pfn = HRESULT(WINAPI *)(PCWSTR sourceString, UINT32 length, HSTRING_HEADER *hstringHeader, HSTRING *string);
-using WindowsDeleteString_pfn = HRESULT(WINAPI *)(HSTRING string);
-using WindowsCreateString_pfn = HRESULT(WINAPI *)(PCWSTR sourceString, UINT32 length, HSTRING *string);
-using WindowsGetStringRawBuffer_pfn = PCWSTR(WINAPI *)(HSTRING string, UINT32 *length);
+using RoGetActivationFactory_pfn = HRESULT(WINAPI*)(HSTRING activatableClassId, REFIID iid, void** factory);
+using WindowsCreateStringReference_pfn = HRESULT(WINAPI*)(PCWSTR sourceString, UINT32 length,
+                                                          HSTRING_HEADER* hstringHeader, HSTRING* string);
+using WindowsDeleteString_pfn = HRESULT(WINAPI*)(HSTRING string);
+using WindowsCreateString_pfn = HRESULT(WINAPI*)(PCWSTR sourceString, UINT32 length, HSTRING* string);
+using WindowsGetStringRawBuffer_pfn = PCWSTR(WINAPI*)(HSTRING string, UINT32* length);
 
 // Helper to build full MMDevice endpoint ID like Special K (short ID -> full ID)
-std::wstring BuildFullAudioDeviceId(EDataFlow flow, const std::wstring &short_id) {
-    static const wchar_t *DEVICE_PREFIX = LR"(\\?\SWD#MMDEVAPI#)";
-    static const wchar_t *RENDER_POSTFIX = L"#{e6327cad-dcec-4949-ae8a-991e976a79d2}";
-    static const wchar_t *CAPTURE_POSTFIX = L"#{2eef81be-33fa-4800-9670-1cd474972c3f}";
+std::wstring BuildFullAudioDeviceId(EDataFlow flow, const std::wstring& short_id) {
+    static const wchar_t* DEVICE_PREFIX = LR"(\\?\SWD#MMDEVAPI#)";
+    static const wchar_t* RENDER_POSTFIX = L"#{e6327cad-dcec-4949-ae8a-991e976a79d2}";
+    static const wchar_t* CAPTURE_POSTFIX = L"#{2eef81be-33fa-4800-9670-1cd474972c3f}";
 
-    const wchar_t *postfix = (flow == eRender) ? RENDER_POSTFIX : CAPTURE_POSTFIX;
+    const wchar_t* postfix = (flow == eRender) ? RENDER_POSTFIX : CAPTURE_POSTFIX;
 
     std::wstring full;
     full.reserve(wcslen(DEVICE_PREFIX) + short_id.size() + wcslen(postfix));
@@ -54,10 +56,9 @@ std::wstring BuildFullAudioDeviceId(EDataFlow flow, const std::wstring &short_id
 }
 
 // Get Windows Runtime string functions from combase.dll
-bool GetWindowsRuntimeStringFunctions(WindowsCreateStringReference_pfn &createStringRef,
-                                       WindowsDeleteString_pfn &deleteString,
-                                       WindowsCreateString_pfn &createString,
-                                       WindowsGetStringRawBuffer_pfn &getStringRawBuffer) {
+bool GetWindowsRuntimeStringFunctions(WindowsCreateStringReference_pfn& createStringRef,
+                                      WindowsDeleteString_pfn& deleteString, WindowsCreateString_pfn& createString,
+                                      WindowsGetStringRawBuffer_pfn& getStringRawBuffer) {
     static bool s_tried = false;
     static bool s_success = false;
     static WindowsCreateStringReference_pfn s_createStringRef = nullptr;
@@ -86,15 +87,13 @@ bool GetWindowsRuntimeStringFunctions(WindowsCreateStringReference_pfn &createSt
 
     s_createStringRef = reinterpret_cast<WindowsCreateStringReference_pfn>(
         GetProcAddress(combase_module, "WindowsCreateStringReference"));
-    s_deleteString = reinterpret_cast<WindowsDeleteString_pfn>(
-        GetProcAddress(combase_module, "WindowsDeleteString"));
-    s_createString = reinterpret_cast<WindowsCreateString_pfn>(
-        GetProcAddress(combase_module, "WindowsCreateString"));
-    s_getStringRawBuffer = reinterpret_cast<WindowsGetStringRawBuffer_pfn>(
-        GetProcAddress(combase_module, "WindowsGetStringRawBuffer"));
+    s_deleteString = reinterpret_cast<WindowsDeleteString_pfn>(GetProcAddress(combase_module, "WindowsDeleteString"));
+    s_createString = reinterpret_cast<WindowsCreateString_pfn>(GetProcAddress(combase_module, "WindowsCreateString"));
+    s_getStringRawBuffer =
+        reinterpret_cast<WindowsGetStringRawBuffer_pfn>(GetProcAddress(combase_module, "WindowsGetStringRawBuffer"));
 
-    if (s_createStringRef == nullptr || s_deleteString == nullptr || s_createString == nullptr ||
-        s_getStringRawBuffer == nullptr) {
+    if (s_createStringRef == nullptr || s_deleteString == nullptr || s_createString == nullptr
+        || s_getStringRawBuffer == nullptr) {
         LogWarn("AudioPolicyConfig: Failed to load Windows Runtime string functions from combase.dll");
         s_success = false;
         return false;
@@ -108,8 +107,8 @@ bool GetWindowsRuntimeStringFunctions(WindowsCreateStringReference_pfn &createSt
     return true;
 }
 
-IAudioPolicyConfigFactory *GetAudioPolicyConfigFactory() {
-    static IAudioPolicyConfigFactory *s_factory = nullptr;
+IAudioPolicyConfigFactory* GetAudioPolicyConfigFactory() {
+    static IAudioPolicyConfigFactory* s_factory = nullptr;
     static bool s_tried = false;
 
     if (s_tried) {
@@ -143,7 +142,7 @@ IAudioPolicyConfigFactory *GetAudioPolicyConfigFactory() {
         return nullptr;
     }
 
-    const wchar_t *name = L"Windows.Media.Internal.AudioPolicyConfig";
+    const wchar_t* name = L"Windows.Media.Internal.AudioPolicyConfig";
     const UINT32 len = static_cast<UINT32>(wcslen(name));
 
     HSTRING hClassName = nullptr;
@@ -157,9 +156,8 @@ IAudioPolicyConfigFactory *GetAudioPolicyConfigFactory() {
         return nullptr;
     }
 
-    IAudioPolicyConfigFactory *factory = nullptr;
-    hr = ro_get_activation_factory(hClassName, __uuidof(IAudioPolicyConfigFactory),
-                                   reinterpret_cast<void **>(&factory));
+    IAudioPolicyConfigFactory* factory = nullptr;
+    hr = ro_get_activation_factory(hClassName, __uuidof(IAudioPolicyConfigFactory), reinterpret_cast<void**>(&factory));
 
     deleteString(hClassName);
 
@@ -174,7 +172,7 @@ IAudioPolicyConfigFactory *GetAudioPolicyConfigFactory() {
 }
 
 std::wstring GetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow) {
-    IAudioPolicyConfigFactory *factory = GetAudioPolicyConfigFactory();
+    IAudioPolicyConfigFactory* factory = GetAudioPolicyConfigFactory();
     if (factory == nullptr) {
         return std::wstring();
     }
@@ -189,14 +187,14 @@ std::wstring GetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow) {
     }
 
     HSTRING hDeviceId = nullptr;
-    HRESULT hr = factory->GetPersistedDefaultAudioEndpoint(GetCurrentProcessId(), flow,
-                                                           eMultimedia | eConsole, &hDeviceId);
+    HRESULT hr =
+        factory->GetPersistedDefaultAudioEndpoint(GetCurrentProcessId(), flow, eMultimedia | eConsole, &hDeviceId);
     if (FAILED(hr) || hDeviceId == nullptr) {
         return std::wstring();
     }
 
     UINT32 len = 0;
-    const wchar_t *buffer = getStringRawBuffer(hDeviceId, &len);
+    const wchar_t* buffer = getStringRawBuffer(hDeviceId, &len);
     std::wstring result;
     if (buffer != nullptr && len > 0) {
         result.assign(buffer, buffer + len);
@@ -206,8 +204,8 @@ std::wstring GetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow) {
     return result;
 }
 
-bool SetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow, const std::wstring &device_id) {
-    IAudioPolicyConfigFactory *factory = GetAudioPolicyConfigFactory();
+bool SetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow, const std::wstring& device_id) {
+    IAudioPolicyConfigFactory* factory = GetAudioPolicyConfigFactory();
     if (factory == nullptr) {
         return false;
     }
@@ -223,8 +221,7 @@ bool SetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow, const std::wst
 
     HSTRING hDeviceId = nullptr;
     if (!device_id.empty()) {
-        HRESULT hr_create =
-            createString(device_id.c_str(), static_cast<UINT32>(device_id.length()), &hDeviceId);
+        HRESULT hr_create = createString(device_id.c_str(), static_cast<UINT32>(device_id.length()), &hDeviceId);
         if (FAILED(hr_create)) {
             LogWarn("AudioPolicyConfig: WindowsCreateString failed for device id");
             return false;
@@ -233,10 +230,8 @@ bool SetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow, const std::wst
 
     const UINT pid = GetCurrentProcessId();
 
-    HRESULT hr_console =
-        factory->SetPersistedDefaultAudioEndpoint(pid, flow, eConsole, hDeviceId);
-    HRESULT hr_multimedia =
-        factory->SetPersistedDefaultAudioEndpoint(pid, flow, eMultimedia, hDeviceId);
+    HRESULT hr_console = factory->SetPersistedDefaultAudioEndpoint(pid, flow, eConsole, hDeviceId);
+    HRESULT hr_multimedia = factory->SetPersistedDefaultAudioEndpoint(pid, flow, eMultimedia, hDeviceId);
 
     if (hDeviceId != nullptr) {
         deleteString(hDeviceId);
@@ -251,7 +246,7 @@ bool SetPersistedDefaultEndpointForCurrentProcess(EDataFlow flow, const std::wst
     return true;
 }
 
-} // namespace
+}  // namespace
 
 bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
     const DWORD target_pid = GetCurrentProcessId();
@@ -263,38 +258,35 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
     }
 
     bool success = false;
-    IMMDeviceEnumerator *device_enumerator = nullptr;
-    IMMDevice *device = nullptr;
-    IAudioSessionManager2 *session_manager = nullptr;
-    IAudioSessionEnumerator *session_enumerator = nullptr;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioSessionManager2* session_manager = nullptr;
+    IAudioSessionEnumerator* session_enumerator = nullptr;
 
     do {
         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-        if (FAILED(hr) || device_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-        if (FAILED(hr) || device == nullptr)
-            break;
+        if (FAILED(hr) || device == nullptr) break;
         hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void **>(&session_manager));
-        if (FAILED(hr) || session_manager == nullptr)
-            break;
+                              reinterpret_cast<void**>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr) break;
         hr = session_manager->GetSessionEnumerator(&session_enumerator);
-        if (FAILED(hr) || session_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || session_enumerator == nullptr) break;
         int count = 0;
         session_enumerator->GetCount(&count);
         for (int i = 0; i < count; ++i) {
-            IAudioSessionControl *session_control = nullptr;
-            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
-                continue;
+            IAudioSessionControl* session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) continue;
             Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2 = nullptr;
-            if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2))) && session_control2 != nullptr) {
+            if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))
+                && session_control2 != nullptr) {
                 DWORD pid = 0;
                 session_control2->GetProcessId(&pid);
                 if (pid == target_pid) {
                     Microsoft::WRL::ComPtr<ISimpleAudioVolume> simple_volume;
-                    if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume))) && simple_volume != nullptr) {
+                    if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume)))
+                        && simple_volume != nullptr) {
                         simple_volume->SetMute(mute ? TRUE : FALSE, nullptr);
                         success = true;
                     }
@@ -304,16 +296,11 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification) {
         }
     } while (false);
 
-    if (session_enumerator != nullptr)
-        session_enumerator->Release();
-    if (session_manager != nullptr)
-        session_manager->Release();
-    if (device != nullptr)
-        device->Release();
-    if (device_enumerator != nullptr)
-        device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE)
-        CoUninitialize();
+    if (session_enumerator != nullptr) session_enumerator->Release();
+    if (session_manager != nullptr) session_manager->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     std::ostringstream oss;
     oss << "BackgroundMute apply mute=" << (mute ? "1" : "0") << " success=" << (success ? "1" : "0");
@@ -342,31 +329,26 @@ bool IsOtherAppPlayingAudio() {
     }
 
     bool other_active = false;
-    IMMDeviceEnumerator *device_enumerator = nullptr;
-    IMMDevice *device = nullptr;
-    IAudioSessionManager2 *session_manager = nullptr;
-    IAudioSessionEnumerator *session_enumerator = nullptr;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioSessionManager2* session_manager = nullptr;
+    IAudioSessionEnumerator* session_enumerator = nullptr;
 
     do {
         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-        if (FAILED(hr) || device_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-        if (FAILED(hr) || device == nullptr)
-            break;
+        if (FAILED(hr) || device == nullptr) break;
         hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void **>(&session_manager));
-        if (FAILED(hr) || session_manager == nullptr)
-            break;
+                              reinterpret_cast<void**>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr) break;
         hr = session_manager->GetSessionEnumerator(&session_enumerator);
-        if (FAILED(hr) || session_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || session_enumerator == nullptr) break;
         int count = 0;
         session_enumerator->GetCount(&count);
         for (int i = 0; i < count; ++i) {
-            IAudioSessionControl *session_control = nullptr;
-            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr)
-                continue;
+            IAudioSessionControl* session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control)) || session_control == nullptr) continue;
             Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2{};
             if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))) {
                 DWORD pid = 0;
@@ -379,8 +361,8 @@ bool IsOtherAppPlayingAudio() {
                         if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&simple_volume)))) {
                             float vol = 0.0f;
                             BOOL muted = FALSE;
-                            if (SUCCEEDED(simple_volume->GetMasterVolume(&vol)) &&
-                                SUCCEEDED(simple_volume->GetMute(&muted))) {
+                            if (SUCCEEDED(simple_volume->GetMasterVolume(&vol))
+                                && SUCCEEDED(simple_volume->GetMute(&muted))) {
                                 if (muted == FALSE && vol > 0.001f) {
                                     other_active = true;
                                     session_control->Release();
@@ -395,16 +377,11 @@ bool IsOtherAppPlayingAudio() {
         }
     } while (false);
 
-    if (session_enumerator != nullptr)
-        session_enumerator->Release();
-    if (session_manager != nullptr)
-        session_manager->Release();
-    if (device != nullptr)
-        device->Release();
-    if (device_enumerator != nullptr)
-        device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE)
-        CoUninitialize();
+    if (session_enumerator != nullptr) session_enumerator->Release();
+    if (session_manager != nullptr) session_manager->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     return other_active;
 }
@@ -421,31 +398,26 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
     }
 
     bool success = false;
-    IMMDeviceEnumerator *device_enumerator = nullptr;
-    IMMDevice *device = nullptr;
-    IAudioSessionManager2 *session_manager = nullptr;
-    IAudioSessionEnumerator *session_enumerator = nullptr;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioSessionManager2* session_manager = nullptr;
+    IAudioSessionEnumerator* session_enumerator = nullptr;
 
     do {
         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-        if (FAILED(hr) || device_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-        if (FAILED(hr) || device == nullptr)
-            break;
+        if (FAILED(hr) || device == nullptr) break;
         hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void **>(&session_manager));
-        if (FAILED(hr) || session_manager == nullptr)
-            break;
+                              reinterpret_cast<void**>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr) break;
         hr = session_manager->GetSessionEnumerator(&session_enumerator);
-        if (FAILED(hr) || session_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || session_enumerator == nullptr) break;
         int count = 0;
         session_enumerator->GetCount(&count);
         for (int i = 0; i < count; ++i) {
-            IAudioSessionControl *session_control = nullptr;
-            if (FAILED(session_enumerator->GetSession(i, &session_control)))
-                continue;
+            IAudioSessionControl* session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control))) continue;
             Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2{};
             if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))) {
                 DWORD pid = 0;
@@ -462,16 +434,11 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
         }
     } while (false);
 
-    if (session_enumerator != nullptr)
-        session_enumerator->Release();
-    if (session_manager != nullptr)
-        session_manager->Release();
-    if (device != nullptr)
-        device->Release();
-    if (device_enumerator != nullptr)
-        device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE)
-        CoUninitialize();
+    if (session_enumerator != nullptr) session_enumerator->Release();
+    if (session_manager != nullptr) session_manager->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     std::ostringstream oss;
     oss << "BackgroundVolume set percent=" << clamped << " success=" << (success ? "1" : "0");
@@ -479,7 +446,7 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
     return success;
 }
 
-bool GetVolumeForCurrentProcess(float *volume_0_100_out) {
+bool GetVolumeForCurrentProcess(float* volume_0_100_out) {
     if (volume_0_100_out == nullptr) {
         return false;
     }
@@ -493,31 +460,26 @@ bool GetVolumeForCurrentProcess(float *volume_0_100_out) {
     }
 
     bool success = false;
-    IMMDeviceEnumerator *device_enumerator = nullptr;
-    IMMDevice *device = nullptr;
-    IAudioSessionManager2 *session_manager = nullptr;
-    IAudioSessionEnumerator *session_enumerator = nullptr;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioSessionManager2* session_manager = nullptr;
+    IAudioSessionEnumerator* session_enumerator = nullptr;
 
     do {
         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-        if (FAILED(hr) || device_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-        if (FAILED(hr) || device == nullptr)
-            break;
+        if (FAILED(hr) || device == nullptr) break;
         hr = device->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void **>(&session_manager));
-        if (FAILED(hr) || session_manager == nullptr)
-            break;
+                              reinterpret_cast<void**>(&session_manager));
+        if (FAILED(hr) || session_manager == nullptr) break;
         hr = session_manager->GetSessionEnumerator(&session_enumerator);
-        if (FAILED(hr) || session_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || session_enumerator == nullptr) break;
         int count = 0;
         session_enumerator->GetCount(&count);
         for (int i = 0; i < count; ++i) {
-            IAudioSessionControl *session_control = nullptr;
-            if (FAILED(session_enumerator->GetSession(i, &session_control)))
-                continue;
+            IAudioSessionControl* session_control = nullptr;
+            if (FAILED(session_enumerator->GetSession(i, &session_control))) continue;
             Microsoft::WRL::ComPtr<IAudioSessionControl2> session_control2{};
             if (SUCCEEDED(session_control->QueryInterface(IID_PPV_ARGS(&session_control2)))) {
                 DWORD pid = 0;
@@ -537,16 +499,11 @@ bool GetVolumeForCurrentProcess(float *volume_0_100_out) {
         }
     } while (false);
 
-    if (session_enumerator != nullptr)
-        session_enumerator->Release();
-    if (session_manager != nullptr)
-        session_manager->Release();
-    if (device != nullptr)
-        device->Release();
-    if (device_enumerator != nullptr)
-        device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE)
-        CoUninitialize();
+    if (session_enumerator != nullptr) session_enumerator->Release();
+    if (session_manager != nullptr) session_manager->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     return success;
 }
@@ -593,10 +550,11 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
 
         std::ostringstream oss;
         if (adjusted_system_volume) {
-            oss << "Game volume at 100%, system volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change << "%";
+            oss << "Game volume at 100%, system volume adjusted by " << (percent_change >= 0.0f ? "+" : "")
+                << percent_change << "%";
         } else {
-            oss << "Volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change
-                << "% to " << new_volume << "%";
+            oss << "Volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change << "% to "
+                << new_volume << "%";
         }
         LogInfo(oss.str().c_str());
         return true;
@@ -605,9 +563,8 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
     return false;
 }
 
-bool GetAudioOutputDevices(std::vector<std::string> &device_names_utf8,
-                           std::vector<std::wstring> &device_ids,
-                           std::wstring &current_device_id) {
+bool GetAudioOutputDevices(std::vector<std::string>& device_names_utf8, std::vector<std::wstring>& device_ids,
+                           std::wstring& current_device_id) {
     device_names_utf8.clear();
     device_ids.clear();
     current_device_id.clear();
@@ -620,16 +577,14 @@ bool GetAudioOutputDevices(std::vector<std::string> &device_names_utf8,
     }
 
     bool success = false;
-    IMMDeviceEnumerator *device_enumerator = nullptr;
-    IMMDeviceCollection *device_collection = nullptr;
-    IMMDevice *default_device = nullptr;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDeviceCollection* device_collection = nullptr;
+    IMMDevice* default_device = nullptr;
     std::wstring default_device_full_id;
 
     do {
-        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-                              IID_PPV_ARGS(&device_enumerator));
-        if (FAILED(hr) || device_enumerator == nullptr)
-            break;
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr) break;
 
         // Get system default render endpoint (for annotation)
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &default_device);
@@ -644,8 +599,7 @@ bool GetAudioOutputDevices(std::vector<std::string> &device_names_utf8,
 
         // Enumerate active render endpoints
         hr = device_enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &device_collection);
-        if (FAILED(hr) || device_collection == nullptr)
-            break;
+        if (FAILED(hr) || device_collection == nullptr) break;
 
         const std::wstring persisted_full_id = GetPersistedDefaultEndpointForCurrentProcess(eRender);
 
@@ -653,9 +607,8 @@ bool GetAudioOutputDevices(std::vector<std::string> &device_names_utf8,
         device_collection->GetCount(&count);
 
         for (UINT i = 0; i < count; ++i) {
-            IMMDevice *device = nullptr;
-            if (FAILED(device_collection->Item(i, &device)) || device == nullptr)
-                continue;
+            IMMDevice* device = nullptr;
+            if (FAILED(device_collection->Item(i, &device)) || device == nullptr) continue;
 
             LPWSTR id = nullptr;
             if (FAILED(device->GetId(&id)) || id == nullptr) {
@@ -666,14 +619,14 @@ bool GetAudioOutputDevices(std::vector<std::string> &device_names_utf8,
             std::wstring id_ws(id);
             CoTaskMemFree(id);
 
-            IPropertyStore *prop_store = nullptr;
+            IPropertyStore* prop_store = nullptr;
             std::wstring friendly_name = L"Unknown device";
 
             if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, &prop_store)) && prop_store != nullptr) {
                 PROPVARIANT var_name;
                 PropVariantInit(&var_name);
-                if (SUCCEEDED(prop_store->GetValue(PKEY_Device_FriendlyName, &var_name)) &&
-                    var_name.vt == VT_LPWSTR && var_name.pwszVal != nullptr) {
+                if (SUCCEEDED(prop_store->GetValue(PKEY_Device_FriendlyName, &var_name)) && var_name.vt == VT_LPWSTR
+                    && var_name.pwszVal != nullptr) {
                     friendly_name.assign(var_name.pwszVal);
                 }
                 PropVariantClear(&var_name);
@@ -709,19 +662,15 @@ bool GetAudioOutputDevices(std::vector<std::string> &device_names_utf8,
         success = true;
     } while (false);
 
-    if (default_device != nullptr)
-        default_device->Release();
-    if (device_collection != nullptr)
-        device_collection->Release();
-    if (device_enumerator != nullptr)
-        device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE)
-        CoUninitialize();
+    if (default_device != nullptr) default_device->Release();
+    if (device_collection != nullptr) device_collection->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     return success;
 }
 
-bool SetAudioOutputDeviceForCurrentProcess(const std::wstring &device_id) {
+bool SetAudioOutputDeviceForCurrentProcess(const std::wstring& device_id) {
     // device_id is the short MMDevice ID from IMMDevice::GetId; convert to full ID
     std::wstring full_id;
     if (!device_id.empty()) {
@@ -732,8 +681,7 @@ bool SetAudioOutputDeviceForCurrentProcess(const std::wstring &device_id) {
 
     std::ostringstream oss;
     oss << "AudioOutputDevice: "
-        << (device_id.empty() ? "Cleared override (System Default)"
-                              : "Set persisted default endpoint for process");
+        << (device_id.empty() ? "Cleared override (System Default)" : "Set persisted default endpoint for process");
     LogInfo(oss.str().c_str());
 
     return ok;
@@ -813,33 +761,26 @@ bool SetSystemVolume(float volume_0_100) {
     }
 
     bool success = false;
-    IMMDeviceEnumerator *device_enumerator = nullptr;
-    IMMDevice *device = nullptr;
-    IAudioEndpointVolume *endpoint_volume = nullptr;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioEndpointVolume* endpoint_volume = nullptr;
 
     do {
         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-        if (FAILED(hr) || device_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-        if (FAILED(hr) || device == nullptr)
-            break;
+        if (FAILED(hr) || device == nullptr) break;
         hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void **>(&endpoint_volume));
-        if (FAILED(hr) || endpoint_volume == nullptr)
-            break;
+                              reinterpret_cast<void**>(&endpoint_volume));
+        if (FAILED(hr) || endpoint_volume == nullptr) break;
         hr = endpoint_volume->SetMasterVolumeLevelScalar(scalar, nullptr);
         success = SUCCEEDED(hr);
     } while (false);
 
-    if (endpoint_volume != nullptr)
-        endpoint_volume->Release();
-    if (device != nullptr)
-        device->Release();
-    if (device_enumerator != nullptr)
-        device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE)
-        CoUninitialize();
+    if (endpoint_volume != nullptr) endpoint_volume->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     if (success) {
         std::ostringstream oss;
@@ -849,7 +790,7 @@ bool SetSystemVolume(float volume_0_100) {
     return success;
 }
 
-bool GetSystemVolume(float *volume_0_100_out) {
+bool GetSystemVolume(float* volume_0_100_out) {
     if (volume_0_100_out == nullptr) {
         return false;
     }
@@ -862,21 +803,18 @@ bool GetSystemVolume(float *volume_0_100_out) {
     }
 
     bool success = false;
-    IMMDeviceEnumerator *device_enumerator = nullptr;
-    IMMDevice *device = nullptr;
-    IAudioEndpointVolume *endpoint_volume = nullptr;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioEndpointVolume* endpoint_volume = nullptr;
 
     do {
         hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
-        if (FAILED(hr) || device_enumerator == nullptr)
-            break;
+        if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
-        if (FAILED(hr) || device == nullptr)
-            break;
+        if (FAILED(hr) || device == nullptr) break;
         hr = device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void **>(&endpoint_volume));
-        if (FAILED(hr) || endpoint_volume == nullptr)
-            break;
+                              reinterpret_cast<void**>(&endpoint_volume));
+        if (FAILED(hr) || endpoint_volume == nullptr) break;
         float scalar = 0.0f;
         if (SUCCEEDED(endpoint_volume->GetMasterVolumeLevelScalar(&scalar))) {
             *volume_0_100_out = scalar * 100.0f;
@@ -884,14 +822,10 @@ bool GetSystemVolume(float *volume_0_100_out) {
         }
     } while (false);
 
-    if (endpoint_volume != nullptr)
-        endpoint_volume->Release();
-    if (device != nullptr)
-        device->Release();
-    if (device_enumerator != nullptr)
-        device_enumerator->Release();
-    if (did_init && hr != RPC_E_CHANGED_MODE)
-        CoUninitialize();
+    if (endpoint_volume != nullptr) endpoint_volume->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
 
     return success;
 }
@@ -908,8 +842,8 @@ bool AdjustSystemVolume(float percent_change) {
 
     if (SetSystemVolume(new_volume)) {
         std::ostringstream oss;
-        oss << "System volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change
-            << "% to " << new_volume << "%";
+        oss << "System volume adjusted by " << (percent_change >= 0.0f ? "+" : "") << percent_change << "% to "
+            << new_volume << "%";
         LogInfo(oss.str().c_str());
         return true;
     }

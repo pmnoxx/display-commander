@@ -3792,6 +3792,33 @@ void DrawAudioSettings() {
         ImGui::SetTooltip("Manually mute/unmute audio.");
     }
 
+    // Left/Right speaker volume (when session supports per-channel volume)
+    unsigned int channel_count = 0;
+    if (::GetChannelVolumeCountForCurrentProcess(&channel_count) && channel_count >= 2) {
+        float left_vol_01 = 0.0f;
+        float right_vol_01 = 0.0f;
+        if (::GetChannelVolumeForCurrentProcess(0, &left_vol_01) && ::GetChannelVolumeForCurrentProcess(1, &right_vol_01)) {
+            float left_pct = left_vol_01 * 100.0f;
+            float right_pct = right_vol_01 * 100.0f;
+            if (ImGui::SliderFloat("Left speaker (%)", &left_pct, 0.0f, 100.0f, "%.0f%%")) {
+                if (::SetChannelVolumeForCurrentProcess(0, left_pct / 100.0f)) {
+                    LogInfo("Left speaker volume set");
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Volume for the left speaker (game audio session).");
+            }
+            if (ImGui::SliderFloat("Right speaker (%)", &right_pct, 0.0f, 100.0f, "%.0f%%")) {
+                if (::SetChannelVolumeForCurrentProcess(1, right_pct / 100.0f)) {
+                    LogInfo("Right speaker volume set");
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Volume for the right speaker (game audio session).");
+            }
+        }
+    }
+
     // Mute in Background checkbox (disabled if Mute is ON)
     bool mute_in_bg = s_mute_in_background.load();
     if (s_audio_mute.load()) {

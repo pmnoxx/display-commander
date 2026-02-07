@@ -35,6 +35,8 @@
 
 namespace ui::new_ui {
 
+static void DrawThreadTrackingSubTab();
+
 // Initialize experimental tab
 void InitExperimentalTab() {
     LogInfo("InitExperimentalTab() - Settings already loaded at startup");
@@ -81,6 +83,10 @@ void InitExperimentalTab() {
 
     // Apply DirectInput hook suppression setting
     s_suppress_dinput_hooks.store(settings::g_experimentalTabSettings.suppress_dinput_hooks.GetValue());
+
+    // Apply thread tracking setting (for frame pacing debug)
+    g_thread_tracking_enabled.store(settings::g_experimentalTabSettings.thread_tracking_enabled.GetValue(),
+                                    std::memory_order_relaxed);
 
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
@@ -303,6 +309,11 @@ void DrawExperimentalTab(reshade::api::effect_runtime* runtime) {
         ImGui::EndTabItem();
     }
 
+    if (ImGui::BeginTabItem("Thread Tracking")) {
+        DrawThreadTrackingSubTab();
+        ImGui::EndTabItem();
+    }
+
     ImGui::EndTabBar();
 }
 
@@ -377,6 +388,69 @@ void CleanupExperimentalTab() {
     if (g_auto_click_enabled.load()) {
         g_auto_click_enabled.store(false);
         LogInfo("Experimental tab cleanup: Auto-click disabled (thread will sleep)");
+    }
+}
+
+namespace {
+const char* LatencyMarkerTypeName(int index) {
+    static const char* names[] = {"SIMULATION_START", "SIMULATION_END", "RENDERSUBMIT_START",
+                                  "RENDERSUBMIT_END", "PRESENT_START", "PRESENT_END"};
+    if (index >= 0 && index < static_cast<int>(sizeof(names) / sizeof(names[0]))) {
+        return names[index];
+    }
+    return "?";
+}
+}  // namespace
+
+static void DrawThreadTrackingSubTab() {
+    ImGui::Text("Thread Tracking - Frame Pacing Debug");
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    CheckboxSetting(settings::g_experimentalTabSettings.thread_tracking_enabled, "Enable thread tracking");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "When enabled, records which thread called NvAPI_D3D_SetLatencyMarker (first 6 marker types) and "
+            "ChooseFpsLimiter (each call site). Use to debug frame pacing when the game uses another thread for "
+            "rendering. Default off to avoid extra overhead.");
+    }
+    g_thread_tracking_enabled.store(settings::g_experimentalTabSettings.thread_tracking_enabled.GetValue(),
+                                    std::memory_order_relaxed);
+
+    ImGui::Spacing();
+    if (!g_thread_tracking_enabled.load(std::memory_order_relaxed)) {
+        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Enable thread tracking to see data below.");
+        return;
+    }
+
+    if (ImGui::CollapsingHeader("NvAPI_D3D_SetLatencyMarker_Detour (first 6 marker types)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        ImGui::Text("Last thread ID that called the detour for each marker type (0 = not yet called):");
+        ImGui::Spacing();
+        for (size_t i = 0; i < kLatencyMarkerTypeCountFirstSix; i++) {
+            DWORD tid = g_latency_marker_thread_id[i].load(std::memory_order_relaxed);
+            ImGui::Text("%s: %lu (0x%lX)", LatencyMarkerTypeName(static_cast<int>(i)), static_cast<unsigned long>(tid),
+                        static_cast<unsigned long>(tid));
+        }
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("ChooseFpsLimiter call sites", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent();
+        ImGui::Text("Last thread ID that called ChooseFpsLimiter for each option (0 = not yet called):");
+        ImGui::Spacing();
+        const char* fps_limiter_site_names[] = {"reflex_marker", "dxgi_swapchain", "reshade_addon_event",
+                                               "dxgi_factory_wrapper"};
+        for (size_t i = 0; i < kFpsLimiterCallSiteCount; i++) {
+            DWORD tid = g_fps_limiter_site_thread_id[i].load(std::memory_order_relaxed);
+            const char* name = (i < sizeof(fps_limiter_site_names) / sizeof(fps_limiter_site_names[0]))
+                                   ? fps_limiter_site_names[i]
+                                   : "?";
+            ImGui::Text("%s: %lu (0x%lX)", name, static_cast<unsigned long>(tid),
+                        static_cast<unsigned long>(tid));
+        }
+        ImGui::Unindent();
     }
 }
 

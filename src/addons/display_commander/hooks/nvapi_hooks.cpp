@@ -125,6 +125,14 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
+    // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
+    if (g_thread_tracking_enabled.load(std::memory_order_relaxed) && pSetLatencyMarkerParams != nullptr) {
+        const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
+        if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
+            g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
+        }
+    }
+
     // Filter out RTSS calls (following Special-K approach)
     // RTSS is not native Reflex, so ignore it
     static HMODULE hModRTSS =

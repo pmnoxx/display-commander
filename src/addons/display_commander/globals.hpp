@@ -665,6 +665,15 @@ bool IsDxgiSwapChainGettingCalled();
 /** True when native FPS limiter from frame pacing should be used (setting on, and IsNativeFramePacingInSync()). */
 bool ShouldUseNativeFpsLimiterFromFramePacing();
 
+// Thread tracking for frame pacing debug (Experimental tab, default off)
+constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;  // SIMULATION_START..PRESENT_END
+/** When true, record calling thread ID in latency marker detour and ChooseFpsLimiter (synced from UI). */
+extern std::atomic<bool> g_thread_tracking_enabled;
+/** Last thread ID that called NvAPI_D3D_SetLatencyMarker_Detour for each of the first 6 marker types (0 = not set). */
+extern std::atomic<DWORD> g_latency_marker_thread_id[kLatencyMarkerTypeCountFirstSix];
+/** Last thread ID that called ChooseFpsLimiter for each FpsLimiterCallSite (0 = not set). */
+extern std::atomic<DWORD> g_fps_limiter_site_thread_id[kFpsLimiterCallSiteCount];
+
 // Global Swapchain Tracking Manager instance
 extern SwapchainTrackingManager g_swapchainTrackingManager;
 
@@ -1135,9 +1144,9 @@ constexpr size_t kFrameDataBufferSize = 64;
 constexpr uint64_t kFpsLimiterWarmupFrames = 300;
 
 struct FrameData {
-    std::atomic<uint64_t> frame_id{0};                    // Frame id this slot corresponds to (0 = not set)
-    std::atomic<LONGLONG> present_start_time_ns{0};       // Start of present for this frame (after FPS limiter)
-    std::atomic<LONGLONG> present_end_time_ns{0};         // End of present (when OnPresentUpdateAfter2 ran)
+    std::atomic<uint64_t> frame_id{0};               // Frame id this slot corresponds to (0 = not set)
+    std::atomic<LONGLONG> present_start_time_ns{0};  // Start of present for this frame (after FPS limiter)
+    std::atomic<LONGLONG> present_end_time_ns{0};    // End of present (when OnPresentUpdateAfter2 ran)
     std::atomic<LONGLONG> sim_start_ns{0};
     std::atomic<LONGLONG> submit_start_time_ns{0};
     std::atomic<LONGLONG> render_submit_end_time_ns{0};
@@ -1145,9 +1154,9 @@ struct FrameData {
     std::atomic<LONGLONG> gpu_completion_time_ns{0};
     // Sleep timestamps (FPS limiter / pacing)
     std::atomic<LONGLONG> sleep_pre_present_start_time_ns{0};   // Start of sleep/pacing before present
-    std::atomic<LONGLONG> sleep_pre_present_end_time_ns{0};    // End of sleep before present (= present_start)
+    std::atomic<LONGLONG> sleep_pre_present_end_time_ns{0};     // End of sleep before present (= present_start)
     std::atomic<LONGLONG> sleep_post_present_start_time_ns{0};  // Start of sleep/pacing after present
-    std::atomic<LONGLONG> sleep_post_present_end_time_ns{0};   // End of sleep after present
+    std::atomic<LONGLONG> sleep_post_present_end_time_ns{0};    // End of sleep after present
 };
 
 extern FrameData g_frame_data[kFrameDataBufferSize];

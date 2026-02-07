@@ -1,9 +1,9 @@
 #include "latent_sync_limiter.hpp"
+#include <dxgi1_6.h>
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/logging.hpp"
 #include "utils/timing.hpp"
-#include <dxgi1_6.h>
 
 static uint64_t s_last_scan_time = 0;
 
@@ -16,14 +16,11 @@ std::atomic<double> m_on_present_ns{0.0};
 
 extern long double expected_current_scanline_uncapped_ns(LONGLONG now_ns, LONGLONG total_height, bool add_correction);
 
-static inline FARPROC LoadProcCached(FARPROC &slot, const wchar_t *mod, const char *name) {
-    if (slot != nullptr)
-        return slot;
+inline static FARPROC LoadProcCached(FARPROC& slot, const wchar_t* mod, const char* name) {
+    if (slot != nullptr) return slot;
     HMODULE h = GetModuleHandleW(mod);
-    if (h == nullptr)
-        h = LoadLibraryW(mod);
-    if (h != nullptr)
-        slot = GetProcAddress(h, name);
+    if (h == nullptr) h = LoadLibraryW(mod);
+    if (h != nullptr) slot = GetProcAddress(h, name);
     return slot;
 }
 
@@ -44,7 +41,7 @@ LatentSyncLimiter::~LatentSyncLimiter() {
         if (LoadProcCached(m_pfnCloseAdapter, L"gdi32.dll", "D3DKMTCloseAdapter")) {
             D3DKMT_CLOSEADAPTER closeReq{};
             closeReq.hAdapter = m_hAdapter;
-            reinterpret_cast<NTSTATUS(WINAPI *)(const D3DKMT_CLOSEADAPTER *)>(m_pfnCloseAdapter)(&closeReq);
+            reinterpret_cast<NTSTATUS(WINAPI*)(const D3DKMT_CLOSEADAPTER*)>(m_pfnCloseAdapter)(&closeReq);
         }
         m_hAdapter = 0;
     }
@@ -57,13 +54,12 @@ bool LatentSyncLimiter::EnsureAdapterBinding() {
 
 std::wstring LatentSyncLimiter::GetDisplayNameFromWindow(HWND hwnd) {
     std::wstring result;
-    if (hwnd == nullptr)
-        return result;
+    if (hwnd == nullptr) return result;
     HMONITOR hmon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
     MONITORINFOEXW mi{};
     mi.cbSize = sizeof(mi);
     if (GetMonitorInfoW(hmon, &mi)) {
-        result = mi.szDevice; // e.g. "\\.\DISPLAY1"
+        result = mi.szDevice;  // e.g. "\\.\DISPLAY1"
     }
     return result;
 }
@@ -71,17 +67,15 @@ std::wstring LatentSyncLimiter::GetDisplayNameFromWindow(HWND hwnd) {
 bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
     // Resolve display name
     std::wstring name = GetDisplayNameFromWindow(hwnd);
-    if (name.empty())
-        return false;
-    if (name == m_bound_display_name && m_hAdapter != 0)
-        return true;
+    if (name.empty()) return false;
+    if (name == m_bound_display_name && m_hAdapter != 0) return true;
 
     // Rebind
     if (m_hAdapter != 0) {
         if (LoadProcCached(m_pfnCloseAdapter, L"gdi32.dll", "D3DKMTCloseAdapter")) {
             D3DKMT_CLOSEADAPTER closeReq{};
             closeReq.hAdapter = m_hAdapter;
-            reinterpret_cast<NTSTATUS(WINAPI *)(const D3DKMT_CLOSEADAPTER *)>(m_pfnCloseAdapter)(&closeReq);
+            reinterpret_cast<NTSTATUS(WINAPI*)(const D3DKMT_CLOSEADAPTER*)>(m_pfnCloseAdapter)(&closeReq);
         }
         m_hAdapter = 0;
     }
@@ -91,8 +85,9 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 
     D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME openReq{};
     wcsncpy_s(openReq.DeviceName, name.c_str(), _TRUNCATE);
-    if (reinterpret_cast<NTSTATUS(WINAPI *)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME *)>(
-            m_pfnOpenAdapterFromGdiDisplayName)(&openReq) == STATUS_SUCCESS) {
+    if (reinterpret_cast<NTSTATUS(WINAPI*)(D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME*)>(m_pfnOpenAdapterFromGdiDisplayName)(
+            &openReq)
+        == STATUS_SUCCESS) {
         m_hAdapter = openReq.hAdapter;
         m_vidpn_source_id = openReq.VidPnSourceId;
         m_bound_display_name = name;
@@ -131,8 +126,8 @@ void LatentSyncLimiter::LimitFrameRate() {
 
     long double current_scanline_uncapped = expected_current_scanline_uncapped_ns(now_ns, total_height, true);
 
-    long double target_line = mid_vblank_scanline - (m_on_present_ns.load() * total_height / ns_per_refresh.load()) -
-                              60.0 + s_scanline_offset.load();
+    long double target_line = mid_vblank_scanline - (m_on_present_ns.load() * total_height / ns_per_refresh.load())
+                              - 60.0 + s_scanline_offset.load();
 
     long double next_scanline_uncapped =
         current_scanline_uncapped - fmod(current_scanline_uncapped, (long double)(total_height)) + target_line;
@@ -141,12 +136,12 @@ void LatentSyncLimiter::LimitFrameRate() {
     long double expected_next_scanline_uncapped =
         max(last_scanline_uncapped, current_scanline_uncapped - 2 * total_height) + total_height;
 
-    while (abs(next_scanline_uncapped - expected_next_scanline_uncapped) >
-           abs((next_scanline_uncapped - total_height) - expected_next_scanline_uncapped)) {
+    while (abs(next_scanline_uncapped - expected_next_scanline_uncapped)
+           > abs((next_scanline_uncapped - total_height) - expected_next_scanline_uncapped)) {
         next_scanline_uncapped -= total_height;
     }
-    while (abs(next_scanline_uncapped - expected_next_scanline_uncapped) >
-           abs((next_scanline_uncapped + total_height) - expected_next_scanline_uncapped)) {
+    while (abs(next_scanline_uncapped - expected_next_scanline_uncapped)
+           > abs((next_scanline_uncapped + total_height) - expected_next_scanline_uncapped)) {
         next_scanline_uncapped += total_height;
     }
 
@@ -193,4 +188,4 @@ void LatentSyncLimiter::StopVBlankMonitoring() {
     }
 }
 
-} // namespace dxgi::fps_limiter
+}  // namespace dxgi::fps_limiter

@@ -1188,6 +1188,10 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
     auto now = utils::get_now_ns();
     RECORD_DETOUR_CALL(now);
+    // Skip FPS limiter for first N frames (warmup)
+    if (g_global_frame_id.load(std::memory_order_relaxed) < kFpsLimiterWarmupFrames) {
+        return;
+    }
     float target_fps = GetTargetFps();
 
     if (target_fps <= 0.0f) {

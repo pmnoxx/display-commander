@@ -1127,6 +1127,9 @@ extern std::atomic<LONGLONG> g_present_start_time_ns;
 // Index: g_frame_data[g_global_frame_id % kFrameDataBufferSize]. See docs/FRAME_DATA_CYCLIC_BUFFER.md.
 constexpr size_t kFrameDataBufferSize = 64;
 
+// FPS limiter is not applied for the first N frames (warmup); frame 301+ gets limiting.
+constexpr uint64_t kFpsLimiterWarmupFrames = 300;
+
 struct FrameData {
     std::atomic<uint64_t> frame_id{0};                    // Frame id this slot corresponds to (0 = not set)
     std::atomic<LONGLONG> present_start_time_ns{0};       // Start of present for this frame (after FPS limiter)

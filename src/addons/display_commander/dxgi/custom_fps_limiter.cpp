@@ -17,4 +17,4 @@ void CustomFpsLimiter::LimitFrameRate(double fps) {
 
     last_time_point_ns = wait_target_ns;
 }
-} // namespace dxgi::fps_limiter
+}  // namespace dxgi::fps_limiter

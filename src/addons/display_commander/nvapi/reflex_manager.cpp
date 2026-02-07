@@ -1,5 +1,6 @@
 #include "reflex_manager.hpp"
 #include "../globals.hpp"
+#include "../hooks/hook_suppression_manager.hpp"
 #include "../hooks/nvapi_hooks.hpp"
 #include "../latency/reflex_provider.hpp"
 #include "../settings/main_tab_settings.hpp"
@@ -18,6 +19,10 @@ static IUnknown* GetNativeD3DDeviceFromReshade(reshade::api::device* device) {
 }
 
 bool ReflexManager::EnsureNvApi() {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::NVAPI)) {
+        return false;
+    }
     static std::atomic<bool> g_nvapi_inited{false};
     if (!g_nvapi_inited.load(std::memory_order_acquire)) {
         if (NvAPI_Initialize() != NVAPI_OK) {

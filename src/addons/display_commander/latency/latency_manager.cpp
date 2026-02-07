@@ -42,7 +42,7 @@ bool LatencyManager::Initialize(reshade::api::device* device, LatencyTechnology 
     // Initialize the provider
     if (!provider_->Initialize(device)) {
         LogWarn("LatencyManager: Failed to initialize provider");
-        provider_.reset();
+        // provider_.reset();
         return false;
     }
 
@@ -86,7 +86,7 @@ bool LatencyManager::Initialize(void* native_device, DeviceTypeDC device_type, L
         if (!g_init_failed_warned.exchange(true, std::memory_order_acq_rel)) {
             LogWarn("LatencyManager: Failed to initialize provider with native device");
         }
-        provider_.reset();
+        // provider_.reset();
         return false;
     }
 
@@ -108,7 +108,7 @@ void LatencyManager::Shutdown() {
 
     if (provider_) {
         provider_->Shutdown();
-        provider_.reset();
+        // provider_.reset();
     }
 
     config_ = LatencyConfig{};  // Reset config
@@ -219,7 +219,7 @@ bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api
     // Shutdown current provider
     if (provider_) {
         provider_->Shutdown();
-        provider_.reset();
+        // provider_.reset();
     }
 
     // Create new provider
@@ -232,7 +232,7 @@ bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api
     // Initialize new provider
     if (!provider_->Initialize(device)) {
         LogWarn("LatencyManager: Failed to initialize new provider");
-        provider_.reset();
+        // provider_.reset();
         return false;
     }
 
@@ -254,7 +254,7 @@ bool LatencyManager::SwitchTechnologyNative(LatencyTechnology technology, void* 
     // Shutdown current provider
     if (provider_) {
         provider_->Shutdown();
-        provider_.reset();
+        // provider_.reset();
     }
 
     // Create new provider
@@ -267,7 +267,7 @@ bool LatencyManager::SwitchTechnologyNative(LatencyTechnology technology, void* 
     // Initialize new provider with native device
     if (!provider_->InitializeNative(native_device, device_type)) {
         LogWarn("LatencyManager: Failed to initialize new provider with native device");
-        provider_.reset();
+        // provider_.reset();
         return false;
     }
 

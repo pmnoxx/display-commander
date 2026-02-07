@@ -609,6 +609,10 @@ extern std::unique_ptr<LatencyManager> g_latencyManager;
 // Global frame ID for latency management
 extern std::atomic<uint64_t> g_global_frame_id;
 
+// FILETIME (as uint64_t: high 32 bits = dwHighDateTime, low 32 bits = dwLowDateTime) when
+// g_global_frame_id was last incremented; 0 = never. Used for stuck-detection log timestamp.
+extern std::atomic<uint64_t> g_global_frame_id_last_updated_filetime;
+
 // Global frame ID for pclstats frame id
 extern std::atomic<uint64_t> g_pclstats_frame_id;
 

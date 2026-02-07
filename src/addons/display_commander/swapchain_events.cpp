@@ -23,6 +23,7 @@
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
+#include "nvapi/reflex_manager.hpp"
 #include "performance_types.hpp"
 #include "reshade_api_device.hpp"
 #include "settings/advanced_tab_settings.hpp"
@@ -1314,6 +1315,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     const LONGLONG end_ns = TimerPresentPacingDelayEnd(start_ns);
     g_frame_data[present_slot].sleep_post_present_end_time_ns.store(end_ns);
 
+    static bool reflex_was_enabled_last_frame = false;
     if (should_enable_reflex) {
         if (g_latencyManager->IsInitialized()) {
             s_reflex_enable_current_frame.store(true);
@@ -1330,6 +1332,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
             g_latencyManager->ApplySleepMode(settings::g_advancedTabSettings.reflex_low_latency.GetValue(),
                                              settings::g_advancedTabSettings.reflex_boost.GetValue(),
                                              settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
+            reflex_was_enabled_last_frame = true;
             if (settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()
                 && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 perf_timer.pause();
@@ -1341,6 +1344,13 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         }
     } else {
         s_reflex_enable_current_frame.store(false);
+        if (reflex_was_enabled_last_frame) {
+            reflex_was_enabled_last_frame = false;
+            if (g_latencyManager->IsInitialized()) {
+                auto params = g_last_nvapi_sleep_mode_params.load();
+                ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(), params ? params.get() : nullptr);
+            }
+        }
     }
 
     // Frame data cyclic buffer: finalize completed frame (set frame_id) and zero next slot for reuse

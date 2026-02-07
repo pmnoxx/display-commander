@@ -134,6 +134,9 @@ class ExperimentalTabSettings {
     BoolSetting rand_s_hook_enabled;
     IntSetting rand_s_hook_value;
 
+    // Thread tracking for frame pacing debug (NvAPI latency markers + ChooseFpsLimiter call sites)
+    BoolSetting thread_tracking_enabled;
+
     // Performance measurement (profiling) - default off
     BoolSetting performance_measurement_enabled;
     // Per-metric toggles (default on)

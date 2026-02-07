@@ -183,12 +183,22 @@ static double s_timeline_t_max = 1.0;
 static double s_timeline_time_range = 1.0;
 static LONGLONG s_timeline_last_update_ns = 0;
 
-// Updates timeline cache when at least 1 second has passed (or cache empty). Call before drawing timeline.
+// Updates timeline cache from g_frame_data (last completed frame). All phase times are computed
+// relative to sim_start_ns. Refreshes at most once per second.
 static void UpdateFrameTimelineCache() {
-    const double frame_time_ns = static_cast<double>(::g_frame_time_ns.load());
-    if (frame_time_ns <= 0.0) {
+    const uint64_t last_completed_frame_id = (g_global_frame_id.load() > 0) ? (g_global_frame_id.load() - 1) : 0;
+    if (last_completed_frame_id == 0) {
+        s_timeline_phases.clear();
         return;
     }
+    const size_t slot = static_cast<size_t>(last_completed_frame_id % kFrameDataBufferSize);
+    const FrameData& fd = g_frame_data[slot];
+    if (fd.frame_id.load() != last_completed_frame_id || fd.sim_start_ns.load() <= 0
+        || fd.present_end_time_ns.load() <= 0) {
+        s_timeline_phases.clear();
+        return;
+    }
+
     const LONGLONG now_ns = utils::get_now_ns();
     const bool should_update =
         (s_timeline_phases.empty()) || (now_ns - s_timeline_last_update_ns >= static_cast<LONGLONG>(utils::SEC_TO_NS));
@@ -196,56 +206,80 @@ static void UpdateFrameTimelineCache() {
         return;
     }
     s_timeline_last_update_ns = now_ns;
-    const double frame_ms = frame_time_ns / utils::NS_TO_MS;
 
-    const double sim_ms = static_cast<double>(::g_simulation_duration_ns.load()) / utils::NS_TO_MS;
-    const double render_submit_ms = static_cast<double>(::g_render_submit_duration_ns.load()) / utils::NS_TO_MS;
-    const double present_ms = static_cast<double>(::g_present_duration_ns.load()) / utils::NS_TO_MS;
-    const double sleep_before_ms = static_cast<double>(::fps_sleep_before_on_present_ns.load()) / utils::NS_TO_MS;
-    const double sleep_after_ms = static_cast<double>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
-    const double reshade_raw_ms = static_cast<double>(::g_reshade_overhead_duration_ns.load()) / utils::NS_TO_MS;
-    const double reshade_ms = (std::max)(0.0, reshade_raw_ms - sleep_before_ms - sleep_after_ms);
+    const LONGLONG base_ns = fd.sim_start_ns.load();
+    const double to_ms = 1.0 / static_cast<double>(utils::NS_TO_MS);
 
+    // All times relative to sim_start (base_ns) in milliseconds
+    const double sim_start_ms = 0.0;
+    const double sim_end_ms = (fd.submit_start_time_ns.load() > base_ns)
+                                  ? (static_cast<double>(fd.submit_start_time_ns.load() - base_ns) * to_ms)
+                                  : sim_start_ms;
+    const double render_end_ms = (fd.render_submit_end_time_ns.load() > base_ns)
+                                     ? (static_cast<double>(fd.render_submit_end_time_ns.load() - base_ns) * to_ms)
+                                     : sim_end_ms;
+    const double present_start_ms = (fd.present_start_time_ns.load() > base_ns)
+                                        ? (static_cast<double>(fd.present_start_time_ns.load() - base_ns) * to_ms)
+                                        : render_end_ms;
+    const double present_end_ms = (fd.present_end_time_ns.load() > base_ns)
+                                      ? (static_cast<double>(fd.present_end_time_ns.load() - base_ns) * to_ms)
+                                      : present_start_ms;
+    const double sleep_pre_start_ms =
+        (fd.sleep_pre_present_start_time_ns.load() > base_ns)
+            ? (static_cast<double>(fd.sleep_pre_present_start_time_ns.load() - base_ns) * to_ms)
+            : render_end_ms;
+    const double sleep_pre_end_ms =
+        (fd.sleep_pre_present_end_time_ns.load() > base_ns)
+            ? (static_cast<double>(fd.sleep_pre_present_end_time_ns.load() - base_ns) * to_ms)
+            : present_start_ms;
+    const double sleep_post_start_ms =
+        (fd.sleep_post_present_start_time_ns.load() > base_ns)
+            ? (static_cast<double>(fd.sleep_post_present_start_time_ns.load() - base_ns) * to_ms)
+            : present_end_ms;
+    const double sleep_post_end_ms =
+        (fd.sleep_post_present_end_time_ns.load() > base_ns)
+            ? (static_cast<double>(fd.sleep_post_present_end_time_ns.load() - base_ns) * to_ms)
+            : present_end_ms;
     const bool has_gpu =
-        (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0);
-    const double gpu_ms = has_gpu ? (static_cast<double>(::g_gpu_duration_ns.load()) / utils::NS_TO_MS) : 0.0;
-
-    double t = 0.0;
-    const double sim_start = t;
-    t += sim_ms;
-    const double render_start = t;
-    t += render_submit_ms;
-    const double reshade_start = t;
-    t += reshade_ms;
-    const double present_start = t;
-    t += present_ms;
-    const double sleep_before_start = t;
-    t += sleep_before_ms;
-    const double sleep_after_start = t;
-    t += sleep_after_ms;
-    const double gpu_start = present_start;
-    const double gpu_end = present_start + gpu_ms;
+        (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && fd.gpu_completion_time_ns.load() > 0);
+    const double gpu_end_ms = has_gpu && fd.gpu_completion_time_ns.load() > base_ns
+                                  ? (static_cast<double>(fd.gpu_completion_time_ns.load() - base_ns) * to_ms)
+                                  : present_end_ms;
 
     const ImVec4 col_sim(0.2f, 0.75f, 0.35f, 1.0f);
     const ImVec4 col_render(0.35f, 0.55f, 1.0f, 1.0f);
     const ImVec4 col_reshade(0.75f, 0.4f, 1.0f, 1.0f);
-    const ImVec4 col_present(1.0f, 0.55f, 0.2f, 1.0f);
     const ImVec4 col_sleep(0.5f, 0.5f, 0.55f, 1.0f);
+    const ImVec4 col_present(1.0f, 0.55f, 0.2f, 1.0f);
     const ImVec4 col_gpu(0.95f, 0.35f, 0.35f, 1.0f);
 
     s_timeline_phases.clear();
-    s_timeline_phases.push_back({"Simulation", sim_start, sim_start + sim_ms, col_sim});
-    s_timeline_phases.push_back({"Render Submit", render_start, render_start + render_submit_ms, col_render});
-    s_timeline_phases.push_back({"ReShade", reshade_start, reshade_start + reshade_ms, col_reshade});
-    s_timeline_phases.push_back({"Present", present_start, present_start + present_ms, col_present});
-    s_timeline_phases.push_back(
-        {"FPS Sleep (before)", sleep_before_start, sleep_before_start + sleep_before_ms, col_sleep});
-    s_timeline_phases.push_back(
-        {"FPS Sleep (after)", sleep_after_start, sleep_after_start + sleep_after_ms, col_sleep});
-    if (has_gpu && gpu_ms > 0.0) {
-        s_timeline_phases.push_back({"GPU", gpu_start, gpu_end, col_gpu});
+    if (sim_end_ms > sim_start_ms) {
+        s_timeline_phases.push_back({"Simulation", sim_start_ms, sim_end_ms, col_sim});
+    }
+    if (render_end_ms > sim_end_ms) {
+        s_timeline_phases.push_back({"Render Submit", sim_end_ms, render_end_ms, col_render});
+    }
+    // ReShade: render_end up to sleep-pre start (or present_start if no sleep-pre)
+    const double reshade_end_ms =
+        (fd.sleep_pre_present_start_time_ns.load() > 0) ? sleep_pre_start_ms : present_start_ms;
+    if (reshade_end_ms > render_end_ms) {
+        s_timeline_phases.push_back({"ReShade", render_end_ms, reshade_end_ms, col_reshade});
+    }
+    if (sleep_pre_end_ms > sleep_pre_start_ms) {
+        s_timeline_phases.push_back({"FPS Sleep (before)", sleep_pre_start_ms, sleep_pre_end_ms, col_sleep});
+    }
+    if (present_end_ms > present_start_ms) {
+        s_timeline_phases.push_back({"Present", present_start_ms, present_end_ms, col_present});
+    }
+    if (sleep_post_end_ms > sleep_post_start_ms) {
+        s_timeline_phases.push_back({"FPS Sleep (after)", sleep_post_start_ms, sleep_post_end_ms, col_sleep});
+    }
+    if (has_gpu && gpu_end_ms > present_start_ms) {
+        s_timeline_phases.push_back({"GPU", present_start_ms, gpu_end_ms, col_gpu});
     }
 
+    const double frame_ms = (sleep_post_end_ms > present_end_ms) ? sleep_post_end_ms : present_end_ms;
     s_timeline_t_min = 0.0;
     s_timeline_t_max = frame_ms;
     for (const auto& p : s_timeline_phases) {
@@ -263,11 +297,6 @@ static void UpdateFrameTimelineCache() {
 // Uses start/end times (relative to frame start) so bars show when each phase began and ended.
 // Data is cached and refreshed at most once per second to avoid flicker.
 void DrawFrameTimelineBar() {
-    const double frame_time_ns = static_cast<double>(::g_frame_time_ns.load());
-    if (frame_time_ns <= 0.0) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: no frame time data yet.");
-        return;
-    }
     UpdateFrameTimelineCache();
     if (s_timeline_phases.empty()) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: no frame time data yet.");
@@ -279,11 +308,11 @@ void DrawFrameTimelineBar() {
     const double t_max = s_timeline_t_max;
     const double time_range = s_timeline_time_range;
 
-    ImGui::Text("Frame timeline (start to end, relative time, updates every 1 s)");
+    ImGui::Text("Frame timeline (start to end, relative to sim start, updates every 1 s)");
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
-            "Each row = one phase. Bar shows when it started and ended (0 = frame start). "
-            "Same time scale for all rows. Values are smoothed.");
+            "Each row = one phase. Bar shows when it started and ended (0 = sim start). "
+            "Times from last completed frame (g_frame_data).");
     }
     ImGui::Spacing();
 
@@ -3797,7 +3826,8 @@ void DrawAudioSettings() {
     if (::GetChannelVolumeCountForCurrentProcess(&channel_count) && channel_count >= 2) {
         float left_vol_01 = 0.0f;
         float right_vol_01 = 0.0f;
-        if (::GetChannelVolumeForCurrentProcess(0, &left_vol_01) && ::GetChannelVolumeForCurrentProcess(1, &right_vol_01)) {
+        if (::GetChannelVolumeForCurrentProcess(0, &left_vol_01)
+            && ::GetChannelVolumeForCurrentProcess(1, &right_vol_01)) {
             float left_pct = left_vol_01 * 100.0f;
             float right_pct = right_vol_01 * 100.0f;
             if (ImGui::SliderFloat("Left speaker (%)", &left_pct, 0.0f, 100.0f, "%.0f%%")) {

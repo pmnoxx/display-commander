@@ -544,6 +544,9 @@ std::atomic<LONGLONG> g_present_update_after2_time_ns{0};    // Time when OnPres
 std::atomic<LONGLONG> g_gpu_completion_callback_time_ns{0};  // Time when GPU completion callback finished
 std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
 
+// Frame data cyclic buffer (see docs/FRAME_DATA_CYCLIC_BUFFER.md). Not populated yet.
+FrameData g_frame_data[kFrameDataBufferSize] = {};
+
 // NVIDIA Reflex minimal controls (disabled by default)
 
 // DLSS-G (DLSS Frame Generation) status

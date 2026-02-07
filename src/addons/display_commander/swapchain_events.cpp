@@ -375,6 +375,10 @@ void HandleRenderStartAndEndTimes() {
         LONGLONG now_ns = utils::get_now_ns();
         LONGLONG present_after_end_time_ns = g_sim_start_ns.load();
         if (present_after_end_time_ns > 0 && g_submit_start_time_ns.compare_exchange_strong(expected, now_ns)) {
+            const size_t submit_slot = static_cast<size_t>(g_global_frame_id.load() % kFrameDataBufferSize);
+            if (g_frame_data[submit_slot].submit_start_time_ns.load() == 0) {
+                g_frame_data[submit_slot].submit_start_time_ns.store(now_ns);
+            }
             g_pclstats_frame_id.store(g_global_frame_id.load() + 1, std::memory_order_release);
             // Compare to g_present_after_end_time
             LONGLONG g_simulation_duration_ns_new = (now_ns - present_after_end_time_ns);
@@ -396,6 +400,10 @@ void HandleRenderStartAndEndTimes() {
 void HandleEndRenderSubmit() {
     LONGLONG now_ns = utils::get_now_ns();
     g_render_submit_end_time_ns.store(now_ns);
+    const size_t render_slot = static_cast<size_t>(g_global_frame_id.load() % kFrameDataBufferSize);
+    if (g_frame_data[render_slot].render_submit_end_time_ns.load() == 0) {
+        g_frame_data[render_slot].render_submit_end_time_ns.store(now_ns);
+    }
     if (g_submit_start_time_ns.load() > 0) {
         LONGLONG g_render_submit_duration_ns_new = (now_ns - g_submit_start_time_ns.load());
         g_render_submit_duration_ns.store(
@@ -408,6 +416,8 @@ void HandleOnPresentEnd() {
 
     g_frame_time_ns.store(now_ns - g_sim_start_ns.load());
     g_sim_start_ns.store(now_ns);
+    const size_t sim_slot = static_cast<size_t>(g_global_frame_id.load() % kFrameDataBufferSize);
+    g_frame_data[sim_slot].sim_start_ns.store(now_ns);
     g_submit_start_time_ns.store(0);
 
     if (g_render_submit_end_time_ns.load() > 0) {
@@ -1196,7 +1206,8 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
 }
 
 void OnPresentUpdateAfter2(bool from_wrapper) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    auto start_time_ns = utils::get_now_ns();
+    RECORD_DETOUR_CALL(start_time_ns);
     // Track render thread ID
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
     DWORD current_thread_id = GetCurrentThreadId();
@@ -1225,20 +1236,17 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         }
     }
 
-    // g_present_duration
-    LONGLONG now_ns = utils::get_now_ns();
-
     // Sim-to-display latency measurement
     // Track that OnPresentUpdateAfter2 was called
     LONGLONG sim_start_for_measurement = g_sim_start_ns_for_measurement.load();
     if (sim_start_for_measurement > 0) {
         g_present_update_after2_called.store(true);
-        g_present_update_after2_time_ns.store(now_ns);
+        g_present_update_after2_time_ns.store(start_time_ns);
 
         // If GPU completion callback was already finished, we're finishing second
         if (g_gpu_completion_callback_finished.load()) {
             // Calculate sim-to-display latency
-            LONGLONG latency_new_ns = now_ns - sim_start_for_measurement;
+            LONGLONG latency_new_ns = start_time_ns - sim_start_for_measurement;
 
             // Smooth the latency with exponential moving average
             LONGLONG old_latency = g_sim_to_display_latency_ns.load();
@@ -1255,9 +1263,14 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     }
 
     LONGLONG g_present_duration_new_ns =
-        (now_ns - g_present_start_time_ns.load());  // Convert QPC ticks to seconds (QPC
-                                                    // frequency is typically 10MHz)
+        (start_time_ns - g_present_start_time_ns.load());  // Convert QPC ticks to seconds (QPC
+                                                           // frequency is typically 10MHz)
     g_present_duration_ns.store(UpdateRollingAverage(g_present_duration_new_ns, g_present_duration_ns.load()));
+
+    const uint64_t current_frame_id_for_slot = g_global_frame_id.load();
+    const size_t present_slot = static_cast<size_t>(current_frame_id_for_slot % kFrameDataBufferSize);
+    g_frame_data[present_slot].present_end_time_ns.store(start_time_ns);
+    g_frame_data[present_slot].present_update_after2_time_ns.store(start_time_ns);
 
     // GPU completion measurement (non-blocking check)
     // GPU completion measurement is now handled by dedicated thread in gpu_completion_monitoring.cpp
@@ -1269,6 +1282,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         latent.OnPresentEnd();
     }
     auto start_ns = TimerPresentPacingDelayStart();
+    g_frame_data[present_slot].sleep_post_present_start_time_ns.store(start_ns);
 
     // Input blocking in background is now handled by Windows message hooks
     // instead of ReShade's block_input_next_frame() for better compatibility
@@ -1279,7 +1293,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
     // Optionally delay enabling Reflex for the first N frames
     const bool delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
-    const uint64_t current_frame_id = g_global_frame_id.load();
+    const uint64_t current_frame_id = current_frame_id_for_slot;
 
     // Enable Reflex if:
     // 1. Advanced tab Reflex is enabled, OR
@@ -1293,6 +1307,8 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     }
 
     HandleFpsLimiterPost(false, from_wrapper);
+    const LONGLONG end_ns = TimerPresentPacingDelayEnd(start_ns);
+    g_frame_data[present_slot].sleep_post_present_end_time_ns.store(end_ns);
 
     if (should_enable_reflex) {
         if (g_latencyManager->IsInitialized()) {
@@ -1323,6 +1339,27 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         s_reflex_enable_current_frame.store(false);
     }
 
+    // Frame data cyclic buffer: finalize completed frame (set frame_id) and zero next slot for reuse
+    {
+        const size_t slot = static_cast<size_t>(current_frame_id % kFrameDataBufferSize);
+        FrameData& fd = g_frame_data[slot];
+        fd.frame_id.store(current_frame_id);
+
+        FrameData& next_fd = g_frame_data[(current_frame_id + 1) % kFrameDataBufferSize];
+        next_fd.frame_id.store(0);
+        next_fd.sim_start_ns.store(0);
+        next_fd.submit_start_time_ns.store(0);
+        next_fd.render_submit_end_time_ns.store(0);
+        next_fd.present_start_time_ns.store(0);
+        next_fd.present_end_time_ns.store(0);
+        next_fd.present_update_after2_time_ns.store(0);
+        next_fd.gpu_completion_time_ns.store(0);
+        next_fd.sleep_pre_present_start_time_ns.store(0);
+        next_fd.sleep_pre_present_end_time_ns.store(0);
+        next_fd.sleep_post_present_start_time_ns.store(0);
+        next_fd.sleep_post_present_end_time_ns.store(0);
+    }
+
     g_global_frame_id.fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
@@ -1335,7 +1372,6 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         }
     }
 
-    auto end_ns = TimerPresentPacingDelayEnd(start_ns);
     HandleOnPresentEnd();
 
     RecordFrameTime(FrameTimeMode::kFrameBegin);
@@ -1369,14 +1405,14 @@ float GetDelayBiasFromRatio(int ratio_index) {
 }
 
 void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
-    auto now_ns = utils::get_now_ns();
-    RECORD_DETOUR_CALL(now_ns);
-    LONGLONG handle_fps_limiter_start_time_ns = now_ns;
+    auto start_time_ns = utils::get_now_ns();
+    RECORD_DETOUR_CALL(start_time_ns);
+    LONGLONG handle_fps_limiter_start_time_ns = start_time_ns;
     float target_fps = GetTargetFps();
     late_amount_ns.store(0);
 
     if (from_wrapper) {
-        RECORD_DETOUR_CALL(now_ns);
+        RECORD_DETOUR_CALL(start_time_ns);
         const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
         if (lite.dlss_g_active) {
             switch (lite.fg_mode) {
@@ -1388,7 +1424,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
         }
     }
     if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        RECORD_DETOUR_CALL(now_ns);
+        RECORD_DETOUR_CALL(start_time_ns);
         // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
         // No need to flush here anymore
 
@@ -1412,7 +1448,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                 float delay_bias = GetDelayBiasFromRatio(ratio_index);
 
                 if (target_fps >= 1.0f) {
-                    RECORD_DETOUR_CALL(now_ns);
+                    RECORD_DETOUR_CALL(start_time_ns);
                     // Calculate frame time
                     float adjusted_target_fps = target_fps;
                     if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
@@ -1436,25 +1472,25 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     // Calculate ideal frame start time
                     // Frames should be spaced by exactly frame_time_ns from start to start
                     LONGLONG ideal_frame_start_ns =
-                        (std::max)(now_ns - post_sleep_ns, previous_frame_start_ns + frame_time_ns);
+                        (std::max)(start_time_ns - post_sleep_ns, previous_frame_start_ns + frame_time_ns);
 
                     // Always sleep for pre_sleep_ns before starting the frame
                     // When delay_bias = 0: pre_sleep = frame_time, so we sleep for the full frame time
                     // When delay_bias = 1.0: pre_sleep = 0, so we start immediately
-                    RECORD_DETOUR_CALL(now_ns);
-                    if (ideal_frame_start_ns - post_sleep_ns > now_ns) {
+                    RECORD_DETOUR_CALL(start_time_ns);
+                    if (ideal_frame_start_ns - post_sleep_ns > start_time_ns) {
                         // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
                         utils::wait_until_ns(ideal_frame_start_ns - post_sleep_ns, g_timer_handle_pre);
                         late_amount_ns.store(0);
-                        g_onpresent_sync_pre_sleep_ns.store(ideal_frame_start_ns - now_ns);
+                        g_onpresent_sync_pre_sleep_ns.store(ideal_frame_start_ns - start_time_ns);
                     } else {
                         // Late - but still sleep until ideal_frame_start_ns to maintain frame spacing
                         // This ensures frames are always spaced by frame_time_ns from start to start
                         // utils::wait_until_ns(ideal_frame_start_ns, g_timer_handle);
-                        late_amount_ns.store(now_ns - ideal_frame_start_ns);
+                        late_amount_ns.store(start_time_ns - ideal_frame_start_ns);
                         g_onpresent_sync_pre_sleep_ns.store(0);
                     }
-                    RECORD_DETOUR_CALL(now_ns);
+                    RECORD_DETOUR_CALL(start_time_ns);
                     // Record when frame processing actually started
                     g_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns);
                     g_post_sleep_ns.store(ideal_frame_start_ns + post_sleep_ns);
@@ -1481,16 +1517,25 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
             }
         }
     }
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    {
+        auto end_time_ns = utils::get_now_ns();
+        RECORD_DETOUR_CALL(end_time_ns);
 
-    LONGLONG handle_fps_limiter_start_end_time_ns = utils::get_now_ns();
-    g_present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
+        LONGLONG handle_fps_limiter_start_end_time_ns = end_time_ns;
+        g_present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
 
-    LONGLONG handle_fps_limiter_start_duration_ns =
-        max(1, handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns);
-    fps_sleep_before_on_present_ns.store(
-        UpdateRollingAverage(handle_fps_limiter_start_duration_ns, fps_sleep_before_on_present_ns.load()));
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+        // Frame data cyclic buffer: record present start and sleep-pre-present for the frame we're starting
+        const size_t slot = static_cast<size_t>(g_global_frame_id.load() % kFrameDataBufferSize);
+        g_frame_data[slot].present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
+        g_frame_data[slot].sleep_pre_present_start_time_ns.store(handle_fps_limiter_start_time_ns);
+        g_frame_data[slot].sleep_pre_present_end_time_ns.store(handle_fps_limiter_start_end_time_ns);
+
+        LONGLONG handle_fps_limiter_start_duration_ns =
+            max(1, handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns);
+        fps_sleep_before_on_present_ns.store(
+            UpdateRollingAverage(handle_fps_limiter_start_duration_ns, fps_sleep_before_on_present_ns.load()));
+        RECORD_DETOUR_CALL(end_time_ns);
+    }
 }
 
 // Helper function to automatically set color space based on format

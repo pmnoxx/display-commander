@@ -1,10 +1,10 @@
 #include "gpu_completion_monitoring.hpp"
 #include "globals.hpp"
+#include "settings/main_tab_settings.hpp"
+#include "swapchain_events.hpp"
 #include "utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
-#include "swapchain_events.hpp"
-#include "settings/main_tab_settings.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -62,6 +62,14 @@ void GPUCompletionMonitoringThread() {
                 // Store the smoothed duration and exact completion time
                 g_gpu_duration_ns.store(smoothed_duration);
                 g_gpu_completion_time_ns.store(gpu_completion_time);
+
+                // Write GPU completion time into frame data for the frame this GPU work belongs to
+                // (render thread may have already written the rest of the slot; GPU often completes after Present)
+                const uint64_t frame_id = g_global_frame_id.load();
+                if (frame_id > 0) {
+                    const size_t slot = static_cast<size_t>((frame_id - 1) % kFrameDataBufferSize);
+                    g_frame_data[slot].gpu_completion_time_ns.store(gpu_completion_time);
+                }
             }
 
             // Sim-to-display latency measurement
@@ -111,7 +119,7 @@ void GPUCompletionMonitoringThread() {
 
     LogInfo("GPU completion monitoring thread stopped");
 }
-} // anonymous namespace
+}  // anonymous namespace
 
 // Start GPU completion monitoring thread
 void StartGPUCompletionMonitoring() {
@@ -171,6 +179,13 @@ void HandleOpenGLGPUCompletion() {
         // Store the smoothed duration and exact completion time
         g_gpu_duration_ns.store(smoothed_duration);
         g_gpu_completion_time_ns.store(gpu_completion_time);
+
+        // Write GPU completion time into frame data for the frame this GPU work belongs to
+        const uint64_t frame_id = g_global_frame_id.load();
+        if (frame_id > 0) {
+            const size_t slot = static_cast<size_t>((frame_id - 1) % kFrameDataBufferSize);
+            g_frame_data[slot].gpu_completion_time_ns.store(gpu_completion_time);
+        }
     }
 
     // Sim-to-display latency measurement
@@ -208,4 +223,3 @@ void HandleOpenGLGPUCompletion() {
         }
     }
 }
-

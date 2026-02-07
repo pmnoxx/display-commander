@@ -1123,6 +1123,28 @@ extern std::atomic<uint64_t>
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;
 
+// Frame data cyclic buffer: per-frame timestamps for UpdateFrameTimelineCache and similar.
+// Index: g_frame_data[g_global_frame_id % kFrameDataBufferSize]. See docs/FRAME_DATA_CYCLIC_BUFFER.md.
+constexpr size_t kFrameDataBufferSize = 64;
+
+struct FrameData {
+    std::atomic<uint64_t> frame_id{0};                    // Frame id this slot corresponds to (0 = not set)
+    std::atomic<LONGLONG> present_start_time_ns{0};       // Start of present for this frame (after FPS limiter)
+    std::atomic<LONGLONG> present_end_time_ns{0};         // End of present (when OnPresentUpdateAfter2 ran)
+    std::atomic<LONGLONG> sim_start_ns{0};
+    std::atomic<LONGLONG> submit_start_time_ns{0};
+    std::atomic<LONGLONG> render_submit_end_time_ns{0};
+    std::atomic<LONGLONG> present_update_after2_time_ns{0};
+    std::atomic<LONGLONG> gpu_completion_time_ns{0};
+    // Sleep timestamps (FPS limiter / pacing)
+    std::atomic<LONGLONG> sleep_pre_present_start_time_ns{0};   // Start of sleep/pacing before present
+    std::atomic<LONGLONG> sleep_pre_present_end_time_ns{0};    // End of sleep before present (= present_start)
+    std::atomic<LONGLONG> sleep_post_present_start_time_ns{0};  // Start of sleep/pacing after present
+    std::atomic<LONGLONG> sleep_post_present_end_time_ns{0};   // End of sleep after present
+};
+
+extern FrameData g_frame_data[kFrameDataBufferSize];
+
 // Present pacing delay as percentage of frame time - 0% to 100%
 
 extern std::atomic<LONGLONG> late_amount_ns;

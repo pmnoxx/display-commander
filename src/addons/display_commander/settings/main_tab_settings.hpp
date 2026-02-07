@@ -126,6 +126,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_dlss_render_preset;   // Render preset: A, B, C, D, E, etc. (letter presets)
     ui::new_ui::BoolSetting show_stopwatch;
     ui::new_ui::BoolSetting show_playtime;
+    ui::new_ui::BoolSetting show_overlay_vu_bars;
     ui::new_ui::FloatSetting overlay_background_alpha;
     ui::new_ui::FloatSetting overlay_chart_alpha;
     ui::new_ui::FloatSetting overlay_graph_scale;

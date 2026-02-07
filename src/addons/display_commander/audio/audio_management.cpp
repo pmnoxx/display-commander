@@ -830,6 +830,84 @@ bool GetSystemVolume(float* volume_0_100_out) {
     return success;
 }
 
+bool GetAudioMeterChannelCount(unsigned int* channel_count_out) {
+    if (channel_count_out == nullptr) {
+        return false;
+    }
+    *channel_count_out = 0;
+
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr);
+    if (!did_init && hr != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for audio meter");
+        return false;
+    }
+
+    bool success = false;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioMeterInformation* meter = nullptr;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr) break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr) break;
+        hr = device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void**>(&meter));
+        if (FAILED(hr) || meter == nullptr) break;
+        UINT32 n = 0;
+        if (SUCCEEDED(meter->GetMeteringChannelCount(&n))) {
+            *channel_count_out = n;
+            success = true;
+        }
+    } while (false);
+
+    if (meter != nullptr) meter->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
+
+    return success;
+}
+
+bool GetAudioMeterPeakValues(unsigned int channel_count, float* peak_values_0_1_out) {
+    if (peak_values_0_1_out == nullptr || channel_count == 0) {
+        return false;
+    }
+
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr);
+    if (!did_init && hr != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for audio meter peaks");
+        return false;
+    }
+
+    bool success = false;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioMeterInformation* meter = nullptr;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr) break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr) break;
+        hr = device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr,
+                              reinterpret_cast<void**>(&meter));
+        if (FAILED(hr) || meter == nullptr) break;
+        hr = meter->GetChannelsPeakValues(channel_count, peak_values_0_1_out);
+        success = SUCCEEDED(hr);
+    } while (false);
+
+    if (meter != nullptr) meter->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
+
+    return success;
+}
+
 bool AdjustSystemVolume(float percent_change) {
     float current_volume = 0.0f;
     if (!GetSystemVolume(&current_volume)) {

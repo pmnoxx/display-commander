@@ -34,3 +34,10 @@ bool SetAudioOutputDeviceForCurrentProcess(const std::wstring& device_id);
 bool GetChannelVolumeCountForCurrentProcess(unsigned int* channel_count_out);
 bool GetChannelVolumeForCurrentProcess(unsigned int channel_index, float* volume_0_1_out);
 bool SetChannelVolumeForCurrentProcess(unsigned int channel_index, float volume_0_1);
+// Get all channel volumes in one call. out_volumes_0_1 is filled up to channel_count; returns true on success.
+bool GetAllChannelVolumesForCurrentProcess(std::vector<float>* out_volumes_0_1);
+
+// VU meter: per-channel peak levels (0.0–1.0) for the default render endpoint (mixed output).
+// Use for level meters in the UI; channel count may differ from session channel count.
+bool GetAudioMeterChannelCount(unsigned int* channel_count_out);
+bool GetAudioMeterPeakValues(unsigned int channel_count, float* peak_values_0_1_out);

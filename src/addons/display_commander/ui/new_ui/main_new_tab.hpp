@@ -44,4 +44,7 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips = false);
 void DrawNativeFrameTimeGraphOverlay(bool show_tooltips = false);
 void DrawRefreshRateFrameTimesGraph(bool show_tooltips = false);
 
+// Draw per-channel VU meter bars in the performance overlay (compact)
+void DrawOverlayVUBars(bool show_tooltips = false);
+
 }  // namespace ui::new_ui

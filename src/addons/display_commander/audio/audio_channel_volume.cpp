@@ -122,3 +122,17 @@ bool SetChannelVolumeForCurrentProcess(unsigned int channel_index, float volume_
     if (pv != nullptr) pv->Release();
     return ok;
 }
+
+bool GetAllChannelVolumesForCurrentProcess(std::vector<float>* out_volumes_0_1) {
+    if (out_volumes_0_1 == nullptr) return false;
+    out_volumes_0_1->clear();
+    IChannelAudioVolume* pv = nullptr;
+    UINT n = 0;
+    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n) || n == 0) {
+        return false;
+    }
+    out_volumes_0_1->resize(n);
+    const bool ok = SUCCEEDED(pv->GetAllVolumes(n, out_volumes_0_1->data()));
+    if (pv != nullptr) pv->Release();
+    return ok;
+}

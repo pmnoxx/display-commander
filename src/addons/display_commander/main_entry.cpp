@@ -448,6 +448,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
     bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
     bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
+    bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
     bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
     bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
     bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
@@ -988,6 +989,10 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                 ImGui::SetTooltip("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
             }
         }
+    }
+
+    if (show_overlay_vu_bars) {
+        ui::new_ui::DrawOverlayVUBars(show_tooltips);
     }
 
     if (show_gpu_measurement) {

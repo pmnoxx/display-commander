@@ -3768,15 +3768,22 @@ void DrawOverlayVUBars(bool show_tooltips) {
     }
     static std::vector<float> s_overlay_vu_peaks;
     static std::vector<float> s_overlay_vu_smoothed;
-    if (s_overlay_vu_peaks.size() != meter_count) {
+    if (s_overlay_vu_peaks.size() < meter_count) {
         s_overlay_vu_peaks.resize(meter_count);
         s_overlay_vu_smoothed.resize(meter_count, 0.0f);
     }
-    if (!::GetAudioMeterPeakValues(meter_count, s_overlay_vu_peaks.data())) {
+    unsigned int effective_meter_count = meter_count;
+    if (::GetAudioMeterPeakValues(meter_count, s_overlay_vu_peaks.data())) {
+        // use meter_count as-is
+    } else if (meter_count > 6 && ::GetAudioMeterPeakValues(6, s_overlay_vu_peaks.data())) {
+        effective_meter_count = 6;
+    } else if (meter_count > 2 && ::GetAudioMeterPeakValues(2, s_overlay_vu_peaks.data())) {
+        effective_meter_count = 2;
+    } else {
         return;
     }
     const float decay = 0.85f;
-    for (unsigned int i = 0; i < meter_count; ++i) {
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
         float p = s_overlay_vu_peaks[i];
         float s = s_overlay_vu_smoothed[i];
         s_overlay_vu_smoothed[i] = (p > s) ? p : (s * decay);
@@ -3786,8 +3793,8 @@ void DrawOverlayVUBars(bool show_tooltips) {
     const float gap = 3.0f;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     const ImVec2 cursor = ImGui::GetCursorScreenPos();
-    const float total_width = (static_cast<float>(meter_count) * (bar_width + gap)) - gap;
-    for (unsigned int i = 0; i < meter_count; ++i) {
+    const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
         const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
         const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
         const ImVec2 bg_min(x, cursor.y);
@@ -3802,8 +3809,8 @@ void DrawOverlayVUBars(bool show_tooltips) {
     ImGui::Dummy(ImVec2(total_width, bar_height));
     const float label_y = cursor.y + bar_height + 2.0f;
     const float line_height = ImGui::GetTextLineHeightWithSpacing();
-    for (unsigned int i = 0; i < meter_count; ++i) {
-        const char* ch_label = GetAudioChannelLabel(i, meter_count);
+    for (unsigned int i = 0; i < effective_meter_count; ++i) {
+        const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
         const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
         char raw_buf[32];
         (void)std::snprintf(raw_buf, sizeof(raw_buf), "%s %.1f%%", ch_label, level * 100.0f);
@@ -3820,6 +3827,39 @@ void DrawOverlayVUBars(bool show_tooltips) {
 }
 
 void DrawAudioSettings() {
+    // Default output device format info (channel config, Hz, bits, format, extension, device name)
+    AudioDeviceFormatInfo device_info;
+    if (GetDefaultAudioDeviceFormatInfo(&device_info)
+        && (device_info.channel_count > 0 || device_info.sample_rate_hz > 0)) {
+        const char* ext_str =
+            device_info.format_extension_utf8.empty() ? "—" : device_info.format_extension_utf8.c_str();
+        const char* name_str =
+            device_info.device_friendly_name_utf8.empty() ? nullptr : device_info.device_friendly_name_utf8.c_str();
+        if (name_str && *name_str) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Device: %s", name_str);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Default render endpoint. Extension/codec (Dolby, DTS, PCM, etc.) shown on next line.\n\nRaw: %s",
+                    device_info.raw_format_utf8.empty() ? "(none)" : device_info.raw_format_utf8.c_str());
+            }
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Format: %s, %u Hz, %u-bit, extension: %s",
+                               device_info.channel_config_utf8.empty() ? "—" : device_info.channel_config_utf8.c_str(),
+                               device_info.sample_rate_hz, device_info.bits_per_sample, ext_str);
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Device: %s, %u Hz, %u-bit, extension: %s",
+                               device_info.channel_config_utf8.empty() ? "—" : device_info.channel_config_utf8.c_str(),
+                               device_info.sample_rate_hz, device_info.bits_per_sample, ext_str);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Source: Default output device mix format from WASAPI (IAudioClient::GetMixFormat).\n"
+                "Extension: stream/codec type (e.g. PCM, Float, Dolby AC3, DTS). Device name shows endpoint (e.g. Dolby Atmos).\n\n"
+                "Raw: %s",
+                device_info.raw_format_utf8.empty() ? "(none)" : device_info.raw_format_utf8.c_str());
+        }
+        ImGui::Spacing();
+    }
+
     // Audio Volume slider
     float volume = s_audio_volume_percent.load();
     if (ImGui::SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
@@ -3896,11 +3936,14 @@ void DrawAudioSettings() {
     }
 
     // Fetch per-channel VU peak data once (default render endpoint); reused for per-channel bars and VU strip below.
+    // Some endpoints (e.g. Dolby Atmos PCM 7.1) report 8 channels but GetChannelsPeakValues(8) fails; fallback to 6 or 2.
     static std::vector<float> s_vu_peaks;
     static std::vector<float> s_vu_smoothed;
     unsigned int meter_count = 0;
+    unsigned int effective_meter_count = 0;
     if (::GetAudioMeterChannelCount(&meter_count) && meter_count > 0) {
-        if (s_vu_peaks.size() != meter_count) {
+        effective_meter_count = meter_count;
+        if (s_vu_peaks.size() < meter_count) {
             s_vu_peaks.resize(meter_count);
             s_vu_smoothed.resize(meter_count, 0.0f);
         }
@@ -3911,13 +3954,30 @@ void DrawAudioSettings() {
                 float s = s_vu_smoothed[i];
                 s_vu_smoothed[i] = (p > s) ? p : (s * decay);
             }
+        } else if (meter_count > 6 && ::GetAudioMeterPeakValues(6, s_vu_peaks.data())) {
+            effective_meter_count = 6;
+            const float decay = 0.85f;
+            for (unsigned int i = 0; i < 6; ++i) {
+                float p = s_vu_peaks[i];
+                float s = s_vu_smoothed[i];
+                s_vu_smoothed[i] = (p > s) ? p : (s * decay);
+            }
+        } else if (meter_count > 2 && ::GetAudioMeterPeakValues(2, s_vu_peaks.data())) {
+            effective_meter_count = 2;
+            const float decay = 0.85f;
+            for (unsigned int i = 0; i < 2; ++i) {
+                float p = s_vu_peaks[i];
+                float s = s_vu_smoothed[i];
+                s_vu_smoothed[i] = (p > s) ? p : (s * decay);
+            }
         }
     }
 
     // Per-channel volume (when session supports IChannelAudioVolume; L/R for stereo, L/R/C/LFE/RL/RR for 5.1, etc.)
     // Each channel row shows: small VU bar (when available) + volume slider.
     unsigned int channel_count = 0;
-    if (::GetChannelVolumeCountForCurrentProcess(&channel_count) && channel_count >= 1) {
+    const bool have_channel_volume = ::GetChannelVolumeCountForCurrentProcess(&channel_count) && channel_count >= 1;
+    if (have_channel_volume) {
         std::vector<float> channel_vols;
         if (::GetAllChannelVolumesForCurrentProcess(&channel_vols) && channel_vols.size() == channel_count) {
             if (ImGui::TreeNodeEx("Per-channel volume", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -3927,7 +3987,7 @@ void DrawAudioSettings() {
                     float pct = channel_vols[ch] * 100.0f;
                     const char* label = GetAudioChannelLabel(ch, channel_count);
                     // Per-channel VU bar (graphical) + raw value next to the slider when we have meter data
-                    if (ch < meter_count && ch < s_vu_smoothed.size()) {
+                    if (ch < effective_meter_count && ch < s_vu_smoothed.size()) {
                         const float level = (std::min)(1.0f, s_vu_smoothed[ch]);
                         ImDrawList* draw_list = ImGui::GetWindowDrawList();
                         const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -3957,10 +4017,18 @@ void DrawAudioSettings() {
                 ImGui::TreePop();
             }
         }
+    } else if (device_info.channel_count >= 6) {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+            "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
+            "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "IChannelAudioVolume is not exposed by the game audio session on some outputs (e.g. Dolby Atmos).");
+        }
     }
 
     // Per-channel VU meter strip: graphical representation with labels (default render endpoint; mixed output)
-    if (meter_count > 0 && meter_count <= s_vu_smoothed.size()) {
+    if (effective_meter_count > 0 && effective_meter_count <= s_vu_smoothed.size()) {
         const float bar_height = 288.0f;
         const float bar_width = 72.0f;
         const float gap = 24.0f;
@@ -3972,8 +4040,8 @@ void DrawAudioSettings() {
         }
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         const ImVec2 cursor = ImGui::GetCursorScreenPos();
-        const float total_width = (static_cast<float>(meter_count) * (bar_width + gap)) - gap;
-        for (unsigned int i = 0; i < meter_count; ++i) {
+        const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
+        for (unsigned int i = 0; i < effective_meter_count; ++i) {
             const float level = (std::min)(1.0f, s_vu_smoothed[i]);
             const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
             const ImVec2 bg_min(x, cursor.y);
@@ -3989,8 +4057,8 @@ void DrawAudioSettings() {
         // Channel labels and raw values centered under each bar
         const float label_y = cursor.y + bar_height + 2.0f;
         const float line_height = ImGui::GetTextLineHeightWithSpacing();
-        for (unsigned int i = 0; i < meter_count; ++i) {
-            const char* ch_label = GetAudioChannelLabel(i, meter_count);
+        for (unsigned int i = 0; i < effective_meter_count; ++i) {
+            const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
             const float bar_center_x = cursor.x + (static_cast<float>(i) * (bar_width + gap)) + (bar_width * 0.5f);
             const float label_w = ImGui::CalcTextSize(ch_label).x;
             ImGui::SetCursorScreenPos(ImVec2(bar_center_x - (label_w * 0.5f), label_y));

@@ -1,6 +1,8 @@
 #include "audio_management.hpp"
+#include <audioclient.h>
 #include <endpointvolume.h>
 #include <mmdeviceapi.h>
+#include <mmreg.h>
 #include <propvarutil.h>
 #include <sstream>
 #include <thread>
@@ -853,8 +855,7 @@ bool GetAudioMeterChannelCount(unsigned int* channel_count_out) {
         if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
         if (FAILED(hr) || device == nullptr) break;
-        hr = device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void**>(&meter));
+        hr = device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&meter));
         if (FAILED(hr) || meter == nullptr) break;
         UINT32 n = 0;
         if (SUCCEEDED(meter->GetMeteringChannelCount(&n))) {
@@ -893,8 +894,7 @@ bool GetAudioMeterPeakValues(unsigned int channel_count, float* peak_values_0_1_
         if (FAILED(hr) || device_enumerator == nullptr) break;
         hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
         if (FAILED(hr) || device == nullptr) break;
-        hr = device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr,
-                              reinterpret_cast<void**>(&meter));
+        hr = device->Activate(__uuidof(IAudioMeterInformation), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&meter));
         if (FAILED(hr) || meter == nullptr) break;
         hr = meter->GetChannelsPeakValues(channel_count, peak_values_0_1_out);
         success = SUCCEEDED(hr);
@@ -927,4 +927,216 @@ bool AdjustSystemVolume(float percent_change) {
     }
 
     return false;
+}
+
+// Speaker channel mask constants (same as KSAUDIO_SPEAKER_* in ksmedia.h) for decoding channel config.
+namespace {
+constexpr DWORD kSpeakerFrontLeft = 0x1;
+constexpr DWORD kSpeakerFrontRight = 0x2;
+constexpr DWORD kSpeakerFrontCenter = 0x4;
+constexpr DWORD kSpeakerLowFrequency = 0x8;
+constexpr DWORD kSpeakerBackLeft = 0x10;
+constexpr DWORD kSpeakerBackRight = 0x20;
+constexpr DWORD kSpeakerSideLeft = 0x200;
+constexpr DWORD kSpeakerSideRight = 0x400;
+constexpr DWORD kMaskStereo = kSpeakerFrontLeft | kSpeakerFrontRight;
+constexpr DWORD kMask51 =
+    kMaskStereo | kSpeakerFrontCenter | kSpeakerLowFrequency | kSpeakerBackLeft | kSpeakerBackRight;
+constexpr DWORD kMask71 = kMask51 | kSpeakerSideLeft | kSpeakerSideRight;
+
+// Format a GUID as "{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}" for raw format dump.
+std::string FormatGuidUtf8(const GUID& g) {
+    char buf[40];
+    (void)std::snprintf(
+        buf, sizeof(buf), "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", static_cast<unsigned long>(g.Data1),
+        static_cast<unsigned>(g.Data2), static_cast<unsigned>(g.Data3), static_cast<unsigned>(g.Data4[0]),
+        static_cast<unsigned>(g.Data4[1]), static_cast<unsigned>(g.Data4[2]), static_cast<unsigned>(g.Data4[3]),
+        static_cast<unsigned>(g.Data4[4]), static_cast<unsigned>(g.Data4[5]), static_cast<unsigned>(g.Data4[6]),
+        static_cast<unsigned>(g.Data4[7]));
+    return std::string(buf);
+}
+}  // namespace
+
+// Maps format tag to a short label for UI (extension/codec: Dolby, DTS, PCM, Float, etc.).
+static std::string FormatTagToExtensionDisplayString(DWORD tag) {
+    switch (tag) {
+        case WAVE_FORMAT_PCM:        return "PCM";
+        case WAVE_FORMAT_ADPCM:      return "ADPCM";
+        case WAVE_FORMAT_IEEE_FLOAT: return "Float";
+        case WAVE_FORMAT_ALAW:       return "ALaw";
+        case WAVE_FORMAT_MULAW:      return "MuLaw";
+        case WAVE_FORMAT_EXTENSIBLE: return "Extensible";
+        case 0x2000:  // WAVE_FORMAT_DOLBY_AC3
+            return "Dolby AC3";
+        case 0x2001:  // WAVE_FORMAT_DTS
+            return "DTS";
+        case 0x0011:  // WAVE_FORMAT_DVI_ADPCM / IMA_ADPCM
+            return "IMA ADPCM";
+        default: {
+            char buf[24];
+            (void)std::snprintf(buf, sizeof(buf), "0x%04lX", static_cast<unsigned long>(tag & 0xFFFFu));
+            return std::string(buf);
+        }
+    }
+}
+
+// Maps wFormatTag (WAVEFORMATEX) or SubFormat.Data1 (WAVEFORMATEXTENSIBLE) to full format constant name.
+// Covers standard WAVE_FORMAT_* from mmreg.h / ksmedia.h.
+static std::string FormatTagToDisplayString(DWORD tag) {
+    switch (tag) {
+        case WAVE_FORMAT_PCM:        return "WAVE_FORMAT_PCM";
+        case WAVE_FORMAT_ADPCM:      return "WAVE_FORMAT_ADPCM";
+        case WAVE_FORMAT_IEEE_FLOAT: return "WAVE_FORMAT_IEEE_FLOAT";
+        case WAVE_FORMAT_ALAW:       return "WAVE_FORMAT_ALAW";
+        case WAVE_FORMAT_MULAW:      return "WAVE_FORMAT_MULAW";
+        case WAVE_FORMAT_EXTENSIBLE: return "WAVE_FORMAT_EXTENSIBLE";
+        case 0x0008:  // WAVE_FORMAT_DRM
+            return "WAVE_FORMAT_DRM";
+        case 0x0009: return "WAVE_FORMAT_DRM";
+        case 0x0010:  // WAVE_FORMAT_OKI_ADPCM
+            return "WAVE_FORMAT_OKI_ADPCM";
+        case 0x0011:  // WAVE_FORMAT_DVI_ADPCM / IMA_ADPCM
+            return "WAVE_FORMAT_DVI_ADPCM";
+        case 0x0012:  // WAVE_FORMAT_MEDIASPACE_ADPCM
+            return "WAVE_FORMAT_MEDIASPACE_ADPCM";
+        case 0x0013:  // WAVE_FORMAT_SIERRA_ADPCM
+            return "WAVE_FORMAT_SIERRA_ADPCM";
+        case 0x0014:  // WAVE_FORMAT_G723_ADPCM
+            return "WAVE_FORMAT_G723_ADPCM";
+        case 0x0015:  // WAVE_FORMAT_DIGISTD
+            return "WAVE_FORMAT_DIGISTD";
+        case 0x0016:  // WAVE_FORMAT_DIGIFIX
+            return "WAVE_FORMAT_DIGIFIX";
+        case 0x0017:  // WAVE_FORMAT_DIALOGIC_OKI_ADPCM
+            return "WAVE_FORMAT_DIALOGIC_OKI_ADPCM";
+        case 0x2000:  // WAVE_FORMAT_DOLBY_AC3
+            return "WAVE_FORMAT_DOLBY_AC3";
+        case 0x2001:  // WAVE_FORMAT_DTS
+            return "WAVE_FORMAT_DTS";
+        case 0x0000:  // WAVE_FORMAT_UNKNOWN
+            return "WAVE_FORMAT_UNKNOWN";
+        default: {
+            char buf[40];
+            (void)std::snprintf(buf, sizeof(buf), "WAVE_FORMAT_0x%04lX", static_cast<unsigned long>(tag & 0xFFFFu));
+            return std::string(buf);
+        }
+    }
+}
+
+bool GetDefaultAudioDeviceFormatInfo(AudioDeviceFormatInfo* out) {
+    if (out == nullptr) {
+        return false;
+    }
+    *out = AudioDeviceFormatInfo{};
+
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const bool did_init = SUCCEEDED(hr);
+    if (!did_init && hr != RPC_E_CHANGED_MODE) {
+        LogWarn("CoInitializeEx failed for audio device format info");
+        return false;
+    }
+
+    bool success = false;
+    IMMDeviceEnumerator* device_enumerator = nullptr;
+    IMMDevice* device = nullptr;
+    IAudioClient* audio_client = nullptr;
+    WAVEFORMATEX* mix_format = nullptr;
+
+    do {
+        hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&device_enumerator));
+        if (FAILED(hr) || device_enumerator == nullptr) break;
+        hr = device_enumerator->GetDefaultAudioEndpoint(eRender, eMultimedia, &device);
+        if (FAILED(hr) || device == nullptr) break;
+
+        // Default render device friendly name (e.g. "Speakers (Dolby Atmos)")
+        IPropertyStore* prop_store = nullptr;
+        if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, &prop_store)) && prop_store != nullptr) {
+            PROPVARIANT var_name;
+            PropVariantInit(&var_name);
+            if (SUCCEEDED(prop_store->GetValue(PKEY_Device_FriendlyName, &var_name)) && var_name.vt == VT_LPWSTR
+                && var_name.pwszVal != nullptr) {
+                out->device_friendly_name_utf8 = WStringToUtf8(var_name.pwszVal);
+            }
+            PropVariantClear(&var_name);
+            prop_store->Release();
+        }
+
+        hr = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(&audio_client));
+        if (FAILED(hr) || audio_client == nullptr) break;
+        hr = audio_client->GetMixFormat(&mix_format);
+        if (FAILED(hr) || mix_format == nullptr) break;
+
+        out->channel_count = mix_format->nChannels;
+        out->sample_rate_hz = mix_format->nSamplesPerSec;
+        out->bits_per_sample = mix_format->wBitsPerSample;
+
+        DWORD channel_mask = 0;
+        bool is_extensible = (mix_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE && mix_format->cbSize >= 22);
+        if (is_extensible) {
+            const WAVEFORMATEXTENSIBLE* we = reinterpret_cast<const WAVEFORMATEXTENSIBLE*>(mix_format);
+            channel_mask = we->dwChannelMask;
+            out->bits_per_sample =
+                we->Samples.wValidBitsPerSample != 0 ? we->Samples.wValidBitsPerSample : mix_format->wBitsPerSample;
+            out->format_tag_utf8 = FormatTagToDisplayString(we->SubFormat.Data1);
+            out->format_extension_utf8 = FormatTagToExtensionDisplayString(we->SubFormat.Data1);
+        } else {
+            DWORD tag = static_cast<DWORD>(mix_format->wFormatTag);
+            out->format_tag_utf8 = FormatTagToDisplayString(tag);
+            out->format_extension_utf8 = FormatTagToExtensionDisplayString(tag);
+            // No mask; infer from channel count
+            if (out->channel_count == 1) {
+                channel_mask = kSpeakerFrontCenter;
+            } else if (out->channel_count == 2) {
+                channel_mask = kMaskStereo;
+            }
+        }
+
+        if (channel_mask == kMaskStereo || (out->channel_count == 2 && channel_mask == 0)) {
+            out->channel_config_utf8 = "Stereo";
+        } else if (channel_mask == kMask51 || (out->channel_count == 6 && channel_mask == 0)) {
+            out->channel_config_utf8 = "5.1";
+        } else if (channel_mask == kMask71 || (out->channel_count == 8 && channel_mask == 0)) {
+            out->channel_config_utf8 = "7.1";
+        } else if (out->channel_count == 1) {
+            out->channel_config_utf8 = "Mono";
+        } else {
+            out->channel_config_utf8 = std::to_string(out->channel_count) + " ch";
+        }
+
+        // Raw format string for tooltip (WAVEFORMATEX / WAVEFORMATEXTENSIBLE field dump)
+        std::ostringstream raw;
+        raw << "nChannels=" << mix_format->nChannels << ", nSamplesPerSec=" << mix_format->nSamplesPerSec
+            << ", wBitsPerSample=" << mix_format->wBitsPerSample << ", nBlockAlign=" << mix_format->nBlockAlign
+            << ", nAvgBytesPerSec=" << mix_format->nAvgBytesPerSec << ", cbSize=" << mix_format->cbSize;
+        if (is_extensible) {
+            const WAVEFORMATEXTENSIBLE* we = reinterpret_cast<const WAVEFORMATEXTENSIBLE*>(mix_format);
+            raw << ", wFormatTag=0x" << std::hex << mix_format->wFormatTag << std::dec
+                << ", SubFormat=" << FormatGuidUtf8(we->SubFormat) << ", dwChannelMask=0x" << std::hex
+                << we->dwChannelMask << std::dec << ", wValidBitsPerSample=" << we->Samples.wValidBitsPerSample;
+            // WAVEFORMATEXTENSIBLE_IEC61937: cbSize 34 means 12 extra bytes after WAVEFORMATEXTENSIBLE
+            if (mix_format->cbSize >= 34) {
+                const auto* base = reinterpret_cast<const char*>(mix_format);
+                const DWORD enc_sps = *reinterpret_cast<const DWORD*>(base + 40);
+                const DWORD enc_ch = *reinterpret_cast<const DWORD*>(base + 44);
+                const DWORD enc_bps = *reinterpret_cast<const DWORD*>(base + 48);
+                raw << " [IEC61937] dwEncodedSamplesPerSec=" << enc_sps << ", dwEncodedChannelCount=" << enc_ch
+                    << ", dwAverageBytesPerSec=" << enc_bps;
+            }
+        } else {
+            raw << ", wFormatTag=0x" << std::hex << static_cast<unsigned>(mix_format->wFormatTag) << std::dec;
+        }
+        out->raw_format_utf8 = raw.str();
+
+        success = true;
+    } while (false);
+
+    if (mix_format != nullptr) {
+        CoTaskMemFree(mix_format);
+    }
+    if (audio_client != nullptr) audio_client->Release();
+    if (device != nullptr) device->Release();
+    if (device_enumerator != nullptr) device_enumerator->Release();
+    if (did_init && hr != RPC_E_CHANGED_MODE) CoUninitialize();
+
+    return success;
 }

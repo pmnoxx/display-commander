@@ -161,7 +161,7 @@ bool ReflexManager::Sleep() {
 }
 
 bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
-                                    SleepStatusUnavailableReason* out_reason) {
+                                   SleepStatusUnavailableReason* out_reason) {
     if (status_params == nullptr) {
         return false;
     }
@@ -183,9 +183,8 @@ bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
         return true;
     }
     if (out_reason) {
-        *out_reason = (st == NVAPI_NO_IMPLEMENTATION)
-                          ? SleepStatusUnavailableReason::kNvApiFunctionUnavailable
-                          : SleepStatusUnavailableReason::kNvApiError;
+        *out_reason = (st == NVAPI_NO_IMPLEMENTATION) ? SleepStatusUnavailableReason::kNvApiFunctionUnavailable
+                                                      : SleepStatusUnavailableReason::kNvApiError;
     }
     return false;
 }

@@ -190,6 +190,9 @@ std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManag
 // Global frame ID for latency management
 std::atomic<uint64_t> g_global_frame_id{1};
 
+// When g_global_frame_id was last incremented (FILETIME as uint64_t); 0 = never
+std::atomic<uint64_t> g_global_frame_id_last_updated_filetime{0};
+
 // Global frame ID for pclstats frame id
 std::atomic<uint64_t> g_pclstats_frame_id{0};
 

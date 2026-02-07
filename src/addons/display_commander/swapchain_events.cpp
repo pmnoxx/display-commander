@@ -1365,6 +1365,12 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     }
 
     g_global_frame_id.fetch_add(1);
+    {
+        FILETIME ft = {};
+        GetSystemTimePreciseAsFileTime(&ft);
+        const uint64_t ft64 = (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+        g_global_frame_id_last_updated_filetime.store(ft64, std::memory_order_release);
+    }
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {

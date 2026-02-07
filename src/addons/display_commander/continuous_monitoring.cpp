@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <sstream>
 #include <thread>
 
@@ -42,6 +43,8 @@ extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
 // Stuck detection: last time the continuous monitoring loop started an iteration (real time ns)
 static std::atomic<LONGLONG> g_last_continuous_monitoring_loop_real_ns{0};
+// Wall-clock time (FILETIME as uint64_t) when the loop last ran; 0 = never. Used for "last looped at HH:MM:SS.mmm".
+static std::atomic<uint64_t> g_last_continuous_monitoring_loop_filetime{0};
 // Current section of the loop (so when stuck we know where; "sleeping" = in sleep_for)
 static std::atomic<const char*> g_continuous_monitoring_section{nullptr};
 
@@ -614,15 +617,48 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
     }
     s_stuck_logged_this_period = true;
 
-    LogInfo("=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu) ===",
-            static_cast<uint64_t>(current_frame_id));
+    // Format "last_updated=HH:MM:SS.mmm" when g_global_frame_id was last incremented
+    char last_updated_buf[64] = "last_updated=never";
+    const uint64_t last_updated_ft64 = g_global_frame_id_last_updated_filetime.load(std::memory_order_acquire);
+    if (last_updated_ft64 != 0) {
+        FILETIME ft = {};
+        ft.dwLowDateTime = static_cast<DWORD>(last_updated_ft64 & 0xFFFFFFFFu);
+        ft.dwHighDateTime = static_cast<DWORD>(last_updated_ft64 >> 32);
+        FILETIME ftLocal = {};
+        if (FileTimeToLocalFileTime(&ft, &ftLocal)) {
+            SYSTEMTIME st = {};
+            if (FileTimeToSystemTime(&ftLocal, &st)) {
+                sprintf_s(last_updated_buf, sizeof(last_updated_buf), "last_updated=%02u:%02u:%02u.%03u",
+                          static_cast<unsigned>(st.wHour), static_cast<unsigned>(st.wMinute),
+                          static_cast<unsigned>(st.wSecond), static_cast<unsigned>(st.wMilliseconds));
+            }
+        }
+    }
+    LogInfo("=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu, %s) ===",
+            static_cast<uint64_t>(current_frame_id), last_updated_buf);
 
     LONGLONG last_loop_ns = g_last_continuous_monitoring_loop_real_ns.load(std::memory_order_acquire);
+    const uint64_t last_loop_ft64 = g_last_continuous_monitoring_loop_filetime.load(std::memory_order_acquire);
     const char* section = g_continuous_monitoring_section.load(std::memory_order_acquire);
     if (last_loop_ns > 0) {
         LONGLONG loop_ago_ns = now_real_ns - last_loop_ns;
         double loop_ago_s = static_cast<double>(loop_ago_ns) / 1e9;
-        LogInfo("Continuous monitoring last looped: %.2f s ago", loop_ago_s);
+        char at_buf[32] = "";
+        if (last_loop_ft64 != 0) {
+            FILETIME ft = {};
+            ft.dwLowDateTime = static_cast<DWORD>(last_loop_ft64 & 0xFFFFFFFFu);
+            ft.dwHighDateTime = static_cast<DWORD>(last_loop_ft64 >> 32);
+            FILETIME ft_local = {};
+            if (FileTimeToLocalFileTime(&ft, &ft_local) != 0) {
+                SYSTEMTIME st = {};
+                if (FileTimeToSystemTime(&ft_local, &st) != 0) {
+                    sprintf_s(at_buf, sizeof(at_buf), " (at %02u:%02u:%02u.%03u)", static_cast<unsigned>(st.wHour),
+                              static_cast<unsigned>(st.wMinute), static_cast<unsigned>(st.wSecond),
+                              static_cast<unsigned>(st.wMilliseconds));
+                }
+            }
+        }
+        LogInfo("Continuous monitoring last looped: %.2f s ago%s", loop_ago_s, at_buf);
     } else {
         LogInfo("Continuous monitoring: no iteration completed yet");
     }
@@ -683,6 +719,7 @@ void ContinuousMonitoringThread() {
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
+        RECORD_DETOUR_CALL(utils::get_now_ns());
         LogInfo("Continuous monitoring thread started");
 
         auto start_time = utils::get_now_ns();
@@ -695,7 +732,12 @@ void ContinuousMonitoringThread() {
         while (g_monitoring_thread_running.load()) {
             g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
             std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
-            g_last_continuous_monitoring_loop_real_ns.store(utils::get_real_time_ns(), std::memory_order_release);
+            LONGLONG loop_time_ns = utils::get_real_time_ns();
+            g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
+            FILETIME ft = {};
+            GetSystemTimePreciseAsFileTime(&ft);
+            g_last_continuous_monitoring_loop_filetime.store(
+                (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime, std::memory_order_release);
             g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
 
             // Periodic display cache refresh off the UI thread

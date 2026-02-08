@@ -449,6 +449,7 @@ bool SetVolumeForCurrentProcess(float volume_0_100) {
 }
 
 bool GetVolumeForCurrentProcess(float* volume_0_100_out) {
+    g_continuous_monitoring_section.store("volume:game:entry", std::memory_order_release);
     if (volume_0_100_out == nullptr) {
         return false;
     }
@@ -497,7 +498,9 @@ bool GetVolumeForCurrentProcess(float* volume_0_100_out) {
                     }
                 }
             }
-            session_control->Release();
+            if (session_control != nullptr) {
+                session_control->Release();
+            }
         }
     } while (false);
 
@@ -793,6 +796,7 @@ bool SetSystemVolume(float volume_0_100) {
 }
 
 bool GetSystemVolume(float* volume_0_100_out) {
+    g_continuous_monitoring_section.store("volume:system:entry", std::memory_order_release);
     if (volume_0_100_out == nullptr) {
         return false;
     }

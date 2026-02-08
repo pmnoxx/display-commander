@@ -46,7 +46,7 @@ static std::atomic<LONGLONG> g_last_continuous_monitoring_loop_real_ns{0};
 // Wall-clock time (FILETIME as uint64_t) when the loop last ran; 0 = never. Used for "last looped at HH:MM:SS.mmm".
 static std::atomic<uint64_t> g_last_continuous_monitoring_loop_filetime{0};
 // Current section of the loop (so when stuck we know where; "sleeping" = in sleep_for)
-static std::atomic<const char*> g_continuous_monitoring_section{nullptr};
+std::atomic<const char*> g_continuous_monitoring_section{nullptr};
 
 HWND GetCurrentForeGroundWindow() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -232,212 +232,199 @@ void HandleDiscordOverlayAutoHide() {
     }
 }
 
-void every1s_checks() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
-    // SCREENSAVER MANAGEMENT: Update execution state based on screensaver mode and background status
-    {
-        ScreensaverMode screensaver_mode = s_screensaver_mode.load();
-        bool is_background = g_app_in_background.load();
-        EXECUTION_STATE desired_state = 0;
+namespace {
 
-        switch (screensaver_mode) {
-            case ScreensaverMode::kDisableWhenFocused:
-                if (is_background) {  // enabled when background
-                    desired_state = ES_CONTINUOUS;
-                } else {  // disabled when focused
-                    desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
-                }
-                break;
-            case ScreensaverMode::kDisable:  // always disable screensaver
-                desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
-                break;
-            case ScreensaverMode::kDefault:  // default behavior
+static void Every1sScreensaver() {
+    g_continuous_monitoring_section.store("every1s_tasks:screensaver", std::memory_order_release);
+    ScreensaverMode screensaver_mode = s_screensaver_mode.load();
+    bool is_background = g_app_in_background.load();
+    EXECUTION_STATE desired_state = 0;
+
+    switch (screensaver_mode) {
+        case ScreensaverMode::kDisableWhenFocused:
+            if (is_background) {
                 desired_state = ES_CONTINUOUS;
-                break;
-        }
+            } else {
+                desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED;
+            }
+            break;
+        case ScreensaverMode::kDisable: desired_state = ES_CONTINUOUS | ES_DISPLAY_REQUIRED; break;
+        case ScreensaverMode::kDefault: desired_state = ES_CONTINUOUS; break;
+    }
 
-        // Only call SetThreadExecutionState if the desired state is different from the last state
-        static EXECUTION_STATE last_execution_state = 0;
-        if (desired_state != last_execution_state) {
-            last_execution_state = desired_state;
-            if (display_commanderhooks::SetThreadExecutionState_Original) {
-                EXECUTION_STATE result = display_commanderhooks::SetThreadExecutionState_Original(desired_state);
-                if (result != 0) {
-                    LogDebug("Screensaver management: SetThreadExecutionState(0x%x) = 0x%x", desired_state, result);
-                }
+    static EXECUTION_STATE last_execution_state = 0;
+    if (desired_state != last_execution_state) {
+        last_execution_state = desired_state;
+        if (display_commanderhooks::SetThreadExecutionState_Original) {
+            EXECUTION_STATE result = display_commanderhooks::SetThreadExecutionState_Original(desired_state);
+            if (result != 0) {
+                LogDebug("Screensaver management: SetThreadExecutionState(0x%x) = 0x%x", desired_state, result);
             }
         }
     }
+}
 
-    // Aggregate FPS/frametime metrics and publish shared text once per second
-    {
-        extern utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_perf_ring;
-        extern std::atomic<double> g_perf_time_seconds;
-        extern std::atomic<bool> g_perf_reset_requested;
-        extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
+static void Every1sFpsAggregate() {
+    g_continuous_monitoring_section.store("every1s_tasks:fps_aggregate", std::memory_order_release);
 
-        const double now_s = g_perf_time_seconds.load(std::memory_order_acquire);
+    const double now_s = ::g_perf_time_seconds.load(std::memory_order_acquire);
 
-        // Handle reset: clear samples efficiently by resetting ring buffer and zeroing text
-        if (g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
-            g_perf_ring.Reset();
-        }
-
-        // Copy samples since last reset into local vectors for computation
-        std::vector<float> fps_values;
-        std::vector<float> frame_times_ms;
-        fps_values.reserve(2048);
-        frame_times_ms.reserve(2048);
-        const uint32_t count = g_perf_ring.GetCount();
-        for (uint32_t i = 0; i < count; ++i) {
-            const PerfSample& s = g_perf_ring.GetSample(i);
-            if (s.dt > 0.0f) {
-                fps_values.push_back(1.0f / s.dt);
-                frame_times_ms.push_back(1000.0f * s.dt);
-            }
-        }
-
-        float fps_display = 0.0f;
-        float frame_time_ms = 0.0f;
-        float one_percent_low = 0.0f;
-        float point_one_percent_low = 0.0f;
-        float p99_frame_time_ms = 0.0f;   // Top 1% (99th percentile) frame time
-        float p999_frame_time_ms = 0.0f;  // Top 0.1% (99.9th percentile) frame time
-
-        if (!fps_values.empty()) {
-            // Average FPS over entire interval since reset = frames / total_time
-            std::vector<float> fps_sorted = fps_values;
-            std::sort(fps_sorted.begin(), fps_sorted.end());
-            const size_t n = fps_sorted.size();
-            double total_frame_time_ms = 0.0;
-            for (float ft : frame_times_ms) total_frame_time_ms += static_cast<double>(ft);
-            const double total_seconds = total_frame_time_ms / 1000.0;
-            fps_display = (total_seconds > 0.0) ? static_cast<float>(static_cast<double>(n) / total_seconds) : 0.0f;
-            // Median frame time for display in ms
-            std::vector<float> ft_for_median = frame_times_ms;
-            std::sort(ft_for_median.begin(), ft_for_median.end());
-            frame_time_ms =
-                (n % 2 == 1) ? ft_for_median[n / 2] : 0.5f * (ft_for_median[n / 2 - 1] + ft_for_median[n / 2]);
-
-            // Compute lows and top frame times using frame time distribution (more robust)
-            std::vector<float> ft_sorted = frame_times_ms;
-            std::sort(ft_sorted.begin(), ft_sorted.end());  // ascending: fast -> slow
-            const size_t m = ft_sorted.size();
-            const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.01), size_t(1));
-            const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.001), size_t(1));
-
-            // Average of slowest 1% and 0.1% frametimes, then convert to FPS
-            double sum_ft_1 = 0.0;
-            for (size_t i = m - count_1; i < m; ++i) sum_ft_1 += static_cast<double>(ft_sorted[i]);
-            const double avg_ft_1 = sum_ft_1 / static_cast<double>(count_1);
-            one_percent_low = (avg_ft_1 > 0.0) ? static_cast<float>(1000.0 / avg_ft_1) : 0.0f;
-
-            double sum_ft_01 = 0.0;
-            for (size_t i = m - count_01; i < m; ++i) sum_ft_01 += static_cast<double>(ft_sorted[i]);
-            const double avg_ft_01 = sum_ft_01 / static_cast<double>(count_01);
-            point_one_percent_low = (avg_ft_01 > 0.0) ? static_cast<float>(1000.0 / avg_ft_01) : 0.0f;
-
-            // Percentile frame times (top 1%/0.1% = 99th/99.9th percentile)
-            const size_t idx_p99 =
-                (m > 1) ? (std::min<size_t>)(m - 1, static_cast<size_t>(std::ceil(static_cast<double>(m) * 0.99)) - 1)
-                        : 0;
-            const size_t idx_p999 =
-                (m > 1) ? (std::min<size_t>)(m - 1, static_cast<size_t>(std::ceil(static_cast<double>(m) * 0.999)) - 1)
-                        : 0;
-            p99_frame_time_ms = ft_sorted[idx_p99];
-            p999_frame_time_ms = ft_sorted[idx_p999];
-        }
-
-        // Publish shared text (once per loop ~1s)
-        std::ostringstream fps_oss;
-        bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
-        if (show_labels) {
-            fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display << " (" << std::setprecision(1)
-                    << frame_time_ms << " ms median)"
-                    << "   (1% Low: " << std::setprecision(1) << one_percent_low
-                    << ", 0.1% Low: " << std::setprecision(1) << point_one_percent_low << ")"
-                    << "   Top FT: P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
-                    << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
-        } else {
-            fps_oss << std::fixed << std::setprecision(1) << fps_display << " (" << std::setprecision(1)
-                    << frame_time_ms << " ms median)"
-                    << "   (1%: " << std::setprecision(1) << one_percent_low << ", 0.1%: " << std::setprecision(1)
-                    << point_one_percent_low << ")"
-                    << "   P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
-                    << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
-        }
-        g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
+    if (::g_perf_reset_requested.exchange(false, std::memory_order_acq_rel)) {
+        ::g_perf_ring.Reset();
     }
 
-    // Update volume values from audio APIs (runs every second)
-    {
-        // Get current game volume
-        float current_volume = 0.0f;
-        if (GetVolumeForCurrentProcess(&current_volume)) {
-            s_audio_volume_percent.store(current_volume);
-        }
-
-        // Get current system volume
-        float system_volume = 0.0f;
-        if (GetSystemVolume(&system_volume)) {
-            s_system_volume_percent.store(system_volume);
+    std::vector<float> fps_values;
+    std::vector<float> frame_times_ms;
+    fps_values.reserve(2048);
+    frame_times_ms.reserve(2048);
+    const uint32_t count = ::g_perf_ring.GetCount();
+    for (uint32_t i = 0; i < count; ++i) {
+        const PerfSample& s = ::g_perf_ring.GetSample(i);
+        if (s.dt > 0.0f) {
+            fps_values.push_back(1.0f / s.dt);
+            frame_times_ms.push_back(1000.0f * s.dt);
         }
     }
 
-    // Update refresh rate statistics (runs every second)
-    {
-        auto stats = dxgi::fps_limiter::GetRefreshRateStats();
-        g_cached_refresh_rate_stats.store(std::make_shared<const dxgi::fps_limiter::RefreshRateStats>(stats));
+    float fps_display = 0.0f;
+    float frame_time_ms = 0.0f;
+    float one_percent_low = 0.0f;
+    float point_one_percent_low = 0.0f;
+    float p99_frame_time_ms = 0.0f;
+    float p999_frame_time_ms = 0.0f;
+
+    if (!fps_values.empty()) {
+        std::vector<float> fps_sorted = fps_values;
+        std::sort(fps_sorted.begin(), fps_sorted.end());
+        const size_t n = fps_sorted.size();
+        double total_frame_time_ms = 0.0;
+        for (float ft : frame_times_ms) total_frame_time_ms += static_cast<double>(ft);
+        const double total_seconds = total_frame_time_ms / 1000.0;
+        fps_display = (total_seconds > 0.0) ? static_cast<float>(static_cast<double>(n) / total_seconds) : 0.0f;
+        std::vector<float> ft_for_median = frame_times_ms;
+        std::sort(ft_for_median.begin(), ft_for_median.end());
+        frame_time_ms = (n % 2 == 1) ? ft_for_median[n / 2] : 0.5f * (ft_for_median[n / 2 - 1] + ft_for_median[n / 2]);
+
+        std::vector<float> ft_sorted = frame_times_ms;
+        std::sort(ft_sorted.begin(), ft_sorted.end());
+        const size_t m = ft_sorted.size();
+        const size_t count_1 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.01), size_t(1));
+        const size_t count_01 = (std::max<size_t>)(static_cast<size_t>(static_cast<double>(m) * 0.001), size_t(1));
+
+        double sum_ft_1 = 0.0;
+        for (size_t i = m - count_1; i < m; ++i) sum_ft_1 += static_cast<double>(ft_sorted[i]);
+        const double avg_ft_1 = sum_ft_1 / static_cast<double>(count_1);
+        one_percent_low = (avg_ft_1 > 0.0) ? static_cast<float>(1000.0 / avg_ft_1) : 0.0f;
+
+        double sum_ft_01 = 0.0;
+        for (size_t i = m - count_01; i < m; ++i) sum_ft_01 += static_cast<double>(ft_sorted[i]);
+        const double avg_ft_01 = sum_ft_01 / static_cast<double>(count_01);
+        point_one_percent_low = (avg_ft_01 > 0.0) ? static_cast<float>(1000.0 / avg_ft_01) : 0.0f;
+
+        const size_t idx_p99 =
+            (m > 1) ? (std::min<size_t>)(m - 1, static_cast<size_t>(std::ceil(static_cast<double>(m) * 0.99)) - 1) : 0;
+        const size_t idx_p999 =
+            (m > 1) ? (std::min<size_t>)(m - 1, static_cast<size_t>(std::ceil(static_cast<double>(m) * 0.999)) - 1) : 0;
+        p99_frame_time_ms = ft_sorted[idx_p99];
+        p999_frame_time_ms = ft_sorted[idx_p999];
     }
 
-    // Update VRR status via NVAPI (runs every second, only within 5s of foreground<->background switch when enabled)
-    // Also run when actual refresh rate or its graph is on so display_id is resolved for the monitor thread
-    {
-        bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-        bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-        bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-        bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-        LONGLONG now_ns = utils::get_now_ns();
-        LONGLONG last_switch_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
-        constexpr LONGLONG vrr_update_window_ns = 5 * utils::SEC_TO_NS;
-        bool within_5s_of_switch = (last_switch_ns != 0 && (now_ns - last_switch_ns <= vrr_update_window_ns));
-        if ((show_vrr_status || show_vrr_debug_mode || show_actual_refresh_rate || show_refresh_rate_frame_times)
-            && within_5s_of_switch) {
-            static LONGLONG last_nvapi_update_ns = 0;
-            const LONGLONG nvapi_update_interval_ns = 1 * utils::SEC_TO_NS;  // 1 second in nanoseconds
+    std::ostringstream fps_oss;
+    bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
+    if (show_labels) {
+        fps_oss << "FPS: " << std::fixed << std::setprecision(1) << fps_display << " (" << std::setprecision(1)
+                << frame_time_ms << " ms median)"
+                << "   (1% Low: " << std::setprecision(1) << one_percent_low << ", 0.1% Low: " << std::setprecision(1)
+                << point_one_percent_low << ")"
+                << "   Top FT: P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
+                << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
+    } else {
+        fps_oss << std::fixed << std::setprecision(1) << fps_display << " (" << std::setprecision(1) << frame_time_ms
+                << " ms median)"
+                << "   (1%: " << std::setprecision(1) << one_percent_low << ", 0.1%: " << std::setprecision(1)
+                << point_one_percent_low << ")"
+                << "   P99 " << std::setprecision(1) << p99_frame_time_ms << " ms"
+                << ", P99.9 " << std::setprecision(1) << p999_frame_time_ms << " ms";
+    }
+    g_perf_text_shared.store(std::make_shared<const std::string>(fps_oss.str()));
+}
 
-            if (now_ns - last_nvapi_update_ns >= nvapi_update_interval_ns) {
-                if (g_got_device_name.load()) {
-                    auto device_name_ptr = g_dxgi_output_device_name.load();
-                    if (device_name_ptr != nullptr) {
-                        const wchar_t* output_device_name = device_name_ptr->c_str();
+static void Every1sVolume() {
+    g_continuous_monitoring_section.store("every1s_tasks:volume", std::memory_order_release);
+    float current_volume = 0.0f;
+    g_continuous_monitoring_section.store("every1s_tasks:volume:game", std::memory_order_release);
+    if (GetVolumeForCurrentProcess(&current_volume)) {
+        s_audio_volume_percent.store(current_volume);
+    }
+    float system_volume = 0.0f;
+    g_continuous_monitoring_section.store("every1s_tasks:volume:system", std::memory_order_release);
+    if (GetSystemVolume(&system_volume)) {
+        s_system_volume_percent.store(system_volume);
+    }
+}
 
-                        // If output changed, force refresh
-                        auto cached_name = vrr_status::cached_output_device_name.load();
-                        if (!cached_name || *cached_name != *device_name_ptr) {
-                            vrr_status::cached_output_device_name.store(
-                                std::make_shared<const std::wstring>(*device_name_ptr));
-                        }
+static void Every1sRefreshRate() {
+    g_continuous_monitoring_section.store("every1s_tasks:refresh_rate", std::memory_order_release);
+    auto stats = dxgi::fps_limiter::GetRefreshRateStats();
+    g_cached_refresh_rate_stats.store(std::make_shared<const dxgi::fps_limiter::RefreshRateStats>(stats));
+}
 
-                        nvapi::VrrStatus vrr{};
-                        bool ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(output_device_name, vrr);
-                        vrr_status::cached_nvapi_ok.store(ok);
-                        vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>(vrr));
-                    } else {
-                        vrr_status::cached_nvapi_ok.store(false);
-                        vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
-                        vrr_status::cached_output_device_name.store(nullptr);
+static void Every1sVrrStatus() {
+    g_continuous_monitoring_section.store("every1s_tasks:vrr_status", std::memory_order_release);
+    bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+    bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
+    bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
+    LONGLONG now_ns = utils::get_now_ns();
+    LONGLONG last_switch_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
+    constexpr LONGLONG vrr_update_window_ns = 5 * utils::SEC_TO_NS;
+    bool within_5s_of_switch = (last_switch_ns != 0 && (now_ns - last_switch_ns <= vrr_update_window_ns));
+    if ((show_vrr_status || show_vrr_debug_mode || show_actual_refresh_rate || show_refresh_rate_frame_times)
+        && within_5s_of_switch) {
+        static LONGLONG last_nvapi_update_ns = 0;
+        const LONGLONG nvapi_update_interval_ns = 1 * utils::SEC_TO_NS;
+
+        if (now_ns - last_nvapi_update_ns >= nvapi_update_interval_ns) {
+            if (g_got_device_name.load()) {
+                auto device_name_ptr = g_dxgi_output_device_name.load();
+                if (device_name_ptr != nullptr) {
+                    const wchar_t* output_device_name = device_name_ptr->c_str();
+
+                    auto cached_name = vrr_status::cached_output_device_name.load();
+                    if (!cached_name || *cached_name != *device_name_ptr) {
+                        vrr_status::cached_output_device_name.store(
+                            std::make_shared<const std::wstring>(*device_name_ptr));
                     }
+
+                    nvapi::VrrStatus vrr{};
+                    bool ok = nvapi::TryQueryVrrStatusFromDxgiOutputDeviceName(output_device_name, vrr);
+                    vrr_status::cached_nvapi_ok.store(ok);
+                    vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>(vrr));
                 } else {
                     vrr_status::cached_nvapi_ok.store(false);
                     vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
                     vrr_status::cached_output_device_name.store(nullptr);
                 }
-                vrr_status::last_nvapi_update_ns.store(now_ns);
-                last_nvapi_update_ns = now_ns;
+            } else {
+                vrr_status::cached_nvapi_ok.store(false);
+                vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
+                vrr_status::cached_output_device_name.store(nullptr);
             }
+            vrr_status::last_nvapi_update_ns.store(now_ns);
+            last_nvapi_update_ns = now_ns;
         }
     }
+}
+
+}  // namespace
+
+void every1s_tasks() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    Every1sScreensaver();
+    Every1sFpsAggregate();
+    Every1sVolume();
+    Every1sRefreshRate();
+    Every1sVrrStatus();
 }
 
 void HandleKeyboardShortcuts() {
@@ -874,8 +861,8 @@ void ContinuousMonitoringThread() {
             if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 last_1s_update_ns = now_ns;
-                g_continuous_monitoring_section.store("every1s_checks", std::memory_order_release);
-                every1s_checks();
+                g_continuous_monitoring_section.store("every1s_tasks", std::memory_order_release);
+                every1s_tasks();
 
                 // Update cached list of keys belonging to active exclusive groups (once per second)
                 RECORD_DETOUR_CALL(utils::get_now_ns());

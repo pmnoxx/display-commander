@@ -153,42 +153,54 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
     bool use_present_end = false;
 
-    if (pSetLatencyMarkerParams != nullptr && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END
-        && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-        NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
-    }
-    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
-    if (use_fps_limiter) {
-        if (pSetLatencyMarkerParams != nullptr
-            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-            OnPresentFlags2(false,
-                            true);  // Called from wrapper, not present_detour
+    bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
 
-            // Record native frame time for frames shown to display
-            RecordNativeFrameTime();
-            // display_commanderhooks::dxgi::HandlePresentBefore2();
+    if (native_pacing_sim_start_only) {
+        bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
+        if (use_fps_limiter) {
+            if (pSetLatencyMarkerParams != nullptr
+                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+                OnPresentFlags2(false,
+                                true);  // Called from wrapper, not present_detour
+
+                // Record native frame time for frames shown to display
+                RecordNativeFrameTime();
+                // display_commanderhooks::dxgi::HandlePresentBefore2();
+            }
+            if (pSetLatencyMarkerParams != nullptr
+                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+                display_commanderhooks::dxgi::HandlePresentAfter(true);
+            }
+        }
+    } else {
+        if (pSetLatencyMarkerParams != nullptr
+            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END
+            && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+            NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+        }
+        bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
+        if (use_fps_limiter) {
+            if (pSetLatencyMarkerParams != nullptr
+                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
+                OnPresentFlags2(false,
+                                true);  // Called from wrapper, not present_detour
+
+                // Record native frame time for frames shown to display
+                RecordNativeFrameTime();
+                // display_commanderhooks::dxgi::HandlePresentBefore2();
+            }
+            if (pSetLatencyMarkerParams != nullptr
+                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
+                display_commanderhooks::dxgi::HandlePresentAfter(true);
+            }
         }
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
-            display_commanderhooks::dxgi::HandlePresentAfter(true);
-        }
-    }
-
-    // Detect native Reflex: if the game calls SetLatencyMarker, it's using native Reflex
-    // This follows Special-K's detection approach
-    if (pSetLatencyMarkerParams != nullptr && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-        if (!g_native_reflex_detected.exchange(true)) {
-            // First time detection - log it
-            LogInfo("Native Reflex detected via SetLatencyMarker call (MarkerType: %d)",
-                    pSetLatencyMarkerParams->markerType);
+            return NVAPI_OK;
         }
     }
 
     if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-        return NVAPI_OK;
-    }
-    if (pSetLatencyMarkerParams != nullptr
-        && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
         return NVAPI_OK;
     }
 

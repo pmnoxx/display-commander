@@ -1,4 +1,5 @@
 #include "new_ui_main.hpp"
+#include "../../globals.hpp"
 #include "../../utils/logging.hpp"
 #include <reshade.hpp>
 
@@ -30,8 +31,10 @@ void NewUISystem::Draw(reshade::api::effect_runtime* runtime) {
         return;
     }
 
+    g_rendering_ui_section.store("ui:overlay", std::memory_order_release);
     // Draw the new UI system
     DrawNewUI(runtime);
+    g_rendering_ui_section.store(nullptr, std::memory_order_release);
 }
 
 // Convenience functions

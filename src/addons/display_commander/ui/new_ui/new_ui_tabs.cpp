@@ -1,4 +1,5 @@
 #include "new_ui_tabs.hpp"
+#include <cstdio>
 #include <winbase.h>
 #include <reshade_imgui.hpp>
 #include "../../globals.hpp"
@@ -13,6 +14,9 @@
 #include "main_new_tab.hpp"
 #include "performance_tab.hpp"
 #include "swapchain_tab.hpp"
+
+// Current section of the rendering UI (for crash/stuck reporting). Global namespace to match globals.hpp extern.
+std::atomic<const char*> g_rendering_ui_section{nullptr};
 
 namespace ui::new_ui {
 
@@ -53,14 +57,19 @@ bool TabManager::HasTab(const std::string& id) const {
 }
 
 void TabManager::Draw(reshade::api::effect_runtime* runtime) {
+    g_rendering_ui_section.store("ui:draw:entry", std::memory_order_release);
+
     // Get current tabs atomically
     auto current_tabs = tabs_.load();
 
     // Safety check for null pointer (should never happen with proper initialization)
     if (!current_tabs || current_tabs->empty()) {
+        g_rendering_ui_section.store(nullptr, std::memory_order_release);
         LogError("No tabs to draw");
         return;
     }
+
+    g_rendering_ui_section.store("ui:draw:visible_count", std::memory_order_release);
 
     // Count visible tabs first
     int visible_tab_count = 0;
@@ -103,12 +112,18 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
 
     // If only one tab is visible, draw it directly without tab bar
     if (visible_tab_count == 1) {
-        // Draw the single visible tab content directly
         if (first_visible_tab_index >= 0 && (*current_tabs)[first_visible_tab_index].on_draw) {
+            static thread_local char s_ui_section_buf[64];
+            snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s",
+                     (*current_tabs)[first_visible_tab_index].id.c_str());
+            g_rendering_ui_section.store(s_ui_section_buf, std::memory_order_release);
             (*current_tabs)[first_visible_tab_index].on_draw(runtime);
         }
+        g_rendering_ui_section.store("ui:draw:done", std::memory_order_release);
         return;
     }
+
+    g_rendering_ui_section.store("ui:draw:tab_bar", std::memory_order_release);
 
     // Draw tab bar only when multiple tabs are visible
     if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_None)) {
@@ -148,6 +163,10 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
 
                 // Draw tab content
                 if ((*current_tabs)[i].on_draw) {
+                    static thread_local char s_ui_section_buf[64];
+                    snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s",
+                             (*current_tabs)[i].id.c_str());
+                    g_rendering_ui_section.store(s_ui_section_buf, std::memory_order_release);
                     (*current_tabs)[i].on_draw(runtime);
                 }
 
@@ -156,6 +175,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
         }
         ImGui::EndTabBar();
     }
+    g_rendering_ui_section.store("ui:draw:done", std::memory_order_release);
 }
 
 // Initialize the new UI system

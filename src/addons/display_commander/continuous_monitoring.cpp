@@ -665,6 +665,10 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
     if (section != nullptr && section[0] != '\0') {
         LogInfo("Continuous monitoring current section: %s (stuck here if not sleeping)", section);
     }
+    const char* ui_section = g_rendering_ui_section.load(std::memory_order_acquire);
+    if (ui_section != nullptr && ui_section[0] != '\0') {
+        LogInfo("Rendering UI current section: %s (stuck here if overlay was open)", ui_section);
+    }
 
     // Report SRWLOCK status (HELD = lock is in use; helps diagnose deadlocks / stuck on logger etc.)
     {

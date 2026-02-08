@@ -195,7 +195,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
     if (timer_handle && (time_to_wait_qpc >= 2.5 * timer_res_qpc)) {
         // Schedule timer to wake up slightly before target time
         // Leave some time for busy waiting to achieve precise timing
-        LONGLONG delay_qpc = time_to_wait_qpc - 1 * timer_res_qpc;
+        LONGLONG delay_qpc = time_to_wait_qpc - 2 * timer_res_qpc;
         LARGE_INTEGER delay{};
         delay.QuadPart = -delay_qpc;
 

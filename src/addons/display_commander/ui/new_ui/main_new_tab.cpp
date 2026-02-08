@@ -2664,6 +2664,17 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
                         "Experimental; may improve frame pacing with FG.");
                 }
+                if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only,
+                                    "Native pacing with simulation thread instead of rendering thread (matches Special-K behavior)")) {
+                    LogInfo("Native pacing sim start only %s",
+                            settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled"
+                                                                                                 : "disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
+                        "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
+                }
             }
         }
 
@@ -3853,7 +3864,8 @@ void DrawAudioSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Source: Default output device mix format from WASAPI (IAudioClient::GetMixFormat).\n"
-                "Extension: stream/codec type (e.g. PCM, Float, Dolby AC3, DTS). Device name shows endpoint (e.g. Dolby Atmos).\n\n"
+                "Extension: stream/codec type (e.g. PCM, Float, Dolby AC3, DTS). Device name shows endpoint (e.g. "
+                "Dolby Atmos).\n\n"
                 "Raw: %s",
                 device_info.raw_format_utf8.empty() ? "(none)" : device_info.raw_format_utf8.c_str());
         }
@@ -3936,7 +3948,8 @@ void DrawAudioSettings() {
     }
 
     // Fetch per-channel VU peak data once (default render endpoint); reused for per-channel bars and VU strip below.
-    // Some endpoints (e.g. Dolby Atmos PCM 7.1) report 8 channels but GetChannelsPeakValues(8) fails; fallback to 6 or 2.
+    // Some endpoints (e.g. Dolby Atmos PCM 7.1) report 8 channels but GetChannelsPeakValues(8) fails; fallback to 6
+    // or 2.
     static std::vector<float> s_vu_peaks;
     static std::vector<float> s_vu_smoothed;
     unsigned int meter_count = 0;
@@ -4019,8 +4032,8 @@ void DrawAudioSettings() {
         }
     } else if (device_info.channel_count >= 6) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
-            "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
-            "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
+                           "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
+                           "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "IChannelAudioVolume is not exposed by the game audio session on some outputs (e.g. Dolby Atmos).");

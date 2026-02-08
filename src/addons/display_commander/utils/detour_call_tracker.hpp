@@ -10,8 +10,9 @@ namespace detour_call_tracker {
 // Value for the "latest call" map: most recent call of a given (function_name, line) site
 struct LatestCallValue {
     uint64_t timestamp_ns{0};
-    bool destroyed{true};       // true once guard destructor ran
-    size_t in_progress_count{0};  // incremented in guard ctor, decremented in guard dtor; >0 => possible crash without cleanup
+    bool destroyed{true};  // true once guard destructor ran
+    size_t in_progress_count{
+        0};  // incremented in guard ctor, decremented in guard dtor; >0 => possible crash without cleanup
 };
 
 // Simple output structure for reading detour calls

@@ -832,6 +832,8 @@ extern std::thread g_monitoring_thread;
 extern std::thread g_stuck_check_watchdog_thread;
 // Current section of the monitoring loop (for crash/stuck reporting; set by monitoring and audio code)
 extern std::atomic<const char*> g_continuous_monitoring_section;
+// Current section of the rendering UI (for crash/stuck reporting; set by overlay/tab draw code)
+extern std::atomic<const char*> g_rendering_ui_section;
 
 // Render thread tracking
 extern std::atomic<DWORD> g_render_thread_id;

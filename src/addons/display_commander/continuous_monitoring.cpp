@@ -49,6 +49,7 @@ static std::atomic<uint64_t> g_last_continuous_monitoring_loop_filetime{0};
 static std::atomic<const char*> g_continuous_monitoring_section{nullptr};
 
 HWND GetCurrentForeGroundWindow() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     HWND foreground_window = display_commanderhooks::GetForegroundWindow_Direct();
 
     DWORD window_pid = 0;
@@ -58,6 +59,7 @@ HWND GetCurrentForeGroundWindow() {
 }
 
 void HandleReflexAutoConfigure() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only run if auto-configure is enabled
     if (!settings::g_advancedTabSettings.reflex_auto_configure.GetValue()) {
         return;
@@ -117,6 +119,7 @@ void HandleReflexAutoConfigure() {
 }
 
 void check_is_background() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get the current swapchain window
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd == nullptr) {
@@ -192,6 +195,7 @@ void check_is_background() {
 }
 
 void HandleDiscordOverlayAutoHide() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only run if auto-hide is enabled
     if (!settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue()) {
         return;
@@ -229,6 +233,7 @@ void HandleDiscordOverlayAutoHide() {
 }
 
 void every1s_checks() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // SCREENSAVER MANAGEMENT: Update execution state based on screensaver mode and background status
     {
         ScreensaverMode screensaver_mode = s_screensaver_mode.load();
@@ -436,6 +441,7 @@ void every1s_checks() {
 }
 
 void HandleKeyboardShortcuts() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Use new hotkey system
     ui::new_ui::ProcessHotkeys();
 }
@@ -444,13 +450,19 @@ namespace {
 
 bool EnsureNvApiInitialized() {
     static std::atomic<bool> g_inited{false};
+    static std::atomic<bool> g_failed{false};
+
     if (g_inited.load(std::memory_order_acquire)) {
         return true;
+    }
+    if (g_failed.load(std::memory_order_acquire)) {
+        return false;
     }
 
     const NvAPI_Status st = NvAPI_Initialize();
     if (st != NVAPI_OK) {
         // Don't spam; the caller may query per frame in UI
+        g_failed.store(true, std::memory_order_release);
         return false;
     }
 
@@ -508,6 +520,7 @@ NvAPI_Status ResolveDisplayIdByNameWithReinit(const std::string& display_name, N
 namespace nvapi {
 
 bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t* dxgi_output_device_name, VrrStatus& out_status) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     out_status = nvapi::VrrStatus{};
 
     if (!EnsureNvApiInitialized()) {
@@ -678,6 +691,25 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         LogInfo("%s", oss.str().c_str());
     }
 
+    // Recent detour calls (last 256) to see call trail when stuck
+    {
+        constexpr size_t RECENT_CALLS_COUNT = 256;
+        std::string recent_calls =
+            detour_call_tracker::FormatRecentDetourCalls(static_cast<uint64_t>(now_real_ns), RECENT_CALLS_COUNT);
+        if (!recent_calls.empty()) {
+            std::istringstream iss(recent_calls);
+            std::string line;
+            while (std::getline(iss, line)) {
+                if (!line.empty() && line.back() == '\r') {
+                    line.pop_back();
+                }
+                if (!line.empty()) {
+                    LogInfo("%s", line.c_str());
+                }
+            }
+        }
+    }
+
     std::string undestroyed_info = detour_call_tracker::FormatUndestroyedGuards(static_cast<uint64_t>(now_real_ns));
     if (!undestroyed_info.empty()) {
         std::istringstream iss(undestroyed_info);
@@ -730,6 +762,7 @@ void ContinuousMonitoringThread() {
         const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
         while (g_monitoring_thread_running.load()) {
+            RECORD_DETOUR_CALL(utils::get_now_ns());
             g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
             std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
             LONGLONG loop_time_ns = utils::get_real_time_ns();
@@ -742,6 +775,7 @@ void ContinuousMonitoringThread() {
 
             // Periodic display cache refresh off the UI thread
             {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 LONGLONG now_ns = utils::get_now_ns();
                 if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
                     g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
@@ -758,6 +792,7 @@ void ContinuousMonitoringThread() {
 
             // Apply CPU affinity mask if configured
             {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 static int last_cpu_cores = -1;
                 int cpu_cores = settings::g_mainTabSettings.cpu_cores.GetValue();
 
@@ -815,6 +850,7 @@ void ContinuousMonitoringThread() {
             // 60 FPS updates (every ~16.67ms)
             LONGLONG now_ns = utils::get_now_ns();
             if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
                 check_is_background();
                 last_60fps_update_ns = now_ns;
@@ -836,29 +872,35 @@ void ContinuousMonitoringThread() {
             g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
 
             if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 last_1s_update_ns = now_ns;
                 g_continuous_monitoring_section.store("every1s_checks", std::memory_order_release);
                 every1s_checks();
 
                 // Update cached list of keys belonging to active exclusive groups (once per second)
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
                 display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
 
                 // Auto-hide Discord Overlay (runs every second)
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
                 HandleDiscordOverlayAutoHide();
 
                 // wait 10s before configuring reflex
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
                 if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
                     HandleReflexAutoConfigure();
                 }
 
                 // Call auto-apply HDR metadata trigger
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
                 ui::new_ui::AutoApplyTrigger();
 
                 // Auto-apply resolution on game start
+                RECORD_DETOUR_CALL(utils::get_now_ns());
                 static bool auto_apply_on_start_done = false;
                 namespace res_widget = display_commander::widgets::resolution_widget;
                 g_continuous_monitoring_section.store("auto_apply_on_start", std::memory_order_release);

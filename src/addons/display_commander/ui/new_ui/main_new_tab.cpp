@@ -1136,8 +1136,10 @@ void DrawAdvancedSettings() {
 
 void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     // Load saved settings once and sync legacy globals
+    g_rendering_ui_section.store("ui:tab:main_new:entry", std::memory_order_release);
 
     // Config save failure warning at the top
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:config", std::memory_order_release);
     auto config_save_failure_path = g_config_save_failure_path.load();
     if (config_save_failure_path != nullptr && !config_save_failure_path->empty()) {
         ImGui::Spacing();
@@ -1149,6 +1151,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:load_from_dll", std::memory_order_release);
     // LoadFromDllMain warning
     int32_t load_from_dll_main_value = 0;
     if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value)
@@ -1164,6 +1167,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:multi_version", std::memory_order_release);
     // Multiple Display Commander versions warning
     auto other_dc_version = g_other_dc_version_detected.load();
     if (other_dc_version != nullptr && !other_dc_version->empty()) {
@@ -1181,6 +1185,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:warnings:multi_swapchain", std::memory_order_release);
     // Multiple swapchains (ReShade runtimes) warning
     const size_t runtime_count = GetReShadeRuntimeCount();
     if (runtime_count > 1) {
@@ -1196,6 +1201,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         ImGui::Spacing();
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:version_build", std::memory_order_release);
     // Version and build information at the top
     // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -1482,6 +1488,7 @@ if (enabled_experimental_features) {
     ImGui::Spacing();
 }*/
     // Display Settings Section
+    g_rendering_ui_section.store("ui:tab:main_new:display_settings", std::memory_order_release);
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         DrawDisplaySettings(runtime);
@@ -1491,6 +1498,7 @@ if (enabled_experimental_features) {
     ImGui::Spacing();
 
     // Monitor/Display Resolution Settings Section
+    g_rendering_ui_section.store("ui:tab:main_new:resolution", std::memory_order_release);
     if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         display_commander::widgets::resolution_widget::DrawResolutionWidget();
@@ -1500,6 +1508,7 @@ if (enabled_experimental_features) {
     ImGui::Spacing();
 
     // Texture Filtering / Sampler State Section
+    g_rendering_ui_section.store("ui:tab:main_new:texture_filtering", std::memory_order_release);
     if (ImGui::CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
 
@@ -1676,6 +1685,7 @@ if (enabled_experimental_features) {
     ImGui::Spacing();
 
     // Audio Settings Section
+    g_rendering_ui_section.store("ui:tab:main_new:audio", std::memory_order_release);
     if (ImGui::CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         DrawAudioSettings();
@@ -1684,6 +1694,7 @@ if (enabled_experimental_features) {
 
     ImGui::Spacing();
 
+    g_rendering_ui_section.store("ui:tab:main_new:input", std::memory_order_release);
     // Input Blocking Section
     if (ImGui::CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
@@ -1812,6 +1823,7 @@ if (enabled_experimental_features) {
     ImGui::Spacing();
 
     // Screensaver Control Section
+    g_rendering_ui_section.store("ui:tab:main_new:screensaver", std::memory_order_release);
     if (ImGui::CollapsingHeader("Screensaver Control", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode")) {
@@ -1831,6 +1843,7 @@ if (enabled_experimental_features) {
     ImGui::Spacing();
 
     // CPU Control Section
+    g_rendering_ui_section.store("ui:tab:main_new:cpu", std::memory_order_release);
     if (ImGui::CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
 
@@ -1922,6 +1935,7 @@ if (enabled_experimental_features) {
     ImGui::Spacing();
 
     // Overlay Windows Detection Section
+    g_rendering_ui_section.store("ui:tab:main_new:overlay_windows", std::memory_order_release);
     if (ImGui::CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
 
@@ -2028,11 +2042,13 @@ if (enabled_experimental_features) {
 
     ImGui::Spacing();
 
+    g_rendering_ui_section.store("ui:tab:main_new:important_info", std::memory_order_release);
     if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         DrawImportantInfo();
         ImGui::Unindent();
     }
+    g_rendering_ui_section.store("ui:tab:main_new:advanced_settings", std::memory_order_release);
     if (ImGui::CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         DrawAdvancedSettings();
@@ -2665,10 +2681,11 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "Experimental; may improve frame pacing with FG.");
                 }
                 if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only,
-                                    "Native pacing with simulation thread instead of rendering thread (matches Special-K behavior)")) {
-                    LogInfo("Native pacing sim start only %s",
-                            settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled"
-                                                                                                 : "disabled");
+                                    "Native pacing with simulation thread instead of rendering thread (matches "
+                                    "Special-K behavior)")) {
+                    LogInfo(
+                        "Native pacing sim start only %s",
+                        settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
@@ -3354,6 +3371,7 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
 
     ImGui::Separator();
     ImGui::Spacing();
+    g_rendering_ui_section.store("ui:tab:main_new:presentmon", std::memory_order_release);
     if (ImGui::CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection();
@@ -3716,6 +3734,7 @@ void DrawDisplaySettings_VSyncAndTearing() {
     DrawDisplaySettings_VSyncAndTearing_FpsSliders();
     ImGui::Spacing();
 
+    g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
     if (ImGui::CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
         DrawDisplaySettings_VSyncAndTearing_Checkboxes();
 
@@ -3750,6 +3769,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         const DLSSGSummary dlss_summary = GetDLSSGSummary();
         const bool any_dlss_active =
             dlss_summary.dlss_active || dlss_summary.dlss_g_active || dlss_summary.ray_reconstruction_active;
+        g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
         if (any_dlss_active && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
             DrawDLSSInfo(dlss_summary);
@@ -3838,7 +3858,9 @@ void DrawOverlayVUBars(bool show_tooltips) {
 }
 
 void DrawAudioSettings() {
+    g_rendering_ui_section.store("ui:tab:main_new:audio:entry", std::memory_order_release);
     // Default output device format info (channel config, Hz, bits, format, extension, device name)
+    g_rendering_ui_section.store("ui:tab:main_new:audio:device_info", std::memory_order_release);
     AudioDeviceFormatInfo device_info;
     if (GetDefaultAudioDeviceFormatInfo(&device_info)
         && (device_info.channel_count > 0 || device_info.sample_rate_hz > 0)) {
@@ -3872,6 +3894,7 @@ void DrawAudioSettings() {
         ImGui::Spacing();
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:game_volume", std::memory_order_release);
     // Audio Volume slider
     float volume = s_audio_volume_percent.load();
     if (ImGui::SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
@@ -3904,6 +3927,7 @@ void DrawAudioSettings() {
         ImGui::SetTooltip("Auto-apply volume changes when adjusting the slider.");
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:system_volume", std::memory_order_release);
     // System Volume slider (controls system master volume directly)
     float system_volume = 0.0f;
     if (::GetSystemVolume(&system_volume)) {
@@ -3926,6 +3950,7 @@ void DrawAudioSettings() {
             "Note: System volume may also be adjusted automatically when game volume is at 100%% and you increase it.");
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:mute", std::memory_order_release);
     // Audio Mute checkbox
     bool audio_mute = s_audio_mute.load();
     if (ImGui::Checkbox("Mute", &audio_mute)) {
@@ -3947,6 +3972,7 @@ void DrawAudioSettings() {
         ImGui::SetTooltip("Manually mute/unmute audio.");
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:vu_peaks", std::memory_order_release);
     // Fetch per-channel VU peak data once (default render endpoint); reused for per-channel bars and VU strip below.
     // Some endpoints (e.g. Dolby Atmos PCM 7.1) report 8 channels but GetChannelsPeakValues(8) fails; fallback to 6
     // or 2.
@@ -3986,60 +4012,64 @@ void DrawAudioSettings() {
         }
     }
 
-    // Per-channel volume (when session supports IChannelAudioVolume; L/R for stereo, L/R/C/LFE/RL/RR for 5.1, etc.)
-    // Each channel row shows: small VU bar (when available) + volume slider.
-    unsigned int channel_count = 0;
-    const bool have_channel_volume = ::GetChannelVolumeCountForCurrentProcess(&channel_count) && channel_count >= 1;
-    if (have_channel_volume) {
-        std::vector<float> channel_vols;
-        if (::GetAllChannelVolumesForCurrentProcess(&channel_vols) && channel_vols.size() == channel_count) {
-            if (ImGui::TreeNodeEx("Per-channel volume", ImGuiTreeNodeFlags_DefaultOpen)) {
-                const float row_vu_width = 14.0f;
-                const float row_vu_height = 32.0f;
-                for (unsigned int ch = 0; ch < channel_count; ++ch) {
-                    float pct = channel_vols[ch] * 100.0f;
-                    const char* label = GetAudioChannelLabel(ch, channel_count);
-                    // Per-channel VU bar (graphical) + raw value next to the slider when we have meter data
-                    if (ch < effective_meter_count && ch < s_vu_smoothed.size()) {
-                        const float level = (std::min)(1.0f, s_vu_smoothed[ch]);
-                        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                        const ImVec2 pos = ImGui::GetCursorScreenPos();
-                        const ImVec2 bg_min(pos.x, pos.y);
-                        const ImVec2 bg_max(pos.x + row_vu_width, pos.y + row_vu_height);
-                        const float fill_h = level * row_vu_height;
-                        const ImVec2 fill_min(pos.x, pos.y + row_vu_height - fill_h);
-                        const ImVec2 fill_max(pos.x + row_vu_width, pos.y + row_vu_height);
-                        draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(40, 40, 40, 255));
-                        draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
-                        ImGui::Dummy(ImVec2(row_vu_width + 4.0f, row_vu_height));
-                        ImGui::SameLine(0.0f, 0.0f);
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.1f%%", level * 100.0f);
-                        ImGui::SameLine(0.0f, 6.0f);
-                    }
-                    char slider_id[32];
-                    (void)std::snprintf(slider_id, sizeof(slider_id), "%s (%%)##ch%u", label, ch);
-                    if (ImGui::SliderFloat(slider_id, &pct, 0.0f, 100.0f, "%.0f%%")) {
-                        if (::SetChannelVolumeForCurrentProcess(ch, pct / 100.0f)) {
-                            LogInfo("Channel %u volume set", ch);
+    if (!g_using_wine.load(std::memory_order_acquire)) {
+        g_rendering_ui_section.store("ui:tab:main_new:audio:per_channel_volume", std::memory_order_release);
+        // Per-channel volume (when session supports IChannelAudioVolume; L/R for stereo, L/R/C/LFE/RL/RR for 5.1, etc.)
+        // Each channel row shows: small VU bar (when available) + volume slider.
+        unsigned int channel_count = 0;
+        const bool have_channel_volume = ::GetChannelVolumeCountForCurrentProcess(&channel_count) && channel_count >= 1;
+        if (have_channel_volume) {
+            std::vector<float> channel_vols;
+            if (::GetAllChannelVolumesForCurrentProcess(&channel_vols) && channel_vols.size() == channel_count) {
+                if (ImGui::TreeNodeEx("Per-channel volume", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    const float row_vu_width = 14.0f;
+                    const float row_vu_height = 32.0f;
+                    for (unsigned int ch = 0; ch < channel_count; ++ch) {
+                        float pct = channel_vols[ch] * 100.0f;
+                        const char* label = GetAudioChannelLabel(ch, channel_count);
+                        // Per-channel VU bar (graphical) + raw value next to the slider when we have meter data
+                        if (ch < effective_meter_count && ch < s_vu_smoothed.size()) {
+                            const float level = (std::min)(1.0f, s_vu_smoothed[ch]);
+                            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                            const ImVec2 pos = ImGui::GetCursorScreenPos();
+                            const ImVec2 bg_min(pos.x, pos.y);
+                            const ImVec2 bg_max(pos.x + row_vu_width, pos.y + row_vu_height);
+                            const float fill_h = level * row_vu_height;
+                            const ImVec2 fill_min(pos.x, pos.y + row_vu_height - fill_h);
+                            const ImVec2 fill_max(pos.x + row_vu_width, pos.y + row_vu_height);
+                            draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(40, 40, 40, 255));
+                            draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
+                            ImGui::Dummy(ImVec2(row_vu_width + 4.0f, row_vu_height));
+                            ImGui::SameLine(0.0f, 0.0f);
+                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.1f%%", level * 100.0f);
+                            ImGui::SameLine(0.0f, 6.0f);
+                        }
+                        char slider_id[32];
+                        (void)std::snprintf(slider_id, sizeof(slider_id), "%s (%%)##ch%u", label, ch);
+                        if (ImGui::SliderFloat(slider_id, &pct, 0.0f, 100.0f, "%.0f%%")) {
+                            if (::SetChannelVolumeForCurrentProcess(ch, pct / 100.0f)) {
+                                LogInfo("Channel %u volume set", ch);
+                            }
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Volume for channel %u (%s), game audio session.", ch, label);
                         }
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Volume for channel %u (%s), game audio session.", ch, label);
-                    }
+                    ImGui::TreePop();
                 }
-                ImGui::TreePop();
             }
-        }
-    } else if (device_info.channel_count >= 6) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                           "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
-                           "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "IChannelAudioVolume is not exposed by the game audio session on some outputs (e.g. Dolby Atmos).");
+        } else if (device_info.channel_count >= 6) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                               "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
+                               "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "IChannelAudioVolume is not exposed by the game audio session on some outputs (e.g. Dolby Atmos).");
+            }
         }
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:vu_strip", std::memory_order_release);
     // Per-channel VU meter strip: graphical representation with labels (default render endpoint; mixed output)
     if (effective_meter_count > 0 && effective_meter_count <= s_vu_smoothed.size()) {
         const float bar_height = 288.0f;
@@ -4086,6 +4116,7 @@ void DrawAudioSettings() {
         ImGui::SetCursorScreenPos(ImVec2(cursor.x, label_y + label_height + 2.0f + line_height));
         ImGui::Dummy(ImVec2(total_width, label_height + 2.0f + line_height));
     }
+    g_rendering_ui_section.store("ui:tab:main_new:audio:mute_in_bg", std::memory_order_release);
     // Mute in Background checkbox (disabled if Mute is ON)
     bool mute_in_bg = s_mute_in_background.load();
     if (s_audio_mute.load()) {
@@ -4116,6 +4147,7 @@ void DrawAudioSettings() {
     if (s_audio_mute.load()) {
         ImGui::EndDisabled();
     }
+    g_rendering_ui_section.store("ui:tab:main_new:audio:mute_in_bg_if_other", std::memory_order_release);
     // Mute in Background only if other app plays audio
     bool mute_in_bg_if_other = s_mute_in_background_if_other_audio.load();
     if (s_audio_mute.load()) {
@@ -4146,6 +4178,7 @@ void DrawAudioSettings() {
 
     ImGui::Separator();
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:output_device", std::memory_order_release);
     // Audio output device selector (per-application routing)
     ImGui::Text("Output Device");
 
@@ -4189,6 +4222,7 @@ void DrawAudioSettings() {
         current_label = s_audio_device_names[s_selected_audio_device_index - 1].c_str();
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:output_device_combo", std::memory_order_release);
     if (ImGui::BeginCombo("##AudioOutputDevice", current_label)) {
         bool selection_changed = false;
 
@@ -4232,6 +4266,7 @@ void DrawAudioSettings() {
             "Uses Windows per-application audio routing (similar to 'App volume and device preferences').");
     }
 
+    g_rendering_ui_section.store("ui:tab:main_new:audio:refresh_devices", std::memory_order_release);
     ImGui::SameLine();
     if (ImGui::Button("Refresh Devices")) {
         refresh_audio_devices();
@@ -4866,7 +4901,8 @@ void DrawImportantInfo() {
 
     // Frame Time Graph Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 1: Nested subsection with indentation and distinct colors
-    ImGui::Indent();                       // Indent nested header
+    ImGui::Indent();  // Indent nested header
+    g_rendering_ui_section.store("ui:tab:main_new:frame_time_graph", std::memory_order_release);
     ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
     if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();  // Indent content inside subsection
@@ -5096,6 +5132,7 @@ void DrawImportantInfo() {
 
     ImGui::Spacing();
 
+    g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
     // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
     if (ImGui::CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
         bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();

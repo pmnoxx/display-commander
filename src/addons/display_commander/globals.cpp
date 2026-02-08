@@ -35,6 +35,16 @@ std::atomic<bool> g_dll_initialization_complete{false};
 // Process attach state - tracks when DLL_PROCESS_ATTACH has completed
 std::atomic<bool> g_process_attached{false};
 
+// Wine/Proton detection
+std::atomic<bool> g_using_wine{false};
+
+void DetectWine() {
+    HMODULE ntdll = GetModuleHandleW(L"ntdll");
+    if (ntdll != nullptr && GetProcAddress(ntdll, "wine_get_version") != nullptr) {
+        g_using_wine.store(true, std::memory_order_release);
+    }
+}
+
 // Module handle for pinning/unpinning
 HMODULE g_hmodule = nullptr;
 

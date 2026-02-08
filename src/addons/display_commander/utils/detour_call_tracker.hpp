@@ -7,6 +7,13 @@
 
 namespace detour_call_tracker {
 
+// Value for the "latest call" map: most recent call of a given (function_name, line) site
+struct LatestCallValue {
+    uint64_t timestamp_ns{0};
+    bool destroyed{true};       // true once guard destructor ran
+    size_t in_progress_count{0};  // incremented in guard ctor, decremented in guard dtor; >0 => possible crash without cleanup
+};
+
 // Simple output structure for reading detour calls
 struct DetourCallInfo {
     const char* function_name;
@@ -44,9 +51,11 @@ struct UndestroyedGuardInfo {
 // RAII guard class for crash detection
 // Tracks if a detour call completes cleanly (destructor called)
 // If destructor is not called, indicates a crash occurred
+// Also updates the latest-call map (call_site_key -> LatestCallValue) under SRWLOCK
 class DetourCallGuard {
    public:
-    DetourCallGuard(const char* function_name, int line_number, uint64_t timestamp_ns);
+    // call_site_key: unique per (function, line), use DETOUR_CALL_SITE_KEY macro
+    DetourCallGuard(const char* call_site_key, const char* function_name, int line_number, uint64_t timestamp_ns);
     ~DetourCallGuard();
 
     // Non-copyable, non-movable
@@ -56,11 +65,21 @@ class DetourCallGuard {
     DetourCallGuard& operator=(DetourCallGuard&&) = delete;
 
    private:
+    const char* call_site_key_;
     const char* function_name_;
     int line_number_;
     uint64_t timestamp_ns_;
     std::atomic<bool>* destroyed_flag_;
 };
+
+// Get latest call value for a call-site key (under shared lock). Returns false if no entry.
+bool GetLatestCallValue(const char* call_site_key, LatestCallValue* out);
+
+// Format all call sites from the latest-call map, sorted by last call time (most recent first).
+// Each line: call_site_key, time since now_ns (e.g. "5.2 s ago"), destroyed flag.
+// Use when thread is stuck: now_ns = time of snapshot; entries at the bottom are the ones
+// that stopped being made (stale longest).
+std::string FormatAllLatestCalls(uint64_t now_ns);
 
 // Get count of undestroyed guards (crashes detected)
 size_t GetUndestroyedGuardCount();
@@ -77,8 +96,12 @@ std::string FormatUndestroyedGuards(uint64_t crash_timestamp_ns);
 // If the destructor doesn't get called (crash), it will be detected in exit hooks
 // Usage: RECORD_DETOUR_CALL(utils::get_now_ns())
 // The guard object lives for the duration of the function scope
-// Two-level macro expansion needed to properly expand __LINE__ before concatenation
-#define CONCAT_IMPL(a, b) a##b
-#define CONCAT(a, b) CONCAT_IMPL(a, b)
-#define RECORD_DETOUR_CALL(timestamp_ns) \
-    detour_call_tracker::DetourCallGuard CONCAT(_detour_guard_, __LINE__)(__FUNCTION__, __LINE__, (timestamp_ns))
+// DETOUR_CALL_SITE_KEY: string literal unique per (function, line), used as map key for latest-call
+#define STRINGIFY_IMPL(x)    #x
+#define TOSTRING(x)          STRINGIFY_IMPL(x)
+#define DETOUR_CALL_SITE_KEY (__FUNCTION__ ":" TOSTRING(__LINE__))
+#define CONCAT_IMPL(a, b)    a##b
+#define CONCAT(a, b)         CONCAT_IMPL(a, b)
+#define RECORD_DETOUR_CALL(timestamp_ns)                                                                      \
+    detour_call_tracker::DetourCallGuard CONCAT(_detour_guard_, __LINE__)(DETOUR_CALL_SITE_KEY, __FUNCTION__, \
+                                                                          __LINE__, (timestamp_ns))

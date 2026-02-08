@@ -260,6 +260,10 @@ extern std::atomic<bool> g_dll_initialization_complete;
 // Process attach state - tracks when DLL_PROCESS_ATTACH has completed
 extern std::atomic<bool> g_process_attached;
 
+// Wine/Proton detection - set at DLL load via DetectWine() (ntdll wine_get_version present)
+extern std::atomic<bool> g_using_wine;
+void DetectWine();
+
 // Module handle for pinning/unpinning
 extern HMODULE g_hmodule;
 
@@ -826,6 +830,8 @@ extern std::atomic<float> s_sleep_after_present_frame_time_percentage;
 extern std::atomic<bool> g_monitoring_thread_running;
 extern std::thread g_monitoring_thread;
 extern std::thread g_stuck_check_watchdog_thread;
+// Current section of the monitoring loop (for crash/stuck reporting; set by monitoring and audio code)
+extern std::atomic<const char*> g_continuous_monitoring_section;
 
 // Render thread tracking
 extern std::atomic<DWORD> g_render_thread_id;

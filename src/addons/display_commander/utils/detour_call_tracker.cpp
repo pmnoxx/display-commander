@@ -3,11 +3,23 @@
 #include <cstdio>
 #include <cstring>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <string>
+#include <vector>
+#include "srwlock_wrapper.hpp"
 
 namespace detour_call_tracker {
 namespace {
+
+// Comparator for const char* keys (compare by content, not pointer)
+struct CStrCmp {
+    bool operator()(const char* a, const char* b) const { return std::strcmp(a, b) < 0; }
+};
+
+// Map from call-site key (function:line from macro) to most recent call value, under SRWLOCK
+static SRWLOCK g_latest_call_map_lock = SRWLOCK_INIT;
+static std::map<const char*, LatestCallValue, CStrCmp> g_latest_call_map;
 
 // Circular buffer configuration
 // Use power-of-2 size for efficient modulo operation
@@ -81,7 +93,7 @@ size_t GetRecentDetourCalls(DetourCallInfo* out_entries, size_t max_count) {
     // Determine how many entries to read
     // If buffer hasn't wrapped, only read up to current_index
     size_t available_entries = (current_index < BUFFER_SIZE) ? current_index : BUFFER_SIZE;
-    size_t count = std::min(max_count, available_entries);
+    size_t count = (std::min)(max_count, available_entries);
 
     // Read entries in reverse chronological order (most recent first)
     // Most recent entry is at (current_index - 1) & BUFFER_MASK
@@ -113,7 +125,7 @@ size_t GetRecentDetourCalls(DetourCallInfo* out_entries, size_t max_count) {
 
 std::string FormatRecentDetourCalls(uint64_t crash_timestamp_ns, size_t max_count) {
     DetourCallInfo entries[BUFFER_SIZE];
-    size_t count = GetRecentDetourCalls(entries, std::min(max_count, static_cast<size_t>(BUFFER_SIZE)));
+    size_t count = GetRecentDetourCalls(entries, (std::min)(max_count, static_cast<size_t>(BUFFER_SIZE)));
 
     std::ostringstream oss;
 
@@ -155,10 +167,24 @@ std::string FormatRecentDetourCalls(uint64_t crash_timestamp_ns, size_t max_coun
     return oss.str();
 }
 
-DetourCallGuard::DetourCallGuard(const char* function_name, int line_number, uint64_t timestamp_ns)
-    : function_name_(function_name), line_number_(line_number), timestamp_ns_(timestamp_ns), destroyed_flag_(nullptr) {
+DetourCallGuard::DetourCallGuard(const char* call_site_key, const char* function_name, int line_number,
+                                 uint64_t timestamp_ns)
+    : call_site_key_(call_site_key),
+      function_name_(function_name),
+      line_number_(line_number),
+      timestamp_ns_(timestamp_ns),
+      destroyed_flag_(nullptr) {
     // Record the detour call
     RecordDetourCall(function_name, line_number, timestamp_ns);
+
+    // Update latest-call map (most recent call of this type); increment in-progress count
+    {
+        utils::SRWLockExclusive lock(g_latest_call_map_lock);
+        LatestCallValue& val = g_latest_call_map[call_site_key];
+        val.timestamp_ns = timestamp_ns;
+        val.destroyed = false;
+        val.in_progress_count++;
+    }
 
     // Allocate a guard slot for crash detection
     size_t slot_index = g_guard_slot_index.fetch_add(1, std::memory_order_relaxed) & GUARD_MASK;
@@ -183,6 +209,17 @@ DetourCallGuard::~DetourCallGuard() {
     // Mark as destroyed if we have a flag
     if (destroyed_flag_ != nullptr) {
         destroyed_flag_->store(true, std::memory_order_release);
+    }
+    // Update latest-call map: decrement in-progress count and mark destroyed
+    if (call_site_key_ != nullptr) {
+        utils::SRWLockExclusive lock(g_latest_call_map_lock);
+        auto it = g_latest_call_map.find(call_site_key_);
+        if (it != g_latest_call_map.end()) {
+            if (it->second.in_progress_count > 0) {
+                it->second.in_progress_count--;
+            }
+            it->second.destroyed = true;
+        }
     }
 }
 
@@ -256,6 +293,71 @@ std::string FormatUndestroyedGuards(uint64_t crash_timestamp_ns) {
             if (i < count - 1) {
                 oss << "\n";
             }
+        }
+    }
+
+    return oss.str();
+}
+
+bool GetLatestCallValue(const char* call_site_key, LatestCallValue* out) {
+    if (call_site_key == nullptr || out == nullptr) {
+        return false;
+    }
+    utils::SRWLockShared lock(g_latest_call_map_lock);
+    auto it = g_latest_call_map.find(call_site_key);
+    if (it == g_latest_call_map.end()) {
+        return false;
+    }
+    *out = it->second;
+    return true;
+}
+
+std::string FormatAllLatestCalls(uint64_t now_ns) {
+    using Entry = std::pair<const char*, LatestCallValue>;
+    std::vector<Entry> entries;
+    {
+        utils::SRWLockShared lock(g_latest_call_map_lock);
+        entries.reserve(g_latest_call_map.size());
+        for (const auto& kv : g_latest_call_map) {
+            entries.push_back(kv);
+        }
+    }
+    // Sort by last call time descending (most recent first); bottom of list = stale longest
+    std::sort(entries.begin(), entries.end(),
+              [](const Entry& a, const Entry& b) { return a.second.timestamp_ns > b.second.timestamp_ns; });
+
+    std::ostringstream oss;
+    oss << "All Detour Call Sites (by last call, most recent first; bottom = stopped longest ago): " << entries.size()
+        << " sites\n";
+
+    for (size_t i = 0; i < entries.size(); ++i) {
+        const char* key = entries[i].first;
+        const LatestCallValue& val = entries[i].second;
+        if (key == nullptr) {
+            continue;
+        }
+
+        int64_t ago_ns = static_cast<int64_t>(now_ns) - static_cast<int64_t>(val.timestamp_ns);
+        double ago_ms = static_cast<double>(ago_ns) / 1000000.0;
+        double ago_s = static_cast<double>(ago_ns) / 1000000000.0;
+
+        oss << "  [" << (i + 1) << "] " << key;
+        if (ago_ns >= 0) {
+            if (ago_s >= 1.0) {
+                oss << " - " << std::fixed << std::setprecision(2) << ago_s << " s ago";
+            } else {
+                oss << " - " << std::fixed << std::setprecision(3) << ago_ms << " ms ago";
+            }
+        } else {
+            oss << " - <invalid timestamp>";
+        }
+        oss << (val.destroyed ? " [destroyed]" : " [active]");
+        oss << " in_progress=" << val.in_progress_count;
+        if (val.in_progress_count > 0) {
+            oss << " (possible crash without cleanup)";
+        }
+        if (i < entries.size() - 1) {
+            oss << "\n";
         }
     }
 

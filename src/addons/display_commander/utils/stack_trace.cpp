@@ -182,6 +182,11 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     int frame_count = 0;
     constexpr int MAX_FRAMES = 50;
 
+    struct SuppressGuard {
+        ~SuppressGuard() { dbghelp_loader::SetSuppressStackWalkLogging(false); }
+    };
+    dbghelp_loader::SetSuppressStackWalkLogging(true);
+    SuppressGuard suppress_guard;
     while (frame_count < MAX_FRAMES) {
         if (!dbghelp_loader::StackWalk64_Original) {
             break;

@@ -463,6 +463,7 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
+        DETOUR_SET_CONTEXT_AT(455, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
         // Process window messages for windows belonging to current process
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
             if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
@@ -527,6 +528,7 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 
     // If we got a message
     if (result > 0 && lpMsg != nullptr) {
+        DETOUR_SET_CONTEXT_AT(519, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
         // Process window messages for windows belonging to current process
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
             if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
@@ -592,6 +594,7 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 
     // If we got a message
     if (result && lpMsg != nullptr) {
+        DETOUR_SET_CONTEXT_AT(584, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
         // Process window messages for windows belonging to current process
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
             if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
@@ -655,6 +658,7 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 
     // If we got a message
     if (result && lpMsg != nullptr) {
+        DETOUR_SET_CONTEXT_AT(647, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
         // Process window messages for windows belonging to current process
         if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
             if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {

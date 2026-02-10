@@ -64,7 +64,12 @@ class MainTabSettings {
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting experimental_fg_native_fps_limiter;
     ui::new_ui::BoolSetting native_pacing_sim_start_only;
+    ui::new_ui::BoolSetting delay_present_start_after_sim_enabled;
+    ui::new_ui::FloatSetting delay_present_start_frames;
     ui::new_ui::BoolSetting experimental_safe_mode_fps_limiter;
+
+    // Misc (experimental / crash workarounds)
+    ui::new_ui::BoolSetting prevent_framegen_release;
 
     // VSync & Tearing
     ui::new_ui::BoolSettingRef force_vsync_on;

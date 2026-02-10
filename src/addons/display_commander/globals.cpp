@@ -331,6 +331,7 @@ bool ShouldUseNativeFpsLimiterFromFramePacing() {
 // Thread tracking for frame pacing debug
 std::atomic<bool> g_thread_tracking_enabled{false};
 std::atomic<DWORD> g_latency_marker_thread_id[kLatencyMarkerTypeCountFirstSix] = {};
+std::atomic<uint64_t> g_latency_marker_last_frame_id[kLatencyMarkerTypeCountFirstSix] = {};
 std::atomic<DWORD> g_fps_limiter_site_thread_id[kFpsLimiterCallSiteCount] = {};
 
 // Global Swapchain Tracking Manager instance
@@ -569,6 +570,9 @@ std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finishe
 // Frame data cyclic buffer (see docs/FRAME_DATA_CYCLIC_BUFFER.md). Not populated yet.
 FrameData g_frame_data[kFrameDataBufferSize] = {};
 
+// Latency marker timestamps per (frame_id, markerType); recorded in NvAPI_D3D_SetLatencyMarker_Detour.
+LatencyMarkerFrameRecord g_latency_marker_buffer[kFrameDataBufferSize] = {};
+
 // NVIDIA Reflex minimal controls (disabled by default)
 
 // DLSS-G (DLSS Frame Generation) status
@@ -583,6 +587,7 @@ std::atomic<bool> g_ray_reconstruction_enabled{false};  // Ray Reconstruction en
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
 std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};
+std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_reflex_params_set_by_addon{nullptr};
 
 // NVAPI Reflex timing tracking
 std::atomic<LONGLONG> g_sleep_reflex_injected_ns{0};
@@ -888,10 +893,14 @@ DLSSGSummary GetDLSSGSummary() {
     return summary;
 }
 
-// Lite version: only dlss_g_active + fg_mode (call every frame from FPS limiter)
+// Lite version: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active, fg_mode (call every frame from FPS limiter / overlay)
 DLSSGSummaryLite GetDLSSGSummaryLite() {
     DLSSGSummaryLite summary;
+    summary.dlss_active = g_dlss_enabled.load();
     summary.dlss_g_active = g_dlssg_enabled.load();
+    summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load();
+    summary.any_dlss_active =
+        summary.dlss_active || summary.dlss_g_active || summary.ray_reconstruction_active;
 
     int enable_interp;
     if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp)) {

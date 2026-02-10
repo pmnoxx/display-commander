@@ -675,6 +675,8 @@ constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;  // SIMULATION_START..PRES
 extern std::atomic<bool> g_thread_tracking_enabled;
 /** Last thread ID that called NvAPI_D3D_SetLatencyMarker_Detour for each of the first 6 marker types (0 = not set). */
 extern std::atomic<DWORD> g_latency_marker_thread_id[kLatencyMarkerTypeCountFirstSix];
+/** Last frame_id reported with each of the first 6 Reflex marker types (0 = not yet reported). */
+extern std::atomic<uint64_t> g_latency_marker_last_frame_id[kLatencyMarkerTypeCountFirstSix];
 /** Last thread ID that called ChooseFpsLimiter for each FpsLimiterCallSite (0 = not set). */
 extern std::atomic<DWORD> g_fps_limiter_site_thread_id[kFpsLimiterCallSiteCount];
 
@@ -1169,6 +1171,15 @@ struct FrameData {
 
 extern FrameData g_frame_data[kFrameDataBufferSize];
 
+// Cyclic buffer: timestamp when NvAPI_D3D_SetLatencyMarker was called, keyed by (frame_id, markerType).
+// Index: g_latency_marker_buffer[frame_id % kFrameDataBufferSize]. marker_time_ns[i] = time when marker type i was set.
+constexpr size_t kLatencyMarkerTypeCount = 13;  // SIMULATION_START(0) .. OUT_OF_BAND_PRESENT_END(12)
+struct LatencyMarkerFrameRecord {
+    std::atomic<uint64_t> frame_id{0};
+    std::atomic<LONGLONG> marker_time_ns[kLatencyMarkerTypeCount];
+};
+extern LatencyMarkerFrameRecord g_latency_marker_buffer[kFrameDataBufferSize];
+
 // Present pacing delay as percentage of frame time - 0% to 100%
 
 extern std::atomic<LONGLONG> late_amount_ns;
@@ -1253,6 +1264,10 @@ struct NGXCounters {
     std::atomic<uint32_t> d3d11_getparameters_count;
     std::atomic<uint32_t> d3d11_allocateparameters_count;
 
+    // Frame Generation (DLSS-G) create/release attempt counts (for prevent_framegen_release tooltip)
+    std::atomic<uint32_t> framegen_create_attempt_count;
+    std::atomic<uint32_t> framegen_release_attempt_count;
+
     // Total counter
     std::atomic<uint32_t> total_count;
 
@@ -1283,6 +1298,8 @@ struct NGXCounters {
           d3d11_evaluatefeature_count(0),
           d3d11_getparameters_count(0),
           d3d11_allocateparameters_count(0),
+          framegen_create_attempt_count(0),
+          framegen_release_attempt_count(0),
           total_count(0) {}
 
     // Reset all counters to 0
@@ -1312,6 +1329,8 @@ struct NGXCounters {
         d3d11_evaluatefeature_count.store(0);
         d3d11_getparameters_count.store(0);
         d3d11_allocateparameters_count.store(0);
+        framegen_create_attempt_count.store(0);
+        framegen_release_attempt_count.store(0);
         total_count.store(0);
     }
 };
@@ -1378,9 +1397,12 @@ enum class DLSSGFgMode : std::uint8_t {
     Other  // 5x, 6x, etc.
 };
 
-// Lite summary for FPS limiter: dlss_g_active + fg_mode (call every frame)
+// Lite summary for FPS limiter / overlay: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active, fg_mode (call every frame)
 struct DLSSGSummaryLite {
+    bool any_dlss_active = false;   // dlss_active || dlss_g_active || ray_reconstruction_active
+    bool dlss_active = false;
     bool dlss_g_active = false;
+    bool ray_reconstruction_active = false;
     DLSSGFgMode fg_mode = DLSSGFgMode::Off;
 };
 DLSSGSummaryLite GetDLSSGSummaryLite();
@@ -1392,6 +1414,8 @@ DLSSModelProfile GetDLSSModelProfile();
 extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>>
     g_last_nvapi_sleep_mode_params;                             // Last SetSleepMode parameters
 extern std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr;  // Last device pointer for SetSleepMode
+// Last Reflex params that we (addon) set via ApplySleepMode / NvAPI_D3D_SetSleepMode_Direct (for UI tooltip)
+extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_reflex_params_set_by_addon;
 
 // NVAPI Reflex timing tracking
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns;  // Time between injected Reflex sleep calls

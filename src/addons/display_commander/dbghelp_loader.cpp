@@ -99,4 +99,14 @@ bool IsDbgHelpAvailable() {
     return g_dbghelp_available.load();
 }
 
+static thread_local bool g_suppress_stack_walk_logging = false;
+
+void SetSuppressStackWalkLogging(bool suppress) {
+    g_suppress_stack_walk_logging = suppress;
+}
+
+bool GetSuppressStackWalkLogging() {
+    return g_suppress_stack_walk_logging;
+}
+
 } // namespace dbghelp_loader

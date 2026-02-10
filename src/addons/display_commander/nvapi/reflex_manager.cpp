@@ -106,6 +106,7 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
         LogWarn("Reflex: NvAPI_D3D_SetSleepMode_Direct failed (%d)", (int)st);
         return false;
     }
+    g_last_reflex_params_set_by_addon.store(std::make_shared<NV_SET_SLEEP_MODE_PARAMS>(params));
     return true;
 }
 

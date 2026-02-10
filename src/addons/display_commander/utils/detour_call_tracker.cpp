@@ -1,5 +1,8 @@
 #include "detour_call_tracker.hpp"
+#include "srwlock_wrapper.hpp"
 #include <algorithm>
+#include <cstdarg>
+#include <cstdio>
 #include <cstring>
 #include <iomanip>
 #include <sstream>
@@ -10,6 +13,7 @@ namespace {
 
 Entry g_entries[MAX_ENTRIES];
 std::atomic<uint64_t> g_used_entries{0};
+SRWLOCK g_context_lock = SRWLOCK_INIT;
 
 }  // anonymous namespace
 
@@ -24,7 +28,27 @@ uint32_t AllocateEntryIndex(const char* key) {
     e.total_cnt.store(0, std::memory_order_relaxed);
     e.last_call_ns.store(0, std::memory_order_relaxed);
     e.prev_call_ns.store(0, std::memory_order_relaxed);
+    e.context[0] = '\0';
     return static_cast<uint32_t>(idx);
+}
+
+void SetCallSiteContextByKey(const char* key, const char* fmt, ...) {
+    if (key == nullptr || fmt == nullptr) {
+        return;
+    }
+    va_list args;
+    va_start(args, fmt);
+    utils::SRWLockExclusive lock(g_context_lock);
+    uint64_t used = g_used_entries.load(std::memory_order_acquire);
+    size_t limit = (std::min)(static_cast<uint64_t>(MAX_ENTRIES), used);
+    for (size_t i = 0; i < limit; ++i) {
+        Entry& e = g_entries[i];
+        if (e.key != nullptr && std::strcmp(e.key, key) == 0) {
+            (void)std::vsnprintf(e.context, CONTEXT_SIZE, fmt, args);
+            break;
+        }
+    }
+    va_end(args);
 }
 
 void RecordCallNoGuard(uint32_t entry_index, uint64_t timestamp_ns) {
@@ -73,6 +97,7 @@ std::string FormatUndestroyedGuards(uint64_t crash_timestamp_ns) {
 
     struct Undestroyed {
         const char* key;
+        const char* context;
         uint64_t last_ns;
         uint64_t prev_ns;
     };
@@ -84,14 +109,17 @@ std::string FormatUndestroyedGuards(uint64_t crash_timestamp_ns) {
         if (e.inprogress_cnt.load(std::memory_order_acquire) == 0) {
             continue;
         }
-        list.push_back(
-            {e.key, e.last_call_ns.load(std::memory_order_acquire), e.prev_call_ns.load(std::memory_order_acquire)});
+        list.push_back({e.key, e.context, e.last_call_ns.load(std::memory_order_acquire),
+                        e.prev_call_ns.load(std::memory_order_acquire)});
     }
 
     std::ostringstream oss;
     oss << "Undestroyed Detour Guards (crashes detected): " << list.size();
     for (size_t i = 0; i < list.size(); ++i) {
         oss << "\n  [" << (i + 1) << "] " << (list[i].key != nullptr ? list[i].key : "<unknown>");
+        if (list[i].context != nullptr && list[i].context[0] != '\0') {
+            oss << " | " << list[i].context;
+        }
         int64_t time_diff_ns = static_cast<int64_t>(crash_timestamp_ns) - static_cast<int64_t>(list[i].last_ns);
         double time_diff_ms = static_cast<double>(time_diff_ns) / 1000000.0;
         double time_diff_us = static_cast<double>(time_diff_ns) / 1000.0;

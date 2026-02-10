@@ -13,6 +13,7 @@
 #include "hook_suppression_manager.hpp"
 
 #include <MinHook.h>
+#include <algorithm>
 
 // Function pointer type definitions (following Special-K's approach)
 using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status(__cdecl*)(__in IUnknown* pDev,
@@ -35,6 +36,9 @@ NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original = nullptr;
 
 // SRWLOCK for thread-safe NVAPI hook access
 static SRWLOCK g_nvapi_lock = SRWLOCK_INIT;
+
+// Timer handle for delay-present-start wait (created on first use in wait_until_ns)
+static HANDLE g_timer_handle_delay_present_start = nullptr;
 
 // Function to look up NVAPI function ID from interface table
 namespace {
@@ -130,6 +134,8 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
             g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
+            g_latency_marker_last_frame_id[marker_type].store(pSetLatencyMarkerParams->frameID,
+                                                             std::memory_order_relaxed);
         }
     }
 
@@ -197,6 +203,68 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
             return NVAPI_OK;
+        }
+    }
+
+    // Cyclic buffer: record timestamp when this marker was called, keyed by (frame_id, markerType)
+    if (pSetLatencyMarkerParams != nullptr) {
+        const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
+        const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
+        if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
+            const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+            const LONGLONG now_ns = utils::get_now_ns();
+            g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
+            g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
+        }
+    }
+
+    // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
+    if (pSetLatencyMarkerParams != nullptr
+        && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START
+        && pSetLatencyMarkerParams->frameID > 300) {
+        const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
+        const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
+        if (delay_enabled && delay_frames > 0.0f) {
+            const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
+            const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+            const LONGLONG sim_start_ns =
+                g_latency_marker_buffer[slot]
+                    .marker_time_ns[static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START)]
+                    .load(std::memory_order_relaxed);
+            // Prefer frame time derived from FPS limit (and FG mode) when set; otherwise Reflex/OnPresentSync or
+            // measured
+            float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
+            if (effective_fps > 0.0f) {
+                const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
+                if (lite.dlss_g_active) {
+                    switch (lite.fg_mode) {
+                        case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
+                        case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
+                        case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
+                        default:               break;
+                    }
+                }
+            }
+            LONGLONG frame_time_ns = (effective_fps > 0.0f)
+                                         ? static_cast<LONGLONG>(1'000'000'000.0 / static_cast<double>(effective_fps))
+                                         : 0;
+            /*
+        if (frame_time_ns <= 0) {
+            frame_time_ns = g_sleep_reflex_injected_ns_smooth.load(std::memory_order_relaxed);
+        }
+        if (frame_time_ns <= 0) {
+            frame_time_ns = g_onpresent_sync_frame_time_ns.load(std::memory_order_relaxed);
+        }
+        if (frame_time_ns <= 0) {
+            frame_time_ns = g_frame_time_ns.load(std::memory_order_relaxed);
+        }*/
+            frame_time_ns = (std::max)(frame_time_ns, static_cast<LONGLONG>(1));
+            const LONGLONG delay_ns = static_cast<LONGLONG>(delay_frames * static_cast<float>(frame_time_ns));
+            const LONGLONG target_ns = sim_start_ns + delay_ns;
+            const LONGLONG now_ns = utils::get_now_ns();
+            if (sim_start_ns > 0 && target_ns > now_ns) {
+                utils::wait_until_ns(target_ns, g_timer_handle_delay_present_start);
+            }
         }
     }
 

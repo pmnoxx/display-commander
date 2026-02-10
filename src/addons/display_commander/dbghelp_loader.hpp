@@ -34,4 +34,8 @@ bool LoadDbgHelp();
 void UnloadDbgHelp();
 bool IsDbgHelpAvailable();
 
+// When true, StackWalk64 hook will not log (used by our own stack trace generation)
+void SetSuppressStackWalkLogging(bool suppress);
+bool GetSuppressStackWalkLogging();
+
 } // namespace dbghelp_loader

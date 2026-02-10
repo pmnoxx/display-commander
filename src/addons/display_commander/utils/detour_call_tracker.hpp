@@ -10,6 +10,9 @@ namespace detour_call_tracker {
 // Maximum number of distinct detour call sites (one entry per RECORD_DETOUR_CALL site)
 constexpr size_t MAX_ENTRIES = 65536;
 
+// Optional context string length for crash reporting (e.g. "msg=0x0010 hwnd=0x..." for GetMessage detours).
+constexpr size_t CONTEXT_SIZE = 96;
+
 // One entry per call site. Index is assigned once via AllocateEntryIndex (static in macro).
 struct Entry {
     const char* key{nullptr};
@@ -17,6 +20,7 @@ struct Entry {
     std::atomic<uint64_t> total_cnt{0};
     std::atomic<uint64_t> last_call_ns{0};
     std::atomic<uint64_t> prev_call_ns{0};  // second-to-last call; interval = last_call_ns - prev_call_ns
+    char context[CONTEXT_SIZE]{};
 };
 
 // Allocate a new entry index for the given call-site key. Called once per macro expansion (static).
@@ -26,6 +30,10 @@ uint32_t AllocateEntryIndex(const char* key);
 // Record a call without creating a guard (e.g. FreeLibraryAndExitThread which never returns).
 // Updates total_cnt and last_call_ns only; does not touch inprogress_cnt.
 void RecordCallNoGuard(uint32_t entry_index, uint64_t timestamp_ns);
+
+// Set optional context for a call site (by key, e.g. "GetMessageW_Detour:519"). Shown in undestroyed-guards
+// crash report. Thread-safe. Use DETOUR_SET_CONTEXT_AT(line, fmt, ...) with the line number of RECORD_DETOUR_CALL.
+void SetCallSiteContextByKey(const char* key, const char* fmt, ...);
 
 // RAII guard: on construction increments entry's inprogress_cnt, total_cnt, sets last_call_ns;
 // on destruction decrements inprogress_cnt. If destructor never runs (crash), inprogress_cnt stays > 0.
@@ -75,3 +83,9 @@ std::string FormatAllLatestCalls(uint64_t now_ns);
         DETOUR_CALL_SITE_KEY);                                                                              \
     detour_call_tracker::DetourCallGuard CONCAT(_detour_guard_, __LINE__)(CONCAT(_detour_idx_, __LINE__),  \
                                                                           (timestamp_ns))
+
+// Set context for the RECORD_DETOUR_CALL at the given line (so crash report shows e.g. "msg=0x0010 hwnd=0x...").
+// Example: DETOUR_SET_CONTEXT_AT(519, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
+#define DETOUR_CALL_SITE_KEY_AT_LINE(line) (__FUNCTION__ ":" TOSTRING(line))
+#define DETOUR_SET_CONTEXT_AT(line, fmt, ...) \
+    detour_call_tracker::SetCallSiteContextByKey(DETOUR_CALL_SITE_KEY_AT_LINE(line), fmt, ##__VA_ARGS__)

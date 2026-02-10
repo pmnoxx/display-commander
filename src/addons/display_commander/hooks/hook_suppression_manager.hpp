@@ -28,7 +28,8 @@ enum class HookType {
     HID_SUPPRESSION,
     NVAPI,
     PROCESS_EXIT,
-    WINDOW_PROC
+    WINDOW_PROC,
+    DBGHELP
 };
 
 // Hook suppression manager

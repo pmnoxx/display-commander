@@ -394,7 +394,7 @@ void CleanupExperimentalTab() {
 namespace {
 const char* LatencyMarkerTypeName(int index) {
     static const char* names[] = {"SIMULATION_START", "SIMULATION_END", "RENDERSUBMIT_START",
-                                  "RENDERSUBMIT_END", "PRESENT_START", "PRESENT_END"};
+                                  "RENDERSUBMIT_END", "PRESENT_START",  "PRESENT_END"};
     if (index >= 0 && index < static_cast<int>(sizeof(names) / sizeof(names[0]))) {
         return names[index];
     }
@@ -423,14 +423,17 @@ static void DrawThreadTrackingSubTab() {
         return;
     }
 
-    if (ImGui::CollapsingHeader("NvAPI_D3D_SetLatencyMarker_Detour (first 6 marker types)", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("NvAPI_D3D_SetLatencyMarker_Detour (first 6 marker types)",
+                                ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
-        ImGui::Text("Last thread ID that called the detour for each marker type (0 = not yet called):");
+        ImGui::Text("Last thread ID and frame_id reported for each marker type (0 = not yet called):");
         ImGui::Spacing();
         for (size_t i = 0; i < kLatencyMarkerTypeCountFirstSix; i++) {
             DWORD tid = g_latency_marker_thread_id[i].load(std::memory_order_relaxed);
-            ImGui::Text("%s: %lu (0x%lX)", LatencyMarkerTypeName(static_cast<int>(i)), static_cast<unsigned long>(tid),
-                        static_cast<unsigned long>(tid));
+            uint64_t frame_id = g_latency_marker_last_frame_id[i].load(std::memory_order_relaxed);
+            ImGui::Text("%s: TID %lu (0x%lX), frame_id %llu", LatencyMarkerTypeName(static_cast<int>(i)),
+                        static_cast<unsigned long>(tid), static_cast<unsigned long>(tid),
+                        static_cast<unsigned long long>(frame_id));
         }
         ImGui::Unindent();
     }
@@ -441,14 +444,13 @@ static void DrawThreadTrackingSubTab() {
         ImGui::Text("Last thread ID that called ChooseFpsLimiter for each option (0 = not yet called):");
         ImGui::Spacing();
         const char* fps_limiter_site_names[] = {"reflex_marker", "dxgi_swapchain", "reshade_addon_event",
-                                               "dxgi_factory_wrapper"};
+                                                "dxgi_factory_wrapper"};
         for (size_t i = 0; i < kFpsLimiterCallSiteCount; i++) {
             DWORD tid = g_fps_limiter_site_thread_id[i].load(std::memory_order_relaxed);
             const char* name = (i < sizeof(fps_limiter_site_names) / sizeof(fps_limiter_site_names[0]))
                                    ? fps_limiter_site_names[i]
                                    : "?";
-            ImGui::Text("%s: %lu (0x%lX)", name, static_cast<unsigned long>(tid),
-                        static_cast<unsigned long>(tid));
+            ImGui::Text("%s: %lu (0x%lX)", name, static_cast<unsigned long>(tid), static_cast<unsigned long>(tid));
         }
         ImGui::Unindent();
     }

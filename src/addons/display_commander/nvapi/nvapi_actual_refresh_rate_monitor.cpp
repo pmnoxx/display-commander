@@ -1,6 +1,8 @@
 #include "nvapi_actual_refresh_rate_monitor.hpp"
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
+#include "../utils/timing.hpp"
 #include "vrr_status.hpp"
 
 #include <nvapi.h>
@@ -49,6 +51,7 @@ void PushSample(double rate_hz) {
 
 void MonitorThreadFunc() {
     while (!g_stop_monitor.load(std::memory_order_relaxed)) {
+        RECORD_DETOUR_CALL(utils::get_now_ns());
         const int sleep_ms = settings::g_mainTabSettings.refresh_rate_monitor_poll_ms.GetValue();
         std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
 

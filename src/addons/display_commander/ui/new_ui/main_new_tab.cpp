@@ -1492,6 +1492,32 @@ if (enabled_experimental_features) {
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         DrawDisplaySettings(runtime);
+        // Misc (experimental / crash workarounds)
+        g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
+        if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+            ImGui::Indent();
+            ImGui::BeginGroup();
+            if (CheckboxSetting(settings::g_mainTabSettings.prevent_framegen_release,
+                                "Prevent framegen release (experimental)")) {
+                LogInfo("Prevent framegen release %s",
+                        settings::g_mainTabSettings.prevent_framegen_release.GetValue() ? "enabled" : "disabled");
+            }
+            ImGui::EndGroup();
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Block NGX ReleaseFeature for DLSS Frame Generation. Use only if the game crashes when releasing "
+                    "frame generation (e.g. on level load or menu). Not recommended by default: may cause leaks or "
+                    "instability; enable only as a crash workaround.\n\n"
+                    "Create attempts: %u\nRelease attempts: %u",
+                    g_ngx_counters.framegen_create_attempt_count.load(),
+                    g_ngx_counters.framegen_release_attempt_count.load());
+            }
+            if (settings::g_mainTabSettings.prevent_framegen_release.GetValue()) {
+                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                                   " Should not be used by default. Enable only to work around crashes.");
+            }
+            ImGui::Unindent();
+        }
         ImGui::Unindent();
     }
 
@@ -2408,116 +2434,147 @@ void DrawDisplaySettings_FpsLimiterMode() {
                     settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                    std::string tooltip =
                         "Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS "
                         "limit "
-                        "for better latency reduction.");
+                        "for better latency reduction.";
+                    auto last_params = ::g_last_reflex_params_set_by_addon.load();
+                    if (last_params) {
+                        float fps = (last_params->minimumIntervalUs > 0)
+                                        ? (1000000.0f / static_cast<float>(last_params->minimumIntervalUs))
+                                        : 0.0f;
+                        tooltip += "\n\nLast Reflex settings we set via API:";
+                        tooltip += "\n  Low Latency: ";
+                        tooltip += (last_params->bLowLatencyMode != 0) ? "On" : "Off";
+                        tooltip += ", Boost: ";
+                        tooltip += (last_params->bLowLatencyBoost != 0) ? "On" : "Off";
+                        tooltip += ", Use Markers: ";
+                        tooltip += (last_params->bUseMarkersToOptimize != 0) ? "On" : "Off";
+                        tooltip += "\n  FPS limit: ";
+                        if (fps > 0.0f) {
+                            std::ostringstream oss;
+                            oss << std::fixed << std::setprecision(1) << fps;
+                            tooltip += oss.str();
+                        } else {
+                            tooltip += "none";
+                        }
+                    }
+                    ImGui::SetTooltip("%s", tooltip.c_str());
                 }
 
                 // Low Latency Ratio Selector (Experimental WIP placeholder)
                 ImGui::Spacing();
                 // ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Low Latency Ratio:");
                 // ImGui::SameLine();
-                if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
-                                        "Display / Input Ratio")) {
-                    // Setting is automatically saved via ComboSettingWrapper
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "Controls the balance between display latency and input latency.\n\n"
-                        "Available in 12.5%% steps:\n"
-                        "100%% Display / 0%% Input: Prioritizes consistent frame timing (better frame timing at cost "
-                        "of latency)\n"
-                        "87.5%% Display / 12.5%% Input: Slight input latency reduction\n"
-                        "75%% Display / 25%% Input: Moderate input latency reduction\n"
-                        "62.5%% Display / 37.5%% Input: Balanced with slight input preference\n"
-                        "50%% Display / 50%% Input: Balanced approach\n"
-                        "37.5%% Display / 62.5%% Input: Balanced with slight display preference\n"
-                        "25%% Display / 75%% Input: Prioritizes input responsiveness\n"
-                        "12.5%% Display / 87.5%% Input: Strong input preference\n"
-                        "0%% Display / 100%% Input: Maximum input responsiveness (lower latency)\n\n"
-                        "Note: This is an experimental feature.");
-                }
+                auto display_input_ratio = !(::IsNativeFramePacingInSync()
+                                             && settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue());
 
-                // Debug Info Button
-                ImGui::SameLine();
-                static bool show_delay_bias_debug = false;
-                if (ImGui::SmallButton("[Debug]")) {
-                    show_delay_bias_debug = !show_delay_bias_debug;
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Show delay_bias debug information");
-                }
-
-                // Debug Info Window
-                if (show_delay_bias_debug) {
-                    ImGui::Begin("Delay Bias Debug Info", &show_delay_bias_debug, ImGuiWindowFlags_AlwaysAutoResize);
-
-                    // Get current values
-                    int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
-                    float delay_bias = g_onpresent_sync_delay_bias.load();
-                    LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
-                    LONGLONG last_frame_end_ns = g_onpresent_sync_last_frame_end_ns.load();
-                    LONGLONG frame_start_ns = g_onpresent_sync_frame_start_ns.load();
-                    LONGLONG pre_sleep_ns = g_onpresent_sync_pre_sleep_ns.load();
-                    LONGLONG post_sleep_ns = g_onpresent_sync_post_sleep_ns.load();
-                    LONGLONG late_ns = late_amount_ns.load();
-
-                    // Display ratio index and delay_bias
-                    ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Ratio Settings:");
-                    ImGui::Text("Ratio Index: %d", ratio_index);
-                    float display_pct = (1.0f - delay_bias) * 100.0f;
-                    float input_pct = delay_bias * 100.0f;
-                    ImGui::Text("Delay Bias: %.3f (%.1f%% Display / %.1f%% Input)", delay_bias, display_pct, input_pct);
-
-                    ImGui::Spacing();
-                    ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing:");
-                    if (frame_time_ns > 0) {
-                        float frame_time_ms = frame_time_ns / 1'000'000.0f;
-                        float target_fps = 1000.0f / frame_time_ms;
-                        ImGui::Text("Frame Time: %.3f ms (%.1f FPS)", frame_time_ms, target_fps);
-                    } else {
-                        ImGui::TextColored(ui::colors::TEXT_WARNING, "Frame Time: Not set (FPS limiter disabled?)");
+                if (display_input_ratio) {
+                    if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
+                                            "Display / Input Ratio")) {
+                        // Setting is automatically saved via ComboSettingWrapper
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "Controls the balance between display latency and input latency.\n\n"
+                            "Available in 12.5%% steps:\n"
+                            "100%% Display / 0%% Input: Prioritizes consistent frame timing (better frame timing at "
+                            "cost "
+                            "of latency)\n"
+                            "87.5%% Display / 12.5%% Input: Slight input latency reduction\n"
+                            "75%% Display / 25%% Input: Moderate input latency reduction\n"
+                            "62.5%% Display / 37.5%% Input: Balanced with slight input preference\n"
+                            "50%% Display / 50%% Input: Balanced approach\n"
+                            "37.5%% Display / 62.5%% Input: Balanced with slight display preference\n"
+                            "25%% Display / 75%% Input: Prioritizes input responsiveness\n"
+                            "12.5%% Display / 87.5%% Input: Strong input preference\n"
+                            "0%% Display / 100%% Input: Maximum input responsiveness (lower latency)\n\n"
+                            "Note: This is an experimental feature.");
                     }
 
-                    ImGui::Spacing();
-                    ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Sleep Times:");
-                    if (pre_sleep_ns > 0) {
-                        ImGui::Text("Pre-Sleep: %.3f ms", pre_sleep_ns / 1'000'000.0f);
-                    } else {
-                        ImGui::Text("Pre-Sleep: 0 ms");
+                    // Debug Info Button
+                    ImGui::SameLine();
+                    static bool show_delay_bias_debug = false;
+                    if (ImGui::SmallButton("[Debug]")) {
+                        show_delay_bias_debug = !show_delay_bias_debug;
                     }
-                    if (post_sleep_ns > 0) {
-                        ImGui::Text("Post-Sleep: %.3f ms", post_sleep_ns / 1'000'000.0f);
-                    } else {
-                        ImGui::Text("Post-Sleep: 0 ms");
-                    }
-                    if (late_ns != 0) {
-                        ImGui::TextColored(ui::colors::TEXT_WARNING, "Late Amount: %.3f ms", late_ns / 1'000'000.0f);
-                    } else {
-                        ImGui::Text("Late Amount: 0 ms");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Show delay_bias debug information");
                     }
 
-                    ImGui::Spacing();
-                    ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing (Raw):");
-                    if (last_frame_end_ns > 0) {
-                        LONGLONG now_ns = utils::get_now_ns();
-                        LONGLONG time_since_last_frame_ns = now_ns - last_frame_end_ns;
-                        ImGui::Text("Last Frame End: %lld ns (%.3f ms ago)", last_frame_end_ns,
-                                    time_since_last_frame_ns / 1'000'000.0f);
-                    } else {
-                        ImGui::Text("Last Frame End: Not set (first frame?)");
-                    }
-                    if (frame_start_ns > 0) {
-                        LONGLONG now_ns = utils::get_now_ns();
-                        LONGLONG time_since_start_ns = now_ns - frame_start_ns;
-                        ImGui::Text("Frame Start: %lld ns (%.3f ms ago)", frame_start_ns,
-                                    time_since_start_ns / 1'000'000.0f);
-                    } else {
-                        ImGui::Text("Frame Start: Not set");
-                    }
+                    // Debug Info Window
+                    if (show_delay_bias_debug) {
+                        ImGui::Begin("Delay Bias Debug Info", &show_delay_bias_debug,
+                                     ImGuiWindowFlags_AlwaysAutoResize);
 
-                    ImGui::End();
+                        // Get current values
+                        int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
+                        float delay_bias = g_onpresent_sync_delay_bias.load();
+                        LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
+                        LONGLONG last_frame_end_ns = g_onpresent_sync_last_frame_end_ns.load();
+                        LONGLONG frame_start_ns = g_onpresent_sync_frame_start_ns.load();
+                        LONGLONG pre_sleep_ns = g_onpresent_sync_pre_sleep_ns.load();
+                        LONGLONG post_sleep_ns = g_onpresent_sync_post_sleep_ns.load();
+                        LONGLONG late_ns = late_amount_ns.load();
+
+                        // Display ratio index and delay_bias
+                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Ratio Settings:");
+                        ImGui::Text("Ratio Index: %d", ratio_index);
+                        float display_pct = (1.0f - delay_bias) * 100.0f;
+                        float input_pct = delay_bias * 100.0f;
+                        ImGui::Text("Delay Bias: %.3f (%.1f%% Display / %.1f%% Input)", delay_bias, display_pct,
+                                    input_pct);
+
+                        ImGui::Spacing();
+                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing:");
+                        if (frame_time_ns > 0) {
+                            float frame_time_ms = frame_time_ns / 1'000'000.0f;
+                            float target_fps = 1000.0f / frame_time_ms;
+                            ImGui::Text("Frame Time: %.3f ms (%.1f FPS)", frame_time_ms, target_fps);
+                        } else {
+                            ImGui::TextColored(ui::colors::TEXT_WARNING, "Frame Time: Not set (FPS limiter disabled?)");
+                        }
+
+                        ImGui::Spacing();
+                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Sleep Times:");
+                        if (pre_sleep_ns > 0) {
+                            ImGui::Text("Pre-Sleep: %.3f ms", pre_sleep_ns / 1'000'000.0f);
+                        } else {
+                            ImGui::Text("Pre-Sleep: 0 ms");
+                        }
+                        if (post_sleep_ns > 0) {
+                            ImGui::Text("Post-Sleep: %.3f ms", post_sleep_ns / 1'000'000.0f);
+                        } else {
+                            ImGui::Text("Post-Sleep: 0 ms");
+                        }
+                        if (late_ns != 0) {
+                            ImGui::TextColored(ui::colors::TEXT_WARNING, "Late Amount: %.3f ms",
+                                               late_ns / 1'000'000.0f);
+                        } else {
+                            ImGui::Text("Late Amount: 0 ms");
+                        }
+
+                        ImGui::Spacing();
+                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing (Raw):");
+                        if (last_frame_end_ns > 0) {
+                            LONGLONG now_ns = utils::get_now_ns();
+                            LONGLONG time_since_last_frame_ns = now_ns - last_frame_end_ns;
+                            ImGui::Text("Last Frame End: %lld ns (%.3f ms ago)", last_frame_end_ns,
+                                        time_since_last_frame_ns / 1'000'000.0f);
+                        } else {
+                            ImGui::Text("Last Frame End: Not set (first frame?)");
+                        }
+                        if (frame_start_ns > 0) {
+                            LONGLONG now_ns = utils::get_now_ns();
+                            LONGLONG time_since_start_ns = now_ns - frame_start_ns;
+                            ImGui::Text("Frame Start: %lld ns (%.3f ms ago)", frame_start_ns,
+                                        time_since_start_ns / 1'000'000.0f);
+                        } else {
+                            ImGui::Text("Frame Start: Not set");
+                        }
+
+                        ImGui::End();
+                    }
                 }
             }
         }
@@ -2691,6 +2748,26 @@ void DrawDisplaySettings_FpsLimiterMode() {
                     ImGui::SetTooltip(
                         "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
                         "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
+                }
+                // Delay present start: checkbox and slider on same line (default off, 0–2 frames)
+                if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
+                                    "Delay present start after Sim Start")) {
+                    LogInfo("Delay present start after Sim Start %s",
+                            settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
+                                                                                                         : "disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "When enabled, PRESENT_START is delayed until (SIMULATION_START + N frame times).\n"
+                        "Use the slider to set N (0 = no delay, 1 = one frame, 0.5 = half frame, etc.).");
+                }
+                ImGui::SameLine();
+                if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)",
+                                       "%.2f")) {
+                    // Setting is automatically saved by SliderFloatSetting
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
                 }
             }
         }

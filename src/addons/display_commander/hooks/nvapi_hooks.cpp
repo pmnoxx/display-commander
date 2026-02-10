@@ -135,7 +135,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
             g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
             g_latency_marker_last_frame_id[marker_type].store(pSetLatencyMarkerParams->frameID,
-                                                             std::memory_order_relaxed);
+                                                              std::memory_order_relaxed);
         }
     }
 

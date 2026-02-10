@@ -1253,9 +1253,11 @@ void ResolutionWidget::DrawHdrSection() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Inject HDR10 static metadata (e.g. 1000 nits) instead of using source values. "
+                "Inject HDR10 static metadata instead of using source values. \n"
                 "Use when HDR looks dim or washed out on PC. TVs that often need this: Samsung, Sony, Panasonic "
-                "(they handle MaxCLL/MaxFALL differently or ignore source metadata).");
+                "(they handle MaxCLL/MaxFALL differently or ignore source metadata).\n\n"
+                "Exact override values: MaxCLL = 1000, MaxFALL = 100, MaxMasteringLuminance = 1000 nits, \n"
+                "MinMasteringLuminance = 0 nits; color primaries Rec. 2020, white point D65.");
         }
         ImGui::Unindent();
     }

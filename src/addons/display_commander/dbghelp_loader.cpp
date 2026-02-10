@@ -35,17 +35,32 @@ bool LoadDbgHelp() {
         return false;
     }
 
-    // Get function addresses
-    SymGetOptions_Original = (SymGetOptions_pfn)GetProcAddress(g_dbghelp_module, "SymGetOptions");
-    SymSetOptions_Original = (SymSetOptions_pfn)GetProcAddress(g_dbghelp_module, "SymSetOptions");
-    SymInitialize_Original = (SymInitialize_pfn)GetProcAddress(g_dbghelp_module, "SymInitialize");
-    SymCleanup_Original = (SymCleanup_pfn)GetProcAddress(g_dbghelp_module, "SymCleanup");
+    // Get function addresses. If DbgHelp hooks were already installed (game loaded dbghelp first),
+    // the hook layer set _Original to trampolines; do not overwrite those.
+    if (!SymGetOptions_Original) {
+        SymGetOptions_Original = (SymGetOptions_pfn)GetProcAddress(g_dbghelp_module, "SymGetOptions");
+    }
+    if (!SymSetOptions_Original) {
+        SymSetOptions_Original = (SymSetOptions_pfn)GetProcAddress(g_dbghelp_module, "SymSetOptions");
+    }
+    if (!SymInitialize_Original) {
+        SymInitialize_Original = (SymInitialize_pfn)GetProcAddress(g_dbghelp_module, "SymInitialize");
+    }
+    if (!SymCleanup_Original) {
+        SymCleanup_Original = (SymCleanup_pfn)GetProcAddress(g_dbghelp_module, "SymCleanup");
+    }
     StackWalk64_Original = (StackWalk64_pfn)GetProcAddress(g_dbghelp_module, "StackWalk64");
     SymFunctionTableAccess64_Original = (SymFunctionTableAccess64_pfn)GetProcAddress(g_dbghelp_module, "SymFunctionTableAccess64");
     SymGetModuleBase64_Original = (SymGetModuleBase64_pfn)GetProcAddress(g_dbghelp_module, "SymGetModuleBase64");
-    SymFromAddr_Original = (SymFromAddr_pfn)GetProcAddress(g_dbghelp_module, "SymFromAddr");
-    SymGetLineFromAddr64_Original = (SymGetLineFromAddr64_pfn)GetProcAddress(g_dbghelp_module, "SymGetLineFromAddr64");
-    SymGetModuleInfo64_Original = (SymGetModuleInfo64_pfn)GetProcAddress(g_dbghelp_module, "SymGetModuleInfo64");
+    if (!SymFromAddr_Original) {
+        SymFromAddr_Original = (SymFromAddr_pfn)GetProcAddress(g_dbghelp_module, "SymFromAddr");
+    }
+    if (!SymGetLineFromAddr64_Original) {
+        SymGetLineFromAddr64_Original = (SymGetLineFromAddr64_pfn)GetProcAddress(g_dbghelp_module, "SymGetLineFromAddr64");
+    }
+    if (!SymGetModuleInfo64_Original) {
+        SymGetModuleInfo64_Original = (SymGetModuleInfo64_pfn)GetProcAddress(g_dbghelp_module, "SymGetModuleInfo64");
+    }
 
     // Check if all required functions are available
     bool all_functions_available =
@@ -107,6 +122,20 @@ void SetSuppressStackWalkLogging(bool suppress) {
 
 bool GetSuppressStackWalkLogging() {
     return g_suppress_stack_walk_logging;
+}
+
+void EnsureSymbolsInitialized(HANDLE process) {
+    if (!g_dbghelp_available.load() || !process) {
+        return;
+    }
+    if (SymSetOptions_Original) {
+        const DWORD opts = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
+        SymSetOptions_Original(opts);
+    }
+    if (SymInitialize_Original) {
+        // Idempotent: returns TRUE and does nothing if already initialized for this process
+        SymInitialize_Original(process, nullptr, TRUE);
+    }
 }
 
 } // namespace dbghelp_loader

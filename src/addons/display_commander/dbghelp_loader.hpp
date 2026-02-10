@@ -38,4 +38,8 @@ bool IsDbgHelpAvailable();
 void SetSuppressStackWalkLogging(bool suppress);
 bool GetSuppressStackWalkLogging();
 
+// Ensures SymInitialize has been called for the given process so that symbol resolution
+// (SymGetModuleInfo64, SymFromAddr) works when logging stack frames. Idempotent.
+void EnsureSymbolsInitialized(HANDLE process);
+
 } // namespace dbghelp_loader

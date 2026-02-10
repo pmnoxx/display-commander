@@ -27,6 +27,20 @@ using StackWalkEx_pfn = BOOL(WINAPI*)(DWORD, HANDLE, HANDLE, LPSTACKFRAME_EX, PV
 StackWalk64_pfn StackWalk64_Trampoline = nullptr;
 StackWalkEx_pfn StackWalkEx_Trampoline = nullptr;
 
+using SymSetOptions_pfn = dbghelp_loader::SymSetOptions_pfn;
+using SymInitialize_pfn = dbghelp_loader::SymInitialize_pfn;
+using SymCleanup_pfn = dbghelp_loader::SymCleanup_pfn;
+using SymFromAddr_pfn = dbghelp_loader::SymFromAddr_pfn;
+using SymGetModuleInfo64_pfn = dbghelp_loader::SymGetModuleInfo64_pfn;
+using SymGetLineFromAddr64_pfn = dbghelp_loader::SymGetLineFromAddr64_pfn;
+
+SymSetOptions_pfn SymSetOptions_Trampoline = nullptr;
+SymInitialize_pfn SymInitialize_Trampoline = nullptr;
+SymCleanup_pfn SymCleanup_Trampoline = nullptr;
+SymFromAddr_pfn SymFromAddr_Trampoline = nullptr;
+SymGetModuleInfo64_pfn SymGetModuleInfo64_Trampoline = nullptr;
+SymGetLineFromAddr64_pfn SymGetLineFromAddr64_Trampoline = nullptr;
+
 thread_local std::vector<DWORD64> s_collected_pcs;
 
 // Format a single PC using DbgHelp symbol APIs (same style as stack_trace)
@@ -75,6 +89,7 @@ static void LogCollectedStackWalk(HANDLE process) {
     if (s_collected_pcs.empty()) {
         return;
     }
+    dbghelp_loader::EnsureSymbolsInitialized(process);
     DWORD thread_id = GetCurrentThreadId();
     LogInfo("[DbgHelp stack query] TID %lu, %zu frames:", static_cast<unsigned long>(thread_id), s_collected_pcs.size());
     for (size_t i = 0; i < s_collected_pcs.size(); ++i) {
@@ -118,6 +133,36 @@ BOOL WINAPI StackWalk64_Detour(DWORD machine_type,
     }
 
     return result;
+}
+
+DWORD WINAPI SymSetOptions_Detour(DWORD options) {
+    LogInfo("[DbgHelp] SymSetOptions(0x%lX)", static_cast<unsigned long>(options));
+    return SymSetOptions_Trampoline ? SymSetOptions_Trampoline(options) : 0;
+}
+
+BOOL WINAPI SymInitialize_Detour(HANDLE h_process, PCSTR user_search_path, BOOL invade_process) {
+    LogInfo("[DbgHelp] SymInitialize(process=%p, fInvadeProcess=%d)", static_cast<void*>(h_process), invade_process ? 1 : 0);
+    return SymInitialize_Trampoline ? SymInitialize_Trampoline(h_process, user_search_path, invade_process) : FALSE;
+}
+
+BOOL WINAPI SymCleanup_Detour(HANDLE h_process) {
+    LogInfo("[DbgHelp] SymCleanup(process=%p)", static_cast<void*>(h_process));
+    return SymCleanup_Trampoline ? SymCleanup_Trampoline(h_process) : FALSE;
+}
+
+BOOL WINAPI SymFromAddr_Detour(HANDLE h_process, DWORD64 address, PDWORD64 displacement, PSYMBOL_INFO symbol_info) {
+    LogInfo("[DbgHelp] SymFromAddr(process=%p, addr=0x%llX)", static_cast<void*>(h_process), static_cast<unsigned long long>(address));
+    return SymFromAddr_Trampoline ? SymFromAddr_Trampoline(h_process, address, displacement, symbol_info) : FALSE;
+}
+
+BOOL WINAPI SymGetModuleInfo64_Detour(HANDLE h_process, DWORD64 base_addr, PIMAGEHLP_MODULE64 module_info) {
+    LogInfo("[DbgHelp] SymGetModuleInfo64(process=%p, base=0x%llX)", static_cast<void*>(h_process), static_cast<unsigned long long>(base_addr));
+    return SymGetModuleInfo64_Trampoline ? SymGetModuleInfo64_Trampoline(h_process, base_addr, module_info) : FALSE;
+}
+
+BOOL WINAPI SymGetLineFromAddr64_Detour(HANDLE h_process, DWORD64 address, PDWORD displacement, PIMAGEHLP_LINE64 line_info) {
+    LogInfo("[DbgHelp] SymGetLineFromAddr64(process=%p, addr=0x%llX)", static_cast<void*>(h_process), static_cast<unsigned long long>(address));
+    return SymGetLineFromAddr64_Trampoline ? SymGetLineFromAddr64_Trampoline(h_process, address, displacement, line_info) : FALSE;
 }
 
 BOOL WINAPI StackWalkEx_Detour(DWORD machine_type,
@@ -197,6 +242,49 @@ bool InstallDbgHelpHooks(HMODULE dbghelp_module) {
             MH_EnableHook(stack_walk_ex_target) == MH_OK) {
             LogInfo("DbgHelp hooks: StackWalkEx hook installed");
         }
+    }
+
+    // Symbol API hooks: log when anyone calls SymSetOptions, SymInitialize, etc.
+    // After each hook we set the loader's _Original to the trampoline so our own code
+    // (EnsureSymbolsInitialized, FormatPc, stack_trace) calls the real implementation without logging.
+    auto install_symbol_hook = [dbghelp_module](const char* name, LPVOID detour, LPVOID* trampoline) {
+        void* target = GetProcAddress(dbghelp_module, name);
+        if (!target) {
+            return;
+        }
+        if (MH_CreateHook(target, detour, trampoline) == MH_OK && MH_EnableHook(target) == MH_OK) {
+            LogInfo("DbgHelp hooks: %s hook installed", name);
+        }
+    };
+    install_symbol_hook("SymSetOptions", reinterpret_cast<LPVOID>(&SymSetOptions_Detour),
+                        reinterpret_cast<LPVOID*>(&SymSetOptions_Trampoline));
+    if (SymSetOptions_Trampoline) {
+        dbghelp_loader::SymSetOptions_Original = SymSetOptions_Trampoline;
+    }
+    install_symbol_hook("SymInitialize", reinterpret_cast<LPVOID>(&SymInitialize_Detour),
+                        reinterpret_cast<LPVOID*>(&SymInitialize_Trampoline));
+    if (SymInitialize_Trampoline) {
+        dbghelp_loader::SymInitialize_Original = SymInitialize_Trampoline;
+    }
+    install_symbol_hook("SymCleanup", reinterpret_cast<LPVOID>(&SymCleanup_Detour),
+                        reinterpret_cast<LPVOID*>(&SymCleanup_Trampoline));
+    if (SymCleanup_Trampoline) {
+        dbghelp_loader::SymCleanup_Original = SymCleanup_Trampoline;
+    }
+    install_symbol_hook("SymFromAddr", reinterpret_cast<LPVOID>(&SymFromAddr_Detour),
+                        reinterpret_cast<LPVOID*>(&SymFromAddr_Trampoline));
+    if (SymFromAddr_Trampoline) {
+        dbghelp_loader::SymFromAddr_Original = SymFromAddr_Trampoline;
+    }
+    install_symbol_hook("SymGetModuleInfo64", reinterpret_cast<LPVOID>(&SymGetModuleInfo64_Detour),
+                        reinterpret_cast<LPVOID*>(&SymGetModuleInfo64_Trampoline));
+    if (SymGetModuleInfo64_Trampoline) {
+        dbghelp_loader::SymGetModuleInfo64_Original = SymGetModuleInfo64_Trampoline;
+    }
+    install_symbol_hook("SymGetLineFromAddr64", reinterpret_cast<LPVOID>(&SymGetLineFromAddr64_Detour),
+                        reinterpret_cast<LPVOID*>(&SymGetLineFromAddr64_Trampoline));
+    if (SymGetLineFromAddr64_Trampoline) {
+        dbghelp_loader::SymGetLineFromAddr64_Original = SymGetLineFromAddr64_Trampoline;
     }
 
     return true;

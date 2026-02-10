@@ -753,9 +753,9 @@ void ContinuousMonitoringThread() {
         const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
         while (g_monitoring_thread_running.load()) {
-            RECORD_DETOUR_CALL(utils::get_now_ns());
             g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
             std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
+            RECORD_DETOUR_CALL(utils::get_now_ns());
             LONGLONG loop_time_ns = utils::get_real_time_ns();
             g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
             FILETIME ft = {};

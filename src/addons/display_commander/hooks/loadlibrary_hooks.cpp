@@ -18,6 +18,7 @@
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
 #include "api_hooks.hpp"
+#include "dbghelp_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "ngx_hooks.hpp"
 #include "nvapi_hooks.hpp"
@@ -1014,6 +1015,15 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("NGX hooks installed successfully");
         } else {
             LogError("Failed to install NGX hooks");
+        }
+    }
+    // dbghelp.dll – log stack trace queries from any thread
+    else if (lowerModuleName.find(L"dbghelp.dll") != std::wstring::npos) {
+        LogInfo("Installing DbgHelp hooks for module: %ws", moduleName.c_str());
+        if (InstallDbgHelpHooks(hModule)) {
+            LogInfo("DbgHelp hooks installed successfully");
+        } else {
+            LogInfo("DbgHelp hooks not installed (e.g. already installed or symbol not found)");
         }
     }
 

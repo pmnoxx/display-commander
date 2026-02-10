@@ -747,11 +747,8 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
 
     if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
         || show_dlss_render_preset) {
-        // Get only the fields we need directly instead of calling GetDLSSGSummary()
-        const bool dlss_active = g_dlss_enabled.load();
-        const bool dlss_g_active = g_dlssg_enabled.load();
-        const bool ray_reconstruction_active = g_ray_reconstruction_enabled.load();
-        auto any_dlss_active = dlss_active || dlss_g_active || ray_reconstruction_active;
+        const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
+        const bool any_dlss_active = dlss_lite.any_dlss_active;
 
         // Get fg_mode if needed
         std::string fg_mode = "N/A";
@@ -863,11 +860,11 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                 }
 
                 // Add details about which DLSS feature is active
-                if (ray_reconstruction_active) {
+                if (dlss_lite.ray_reconstruction_active) {
                     status_text += " (RR)";
-                } else if (dlss_g_active) {
+                } else if (dlss_lite.dlss_g_active) {
                     status_text += " (DLSS-G)";
-                } else if (dlss_active) {
+                } else if (dlss_lite.dlss_active) {
                     // Regular DLSS Super Resolution is active (no suffix needed)
                 }
 
@@ -904,7 +901,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                     int render_preset_value = 0;
 
                     // Use Ray Reconstruction presets if RR is active, otherwise use Super Resolution presets
-                    if (ray_reconstruction_active) {
+                    if (dlss_lite.ray_reconstruction_active) {
                         // Determine which Ray Reconstruction render preset value to display based on current quality
                         // preset
                         if (current_quality == "Quality") {

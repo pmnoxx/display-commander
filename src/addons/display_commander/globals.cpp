@@ -893,14 +893,14 @@ DLSSGSummary GetDLSSGSummary() {
     return summary;
 }
 
-// Lite version: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active, fg_mode (call every frame from FPS limiter / overlay)
+// Lite version: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active, fg_mode (call every frame from
+// FPS limiter / overlay)
 DLSSGSummaryLite GetDLSSGSummaryLite() {
     DLSSGSummaryLite summary;
     summary.dlss_active = g_dlss_enabled.load();
     summary.dlss_g_active = g_dlssg_enabled.load();
     summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load();
-    summary.any_dlss_active =
-        summary.dlss_active || summary.dlss_g_active || summary.ray_reconstruction_active;
+    summary.any_dlss_active = summary.dlss_active || summary.dlss_g_active || summary.ray_reconstruction_active;
 
     int enable_interp;
     if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp)) {

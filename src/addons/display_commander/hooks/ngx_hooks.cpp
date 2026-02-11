@@ -884,7 +884,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
         && InFeatureID == NVSDK_NGX_Feature_FrameGeneration) {
         NVSDK_NGX_Handle* kept = g_kept_framegen_handle_d3d12.load(std::memory_order_acquire);
         if (kept != nullptr && OutHandle != nullptr) {
-            LogInfo("NGX D3D12 CreateFeature: reusing kept DLSS Frame Generation handle (prevent double-creation)");
+            LogInfo("NGX D3D12 CreateFeature: reusing kept DLSS Frame Generation handle (prevent double-creation) (#%u)",
+                    g_ngx_counters.framegen_create_attempt_count.load());
             *OutHandle = kept;
             return NVSDK_NGX_Result_Success;
         }
@@ -924,16 +925,19 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
             case NVSDK_NGX_Feature_FrameGeneration:   featureName = "DLSS Frame Generation"; break;
             case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
         }
-        LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s", featureName);
-
         if (feature == NVSDK_NGX_Feature_FrameGeneration) {
             g_ngx_counters.framegen_release_attempt_count.fetch_add(1);
+            LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s (#%u)", featureName,
+                    g_ngx_counters.framegen_release_attempt_count.load());
+        } else {
+            LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s", featureName);
         }
 
         // Prevent framegen release workaround: skip actual release to avoid crashes in some games
         if (feature == NVSDK_NGX_Feature_FrameGeneration
             && settings::g_mainTabSettings.prevent_framegen_release.GetValue()) {
-            LogInfo("NGX D3D12 ReleaseFeature: preventing DLSS Frame Generation release (workaround enabled)");
+            LogInfo("NGX D3D12 ReleaseFeature: preventing DLSS Frame Generation release (workaround enabled) (#%u)",
+                    g_ngx_counters.framegen_release_attempt_count.load());
             g_kept_framegen_handle_d3d12.store(InHandle, std::memory_order_release);
             return NVSDK_NGX_Result_Success;
         }
@@ -1226,7 +1230,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
         && InFeatureID == NVSDK_NGX_Feature_FrameGeneration) {
         NVSDK_NGX_Handle* kept = g_kept_framegen_handle_d3d11.load(std::memory_order_acquire);
         if (kept != nullptr && OutHandle != nullptr) {
-            LogInfo("NGX D3D11 CreateFeature: reusing kept DLSS Frame Generation handle (prevent double-creation)");
+            LogInfo("NGX D3D11 CreateFeature: reusing kept DLSS Frame Generation handle (prevent double-creation) (#%u)",
+                    g_ngx_counters.framegen_create_attempt_count.load());
             *OutHandle = kept;
             return NVSDK_NGX_Result_Success;
         }
@@ -1267,16 +1272,19 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Hand
             case NVSDK_NGX_Feature_FrameGeneration:   featureName = "DLSS Frame Generation"; break;
             case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
         }
-        LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s", featureName);
-
         if (feature == NVSDK_NGX_Feature_FrameGeneration) {
             g_ngx_counters.framegen_release_attempt_count.fetch_add(1);
+            LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s (#%u)", featureName,
+                    g_ngx_counters.framegen_release_attempt_count.load());
+        } else {
+            LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s", featureName);
         }
 
         // Prevent framegen release workaround: skip actual release to avoid crashes in some games
         if (feature == NVSDK_NGX_Feature_FrameGeneration
             && settings::g_mainTabSettings.prevent_framegen_release.GetValue()) {
-            LogInfo("NGX D3D11 ReleaseFeature: preventing DLSS Frame Generation release (workaround enabled)");
+            LogInfo("NGX D3D11 ReleaseFeature: preventing DLSS Frame Generation release (workaround enabled) (#%u)",
+                    g_ngx_counters.framegen_release_attempt_count.load());
             g_kept_framegen_handle_d3d11.store(InHandle, std::memory_order_release);
             return NVSDK_NGX_Result_Success;
         }

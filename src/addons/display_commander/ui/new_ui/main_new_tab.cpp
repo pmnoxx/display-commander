@@ -3746,9 +3746,6 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
             present_mode_color = ui::colors::TEXT_ERROR;
         }
         ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-        ImGui::SameLine();
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
         const char* flip_state_str = "Unknown";
         switch (flip_state) {
@@ -3771,17 +3768,24 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
                                      : "Unavailable";
                 break;
         }
-        ImGui::TextColored(flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
-                           : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
-                               ? ui::colors::FLIP_INDEPENDENT
-                           : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                              || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                              || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                              || flip_state == DxgiBypassMode::kQueryFailedNoStats)
-                               ? ui::colors::TEXT_ERROR
-                               : ui::colors::FLIP_UNKNOWN,
-                           "Status: %s", flip_state_str);
-        bool status_hovered = ImGui::IsItemHovered();
+        bool status_hovered = false;
+        if (flip_state != DxgiBypassMode::kQueryFailedNoMedia) {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
+            ImGui::SameLine();
+            ImGui::TextColored(
+                flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
+                : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
+                    ? ui::colors::FLIP_INDEPENDENT
+                : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                   || flip_state == DxgiBypassMode::kQueryFailedNoStats)
+                    ? ui::colors::TEXT_ERROR
+                    : ui::colors::FLIP_UNKNOWN,
+                "Status: %s", flip_state_str);
+            status_hovered = ImGui::IsItemHovered();
+        }
 
         DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
 

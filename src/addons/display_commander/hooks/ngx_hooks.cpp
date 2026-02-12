@@ -11,7 +11,6 @@
 #include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
-#include "../settings/main_tab_settings.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
@@ -80,11 +79,6 @@ typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback)(float InCurrentProgress
 // Handle tracking for NGX features
 static std::map<NVSDK_NGX_Handle*, NVSDK_NGX_Feature> g_ngx_handle_map;
 static SRWLOCK g_ngx_handle_mutex = SRWLOCK_INIT;
-
-// When prevent_framegen_release is used, we skip ReleaseFeature and store the handle here so a second
-// CreateFeature(FrameGeneration) can return this handle instead of creating a duplicate in NGX.
-static std::atomic<NVSDK_NGX_Handle*> g_kept_framegen_handle_d3d12{nullptr};
-static std::atomic<NVSDK_NGX_Handle*> g_kept_framegen_handle_d3d11{nullptr};
 
 // Using official NVIDIA NGX enums from nvsdk_ngx_defs.h
 
@@ -159,8 +153,6 @@ static void CleanupNGXHandleTracking() {
     g_dlss_enabled.store(false);
     g_dlssg_enabled.store(false);
     g_ray_reconstruction_enabled.store(false);
-    g_kept_framegen_handle_d3d12.store(nullptr, std::memory_order_release);
-    g_kept_framegen_handle_d3d11.store(nullptr, std::memory_order_release);
 
     LogInfo("NGX handle tracking cleaned up");
 }
@@ -879,18 +871,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
         g_ngx_counters.framegen_create_attempt_count.fetch_add(1);
     }
 
-    // When we previously prevented framegen release, return the kept handle so NGX is not created twice
-    if (settings::g_mainTabSettings.prevent_framegen_release.GetValue()
-        && InFeatureID == NVSDK_NGX_Feature_FrameGeneration) {
-        NVSDK_NGX_Handle* kept = g_kept_framegen_handle_d3d12.load(std::memory_order_acquire);
-        if (kept != nullptr && OutHandle != nullptr) {
-            LogInfo("NGX D3D12 CreateFeature: reusing kept DLSS Frame Generation handle (prevent double-creation) (#%u)",
-                    g_ngx_counters.framegen_create_attempt_count.load());
-            *OutHandle = kept;
-            return NVSDK_NGX_Result_Success;
-        }
-    }
-
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
         HookNGXParameterVTable(InParameters);
@@ -926,20 +906,9 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
             case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
         }
         if (feature == NVSDK_NGX_Feature_FrameGeneration) {
-            g_ngx_counters.framegen_release_attempt_count.fetch_add(1);
-            LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s (#%u)", featureName,
-                    g_ngx_counters.framegen_release_attempt_count.load());
+            LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s", featureName);
         } else {
             LogInfo("NGX D3D12 ReleaseFeature called - Releasing %s", featureName);
-        }
-
-        // Prevent framegen release workaround: skip actual release to avoid crashes in some games
-        if (feature == NVSDK_NGX_Feature_FrameGeneration
-            && settings::g_mainTabSettings.prevent_framegen_release.GetValue()) {
-            LogInfo("NGX D3D12 ReleaseFeature: preventing DLSS Frame Generation release (workaround enabled) (#%u)",
-                    g_ngx_counters.framegen_release_attempt_count.load());
-            g_kept_framegen_handle_d3d12.store(InHandle, std::memory_order_release);
-            return NVSDK_NGX_Result_Success;
         }
     } else {
         LogInfo("NGX D3D12 ReleaseFeature called - Unknown feature handle");
@@ -951,7 +920,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_ReleaseFeature_Detour(NVSDK_NGX_Hand
         // Untrack the handle after successful release
         if (result == NVSDK_NGX_Result_Success) {
             UntrackNGXHandle(InHandle);
-            g_kept_framegen_handle_d3d12.store(nullptr, std::memory_order_release);
         }
 
         return result;
@@ -1225,18 +1193,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
         g_ngx_counters.framegen_create_attempt_count.fetch_add(1);
     }
 
-    // When we previously prevented framegen release, return the kept handle so NGX is not created twice
-    if (settings::g_mainTabSettings.prevent_framegen_release.GetValue()
-        && InFeatureID == NVSDK_NGX_Feature_FrameGeneration) {
-        NVSDK_NGX_Handle* kept = g_kept_framegen_handle_d3d11.load(std::memory_order_acquire);
-        if (kept != nullptr && OutHandle != nullptr) {
-            LogInfo("NGX D3D11 CreateFeature: reusing kept DLSS Frame Generation handle (prevent double-creation) (#%u)",
-                    g_ngx_counters.framegen_create_attempt_count.load());
-            *OutHandle = kept;
-            return NVSDK_NGX_Result_Success;
-        }
-    }
-
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
         HookNGXParameterVTable(InParameters);
@@ -1273,20 +1229,9 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Hand
             case NVSDK_NGX_Feature_RayReconstruction: featureName = "Ray Reconstruction"; break;
         }
         if (feature == NVSDK_NGX_Feature_FrameGeneration) {
-            g_ngx_counters.framegen_release_attempt_count.fetch_add(1);
-            LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s (#%u)", featureName,
-                    g_ngx_counters.framegen_release_attempt_count.load());
+            LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s", featureName);
         } else {
             LogInfo("NGX D3D11 ReleaseFeature called - Releasing %s", featureName);
-        }
-
-        // Prevent framegen release workaround: skip actual release to avoid crashes in some games
-        if (feature == NVSDK_NGX_Feature_FrameGeneration
-            && settings::g_mainTabSettings.prevent_framegen_release.GetValue()) {
-            LogInfo("NGX D3D11 ReleaseFeature: preventing DLSS Frame Generation release (workaround enabled) (#%u)",
-                    g_ngx_counters.framegen_release_attempt_count.load());
-            g_kept_framegen_handle_d3d11.store(InHandle, std::memory_order_release);
-            return NVSDK_NGX_Result_Success;
         }
     } else {
         LogInfo("NGX D3D11 ReleaseFeature called - Unknown feature handle");
@@ -1298,7 +1243,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_ReleaseFeature_Detour(NVSDK_NGX_Hand
         // Untrack the handle after successful release
         if (result == NVSDK_NGX_Result_Success) {
             UntrackNGXHandle(InHandle);
-            g_kept_framegen_handle_d3d11.store(nullptr, std::memory_order_release);
         }
 
         return result;

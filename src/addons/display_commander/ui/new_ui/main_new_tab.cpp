@@ -1492,29 +1492,19 @@ if (enabled_experimental_features) {
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         DrawDisplaySettings(runtime);
-        // Misc (experimental / crash workarounds)
+        // Misc (Streamline DLSS-G)
         g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
         if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
-            ImGui::BeginGroup();
-            if (CheckboxSetting(settings::g_mainTabSettings.prevent_framegen_release,
-                                "Prevent framegen release (experimental)")) {
-                LogInfo("Prevent framegen release %s",
-                        settings::g_mainTabSettings.prevent_framegen_release.GetValue() ? "enabled" : "disabled");
+            if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto,
+                                "Force FG Auto (Streamline)")) {
+                LogInfo("Force FG Auto %s",
+                        settings::g_mainTabSettings.force_fg_auto.GetValue() ? "enabled" : "disabled");
             }
-            ImGui::EndGroup();
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "Block NGX ReleaseFeature for DLSS Frame Generation. Use only if the game crashes when releasing "
-                    "frame generation (e.g. on level load or menu). Not recommended by default: may cause leaks or "
-                    "instability; enable only as a crash workaround.\n\n"
-                    "Create attempts: %u\nRelease attempts: %u",
-                    g_ngx_counters.framegen_create_attempt_count.load(),
-                    g_ngx_counters.framegen_release_attempt_count.load());
-            }
-            if (settings::g_mainTabSettings.prevent_framegen_release.GetValue()) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
-                                   " Should not be used by default. Enable only to work around crashes.");
+                    "Override slDLSSGSetOptions to force DLSS-G mode to Auto. Applies to Streamline (sl.dlss_g) "
+                    "integrations only. When enabled, games that set Off or On will have their choice overridden to Auto.");
             }
             ImGui::Unindent();
         }

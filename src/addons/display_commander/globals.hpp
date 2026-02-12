@@ -1264,9 +1264,8 @@ struct NGXCounters {
     std::atomic<uint32_t> d3d11_getparameters_count;
     std::atomic<uint32_t> d3d11_allocateparameters_count;
 
-    // Frame Generation (DLSS-G) create/release attempt counts (for prevent_framegen_release tooltip)
+    // Frame Generation (DLSS-G) create attempt count
     std::atomic<uint32_t> framegen_create_attempt_count;
-    std::atomic<uint32_t> framegen_release_attempt_count;
 
     // Total counter
     std::atomic<uint32_t> total_count;
@@ -1299,7 +1298,6 @@ struct NGXCounters {
           d3d11_getparameters_count(0),
           d3d11_allocateparameters_count(0),
           framegen_create_attempt_count(0),
-          framegen_release_attempt_count(0),
           total_count(0) {}
 
     // Reset all counters to 0
@@ -1330,7 +1328,6 @@ struct NGXCounters {
         d3d11_getparameters_count.store(0);
         d3d11_allocateparameters_count.store(0);
         framegen_create_attempt_count.store(0);
-        framegen_release_attempt_count.store(0);
         total_count.store(0);
     }
 };

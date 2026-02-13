@@ -2384,6 +2384,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 LogInfo("FPS Limiter: Reflex");
                 s_reflex_auto_configure.store(true);
                 settings::g_advancedTabSettings.reflex_auto_configure.SetValue(true);
+                g_reflex_settings_outdated.store(true);
             } else if (mode == FpsLimiterMode::kOnPresentSync) {
                 LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
             } else if (mode == FpsLimiterMode::kLatentSync) {
@@ -2394,6 +2395,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 // reset the reflex auto configure setting
                 settings::g_advancedTabSettings.reflex_auto_configure.SetValue(false);
                 s_reflex_auto_configure.store(false);
+                g_reflex_settings_outdated.store(true);
             }
         }
 
@@ -2422,6 +2424,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 bool enable_reflex = settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
                 if (ImGui::Checkbox("Enable Reflex as fps limiter", &enable_reflex)) {
                     settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
+                    g_reflex_settings_outdated.store(true);
                 }
                 if (ImGui::IsItemHovered()) {
                     std::string tooltip =
@@ -2634,6 +2637,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 bool reflex_low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
                 if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
                     settings::g_advancedTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
+                    g_reflex_settings_outdated.store(true);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
@@ -2643,6 +2647,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 bool reflex_boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
                 if (ImGui::Checkbox("Boost", &reflex_boost)) {
                     settings::g_advancedTabSettings.reflex_boost.SetValue(reflex_boost);
+                    g_reflex_settings_outdated.store(true);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
@@ -2669,6 +2674,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 ImGui::SameLine();
                 if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
                                     ICON_FK_WARNING " Suppress Native Reflex")) {
+                    g_reflex_settings_outdated.store(true);
                     LogInfo("Suppress Native Reflex %s",
                             settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
                 }
@@ -2683,6 +2689,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
             // Suppress Reflex Sleep checkbox
             ImGui::Spacing();
             if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep")) {
+                g_reflex_settings_outdated.store(true);
                 LogInfo("Suppress Reflex Sleep %s",
                         settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
             }

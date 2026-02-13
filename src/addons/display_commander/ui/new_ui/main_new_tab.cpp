@@ -1800,7 +1800,14 @@ if (enabled_experimental_features) {
                 "- Press Home + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
         }
 
-        ImGui::Spacing();
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+
+    g_rendering_ui_section.store("ui:tab:main_new:window_control", std::memory_order_release);
+    if (ImGui::CollapsingHeader("Window Control", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
 
         // Continue Rendering in Background
         if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background")) {

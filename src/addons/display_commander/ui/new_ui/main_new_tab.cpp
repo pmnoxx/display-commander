@@ -1496,15 +1496,15 @@ if (enabled_experimental_features) {
         g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
         if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
-            if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto,
-                                "Force FG Auto (Streamline)")) {
+            if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)")) {
                 LogInfo("Force FG Auto %s",
                         settings::g_mainTabSettings.force_fg_auto.GetValue() ? "enabled" : "disabled");
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
                     "Override slDLSSGSetOptions to force DLSS-G mode to Auto. Applies to Streamline (sl.dlss_g) "
-                    "integrations only. When enabled, games that set Off or On will have their choice overridden to Auto.");
+                    "integrations only. When enabled, games that set Off or On will have their choice overridden to "
+                    "Auto.");
             }
             ImGui::Unindent();
         }
@@ -4852,18 +4852,6 @@ void DrawImportantInfo() {
                 "Requires NVAPI and a resolved display.\n"
                 "WARNING: This may introduces a heartbeat issue, with frame time spike once a second.");
         }
-        if (show_refresh_rate_frame_times || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
-            if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms,
-                                 "Refresh rate monitor poll (ms)", "%d ms")) {
-                // Setting is automatically saved by SliderIntSetting
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
-                    "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
-                    "polling defaults to 1 s and this setting is not used.");
-            }
-        }
         ImGui::NextColumn();
 
         // Show Refresh Rate Time Stats Control
@@ -4891,6 +4879,18 @@ void DrawImportantInfo() {
         }
 
         ImGui::Columns(1);  // Reset to single column
+        if (show_refresh_rate_frame_times || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
+            if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)",
+                                 "%d ms")) {
+                // Setting is automatically saved by SliderIntSetting
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
+                    "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
+                    "polling defaults to 1 s and this setting is not used.");
+            }
+        }
 
         ImGui::Spacing();
         // Overlay background transparency slider

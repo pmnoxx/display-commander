@@ -116,7 +116,7 @@ MainTabSettings::MainTabSettings()
       show_native_frame_time_graph("show_native_frame_time_graph", false, "DisplayCommander"),
       show_frame_timeline_bar("show_frame_timeline_bar", false, "DisplayCommander"),
       show_refresh_rate_frame_times("show_refresh_rate_frame_times", true, "DisplayCommander"),
-      refresh_rate_monitor_poll_ms("refresh_rate_monitor_poll_ms", 5, 1, 500, "DisplayCommander"),
+      refresh_rate_monitor_poll_ms("refresh_rate_monitor_poll_ms", 1, 1, 500, "DisplayCommander"),
       show_refresh_rate_frame_time_stats("show_refresh_rate_frame_time_stats", false, "DisplayCommander"),
       show_cpu_usage("show_cpu_usage", false, "DisplayCommander"),
       show_cpu_fps("show_cpu_fps", false, "DisplayCommander"),

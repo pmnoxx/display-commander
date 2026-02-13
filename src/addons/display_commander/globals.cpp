@@ -520,6 +520,9 @@ std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {};
 std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0};  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 std::atomic<bool> g_native_reflex_detected{false};         // Native Reflex detected via SetLatencyMarker calls
 
+std::atomic<bool> g_reflex_was_enabled_last_frame{false};
+std::atomic<bool> g_reflex_settings_outdated{true};  // true initially; set true whenever reflex settings change
+
 std::atomic<uint32_t> g_swapchain_event_total_count{0};  // Total events across all types
 
 // OpenGL hook counters

@@ -1315,7 +1315,6 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     const LONGLONG end_ns = TimerPresentPacingDelayEnd(start_ns);
     g_frame_data[present_slot].sleep_post_present_end_time_ns.store(end_ns);
 
-    static bool reflex_was_enabled_last_frame = false;
     if (should_enable_reflex) {
         if (g_latencyManager->IsInitialized()) {
             s_reflex_enable_current_frame.store(true);
@@ -1332,7 +1331,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
             g_latencyManager->ApplySleepMode(settings::g_advancedTabSettings.reflex_low_latency.GetValue(),
                                              settings::g_advancedTabSettings.reflex_boost.GetValue(),
                                              settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
-            reflex_was_enabled_last_frame = true;
+            g_reflex_was_enabled_last_frame.store(true);
             if (settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()
                 && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 perf_timer.pause();
@@ -1344,12 +1343,19 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         }
     } else {
         s_reflex_enable_current_frame.store(false);
-        if (reflex_was_enabled_last_frame) {
-            reflex_was_enabled_last_frame = false;
-            if (g_latencyManager->IsInitialized()) {
+        // if (g_reflex_was_enabled_last_frame.exchange(false)) {
+        if (g_latencyManager->IsInitialized()) {
+            if (s_fps_limiter_mode.load() == FpsLimiterMode::kDisabled) {
                 auto params = g_last_nvapi_sleep_mode_params.load();
-                ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(), params ? params.get() : nullptr);
+                ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(),
+                                                params ? params.get() : nullptr);
+            } else {
+                g_latencyManager->ApplySleepMode(settings::g_advancedTabSettings.reflex_low_latency.GetValue(),
+                                                 settings::g_advancedTabSettings.reflex_boost.GetValue(),
+                                                 settings::g_advancedTabSettings.reflex_use_markers.GetValue(), 0.0f);
             }
+            /**/
+            //    }
         }
     }
 

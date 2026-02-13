@@ -858,6 +858,10 @@ extern std::atomic<bool> s_reflex_enable_current_frame;
 extern std::atomic<bool> s_reflex_supress_native;
 extern std::atomic<bool> s_enable_reflex_logging;
 
+// Reflex state: was enabled last frame (for RestoreSleepMode on disable); true when reflex settings changed (re-apply)
+extern std::atomic<bool> g_reflex_was_enabled_last_frame;
+extern std::atomic<bool> g_reflex_settings_outdated;
+
 // Shortcut settings
 extern std::atomic<bool> s_enable_hotkeys;
 extern std::atomic<bool> s_enable_mute_unmute_shortcut;

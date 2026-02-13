@@ -1840,15 +1840,9 @@ if (enabled_experimental_features) {
                 "messages to keep games running in background.");
         }
 
-        ImGui::Unindent();
-    }
+        ImGui::Spacing();
 
-    ImGui::Spacing();
-
-    // Screensaver Control Section
-    g_rendering_ui_section.store("ui:tab:main_new:screensaver", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Screensaver Control", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+        // Screensaver Mode
         if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode")) {
             LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
@@ -1860,6 +1854,7 @@ if (enabled_experimental_features) {
                 "- Disable: Always disables screensaver while game is running\n\n"
                 "Note: This feature requires the screensaver implementation to be active.");
         }
+
         ImGui::Unindent();
     }
 

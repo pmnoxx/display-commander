@@ -1565,21 +1565,24 @@ if (enabled_experimental_features) {
     if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::Indent();
         DrawDisplaySettings(runtime);
-        // Misc (Streamline DLSS-G)
-        g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
-        if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
-            ImGui::Indent();
-            if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)")) {
-                LogInfo("Force FG Auto %s",
-                        settings::g_mainTabSettings.force_fg_auto.GetValue() ? "enabled" : "disabled");
+        if (enabled_experimental_features) {
+            // Misc (Streamline DLSS-G)
+            g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
+            if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+                ImGui::Indent();
+                if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)")) {
+                    LogInfo("Force FG Auto %s",
+                            settings::g_mainTabSettings.force_fg_auto.GetValue() ? "enabled" : "disabled");
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Override slDLSSGSetOptions to force DLSS-G mode to Auto. Applies to Streamline (sl.dlss_g) "
+                        "integrations only. When enabled, games that set Off or On will have their choice overridden "
+                        "to "
+                        "Auto.");
+                }
+                ImGui::Unindent();
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Override slDLSSGSetOptions to force DLSS-G mode to Auto. Applies to Streamline (sl.dlss_g) "
-                    "integrations only. When enabled, games that set Off or On will have their choice overridden to "
-                    "Auto.");
-            }
-            ImGui::Unindent();
         }
         ImGui::Unindent();
     }
@@ -3937,22 +3940,66 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     "Load DLSS DLLs (nvngx_dlss.dll, nvngx_dlssd.dll, nvngx_dlssg.dll) from the dlss_override folder\n"
                     "next to Display Commander addon, like Special-K. Configure which DLLs in Streamline tab.");
             }
+            if (dlss_override_enabled) {
+                std::string custom_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
+                if (custom_folder.empty()) {
+                    // Using default folder: show subfolder dropdown [Default Folder, sub1, sub2, ...]
+                    std::string current_sub = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
+                    std::vector<std::string> subfolders = GetDlssOverrideSubfolderNames();
+                    const char* default_label = "Default Folder";
+                    int current_index = 0;  // 0 = Default Folder, >0 = subfolders[i-1], -1 = current_sub not in list
+                    if (!current_sub.empty()) {
+                        for (size_t i = 0; i < subfolders.size(); ++i) {
+                            if (subfolders[i] == current_sub) {
+                                current_index = static_cast<int>(i + 1);
+                                break;
+                            }
+                        }
+                        if (current_index == 0) {
+                            current_index = -1;  // subfolder no longer exists on disk
+                        }
+                    }
+                    const char* combo_label = (current_index <= 0)
+                                                  ? (current_index == 0 ? default_label : current_sub.c_str())
+                                                  : subfolders[current_index - 1].c_str();
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(180.0f);
+                    if (ImGui::BeginCombo("##dlss_override_subfolder", combo_label)) {
+                        if (ImGui::Selectable(default_label, current_index == 0)) {
+                            settings::g_streamlineTabSettings.dlss_override_subfolder.SetValue("");
+                        }
+                        for (size_t i = 0; i < subfolders.size(); ++i) {
+                            bool selected = (current_index == static_cast<int>(i + 1));
+                            if (ImGui::Selectable(subfolders[i].c_str(), selected)) {
+                                settings::g_streamlineTabSettings.dlss_override_subfolder.SetValue(subfolders[i]);
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Choose subfolder under dlss_override, or Default Folder for the root.");
+                    }
+                }
+            }
             ImGui::SameLine();
             ui::colors::PushIconColor(ui::colors::ICON_ACTION);
             if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open DLSS override folder")) {
                 std::string effective_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
                 if (effective_folder.empty()) {
-                    effective_folder = GetDefaultDlssOverrideFolder().string();
+                    std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
+                    effective_folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
                 }
                 std::string folder_to_open = effective_folder;
                 std::thread([folder_to_open]() {
                     std::error_code ec;
                     std::filesystem::create_directories(folder_to_open, ec);
                     if (ec) {
-                        LogError("Failed to create DLSS override folder: %s (%s)", folder_to_open.c_str(), ec.message().c_str());
+                        LogError("Failed to create DLSS override folder: %s (%s)", folder_to_open.c_str(),
+                                 ec.message().c_str());
                         return;
                     }
-                    HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_to_open.c_str(), nullptr, nullptr, SW_SHOW);
+                    HINSTANCE result =
+                        ShellExecuteA(nullptr, "explore", folder_to_open.c_str(), nullptr, nullptr, SW_SHOW);
                     if (reinterpret_cast<intptr_t>(result) <= 32) {
                         LogError("Failed to open DLSS override folder: %s (Error: %ld)", folder_to_open.c_str(),
                                  reinterpret_cast<intptr_t>(result));

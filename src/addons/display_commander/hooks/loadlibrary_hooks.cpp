@@ -77,9 +77,10 @@ std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
     }
 
     std::string override_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
-    // When folder is empty, use default "Display Commander/dlss_override" (addon dir + dlss_override), like Special-K
+    // When folder is empty, use default path (optionally a subfolder under dlss_override), like Special-K
     if (override_folder.empty()) {
-        override_folder = GetDefaultDlssOverrideFolder().string();
+        std::string subfolder = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
+        override_folder = GetEffectiveDefaultDlssOverrideFolder(subfolder).string();
         if (override_folder.empty()) {
             return L"";
         }

@@ -8,16 +8,16 @@
 
 #include <windef.h>
 
+#include <MinHook.h>
 #include <atomic>
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
-#include <MinHook.h>
 
 // Forward declaration for HookType enum
 namespace display_commanderhooks {
-    enum class HookType;
+enum class HookType;
 }
 
 // Structs needed for utility functions
@@ -46,8 +46,8 @@ int GetAspectWidthValue(int display_width);
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);
 
 // XInput processing functions
-void ProcessStickInputRadial(float &x, float &y, float deadzone, float max_input, float min_output);
-void ProcessStickInputSquare(float &x, float &y, float deadzone, float max_input, float min_output);
+void ProcessStickInputRadial(float& x, float& y, float deadzone, float max_input, float min_output);
+void ProcessStickInputSquare(float& x, float& y, float deadzone, float max_input, float min_output);
 float ProcessStickInput(float value, float deadzone, float max_input, float min_output);
 
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
@@ -58,15 +58,17 @@ SHORT FloatToShort(float value);
 std::string GetDLLVersionString(const std::wstring& dllPath);
 
 // DLSS preset support functions
-bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor, int maxPatch);
+bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,
+               int maxPatch);
 std::string GetSupportedDLSSSRPresets(int major, int minor, int patch);
 std::string GetSupportedDLSSSRPresetsFromVersionString(const std::string& versionString);
 std::string GetSupportedDLSSRRPresets(int major, int minor, int patch);
 std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versionString);
 std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
 int GetDLSSPresetValue(const std::string& presetString);
-std::string ConvertRenderPresetToLetter(int preset_value); // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)
-void TestDLSSPresetSupport(); // Test function for debugging
+std::string ConvertRenderPresetToLetter(
+    int preset_value);         // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)
+void TestDLSSPresetSupport();  // Test function for debugging
 
 // Addon directory utilities
 std::filesystem::path GetAddonDirectory();
@@ -74,8 +76,18 @@ std::filesystem::path GetAddonDirectory();
 // Default DLSS override folder: (Display Commander addon directory)/dlss_override (like Special-K)
 std::filesystem::path GetDefaultDlssOverrideFolder();
 
+// Effective default path when using a subfolder: base dlss_override or base/subfolder (subfolder empty = base only)
+std::filesystem::path GetEffectiveDefaultDlssOverrideFolder(const std::string& subfolder);
+
+// Subfolder names under the default DLSS override folder (for UI dropdown). Returns directory names only.
+std::vector<std::string> GetDlssOverrideSubfolderNames();
+
 // Forward declaration for ReShade API types
-namespace reshade { namespace api { enum class device_api; } }
+namespace reshade {
+namespace api {
+enum class device_api;
+}
+}  // namespace reshade
 
 // Graphics API version string conversion
 const char* GetDeviceApiString(reshade::api::device_api api);
@@ -84,7 +96,7 @@ std::string GetDeviceApiVersionString(reshade::api::device_api api, uint32_t api
 // Rolling average (exponential moving average) calculation
 // Formula: (new_value + (alpha - 1) * old_value) / alpha
 // Default alpha=64 provides good smoothing for frame timing metrics
-template<typename T>
+template <typename T>
 inline T UpdateRollingAverage(T new_value, T old_value, int alpha = 64) {
     return (new_value + (alpha - 1) * old_value) / alpha;
 }
@@ -99,7 +111,7 @@ std::string D3DPresentFlagsToString(uint32_t presentFlags);
 
 // Window style modification helper function
 // Modifies window styles to prevent fullscreen/always-on-top behavior
-template<typename T>
+template <typename T>
 inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_top) {
     if (nIndex == GWL_STYLE) {
         // WS_POPUP added to fix godstrike
@@ -132,7 +144,7 @@ inline bool Is64BitBuild() {
 // Calling DLL detection utility (similar to Special-K's SK_GetCallingDLL)
 // Returns the HMODULE of the DLL that contains the given address
 // Default parameter uses _ReturnAddress() to get the caller's return address
-#pragma intrinsic (_ReturnAddress)
+#pragma intrinsic(_ReturnAddress)
 HMODULE GetCallingDLL(LPCVOID pReturn = _ReturnAddress());
 
 // External declarations needed by utility functions

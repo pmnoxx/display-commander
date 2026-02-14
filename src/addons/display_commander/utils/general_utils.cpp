@@ -464,8 +464,33 @@ std::filesystem::path GetAddonDirectory() {
 }
 
 // Default DLSS override folder: addon directory/dlss_override (like Special-K's DLSS DLL override)
-std::filesystem::path GetDefaultDlssOverrideFolder() {
-    return GetAddonDirectory() / "dlss_override";
+std::filesystem::path GetDefaultDlssOverrideFolder() { return GetAddonDirectory() / "dlss_override"; }
+
+// Effective default path: base or base/subfolder (subfolder empty = base only)
+std::filesystem::path GetEffectiveDefaultDlssOverrideFolder(const std::string& subfolder) {
+    std::filesystem::path base = GetDefaultDlssOverrideFolder();
+    if (subfolder.empty()) {
+        return base;
+    }
+    return base / subfolder;
+}
+
+// Subfolder names under the default DLSS override folder (for UI dropdown)
+std::vector<std::string> GetDlssOverrideSubfolderNames() {
+    std::vector<std::string> names;
+    std::filesystem::path base = GetDefaultDlssOverrideFolder();
+    std::error_code ec;
+    if (!std::filesystem::exists(base, ec) || !std::filesystem::is_directory(base, ec)) {
+        return names;
+    }
+    for (const auto& entry :
+         std::filesystem::directory_iterator(base, std::filesystem::directory_options::skip_permission_denied, ec)) {
+        if (entry.is_directory(ec)) {
+            names.push_back(entry.path().filename().string());
+        }
+    }
+    std::sort(names.begin(), names.end());
+    return names;
 }
 
 // Helper function to check if a version is between two version ranges (inclusive)

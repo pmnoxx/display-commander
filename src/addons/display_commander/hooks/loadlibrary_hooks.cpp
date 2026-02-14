@@ -13,7 +13,7 @@
 #include "../settings/main_tab_settings.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
-#include "../utils/general_utils.hpp"
+#include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder
 #include "../utils/logging.hpp"
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
@@ -77,8 +77,12 @@ std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
     }
 
     std::string override_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
+    // When folder is empty, use default "Display Commander/dlss_override" (addon dir + dlss_override), like Special-K
     if (override_folder.empty()) {
-        return L"";
+        override_folder = GetDefaultDlssOverrideFolder().string();
+        if (override_folder.empty()) {
+            return L"";
+        }
     }
 
     // Extract filename from full path

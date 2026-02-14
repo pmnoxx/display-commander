@@ -71,6 +71,9 @@ void TestDLSSPresetSupport(); // Test function for debugging
 // Addon directory utilities
 std::filesystem::path GetAddonDirectory();
 
+// Default DLSS override folder: (Display Commander addon directory)/dlss_override (like Special-K)
+std::filesystem::path GetDefaultDlssOverrideFolder();
+
 // Forward declaration for ReShade API types
 namespace reshade { namespace api { enum class device_api; } }
 

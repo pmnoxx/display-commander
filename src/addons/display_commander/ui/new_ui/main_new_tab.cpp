@@ -2480,10 +2480,13 @@ void DrawDisplaySettings_FpsLimiterMode() {
         // Custom rendering for grayed out option
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Choose limiter: OnPresent Frame Synchronizer (synchronized frame display timing) or VBlank Scanline "
-                "Sync\n\nOnPresent Frame Synchronizer adds latency as it delays frame display time to be more "
-                "consistent - it prioritizes starting frame processing at the same time.\n\nVBlank Scanline Sync "
-                "synchronizes frame presentation with monitor refresh cycles for smooth frame pacing without VSync.");
+                "Choose limiter:\n"
+                "Default - recommend.\n"
+                "Reflex Mode - uses reflex library to limit FPS\n"
+                "Disabled - no FPS limiting\n"
+                "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR - synchronizes frame display "
+                "time "
+                "to the monitor refresh rate.");
         }
         ImGui::SameLine();
         ImGui::TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());

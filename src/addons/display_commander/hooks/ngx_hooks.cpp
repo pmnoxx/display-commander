@@ -97,14 +97,17 @@ static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) 
     switch (feature) {
         case NVSDK_NGX_Feature_SuperSampling:
             g_dlss_enabled.fetch_add(1);
+            g_dlss_was_active_once.store(true);
             LogInfo("NGX DLSS Super Resolution enabled (count=%u)", g_dlss_enabled.load());
             break;
         case NVSDK_NGX_Feature_FrameGeneration:
             g_dlssg_enabled.fetch_add(1);
+            g_dlssg_was_active_once.store(true);
             LogInfo("NGX DLSS Frame Generation enabled (count=%u)", g_dlssg_enabled.load());
             break;
         case NVSDK_NGX_Feature_RayReconstruction:
             g_ray_reconstruction_enabled.fetch_add(1);
+            g_ray_reconstruction_was_active_once.store(true);
             LogInfo("NGX Ray Reconstruction enabled (count=%u)", g_ray_reconstruction_enabled.load());
             break;
     }
@@ -156,10 +159,13 @@ static void CleanupNGXHandleTracking() {
     utils::SRWLockExclusive lock(g_ngx_handle_mutex);
     g_ngx_handle_map.clear();
 
-    // Reset all tracking counters
+    // Reset all tracking counters and "was active once" flags
     g_dlss_enabled.store(0);
     g_dlssg_enabled.store(0);
     g_ray_reconstruction_enabled.store(0);
+    g_dlss_was_active_once.store(false);
+    g_dlssg_was_active_once.store(false);
+    g_ray_reconstruction_was_active_once.store(false);
 
     LogInfo("NGX handle tracking cleaned up");
 }

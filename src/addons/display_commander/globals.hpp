@@ -1229,6 +1229,10 @@ extern std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version;  // DLS
 extern std::atomic<uint32_t> g_dlss_enabled;                // DLSS Super Resolution active handle count
 extern std::atomic<uint32_t> g_dlssg_enabled;               // DLSS Frame Generation active handle count
 extern std::atomic<uint32_t> g_ray_reconstruction_enabled;  // Ray Reconstruction active handle count
+// Set to true when corresponding feature count goes from 0 to >0; reset in CleanupNGXHandleTracking
+extern std::atomic<bool> g_dlss_was_active_once;
+extern std::atomic<bool> g_dlssg_was_active_once;
+extern std::atomic<bool> g_ray_reconstruction_was_active_once;
 
 // NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
 extern UnifiedParameterMap g_ngx_parameters;  // Unified NGX parameters supporting all types
@@ -1345,6 +1349,8 @@ struct DLSSGSummary {
     bool dlss_active = false;
     bool dlss_g_active = false;
     bool ray_reconstruction_active = false;
+    bool any_dlss_was_active_once = false;  // true if any feature was active at least once this session (for UI section visibility)
+    bool any_dlss_dll_loaded = false;       // true if any of nvngx_dlss/dlssd/dlssg.dll is loaded in process
     std::string internal_resolution = "N/A";
     std::string output_resolution = "N/A";
     std::string scaling_ratio = "N/A";

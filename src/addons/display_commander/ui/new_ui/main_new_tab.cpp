@@ -736,6 +736,40 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
 
     if (dlssg_summary.dlssd_dll_version != "N/A" && dlssg_summary.dlssd_dll_version != "Not loaded") {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-D DLL: %s", dlssg_summary.dlssd_dll_version.c_str());
+    } else {
+        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS-D DLL: N/A");
+    }
+    if (settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
+        std::string not_applied;
+        if (settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()
+            && !settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue().empty()
+            && !dlssg_summary.dlss_override_applied) {
+            if (!not_applied.empty()) not_applied += ", ";
+            not_applied += "nvngx_dlss.dll";
+        }
+        if (settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()
+            && !settings::g_streamlineTabSettings.dlss_override_subfolder_dlssd.GetValue().empty()
+            && !dlssg_summary.dlssd_override_applied) {
+            if (!not_applied.empty()) not_applied += ", ";
+            not_applied += "nvngx_dlssd.dll";
+        }
+        if (settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()
+            && !settings::g_streamlineTabSettings.dlss_override_subfolder_dlssg.GetValue().empty()
+            && !dlssg_summary.dlssg_override_applied) {
+            if (!not_applied.empty()) not_applied += ", ";
+            not_applied += "nvngx_dlssg.dll";
+        }
+        if (!not_applied.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                               ICON_FK_WARNING
+                               " Override not applied for: %s. Restart game with override enabled before launch.",
+                               not_applied.c_str());
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "The game loaded these DLLs before our hooks were active. Enable override and restart the game to "
+                    "use override versions.");
+            }
+        }
     }
 }
 
@@ -3933,66 +3967,103 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::Indent();
             DrawDLSSInfo(dlss_summary);
 
-            // DLSS override (like Special-K): use DLLs from Display Commander/dlss_override folder
+            // DLSS override: per-DLL checkbox + subfolder selector (Display Commander\dlss_override\<subfolder>)
             bool dlss_override_enabled = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
             if (ImGui::Checkbox("Use DLSS override", &dlss_override_enabled)) {
                 settings::g_streamlineTabSettings.dlss_override_enabled.SetValue(dlss_override_enabled);
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "Load DLSS DLLs (nvngx_dlss.dll, nvngx_dlssd.dll, nvngx_dlssg.dll) from the dlss_override folder\n"
-                    "next to Display Commander addon, like Special-K. Configure which DLLs in Streamline tab.");
+                    "Load DLSS DLLs from Display Commander\\dlss_override subfolders. Each DLL has its own checkbox "
+                    "and subfolder.");
             }
             if (dlss_override_enabled) {
-                std::string custom_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
-                if (custom_folder.empty()) {
-                    // Using default folder: show subfolder dropdown [Default Folder, sub1, sub2, ...]
-                    std::string current_sub = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
-                    std::vector<std::string> subfolders = GetDlssOverrideSubfolderNames();
-                    const char* default_label = "Default Folder";
-                    int current_index = 0;  // 0 = Default Folder, >0 = subfolders[i-1], -1 = current_sub not in list
+                std::vector<std::string> subfolders = GetDlssOverrideSubfolderNames();
+                auto draw_dll_row = [&subfolders](const char* label, bool* p_check,
+                                                  ui::new_ui::StringSetting& subfolder_setting, int dll_index) {
+                    ImGui::Checkbox(label, p_check);
+                    std::string current_sub = subfolder_setting.GetValue();
+                    int current_index = -1;
                     if (!current_sub.empty()) {
                         for (size_t i = 0; i < subfolders.size(); ++i) {
                             if (subfolders[i] == current_sub) {
-                                current_index = static_cast<int>(i + 1);
+                                current_index = static_cast<int>(i);
                                 break;
                             }
                         }
-                        if (current_index == 0) {
-                            current_index = -1;  // subfolder no longer exists on disk
-                        }
                     }
-                    const char* combo_label = (current_index <= 0)
-                                                  ? (current_index == 0 ? default_label : current_sub.c_str())
-                                                  : subfolders[current_index - 1].c_str();
+                    const char* combo_label = (current_index >= 0)
+                                                  ? subfolders[static_cast<size_t>(current_index)].c_str()
+                                              : current_sub.empty() ? "(none)"
+                                                                    : current_sub.c_str();
                     ImGui::SameLine();
-                    ImGui::SetNextItemWidth(180.0f);
-                    if (ImGui::BeginCombo("##dlss_override_subfolder", combo_label)) {
-                        if (ImGui::Selectable(default_label, current_index == 0)) {
-                            settings::g_streamlineTabSettings.dlss_override_subfolder.SetValue("");
-                        }
+                    ImGui::SetNextItemWidth(140.0f);
+                    if (ImGui::BeginCombo((std::string("##dlss_sub_") + std::to_string(dll_index)).c_str(),
+                                          combo_label)) {
                         for (size_t i = 0; i < subfolders.size(); ++i) {
-                            bool selected = (current_index == static_cast<int>(i + 1));
+                            bool selected = (current_index == static_cast<int>(i));
                             if (ImGui::Selectable(subfolders[i].c_str(), selected)) {
-                                settings::g_streamlineTabSettings.dlss_override_subfolder.SetValue(subfolders[i]);
+                                subfolder_setting.SetValue(subfolders[i]);
                             }
                         }
                         ImGui::EndCombo();
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Choose subfolder under dlss_override, or Default Folder for the root.");
+                    if (!current_sub.empty()) {
+                        std::string effective_folder = GetEffectiveDefaultDlssOverrideFolder(current_sub).string();
+                        DlssOverrideDllStatus st = GetDlssOverrideFolderDllStatus(effective_folder, (dll_index == 0),
+                                                                                  (dll_index == 1), (dll_index == 2));
+                        if (st.dlls.size() > static_cast<size_t>(dll_index)) {
+                            const DlssOverrideDllEntry& e = st.dlls[dll_index];
+                            ImGui::SameLine();
+                            if (e.present) {
+                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", e.version.c_str());
+                            } else {
+                                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.0f, 1.0f), "Missing");
+                            }
+                        }
                     }
+                };
+                bool dlss_on = settings::g_streamlineTabSettings.dlss_override_dlss.GetValue();
+                bool dlss_fg_on = settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue();
+                bool dlss_rr_on = settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue();
+                draw_dll_row("nvngx_dlss.dll (DLSS)##main", &dlss_on,
+                             settings::g_streamlineTabSettings.dlss_override_subfolder, 0);
+                if (dlss_on != settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()) {
+                    settings::g_streamlineTabSettings.dlss_override_dlss.SetValue(dlss_on);
+                }
+                draw_dll_row("nvngx_dlssd.dll (D = denoiser / RR)##main", &dlss_rr_on,
+                             settings::g_streamlineTabSettings.dlss_override_subfolder_dlssd, 1);
+                if (dlss_rr_on != settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()) {
+                    settings::g_streamlineTabSettings.dlss_override_dlss_rr.SetValue(dlss_rr_on);
+                }
+                draw_dll_row("nvngx_dlssg.dll (G = generation / FG)##main", &dlss_fg_on,
+                             settings::g_streamlineTabSettings.dlss_override_subfolder_dlssg, 2);
+                if (dlss_fg_on != settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()) {
+                    settings::g_streamlineTabSettings.dlss_override_dlss_fg.SetValue(dlss_fg_on);
+                }
+                // Add Folder
+                static char dlss_add_folder_buf[128] = "";
+                ImGui::SetNextItemWidth(120.0f);
+                ImGui::InputTextWithHint("##dlss_add_folder", "e.g. 310.5.2", dlss_add_folder_buf,
+                                         sizeof(dlss_add_folder_buf));
+                ImGui::SameLine();
+                if (ImGui::Button("Add Folder")) {
+                    std::string name(dlss_add_folder_buf);
+                    std::string err;
+                    if (CreateDlssOverrideSubfolder(name, &err)) {
+                        dlss_add_folder_buf[0] = '\0';
+                    } else if (!err.empty()) {
+                        LogError("DLSS override Add Folder: %s", err.c_str());
+                    }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Create subfolder under Display Commander\\dlss_override.");
                 }
             }
             ImGui::SameLine();
             ui::colors::PushIconColor(ui::colors::ICON_ACTION);
             if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open DLSS override folder")) {
-                std::string effective_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
-                if (effective_folder.empty()) {
-                    std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
-                    effective_folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
-                }
-                std::string folder_to_open = effective_folder;
+                std::string folder_to_open = GetDefaultDlssOverrideFolder().string();
                 std::thread([folder_to_open]() {
                     std::error_code ec;
                     std::filesystem::create_directories(folder_to_open, ec);

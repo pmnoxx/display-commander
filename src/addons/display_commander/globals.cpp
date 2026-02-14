@@ -1,5 +1,7 @@
 #include "globals.hpp"
 #include <algorithm>
+#include <cctype>
+#include <filesystem>
 #include "../../../external/nvapi/nvapi.h"
 #include "background_window.hpp"
 #include "dxgi/custom_fps_limiter.hpp"
@@ -583,9 +585,9 @@ std::atomic<bool> g_dlss_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version{std::make_shared<const std::string>("Unknown")};
 
 // NGX Feature status tracking (set in CreateFeature detours)
-std::atomic<bool> g_dlss_enabled{false};                // DLSS Super Resolution enabled
-std::atomic<bool> g_dlssg_enabled{false};               // DLSS Frame Generation enabled
-std::atomic<bool> g_ray_reconstruction_enabled{false};  // Ray Reconstruction enabled
+std::atomic<uint32_t> g_dlss_enabled{0};                // DLSS Super Resolution active handle count
+std::atomic<uint32_t> g_dlssg_enabled{0};               // DLSS Frame Generation active handle count
+std::atomic<uint32_t> g_ray_reconstruction_enabled{0};  // Ray Reconstruction active handle count
 
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
@@ -660,9 +662,9 @@ DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;
 
     // Use the new global tracking variables for more accurate status
-    summary.dlss_active = g_dlss_enabled.load();
-    summary.dlss_g_active = g_dlssg_enabled.load();
-    summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load();
+    summary.dlss_active = g_dlss_enabled.load() != 0;
+    summary.dlss_g_active = g_dlssg_enabled.load() != 0;
+    summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load() != 0;
 
     // Get resolutions - using correct parameter names
     unsigned int internal_width, internal_height, output_width, output_height;
@@ -828,16 +830,14 @@ DLSSGSummary GetDLSSGSummary() {
         summary.ofa_enabled = (ofa_enabled == 1) ? "Yes" : "No";
     }
 
-    // Get DLL versions for DLSS and DLSS-G
-    // Check for nvngx_dlss.dll (DLSS Super FResolution)
-    static HMODULE dlss_handle = nullptr;
-    if (dlss_handle == nullptr) {
-        dlss_handle = GetModuleHandleW(L"nvngx_dlss.dll");
-    }
+    // Get DLL versions from actually loaded modules (no static cache - always current)
+    std::string loaded_dlss_path, loaded_dlssg_path, loaded_dlssd_path;
+    HMODULE dlss_handle = GetModuleHandleW(L"nvngx_dlss.dll");
     if (dlss_handle != nullptr) {
         wchar_t dlss_path[MAX_PATH];
         DWORD path_length = GetModuleFileNameW(dlss_handle, dlss_path, MAX_PATH);
         if (path_length > 0) {
+            loaded_dlss_path = std::filesystem::path(dlss_path).string();
             summary.dlss_dll_version = GetDLLVersionString(std::wstring(dlss_path));
         } else {
             summary.dlss_dll_version = "Loaded (path unknown)";
@@ -846,15 +846,12 @@ DLSSGSummary GetDLSSGSummary() {
         summary.dlss_dll_version = "Not loaded";
     }
 
-    // Check for nvngx_dlssg.dll (DLSS Frame Generation)
-    static HMODULE dlssg_handle = nullptr;
-    if (dlssg_handle == nullptr) {
-        dlssg_handle = GetModuleHandleW(L"nvngx_dlssg.dll");
-    }
+    HMODULE dlssg_handle = GetModuleHandleW(L"nvngx_dlssg.dll");
     if (dlssg_handle != nullptr) {
         wchar_t dlssg_path[MAX_PATH];
         DWORD path_length = GetModuleFileNameW(dlssg_handle, dlssg_path, MAX_PATH);
         if (path_length > 0) {
+            loaded_dlssg_path = std::filesystem::path(dlssg_path).string();
             summary.dlssg_dll_version = GetDLLVersionString(std::wstring(dlssg_path));
         } else {
             summary.dlssg_dll_version = "Loaded (path unknown)";
@@ -863,21 +860,85 @@ DLSSGSummary GetDLSSGSummary() {
         summary.dlssg_dll_version = "Not loaded";
     }
 
-    // Check for nvngx_dlssd.dll (DLSS Denoising)
-    static HMODULE dlssd_handle = nullptr;
-    if (dlssd_handle == nullptr) {
-        dlssd_handle = GetModuleHandleW(L"nvngx_dlssd.dll");
-    }
+    HMODULE dlssd_handle = GetModuleHandleW(L"nvngx_dlssd.dll");
     if (dlssd_handle != nullptr) {
         wchar_t dlssd_path[MAX_PATH];
         DWORD path_length = GetModuleFileNameW(dlssd_handle, dlssd_path, MAX_PATH);
         if (path_length > 0) {
+            loaded_dlssd_path = std::filesystem::path(dlssd_path).string();
             summary.dlssd_dll_version = GetDLLVersionString(std::wstring(dlssd_path));
         } else {
             summary.dlssd_dll_version = "Loaded (path unknown)";
         }
     } else {
         summary.dlssd_dll_version = "Not loaded";
+    }
+
+    // Per-DLL override: set _override_applied and prefer override folder version for display
+    const bool master_override = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
+    auto path_under_folder = [](const std::string& p, const std::string& folder) {
+        if (p.empty() || folder.empty()) return false;
+        std::string fn = folder;
+        std::replace(fn.begin(), fn.end(), '/', '\\');
+        for (char& c : fn) c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+        std::string n = p;
+        std::replace(n.begin(), n.end(), '/', '\\');
+        for (char& c : n) c = static_cast<char>(::tolower(static_cast<unsigned char>(c)));
+        return n.size() >= fn.size() && n.compare(0, fn.size(), fn) == 0;
+    };
+
+    // Per-DLL override: set _override_applied only; version strings stay from loaded modules above
+    // nvngx_dlss.dll
+    if (master_override && settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()) {
+        std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
+        if (!sub.empty()) {
+            std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
+            if (!folder.empty()) {
+                summary.dlss_override_applied = loaded_dlss_path.empty() || path_under_folder(loaded_dlss_path, folder);
+            } else {
+                summary.dlss_override_applied = true;
+            }
+        } else {
+            summary.dlss_override_applied = true;
+        }
+    } else {
+        summary.dlss_override_applied = true;
+    }
+
+    // nvngx_dlssd.dll (D = denoiser / RR)
+    if (master_override && settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()) {
+        std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssd.GetValue();
+        if (!sub.empty()) {
+            std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
+            if (!folder.empty()) {
+                summary.dlssd_override_applied =
+                    loaded_dlssd_path.empty() || path_under_folder(loaded_dlssd_path, folder);
+            } else {
+                summary.dlssd_override_applied = true;
+            }
+        } else {
+            summary.dlssd_override_applied = true;
+        }
+    } else {
+        summary.dlssd_override_applied = true;
+    }
+
+    // nvngx_dlssg.dll (G = generation / FG)
+    if (master_override && settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()) {
+        std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssg.GetValue();
+        if (!sub.empty()) {
+            std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
+            if (!folder.empty()) {
+                summary.dlssg_override_applied =
+                    loaded_dlssg_path.empty() || path_under_folder(loaded_dlssg_path, folder);
+            } else {
+                summary.dlssg_override_applied = true;
+            }
+        } else {
+            summary.dlssg_override_applied = true;
+        }
+    } else {
+        summary.dlssg_override_applied = true;
     }
 
     // Determine supported DLSS SR presets based on DLSS DLL version
@@ -900,9 +961,9 @@ DLSSGSummary GetDLSSGSummary() {
 // FPS limiter / overlay)
 DLSSGSummaryLite GetDLSSGSummaryLite() {
     DLSSGSummaryLite summary;
-    summary.dlss_active = g_dlss_enabled.load();
-    summary.dlss_g_active = g_dlssg_enabled.load();
-    summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load();
+    summary.dlss_active = g_dlss_enabled.load() != 0;
+    summary.dlss_g_active = g_dlssg_enabled.load() != 0;
+    summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load() != 0;
     summary.any_dlss_active = summary.dlss_active || summary.dlss_g_active || summary.ray_reconstruction_active;
 
     int enable_interp;

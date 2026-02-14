@@ -69,43 +69,42 @@ bool ShouldBlockAnselDLL(const std::wstring& dll_path) {
     return false;
 }
 
-// Helper function to check if a DLL should be overridden and get the override path
+// Helper function to check if a DLL should be overridden and get the override path (per-DLL checkbox + subfolder)
 std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
-    // Check if DLSS override is enabled
     if (!settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
         return L"";
     }
 
-    std::string override_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
-    // When folder is empty, use default path (optionally a subfolder under dlss_override), like Special-K
-    if (override_folder.empty()) {
-        std::string subfolder = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
-        override_folder = GetEffectiveDefaultDlssOverrideFolder(subfolder).string();
-        if (override_folder.empty()) {
-            return L"";
-        }
-    }
-
-    // Extract filename from full path
     std::filesystem::path path(dll_path);
     std::wstring filename = path.filename().wstring();
-
-    // Convert to lowercase for case-insensitive comparison
     std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
 
-    // Convert folder path to wide string
-    std::wstring w_override_folder(override_folder.begin(), override_folder.end());
-
-    // Check which DLL is being loaded and if override is enabled
-    if (filename == L"nvngx_dlss.dll" && settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()) {
-        return w_override_folder + L"\\nvngx_dlss.dll";
-    } else if (filename == L"nvngx_dlssd.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()) {
-        return w_override_folder + L"\\nvngx_dlssd.dll";
-    } else if (filename == L"nvngx_dlssg.dll" && settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()) {
-        return w_override_folder + L"\\nvngx_dlssg.dll";
+    std::string subfolder;
+    bool enabled = false;
+    if (filename == L"nvngx_dlss.dll") {
+        enabled = settings::g_streamlineTabSettings.dlss_override_dlss.GetValue();
+        subfolder = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
+    } else if (filename == L"nvngx_dlssd.dll") {
+        // D = denoiser (RR)
+        enabled = settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue();
+        subfolder = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssd.GetValue();
+    } else if (filename == L"nvngx_dlssg.dll") {
+        // G = generation (FG)
+        enabled = settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue();
+        subfolder = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssg.GetValue();
+    } else {
+        return L"";
     }
 
-    return L"";
+    if (!enabled || subfolder.empty()) {
+        return L"";
+    }
+    std::string override_folder = GetEffectiveDefaultDlssOverrideFolder(subfolder).string();
+    if (override_folder.empty()) {
+        return L"";
+    }
+    std::wstring w_override_folder(override_folder.begin(), override_folder.end());
+    return w_override_folder + L"\\" + filename;
 }
 
 // Original function pointers

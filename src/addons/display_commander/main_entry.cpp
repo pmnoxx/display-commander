@@ -13,6 +13,7 @@
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
+#include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/timeslowdown_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "latency/latency_manager.hpp"
@@ -2289,6 +2290,9 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
 
     // Load all settings at startup
     settings::LoadAllSettingsAtStartup();
+
+    // Install LoadLibrary hooks as early as possible so DLSS override can redirect before the game loads nvngx_*.dll
+    display_commanderhooks::InstallLoadLibraryHooks();
 
     // Log current logging level (always logs, even if logging is disabled)
     LogCurrentLogLevel();

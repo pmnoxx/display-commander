@@ -3960,10 +3960,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
     {
         const DLSSGSummary dlss_summary = GetDLSSGSummary();
-        const bool any_dlss_active =
-            dlss_summary.dlss_active || dlss_summary.dlss_g_active || dlss_summary.ray_reconstruction_active;
+        // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded
+        const bool show_dlss_section =
+            dlss_summary.any_dlss_was_active_once || dlss_summary.any_dlss_dll_loaded;
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
-        if (any_dlss_active && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
+        if (show_dlss_section && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
             DrawDLSSInfo(dlss_summary);
 

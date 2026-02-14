@@ -588,6 +588,9 @@ std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version{std::make_share
 std::atomic<uint32_t> g_dlss_enabled{0};                // DLSS Super Resolution active handle count
 std::atomic<uint32_t> g_dlssg_enabled{0};               // DLSS Frame Generation active handle count
 std::atomic<uint32_t> g_ray_reconstruction_enabled{0};  // Ray Reconstruction active handle count
+std::atomic<bool> g_dlss_was_active_once{false};
+std::atomic<bool> g_dlssg_was_active_once{false};
+std::atomic<bool> g_ray_reconstruction_was_active_once{false};
 
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
@@ -665,6 +668,8 @@ DLSSGSummary GetDLSSGSummary() {
     summary.dlss_active = g_dlss_enabled.load() != 0;
     summary.dlss_g_active = g_dlssg_enabled.load() != 0;
     summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load() != 0;
+    summary.any_dlss_was_active_once = g_dlss_was_active_once.load() || g_dlssg_was_active_once.load()
+                                       || g_ray_reconstruction_was_active_once.load();
 
     // Get resolutions - using correct parameter names
     unsigned int internal_width, internal_height, output_width, output_height;
@@ -873,6 +878,10 @@ DLSSGSummary GetDLSSGSummary() {
     } else {
         summary.dlssd_dll_version = "Not loaded";
     }
+
+    summary.any_dlss_dll_loaded = (summary.dlss_dll_version != "Not loaded")
+                                   || (summary.dlssg_dll_version != "Not loaded")
+                                   || (summary.dlssd_dll_version != "Not loaded");
 
     // Per-DLL override: set _override_applied and prefer override folder version for display
     const bool master_override = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();

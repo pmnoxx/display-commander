@@ -23,6 +23,7 @@
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
+#include "../../settings/streamline_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
@@ -3925,6 +3926,44 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         if (any_dlss_active && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
             DrawDLSSInfo(dlss_summary);
+
+            // DLSS override (like Special-K): use DLLs from Display Commander/dlss_override folder
+            bool dlss_override_enabled = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
+            if (ImGui::Checkbox("Use DLSS override", &dlss_override_enabled)) {
+                settings::g_streamlineTabSettings.dlss_override_enabled.SetValue(dlss_override_enabled);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Load DLSS DLLs (nvngx_dlss.dll, nvngx_dlssd.dll, nvngx_dlssg.dll) from the dlss_override folder\n"
+                    "next to Display Commander addon, like Special-K. Configure which DLLs in Streamline tab.");
+            }
+            ImGui::SameLine();
+            ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+            if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open DLSS override folder")) {
+                std::string effective_folder = settings::g_streamlineTabSettings.dlss_override_folder.GetValue();
+                if (effective_folder.empty()) {
+                    effective_folder = GetDefaultDlssOverrideFolder().string();
+                }
+                std::string folder_to_open = effective_folder;
+                std::thread([folder_to_open]() {
+                    std::error_code ec;
+                    std::filesystem::create_directories(folder_to_open, ec);
+                    if (ec) {
+                        LogError("Failed to create DLSS override folder: %s (%s)", folder_to_open.c_str(), ec.message().c_str());
+                        return;
+                    }
+                    HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_to_open.c_str(), nullptr, nullptr, SW_SHOW);
+                    if (reinterpret_cast<intptr_t>(result) <= 32) {
+                        LogError("Failed to open DLSS override folder: %s (Error: %ld)", folder_to_open.c_str(),
+                                 reinterpret_cast<intptr_t>(result));
+                    }
+                }).detach();
+            }
+            ui::colors::PopIconColor();
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Open the folder where you can place custom DLSS DLLs (created if missing).");
+            }
+
             ImGui::Unindent();
         }
     }

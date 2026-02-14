@@ -463,6 +463,11 @@ std::filesystem::path GetAddonDirectory() {
     return std::filesystem::path(module_path).parent_path();
 }
 
+// Default DLSS override folder: addon directory/dlss_override (like Special-K's DLSS DLL override)
+std::filesystem::path GetDefaultDlssOverrideFolder() {
+    return GetAddonDirectory() / "dlss_override";
+}
+
 // Helper function to check if a version is between two version ranges (inclusive)
 bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,
                int maxPatch) {

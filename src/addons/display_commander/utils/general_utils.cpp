@@ -2,6 +2,7 @@
 #include <d3d9.h>
 #include <MinHook.h>
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <reshade.hpp>
 #include <sstream>
@@ -491,6 +492,90 @@ std::vector<std::string> GetDlssOverrideSubfolderNames() {
     }
     std::sort(names.begin(), names.end());
     return names;
+}
+
+// Create a subfolder under Display Commander/dlss_override. Rejects names with path separators or "." / "..".
+bool CreateDlssOverrideSubfolder(const std::string& subfolder_name, std::string* out_error) {
+    if (subfolder_name.empty()) {
+        if (out_error) *out_error = "Folder name cannot be empty.";
+        return false;
+    }
+    std::string sanitized;
+    for (char c : subfolder_name) {
+        if (c == '/' || c == '\\' || c == ':') {
+            if (out_error) *out_error = "Folder name cannot contain path separators.";
+            return false;
+        }
+        if (std::isspace(static_cast<unsigned char>(c))) {
+            continue;
+        }
+        sanitized += c;
+    }
+    if (sanitized.empty()) {
+        if (out_error) *out_error = "Folder name is invalid after sanitizing.";
+        return false;
+    }
+    if (sanitized == "." || sanitized == ".." || sanitized.find("..") != std::string::npos) {
+        if (out_error) *out_error = "Folder name cannot be \".\" or \"..\" or contain \"..\".";
+        return false;
+    }
+    std::filesystem::path base = GetDefaultDlssOverrideFolder();
+    std::filesystem::path full = base / sanitized;
+    std::error_code ec;
+    if (std::filesystem::exists(full, ec)) {
+        if (std::filesystem::is_directory(full, ec)) {
+            if (out_error) *out_error = "";  // already exists, treat as success
+            return true;
+        }
+        if (out_error) *out_error = "A file with that name already exists.";
+        return false;
+    }
+    if (!std::filesystem::create_directories(full, ec)) {
+        if (out_error) *out_error = ec ? ec.message() : "Failed to create directory.";
+        return false;
+    }
+    if (out_error) *out_error = "";
+    return true;
+}
+
+DlssOverrideDllStatus GetDlssOverrideFolderDllStatus(const std::string& folder_path, bool override_dlss,
+                                                    bool override_dlss_fg, bool override_dlss_rr) {
+    DlssOverrideDllStatus status;
+    status.all_required_present = true;
+    struct Entry {
+        bool enabled;
+        const char* name;
+    };
+    const Entry entries[] = {
+        {override_dlss, "nvngx_dlss.dll"},
+        {override_dlss_fg, "nvngx_dlssd.dll"},
+        {override_dlss_rr, "nvngx_dlssg.dll"},
+    };
+    std::error_code ec;
+    const bool folder_exists =
+        !folder_path.empty() && std::filesystem::exists(folder_path, ec) && std::filesystem::is_directory(folder_path, ec);
+    status.dlls.resize(3);
+    for (size_t i = 0; i < 3; ++i) {
+        DlssOverrideDllEntry& entry = status.dlls[i];
+        entry.name = entries[i].name;
+        entry.present = false;
+        entry.version.clear();
+        if (!folder_exists) {
+            if (entries[i].enabled) status.missing_dlls.push_back(entries[i].name);
+            continue;
+        }
+        std::filesystem::path dll_path = std::filesystem::path(folder_path) / entries[i].name;
+        const bool exists = std::filesystem::exists(dll_path, ec) && std::filesystem::is_regular_file(dll_path, ec);
+        if (exists) {
+            entry.present = true;
+            entry.version = GetDLLVersionString(dll_path.wstring());
+            if (entry.version.empty()) entry.version = "?";
+        } else {
+            if (entries[i].enabled) status.missing_dlls.push_back(entries[i].name);
+        }
+    }
+    status.all_required_present = status.missing_dlls.empty();
+    return status;
 }
 
 // Helper function to check if a version is between two version ranges (inclusive)

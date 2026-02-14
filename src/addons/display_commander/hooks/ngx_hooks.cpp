@@ -2,8 +2,8 @@
 #include <excpt.h>
 #include <MinHook.h>
 #include <windows.h>
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <map>
 #include <string>
@@ -18,6 +18,7 @@
 #include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
+
 
 // NGX type definitions (minimal subset needed for hooks)
 #define NVSDK_CONV __cdecl
@@ -92,19 +93,19 @@ static void TrackNGXHandle(NVSDK_NGX_Handle* handle, NVSDK_NGX_Feature feature) 
     utils::SRWLockExclusive lock(g_ngx_handle_mutex);
     g_ngx_handle_map[handle] = feature;
 
-    // Update global tracking variables
+    // Update global tracking variables (reference count: game can create another feature before releasing previous)
     switch (feature) {
         case NVSDK_NGX_Feature_SuperSampling:
-            g_dlss_enabled.store(true);
-            LogInfo("NGX DLSS Super Resolution enabled");
+            g_dlss_enabled.fetch_add(1);
+            LogInfo("NGX DLSS Super Resolution enabled (count=%u)", g_dlss_enabled.load());
             break;
         case NVSDK_NGX_Feature_FrameGeneration:
-            g_dlssg_enabled.store(true);
-            LogInfo("NGX DLSS Frame Generation enabled");
+            g_dlssg_enabled.fetch_add(1);
+            LogInfo("NGX DLSS Frame Generation enabled (count=%u)", g_dlssg_enabled.load());
             break;
         case NVSDK_NGX_Feature_RayReconstruction:
-            g_ray_reconstruction_enabled.store(true);
-            LogInfo("NGX Ray Reconstruction enabled");
+            g_ray_reconstruction_enabled.fetch_add(1);
+            LogInfo("NGX Ray Reconstruction enabled (count=%u)", g_ray_reconstruction_enabled.load());
             break;
     }
 }
@@ -118,20 +119,26 @@ static void UntrackNGXHandle(NVSDK_NGX_Handle* handle) {
         NVSDK_NGX_Feature feature = it->second;
         g_ngx_handle_map.erase(it);
 
-        // Update global tracking variables
+        // Update global tracking variables (decrement ref count; saturate at 0 to avoid underflow)
         switch (feature) {
-            case NVSDK_NGX_Feature_SuperSampling:
-                g_dlss_enabled.store(false);
-                LogInfo("NGX DLSS Super Resolution disabled");
+            case NVSDK_NGX_Feature_SuperSampling: {
+                uint32_t before = g_dlss_enabled.fetch_sub(1);
+                if (before == 0) g_dlss_enabled.fetch_add(1);
+                LogInfo("NGX DLSS Super Resolution disabled (count=%u)", g_dlss_enabled.load());
                 break;
-            case NVSDK_NGX_Feature_FrameGeneration:
-                g_dlssg_enabled.store(false);
-                LogInfo("NGX DLSS Frame Generation disabled");
+            }
+            case NVSDK_NGX_Feature_FrameGeneration: {
+                uint32_t before = g_dlssg_enabled.fetch_sub(1);
+                if (before == 0) g_dlssg_enabled.fetch_add(1);
+                LogInfo("NGX DLSS Frame Generation disabled (count=%u)", g_dlssg_enabled.load());
                 break;
-            case NVSDK_NGX_Feature_RayReconstruction:
-                g_ray_reconstruction_enabled.store(false);
-                LogInfo("NGX Ray Reconstruction disabled");
+            }
+            case NVSDK_NGX_Feature_RayReconstruction: {
+                uint32_t before = g_ray_reconstruction_enabled.fetch_sub(1);
+                if (before == 0) g_ray_reconstruction_enabled.fetch_add(1);
+                LogInfo("NGX Ray Reconstruction disabled (count=%u)", g_ray_reconstruction_enabled.load());
                 break;
+            }
         }
     }
 }
@@ -149,10 +156,10 @@ static void CleanupNGXHandleTracking() {
     utils::SRWLockExclusive lock(g_ngx_handle_mutex);
     g_ngx_handle_map.clear();
 
-    // Reset all tracking variables
-    g_dlss_enabled.store(false);
-    g_dlssg_enabled.store(false);
-    g_ray_reconstruction_enabled.store(false);
+    // Reset all tracking counters
+    g_dlss_enabled.store(0);
+    g_dlssg_enabled.store(0);
+    g_ray_reconstruction_enabled.store(0);
 
     LogInfo("NGX handle tracking cleaned up");
 }
@@ -1616,12 +1623,12 @@ uint64_t GetTotalNGXHookCount() {
     return g_ngx_counters.total_count.load();
 }
 
-// Feature status checking functions
-bool IsDLSSEnabled() { return g_dlss_enabled.load(); }
+// Feature status checking functions (active if any handle exists)
+bool IsDLSSEnabled() { return g_dlss_enabled.load() != 0; }
 
-bool IsDLSSGEnabled() { return g_dlssg_enabled.load(); }
+bool IsDLSSGEnabled() { return g_dlssg_enabled.load() != 0; }
 
-bool IsRayReconstructionEnabled() { return g_ray_reconstruction_enabled.load(); }
+bool IsRayReconstructionEnabled() { return g_ray_reconstruction_enabled.load() != 0; }
 
 std::string GetEnabledFeaturesSummary() {
     std::vector<std::string> enabled_features;

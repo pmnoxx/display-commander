@@ -1225,10 +1225,10 @@ extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU fin
 extern std::atomic<bool> g_dlss_g_loaded;                                 // DLSS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version;  // DLSS-G version string
 
-// NGX Feature status tracking (set in CreateFeature detours)
-extern std::atomic<bool> g_dlss_enabled;                // DLSS Super Resolution enabled
-extern std::atomic<bool> g_dlssg_enabled;               // DLSS Frame Generation enabled
-extern std::atomic<bool> g_ray_reconstruction_enabled;  // Ray Reconstruction enabled
+// NGX Feature status tracking (reference count: increment on CreateFeature, decrement on ReleaseFeature)
+extern std::atomic<uint32_t> g_dlss_enabled;                // DLSS Super Resolution active handle count
+extern std::atomic<uint32_t> g_dlssg_enabled;               // DLSS Frame Generation active handle count
+extern std::atomic<uint32_t> g_ray_reconstruction_enabled;  // Ray Reconstruction active handle count
 
 // NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
 extern UnifiedParameterMap g_ngx_parameters;  // Unified NGX parameters supporting all types
@@ -1367,6 +1367,10 @@ struct DLSSGSummary {
     std::string supported_dlss_presets = "N/A";
     std::string supported_dlss_rr_presets = "N/A";
     std::string auto_exposure = "N/A";  // "On", "Off", or "N/A" (from DLSS Feature Create Flags)
+    // When DLSS override is enabled for a DLL: true if that loaded DLL is from its override folder
+    bool dlss_override_applied = true;   // nvngx_dlss.dll
+    bool dlssd_override_applied = true;  // nvngx_dlssd.dll (D = denoiser / RR)
+    bool dlssg_override_applied = true;  // nvngx_dlssg.dll (G = generation / FG)
 };
 
 // DLSS Model Profile structure
@@ -1399,9 +1403,10 @@ enum class DLSSGFgMode : std::uint8_t {
     Other  // 5x, 6x, etc.
 };
 
-// Lite summary for FPS limiter / overlay: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active, fg_mode (call every frame)
+// Lite summary for FPS limiter / overlay: any_dlss_active, dlss_active, dlss_g_active, ray_reconstruction_active,
+// fg_mode (call every frame)
 struct DLSSGSummaryLite {
-    bool any_dlss_active = false;   // dlss_active || dlss_g_active || ray_reconstruction_active
+    bool any_dlss_active = false;  // dlss_active || dlss_g_active || ray_reconstruction_active
     bool dlss_active = false;
     bool dlss_g_active = false;
     bool ray_reconstruction_active = false;

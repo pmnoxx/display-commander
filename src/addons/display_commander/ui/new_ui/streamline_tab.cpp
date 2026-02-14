@@ -78,11 +78,14 @@ void DrawStreamlineTab() {
     uint32_t sl_feature_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].load();
     uint32_t sl_interface_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].load();
     uint32_t sl_upgrade_count = g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].load();
+    uint32_t sl_dlss_optimal_count =
+        g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].load();
 
     ImGui::Text("slInit calls: %u", sl_init_count);
     ImGui::Text("slIsFeatureSupported calls: %u", sl_feature_count);
     ImGui::Text("slGetNativeInterface calls: %u", sl_interface_count);
     ImGui::Text("slUpgradeInterface calls: %u", sl_upgrade_count);
+    ImGui::Text("slDLSSGetOptimalSettings calls: %u", sl_dlss_optimal_count);
 
     ImGui::Spacing();
 

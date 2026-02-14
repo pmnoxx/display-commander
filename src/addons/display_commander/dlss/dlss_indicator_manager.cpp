@@ -35,6 +35,29 @@ DWORD DlssIndicatorManager::GetDlssIndicatorValue() {
     return value;
 }
 
+bool DlssIndicatorManager::SetDlssIndicatorEnabled(bool enable) {
+    HKEY h_key;
+    LONG result = RegOpenKeyExA(HKEY_LOCAL_MACHINE, REGISTRY_KEY_PATH, 0, KEY_SET_VALUE, &h_key);
+
+    if (result != ERROR_SUCCESS) {
+        LogInfo("DLSS Indicator: Failed to open registry key for write, error: %ld (admin may be required)", result);
+        return false;
+    }
+
+    const DWORD value = enable ? ENABLED_VALUE : DISABLED_VALUE;
+    result = RegSetValueExA(h_key, REGISTRY_VALUE_NAME, 0, REG_DWORD,
+                            reinterpret_cast<const BYTE*>(&value), sizeof(DWORD));
+
+    RegCloseKey(h_key);
+
+    if (result != ERROR_SUCCESS) {
+        LogInfo("DLSS Indicator: Failed to write registry value, error: %ld", result);
+        return false;
+    }
+    LogInfo("DLSS Indicator: Registry set to %s", enable ? "enabled" : "disabled");
+    return true;
+}
+
 std::string DlssIndicatorManager::GenerateEnableRegFile() {
     std::stringstream reg_content;
     reg_content << "Windows Registry Editor Version 5.00\n\n";

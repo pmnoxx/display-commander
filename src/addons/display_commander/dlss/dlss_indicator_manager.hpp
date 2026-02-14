@@ -14,6 +14,10 @@ public:
     // Get current registry value (0 = disabled, 1024 = enabled)
     static DWORD GetDlssIndicatorValue();
 
+    // Set DLSS indicator in registry (enable or disable). Requires admin for HKLM write.
+    // Returns true if write succeeded, false on access denied or error.
+    static bool SetDlssIndicatorEnabled(bool enable);
+
     // Generate .reg file content for enabling DLSS indicator
     static std::string GenerateEnableRegFile();
 

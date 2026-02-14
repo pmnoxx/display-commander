@@ -2,6 +2,7 @@
 #include "../../addon.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
+#include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
@@ -566,13 +567,14 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Override DLSS presets at runtime (Game Default / DLSS Default / Preset A, B, C, etc.). Same as Swapchain tab.");
+                "Override DLSS presets at runtime (Game Default / DLSS Default / Preset A, B, C, etc.). Same as "
+                "Swapchain tab.");
         }
 
         if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
-            std::vector<std::string> preset_options = dlssg_summary.ray_reconstruction_active
-                ? GetDLSSPresetOptions(dlssg_summary.supported_dlss_rr_presets)
-                : GetDLSSPresetOptions(dlssg_summary.supported_dlss_presets);
+            std::vector<std::string> preset_options =
+                dlssg_summary.ray_reconstruction_active ? GetDLSSPresetOptions(dlssg_summary.supported_dlss_rr_presets)
+                                                        : GetDLSSPresetOptions(dlssg_summary.supported_dlss_presets);
             std::vector<const char*> preset_cstrs;
             preset_cstrs.reserve(preset_options.size());
             for (const auto& option : preset_options) {
@@ -580,8 +582,8 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
             }
 
             std::string current_value = dlssg_summary.ray_reconstruction_active
-                ? settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue()
-                : settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+                                            ? settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue()
+                                            : settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
             int current_selection = 0;
             for (size_t i = 0; i < preset_options.size(); ++i) {
                 if (current_value == preset_options[i]) {
@@ -605,6 +607,24 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
             }
+        }
+    }
+
+    // DLSS indicator (registry: NVIDIA NGXCore ShowDlssIndicator — same as Special-K / .reg toggle)
+    if (any_dlss_active) {
+        bool reg_enabled = dlss::DlssIndicatorManager::IsDlssIndicatorEnabled();
+        ImGui::TextColored(reg_enabled ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_DIMMED, "DLSS indicator: %s",
+                           reg_enabled ? "On" : "Off");
+        if (ImGui::Checkbox("Enable DLSS indicator through Registry##MainTab", &reg_enabled)) {
+            LogInfo("DLSS Indicator: %s", reg_enabled ? "enabled" : "disabled");
+            if (!dlss::DlssIndicatorManager::SetDlssIndicatorEnabled(reg_enabled)) {
+                LogInfo("DLSS Indicator: Apply to registry failed (run as admin or use .reg in Experimental tab).");
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Show DLSS on-screen indicator (resolution/version) in games. Writes NVIDIA registry; may require "
+                "restart. Admin needed if apply fails.");
         }
     }
 

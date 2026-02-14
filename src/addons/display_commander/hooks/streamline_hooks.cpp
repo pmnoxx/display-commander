@@ -16,6 +16,12 @@
 #include <cstdint>
 #include <cstring>
 
+// Streamline base (sl_dlss.h requires sl.h for Boolean, SL_STRUCT, etc.)
+#include "sl.h"
+#include "sl_consts.h"
+#include "sl_core_types.h"
+// Streamline DLSS types (from sl_dlss.h)
+#include "sl_dlss.h"
 // Streamline DLSS-G types (from sl_dlss_g.h)
 #include "sl_dlss_g.h"
 
@@ -36,6 +42,11 @@ static slGetFeatureFunction_pfn slGetFeatureFunction_Original = nullptr;
 using slDLSSGSetOptions_pfn = int (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
 static slDLSSGSetOptions_pfn slDLSSGSetOptions_Original = nullptr;
 static std::atomic<bool> g_slDLSSGSetOptions_hook_installed{false};
+
+// slDLSSGetOptimalSettings: Result(options, settings) - hooked when game requests it via slGetFeatureFunction
+using slDLSSGetOptimalSettings_pfn = int (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
+static slDLSSGetOptimalSettings_pfn slDLSSGetOptimalSettings_Original = nullptr;
+static std::atomic<bool> g_slDLSSGetOptimalSettings_hook_installed{false};
 
 // Track SDK version from slInit calls
 static std::atomic<uint64_t> g_last_sdk_version{0};
@@ -102,6 +113,19 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
     return -1;  // Error if original not available
 }
 
+// slDLSSGetOptimalSettings detour: observe calls, increment counter, optionally log
+static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    if (slDLSSGetOptimalSettings_Original == nullptr) {
+        return static_cast<int>(sl::Result::eErrorInvalidParameter);
+    }
+    int result = slDLSSGetOptimalSettings_Original(options, settings);
+    return result;
+}
+
 // slDLSSGSetOptions detour: when force_fg_auto is enabled, override options.mode to eAuto
 static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options) {
     if (slDLSSGSetOptions_Original == nullptr) {
@@ -135,6 +159,18 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
         } else {
             g_slDLSSGSetOptions_hook_installed.store(false);
             LogError("Failed to install slDLSSGSetOptions hook");
+        }
+    }
+    // Install slDLSSGetOptimalSettings hook on first successful lookup
+    if (functionName != nullptr && std::strcmp(functionName, "slDLSSGetOptimalSettings") == 0
+        && !g_slDLSSGetOptimalSettings_hook_installed.exchange(true)) {
+        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSGetOptimalSettings_Detour),
+                                reinterpret_cast<LPVOID*>(&slDLSSGetOptimalSettings_Original),
+                                "slDLSSGetOptimalSettings")) {
+            LogInfo("Installed slDLSSGetOptimalSettings hook");
+        } else {
+            g_slDLSSGetOptimalSettings_hook_installed.store(false);
+            LogError("Failed to install slDLSSGetOptimalSettings hook");
         }
     }
     return result;

@@ -534,6 +534,18 @@ std::string GetSupportedDLSSSRPresets(int major, int minor, int patch) {
         if (!supported_presets.empty()) supported_presets += ",";
         supported_presets += "J,K";
     }
+
+    // DLSS 4.5
+    if (isBetween(major, minor, patch, 310, 5, 0, 999, 999, 999)) {
+        if (!supported_presets.empty()) supported_presets += ",";
+        supported_presets += "L,M";
+    }
+
+    // Who knows where those will be added
+    if (isBetween(major, minor, patch, 310, 5, 0, 999, 999, 999)) {
+        if (!supported_presets.empty()) supported_presets += ",";
+        supported_presets += "N,O,P,Q,R,S,T,U,V,W,X,Y,Z";
+    }
     return supported_presets;
 }
 
@@ -646,7 +658,12 @@ std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPreset
             preset.erase(preset.find_last_not_of(" \t") + 1);
 
             if (!preset.empty()) {
-                options.push_back("Preset " + preset);
+                std::string label = "Preset " + preset;
+                // Mark presets N and beyond as (for future support) in the UI
+                if (preset.size() == 1 && preset[0] >= 'N' && preset[0] <= 'Z') {
+                    label += " (for future support)";
+                }
+                options.push_back(label);
             }
         }
     }
@@ -661,9 +678,9 @@ int GetDLSSPresetValue(const std::string& presetString) {
     } else if (presetString == "DLSS Default") {
         return 0;  // Use DLSS default (value 0)
     } else if (presetString.substr(0, 7) == "Preset ") {
-        // Extract the preset letter (e.g., "Preset A" -> "A")
+        // Extract the preset letter (e.g., "Preset A" -> "A" or "Preset N (for future support)" -> "N")
         std::string presetLetter = presetString.substr(7);
-        if (presetLetter.length() == 1) {
+        if (!presetLetter.empty()) {
             char letter = presetLetter[0];
             if (letter >= 'A' && letter <= 'Z') {
                 return letter - 'A' + 1;  // A=1, B=2, C=3, etc.
@@ -676,14 +693,18 @@ int GetDLSSPresetValue(const std::string& presetString) {
 }
 
 // Convert render preset number to letter string for display
-// 0 = "Default", 1 = "A", 2 = "B", ..., 15 = "O"
+// 0 = "Default", 1 = "A", 2 = "B", ..., 26 = "Z". Presets >= N (14) get "(for future support)" suffix.
 std::string ConvertRenderPresetToLetter(int preset_value) {
     if (preset_value == 0) {
         return "Default";
-    } else if (preset_value >= 1 && preset_value <= 15) {
-        // Convert 1-15 to A-O
+    } else if (preset_value >= 1 && preset_value <= 26) {
+        // Convert 1-26 to A-Z
         char letter = 'A' + (preset_value - 1);
-        return std::string(1, letter);
+        std::string result(1, letter);
+        if (preset_value >= 14) {  // N=14, O=15, ...
+            result += " (for future support)";
+        }
+        return result;
     } else {
         // Invalid or unknown preset value
         return "?";

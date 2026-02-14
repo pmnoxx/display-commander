@@ -510,7 +510,6 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
     }
 
-    /*
     // DLSS Render Preset
     if (any_dlss_active) {
         DLSSModelProfile model_profile = GetDLSSModelProfile();
@@ -611,7 +610,6 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
             }
         }
     }
-    */
 
     // DLSS indicator (registry: NVIDIA NGXCore ShowDlssIndicator — same as Special-K / .reg toggle)
     if (any_dlss_active) {
@@ -722,11 +720,10 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
     ImGui::Spacing();
     if (dlssg_summary.dlss_dll_version != "N/A") {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS DLL: %s", dlssg_summary.dlss_dll_version.c_str());
-        /*
         if (dlssg_summary.supported_dlss_presets != "N/A") {
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", dlssg_summary.supported_dlss_presets.c_str());
-        }*/
+        }
     } else {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS DLL: N/A");
     }

@@ -19,7 +19,6 @@
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
 
-
 // NGX type definitions (minimal subset needed for hooks)
 #define NVSDK_CONV __cdecl
 
@@ -715,11 +714,29 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter*
     // Call original function
     if (NVSDK_NGX_Parameter_GetI_Original != nullptr) {
         auto res = NVSDK_NGX_Parameter_GetI_Original(InParameter, InName, OutValue);
-
-        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr) {
+        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr && InName != nullptr) {
+            const float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+            if (scale > 0.0f) {
+                int base_val = 0;
+                const char* param_width = NVSDK_NGX_Parameter_Width;
+                const char* param_height = NVSDK_NGX_Parameter_Height;
+                auto get_i = NVSDK_NGX_Parameter_GetI_Original;
+                if (strcmp(InName, NVSDK_NGX_Parameter_OutWidth) == 0
+                    && get_i(InParameter, param_width, &base_val) == NVSDK_NGX_Result_Success) {
+                    if (*OutValue < base_val) {
+                        *OutValue = (std::max)(1, static_cast<int>(static_cast<float>(base_val) * scale));
+                        NVSDK_NGX_Parameter_SetI_Detour(InParameter, InName, *OutValue);
+                    }
+                } else if (strcmp(InName, NVSDK_NGX_Parameter_OutHeight) == 0
+                           && get_i(InParameter, param_height, &base_val) == NVSDK_NGX_Result_Success) {
+                    if (*OutValue < base_val) {
+                        *OutValue = (std::max)(1, static_cast<int>(static_cast<float>(base_val) * scale));
+                        NVSDK_NGX_Parameter_SetI_Detour(InParameter, InName, *OutValue);
+                    }
+                }
+            }
             g_ngx_parameters.update_int(std::string(InName), *OutValue);
         }
-
         return res;
     }
 
@@ -744,8 +761,23 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
     // Call original function
     if (NVSDK_NGX_Parameter_GetUI_Original != nullptr) {
         auto res = NVSDK_NGX_Parameter_GetUI_Original(InParameter, InName, OutValue);
-
-        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr) {
+        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr && InName != nullptr) {
+            float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+            if (scale > 0.0f) {
+                unsigned int base_val = 0;
+                const char* param_width = NVSDK_NGX_Parameter_Width;
+                const char* param_height = NVSDK_NGX_Parameter_Height;
+                auto get_ui = NVSDK_NGX_Parameter_GetUI_Original;
+                if (strcmp(InName, NVSDK_NGX_Parameter_OutWidth) == 0
+                    && get_ui(InParameter, param_width, &base_val) == NVSDK_NGX_Result_Success) {
+                    *OutValue = (std::max)(1u, static_cast<unsigned int>(static_cast<float>(base_val) * scale));
+                    NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
+                } else if (strcmp(InName, NVSDK_NGX_Parameter_OutHeight) == 0
+                           && get_ui(InParameter, param_height, &base_val) == NVSDK_NGX_Result_Success) {
+                    *OutValue = (std::max)(1u, static_cast<unsigned int>(static_cast<float>(base_val) * scale));
+                    NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
+                }
+            }
             g_ngx_parameters.update_uint(std::string(InName), *OutValue);
         }
 
@@ -773,8 +805,23 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
     // Call original function
     if (NVSDK_NGX_Parameter_GetULL_Original != nullptr) {
         auto res = NVSDK_NGX_Parameter_GetULL_Original(InParameter, InName, OutValue);
-
-        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr) {
+        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr && InName != nullptr) {
+            float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+            if (scale > 0.0f) {
+                unsigned long long base_val = 0;
+                const char* param_width = NVSDK_NGX_Parameter_Width;
+                const char* param_height = NVSDK_NGX_Parameter_Height;
+                auto get_ull = NVSDK_NGX_Parameter_GetULL_Original;
+                if (strcmp(InName, NVSDK_NGX_Parameter_OutWidth) == 0
+                    && get_ull(InParameter, param_width, &base_val) == NVSDK_NGX_Result_Success) {
+                    *OutValue = (std::max)(1ULL, static_cast<unsigned long long>(static_cast<float>(base_val) * scale));
+                    NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
+                } else if (strcmp(InName, NVSDK_NGX_Parameter_OutHeight) == 0
+                           && get_ull(InParameter, param_height, &base_val) == NVSDK_NGX_Result_Success) {
+                    *OutValue = (std::max)(1ULL, static_cast<unsigned long long>(static_cast<float>(base_val) * scale));
+                    NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
+                }
+            }
             g_ngx_parameters.update_ull(std::string(InName), *OutValue);
         }
 

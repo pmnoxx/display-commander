@@ -3961,12 +3961,27 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     {
         const DLSSGSummary dlss_summary = GetDLSSGSummary();
         // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded
-        const bool show_dlss_section =
-            dlss_summary.any_dlss_was_active_once || dlss_summary.any_dlss_dll_loaded;
+        const bool show_dlss_section = dlss_summary.any_dlss_was_active_once || dlss_summary.any_dlss_dll_loaded;
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
         if (show_dlss_section && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
             DrawDLSSInfo(dlss_summary);
+
+            if (enabled_experimental_features) {
+                // DLSS internal resolution scale: 0 = no override, (0,1] = scale render size (OutWidth/OutHeight =
+                // Width/Height * scale)
+                float dlss_scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+                ImGui::SetNextItemWidth(120.0f);
+                if (ImGui::SliderFloat("Internal resolution scale", &dlss_scale, 0.0f, 1.0f, "%.2f")) {
+                    settings::g_swapchainTabSettings.dlss_internal_resolution_scale.SetValue(dlss_scale);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Scale DLSS internal render resolution. 0 = no override. e.g. 0.5 = half width/height "
+                        "(OutWidth = "
+                        "Width * 0.5, OutHeight = Height * 0.5).");
+                }
+            }
 
             // DLSS override: per-DLL checkbox + subfolder selector (Display Commander\dlss_override\<subfolder>)
             bool dlss_override_enabled = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();

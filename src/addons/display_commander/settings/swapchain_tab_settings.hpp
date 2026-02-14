@@ -36,6 +36,8 @@ class SwapchainTabSettings {
     // DLSS auto-exposure override: "Game Default", "Force Off", "Force On"
     StringSetting dlss_forced_auto_exposure;
 
+    // DLSS internal resolution scale: 0 = no override, (0,1] = scale Width/Height for OutWidth/OutHeight
+    FloatSetting dlss_internal_resolution_scale;
 
   private:
     std::vector<SettingBase *> all_settings_;

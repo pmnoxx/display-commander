@@ -5,6 +5,7 @@
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
+#include "../../hooks/ngx_hooks.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
@@ -554,6 +555,57 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         }
     } else {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+    }
+
+    // DLSS Render Preset override (same settings as Swapchain tab)
+    if (any_dlss_active) {
+        bool preset_override_enabled = settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue();
+        if (ImGui::Checkbox("Enable DLSS Preset Override##MainTab", &preset_override_enabled)) {
+            settings::g_swapchainTabSettings.dlss_preset_override_enabled.SetValue(preset_override_enabled);
+            ResetNGXPresetInitialization();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Override DLSS presets at runtime (Game Default / DLSS Default / Preset A, B, C, etc.). Same as Swapchain tab.");
+        }
+
+        if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+            std::vector<std::string> preset_options = dlssg_summary.ray_reconstruction_active
+                ? GetDLSSPresetOptions(dlssg_summary.supported_dlss_rr_presets)
+                : GetDLSSPresetOptions(dlssg_summary.supported_dlss_presets);
+            std::vector<const char*> preset_cstrs;
+            preset_cstrs.reserve(preset_options.size());
+            for (const auto& option : preset_options) {
+                preset_cstrs.push_back(option.c_str());
+            }
+
+            std::string current_value = dlssg_summary.ray_reconstruction_active
+                ? settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue()
+                : settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+            int current_selection = 0;
+            for (size_t i = 0; i < preset_options.size(); ++i) {
+                if (current_value == preset_options[i]) {
+                    current_selection = static_cast<int>(i);
+                    break;
+                }
+            }
+
+            const char* combo_label =
+                dlssg_summary.ray_reconstruction_active ? "RR Preset##MainTab" : "SR Preset##MainTab";
+            if (ImGui::Combo(combo_label, &current_selection, preset_cstrs.data(),
+                             static_cast<int>(preset_cstrs.size()))) {
+                const std::string& new_value = preset_options[current_selection];
+                if (dlssg_summary.ray_reconstruction_active) {
+                    settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(new_value);
+                } else {
+                    settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(new_value);
+                }
+                ResetNGXPresetInitialization();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
+            }
+        }
     }
 
     // DLSS.Feature.Create.Flags (own field)

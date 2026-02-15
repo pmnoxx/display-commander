@@ -465,7 +465,8 @@ std::filesystem::path GetAddonDirectory() {
     return std::filesystem::path(module_path).parent_path();
 }
 
-// Default DLSS override folder: AppData\Local\Programs\Display Commander\dlss_override (centralized, shared across games)
+// Default DLSS override folder: AppData\Local\Programs\Display Commander\dlss_override (centralized, shared across
+// games)
 std::filesystem::path GetDefaultDlssOverrideFolder() {
     wchar_t localappdata_path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
@@ -474,9 +475,6 @@ std::filesystem::path GetDefaultDlssOverrideFolder() {
     std::filesystem::path base(localappdata_path);
     return base / L"Programs" / L"Display Commander" / L"dlss_override";
 }
-
-// Legacy DLSS override folder: addon directory/dlss_override (fallback when centralized path is missing files)
-std::filesystem::path GetLegacyDlssOverrideFolder() { return GetAddonDirectory() / "dlss_override"; }
 
 // Effective default path: base or base/subfolder (subfolder empty = base only)
 std::filesystem::path GetEffectiveDefaultDlssOverrideFolder(const std::string& subfolder) {
@@ -505,7 +503,8 @@ std::vector<std::string> GetDlssOverrideSubfolderNames() {
     return names;
 }
 
-// Create a subfolder under (centralized) Display Commander/dlss_override. Rejects names with path separators or "." / "..".
+// Create a subfolder under (centralized) Display Commander/dlss_override. Rejects names with path separators or "." /
+// "..".
 bool CreateDlssOverrideSubfolder(const std::string& subfolder_name, std::string* out_error) {
     if (subfolder_name.empty()) {
         if (out_error) *out_error = "Folder name cannot be empty.";
@@ -789,6 +788,33 @@ int GetDLSSPresetValue(const std::string& presetString) {
     }
 
     // Default to no override if string doesn't match expected format
+    return -1;
+}
+
+// Convert DLSS quality preset string to PerfQualityValue (0-5). Returns -1 for "Game Default" (no override).
+// 0=Performance, 1=Balanced, 2=Quality, 3=Ultra Performance, 4=Ultra Quality, 5=DLAA
+int GetDLSSQualityPresetValue(const std::string& presetString) {
+    if (presetString == "Game Default") {
+        return -1;
+    }
+    if (presetString == "Performance") {
+        return 0;  // NVSDK_NGX_PerfQuality_Value_MaxPerf
+    }
+    if (presetString == "Balanced") {
+        return 1;  // NVSDK_NGX_PerfQuality_Value_Balanced
+    }
+    if (presetString == "Quality") {
+        return 2;  // NVSDK_NGX_PerfQuality_Value_MaxQuality
+    }
+    if (presetString == "Ultra Performance") {
+        return 3;  // NVSDK_NGX_PerfQuality_Value_UltraPerformance
+    }
+    if (presetString == "Ultra Quality") {
+        return 4;  // NVSDK_NGX_PerfQuality_Value_UltraQuality
+    }
+    if (presetString == "DLAA") {
+        return 5;  // NVSDK_NGX_PerfQuality_Value_DLAA
+    }
     return -1;
 }
 

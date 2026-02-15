@@ -19,7 +19,7 @@ using ui::new_ui::StringSetting;
 
 // Settings manager for the swapchain tab
 class SwapchainTabSettings {
-  public:
+   public:
     SwapchainTabSettings();
     ~SwapchainTabSettings() = default;
 
@@ -27,7 +27,7 @@ class SwapchainTabSettings {
     void LoadAll();
 
     // Get all settings for loading
-    std::vector<SettingBase *> GetAllSettings();
+    std::vector<SettingBase*> GetAllSettings();
 
     // DLSS preset override settings
     BoolSetting dlss_preset_override_enabled;
@@ -38,9 +38,11 @@ class SwapchainTabSettings {
 
     // DLSS internal resolution scale: 0 = no override, (0,1] = scale Width/Height for OutWidth/OutHeight
     FloatSetting dlss_internal_resolution_scale;
+    // DLSS Quality Preset override (experimental): "Game Default" or Performance/Balanced/Quality/Ultra Performance/Ultra Quality/DLAA
+    StringSetting dlss_quality_preset_override;
 
-  private:
-    std::vector<SettingBase *> all_settings_;
+   private:
+    std::vector<SettingBase*> all_settings_;
 };
 
-} // namespace settings
+}  // namespace settings

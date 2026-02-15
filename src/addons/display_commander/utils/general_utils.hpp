@@ -66,6 +66,8 @@ std::string GetSupportedDLSSRRPresets(int major, int minor, int patch);
 std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versionString);
 std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
 int GetDLSSPresetValue(const std::string& presetString);
+// DLSS Quality Preset (Performance, Balanced, etc.): -1 = Game Default, 0-5 = NVSDK_NGX_PerfQuality_Value_*
+int GetDLSSQualityPresetValue(const std::string& presetString);
 std::string ConvertRenderPresetToLetter(
     int preset_value);         // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)
 void TestDLSSPresetSupport();  // Test function for debugging
@@ -75,9 +77,6 @@ std::filesystem::path GetAddonDirectory();
 
 // Default DLSS override folder: AppData\Local\Programs\Display Commander\dlss_override (centralized location)
 std::filesystem::path GetDefaultDlssOverrideFolder();
-
-// Legacy DLSS override folder: addon directory/dlss_override (fallback for migration)
-std::filesystem::path GetLegacyDlssOverrideFolder();
 
 // Effective default path when using a subfolder: base (dlss_override) or base/subfolder (subfolder empty = base only)
 std::filesystem::path GetEffectiveDefaultDlssOverrideFolder(const std::string& subfolder);

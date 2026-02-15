@@ -668,8 +668,8 @@ DLSSGSummary GetDLSSGSummary() {
     summary.dlss_active = g_dlss_enabled.load() != 0;
     summary.dlss_g_active = g_dlssg_enabled.load() != 0;
     summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load() != 0;
-    summary.any_dlss_was_active_once = g_dlss_was_active_once.load() || g_dlssg_was_active_once.load()
-                                       || g_ray_reconstruction_was_active_once.load();
+    summary.any_dlss_was_active_once =
+        g_dlss_was_active_once.load() || g_dlssg_was_active_once.load() || g_ray_reconstruction_was_active_once.load();
 
     // Get resolutions - using correct parameter names
     unsigned int internal_width, internal_height, output_width, output_height;
@@ -880,8 +880,8 @@ DLSSGSummary GetDLSSGSummary() {
     }
 
     summary.any_dlss_dll_loaded = (summary.dlss_dll_version != "Not loaded")
-                                   || (summary.dlssg_dll_version != "Not loaded")
-                                   || (summary.dlssd_dll_version != "Not loaded");
+                                  || (summary.dlssg_dll_version != "Not loaded")
+                                  || (summary.dlssd_dll_version != "Not loaded");
 
     // Per-DLL override: set _override_applied and prefer override folder version for display
     const bool master_override = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
@@ -915,8 +915,7 @@ DLSSGSummary GetDLSSGSummary() {
         std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssd.GetValue();
         std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
         if (!folder.empty()) {
-            summary.dlssd_override_applied =
-                loaded_dlssd_path.empty() || path_under_folder(loaded_dlssd_path, folder);
+            summary.dlssd_override_applied = loaded_dlssd_path.empty() || path_under_folder(loaded_dlssd_path, folder);
         } else {
             summary.dlssd_override_applied = true;
         }
@@ -929,8 +928,7 @@ DLSSGSummary GetDLSSGSummary() {
         std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssg.GetValue();
         std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
         if (!folder.empty()) {
-            summary.dlssg_override_applied =
-                loaded_dlssg_path.empty() || path_under_folder(loaded_dlssg_path, folder);
+            summary.dlssg_override_applied = loaded_dlssg_path.empty() || path_under_folder(loaded_dlssg_path, folder);
         } else {
             summary.dlssg_override_applied = true;
         }

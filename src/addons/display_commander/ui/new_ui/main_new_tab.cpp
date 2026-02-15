@@ -3978,7 +3978,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         "(OutWidth = "
                         "Width * 0.5, OutHeight = Height * 0.5).");
                 }
-                // DLSS Quality Preset override (Performance, Balanced, Quality, etc. - not render preset A/B/C)
+            }
+
+            // DLSS Quality Preset override (Performance, Balanced, Quality, etc. - not render preset A/B/C) - shown
+            // even without experimental so users can see and override the preset
+            {
                 static const char* dlss_quality_preset_items[] = {
                     "Game Default", "Performance", "Balanced", "Quality", "Ultra Performance", "Ultra Quality", "DLAA"};
                 std::string current_quality = settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue();
@@ -3990,10 +3994,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     }
                 }
                 ImGui::SetNextItemWidth(160.0f);
-                if (ImGui::Combo("DLSS Quality Preset (WIP Experimental)", &current_quality_index,
-                                 dlss_quality_preset_items, 7)) {
+                if (ImGui::Combo("DLSS Quality Preset Override", &current_quality_index, dlss_quality_preset_items,
+                                 7)) {
                     settings::g_swapchainTabSettings.dlss_quality_preset_override.SetValue(
                         dlss_quality_preset_items[current_quality_index]);
+                    ResetNGXPresetInitialization();
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
@@ -5017,6 +5022,7 @@ void DrawImportantInfo() {
         bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
         if (ImGui::Checkbox("DLSS Render Preset", &show_dlss_render_preset)) {
             settings::g_mainTabSettings.show_dlss_render_preset.SetValue(show_dlss_render_preset);
+            ResetNGXPresetInitialization();
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(

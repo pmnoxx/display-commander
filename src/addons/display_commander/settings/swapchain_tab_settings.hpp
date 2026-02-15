@@ -38,7 +38,8 @@ class SwapchainTabSettings {
 
     // DLSS internal resolution scale: 0 = no override, (0,1] = scale Width/Height for OutWidth/OutHeight
     FloatSetting dlss_internal_resolution_scale;
-    // DLSS Quality Preset override (experimental): "Game Default" or Performance/Balanced/Quality/Ultra Performance/Ultra Quality/DLAA
+    // DLSS Quality Preset override (experimental): "Game Default" or Performance/Balanced/Quality/Ultra
+    // Performance/Ultra Quality/DLAA
     StringSetting dlss_quality_preset_override;
 
    private:

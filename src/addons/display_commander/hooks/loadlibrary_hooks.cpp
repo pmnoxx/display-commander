@@ -178,8 +178,10 @@ static void RemoveDlssOverrideHandle(HMODULE hMod) {
     if (!hMod) return;
     utils::SRWLockExclusive lock(g_dlss_override_handles_srwlock);
     for (auto it = g_dlss_override_handles.begin(); it != g_dlss_override_handles.end();) {
-        if (it->second == hMod) it = g_dlss_override_handles.erase(it);
-        else ++it;
+        if (it->second == hMod)
+            it = g_dlss_override_handles.erase(it);
+        else
+            ++it;
     }
 }
 
@@ -814,6 +816,20 @@ VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode
 }
 
 bool InstallLoadLibraryHooks() {
+    // Initialize MinHook before enumerating modules so that OnModuleLoaded -> InstallNGXHooks (etc.)
+    // can use CreateAndEnableHook when _nvngx.dll or other modules are already loaded at startup.
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::LOADLIBRARY);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("Failed to initialize MinHook for LoadLibrary hooks - Status: %d", init_status);
+        return false;
+    }
+
+    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
+        LogInfo("MinHook already initialized, proceeding with LoadLibrary hooks");
+    } else {
+        LogInfo("MinHook initialized successfully for LoadLibrary hooks");
+    }
+
     if (!EnumerateLoadedModules()) {
         LogError("Failed to enumerate loaded modules, but continuing with hook installation");
     }
@@ -827,13 +843,14 @@ bool InstallLoadLibraryHooks() {
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::LOADLIBRARY)) {
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
-
-        // First, enumerate all currently loaded modules
         return false;
     }
 
+    if (!EnumerateLoadedModules()) {
+        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+    }
+
     // Load blocked DLLs list BEFORE installing hooks to ensure blocking works
-    // Check if DLL blocking is enabled in experimental settings
     if (settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
         settings::g_experimentalTabSettings.blocked_dlls.Load();
         if (!settings::g_experimentalTabSettings.blocked_dlls.GetValue().empty()) {
@@ -845,19 +862,6 @@ bool InstallLoadLibraryHooks() {
         }
     } else {
         LogInfo("DLL blocking is disabled in experimental settings");
-    }
-
-    // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::LOADLIBRARY);
-    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("Failed to initialize MinHook for LoadLibrary hooks - Status: %d", init_status);
-        return false;
-    }
-
-    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
-        LogInfo("MinHook already initialized, proceeding with LoadLibrary hooks");
-    } else {
-        LogInfo("MinHook initialized successfully for LoadLibrary hooks");
     }
 
     // Hook LoadLibraryA
@@ -886,7 +890,8 @@ bool InstallLoadLibraryHooks() {
         return false;
     }
 
-    // Hook GetModuleHandleW / GetModuleHandleA / GetModuleHandleEx (so DLSS override handle is returned for hooks/version)
+    // Hook GetModuleHandleW / GetModuleHandleA / GetModuleHandleEx (so DLSS override handle is returned for
+    // hooks/version)
     if (!CreateAndEnableHook(GetModuleHandleW, GetModuleHandleW_Detour, (LPVOID*)&GetModuleHandleW_Original,
                              "GetModuleHandleW")) {
         LogError("Failed to create and enable GetModuleHandleW hook");

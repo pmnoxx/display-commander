@@ -109,15 +109,6 @@ std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
     if (std::filesystem::exists(primary_file)) {
         return primary_file.wstring();
     }
-    // Fallback: after path change, DLLs may still be in addon directory
-    std::filesystem::path legacy_dir = GetLegacyDlssOverrideFolder();
-    if (!subfolder.empty()) {
-        legacy_dir = legacy_dir / subfolder;
-    }
-    std::filesystem::path legacy_file = legacy_dir / std::filesystem::path(filename);
-    if (std::filesystem::exists(legacy_file)) {
-        return legacy_file.wstring();
-    }
     return primary_file.wstring();
 }
 

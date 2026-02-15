@@ -704,13 +704,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter*
     g_ngx_counters.parameter_geti_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
-    // Log the call (first few times only)
-    static int log_count = 0;
-    if (log_count < 60) {
-        LogInfo("NGX Parameter GetI called - Name: %s", InName ? InName : "null");
-        log_count++;
-    }
-
     // Call original function
     if (NVSDK_NGX_Parameter_GetI_Original != nullptr) {
         auto res = NVSDK_NGX_Parameter_GetI_Original(InParameter, InName, OutValue);
@@ -735,7 +728,41 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter*
                     }
                 }
             }
+            // Override DLSS / Ray Reconstruction render preset GetI when preset override is enabled
+            if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+                const std::string name_str(InName);
+                if (IsDLSSPresetParameter(name_str, g_dlss_sr_preset_params)) {
+                    const int sr_preset =
+                        GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+                    if (sr_preset >= 0) {
+                        *OutValue = sr_preset;
+                        NVSDK_NGX_Parameter_SetI_Detour(InParameter, InName, *OutValue);
+                    }
+                } else if (IsDLSSPresetParameter(name_str, g_dlss_rr_preset_params)) {
+                    const int rr_preset =
+                        GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
+                    if (rr_preset >= 0) {
+                        *OutValue = rr_preset;
+                        NVSDK_NGX_Parameter_SetI_Detour(InParameter, InName, *OutValue);
+                    }
+                }
+            }
+            // Override DLSS Quality Preset (PerfQualityValue) when experimental and override is not Game Default
+            if (enabled_experimental_features && strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
+                const int quality_preset =
+                    GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
+                if (quality_preset >= 0) {
+                    *OutValue = quality_preset;
+                    NVSDK_NGX_Parameter_SetI_Detour(InParameter, InName, *OutValue);
+                }
+            }
             g_ngx_parameters.update_int(std::string(InName), *OutValue);
+            // Log the call with value (first 60 only)
+            static int log_count = 0;
+            if (log_count < 60) {
+                LogInfo("NGX Parameter GetI called - Name: %s, Value: %d", InName, *OutValue);
+                log_count++;
+            }
         }
         return res;
     }
@@ -750,13 +777,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
     // Increment NGX counters
     g_ngx_counters.parameter_getui_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
-
-    // Log the call (first few times only)
-    static int log_count = 0;
-    if (log_count < 60) {
-        LogInfo("NGX Parameter GetUI called - Name: %s", InName ? InName : "null");
-        log_count++;
-    }
 
     // Call original function
     if (NVSDK_NGX_Parameter_GetUI_Original != nullptr) {
@@ -778,7 +798,41 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
                     NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
                 }
             }
+            // Override DLSS / Ray Reconstruction render preset GetUI when preset override is enabled
+            if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+                const std::string name_str(InName);
+                if (IsDLSSPresetParameter(name_str, g_dlss_sr_preset_params)) {
+                    const int sr_preset =
+                        GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+                    if (sr_preset >= 0) {
+                        *OutValue = static_cast<unsigned int>(sr_preset);
+                        NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
+                    }
+                } else if (IsDLSSPresetParameter(name_str, g_dlss_rr_preset_params)) {
+                    const int rr_preset =
+                        GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
+                    if (rr_preset >= 0) {
+                        *OutValue = static_cast<unsigned int>(rr_preset);
+                        NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
+                    }
+                }
+            }
+            // Override DLSS Quality Preset (PerfQualityValue) when experimental and override is not Game Default
+            if (enabled_experimental_features && strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
+                const int quality_preset =
+                    GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
+                if (quality_preset >= 0) {
+                    *OutValue = static_cast<unsigned int>(quality_preset);
+                    NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
+                }
+            }
             g_ngx_parameters.update_uint(std::string(InName), *OutValue);
+            // Log the call with value (first 60 only)
+            static int log_count = 0;
+            if (log_count < 60) {
+                LogInfo("NGX Parameter GetUI called - Name: %s, Value: %u", InName, *OutValue);
+                log_count++;
+            }
         }
 
         return res;
@@ -794,13 +848,6 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
     // Increment NGX counters
     g_ngx_counters.parameter_getull_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
-
-    // Log the call (first few times only)
-    static int log_count = 0;
-    if (log_count < 60) {
-        LogInfo("NGX Parameter GetULL called - Name: %s", InName ? InName : "null");
-        log_count++;
-    }
 
     // Call original function
     if (NVSDK_NGX_Parameter_GetULL_Original != nullptr) {
@@ -822,7 +869,42 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
                     NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
                 }
             }
+            // Override DLSS / Ray Reconstruction render preset GetULL when preset override is enabled
+            if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+                const std::string name_str(InName);
+                if (IsDLSSPresetParameter(name_str, g_dlss_sr_preset_params)) {
+                    const int sr_preset =
+                        GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+                    if (sr_preset >= 0) {
+                        *OutValue = static_cast<unsigned long long>(sr_preset);
+                        NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
+                    }
+                } else if (IsDLSSPresetParameter(name_str, g_dlss_rr_preset_params)) {
+                    const int rr_preset =
+                        GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue());
+                    if (rr_preset >= 0) {
+                        *OutValue = static_cast<unsigned long long>(rr_preset);
+                        NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
+                    }
+                }
+            }
+            // Override DLSS Quality Preset (PerfQualityValue) when experimental and override is not Game Default
+            if (enabled_experimental_features && strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
+                const int quality_preset =
+                    GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
+                if (quality_preset >= 0) {
+                    *OutValue = static_cast<unsigned long long>(quality_preset);
+                    NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
+                }
+            }
             g_ngx_parameters.update_ull(std::string(InName), *OutValue);
+            // Log the call with value (first 60 only)
+            static int log_count = 0;
+            if (log_count < 60) {
+                LogInfo("NGX Parameter GetULL called - Name: %s, Value: %llu", InName,
+                        static_cast<unsigned long long>(*OutValue));
+                log_count++;
+            }
         }
 
         return res;

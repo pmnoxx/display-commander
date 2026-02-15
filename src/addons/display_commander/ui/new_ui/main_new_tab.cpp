@@ -741,8 +741,7 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
     }
     if (settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
         std::string not_applied;
-        if (settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()
-            && !dlssg_summary.dlss_override_applied) {
+        if (settings::g_streamlineTabSettings.dlss_override_dlss.GetValue() && !dlssg_summary.dlss_override_applied) {
             if (!not_applied.empty()) not_applied += ", ";
             not_applied += "nvngx_dlss.dll";
         }
@@ -3969,7 +3968,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 // Width/Height * scale)
                 float dlss_scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
                 ImGui::SetNextItemWidth(120.0f);
-                if (ImGui::SliderFloat("Internal resolution scale", &dlss_scale, 0.0f, 1.0f, "%.2f")) {
+                if (ImGui::SliderFloat("Internal resolution scale (WIP Experimental)", &dlss_scale, 0.0f, 1.0f,
+                                       "%.2f")) {
                     settings::g_swapchainTabSettings.dlss_internal_resolution_scale.SetValue(dlss_scale);
                 }
                 if (ImGui::IsItemHovered()) {
@@ -3977,6 +3977,28 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         "Scale DLSS internal render resolution. 0 = no override. e.g. 0.5 = half width/height "
                         "(OutWidth = "
                         "Width * 0.5, OutHeight = Height * 0.5).");
+                }
+                // DLSS Quality Preset override (Performance, Balanced, Quality, etc. - not render preset A/B/C)
+                static const char* dlss_quality_preset_items[] = {
+                    "Game Default", "Performance", "Balanced", "Quality", "Ultra Performance", "Ultra Quality", "DLAA"};
+                std::string current_quality = settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue();
+                int current_quality_index = 0;
+                for (int i = 0; i < 7; ++i) {
+                    if (current_quality == dlss_quality_preset_items[i]) {
+                        current_quality_index = i;
+                        break;
+                    }
+                }
+                ImGui::SetNextItemWidth(160.0f);
+                if (ImGui::Combo("DLSS Quality Preset (WIP Experimental)", &current_quality_index,
+                                 dlss_quality_preset_items, 7)) {
+                    settings::g_swapchainTabSettings.dlss_quality_preset_override.SetValue(
+                        dlss_quality_preset_items[current_quality_index]);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Override DLSS quality preset (Performance, Balanced, Quality, etc.). Game Default = no "
+                        "override. This is the quality mode, not the render preset (A, B, C).");
                 }
             }
 

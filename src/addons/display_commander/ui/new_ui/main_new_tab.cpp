@@ -742,19 +742,16 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
     if (settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
         std::string not_applied;
         if (settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()
-            && !settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue().empty()
             && !dlssg_summary.dlss_override_applied) {
             if (!not_applied.empty()) not_applied += ", ";
             not_applied += "nvngx_dlss.dll";
         }
         if (settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()
-            && !settings::g_streamlineTabSettings.dlss_override_subfolder_dlssd.GetValue().empty()
             && !dlssg_summary.dlssd_override_applied) {
             if (!not_applied.empty()) not_applied += ", ";
             not_applied += "nvngx_dlssd.dll";
         }
         if (settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()
-            && !settings::g_streamlineTabSettings.dlss_override_subfolder_dlssg.GetValue().empty()
             && !dlssg_summary.dlssg_override_applied) {
             if (!not_applied.empty()) not_applied += ", ";
             not_applied += "nvngx_dlssg.dll";
@@ -4010,12 +4007,15 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     }
                     const char* combo_label = (current_index >= 0)
                                                   ? subfolders[static_cast<size_t>(current_index)].c_str()
-                                              : current_sub.empty() ? "(none)"
+                                              : current_sub.empty() ? "(root folder)"
                                                                     : current_sub.c_str();
                     ImGui::SameLine();
                     ImGui::SetNextItemWidth(140.0f);
                     if (ImGui::BeginCombo((std::string("##dlss_sub_") + std::to_string(dll_index)).c_str(),
                                           combo_label)) {
+                        if (ImGui::Selectable("(root folder)", current_sub.empty())) {
+                            subfolder_setting.SetValue("");
+                        }
                         for (size_t i = 0; i < subfolders.size(); ++i) {
                             bool selected = (current_index == static_cast<int>(i));
                             if (ImGui::Selectable(subfolders[i].c_str(), selected)) {
@@ -4024,7 +4024,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         }
                         ImGui::EndCombo();
                     }
-                    if (!current_sub.empty()) {
+                    {
                         std::string effective_folder = GetEffectiveDefaultDlssOverrideFolder(current_sub).string();
                         DlssOverrideDllStatus st = GetDlssOverrideFolderDllStatus(effective_folder, (dll_index == 0),
                                                                                   (dll_index == 1), (dll_index == 2));

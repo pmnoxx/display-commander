@@ -73,29 +73,32 @@ void TestDLSSPresetSupport();  // Test function for debugging
 // Addon directory utilities
 std::filesystem::path GetAddonDirectory();
 
-// Default DLSS override folder: (Display Commander addon directory)/dlss_override (like Special-K)
+// Default DLSS override folder: AppData\Local\Programs\Display Commander\dlss_override (centralized location)
 std::filesystem::path GetDefaultDlssOverrideFolder();
 
-// Effective default path when using a subfolder: base dlss_override or base/subfolder (subfolder empty = base only)
+// Legacy DLSS override folder: addon directory/dlss_override (fallback for migration)
+std::filesystem::path GetLegacyDlssOverrideFolder();
+
+// Effective default path when using a subfolder: base (dlss_override) or base/subfolder (subfolder empty = base only)
 std::filesystem::path GetEffectiveDefaultDlssOverrideFolder(const std::string& subfolder);
 
 // Subfolder names under the default DLSS override folder (for UI dropdown). Returns directory names only.
 std::vector<std::string> GetDlssOverrideSubfolderNames();
 
-// Create a subfolder under dlss_override (e.g. "310.5.2"). Sanitizes name (no path separators). Returns true on success.
-// out_error optional; set on failure.
+// Create a subfolder under dlss_override (e.g. "310.5.2"). Sanitizes name (no path separators). Returns true on
+// success. out_error optional; set on failure.
 bool CreateDlssOverrideSubfolder(const std::string& subfolder_name, std::string* out_error = nullptr);
 
 // Per-DLL state in the override folder: name, present, and version string (empty if missing).
 struct DlssOverrideDllEntry {
-    std::string name;     // e.g. "nvngx_dlss.dll"
+    std::string name;  // e.g. "nvngx_dlss.dll"
     bool present = false;
     std::string version;  // file version if present, else empty
 };
 // Status of all 3 DLSS DLLs in the override folder; all_required_present = every enabled override has its DLL.
 struct DlssOverrideDllStatus {
     bool all_required_present = true;
-    std::vector<std::string> missing_dlls;  // required (enabled) but missing
+    std::vector<std::string> missing_dlls;   // required (enabled) but missing
     std::vector<DlssOverrideDllEntry> dlls;  // always 3 entries: nvngx_dlss, nvngx_dlssd, nvngx_dlssg
 };
 DlssOverrideDllStatus GetDlssOverrideFolderDllStatus(const std::string& folder_path, bool override_dlss,

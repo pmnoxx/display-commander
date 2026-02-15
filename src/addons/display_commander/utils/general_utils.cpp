@@ -1,6 +1,7 @@
 #include "general_utils.hpp"
 #include <d3d9.h>
 #include <MinHook.h>
+#include <ShlObj.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -464,8 +465,18 @@ std::filesystem::path GetAddonDirectory() {
     return std::filesystem::path(module_path).parent_path();
 }
 
-// Default DLSS override folder: addon directory/dlss_override (like Special-K's DLSS DLL override)
-std::filesystem::path GetDefaultDlssOverrideFolder() { return GetAddonDirectory() / "dlss_override"; }
+// Default DLSS override folder: AppData\Local\Programs\Display Commander\dlss_override (centralized, shared across games)
+std::filesystem::path GetDefaultDlssOverrideFolder() {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+        return std::filesystem::path();
+    }
+    std::filesystem::path base(localappdata_path);
+    return base / L"Programs" / L"Display Commander" / L"dlss_override";
+}
+
+// Legacy DLSS override folder: addon directory/dlss_override (fallback when centralized path is missing files)
+std::filesystem::path GetLegacyDlssOverrideFolder() { return GetAddonDirectory() / "dlss_override"; }
 
 // Effective default path: base or base/subfolder (subfolder empty = base only)
 std::filesystem::path GetEffectiveDefaultDlssOverrideFolder(const std::string& subfolder) {
@@ -494,7 +505,7 @@ std::vector<std::string> GetDlssOverrideSubfolderNames() {
     return names;
 }
 
-// Create a subfolder under Display Commander/dlss_override. Rejects names with path separators or "." / "..".
+// Create a subfolder under (centralized) Display Commander/dlss_override. Rejects names with path separators or "." / "..".
 bool CreateDlssOverrideSubfolder(const std::string& subfolder_name, std::string* out_error) {
     if (subfolder_name.empty()) {
         if (out_error) *out_error = "Folder name cannot be empty.";
@@ -520,6 +531,10 @@ bool CreateDlssOverrideSubfolder(const std::string& subfolder_name, std::string*
         return false;
     }
     std::filesystem::path base = GetDefaultDlssOverrideFolder();
+    if (base.empty()) {
+        if (out_error) *out_error = "Could not determine DLSS override folder (LocalAppData unavailable).";
+        return false;
+    }
     std::filesystem::path full = base / sanitized;
     std::error_code ec;
     if (std::filesystem::exists(full, ec)) {
@@ -539,7 +554,7 @@ bool CreateDlssOverrideSubfolder(const std::string& subfolder_name, std::string*
 }
 
 DlssOverrideDllStatus GetDlssOverrideFolderDllStatus(const std::string& folder_path, bool override_dlss,
-                                                    bool override_dlss_fg, bool override_dlss_rr) {
+                                                     bool override_dlss_fg, bool override_dlss_rr) {
     DlssOverrideDllStatus status;
     status.all_required_present = true;
     struct Entry {
@@ -552,8 +567,8 @@ DlssOverrideDllStatus GetDlssOverrideFolderDllStatus(const std::string& folder_p
         {override_dlss_rr, "nvngx_dlssg.dll"},
     };
     std::error_code ec;
-    const bool folder_exists =
-        !folder_path.empty() && std::filesystem::exists(folder_path, ec) && std::filesystem::is_directory(folder_path, ec);
+    const bool folder_exists = !folder_path.empty() && std::filesystem::exists(folder_path, ec)
+                               && std::filesystem::is_directory(folder_path, ec);
     status.dlls.resize(3);
     for (size_t i = 0; i < 3; ++i) {
         DlssOverrideDllEntry& entry = status.dlls[i];

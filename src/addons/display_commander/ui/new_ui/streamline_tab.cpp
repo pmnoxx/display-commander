@@ -102,7 +102,7 @@ void DrawStreamlineTab() {
 
     if (dlss_override_enabled) {
         ImGui::Indent();
-        ImGui::Text("Override location: Display Commander\\dlss_override");
+        ImGui::Text("Override location: AppData\\Local\\Programs\\Display Commander\\dlss_override");
         std::vector<std::string> subfolders = GetDlssOverrideSubfolderNames();
         auto draw_dll_row = [&subfolders](const char* label, bool* p_check,
                                           ui::new_ui::StringSetting& subfolder_setting, int dll_index) {
@@ -118,11 +118,14 @@ void DrawStreamlineTab() {
                 }
             }
             const char* combo_label = (current_index >= 0)  ? subfolders[static_cast<size_t>(current_index)].c_str()
-                                      : current_sub.empty() ? "(none)"
+                                      : current_sub.empty() ? "(root folder)"
                                                             : current_sub.c_str();
             ImGui::SameLine();
             ImGui::SetNextItemWidth(140.0f);
             if (ImGui::BeginCombo((std::string("##dlss_sub_sl_") + std::to_string(dll_index)).c_str(), combo_label)) {
+                if (ImGui::Selectable("(root folder)", current_sub.empty())) {
+                    subfolder_setting.SetValue("");
+                }
                 for (size_t i = 0; i < subfolders.size(); ++i) {
                     bool selected = (current_index == static_cast<int>(i));
                     if (ImGui::Selectable(subfolders[i].c_str(), selected)) {
@@ -131,7 +134,7 @@ void DrawStreamlineTab() {
                 }
                 ImGui::EndCombo();
             }
-            if (!current_sub.empty()) {
+            {
                 std::string effective_folder = GetEffectiveDefaultDlssOverrideFolder(current_sub).string();
                 if (std::filesystem::exists(effective_folder)) {
                     DlssOverrideDllStatus st = GetDlssOverrideFolderDllStatus(effective_folder, (dll_index == 0),
@@ -145,7 +148,7 @@ void DrawStreamlineTab() {
                             ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.0f, 1.0f), "Missing");
                         }
                     }
-                } else {
+                } else if (!effective_folder.empty()) {
                     ImGui::SameLine();
                     ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Folder not found");
                 }

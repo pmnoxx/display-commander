@@ -2,10 +2,12 @@
 #include <MinHook.h>
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <iomanip>
 #include <set>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
@@ -96,15 +98,27 @@ std::wstring GetDLSSOverridePath(const std::wstring& dll_path) {
         return L"";
     }
 
-    if (!enabled || subfolder.empty()) {
+    if (!enabled) {
         return L"";
     }
-    std::string override_folder = GetEffectiveDefaultDlssOverrideFolder(subfolder).string();
-    if (override_folder.empty()) {
+    std::filesystem::path primary_dir = GetEffectiveDefaultDlssOverrideFolder(subfolder);
+    if (primary_dir.empty()) {
         return L"";
     }
-    std::wstring w_override_folder(override_folder.begin(), override_folder.end());
-    return w_override_folder + L"\\" + filename;
+    std::filesystem::path primary_file = primary_dir / std::filesystem::path(filename);
+    if (std::filesystem::exists(primary_file)) {
+        return primary_file.wstring();
+    }
+    // Fallback: after path change, DLLs may still be in addon directory
+    std::filesystem::path legacy_dir = GetLegacyDlssOverrideFolder();
+    if (!subfolder.empty()) {
+        legacy_dir = legacy_dir / subfolder;
+    }
+    std::filesystem::path legacy_file = legacy_dir / std::filesystem::path(filename);
+    if (std::filesystem::exists(legacy_file)) {
+        return legacy_file.wstring();
+    }
+    return primary_file.wstring();
 }
 
 // Original function pointers
@@ -114,6 +128,69 @@ LoadLibraryExA_pfn LoadLibraryExA_Original = nullptr;
 LoadLibraryExW_pfn LoadLibraryExW_Original = nullptr;
 FreeLibrary_pfn FreeLibrary_Original = nullptr;
 FreeLibraryAndExitThread_pfn FreeLibraryAndExitThread_Original = nullptr;
+
+// GetModuleHandle / GetModuleHandleEx (for DLSS override: return override module so hooks and version reporting use it)
+using GetModuleHandleW_pfn = HMODULE(WINAPI*)(LPCWSTR);
+using GetModuleHandleA_pfn = HMODULE(WINAPI*)(LPCSTR);
+using GetModuleHandleExW_pfn = BOOL(WINAPI*)(DWORD, LPCWSTR, HMODULE*);
+using GetModuleHandleExA_pfn = BOOL(WINAPI*)(DWORD, LPCSTR, HMODULE*);
+static GetModuleHandleW_pfn GetModuleHandleW_Original = nullptr;
+static GetModuleHandleA_pfn GetModuleHandleA_Original = nullptr;
+static GetModuleHandleExW_pfn GetModuleHandleExW_Original = nullptr;
+static GetModuleHandleExA_pfn GetModuleHandleExA_Original = nullptr;
+
+// DLSS override: logical module name (lowercase) -> HMODULE we loaded via redirect (so GetModuleHandle returns this)
+static std::unordered_map<std::wstring, HMODULE> g_dlss_override_handles;
+static SRWLOCK g_dlss_override_handles_srwlock = SRWLOCK_INIT;
+
+static const wchar_t* k_dlss_dll_names[] = {L"nvngx_dlss.dll", L"nvngx_dlssd.dll", L"nvngx_dlssg.dll"};
+
+static std::wstring ToLowerModuleName(LPCWSTR name) {
+    if (!name || !*name) return std::wstring();
+    std::wstring s = std::filesystem::path(name).filename().wstring();
+    std::transform(s.begin(), s.end(), s.begin(), ::towlower);
+    return s;
+}
+
+static std::wstring ToLowerModuleName(LPCSTR name) {
+    if (!name || !*name) return std::wstring();
+    std::string n(name);
+    std::wstring w(n.begin(), n.end());
+    return ToLowerModuleName(w.c_str());
+}
+
+static bool IsDlssOverrideDllName(const std::wstring& lowerName) {
+    for (const wchar_t* dll : k_dlss_dll_names) {
+        std::wstring lower(dll);
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::towlower);
+        if (lowerName == lower) return true;
+    }
+    return false;
+}
+
+static void RecordDlssOverrideHandle(const std::wstring& logicalName, HMODULE hMod) {
+    std::wstring key = ToLowerModuleName(logicalName.c_str());
+    if (!IsDlssOverrideDllName(key)) return;
+    utils::SRWLockExclusive lock(g_dlss_override_handles_srwlock);
+    g_dlss_override_handles[key] = hMod;
+}
+
+static HMODULE GetDlssOverrideHandle(const std::wstring& logicalName) {
+    std::wstring key = ToLowerModuleName(logicalName.c_str());
+    if (!IsDlssOverrideDllName(key)) return nullptr;
+    utils::SRWLockShared lock(g_dlss_override_handles_srwlock);
+    auto it = g_dlss_override_handles.find(key);
+    return (it != g_dlss_override_handles.end()) ? it->second : nullptr;
+}
+
+static void RemoveDlssOverrideHandle(HMODULE hMod) {
+    if (!hMod) return;
+    utils::SRWLockExclusive lock(g_dlss_override_handles_srwlock);
+    for (auto it = g_dlss_override_handles.begin(); it != g_dlss_override_handles.end();) {
+        if (it->second == hMod) it = g_dlss_override_handles.erase(it);
+        else ++it;
+    }
+}
 
 // Hook state
 static std::atomic<bool> g_loadlibrary_hooks_installed{false};
@@ -215,6 +292,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 
     // Check for DLSS override
     LPCSTR actual_lib_file_name = lpLibFileName;
+    bool used_dlss_override = false;
 
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
@@ -225,6 +303,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
             if (std::filesystem::exists(override_path)) {
                 std::string narrow_override_path = WideToNarrow(override_path);
                 actual_lib_file_name = narrow_override_path.c_str();
+                used_dlss_override = true;
                 LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
                         narrow_override_path.c_str());
             } else {
@@ -237,6 +316,10 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     // Call original function with potentially overridden path
     HMODULE result =
         LoadLibraryA_Original ? LoadLibraryA_Original(actual_lib_file_name) : LoadLibraryA(actual_lib_file_name);
+
+    if (result && used_dlss_override) {
+        RecordDlssOverrideHandle(std::wstring(dll_name.begin(), dll_name.end()), result);
+    }
 
     if (result) {
         LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -345,6 +428,10 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     HMODULE result =
         LoadLibraryW_Original ? LoadLibraryW_Original(actual_lib_file_name) : LoadLibraryW(actual_lib_file_name);
 
+    if (result && !override_path.empty() && std::filesystem::exists(override_path)) {
+        RecordDlssOverrideHandle(lpLibFileName, result);
+    }
+
     if (result) {
         LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
 
@@ -430,6 +517,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
     // Check for DLSS override
     LPCSTR actual_lib_file_name = lpLibFileName;
+    bool used_dlss_override_exa = false;
 
     if (lpLibFileName) {
         std::wstring w_dll_name = std::wstring(dll_name.begin(), dll_name.end());
@@ -440,6 +528,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
             if (std::filesystem::exists(override_path)) {
                 std::string narrow_override_path = WideToNarrow(override_path);
                 actual_lib_file_name = narrow_override_path.c_str();
+                used_dlss_override_exa = true;
                 LogInfo("[%s] DLSS Override: Redirecting %s to %s", timestamp.c_str(), dll_name.c_str(),
                         narrow_override_path.c_str());
             } else {
@@ -452,6 +541,10 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     // Call original function with potentially overridden path
     HMODULE result = LoadLibraryExA_Original ? LoadLibraryExA_Original(actual_lib_file_name, hFile, dwFlags)
                                              : LoadLibraryExA(actual_lib_file_name, hFile, dwFlags);
+
+    if (result && used_dlss_override_exa) {
+        RecordDlssOverrideHandle(std::wstring(dll_name.begin(), dll_name.end()), result);
+    }
 
     if (result) {
         LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
@@ -572,6 +665,10 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     HMODULE result = LoadLibraryExW_Original ? LoadLibraryExW_Original(actual_lib_file_name, hFile, dwFlags)
                                              : LoadLibraryExW(actual_lib_file_name, hFile, dwFlags);
 
+    if (result && !override_path.empty() && std::filesystem::exists(override_path)) {
+        RecordDlssOverrideHandle(lpLibFileName, result);
+    }
+
     if (result) {
         LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
 
@@ -619,6 +716,64 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     return result;
 }
 
+// Hooked GetModuleHandleW: return DLSS override module when we loaded it via redirect (so hooks and version use it)
+HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
+    HMODULE override_handle = GetDlssOverrideHandle(lpModuleName ? lpModuleName : L"");
+    if (override_handle != nullptr) {
+        return override_handle;
+    }
+    return GetModuleHandleW_Original ? GetModuleHandleW_Original(lpModuleName) : GetModuleHandleW(lpModuleName);
+}
+
+// Hooked GetModuleHandleA: same for ANSI
+HMODULE WINAPI GetModuleHandleA_Detour(LPCSTR lpModuleName) {
+    if (lpModuleName && *lpModuleName) {
+        std::wstring wkey = ToLowerModuleName(lpModuleName);
+        HMODULE override_handle = GetDlssOverrideHandle(wkey);
+        if (override_handle != nullptr) {
+            return override_handle;
+        }
+    }
+    return GetModuleHandleA_Original ? GetModuleHandleA_Original(lpModuleName) : GetModuleHandleA(lpModuleName);
+}
+
+// Hooked GetModuleHandleExW: return override when querying by name (not by FROM_ADDRESS)
+BOOL WINAPI GetModuleHandleExW_Detour(DWORD dwFlags, LPCWSTR lpModuleName, HMODULE* phModule) {
+    constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+    if (phModule == nullptr) {
+        return GetModuleHandleExW_Original ? GetModuleHandleExW_Original(dwFlags, lpModuleName, phModule)
+                                           : GetModuleHandleExW(dwFlags, lpModuleName, phModule);
+    }
+    if ((dwFlags & k_from_address) == 0 && lpModuleName && *lpModuleName) {
+        HMODULE override_handle = GetDlssOverrideHandle(lpModuleName);
+        if (override_handle != nullptr) {
+            *phModule = override_handle;
+            return TRUE;
+        }
+    }
+    return GetModuleHandleExW_Original ? GetModuleHandleExW_Original(dwFlags, lpModuleName, phModule)
+                                       : GetModuleHandleExW(dwFlags, lpModuleName, phModule);
+}
+
+// Hooked GetModuleHandleExA: same for ANSI
+BOOL WINAPI GetModuleHandleExA_Detour(DWORD dwFlags, LPCSTR lpModuleName, HMODULE* phModule) {
+    constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+    if (phModule == nullptr) {
+        return GetModuleHandleExA_Original ? GetModuleHandleExA_Original(dwFlags, lpModuleName, phModule)
+                                           : GetModuleHandleExA(dwFlags, lpModuleName, phModule);
+    }
+    if ((dwFlags & k_from_address) == 0 && lpModuleName && *lpModuleName) {
+        std::wstring wkey = ToLowerModuleName(lpModuleName);
+        HMODULE override_handle = GetDlssOverrideHandle(wkey);
+        if (override_handle != nullptr) {
+            *phModule = override_handle;
+            return TRUE;
+        }
+    }
+    return GetModuleHandleExA_Original ? GetModuleHandleExA_Original(dwFlags, lpModuleName, phModule)
+                                       : GetModuleHandleExA(dwFlags, lpModuleName, phModule);
+}
+
 // Hooked FreeLibrary function
 BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -628,6 +783,11 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
 
     // Call original function first to get the result
     BOOL result = FreeLibrary_Original ? FreeLibrary_Original(hLibModule) : FreeLibrary(hLibModule);
+
+    // When refcount reaches 0 (result is FALSE), stop returning this handle from GetModuleHandle
+    if (result == FALSE && hLibModule != nullptr) {
+        RemoveDlssOverrideHandle(hLibModule);
+    }
 
     // Only clear if refcount reached 0 (result is FALSE) and it's the ReShade module
     if (is_reshade_module && result == FALSE) {
@@ -735,6 +895,28 @@ bool InstallLoadLibraryHooks() {
         return false;
     }
 
+    // Hook GetModuleHandleW / GetModuleHandleA / GetModuleHandleEx (so DLSS override handle is returned for hooks/version)
+    if (!CreateAndEnableHook(GetModuleHandleW, GetModuleHandleW_Detour, (LPVOID*)&GetModuleHandleW_Original,
+                             "GetModuleHandleW")) {
+        LogError("Failed to create and enable GetModuleHandleW hook");
+        return false;
+    }
+    if (!CreateAndEnableHook(GetModuleHandleA, GetModuleHandleA_Detour, (LPVOID*)&GetModuleHandleA_Original,
+                             "GetModuleHandleA")) {
+        LogError("Failed to create and enable GetModuleHandleA hook");
+        return false;
+    }
+    if (!CreateAndEnableHook(GetModuleHandleExW, GetModuleHandleExW_Detour, (LPVOID*)&GetModuleHandleExW_Original,
+                             "GetModuleHandleExW")) {
+        LogError("Failed to create and enable GetModuleHandleExW hook");
+        return false;
+    }
+    if (!CreateAndEnableHook(GetModuleHandleExA, GetModuleHandleExA_Detour, (LPVOID*)&GetModuleHandleExA_Original,
+                             "GetModuleHandleExA")) {
+        LogError("Failed to create and enable GetModuleHandleExA hook");
+        return false;
+    }
+
     // Hook FreeLibrary
     if (!CreateAndEnableHook(FreeLibrary, FreeLibrary_Detour, (LPVOID*)&FreeLibrary_Original, "FreeLibrary")) {
         LogError("Failed to create and enable FreeLibrary hook");
@@ -772,6 +954,10 @@ void UninstallLoadLibraryHooks() {
     MH_RemoveHook(LoadLibraryW);
     MH_RemoveHook(LoadLibraryExA);
     MH_RemoveHook(LoadLibraryExW);
+    MH_RemoveHook(GetModuleHandleW);
+    MH_RemoveHook(GetModuleHandleA);
+    MH_RemoveHook(GetModuleHandleExW);
+    MH_RemoveHook(GetModuleHandleExA);
     MH_RemoveHook(FreeLibrary);
     MH_RemoveHook(FreeLibraryAndExitThread);
 
@@ -783,8 +969,16 @@ void UninstallLoadLibraryHooks() {
     LoadLibraryW_Original = nullptr;
     LoadLibraryExA_Original = nullptr;
     LoadLibraryExW_Original = nullptr;
+    GetModuleHandleW_Original = nullptr;
+    GetModuleHandleA_Original = nullptr;
+    GetModuleHandleExW_Original = nullptr;
+    GetModuleHandleExA_Original = nullptr;
     FreeLibrary_Original = nullptr;
     FreeLibraryAndExitThread_Original = nullptr;
+    {
+        utils::SRWLockExclusive lock(g_dlss_override_handles_srwlock);
+        g_dlss_override_handles.clear();
+    }
 
     g_loadlibrary_hooks_installed.store(false);
     LogInfo("LoadLibrary hooks uninstalled successfully");

@@ -897,16 +897,12 @@ DLSSGSummary GetDLSSGSummary() {
     };
 
     // Per-DLL override: set _override_applied only; version strings stay from loaded modules above
-    // nvngx_dlss.dll
+    // nvngx_dlss.dll (empty subfolder = root folder dlss_override)
     if (master_override && settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()) {
         std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
-        if (!sub.empty()) {
-            std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
-            if (!folder.empty()) {
-                summary.dlss_override_applied = loaded_dlss_path.empty() || path_under_folder(loaded_dlss_path, folder);
-            } else {
-                summary.dlss_override_applied = true;
-            }
+        std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
+        if (!folder.empty()) {
+            summary.dlss_override_applied = loaded_dlss_path.empty() || path_under_folder(loaded_dlss_path, folder);
         } else {
             summary.dlss_override_applied = true;
         }
@@ -917,14 +913,10 @@ DLSSGSummary GetDLSSGSummary() {
     // nvngx_dlssd.dll (D = denoiser / RR)
     if (master_override && settings::g_streamlineTabSettings.dlss_override_dlss_rr.GetValue()) {
         std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssd.GetValue();
-        if (!sub.empty()) {
-            std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
-            if (!folder.empty()) {
-                summary.dlssd_override_applied =
-                    loaded_dlssd_path.empty() || path_under_folder(loaded_dlssd_path, folder);
-            } else {
-                summary.dlssd_override_applied = true;
-            }
+        std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
+        if (!folder.empty()) {
+            summary.dlssd_override_applied =
+                loaded_dlssd_path.empty() || path_under_folder(loaded_dlssd_path, folder);
         } else {
             summary.dlssd_override_applied = true;
         }
@@ -935,14 +927,10 @@ DLSSGSummary GetDLSSGSummary() {
     // nvngx_dlssg.dll (G = generation / FG)
     if (master_override && settings::g_streamlineTabSettings.dlss_override_dlss_fg.GetValue()) {
         std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder_dlssg.GetValue();
-        if (!sub.empty()) {
-            std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
-            if (!folder.empty()) {
-                summary.dlssg_override_applied =
-                    loaded_dlssg_path.empty() || path_under_folder(loaded_dlssg_path, folder);
-            } else {
-                summary.dlssg_override_applied = true;
-            }
+        std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
+        if (!folder.empty()) {
+            summary.dlssg_override_applied =
+                loaded_dlssg_path.empty() || path_under_folder(loaded_dlssg_path, folder);
         } else {
             summary.dlssg_override_applied = true;
         }
@@ -950,11 +938,22 @@ DLSSGSummary GetDLSSGSummary() {
         summary.dlssg_override_applied = true;
     }
 
-    // Determine supported DLSS SR presets based on DLSS DLL version
-    summary.supported_dlss_presets = GetSupportedDLSSSRPresetsFromVersionString(summary.dlss_dll_version);
-
-    // Determine supported DLSS RR presets based on DLSS DLL version
-    summary.supported_dlss_rr_presets = GetSupportedDLSSRRPresetsFromVersionString(summary.dlss_dll_version);
+    // Determine supported DLSS SR/RR presets: when DLSS override is enabled, use the version of the
+    // DLL we want to load (override path) so preset selection matches the library that will be loaded.
+    std::string version_for_presets = summary.dlss_dll_version;
+    if (master_override && settings::g_streamlineTabSettings.dlss_override_dlss.GetValue()) {
+        std::string sub = settings::g_streamlineTabSettings.dlss_override_subfolder.GetValue();
+        std::string folder = GetEffectiveDefaultDlssOverrideFolder(sub).string();
+        if (!folder.empty()) {
+            std::filesystem::path override_dlss_path = std::filesystem::path(folder) / "nvngx_dlss.dll";
+            std::string override_version = GetDLLVersionString(override_dlss_path.wstring());
+            if (!override_version.empty() && override_version != "Unknown") {
+                version_for_presets = override_version;
+            }
+        }
+    }
+    summary.supported_dlss_presets = GetSupportedDLSSSRPresetsFromVersionString(version_for_presets);
+    summary.supported_dlss_rr_presets = GetSupportedDLSSRRPresetsFromVersionString(version_for_presets);
 
     // Auto-exposure from DLSS Feature Create Flags (NVSDK_NGX_DLSS_Feature_Flags_AutoExposure = 1 << 6)
     int create_flags = 0;

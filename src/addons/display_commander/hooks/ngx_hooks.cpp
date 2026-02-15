@@ -263,6 +263,43 @@ NVSDK_NGX_Parameter_GetUI_pfn NVSDK_NGX_Parameter_GetUI_Original = nullptr;
 NVSDK_NGX_Parameter_GetULL_pfn NVSDK_NGX_Parameter_GetULL_Original = nullptr;
 NVSDK_NGX_Parameter_GetVoidPointer_pfn NVSDK_NGX_Parameter_GetVoidPointer_Original = nullptr;
 
+// DLSS optimal settings callback: NGX fills OutWidth/OutHeight (and related) into InParams
+typedef NVSDK_NGX_Result(NVSDK_CONV* PFN_NVSDK_NGX_DLSS_GetOptimalSettingsCallback)(NVSDK_NGX_Parameter* InParams);
+static PFN_NVSDK_NGX_DLSS_GetOptimalSettingsCallback g_ngx_dlss_optimal_settings_callback_original = nullptr;
+
+static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_Parameter* InParams) {
+    if (g_ngx_dlss_optimal_settings_callback_original == nullptr) {
+        return NVSDK_NGX_Result_Fail;
+    }
+    // NVSDK_NGX_Result res = g_ngx_dlss_optimal_settings_callback_original(InParams);
+    // if (!NVSDK_NGX_SUCCEED(res)) {
+    //     return res;
+    // }
+    unsigned int width = 0;
+    unsigned int height = 0;
+    NVSDK_NGX_Parameter_GetUI_Original(InParams, NVSDK_NGX_Parameter_Width, &width);
+    NVSDK_NGX_Parameter_GetUI_Original(InParams, NVSDK_NGX_Parameter_Height, &height);
+
+    auto res = NVSDK_NGX_Result_Success;
+
+    // Set OutWidth, OutHeight to 50% of input resolution.
+
+    const float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+    if (scale > 0.0f) {
+        if (width > 0 && height > 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+            const unsigned int outWidth = width * scale;
+            const unsigned int outHeight = height * scale;
+            NVSDK_NGX_Parameter_SetUI_Original(InParams, NVSDK_NGX_Parameter_OutWidth, outWidth);
+            NVSDK_NGX_Parameter_SetUI_Original(InParams, NVSDK_NGX_Parameter_OutHeight, outHeight);
+        } else {
+            return g_ngx_dlss_optimal_settings_callback_original(InParams);
+        }
+    } else {
+        return g_ngx_dlss_optimal_settings_callback_original(InParams);
+    }
+    return res;
+}
+
 // NGX initialization function originals
 NVSDK_NGX_D3D12_Init_pfn NVSDK_NGX_D3D12_Init_Original = nullptr;
 NVSDK_NGX_D3D12_Init_Ext_pfn NVSDK_NGX_D3D12_Init_Ext_Original = nullptr;
@@ -832,24 +869,24 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
     // Call original function
     if (NVSDK_NGX_Parameter_GetUI_Original != nullptr) {
         auto res = NVSDK_NGX_Parameter_GetUI_Original(InParameter, InName, OutValue);
-        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr && InName != nullptr) {
-            float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
-            if (scale > 0.0f) {
-                unsigned int base_val = 0;
-                const char* param_width = NVSDK_NGX_Parameter_Width;
-                const char* param_height = NVSDK_NGX_Parameter_Height;
-                auto get_ui = NVSDK_NGX_Parameter_GetUI_Original;
-                if (strcmp(InName, NVSDK_NGX_Parameter_OutWidth) == 0
-                    && get_ui(InParameter, param_width, &base_val) == NVSDK_NGX_Result_Success) {
-                    *OutValue = (std::max)(1u, static_cast<unsigned int>(static_cast<float>(base_val) * scale));
-                    NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
-                } else if (strcmp(InName, NVSDK_NGX_Parameter_OutHeight) == 0
-                           && get_ui(InParameter, param_height, &base_val) == NVSDK_NGX_Result_Success) {
-                    *OutValue = (std::max)(1u, static_cast<unsigned int>(static_cast<float>(base_val) * scale));
-                    NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
-                }
-            }
-        }
+        /*  if (res == NVSDK_NGX_Result_Success && OutValue != nullptr && InName != nullptr) {
+              float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+              if (scale > 0.0f) {
+                  unsigned int base_val = 0;
+                  const char* param_width = NVSDK_NGX_Parameter_Width;
+                  const char* param_height = NVSDK_NGX_Parameter_Height;
+                  auto get_ui = NVSDK_NGX_Parameter_GetUI_Original;
+                  if (strcmp(InName, NVSDK_NGX_Parameter_OutWidth) == 0
+                      && get_ui(InParameter, param_width, &base_val) == NVSDK_NGX_Result_Success) {
+                      *OutValue = (std::max)(1u, static_cast<unsigned int>(static_cast<float>(base_val) * scale));
+                      NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
+                  } else if (strcmp(InName, NVSDK_NGX_Parameter_OutHeight) == 0
+                             && get_ui(InParameter, param_height, &base_val) == NVSDK_NGX_Result_Success) {
+                      *OutValue = (std::max)(1u, static_cast<unsigned int>(static_cast<float>(base_val) * scale));
+                      NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
+                  }
+              }
+          }*/
         {  // Override DLSS / Ray Reconstruction render preset GetUI when preset override is enabled
             if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
                 const std::string name_str(InName);
@@ -910,24 +947,24 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
     // Call original function
     if (NVSDK_NGX_Parameter_GetULL_Original != nullptr) {
         auto res = NVSDK_NGX_Parameter_GetULL_Original(InParameter, InName, OutValue);
-        if (res == NVSDK_NGX_Result_Success && OutValue != nullptr && InName != nullptr) {
-            float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
-            if (scale > 0.0f) {
-                unsigned long long base_val = 0;
-                const char* param_width = NVSDK_NGX_Parameter_Width;
-                const char* param_height = NVSDK_NGX_Parameter_Height;
-                auto get_ull = NVSDK_NGX_Parameter_GetULL_Original;
-                if (strcmp(InName, NVSDK_NGX_Parameter_OutWidth) == 0
-                    && get_ull(InParameter, param_width, &base_val) == NVSDK_NGX_Result_Success) {
-                    *OutValue = (std::max)(1ULL, static_cast<unsigned long long>(static_cast<float>(base_val) * scale));
-                    NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
-                } else if (strcmp(InName, NVSDK_NGX_Parameter_OutHeight) == 0
-                           && get_ull(InParameter, param_height, &base_val) == NVSDK_NGX_Result_Success) {
-                    *OutValue = (std::max)(1ULL, static_cast<unsigned long long>(static_cast<float>(base_val) * scale));
-                    NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
-                }
-            }
-        }
+        /* if (res == NVSDK_NGX_Result_Success && OutValue != nullptr && InName != nullptr) {
+             float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+             if (scale > 0.0f) {
+                 unsigned long long base_val = 0;
+                 const char* param_width = NVSDK_NGX_Parameter_Width;
+                 const char* param_height = NVSDK_NGX_Parameter_Height;
+                 auto get_ull = NVSDK_NGX_Parameter_GetULL_Original;
+                 if (strcmp(InName, NVSDK_NGX_Parameter_OutWidth) == 0
+                     && get_ull(InParameter, param_width, &base_val) == NVSDK_NGX_Result_Success) {
+                     *OutValue = (std::max)(1ULL, static_cast<unsigned long long>(static_cast<float>(base_val) *
+         scale)); NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue); } else if (strcmp(InName,
+         NVSDK_NGX_Parameter_OutHeight) == 0
+                            && get_ull(InParameter, param_height, &base_val) == NVSDK_NGX_Result_Success) {
+                     *OutValue = (std::max)(1ULL, static_cast<unsigned long long>(static_cast<float>(base_val) *
+         scale)); NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
+                 }
+             }
+         }*/
         {
             // Override DLSS / Ray Reconstruction render preset GetULL when preset override is enabled
             if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
@@ -993,12 +1030,25 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
         log_count++;
     }
 
-    // Call original function
-    if (NVSDK_NGX_Parameter_GetVoidPointer_Original != nullptr) {
-        return NVSDK_NGX_Parameter_GetVoidPointer_Original(InParameter, InName, OutValue);
+    if (NVSDK_NGX_Parameter_GetVoidPointer_Original == nullptr) {
+        return NVSDK_NGX_Result_Fail;
     }
 
-    return NVSDK_NGX_Result_Fail;
+    NVSDK_NGX_Result res = NVSDK_NGX_Parameter_GetVoidPointer_Original(InParameter, InName, OutValue);
+    if (!NVSDK_NGX_SUCCEED(res) || OutValue == nullptr) {
+        return res;
+    }
+
+    // Replace DLSSOptimalSettingsCallback with our proxy so we can intercept optimal settings
+    // (e.g. Streamline sl.dlss gets this callback and calls it; we wrap it to allow scale overrides)
+    if (InName != nullptr && strcmp(InName, NVSDK_NGX_Parameter_DLSSOptimalSettingsCallback) == 0) {
+        g_ngx_dlss_optimal_settings_callback_original =
+            reinterpret_cast<PFN_NVSDK_NGX_DLSS_GetOptimalSettingsCallback>(*OutValue);
+        *OutValue = reinterpret_cast<void*>(DLSSOptimalSettingsCallback_Proxy);
+        LogInfo("NGX DLSSOptimalSettingsCallback replaced with proxy");
+    }
+
+    return res;
 }
 
 // D3D12 Init detour

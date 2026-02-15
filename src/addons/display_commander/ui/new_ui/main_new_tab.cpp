@@ -3963,7 +3963,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::Indent();
             DrawDLSSInfo(dlss_summary);
 
-            if (enabled_experimental_features) {
+            {
                 // DLSS internal resolution scale: 0 = no override, (0,1] = scale render size (OutWidth/OutHeight =
                 // Width/Height * scale)
                 float dlss_scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();

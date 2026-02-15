@@ -1349,8 +1349,9 @@ struct DLSSGSummary {
     bool dlss_active = false;
     bool dlss_g_active = false;
     bool ray_reconstruction_active = false;
-    bool any_dlss_was_active_once = false;  // true if any feature was active at least once this session (for UI section visibility)
-    bool any_dlss_dll_loaded = false;       // true if any of nvngx_dlss/dlssd/dlssg.dll is loaded in process
+    bool any_dlss_was_active_once =
+        false;  // true if any feature was active at least once this session (for UI section visibility)
+    bool any_dlss_dll_loaded = false;  // true if any of nvngx_dlss/dlssd/dlssg.dll is loaded in process
     std::string internal_resolution = "N/A";
     std::string output_resolution = "N/A";
     std::string scaling_ratio = "N/A";

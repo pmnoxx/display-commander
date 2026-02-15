@@ -4016,7 +4016,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                     return;
                                 }
                                 SetWindowPos(hwnd, nullptr, x, y, ww - 1, wh - 1, SWP_NOZORDER);
-                                Sleep(150);
+                                Sleep(100);
                                 if (IsWindow(hwnd)) {
                                     SetWindowPos(hwnd, nullptr, x, y, ww, wh, SWP_NOZORDER);
                                     LogInfo("Resize window: quarter then restored to %dx%d", ww, wh);

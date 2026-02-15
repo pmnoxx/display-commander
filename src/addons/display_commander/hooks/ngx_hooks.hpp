@@ -11,8 +11,8 @@ struct NVSDK_NGX_Parameter;
 bool InstallNGXHooks(HMODULE ngx_module);
 void CleanupNGXHooks();
 
-// Internal vtable hooking function
-bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params);
+// Internal vtable hooking function (context is logged when installing hooks, e.g. "D3D12_CreateFeature")
+bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context);
 
 // Get NGX hook statistics
 uint64_t GetNGXHookCount(int event_type);

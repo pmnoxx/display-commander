@@ -207,6 +207,7 @@ using NVSDK_NGX_D3D12_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion);
 using NVSDK_NGX_D3D12_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_D3D12_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D12_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D12_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
                                                                         NVSDK_NGX_Feature InFeatureID,
@@ -233,6 +234,7 @@ using NVSDK_NGX_D3D11_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
     NVSDK_NGX_Version InSDKVersion);
 using NVSDK_NGX_D3D11_GetParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
+using NVSDK_NGX_D3D11_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D11_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D11_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
                                                                         NVSDK_NGX_Feature InFeatureID,
@@ -266,6 +268,7 @@ NVSDK_NGX_D3D12_Init_pfn NVSDK_NGX_D3D12_Init_Original = nullptr;
 NVSDK_NGX_D3D12_Init_Ext_pfn NVSDK_NGX_D3D12_Init_Ext_Original = nullptr;
 NVSDK_NGX_D3D12_Init_ProjectID_pfn NVSDK_NGX_D3D12_Init_ProjectID_Original = nullptr;
 NVSDK_NGX_D3D12_GetParameters_pfn NVSDK_NGX_D3D12_GetParameters_Original = nullptr;
+NVSDK_NGX_D3D12_GetCapabilityParameters_pfn NVSDK_NGX_D3D12_GetCapabilityParameters_Original = nullptr;
 NVSDK_NGX_D3D12_AllocateParameters_pfn NVSDK_NGX_D3D12_AllocateParameters_Original = nullptr;
 NVSDK_NGX_D3D12_CreateFeature_pfn NVSDK_NGX_D3D12_CreateFeature_Original = nullptr;
 NVSDK_NGX_D3D12_ReleaseFeature_pfn NVSDK_NGX_D3D12_ReleaseFeature_Original = nullptr;
@@ -275,6 +278,7 @@ NVSDK_NGX_D3D11_Init_pfn NVSDK_NGX_D3D11_Init_Original = nullptr;
 NVSDK_NGX_D3D11_Init_Ext_pfn NVSDK_NGX_D3D11_Init_Ext_Original = nullptr;
 NVSDK_NGX_D3D11_Init_ProjectID_pfn NVSDK_NGX_D3D11_Init_ProjectID_Original = nullptr;
 NVSDK_NGX_D3D11_GetParameters_pfn NVSDK_NGX_D3D11_GetParameters_Original = nullptr;
+NVSDK_NGX_D3D11_GetCapabilityParameters_pfn NVSDK_NGX_D3D11_GetCapabilityParameters_Original = nullptr;
 NVSDK_NGX_D3D11_AllocateParameters_pfn NVSDK_NGX_D3D11_AllocateParameters_Original = nullptr;
 NVSDK_NGX_D3D11_CreateFeature_pfn NVSDK_NGX_D3D11_CreateFeature_Original = nullptr;
 NVSDK_NGX_D3D11_ReleaseFeature_pfn NVSDK_NGX_D3D11_ReleaseFeature_Original = nullptr;
@@ -1116,7 +1120,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
-        HookNGXParameterVTable(InParameters);
+        HookNGXParameterVTable(InParameters, "D3D12_CreateFeature");
         LogNGXCreateFeatureParameters(InParameters);
         // Override PerfQualityValue at CreateFeature for DLSS (FeatureID 1) when user has a non-Game Default preset
         if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
@@ -1196,7 +1200,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
-        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters);
+        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature");
     }
 
     if (NVSDK_NGX_D3D12_EvaluateFeature_Original != nullptr) {
@@ -1449,7 +1453,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
-        HookNGXParameterVTable(InParameters);
+        HookNGXParameterVTable(InParameters, "D3D11_CreateFeature");
         LogNGXCreateFeatureParameters(InParameters);
         // Override PerfQualityValue at CreateFeature for DLSS (FeatureID 1) when user has a non-Game Default preset
         if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
@@ -1530,7 +1534,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_Detour(ID3D11DeviceC
 
     // Hook the parameter vtable if we have parameters
     if (InParameters != nullptr) {
-        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters);
+        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature");
     }
 
     if (NVSDK_NGX_D3D11_EvaluateFeature_Original != nullptr) {
@@ -1568,7 +1572,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_UpdateFeature_Detour(const NVSDK_NGX_Appli
 }
 
 // Function to hook NGX Parameter vtable (following Special-K's approach)
-bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
+bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context) {
     if (Params == nullptr) {
         return false;
     }
@@ -1599,7 +1603,7 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params) {
     // [15] void* GetULL;
     // [16] void* Reset;
 
-    LogInfo("Installing NGX Parameter vtable hooks...");
+    LogInfo("Installing NGX Parameter vtable hooks (%s)...", context != nullptr ? context : "unknown");
 
     // Hook SetI (vtable index 3)
     CreateAndEnableHook(vftable[3], reinterpret_cast<LPVOID>(NVSDK_NGX_Parameter_SetI_Detour),
@@ -1652,10 +1656,31 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetParameters_Detour(NVSDK_NGX_Param
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters);
+        HookNGXParameterVTable(*InParameters, "D3D12_GetParameters");
         // Store parameter object for direct API calls
         g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
+        ApplyDLSSPresetParameters(*InParameters);
+    }
+
+    return ret;
+}
+
+// NGX D3D12 GetCapabilityParameters detour (used for DLSS optimal settings before AllocateParameters)
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_GetCapabilityParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_ngx_counters.d3d12_getcapabilityparameters_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+
+    NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
+
+    if (NVSDK_NGX_D3D12_GetCapabilityParameters_Original != nullptr) {
+        ret = NVSDK_NGX_D3D12_GetCapabilityParameters_Original(InParameters);
+    }
+
+    if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
+        HookNGXParameterVTable(*InParameters, "D3D12_GetCapabilityParameters");
+        g_last_ngx_parameter.store(*InParameters);
         ApplyDLSSPresetParameters(*InParameters);
     }
 
@@ -1676,7 +1701,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_AllocateParameters_Detour(NVSDK_NGX_
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters);
+        HookNGXParameterVTable(*InParameters, "D3D12_AllocateParameters");
         // Store parameter object for direct API calls
         g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
@@ -1700,10 +1725,31 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetParameters_Detour(NVSDK_NGX_Param
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters);
+        HookNGXParameterVTable(*InParameters, "D3D11_GetParameters");
         // Store parameter object for direct API calls
         g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
+        ApplyDLSSPresetParameters(*InParameters);
+    }
+
+    return ret;
+}
+
+// NGX D3D11 GetCapabilityParameters detour (used for DLSS optimal settings before AllocateParameters)
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_GetCapabilityParameters_Detour(NVSDK_NGX_Parameter** InParameters) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_ngx_counters.d3d11_getcapabilityparameters_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+
+    NVSDK_NGX_Result ret = NVSDK_NGX_Result_Fail;
+
+    if (NVSDK_NGX_D3D11_GetCapabilityParameters_Original != nullptr) {
+        ret = NVSDK_NGX_D3D11_GetCapabilityParameters_Original(InParameters);
+    }
+
+    if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
+        HookNGXParameterVTable(*InParameters, "D3D11_GetCapabilityParameters");
+        g_last_ngx_parameter.store(*InParameters);
         ApplyDLSSPresetParameters(*InParameters);
     }
 
@@ -1724,7 +1770,7 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
     }
 
     if (ret == NVSDK_NGX_Result_Success && InParameters != nullptr && *InParameters != nullptr) {
-        HookNGXParameterVTable(*InParameters);
+        HookNGXParameterVTable(*InParameters, "D3D11_AllocateParameters");
         // Store parameter object for direct API calls
         g_last_ngx_parameter.store(*InParameters);
         // Apply DLSS preset parameters during initialization
@@ -1834,6 +1880,12 @@ CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_UpdateFeature"),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetParameters_Original),
                         "NVSDK_NGX_D3D12_GetParameters");
 
+    // Hook D3D12 GetCapabilityParameters (used for DLSS optimal settings / recommendations before AllocateParameters)
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_GetCapabilityParameters"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_GetCapabilityParameters_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetCapabilityParameters_Original),
+                        "NVSDK_NGX_D3D12_GetCapabilityParameters");
+
     // Hook D3D12 AllocateParameters
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_AllocateParameters"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_AllocateParameters_Detour),
@@ -1845,6 +1897,12 @@ CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_UpdateFeature"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_GetParameters_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetParameters_Original),
                         "NVSDK_NGX_D3D11_GetParameters");
+
+    // Hook D3D11 GetCapabilityParameters (used for DLSS optimal settings / recommendations before AllocateParameters)
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_GetCapabilityParameters"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_GetCapabilityParameters_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetCapabilityParameters_Original),
+                        "NVSDK_NGX_D3D11_GetCapabilityParameters");
 
     // Hook D3D11 AllocateParameters
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_AllocateParameters"),

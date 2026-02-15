@@ -3963,6 +3963,76 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             ImGui::Indent();
             DrawDLSSInfo(dlss_summary);
 
+            // Button to simulate WM_SIZE to force game to resize and recreate DLSS feature
+            {
+                HWND hwnd = g_last_swapchain_hwnd.load();
+                const bool can_send = (hwnd != nullptr && IsWindow(hwnd));
+                if (!can_send) {
+                    ImGui::BeginDisabled();
+                }
+                ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+                if (ImGui::Button("Send WM_SIZE (force resize / recreate DLSS)")) {
+                    RECT client_rect = {};
+                    if (GetClientRect(hwnd, &client_rect)) {
+                        const int w = client_rect.right - client_rect.left;
+                        const int h = client_rect.bottom - client_rect.top;
+                        if (w > 0 && h > 0) {
+                            // sleep 100ms then post the full size
+                            LogInfo("Posted WM_SIZE w-1,h-1 then will post %dx%d after short delay", w, h);
+                            std::thread([hwnd, w, h]() {
+                                PostMessage(hwnd, WM_SIZE, SIZE_RESTORED,
+                                            MAKELPARAM(static_cast<UINT>(w - 1), static_cast<UINT>(h - 1)));
+                                Sleep(100);
+                                if (IsWindow(hwnd)) {
+                                    PostMessage(hwnd, WM_SIZE, SIZE_RESTORED,
+                                                MAKELPARAM(static_cast<UINT>(w), static_cast<UINT>(h)));
+                                    LogInfo("Posted WM_SIZE %dx%d to game window", w, h);
+                                }
+                            }).detach();
+                        }
+                    }
+                }
+                ui::colors::PopIconColor();
+                if (!can_send) {
+                    ImGui::EndDisabled();
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Sends two WM_SIZE messages: first with -1,-1, then after a short delay with the current "
+                        "client size. Use this to force the game to process a resize and recreate the DLSS feature.");
+                }
+
+                // Second button: actually resize window to quarter then back (triggers real WM_SIZE from system)
+                if (ImGui::Button("Resize window to quarter then restore")) {
+                    RECT window_rect = {};
+                    if (GetWindowRect(hwnd, &window_rect)) {
+                        const int x = window_rect.left;
+                        const int y = window_rect.top;
+                        const int ww = window_rect.right - window_rect.left;
+                        const int wh = window_rect.bottom - window_rect.top;
+                        if (ww > 0 && wh > 0) {
+                            std::thread([hwnd, x, y, ww, wh]() {
+                                if (!IsWindow(hwnd)) {
+                                    return;
+                                }
+                                SetWindowPos(hwnd, nullptr, x, y, ww - 1, wh - 1, SWP_NOZORDER);
+                                Sleep(150);
+                                if (IsWindow(hwnd)) {
+                                    SetWindowPos(hwnd, nullptr, x, y, ww, wh, SWP_NOZORDER);
+                                    LogInfo("Resize window: quarter then restored to %dx%d", ww, wh);
+                                }
+                            }).detach();
+                        }
+                    }
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Actually resizes the game window to quarter size (half width, half height), waits 150 ms, "
+                        "then restores the previous size. The system sends real WM_SIZE messages, which can force "
+                        "the game to recreate the swap chain and DLSS feature.");
+                }
+            }
+
             {
                 // DLSS internal resolution scale: 0 = no override, (0,1] = scale render size (OutWidth/OutHeight =
                 // Width/Height * scale)

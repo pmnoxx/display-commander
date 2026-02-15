@@ -271,33 +271,28 @@ static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_P
     if (g_ngx_dlss_optimal_settings_callback_original == nullptr) {
         return NVSDK_NGX_Result_Fail;
     }
-    // NVSDK_NGX_Result res = g_ngx_dlss_optimal_settings_callback_original(InParams);
-    // if (!NVSDK_NGX_SUCCEED(res)) {
-    //     return res;
-    // }
     unsigned int width = 0;
     unsigned int height = 0;
     NVSDK_NGX_Parameter_GetUI_Original(InParams, NVSDK_NGX_Parameter_Width, &width);
     NVSDK_NGX_Parameter_GetUI_Original(InParams, NVSDK_NGX_Parameter_Height, &height);
 
-    auto res = NVSDK_NGX_Result_Success;
-
-    // Set OutWidth, OutHeight to 50% of input resolution.
-
-    const float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
-    if (scale > 0.0f) {
-        if (width > 0 && height > 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
-            const unsigned int outWidth = width * scale;
-            const unsigned int outHeight = height * scale;
+    // Use last real value of PerfQualityValue (from GetI/GetUI/SetI detours), fallback to InParams if not yet set
+    int perf_quality_val = -1;
+    if (!g_ngx_parameters.get_as_int(std::string(NVSDK_NGX_Parameter_PerfQualityValue), perf_quality_val) &&
+        NVSDK_NGX_Parameter_GetI_Original != nullptr) {
+        NVSDK_NGX_Parameter_GetI_Original(InParams, NVSDK_NGX_Parameter_PerfQualityValue, &perf_quality_val);
+    }
+    if (perf_quality_val >= 0 && perf_quality_val <= 4) {
+        const float scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+        if (scale > 0.0f && width > 0 && height > 0 && NVSDK_NGX_Parameter_SetUI_Original != nullptr) {
+            const unsigned int outWidth = static_cast<unsigned int>(static_cast<float>(width) * scale);
+            const unsigned int outHeight = static_cast<unsigned int>(static_cast<float>(height) * scale);
             NVSDK_NGX_Parameter_SetUI_Original(InParams, NVSDK_NGX_Parameter_OutWidth, outWidth);
             NVSDK_NGX_Parameter_SetUI_Original(InParams, NVSDK_NGX_Parameter_OutHeight, outHeight);
-        } else {
-            return g_ngx_dlss_optimal_settings_callback_original(InParams);
+            return NVSDK_NGX_Result_Success;
         }
-    } else {
-        return g_ngx_dlss_optimal_settings_callback_original(InParams);
     }
-    return res;
+    return g_ngx_dlss_optimal_settings_callback_original(InParams);
 }
 
 // NGX initialization function originals

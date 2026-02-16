@@ -47,3 +47,4 @@ EXPORTS
 	StartAndInject
 	WaitAndInject
 	AddonInit
+	CommandLine

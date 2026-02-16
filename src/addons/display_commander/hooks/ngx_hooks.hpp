@@ -29,3 +29,6 @@ void ResetNGXPresetInitialization();
 
 // Force apply NGX parameter override via API call
 bool ApplyNGXParameterOverride(const char* param_name, const char* param_type);
+
+// True if HookNGXParameterVTable was called at least once (NGX Parameter vtable hooks are active)
+bool AreNGXParameterVTableHooksInstalled();

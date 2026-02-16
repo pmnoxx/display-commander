@@ -3961,6 +3961,18 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
         if (show_dlss_section && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
+            if (!AreNGXParameterVTableHooksInstalled()) {
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                                   ICON_FK_WARNING " NGX Parameter vtable hooks were never installed.");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "This is usually caused by ReShade loading Display Commander too late (e.g. _nvngx.dll was "
+                        "already loaded). "
+                        "Recommendation: use Display Commander as dxgi.dll/d3d12.dll/d3d11.dll/version.dll and ReShade "
+                        "as Reshade64.dll so our hooks are active before NGX loads. "
+                        "Parameter overrides and DLSS preset controls may not apply until then.");
+                }
+            }
             DrawDLSSInfo(dlss_summary);
 
             // Button to simulate WM_SIZE to force game to resize and recreate DLSS feature

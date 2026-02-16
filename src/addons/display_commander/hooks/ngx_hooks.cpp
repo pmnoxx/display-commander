@@ -278,8 +278,8 @@ static NVSDK_NGX_Result NVSDK_CONV DLSSOptimalSettingsCallback_Proxy(NVSDK_NGX_P
 
     // Use last real value of PerfQualityValue (from GetI/GetUI/SetI detours), fallback to InParams if not yet set
     int perf_quality_val = -1;
-    if (!g_ngx_parameters.get_as_int(std::string(NVSDK_NGX_Parameter_PerfQualityValue), perf_quality_val) &&
-        NVSDK_NGX_Parameter_GetI_Original != nullptr) {
+    if (!g_ngx_parameters.get_as_int(std::string(NVSDK_NGX_Parameter_PerfQualityValue), perf_quality_val)
+        && NVSDK_NGX_Parameter_GetI_Original != nullptr) {
         NVSDK_NGX_Parameter_GetI_Original(InParams, NVSDK_NGX_Parameter_PerfQualityValue, &perf_quality_val);
     }
     if (perf_quality_val >= 0 && perf_quality_val <= 4) {
@@ -1626,6 +1626,9 @@ bool HookNGXParameterVTable(NVSDK_NGX_Parameter* Params, const char* context) {
         return true;
     }
 
+    // enable minhook
+    SafeInitializeMinHook(display_commanderhooks::HookType::NGX);
+
     // Extract vtable from parameter object
     void** vftable = *(void***)*&Params;
 
@@ -1983,6 +1986,8 @@ uint64_t GetTotalNGXHookCount() {
     // This function is deprecated - use g_ngx_counters.total_count directly
     return g_ngx_counters.total_count.load();
 }
+
+bool AreNGXParameterVTableHooksInstalled() { return g_ngx_vtable_hooks_installed; }
 
 // Feature status checking functions (active if any handle exists)
 bool IsDLSSEnabled() { return g_dlss_enabled.load() != 0; }

@@ -114,4 +114,24 @@ jobs:
           artifacts: artifacts/*
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create/Update Latest Build Release (main)
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest_build
+          name: Latest Build
+          allowUpdates: true
+          artifacts: artifacts/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## Latest Build (bleeding edge)
+
+            Bleeding-edge build from the main branch. Updated on every successful push to main.
+
+            **Files**:
+            - `zzz_display_commander.addon64` - 64-bit version
+            - `zzz_display_commander.addon32` - 32-bit version
+
+            For scheduled development builds, see [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly). For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
+
 

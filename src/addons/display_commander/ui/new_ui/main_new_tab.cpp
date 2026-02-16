@@ -2857,17 +2857,17 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
                         "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
                 }
-                // Delay present start: checkbox and slider on same line (default off, 0–2 frames)
+                // Schedule present start N frame times after simulation start (default on, improves native frame pacing)
                 if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
-                                    "Delay present start after Sim Start")) {
-                    LogInfo("Delay present start after Sim Start %s",
+                                    "Schedule present start N frame times after simulation start")) {
+                    LogInfo("Schedule present start after Sim Start %s",
                             settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
                                                                                                          : "disabled");
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
-                        "When enabled, PRESENT_START is delayed until (SIMULATION_START + N frame times).\n"
-                        "Use the slider to set N (0 = no delay, 1 = one frame, 0.5 = half frame, etc.).");
+                        "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
+                        "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, 1 = one frame, 0.5 = half frame, etc.).");
                 }
                 ImGui::SameLine();
                 if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)",

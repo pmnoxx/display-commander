@@ -4036,11 +4036,20 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
             {
                 // DLSS internal resolution scale: 0 = no override, (0,1] = scale render size (OutWidth/OutHeight =
                 // Width/Height * scale)
-                float dlss_scale = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+                // Apply only on release (IsItemDeactivatedAfterEdit) so dragging the slider doesn't apply
+                // immediately and close the UI. Use static so we don't re-init from GetValue() each frame.
+                static float s_dlss_scale_ui = -1.f;
+                if (s_dlss_scale_ui < 0.f) {
+                    s_dlss_scale_ui = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+                }
                 ImGui::SetNextItemWidth(120.0f);
-                if (ImGui::SliderFloat("Internal resolution scale (WIP Experimental)", &dlss_scale, 0.0f, 1.0f,
-                                       "%.2f")) {
-                    settings::g_swapchainTabSettings.dlss_internal_resolution_scale.SetValue(dlss_scale);
+                ImGui::SliderFloat("Internal resolution scale (WIP Experimental)", &s_dlss_scale_ui, 0.0f, 1.0f,
+                                   "%.2f");
+                if (!ImGui::IsItemActive() && !ImGui::IsItemDeactivatedAfterEdit()) {
+                    s_dlss_scale_ui = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    settings::g_swapchainTabSettings.dlss_internal_resolution_scale.SetValue(s_dlss_scale_ui);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(

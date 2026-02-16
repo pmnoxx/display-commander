@@ -1,3 +1,19 @@
+## v0.12.0 (unreleased)
+
+- **DLSS overrides** - Added DLSS override feature with loading from dlss_override folder, Quality Preset setting, internal resolution scale slider, and M–Z presets; re-enabled DLSS-G profile setting; hook to slDLSSGetOptimalSettings
+- **DLSS UI** - Show DLSS information tab when DLSS was active at least once; button to force internal resolution / render preset change; option to control DLSS auto-exposure; DLSS indicator on/off via registry
+- **Window and Input** - Added Window Control section; moved screensaver settings to Window Control and Continue Rendering to Input Control; borderless fullscreen support for DOOM The Dark Ages; “ugly” cursor when DC opens
+- **Native frame pacing** - Added native frame pacing using simulation thread (present-start+present-end); made native frame pacing and sim-start-only defaults; thread tracking; fixed disabling reflex FPS limit and reporting FPS for FG; Force FG + Auto option
+- **Performance overlay** - Added frame timeline bar and frame latency bars; refresh pooling rate adjustment; fixed DLSS resolution display; renamed “CPU usage” to “CPU busy”
+- **Audio** - Per-channel VU meters on main tab and performance overlay; left/right speaker volume adjustment; Audio info in Audio Control; rewrite stats generation; fixed GetVolumeForCurrentProcess crash and Proton per-channel volume
+- **Stability** - Fixed crashes (Proton, NVAPI, 0/100 low-latency mode, log spam); rewritten crash logs with dbghelp hooks and tab logging; stuck-thread checks and process stuck detection; do not load DC when Special K is already loaded
+- **Reflex and low latency** - Fixed reflex state clearing and reflex library init in some conditions; fixed low latency mode 0/100 bug; disabled reflex shutdown code
+- **DXGI / Vulkan** - Skip dxgifactory hooks when using DXVK; do not hook DXGI swapchain if DX9 is detected; hide kQueryFailedNomedia in DXGI; show flip status in Vulkan
+- **VRR and refresh** - No VRR poll shortly after background→foreground; no refresh rate poll when overlay hidden; atomic vrr_status cache; fix refresh rate on main tab
+- **HDR** - HDR10 metadata: CTA-861 scale 50000 and correct Rec. 709 primaries; tooltip for HDR metadata override
+- **Build and tooling** - Command-line support; DC installed script; warning when DC is loaded too late; version ID in build metadata; bleeding-edge “latest_build” release; updater only when new build is found
+- **UI and cleanup** - Removed Experimental features from UI; refactor and UI improvements; FPS limiter tooltip update; reshade runtime > 1 warning; dedicated logger thread; remove dead/unused code; always flush in ReShade API
+
 ## v0.11.0 (2026-01-26)
 
 - **Vulkan support** - Added comprehensive Vulkan API support with FPS limiter, frame time statistics, and latency reduction features

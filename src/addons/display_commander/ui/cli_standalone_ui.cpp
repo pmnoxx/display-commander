@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "backends/imgui_impl_dx11.h"
@@ -27,6 +28,7 @@
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
 #include "utils/reshade_sha256_database.hpp"
+#include "utils/steam_library.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
 
@@ -96,6 +98,47 @@ static void CollectDisplayCommanderAddonsInDir(const std::wstring& dir, std::vec
     };
     addMatching(L"*.addon64");
     addMatching(L"*.addon32");
+}
+
+// Delete from local folder ReShade and DC files for the wrong architecture (e.g. if exe is 64-bit, remove
+// ReShade32.dll and *.addon32). Call when we have exe detection so only matching-arch files remain.
+static void RemoveWrongArchitectureFiles(const std::wstring& dir, bool exeIs64bit) {
+    if (dir.empty()) return;
+    std::wstring prefix = dir;
+    if (prefix.back() != L'\\') prefix += L'\\';
+    auto delIfPresent = [&prefix](const wchar_t* name) {
+        std::wstring path = prefix + name;
+        if (GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES) DeleteFileW(path.c_str());
+    };
+    if (exeIs64bit) {
+        delIfPresent(L"ReShade32.dll");
+        WIN32_FIND_DATAW fd = {};
+        HANDLE h = FindFirstFileW((prefix + L"*.addon32").c_str(), &fd);
+        if (h != INVALID_HANDLE_VALUE) {
+            do {
+                if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                std::wstring lower = fd.cFileName;
+                for (auto& c : lower) c = (wchar_t)towlower((wint_t)c);
+                if (lower.find(L"display_commander") != std::wstring::npos)
+                    delIfPresent(fd.cFileName);
+            } while (FindNextFileW(h, &fd));
+            FindClose(h);
+        }
+    } else {
+        delIfPresent(L"ReShade64.dll");
+        WIN32_FIND_DATAW fd = {};
+        HANDLE h = FindFirstFileW((prefix + L"*.addon64").c_str(), &fd);
+        if (h != INVALID_HANDLE_VALUE) {
+            do {
+                if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                std::wstring lower = fd.cFileName;
+                for (auto& c : lower) c = (wchar_t)towlower((wint_t)c);
+                if (lower.find(L"display_commander") != std::wstring::npos)
+                    delIfPresent(fd.cFileName);
+            } while (FindNextFileW(h, &fd));
+            FindClose(h);
+        }
+    }
 }
 
 // If multiple API proxy DLLs exist, remove extras so only one remains. Keeps the one matching preferredApi (e.g. "dxgi"
@@ -412,6 +455,7 @@ static const char* const kReshadeUpdateUrlLatest = "https://reshade.me/downloads
 
 static std::atomic<bool> s_reshadeUpdateInProgress{false};
 static std::string s_reshadeUpdateResult;
+static std::string s_gameDetailsReshadeResult;  // result of "Install ReShade" from Game Details popup
 
 // ReShade versions: hardcoded list (latest, 6.7.2 default, 6.7.1, 6.6.2).
 static std::vector<std::string> s_reshadeVersions;
@@ -422,6 +466,11 @@ struct ReshadeUpdateParams {
     std::wstring addonDir;
     std::wstring centralDir;
     std::string selectedVersion;  // e.g. "6.7.1"
+    bool forGameDetails = false;  // if true, result goes to s_gameDetailsReshadeResult
+    // For proxy-only install (game folder): install as dxgi.dll / d3d11.dll / etc., never ReShade64/32 by name.
+    std::string proxyName;        // e.g. "dxgi" (empty = legacy: copy both cores to addonDir)
+    std::wstring gameDir;         // target game folder when proxyName non-empty
+    bool gameIs64bit = true;      // which core to copy as proxy (ReShade64 vs ReShade32)
 };
 
 static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
@@ -429,11 +478,17 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
     const std::wstring& addonDir = params->addonDir;
     const std::wstring& centralDir = params->centralDir;
 
+    auto setResult = [&params](const std::string& text) {
+        if (params->forGameDetails)
+            s_gameDetailsReshadeResult = text;
+        else
+            s_reshadeUpdateResult = text;
+    };
     std::filesystem::path tempDir;
     {
         wchar_t tempPath[MAX_PATH];
         if (GetTempPathW((DWORD)std::size(tempPath), tempPath) == 0) {
-            s_reshadeUpdateResult = "Update failed: could not get temp path.";
+            setResult("Install failed: could not get temp path.");
             s_reshadeUpdateInProgress = false;
             return 1;
         }
@@ -441,7 +496,7 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
         std::error_code ec;
         std::filesystem::create_directories(tempDir, ec);
         if (ec) {
-            s_reshadeUpdateResult = "Update failed: could not create temp dir.";
+            setResult("Install failed: could not create temp dir.");
             s_reshadeUpdateInProgress = false;
             return 1;
         }
@@ -459,7 +514,7 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
             display_commander::utils::version_check::DownloadBinaryFromUrl(kReshadeUpdateUrlLatest, archivePath);
     }
     if (!downloaded) {
-        s_reshadeUpdateResult = "Update failed: download failed (check URL or network).";
+        setResult("Install failed: download failed (check URL or network).");
         s_reshadeUpdateInProgress = false;
         return 1;
     }
@@ -475,7 +530,7 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi = {};
     if (!CreateProcessW(nullptr, &cmdLine[0], nullptr, nullptr, FALSE, 0, nullptr, tempDir.c_str(), &si, &pi)) {
-        s_reshadeUpdateResult = "Update failed: tar extract failed (need Windows 10+ tar).";
+        setResult("Install failed: tar extract failed (need Windows 10+ tar).");
         s_reshadeUpdateInProgress = false;
         return 1;
     }
@@ -486,7 +541,7 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
     std::filesystem::path extracted64 = tempDir / "ReShade64.dll";
     std::filesystem::path extracted32 = tempDir / "ReShade32.dll";
     if (!std::filesystem::exists(extracted64) || !std::filesystem::exists(extracted32)) {
-        s_reshadeUpdateResult = "Update failed: extraction did not produce DLLs.";
+        setResult("Install failed: extraction did not produce DLLs.");
         s_reshadeUpdateInProgress = false;
         return 1;
     }
@@ -504,20 +559,58 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
         return !ec;
     };
 
-    if (!copyTo(extracted64, extracted32, addonDir)) {
-        s_reshadeUpdateResult = "Update failed: could not write to local folder.";
-        s_reshadeUpdateInProgress = false;
-        return 1;
-    }
-    if (!centralDir.empty()) {
-        copyTo(extracted64, extracted32, centralDir);
+    bool proxyOnlyInstall = params->forGameDetails && !params->proxyName.empty() && !params->gameDir.empty();
+
+    if (proxyOnlyInstall) {
+        // Install ReShade only as proxy (dxgi.dll / d3d11.dll / etc.) in game folder; cores go to central only.
+        if (!centralDir.empty()) {
+            if (!copyTo(extracted64, extracted32, centralDir)) {
+                setResult("Install failed: could not write to central ReShade folder.");
+                s_reshadeUpdateInProgress = false;
+                return 1;
+            }
+        }
+        std::wstring proxyDll;
+        for (char c : params->proxyName) proxyDll += (wchar_t)(unsigned char)c;
+        proxyDll += L".dll";
+        const std::filesystem::path& coreSrc = params->gameIs64bit ? extracted64 : extracted32;
+        std::filesystem::path gameDest(params->gameDir);
+        gameDest /= proxyDll;
+        std::error_code ec;
+        std::filesystem::copy_file(coreSrc, gameDest, std::filesystem::copy_options::overwrite_existing, ec);
+        if (ec) {
+            setResult("Install failed: could not write proxy to game folder.");
+            s_reshadeUpdateInProgress = false;
+            return 1;
+        }
+    } else {
+        // Legacy: copy both cores to addon dir (and optionally central).
+        if (!copyTo(extracted64, extracted32, addonDir)) {
+            setResult("Install failed: could not write to game folder.");
+            s_reshadeUpdateInProgress = false;
+            return 1;
+        }
+        if (!centralDir.empty()) {
+            copyTo(extracted64, extracted32, centralDir);
+        }
     }
 
     std::error_code ec;
     std::filesystem::remove_all(tempDir, ec);
-    s_reshadeUpdateResult = (params->selectedVersion.empty() || params->selectedVersion == "latest")
-                                ? "ReShade updated (latest)."
-                                : "ReShade updated to " + params->selectedVersion + ".";
+    std::string msg;
+    if (params->forGameDetails) {
+        if (proxyOnlyInstall)
+            msg = "ReShade installed as " + params->proxyName + ".dll (" + (params->gameIs64bit ? "64-bit" : "32-bit") + ").";
+        else
+            msg = (params->selectedVersion.empty() || params->selectedVersion == "latest")
+                      ? "ReShade installed (latest)."
+                      : "ReShade installed: " + params->selectedVersion + ".";
+        s_gameDetailsReshadeResult = msg;
+    } else {
+        s_reshadeUpdateResult = (params->selectedVersion.empty() || params->selectedVersion == "latest")
+                                    ? "ReShade updated (latest)."
+                                    : "ReShade updated to " + params->selectedVersion + ".";
+    }
     s_reshadeUpdateInProgress = false;
     return 0;
 }
@@ -546,9 +639,14 @@ static std::string GetCachedFileSha256(const std::wstring& pathW, ReshadeSha256C
 }
 
 // Print ReShade64.dll / ReShade32.dll presence, version, and signature status for the given directory.
-static void ShowReshadeCoreVersionsForDir(const std::wstring& dir) {
+// If onlyCurrentArch is true, only the core for is64bit is shown (ReShade64.dll or ReShade32.dll).
+static void ShowReshadeCoreVersionsForDir(const std::wstring& dir, bool onlyCurrentArch = false, bool is64bit = true) {
     if (dir.empty()) return;
-    for (const wchar_t* name : s_reshadeCoreNames) {
+    const wchar_t* coreToShow[2] = {is64bit ? L"ReShade64.dll" : L"ReShade32.dll", nullptr};
+    const wchar_t* const* names = onlyCurrentArch ? coreToShow : s_reshadeCoreNames;
+    const size_t n = onlyCurrentArch ? 1u : (sizeof(s_reshadeCoreNames) / sizeof(s_reshadeCoreNames[0]));
+    for (size_t i = 0; i < n; ++i) {
+        const wchar_t* name = names[i];
         std::wstring path = dir + L"\\" + name;
         DWORD att = GetFileAttributesW(path.c_str());
         if (att == INVALID_FILE_ATTRIBUTES || (att & FILE_ATTRIBUTE_DIRECTORY)) {
@@ -646,6 +744,8 @@ void RunStandaloneUI(HINSTANCE hInst) {
     static DWORD s_startedGamePid = 0;
     static ULONGLONG s_startedGameTick = 0;  // when we started (GetTickCount64), for runtime tooltip
     static std::string s_preferredSetupApi;  // user's "Setup as X" choice; cleanup keeps this, removes others
+    static bool s_showDebug = false;          // Debug button toggles advanced/debug UI
+    static bool s_autoInstallDone = false;    // one-time auto-install ReShade 6.7.2 when core missing
 
     std::wstring centralReshadeDir = GetCentralReshadeDir();
     std::wstring exeFoundLocal = FindLargestExeInDir(addonDir);
@@ -686,12 +786,33 @@ void RunStandaloneUI(HINSTANCE hInst) {
         if (ImGui::Begin(s_installerWindowTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             static display_commander::game_launcher_registry::GameEntry s_gameDetailsEntry;
             static bool s_pleaseOpenGameDetails = false;
+            static bool s_pleaseOpenSteamSearch = false;
             static std::string s_updateDcResult;
             if (!addonDir.empty()) {
+                if (exeDetectOk)
+                    RemoveWrongArchitectureFiles(addonDir, exeDetect.is_64bit);
                 CollectReShadeDllsInDir(addonDir, reshadeDllsPresent);
                 const char* detectedApi = exeDetectOk ? cli_detect_exe::ReShadeDllFromDetect(exeDetect) : "";
                 const char* preferredApi = s_preferredSetupApi.empty() ? detectedApi : s_preferredSetupApi.c_str();
                 RemoveExtraReshadeApiProxyDlls(addonDir, preferredApi, reshadeDllsPresent);
+                // Auto-install ReShade 6.7.2 once when core DLL for current arch is missing
+                if (exeDetectOk && !s_autoInstallDone && !s_reshadeUpdateInProgress.load()) {
+                    const wchar_t* coreName = exeDetect.is_64bit ? L"ReShade64.dll" : L"ReShade32.dll";
+                    std::wstring corePath = addonDir + L"\\" + coreName;
+                    if (GetFileAttributesW(corePath.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                        s_autoInstallDone = true;
+                        auto* params = new ReshadeUpdateParams{addonDir, centralReshadeDir, "6.7.2"};
+                        s_reshadeUpdateResult.clear();
+                        s_reshadeUpdateInProgress = true;
+                        HANDLE h = CreateThread(nullptr, 0, ReshadeUpdateWorker, params, 0, nullptr);
+                        if (h)
+                            CloseHandle(h);
+                        else {
+                            delete params;
+                            s_reshadeUpdateInProgress = false;
+                        }
+                    }
+                }
             }
 
             if (!s_reshadeVersionsInitialized) {
@@ -700,168 +821,15 @@ void RunStandaloneUI(HINSTANCE hInst) {
                 s_reshadeVersionsInitialized = true;
             }
 
-            ImGui::Text("Display Commander Installer UI");
+            ImGui::Text("Display Commander Installer");
             ImGui::Separator();
-            ImGui::Text("Run via: rundll32.exe zzz_DisplayCommander.addon64,CommandLine UITest");
-            ImGui::Spacing();
 
             if (ImGui::BeginTabBar("InstallerTabs")) {
                 if (ImGui::BeginTabItem("Setup")) {
-                    // ---- Local (this folder) ----
-                    ImGui::Text("Local (this folder)");
-                    if (addonDir.empty()) {
-                        ImGui::TextUnformatted("(unknown path)");
-                    } else {
-                        ImGui::TextWrapped("%s", RedactPathForDisplay(addonDirUtf8).c_str());
-                        if (exeFoundUtf8.empty()) {
-                            ImGui::Text("Exe found: (none)");
-                        } else {
-                            ImGui::Text("Exe found: %s", RedactPathForDisplay(exeFoundUtf8).c_str());
-                            if (exeDetectOk) {
-                                const char* bitness = exeDetect.is_64bit ? "64-bit" : "32-bit";
-                                const char* api = cli_detect_exe::ReShadeDllFromDetect(exeDetect);
-                                ImGui::SameLine();
-                                ImGui::TextDisabled("  %s  %s", bitness, api);
-                            }
-                            if (s_startedGamePid != 0) {
-                                HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, s_startedGamePid);
-                                if (h == nullptr) {
-                                    s_startedGamePid = 0;
-                                    s_startedGameTick = 0;
-                                } else {
-                                    CloseHandle(h);
-                                }
-                            }
-                            ImGui::SameLine();
-                            if (s_startedGamePid != 0) {
-                                ImGui::TextDisabled("Running");
-                                if (ImGui::IsItemHovered()) {
-                                    ULONGLONG elapsedMs = GetTickCount64() - s_startedGameTick;
-                                    unsigned long elapsedSec = (unsigned long)(elapsedMs / 1000);
-                                    unsigned long h = elapsedSec / 3600;
-                                    unsigned long m = (elapsedSec % 3600) / 60;
-                                    unsigned long s = elapsedSec % 60;
-                                    char runtimeBuf[32];
-                                    if (h > 0)
-                                        snprintf(runtimeBuf, sizeof(runtimeBuf), "%luh %lum %lus", h, m, s);
-                                    else if (m > 0)
-                                        snprintf(runtimeBuf, sizeof(runtimeBuf), "%lum %lus", m, s);
-                                    else
-                                        snprintf(runtimeBuf, sizeof(runtimeBuf), "%lus", s);
-                                    ImGui::SetTooltip("PID %lu, runtime %s", (unsigned long)s_startedGamePid,
-                                                      runtimeBuf);
-                                }
-                                ImGui::SameLine();
-                                if (ImGui::Button("Stop game")) {
-                                    HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, s_startedGamePid);
-                                    if (h != nullptr) {
-                                        TerminateProcess(h, 0);
-                                        CloseHandle(h);
-                                    }
-                                    s_startedGamePid = 0;
-                                    s_startedGameTick = 0;
-                                }
-                                if (ImGui::IsItemHovered()) {
-                                    ImGui::SetTooltip("Terminate the game process (PID %lu).",
-                                                      (unsigned long)s_startedGamePid);
-                                }
-                            } else {
-                                if (ImGui::Button("Start game")) {
-                                    std::wstring workDir = std::filesystem::path(exeFoundLocal).parent_path().wstring();
-                                    const wchar_t* workDirPtr = workDir.empty() ? addonDir.c_str() : workDir.c_str();
-                                    SHELLEXECUTEINFOW sei = {};
-                                    sei.cbSize = sizeof(sei);
-                                    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-                                    sei.lpVerb = L"open";
-                                    sei.lpFile = exeFoundLocal.c_str();
-                                    sei.lpDirectory = workDirPtr;
-                                    sei.nShow = SW_SHOWNORMAL;
-                                    if (ShellExecuteExW(&sei) && sei.hProcess != nullptr) {
-                                        s_startedGamePid = GetProcessId(sei.hProcess);
-                                        s_startedGameTick = GetTickCount64();
-                                        CloseHandle(sei.hProcess);
-                                    }
-                                }
-                                if (ImGui::IsItemHovered()) {
-                                    ImGui::SetTooltip("Launch the detected game executable.");
-                                }
-                            }
-                        }
-                        ShowReshadeCoreVersionsForDir(addonDir);
-                    }
-                    ImGui::Spacing();
-
-                    // ---- Central (Display Commander\Reshade) ----
-                    ImGui::Text("Central (Display Commander\\Reshade)");
-                    if (centralDirUtf8.empty()) {
-                        ImGui::TextDisabled("(LOCALAPPDATA not set)");
-                    } else {
-                        ImGui::TextWrapped("%s", "%%LOCALAPPDATA%%\\Programs\\Display Commander\\Reshade");
-                        ShowReshadeCoreVersionsForDir(centralReshadeDir);
-                    }
-                    ImGui::Spacing();
-
-                    ImGui::Separator();
-                    ImGui::Text("Known DLLs in this folder:");
-                    if (addonDir.empty()) {
-                        ImGui::TextUnformatted("(unknown path)");
-                    } else {
-                        std::vector<std::wstring> displayCommanderPresent;
-                        CollectDisplayCommanderAddonsInDir(addonDir, displayCommanderPresent);
-                        bool anyKnown = !reshadeDllsPresent.empty() || !displayCommanderPresent.empty();
-                        if (!anyKnown) {
-                            ImGui::TextUnformatted("(none of the known ReShade or Display Commander DLLs)");
-                        } else {
-                            // Classify by exports: ReShade only if ReShadeRegisterAddon; Display Commander if
-                            // StartAndInject
-                            auto showKnownDll = [&addonDir](const std::wstring& n) {
-                                std::wstring dllPath = addonDir + L"\\" + n;
-                                std::string ver = GetFileVersionStringUtf8(dllPath);
-                                if (ver.empty()) ver = "(no version info)";
-                                bool hasReShadeRegisterAddon = DllHasExport(dllPath, "ReShadeRegisterAddon");
-                                bool hasStartAndInject = DllHasExport(dllPath, "StartAndInject");
-                                const char* kind = hasReShadeRegisterAddon ? "ReShade"
-                                                   : hasStartAndInject     ? "Display Commander"
-                                                                           : "Other";
-                                int need = WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), nullptr, 0,
-                                                               nullptr, nullptr);
-                                if (need > 0) {
-                                    std::string nameUtf8(static_cast<size_t>(need), 0);
-                                    WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), &nameUtf8[0], need,
-                                                        nullptr, nullptr);
-                                    if (strcmp(kind, "Display Commander") == 0) {
-                                        ImGui::BulletText(
-                                            "Display Commander - %s: %s  %s", nameUtf8.c_str(), ver.c_str(),
-                                            hasStartAndInject ? "(StartAndInject)" : "(no StartAndInject)");
-                                    } else if (strcmp(kind, "ReShade") == 0) {
-                                        ImGui::BulletText("ReShade - %s: %s", nameUtf8.c_str(), ver.c_str());
-                                    } else {
-                                        ImGui::BulletText("Other - %s: %s (no ReShadeRegisterAddon, no StartAndInject)",
-                                                          nameUtf8.c_str(), ver.c_str());
-                                    }
-                                }
-                            };
-                            for (const auto& n : reshadeDllsPresent) showKnownDll(n);
-                            for (const auto& n : displayCommanderPresent) showKnownDll(n);
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    // Setup ReShade as appropriate DLL (dxgi.dll, d3d9.dll, opengl32.dll, etc.) from detected exe
-                    if (!s_setupReshadeResult.empty()) {
-                        bool isSuccess = (s_setupReshadeResult.find("correctly") != std::string::npos
-                                          || s_setupReshadeResult.find("installed") != std::string::npos);
-                        if (isSuccess)
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.9f, 0.4f, 1.0f));
-                        else
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.4f, 0.4f, 1.0f));
-                        ImGui::TextWrapped("%s", s_setupReshadeResult.c_str());
-                        ImGui::PopStyleColor();
-                    }
+                    bool is64bit = exeDetectOk ? exeDetect.is_64bit : true;
                     const char* detectedApi = exeDetectOk ? cli_detect_exe::ReShadeDllFromDetect(exeDetect) : "";
                     bool apiSupported =
                         (detectedApi && strcmp(detectedApi, "vulkan") != 0 && strcmp(detectedApi, "unknown") != 0);
-                    bool isDxgi = (detectedApi && strcmp(detectedApi, "dxgi") == 0);
                     bool canSetup = !addonDir.empty() && exeDetectOk && apiSupported;
 
                     auto doSetupAs = [&](const char* targetApi) {
@@ -878,7 +846,7 @@ void RunStandaloneUI(HINSTANCE hInst) {
                             if (need > 0)
                                 WideCharToMultiByte(CP_UTF8, 0, sourceDll, -1, &srcUtf8[0], need, nullptr, nullptr);
                             s_setupReshadeResult = "Not installed correctly: " + srcUtf8
-                                                   + " not found. Use the Update ReShade button first.";
+                                                   + " not found. Use Update ReShade in Advanced.";
                         } else if (CopyFileW(sourcePath.c_str(), targetPath.c_str(), FALSE)) {
                             s_preferredSetupApi = targetApi;
                             int need = WideCharToMultiByte(CP_UTF8, 0, targetDll.c_str(), (int)targetDll.size(),
@@ -895,89 +863,320 @@ void RunStandaloneUI(HINSTANCE hInst) {
                         }
                     };
 
-                    if (!canSetup) ImGui::BeginDisabled();
-                    if (isDxgi) {
-                        ImGui::Text("Setup ReShade as:");
-                        const char* dxgiOptions[] = {"dxgi.dll", "d3d11.dll", "d3d12.dll"};
-                        const char* dxgiApis[] = {"dxgi", "d3d11", "d3d12"};
-                        for (int i = 0; i < 3; ++i) {
-                            if (i > 0) ImGui::SameLine();
-                            if (ImGui::Button((std::string(dxgiOptions[i]) + "##dxgi_" + std::to_string(i)).c_str())) {
-                                doSetupAs(dxgiApis[i]);
+                    // ---- Exe name and Start / Stop ----
+                    if (!exeFoundUtf8.empty()) {
+                        std::string exeNameUtf8 = WstringToUtf8(std::filesystem::path(exeFoundLocal).filename().wstring());
+                        if (!exeNameUtf8.empty()) {
+                            ImGui::Text("Exe: %s", exeNameUtf8.c_str());
+                            if (ImGui::IsItemHovered())
+                                ImGui::SetTooltip("%s", RedactPathForDisplay(exeFoundUtf8).c_str());
+                        }
+                        if (s_startedGamePid != 0) {
+                            HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, s_startedGamePid);
+                            if (h == nullptr) {
+                                s_startedGamePid = 0;
+                                s_startedGameTick = 0;
+                            } else {
+                                CloseHandle(h);
+                            }
+                        }
+                        if (s_startedGamePid != 0) {
+                            if (ImGui::Button("Stop")) {
+                                HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, s_startedGamePid);
+                                if (h != nullptr) {
+                                    TerminateProcess(h, 0);
+                                    CloseHandle(h);
+                                }
+                                s_startedGamePid = 0;
+                                s_startedGameTick = 0;
                             }
                             if (ImGui::IsItemHovered()) {
-                                ImGui::SetTooltip("Copy ReShade to %s so the game loads ReShade.", dxgiOptions[i]);
+                                ULONGLONG elapsedMs = GetTickCount64() - s_startedGameTick;
+                                unsigned long elapsedSec = (unsigned long)(elapsedMs / 1000);
+                                ImGui::SetTooltip("Terminate game (PID %lu, %lus)", (unsigned long)s_startedGamePid,
+                                                  elapsedSec);
+                            }
+                            ImGui::SameLine();
+                            ImGui::TextDisabled("Running");
+                        } else {
+                            if (ImGui::Button("Start")) {
+                                std::wstring workDir = std::filesystem::path(exeFoundLocal).parent_path().wstring();
+                                const wchar_t* workDirPtr = workDir.empty() ? addonDir.c_str() : workDir.c_str();
+                                SHELLEXECUTEINFOW sei = {};
+                                sei.cbSize = sizeof(sei);
+                                sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+                                sei.lpVerb = L"open";
+                                sei.lpFile = exeFoundLocal.c_str();
+                                sei.lpDirectory = workDirPtr;
+                                sei.nShow = SW_SHOWNORMAL;
+                                if (ShellExecuteExW(&sei) && sei.hProcess != nullptr) {
+                                    s_startedGamePid = GetProcessId(sei.hProcess);
+                                    s_startedGameTick = GetTickCount64();
+                                    CloseHandle(sei.hProcess);
+                                }
+                            }
+                            if (ImGui::IsItemHovered())
+                                ImGui::SetTooltip("Launch %s", RedactPathForDisplay(exeFoundUtf8).c_str());
+                        }
+                    }
+
+                    // ---- Detected: 64-bit/32-bit and graphics API (read-only from exe) ----
+                    if (exeDetectOk) {
+                        const char* apiDisplay = (detectedApi && detectedApi[0]) ? detectedApi : "(not detected)";
+                        ImGui::Text("%s  ·  Graphics: %s", is64bit ? "64-bit" : "32-bit", apiDisplay);
+                        if (ImGui::IsItemHovered())
+                            ImGui::SetTooltip("Detected from exe (override in Advanced).");
+                    } else if (!exeFoundUtf8.empty()) {
+                        ImGui::TextDisabled("(exe not detected: bitness/graphics unknown)");
+                    }
+
+                    // ---- ReShade State / DC State ----
+                    bool reshadeInstalled = false;
+                    bool dcInstalled = false;
+                    std::string reshadeStateDisplay = "Not Installed";
+                    std::string reshadeStateTooltip = "ReShade core DLL not found. Use Advanced -> Update ReShade.";
+                    if (!addonDir.empty() && exeDetectOk) {
+                        const wchar_t* coreName = exeDetect.is_64bit ? L"ReShade64.dll" : L"ReShade32.dll";
+                        std::wstring corePath = addonDir + L"\\" + coreName;
+                        reshadeInstalled =
+                            (GetFileAttributesW(corePath.c_str()) != INVALID_FILE_ATTRIBUTES);
+                        if (reshadeInstalled) {
+                            std::string ver = GetFileVersionStringUtf8(corePath);
+                            if (ver.empty()) ver = "?";
+                            const wchar_t* proxyFound = nullptr;
+                            for (const auto& n : reshadeDllsPresent) {
+                                if (IsReshadeApiProxyDll(n)) {
+                                    proxyFound = n.c_str();
+                                    break;
+                                }
+                            }
+                            if (proxyFound) {
+                                reshadeStateDisplay = WstringToUtf8(proxyFound) + " " + ver;
+                                reshadeStateTooltip = "ReShade is installed. Core: ";
+                                reshadeStateTooltip += WstringToUtf8(coreName);
+                                reshadeStateTooltip += " (";
+                                reshadeStateTooltip += ver;
+                                reshadeStateTooltip += "). Proxy in use: ";
+                                reshadeStateTooltip += WstringToUtf8(proxyFound);
+                                reshadeStateTooltip += " (game loads this DLL).";
+                            } else {
+                                reshadeStateDisplay = "(core only) " + ver;
+                                reshadeStateTooltip = "ReShade core ";
+                                reshadeStateTooltip += WstringToUtf8(coreName);
+                                reshadeStateTooltip += " present (";
+                                reshadeStateTooltip += ver;
+                                reshadeStateTooltip += "). No proxy DLL (dxgi/d3d11/etc.) found; use Advanced -> Override ReShade DLL to install.";
                             }
                         }
-                    } else {
-                        std::string setupLabel = "Setup ReShade as ";
-                        if (apiSupported)
-                            setupLabel += std::string(detectedApi) + ".dll";
-                        else
-                            setupLabel += "...";
-                        if (ImGui::Button(setupLabel.c_str())) {
-                            doSetupAs(detectedApi);
-                        }
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Copy ReShade to %s so the game loads ReShade (based on detected exe).",
-                                              detectedApi);
+                        std::vector<std::wstring> dcAddons;
+                        CollectDisplayCommanderAddonsInDir(addonDir, dcAddons);
+                        const wchar_t* suffix = exeDetect.is_64bit ? L".addon64" : L".addon32";
+                        const size_t suffixLen = wcslen(suffix);
+                        for (const auto& n : dcAddons) {
+                            if (n.size() >= suffixLen
+                                && _wcsicmp(n.c_str() + n.size() - suffixLen, suffix) == 0) {
+                                dcInstalled = true;
+                                break;
+                            }
                         }
                     }
-                    if (!canSetup) ImGui::EndDisabled();
+                    ImGui::Text("ReShade State: %s", reshadeStateDisplay.c_str());
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s", reshadeStateTooltip.c_str());
+                    ImGui::Text("DC State: %s", dcInstalled ? "Installed" : "Not Installed");
 
                     ImGui::Spacing();
-                    // ReShade version: hardcoded list (latest, 6.7.2 default, 6.7.1, 6.6.2)
-                    ImGui::Text("ReShade version");
-                    if (!s_reshadeVersions.empty()) {
-                        ImGui::SameLine();
-                        if (s_reshadeVersionIndex >= (int)s_reshadeVersions.size()) s_reshadeVersionIndex = 1;
-                        auto getter = [](void* data, int idx, const char** out) -> bool {
-                            const auto* v = static_cast<const std::vector<std::string>*>(data);
-                            if (idx < 0 || (size_t)idx >= v->size()) return false;
-                            *out = (*v)[(size_t)idx].c_str();
-                            return true;
-                        };
-                        ImGui::SetNextItemWidth(120.f);
-                        ImGui::Combo("##reshade_ver", &s_reshadeVersionIndex, getter, &s_reshadeVersions,
-                                     (int)s_reshadeVersions.size());
-                        ImGui::SameLine();
-                        ImGui::TextDisabled("(default: 6.7.2)");
-                    }
-                    ImGui::Spacing();
-                    // Update ReShade (overrides local + central) - only when a version is selected from the list
-                    if (s_reshadeUpdateInProgress) {
-                        ImGui::TextDisabled("Updating ReShade...");
-                    } else if (!s_reshadeUpdateResult.empty()) {
-                        ImGui::TextWrapped("%s", s_reshadeUpdateResult.c_str());
-                    }
-                    std::string selectedVer = s_reshadeVersions.empty()
-                                                  ? ""
-                                                  : (s_reshadeVersionIndex < (int)s_reshadeVersions.size()
-                                                         ? s_reshadeVersions[(size_t)s_reshadeVersionIndex]
-                                                         : s_reshadeVersions[0]);
-                    bool canUpdate = !addonDir.empty() && !s_reshadeUpdateInProgress && !s_reshadeVersions.empty();
-                    if (!canUpdate) ImGui::BeginDisabled();
-                    std::string updateLabel = selectedVer.empty() ? "Update ReShade (select version from list above)"
-                                                                  : ("Update ReShade to " + selectedVer);
-                    if (ImGui::Button(updateLabel.c_str())) {
-                        auto* params = new ReshadeUpdateParams{addonDir, centralReshadeDir, selectedVer};
-                        s_reshadeUpdateResult.clear();
-                        s_reshadeUpdateInProgress = true;
-                        HANDLE h = CreateThread(nullptr, 0, ReshadeUpdateWorker, params, 0, nullptr);
-                        if (h) {
-                            CloseHandle(h);
-                        } else {
-                            delete params;
-                            s_reshadeUpdateResult = "Update failed: could not start worker.";
-                            s_reshadeUpdateInProgress = false;
+                    if (ImGui::CollapsingHeader("Advanced", ImGuiTreeNodeFlags_None)) {
+                        if (addonDir.empty()) ImGui::BeginDisabled();
+                        if (ImGui::Button("Open current folder")) {
+                            SHELLEXECUTEINFOW sei = {};
+                            sei.cbSize = sizeof(sei);
+                            sei.lpVerb = L"open";
+                            sei.lpFile = addonDir.c_str();
+                            sei.nShow = SW_SHOWNORMAL;
+                            ShellExecuteExW(&sei);
                         }
-                    }
-                    if (!canUpdate) ImGui::EndDisabled();
-                    if (canUpdate && ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
-                            "Download ReShade %s and overwrite ReShade64.dll / ReShade32.dll in this folder and in "
-                            "%%LOCALAPPDATA%%.",
-                            selectedVer.c_str());
+                        if (addonDir.empty()) ImGui::EndDisabled();
+                        if (ImGui::IsItemHovered())
+                            ImGui::SetTooltip("Open this game/addon folder in Explorer.");
+                        ImGui::Spacing();
+
+                        // Debug (inside Advanced)
+                        if (ImGui::Checkbox("Debug", &s_showDebug)) {}
+                        if (ImGui::IsItemHovered())
+                            ImGui::SetTooltip("Show paths, DLL list, and setup result.");
+                        if (s_showDebug) {
+                            ImGui::Indent();
+                            ImGui::Text("Local (this folder)");
+                            if (addonDir.empty()) {
+                                ImGui::TextUnformatted("(unknown path)");
+                            } else {
+                                ImGui::TextWrapped("%s", RedactPathForDisplay(addonDirUtf8).c_str());
+                                if (!exeFoundUtf8.empty()) {
+                                    ImGui::Text("Exe: %s", RedactPathForDisplay(exeFoundUtf8).c_str());
+                                    if (exeDetectOk) {
+                                        ImGui::SameLine();
+                                        ImGui::TextDisabled("  %s  %s", is64bit ? "64-bit" : "32-bit", detectedApi);
+                                    }
+                                }
+                                ShowReshadeCoreVersionsForDir(addonDir, exeDetectOk, is64bit);
+                            }
+                            ImGui::Spacing();
+                            ImGui::Text("Central (Display Commander\\Reshade)");
+                            if (centralDirUtf8.empty()) {
+                                ImGui::TextDisabled("(LOCALAPPDATA not set)");
+                            } else {
+                                ImGui::TextWrapped("%s", "%%LOCALAPPDATA%%\\Programs\\Display Commander\\Reshade");
+                                ShowReshadeCoreVersionsForDir(centralReshadeDir, exeDetectOk, is64bit);
+                            }
+                            ImGui::Spacing();
+                            ImGui::Text("Known DLLs in this folder:");
+                            if (!addonDir.empty()) {
+                                std::vector<std::wstring> displayCommanderPresent;
+                                CollectDisplayCommanderAddonsInDir(addonDir, displayCommanderPresent);
+                                auto archFilterReshade = [is64bit](const std::wstring& n) -> bool {
+                                    if (_wcsicmp(n.c_str(), L"ReShade64.dll") == 0) return is64bit;
+                                    if (_wcsicmp(n.c_str(), L"ReShade32.dll") == 0) return !is64bit;
+                                    return true;
+                                };
+                                auto archFilterDc = [is64bit](const std::wstring& n) -> bool {
+                                    std::wstring lower = n;
+                                    for (auto& c : lower) c = (wchar_t)towlower((wint_t)c);
+                                    if (lower.size() >= 8 && lower.compare(lower.size() - 8, 8, L".addon64") == 0)
+                                        return is64bit;
+                                    if (lower.size() >= 8 && lower.compare(lower.size() - 8, 8, L".addon32") == 0)
+                                        return !is64bit;
+                                    return false;
+                                };
+                                auto showKnownDll = [&addonDir](const std::wstring& n) {
+                                    std::wstring dllPath = addonDir + L"\\" + n;
+                                    std::string ver = GetFileVersionStringUtf8(dllPath);
+                                    if (ver.empty()) ver = "(no version info)";
+                                    bool hasReShadeRegisterAddon = DllHasExport(dllPath, "ReShadeRegisterAddon");
+                                    bool hasStartAndInject = DllHasExport(dllPath, "StartAndInject");
+                                    const char* kind = hasReShadeRegisterAddon ? "ReShade"
+                                                       : hasStartAndInject     ? "Display Commander"
+                                                                               : "Other";
+                                    int need = WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), nullptr, 0,
+                                                                   nullptr, nullptr);
+                                    if (need > 0) {
+                                        std::string nameUtf8(static_cast<size_t>(need), 0);
+                                        WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), &nameUtf8[0], need,
+                                                            nullptr, nullptr);
+                                        if (strcmp(kind, "Display Commander") == 0) {
+                                            ImGui::BulletText(
+                                                "Display Commander - %s: %s  %s", nameUtf8.c_str(), ver.c_str(),
+                                                hasStartAndInject ? "(StartAndInject)" : "");
+                                        } else if (strcmp(kind, "ReShade") == 0) {
+                                            ImGui::BulletText("ReShade - %s: %s", nameUtf8.c_str(), ver.c_str());
+                                        } else {
+                                            ImGui::BulletText("Other - %s: %s", nameUtf8.c_str(), ver.c_str());
+                                        }
+                                    }
+                                };
+                                bool anyShown = false;
+                                for (const auto& n : reshadeDllsPresent) {
+                                    if (archFilterReshade(n)) {
+                                        showKnownDll(n);
+                                        anyShown = true;
+                                    }
+                                }
+                                for (const auto& n : displayCommanderPresent) {
+                                    if (archFilterDc(n)) {
+                                        showKnownDll(n);
+                                        anyShown = true;
+                                    }
+                                }
+                                if (!anyShown)
+                                    ImGui::TextUnformatted("(none for this architecture)");
+                            }
+                            if (!s_setupReshadeResult.empty()) {
+                                bool isSuccess = (s_setupReshadeResult.find("correctly") != std::string::npos
+                                                  || s_setupReshadeResult.find("installed") != std::string::npos);
+                                if (isSuccess)
+                                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.9f, 0.4f, 1.0f));
+                                else
+                                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.4f, 0.4f, 1.0f));
+                                ImGui::TextWrapped("%s", s_setupReshadeResult.c_str());
+                                ImGui::PopStyleColor();
+                            }
+                            ImGui::Unindent();
+                        }
+                        ImGui::Spacing();
+
+                        // Override ReShade DLL (buttons to setup as dxgi, d3d9, etc.)
+                        ImGui::Text("Override ReShade DLL:");
+                        struct ApiChoice {
+                            const char* label;
+                            const char* api;
+                            bool supported;
+                        };
+                        const ApiChoice apis[] = {
+                            {"dxgi", "dxgi", true},
+                            {"d3d9", "d3d9", true},
+                            {"d3d11", "d3d11", true},
+                            {"d3d12", "d3d12", true},
+                            {"opengl32", "opengl32", true},
+                            {"vulkan", "vulkan", false},
+                        };
+                        for (const auto& a : apis) {
+                            if (a.label != apis[0].label) ImGui::SameLine();
+                            if (!a.supported || !canSetup) ImGui::BeginDisabled();
+                            if (ImGui::Button((std::string(a.label) + "##override").c_str())) {
+                                if (a.supported) doSetupAs(a.api);
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                if (a.supported)
+                                    ImGui::SetTooltip("Setup ReShade as %s.dll", a.api);
+                                else
+                                    ImGui::SetTooltip("Vulkan uses a different installer; not supported here.");
+                            }
+                            if (!a.supported || !canSetup) ImGui::EndDisabled();
+                        }
+                        ImGui::Spacing();
+
+                        ImGui::Text("ReShade version (default: 6.7.2)");
+                        if (!s_reshadeVersions.empty()) {
+                            if (s_reshadeVersionIndex >= (int)s_reshadeVersions.size()) s_reshadeVersionIndex = 1;
+                            auto getter = [](void* data, int idx, const char** out) -> bool {
+                                const auto* v = static_cast<const std::vector<std::string>*>(data);
+                                if (idx < 0 || (size_t)idx >= v->size()) return false;
+                                *out = (*v)[(size_t)idx].c_str();
+                                return true;
+                            };
+                            ImGui::SetNextItemWidth(120.f);
+                            ImGui::Combo("##reshade_ver", &s_reshadeVersionIndex, getter, &s_reshadeVersions,
+                                         (int)s_reshadeVersions.size());
+                        }
+                        if (s_reshadeUpdateInProgress) {
+                            ImGui::TextDisabled("Updating ReShade...");
+                        } else if (!s_reshadeUpdateResult.empty()) {
+                            ImGui::TextWrapped("%s", s_reshadeUpdateResult.c_str());
+                        }
+                        std::string selectedVer = s_reshadeVersions.empty()
+                                                      ? "6.7.2"
+                                                      : (s_reshadeVersionIndex < (int)s_reshadeVersions.size()
+                                                             ? s_reshadeVersions[(size_t)s_reshadeVersionIndex]
+                                                             : s_reshadeVersions[0]);
+                        bool canUpdate = !addonDir.empty() && !s_reshadeUpdateInProgress && !s_reshadeVersions.empty();
+                        if (!canUpdate) ImGui::BeginDisabled();
+                        std::string updateLabel = "Update ReShade to " + selectedVer;
+                        if (ImGui::Button(updateLabel.c_str())) {
+                            auto* params = new ReshadeUpdateParams{addonDir, centralReshadeDir, selectedVer};
+                            s_reshadeUpdateResult.clear();
+                            s_reshadeUpdateInProgress = true;
+                            HANDLE h = CreateThread(nullptr, 0, ReshadeUpdateWorker, params, 0, nullptr);
+                            if (h) {
+                                CloseHandle(h);
+                            } else {
+                                delete params;
+                                s_reshadeUpdateResult = "Update failed: could not start worker.";
+                                s_reshadeUpdateInProgress = false;
+                            }
+                        }
+                        if (!canUpdate) ImGui::EndDisabled();
+                        if (ImGui::IsItemHovered())
+                            ImGui::SetTooltip("Download and overwrite ReShade in this folder and central.");
                     }
 
                     ImGui::Spacing();
@@ -987,6 +1186,10 @@ void RunStandaloneUI(HINSTANCE hInst) {
                 if (ImGui::BeginTabItem("Games")) {
                     // ---- Games that ran Display Commander ----
                     ImGui::Text("Games that ran Display Commander");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Add Steam game")) s_pleaseOpenSteamSearch = true;
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Search and add an installed Steam game to this list.");
                     ImGui::Spacing();
                     {
                         std::vector<display_commander::game_launcher_registry::GameEntry> games;
@@ -1048,29 +1251,37 @@ void RunStandaloneUI(HINSTANCE hInst) {
                                     ImGui::TextDisabled("Running");
                                     ImGui::SameLine();
                                     if (ImGui::Button(("Stop##" + gameIdUtf8).c_str())) {
-                                        HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
-                                        if (h != nullptr) {
-                                            TerminateProcess(h, 0);
-                                            CloseHandle(h);
-                                        }
+                                        DWORD pidCopy = pid;
+                                        std::thread([pidCopy]() {
+                                            HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, pidCopy);
+                                            if (h != nullptr) {
+                                                TerminateProcess(h, 0);
+                                                CloseHandle(h);
+                                            }
+                                        }).detach();
                                     }
                                     if (ImGui::IsItemHovered())
                                         ImGui::SetTooltip("Terminate process (PID %lu).", (unsigned long)pid);
                                 } else {
                                     ImGui::SameLine();
                                     if (ImGui::Button(("Start##" + gameIdUtf8).c_str())) {
+                                        std::wstring pathCopy = entry.path;
+                                        std::wstring argsCopy = entry.arguments;
                                         std::wstring workDir =
                                             std::filesystem::path(entry.path).parent_path().wstring();
                                         if (workDir.empty()) workDir = L".";
-                                        SHELLEXECUTEINFOW sei = {};
-                                        sei.cbSize = sizeof(sei);
-                                        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-                                        sei.lpVerb = L"open";
-                                        sei.lpFile = entry.path.c_str();
-                                        sei.lpParameters = entry.arguments.empty() ? nullptr : entry.arguments.c_str();
-                                        sei.lpDirectory = workDir.c_str();
-                                        sei.nShow = SW_SHOWNORMAL;
-                                        if (ShellExecuteExW(&sei) && sei.hProcess != nullptr) CloseHandle(sei.hProcess);
+                                        std::thread([pathCopy, argsCopy, workDir]() {
+                                            SHELLEXECUTEINFOW sei = {};
+                                            sei.cbSize = sizeof(sei);
+                                            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+                                            sei.lpVerb = L"open";
+                                            sei.lpFile = pathCopy.c_str();
+                                            sei.lpParameters = argsCopy.empty() ? nullptr : argsCopy.c_str();
+                                            sei.lpDirectory = workDir.c_str();
+                                            sei.nShow = SW_SHOWNORMAL;
+                                            if (ShellExecuteExW(&sei) && sei.hProcess != nullptr)
+                                                CloseHandle(sei.hProcess);
+                                        }).detach();
                                     }
                                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Launch game.");
                                 }
@@ -1099,6 +1310,10 @@ void RunStandaloneUI(HINSTANCE hInst) {
                 ImGui::OpenPopup("Game Details");
                 s_pleaseOpenGameDetails = false;
             }
+            if (s_pleaseOpenSteamSearch) {
+                ImGui::OpenPopup("Add Steam game");
+                s_pleaseOpenSteamSearch = false;
+            }
             if (ImGui::BeginPopupModal("Game Details", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 std::string titleUtf8 = !s_gameDetailsEntry.window_title.empty()
                                             ? WstringToUtf8(s_gameDetailsEntry.window_title)
@@ -1121,6 +1336,142 @@ void RunStandaloneUI(HINSTANCE hInst) {
                 } else {
                     ImGui::Text("Last run: (never)");
                 }
+                ImGui::Spacing();
+                ImGui::Separator();
+                // ---- Setup-like: detected bitness and graphics API ----
+                std::wstring gameDir = std::filesystem::path(s_gameDetailsEntry.path).parent_path().wstring();
+                cli_detect_exe::DetectResult gameDetect = {};
+                bool gameDetectOk = (GetFileAttributesW(s_gameDetailsEntry.path.c_str()) != INVALID_FILE_ATTRIBUTES)
+                                    && cli_detect_exe::DetectExeForPath(s_gameDetailsEntry.path.c_str(), &gameDetect);
+                bool gameIs64bit = gameDetectOk ? gameDetect.is_64bit : true;
+                const char* detectedApi = gameDetectOk ? cli_detect_exe::ReShadeDllFromDetect(gameDetect) : "";
+                if (gameDetectOk) {
+                    const char* apiDisplay = (detectedApi && detectedApi[0]) ? detectedApi : "(not detected)";
+                    ImGui::Text("%s  ·  Graphics: %s", gameIs64bit ? "64-bit" : "32-bit", apiDisplay);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Detected from exe.");
+                } else {
+                    ImGui::TextDisabled("(exe not detected: bitness/graphics unknown)");
+                }
+                // ---- ReShade State: only proxy DLLs (dxgi/d3d11/d3d12/d3d9/opengl32), never ReShade64/32 ----
+                static const char* const kReshadeProxyApis[] = {"dxgi", "d3d11", "d3d12", "d3d9", "opengl32"};
+                std::string reshadeStateDisplay = "Not Installed";
+                std::string reshadeStateTooltip = "No ReShade proxy (dxgi/d3d11/etc.) in this game's folder.";
+                for (const char* api : kReshadeProxyApis) {
+                    std::wstring proxyPath = gameDir + L"\\";
+                    for (const char* p = api; *p; ++p) proxyPath += (wchar_t)(unsigned char)*p;
+                    proxyPath += L".dll";
+                    if (GetFileAttributesW(proxyPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                        std::string ver = GetFileVersionStringUtf8(proxyPath);
+                        if (ver.empty()) ver = "?";
+                        reshadeStateDisplay = std::string(api) + ".dll " + ver;
+                        reshadeStateTooltip = "ReShade is installed as ";
+                        reshadeStateTooltip += api;
+                        reshadeStateTooltip += ".dll (game loads this DLL). Version ";
+                        reshadeStateTooltip += ver;
+                        break;
+                    }
+                }
+                ImGui::Text("ReShade State: %s", reshadeStateDisplay.c_str());
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("%s", reshadeStateTooltip.c_str());
+                // ---- DC State: only the single addon matching exe bitness (*.addon64 or *.addon32) ----
+                bool dcInstalledInGame = false;
+                std::wstring dcAddonFound;  // filename if found (e.g. zzz_display_commander.addon64)
+                std::string dcAddonVersion;
+                {
+                    std::vector<std::wstring> dcAddons;
+                    CollectDisplayCommanderAddonsInDir(gameDir, dcAddons);
+                    const wchar_t* suffix = gameIs64bit ? L".addon64" : L".addon32";
+                    const size_t suffixLen = wcslen(suffix);
+                    for (const auto& n : dcAddons) {
+                        if (n.size() >= suffixLen && _wcsicmp(n.c_str() + n.size() - suffixLen, suffix) == 0) {
+                            dcInstalledInGame = true;
+                            dcAddonFound = n;
+                            std::wstring addonPath = gameDir + L"\\" + n;
+                            dcAddonVersion = GetFileVersionStringUtf8(addonPath);
+                            break;
+                        }
+                    }
+                }
+                const char* expectedSuffix = gameIs64bit ? ".addon64" : ".addon32";
+                if (dcInstalledInGame) {
+                    if (!dcAddonVersion.empty()) {
+                        ImGui::Text("DC State: %s (%s)", dcAddonVersion.c_str(), WstringToUtf8(dcAddonFound).c_str());
+                    } else {
+                        ImGui::Text("DC State: Installed (%s)", WstringToUtf8(dcAddonFound).c_str());
+                    }
+                } else {
+                    ImGui::Text("DC State: Not Installed (expect *%s for %s exe)", expectedSuffix,
+                               gameDetectOk ? (gameIs64bit ? "64-bit" : "32-bit") : "this");
+                }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Display Commander is installed as one file: *.addon64 for 64-bit games or *.addon32 for 32-bit. We only check for the matching architecture.");
+                ImGui::Spacing();
+                // ---- Install ReShade as proxy only (dxgi / d3d11 / d3d12 / d3d9 / opengl32) ----
+                ImGui::Text("Install ReShade as (proxy only; cores stay in central):");
+                if (!s_reshadeVersionsInitialized) {
+                    display_commander::utils::version_check::FetchReShadeVersionsFromGitHub(s_reshadeVersions, nullptr);
+                    if (s_reshadeVersionIndex >= (int)s_reshadeVersions.size()) s_reshadeVersionIndex = 1;
+                    s_reshadeVersionsInitialized = true;
+                }
+                static int s_gameDetailsReshadeVersionIndex = 1;
+                static int s_gameDetailsProxyIndex = 0;  // 0=dxgi, 1=d3d11, 2=d3d12, 3=d3d9, 4=opengl32
+                if (s_gameDetailsReshadeVersionIndex >= (int)s_reshadeVersions.size()) s_gameDetailsReshadeVersionIndex = 1;
+                if (s_gameDetailsProxyIndex < 0 || s_gameDetailsProxyIndex >= 5) s_gameDetailsProxyIndex = 0;
+                std::wstring centralReshadeDir = GetCentralReshadeDir();
+                if (!s_reshadeVersions.empty()) {
+                    auto getter = [](void* data, int idx, const char** out) {
+                        auto* v = (std::vector<std::string>*)data;
+                        if (idx < 0 || (size_t)idx >= v->size()) return false;
+                        *out = (*v)[(size_t)idx].c_str();
+                        return true;
+                    };
+                    ImGui::SetNextItemWidth(100.f);
+                    ImGui::Combo("Version##game_details", &s_gameDetailsReshadeVersionIndex, getter,
+                                 &s_reshadeVersions, (int)s_reshadeVersions.size());
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(100.f);
+                    ImGui::Combo("API##game_details", &s_gameDetailsProxyIndex, "dxgi\0d3d11\0d3d12\0d3d9\0opengl32\0");
+                }
+                bool canInstallReshade = !gameDir.empty() && !s_reshadeUpdateInProgress && !s_reshadeVersions.empty();
+                if (!canInstallReshade) ImGui::BeginDisabled();
+                const char* chosenApi = kReshadeProxyApis[s_gameDetailsProxyIndex];
+                std::string installLabel = "Install ReShade as ";
+                installLabel += chosenApi;
+                installLabel += ".dll";
+                if (ImGui::Button(installLabel.c_str())) {
+                    s_gameDetailsReshadeResult.clear();
+                    std::string ver = (s_reshadeVersions.empty() || s_gameDetailsReshadeVersionIndex >= (int)s_reshadeVersions.size())
+                                          ? "6.7.2"
+                                          : s_reshadeVersions[(size_t)s_gameDetailsReshadeVersionIndex];
+                    auto* params = new ReshadeUpdateParams{};
+                    params->addonDir = gameDir;
+                    params->centralDir = centralReshadeDir;
+                    params->selectedVersion = ver;
+                    params->forGameDetails = true;
+                    params->proxyName = chosenApi;
+                    params->gameDir = gameDir;
+                    params->gameIs64bit = gameIs64bit;
+                    s_reshadeUpdateInProgress = true;
+                    HANDLE h = CreateThread(nullptr, 0, ReshadeUpdateWorker, params, 0, nullptr);
+                    if (h) {
+                        CloseHandle(h);
+                    } else {
+                        delete params;
+                        s_gameDetailsReshadeResult = "Install failed: could not start worker.";
+                        s_reshadeUpdateInProgress = false;
+                    }
+                }
+                if (!canInstallReshade) ImGui::EndDisabled();
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Download ReShade, store cores in central folder, copy proxy (%s.dll) to this game's folder only.", chosenApi);
+                if (s_reshadeUpdateInProgress)
+                    ImGui::TextDisabled("Installing ReShade...");
+                else if (!s_gameDetailsReshadeResult.empty())
+                    ImGui::TextWrapped("%s", s_gameDetailsReshadeResult.c_str());
+                ImGui::Spacing();
+                ImGui::Separator();
                 ImGui::Spacing();
                 if (ImGui::Button("Update DC##game_details")) {
                     s_updateDcResult.clear();
@@ -1156,6 +1507,50 @@ void RunStandaloneUI(HINSTANCE hInst) {
                     ImGui::TextWrapped("%s", s_updateDcResult.c_str());
                 ImGui::Spacing();
                 if (ImGui::Button("Close##game_details")) ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+            }
+            if (ImGui::BeginPopupModal("Add Steam game", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                static std::vector<display_commander::steam_library::SteamGame> s_steamGameList;
+                static char s_steamSearchBuf[256] = "";
+                if (s_steamGameList.empty()) {
+                    display_commander::steam_library::GetInstalledGames(s_steamGameList);
+                }
+                ImGui::Text("Search installed Steam games (substring match):");
+                ImGui::SetNextItemWidth(-1.f);
+                ImGui::InputText("##steam_search", s_steamSearchBuf, sizeof(s_steamSearchBuf));
+                auto toLowerAscii = [](std::string s) {
+                    for (char& c : s) if (c >= 'A' && c <= 'Z') c += 32;
+                    return s;
+                };
+                std::string searchLower = toLowerAscii(s_steamSearchBuf);
+                ImGui::BeginChild("##steam_list", ImVec2(400, 220), true);
+                int shown = 0;
+                for (const auto& game : s_steamGameList) {
+                    std::string nameLower = toLowerAscii(game.name);
+                    if (!searchLower.empty() && nameLower.find(searchLower) == std::string::npos)
+                        continue;
+                    ++shown;
+                    ImGui::PushID((int)(game.app_id));
+                    ImGui::TextWrapped("%s", game.name.c_str());
+                    ImGui::SameLine(320.f);
+                    if (ImGui::Button("Add")) {
+                        std::wstring exePath = display_commander::steam_library::FindMainExeInDir(game.install_dir);
+                        if (!exePath.empty()) {
+                            display_commander::game_launcher_registry::RecordGameRun(exePath.c_str(), L"", L"");
+                        }
+                    }
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Add this game to the list (uses first .exe in install folder).");
+                    ImGui::PopID();
+                }
+                if (shown == 0)
+                    ImGui::TextDisabled(s_steamGameList.empty() ? "No Steam library found." : "No games match search.");
+                ImGui::EndChild();
+                ImGui::Spacing();
+                if (ImGui::Button("Close##steam_search")) {
+                    s_steamGameList.clear();
+                    ImGui::CloseCurrentPopup();
+                }
                 ImGui::EndPopup();
             }
             ImGui::End();

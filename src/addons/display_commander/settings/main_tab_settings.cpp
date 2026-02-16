@@ -65,7 +65,7 @@ MainTabSettings::MainTabSettings()
       pcl_stats_enabled("pcl_stats_enabled", false, "DisplayCommander"),
       experimental_fg_native_fps_limiter("experimental_fg_native_fps_limiter", true, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only", true, "DisplayCommander"),
-      delay_present_start_after_sim_enabled("delay_present_start_after_sim_enabled", false, "DisplayCommander"),
+      delay_present_start_after_sim_enabled("delay_present_start_after_sim_enabled", true, "DisplayCommander"),
       delay_present_start_frames("delay_present_start_frames", 1.0f, 0.0f, 3.0f, "DisplayCommander"),
       experimental_safe_mode_fps_limiter("experimental_safe_mode_fps_limiter", false, "DisplayCommander"),
       force_fg_auto("force_fg_auto", false, "DisplayCommander"),

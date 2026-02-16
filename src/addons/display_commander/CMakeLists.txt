@@ -198,9 +198,10 @@ target_sources(zzz_display_commander PRIVATE
 
 # Standalone installer UI built into the DLL (CommandLine UITest). Uses a second ImGui in namespace
 # ImGuiStandalone to avoid symbol clash with ReShade's ImGui. No separate .exe.
-# Use an OBJECT library so standalone ImGui is compiled exactly once with ImGui=ImGuiStandalone,
-# avoiding LNK2005 duplicate symbol errors (ImDrawList::AddCircle etc.) that can occur when
-# per-source COMPILE_DEFINITIONS are not applied consistently across generators or paths.
+# Use an OBJECT library so standalone ImGui is compiled exactly once with ImGui=ImGuiStandalone and
+# ImDrawList=ImDrawListStandalone, avoiding LNK2005 duplicate symbol errors: ReShade's reshade_overlay.hpp
+# provides inline ImDrawList::AddLine/AddRect/AddCircle etc., while imgui_draw.cpp provides the real
+# implementations; renaming ImDrawList for the standalone build keeps the two symbol sets distinct.
 set(IMGUI_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui")
 set(IMGUI_STANDALONE_SOURCES
   ${IMGUI_DIR}/imgui.cpp
@@ -211,7 +212,7 @@ set(IMGUI_STANDALONE_SOURCES
   ${IMGUI_DIR}/backends/imgui_impl_dx11.cpp
 )
 add_library(imgui_standalone_obj OBJECT ${IMGUI_STANDALONE_SOURCES})
-target_compile_definitions(imgui_standalone_obj PRIVATE ImGui=ImGuiStandalone)
+target_compile_definitions(imgui_standalone_obj PRIVATE ImGui=ImGuiStandalone ImDrawList=ImDrawListStandalone)
 target_include_directories(imgui_standalone_obj
   PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui
@@ -221,4 +222,4 @@ if(MSVC)
   set_property(TARGET imgui_standalone_obj PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 target_sources(zzz_display_commander PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)
-set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone")
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")

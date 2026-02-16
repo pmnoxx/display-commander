@@ -1,8 +1,9 @@
 // UITest: run the installer UI inside the addon DLL (no separate .exe).
 // Uses a second ImGui build in namespace ImGuiStandalone (via compile define ImGui=ImGuiStandalone)
-// to avoid symbol clash with ReShade's ImGui used in-game.
+// and ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used in-game.
 
-#define ImGui ImGuiStandalone
+#define ImGui    ImGuiStandalone
+#define ImDrawList ImDrawListStandalone
 #include <d3d11.h>
 #include <dxgi.h>
 #include <shellapi.h>

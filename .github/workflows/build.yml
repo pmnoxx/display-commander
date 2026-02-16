@@ -45,7 +45,7 @@ jobs:
       - name: Configure
         shell: bash
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGIT_COMMIT_COUNT=${{ github.run_number }}
 
       - name: Build
         shell: bash
@@ -128,10 +128,12 @@ jobs:
 
             Bleeding-edge build from the main branch. Updated on every successful push to main.
 
+            **Version in binaries**: 0.11.0.${{ github.run_number }}
+
+            **Commit**: ${{ github.sha }}
+
             **Files**:
             - `zzz_display_commander.addon64` - 64-bit version
             - `zzz_display_commander.addon32` - 32-bit version
 
             For scheduled development builds, see [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly). For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
-
-

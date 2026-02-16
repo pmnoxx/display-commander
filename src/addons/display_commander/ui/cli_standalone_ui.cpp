@@ -2,7 +2,7 @@
 // Uses a second ImGui build in namespace ImGuiStandalone (via compile define ImGui=ImGuiStandalone)
 // and ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used in-game.
 
-#define ImGui    ImGuiStandalone
+#define ImGui      ImGuiStandalone
 #define ImDrawList ImDrawListStandalone
 #include <d3d11.h>
 #include <dxgi.h>
@@ -72,8 +72,7 @@ static void CollectReShadeDllsInDir(const std::wstring& dir, std::vector<std::ws
 }
 
 // Collect Display Commander addon files (*display_commander*.addon64 / *.addon32) in dir.
-static void CollectDisplayCommanderAddonsInDir(const std::wstring& dir,
-                                               std::vector<std::wstring>& outPresent) {
+static void CollectDisplayCommanderAddonsInDir(const std::wstring& dir, std::vector<std::wstring>& outPresent) {
     outPresent.clear();
     if (dir.empty()) return;
     std::wstring prefix = dir;
@@ -87,8 +86,7 @@ static void CollectDisplayCommanderAddonsInDir(const std::wstring& dir,
             if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
             std::wstring name = fd.cFileName;
             for (auto& c : name) c = (wchar_t)towlower((wint_t)c);
-            if (name.find(L"display_commander") != std::wstring::npos)
-                outPresent.push_back(fd.cFileName);
+            if (name.find(L"display_commander") != std::wstring::npos) outPresent.push_back(fd.cFileName);
         } while (FindNextFileW(h, &fd));
         FindClose(h);
     };
@@ -172,8 +170,7 @@ static bool DllHasExport(const std::wstring& filePath, const char* exportName) {
             uint32_t va = *reinterpret_cast<const uint32_t*>(bytes + sec + 12);
             uint32_t rawSize = *reinterpret_cast<const uint32_t*>(bytes + sec + 16);
             uint32_t rawPtr = *reinterpret_cast<const uint32_t*>(bytes + sec + 20);
-            if (rva >= va && rva < va + rawSize)
-                return rawPtr + (rva - va);
+            if (rva >= va && rva < va + rawSize) return rawPtr + (rva - va);
         }
         return (size_t)-1;
     };
@@ -525,15 +522,15 @@ void RunStandaloneUI(HINSTANCE hInst) {
     std::string installerTitleUtf8 = "Display Commander - Installer (v";
     installerTitleUtf8 += DISPLAY_COMMANDER_VERSION_STRING;
     installerTitleUtf8 += ")";
-    int titleLen = MultiByteToWideChar(CP_UTF8, 0, installerTitleUtf8.c_str(), (int)installerTitleUtf8.size() + 1,
-                                       nullptr, 0);
+    int titleLen =
+        MultiByteToWideChar(CP_UTF8, 0, installerTitleUtf8.c_str(), (int)installerTitleUtf8.size() + 1, nullptr, 0);
     std::wstring installerTitleW(titleLen > 0 ? (size_t)titleLen : 0, 0);
     if (titleLen > 0)
         MultiByteToWideChar(CP_UTF8, 0, installerTitleUtf8.c_str(), (int)installerTitleUtf8.size() + 1,
                             &installerTitleW[0], titleLen);
 
-    HWND hwnd = CreateWindowW(wc.lpszClassName, installerTitleW.empty() ? L"Display Commander - Installer"
-                                                                        : installerTitleW.c_str(),
+    HWND hwnd = CreateWindowW(wc.lpszClassName,
+                              installerTitleW.empty() ? L"Display Commander - Installer" : installerTitleW.c_str(),
                               WS_OVERLAPPEDWINDOW, 100, 100, 1920, 1080, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
     if (!hwnd) {
         UnregisterClassW(wc.lpszClassName, wc.hInstance);
@@ -619,8 +616,7 @@ void RunStandaloneUI(HINSTANCE hInst) {
             if (!addonDir.empty()) {
                 CollectReShadeDllsInDir(addonDir, reshadeDllsPresent);
                 const char* detectedApi = exeDetectOk ? cli_detect_exe::ReShadeDllFromDetect(exeDetect) : "";
-                const char* preferredApi =
-                    s_preferredSetupApi.empty() ? detectedApi : s_preferredSetupApi.c_str();
+                const char* preferredApi = s_preferredSetupApi.empty() ? detectedApi : s_preferredSetupApi.c_str();
                 RemoveExtraReshadeApiProxyDlls(addonDir, preferredApi, reshadeDllsPresent);
             }
 
@@ -694,8 +690,7 @@ void RunStandaloneUI(HINSTANCE hInst) {
                     } else {
                         if (ImGui::Button("Start game")) {
                             std::wstring workDir = std::filesystem::path(exeFoundLocal).parent_path().wstring();
-                            const wchar_t* workDirPtr =
-                                workDir.empty() ? addonDir.c_str() : workDir.c_str();
+                            const wchar_t* workDirPtr = workDir.empty() ? addonDir.c_str() : workDir.c_str();
                             SHELLEXECUTEINFOW sei = {};
                             sei.cbSize = sizeof(sei);
                             sei.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -747,21 +742,22 @@ void RunStandaloneUI(HINSTANCE hInst) {
                         bool hasReShadeRegisterAddon = DllHasExport(dllPath, "ReShadeRegisterAddon");
                         bool hasStartAndInject = DllHasExport(dllPath, "StartAndInject");
                         const char* kind = hasReShadeRegisterAddon ? "ReShade"
-                                             : hasStartAndInject ? "Display Commander"
-                                             : "Other";
-                        int need = WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), nullptr, 0, nullptr, nullptr);
+                                           : hasStartAndInject     ? "Display Commander"
+                                                                   : "Other";
+                        int need =
+                            WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), nullptr, 0, nullptr, nullptr);
                         if (need > 0) {
                             std::string nameUtf8(static_cast<size_t>(need), 0);
                             WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), &nameUtf8[0], need, nullptr,
                                                 nullptr);
                             if (strcmp(kind, "Display Commander") == 0) {
                                 ImGui::BulletText("Display Commander - %s: %s  %s", nameUtf8.c_str(), ver.c_str(),
-                                                 hasStartAndInject ? "(StartAndInject)" : "(no StartAndInject)");
+                                                  hasStartAndInject ? "(StartAndInject)" : "(no StartAndInject)");
                             } else if (strcmp(kind, "ReShade") == 0) {
                                 ImGui::BulletText("ReShade - %s: %s", nameUtf8.c_str(), ver.c_str());
                             } else {
                                 ImGui::BulletText("Other - %s: %s (no ReShadeRegisterAddon, no StartAndInject)",
-                                                 nameUtf8.c_str(), ver.c_str());
+                                                  nameUtf8.c_str(), ver.c_str());
                             }
                         }
                     };
@@ -842,7 +838,7 @@ void RunStandaloneUI(HINSTANCE hInst) {
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Copy ReShade to %s so the game loads ReShade (based on detected exe).",
-                                     detectedApi);
+                                      detectedApi);
                 }
             }
             if (!canSetup) ImGui::EndDisabled();
@@ -872,11 +868,11 @@ void RunStandaloneUI(HINSTANCE hInst) {
             } else if (!s_reshadeUpdateResult.empty()) {
                 ImGui::TextWrapped("%s", s_reshadeUpdateResult.c_str());
             }
-            std::string selectedVer =
-                s_reshadeVersions.empty()
-                    ? ""
-                    : (s_reshadeVersionIndex < (int)s_reshadeVersions.size() ? s_reshadeVersions[(size_t)s_reshadeVersionIndex]
-                                                                              : s_reshadeVersions[0]);
+            std::string selectedVer = s_reshadeVersions.empty()
+                                          ? ""
+                                          : (s_reshadeVersionIndex < (int)s_reshadeVersions.size()
+                                                 ? s_reshadeVersions[(size_t)s_reshadeVersionIndex]
+                                                 : s_reshadeVersions[0]);
             bool canUpdate = !addonDir.empty() && !s_reshadeUpdateInProgress && !s_reshadeVersions.empty();
             if (!canUpdate) ImGui::BeginDisabled();
             std::string updateLabel = selectedVer.empty() ? "Update ReShade (select version from list above)"

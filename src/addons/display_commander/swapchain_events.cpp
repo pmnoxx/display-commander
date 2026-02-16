@@ -37,6 +37,7 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/game_launcher_registry.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/perf_measurement.hpp"
@@ -337,6 +338,32 @@ void DoInitializationWithHwnd(HWND hwnd) {
     // Initialize keyboard tracking system
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
+
+    // Record this game in registry for Installer UI game launcher (skip when running as standalone UI via rundll32)
+    wchar_t processPath[MAX_PATH];
+    if (GetModuleFileNameW(nullptr, processPath, (DWORD)std::size(processPath)) != 0) {
+        const wchar_t* p = processPath + wcslen(processPath);
+        while (p > processPath && p[-1] != L'\\' && p[-1] != L'/') --p;
+        if (_wcsicmp(p, L"rundll32.exe") != 0) {
+            const wchar_t* cmdLine = GetCommandLineW();
+            const wchar_t* args = nullptr;
+            if (cmdLine && *cmdLine) {
+                if (*cmdLine == L'"') {
+                    args = wcschr(cmdLine + 1, L'"');
+                    if (args) args = args + 1; else args = cmdLine;
+                } else {
+                    args = wcschr(cmdLine, L' ');
+                }
+                if (args) while (*args == L' ') ++args;
+                if (args && !*args) args = nullptr;
+            }
+            const wchar_t* titlePtr = nullptr;
+            wchar_t windowTitleBuf[4096];
+            if (hwnd != nullptr && IsWindow(hwnd) && GetWindowTextW(hwnd, windowTitleBuf, (int)std::size(windowTitleBuf)) > 0)
+                titlePtr = windowTitleBuf;
+            display_commander::game_launcher_registry::RecordGameRun(processPath, args, titlePtr);
+        }
+    }
 }
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};

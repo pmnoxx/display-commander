@@ -1,11 +1,12 @@
 # Display Commander Addon CMakeLists.txt
 
-# Sources
+# Sources (exclude cli_ui_exe - it is a separate executable target)
 file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_LIST_DIR}/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp
 )
+list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/cli_ui_exe/.*")
 
 if(DISPLAY_COMMANDER_SOURCES STREQUAL "")
   message(FATAL_ERROR "No sources found under src/addons/display_commander")
@@ -179,3 +180,18 @@ set_target_properties(zzz_display_commander PROPERTIES
 target_sources(zzz_display_commander PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
 )
+
+# Standalone installer UI built into the DLL (CommandLine UITest). Uses a second ImGui in namespace
+# ImGuiStandalone to avoid symbol clash with ReShade's ImGui. No separate .exe.
+set(IMGUI_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui")
+set(IMGUI_STANDALONE_SOURCES
+  ${IMGUI_DIR}/imgui.cpp
+  ${IMGUI_DIR}/imgui_draw.cpp
+  ${IMGUI_DIR}/imgui_tables.cpp
+  ${IMGUI_DIR}/imgui_widgets.cpp
+  ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
+  ${IMGUI_DIR}/backends/imgui_impl_dx11.cpp
+)
+target_sources(zzz_display_commander PRIVATE ${IMGUI_STANDALONE_SOURCES})
+set_source_files_properties(${IMGUI_STANDALONE_SOURCES} PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone")
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone")

@@ -40,11 +40,12 @@ EXPORTS
 	VerQueryValueA PRIVATE
 	VerQueryValueW PRIVATE
 
-	; Display addon
+	; ReShade loader API (same names as ReShade so installer/tools work when this proxy is used as d3d11/dxgi)
 	Service30
 	Start
 	Stop
 	StartAndInject
 	WaitAndInject
+	; Display Commander addon / CLI (addon entry + rundll32 CommandLine)
 	AddonInit
 	CommandLine

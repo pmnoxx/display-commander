@@ -30,6 +30,18 @@ target_compile_definitions(zzz_display_commander PRIVATE GIT_COMMIT_COUNT=${GIT_
 target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_DATE_DEFINE})
 target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 
+# Version resource (must match version.hpp so DLL shows version when used as proxy e.g. d3d12.dll)
+set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
+set(DISPLAY_COMMANDER_VERSION_MINOR 11)
+set(DISPLAY_COMMANDER_VERSION_PATCH 0)
+set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
+configure_file(
+  ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/version.rc.in
+  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+  @ONLY
+)
+target_sources(zzz_display_commander PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+
 # MSVC-specific flags
 if(MSVC)
   target_compile_options(zzz_display_commander PRIVATE /bigobj /arch:SSE2)
@@ -75,6 +87,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(zzz_display_commander PRIVATE -mavx2 -mmwaitx)
   # Suppress Microsoft extension warnings for function pointer casting (common with MinHook)
   target_compile_options(zzz_display_commander PRIVATE -Wno-microsoft-cast)
+  # Suppress __FUNCTION__ expansion to string literal (used in detour_call_tracker)
+  target_compile_options(zzz_display_commander PRIVATE -Wno-microsoft-string-literal-from-predefined)
 endif()
 
 # Include directories

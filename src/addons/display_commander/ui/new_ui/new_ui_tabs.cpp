@@ -1,6 +1,6 @@
 #include "new_ui_tabs.hpp"
-#include <cstdio>
 #include <winbase.h>
+#include <cstdio>
 #include <reshade_imgui.hpp>
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -164,8 +164,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                 // Draw tab content
                 if ((*current_tabs)[i].on_draw) {
                     static thread_local char s_ui_section_buf[64];
-                    snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s",
-                             (*current_tabs)[i].id.c_str());
+                    snprintf(s_ui_section_buf, sizeof(s_ui_section_buf), "ui:tab:%s", (*current_tabs)[i].id.c_str());
                     g_rendering_ui_section.store(s_ui_section_buf, std::memory_order_release);
                     (*current_tabs)[i].on_draw(runtime);
                 }

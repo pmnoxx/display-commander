@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "globals.hpp"
+#include "ui/cli_detect_exe.hpp"
 #include "ui/cli_standalone_ui.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
@@ -68,14 +69,7 @@ static DWORD rva_to_file_offset(DWORD rva, const IMAGE_SECTION_HEADER* sections,
     return 0;
 }
 
-struct DetectResult {
-    std::string exe_path;
-    bool is_64bit = false;
-    bool has_d3d9 = false, has_d3d11 = false, has_d3d12 = false, has_dxgi = false;
-    bool has_opengl32 = false, has_vulkan = false;
-};
-
-static void check_dll_name_and_set_flags(const char* name, size_t name_len, DetectResult& out) {
+static void check_dll_name_and_set_flags(const char* name, size_t name_len, cli_detect_exe::DetectResult& out) {
     char lower[64];
     size_t i = 0;
     for (; i < sizeof(lower) - 1 && i < name_len && name[i]; ++i)
@@ -95,10 +89,7 @@ static void check_dll_name_and_set_flags(const char* name, size_t name_len, Dete
         out.has_vulkan = true;
 }
 
-// Returns suggested ReShade DLL name (dxgi, d3d9, d3d11, d3d12, opengl32, vulkan) or "unknown".
-// ReShade installer uses dxgi for DX10/DX11/DX12 (choice 1); when no API detected, 64-bit exes
-// often use DX11/DX12 so suggest dxgi as fallback.
-static const char* reshade_dll_from_detect(const DetectResult& r) {
+static const char* reshade_dll_from_detect_impl(const cli_detect_exe::DetectResult& r) {
     if (r.has_d3d12) return "d3d12";
     if (r.has_d3d11 || r.has_dxgi) return "dxgi";
     if (r.has_d3d9) return "d3d9";
@@ -109,7 +100,7 @@ static const char* reshade_dll_from_detect(const DetectResult& r) {
 }
 
 static bool read_imports(const std::vector<char>& buf, DWORD import_dir_rva, const IMAGE_SECTION_HEADER* sections,
-                         WORD num_sections, DetectResult& out) {
+                         WORD num_sections, cli_detect_exe::DetectResult& out) {
     DWORD id_offset = rva_to_file_offset(import_dir_rva, sections, num_sections);
     if (id_offset == 0 || id_offset + sizeof(IMAGE_IMPORT_DESCRIPTOR) > buf.size()) return false;
 
@@ -132,7 +123,7 @@ static bool read_imports(const std::vector<char>& buf, DWORD import_dir_rva, con
 }
 
 static bool read_delay_imports(const std::vector<char>& buf, DWORD delay_dir_rva, const IMAGE_SECTION_HEADER* sections,
-                               WORD num_sections, DetectResult& out) {
+                               WORD num_sections, cli_detect_exe::DetectResult& out) {
     DWORD doff = rva_to_file_offset(delay_dir_rva, sections, num_sections);
     if (doff == 0 || doff + sizeof(DelayLoadDescr) > buf.size()) return false;
 
@@ -209,7 +200,7 @@ static std::string find_largest_exe_in_dir(const wchar_t* dir_wide) {
 }
 
 // Run detection on exe_path (UTF-8). Fills result and returns true on success.
-static bool detect_exe_impl(const char* exe_path, DetectResult& result) {
+static bool detect_exe_impl(const char* exe_path, cli_detect_exe::DetectResult& result) {
     result = {};
     result.exe_path = exe_path;
 
@@ -267,6 +258,17 @@ static bool detect_exe_impl(const char* exe_path, DetectResult& result) {
     if (delay_rva != 0) read_delay_imports(buf, delay_rva, sections, num_sections, result);
     return true;
 }
+
+bool DetectExeForPath(const wchar_t* exe_path_wide, DetectResult* out) {
+    if (!out || !exe_path_wide || !exe_path_wide[0]) return false;
+    int len = WideCharToMultiByte(CP_UTF8, 0, exe_path_wide, -1, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return false;
+    std::string exe_utf8(static_cast<size_t>(len), 0);
+    WideCharToMultiByte(CP_UTF8, 0, exe_path_wide, -1, &exe_utf8[0], len, nullptr, nullptr);
+    return detect_exe_impl(exe_utf8.c_str(), *out);
+}
+
+const char* ReShadeDllFromDetect(const DetectResult& r) { return reshade_dll_from_detect_impl(r); }
 }  // namespace cli_detect_exe
 
 // Forward declaration
@@ -395,7 +397,7 @@ static void RunCommandLine(HINSTANCE hinst, LPSTR lpszCmdLine) {
         out_line(line);
         snprintf(line, sizeof(line), "Bitness: %s", dr.is_64bit ? "64-bit" : "32-bit");
         out_line(line);
-        const char* api = cli_detect_exe::reshade_dll_from_detect(dr);
+        const char* api = cli_detect_exe::ReShadeDllFromDetect(dr);
         snprintf(line, sizeof(line), "ReShade DLL: %s", api);
         out_line(line);
         if (log_file) fclose(log_file);

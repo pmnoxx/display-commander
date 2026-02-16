@@ -45,47 +45,32 @@ VersionCheckState g_version_check_state;
 // Download text content from URL using WinInet
 bool DownloadTextFromUrl(const std::string& url, std::string& content) {
     content.clear();
-
-    // Convert URL to wide string
     int url_len = MultiByteToWideChar(CP_UTF8, 0, url.c_str(), -1, nullptr, 0);
-    if (url_len <= 0) {
-        return false;
-    }
+    if (url_len <= 0) return false;
     std::vector<wchar_t> url_wide(url_len);
     MultiByteToWideChar(CP_UTF8, 0, url.c_str(), -1, url_wide.data(), url_len);
-
-    // Open internet session
     ScopedInternetHandle session =
         InternetOpenW(L"DisplayCommander", INTERNET_OPEN_TYPE_PRECONFIG, nullptr, nullptr, 0);
-    if (session.handle == nullptr) {
-        return false;
-    }
-
-    // Open URL
+    if (session.handle == nullptr) return false;
     ScopedInternetHandle request =
         InternetOpenUrlW(session, url_wide.data(), nullptr, 0,
                          INTERNET_FLAG_RELOAD | INTERNET_FLAG_PRAGMA_NOCACHE | INTERNET_FLAG_NO_CACHE_WRITE, 0);
-    if (request.handle == nullptr) {
-        return false;
-    }
-
-    // Set timeouts (10 seconds for version check)
+    if (request.handle == nullptr) return false;
     DWORD timeout = 10000;
     InternetSetOption(request, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
     InternetSetOption(request, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
-
-    // Read response
     char buffer[4096];
     DWORD bytes_read = 0;
     while (InternetReadFile(request, buffer, sizeof(buffer) - 1, &bytes_read) && bytes_read > 0) {
         buffer[bytes_read] = '\0';
         content += buffer;
     }
-
     return !content.empty();
 }
 
-// Download binary file from URL
+}  // namespace
+
+// Download binary file from URL (public for ReShade update, etc.)
 bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& file_path) {
     // Convert URL to wide string
     int url_len = MultiByteToWideChar(CP_UTF8, 0, url.c_str(), -1, nullptr, 0);
@@ -139,6 +124,15 @@ bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& 
     out_file.close();
     return std::filesystem::exists(file_path) && std::filesystem::file_size(file_path) > 0;
 }
+
+// Hardcoded ReShade version list (no network). Order: "latest", then default 6.7.2, then older.
+bool FetchReShadeVersionsFromGitHub(std::vector<std::string>& out_versions, std::string* out_error) {
+    (void)out_error;
+    out_versions = {"latest", "6.7.2", "6.7.1", "6.6.2"};
+    return true;
+}
+
+namespace {
 
 // Parse JSON to extract version and download URLs from GitHub API response
 bool ParseGitHubReleaseJson(const std::string& json, std::string& version, std::string& url_64, std::string& url_32,

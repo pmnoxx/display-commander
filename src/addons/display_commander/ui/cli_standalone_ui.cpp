@@ -22,6 +22,8 @@
 #include "imgui.h"
 
 #include "ui/cli_detect_exe.hpp"
+#include "utils/file_sha256.hpp"
+#include "utils/reshade_sha256_database.hpp"
 #include "utils/version_check.hpp"
 #include "version.hpp"
 
@@ -451,7 +453,30 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
     return 0;
 }
 
-// Print ReShade64.dll / ReShade32.dll presence and version for the given directory.
+// Cache for SHA256 of ReShade DLLs (avoid recomputing every frame). UI thread only.
+struct ReshadeSha256CacheEntry {
+    std::wstring path;
+    std::filesystem::file_time_type mtime{};
+    std::string hash;
+};
+static ReshadeSha256CacheEntry s_sha256Cache64;
+static ReshadeSha256CacheEntry s_sha256Cache32;
+
+static std::string GetCachedFileSha256(const std::wstring& pathW, ReshadeSha256CacheEntry& cache) {
+    std::filesystem::path p(pathW);
+    if (!std::filesystem::exists(p)) return {};
+    std::error_code ec;
+    auto mtime = std::filesystem::last_write_time(p, ec);
+    if (ec) return {};
+    if (cache.path == pathW && cache.mtime == mtime && !cache.hash.empty()) return cache.hash;
+    std::string hash = display_commander::utils::ComputeFileSha256(p);
+    cache.path = pathW;
+    cache.mtime = mtime;
+    cache.hash = hash;
+    return hash;
+}
+
+// Print ReShade64.dll / ReShade32.dll presence, version, and signature status for the given directory.
 static void ShowReshadeCoreVersionsForDir(const std::wstring& dir) {
     if (dir.empty()) return;
     for (const wchar_t* name : s_reshadeCoreNames) {
@@ -464,6 +489,24 @@ static void ShowReshadeCoreVersionsForDir(const std::wstring& dir) {
         std::string ver = GetFileVersionStringUtf8(path);
         if (ver.empty()) ver = "(no version info)";
         ImGui::BulletText("%S: %s", name, ver.c_str());
+
+        bool is64 = (std::wcscmp(name, L"ReShade64.dll") == 0);
+        ReshadeSha256CacheEntry& cache = is64 ? s_sha256Cache64 : s_sha256Cache32;
+        std::string fileHash = GetCachedFileSha256(path, cache);
+        if (!fileHash.empty()) {
+            std::string versionKey = display_commander::utils::NormalizeReShadeVersionForLookup(ver);
+            const char* expected = display_commander::utils::GetReShadeExpectedSha256(versionKey, is64);
+            if (expected == nullptr) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("  (signature: not in database)");
+            } else if (fileHash == expected) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "  (signature: OK)");
+            } else {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1.0f), "  (signature: MISMATCH)");
+            }
+        }
     }
 }
 

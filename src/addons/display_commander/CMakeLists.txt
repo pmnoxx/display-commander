@@ -115,7 +115,8 @@ target_include_directories(zzz_display_commander
 # ETW libraries (tdh/advapi32) are needed for PresentMon-style tracing
 # WinInet library is needed for HTTP downloads (shader packages list)
 # Note: Some toolchains (e.g. clang-cl without full Windows SDK lib path) may not have evntrace.lib on the link path.
-target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet)
+# bcrypt for SHA256 (ReShade installer signature verification)
+target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt)
 
 # NVAPI static linking (official NVIDIA NVAPI layout: x86/ and amd64/)
 # NVIDIA recommends static linking - these are static libraries that act as shims
@@ -197,6 +198,9 @@ target_sources(zzz_display_commander PRIVATE
 
 # Standalone installer UI built into the DLL (CommandLine UITest). Uses a second ImGui in namespace
 # ImGuiStandalone to avoid symbol clash with ReShade's ImGui. No separate .exe.
+# Use an OBJECT library so standalone ImGui is compiled exactly once with ImGui=ImGuiStandalone,
+# avoiding LNK2005 duplicate symbol errors (ImDrawList::AddCircle etc.) that can occur when
+# per-source COMPILE_DEFINITIONS are not applied consistently across generators or paths.
 set(IMGUI_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui")
 set(IMGUI_STANDALONE_SOURCES
   ${IMGUI_DIR}/imgui.cpp
@@ -206,6 +210,15 @@ set(IMGUI_STANDALONE_SOURCES
   ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
   ${IMGUI_DIR}/backends/imgui_impl_dx11.cpp
 )
-target_sources(zzz_display_commander PRIVATE ${IMGUI_STANDALONE_SOURCES})
-set_source_files_properties(${IMGUI_STANDALONE_SOURCES} PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone")
+add_library(imgui_standalone_obj OBJECT ${IMGUI_STANDALONE_SOURCES})
+target_compile_definitions(imgui_standalone_obj PRIVATE ImGui=ImGuiStandalone)
+target_include_directories(imgui_standalone_obj
+  PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui/backends
+)
+if(MSVC)
+  set_property(TARGET imgui_standalone_obj PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+target_sources(zzz_display_commander PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone")

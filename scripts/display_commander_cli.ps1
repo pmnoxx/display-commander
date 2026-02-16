@@ -4,6 +4,7 @@
 #          .\display_commander_cli.ps1 DetectExe              (scan current directory)
 #          .\display_commander_cli.ps1 DetectExe .             (same, explicit)
 #          .\display_commander_cli.ps1 DetectExe "C:\Games\MyGame"
+#          .\display_commander_cli.ps1 UITest              (opens standalone installer UI window)
 #          $v = .\display_commander_cli.ps1 version
 
 param(

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "globals.hpp"
+#include "ui/cli_standalone_ui.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
@@ -330,7 +331,8 @@ static void RunCommandLine(HINSTANCE hinst, LPSTR lpszCmdLine) {
         out_line("");
         out_line("Commands:");
         out_line("  version    Print addon version (for scripts)");
-        out_line("  DetectExe <dir>  Find largest .exe in directory, detect 32/64-bit and graphics API (ReShade DLL)");
+        out_line("  DetectExe [dir]  Find largest .exe in directory, detect 32/64-bit and graphics API (ReShade DLL)");
+        out_line("  UITest     Show standalone installer UI (ImGui window; ReShade DLL status, etc.)");
         out_line("  help       Show this help");
         out_line("");
         out_line("Output is written to CommandLine.log in this addon's directory.");
@@ -341,6 +343,12 @@ static void RunCommandLine(HINSTANCE hinst, LPSTR lpszCmdLine) {
     if (cmd_equals("version")) {
         out_line(GetDisplayCommanderVersion());
         if (log_file) fclose(log_file);
+        return;
+    }
+
+    if (cmd_equals("UITest")) {
+        if (log_file) fclose(log_file);
+        RunStandaloneUI(hinst);
         return;
     }
 

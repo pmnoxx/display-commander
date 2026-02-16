@@ -134,10 +134,21 @@ if not exist "%gameFolder%\ReShade.ini" (
 
 :: ---- Display Commander addon ----
 set "downloadAddon=true"
-if exist "%gameFolder%\%addonName%" (
-    choice /m "Display Commander addon already installed, would you like to update? "
-    if errorlevel 2 (
+set "addonPath=%gameFolder%\%addonName%"
+if "%centralized%"=="true" set "addonPath=%centralizedFolder%\%addonName%"
+if exist "%addonPath%" (
+    :: Check remote Last-Modified via HEAD; skip download if local is not older
+    set "updateCheck=DOWNLOAD"
+    for /f "delims=" %%T in ('powershell -NoProfile -Command ^
+        "$url='%addonUrl%'; $path='%addonPath%'; $out='DOWNLOAD'; try { $r=[System.Net.HttpWebRequest]::Create($url); $r.Method='HEAD'; $r.UserAgent='DisplayCommanderInstaller/1.0'; $r.Timeout=10000; $resp=$r.GetResponse(); $lm=$resp.Headers['Last-Modified']; $resp.Close(); if ($lm -and (Test-Path -LiteralPath $path)) { $remote=[DateTime]::Parse($lm).ToUniversalTime(); $local=(Get-Item -LiteralPath $path).LastWriteTimeUtc; if ($remote -le $local) { $out='SKIP' }; Write-Host 'Remote:' $lm; Write-Host 'Local:' $local.ToString('u') }; Write-Host $out } catch { Write-Host 'DOWNLOAD' }" 2^>nul') do set "updateCheck=%%T"
+    if "!updateCheck!"=="SKIP" (
         set "downloadAddon=false"
+        echo Display Commander addon is already up to date.
+    ) else (
+        choice /m "Display Commander addon already installed, would you like to update? "
+        if errorlevel 2 (
+            set "downloadAddon=false"
+        )
     )
 )
 

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace display_commander::utils::version_check {
 
@@ -45,6 +46,13 @@ std::string ParseVersionString(const std::string& version_str);
 
 // Get the Display Commander base directory (%localappdata%\Programs\Display Commander)
 std::filesystem::path GetDownloadDirectory();
+
+// Download a binary file from URL to the given path (for ReShade update, etc.)
+bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& file_path);
+
+// Get supported ReShade versions (hardcoded list: "latest", "6.7.2", "6.7.1", "6.6.2"). Fills out_versions.
+// Kept name for API compatibility. Always returns true; out_error is unused.
+bool FetchReShadeVersionsFromGitHub(std::vector<std::string>& out_versions, std::string* out_error = nullptr);
 
 // Extract build number from version string
 std::string ExtractBuildNumber(const std::string& version_str);

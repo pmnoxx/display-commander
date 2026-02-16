@@ -27,8 +27,10 @@ function(get_git_commit_count OUTPUT_VAR)
     set(${OUTPUT_VAR} "${GIT_OUTPUT}" PARENT_SCOPE)
 endfunction()
 
-# Get git commit count for build number
-get_git_commit_count(GIT_COMMIT_COUNT)
+# Get git commit count for build number (skip if already set e.g. by CI -DGIT_COMMIT_COUNT=)
+if(NOT DEFINED GIT_COMMIT_COUNT OR GIT_COMMIT_COUNT STREQUAL "")
+  get_git_commit_count(GIT_COMMIT_COUNT)
+endif()
 
 # Get current build date and time
 string(TIMESTAMP BUILD_DATE "%Y-%m-%d")

@@ -1,6 +1,6 @@
-// SetupDC: run the installer UI inside the addon DLL (no separate .exe). Takes optional script directory as argument.
-// Uses a second ImGui build in namespace ImGuiStandalone (via compile define ImGui=ImGuiStandalone)
-// and ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used in-game.
+// SetupDC: run the installer UI inside the addon DLL (no separate .exe). Takes optional script directory as argument
+// (default "."). Uses a second ImGui build in namespace ImGuiStandalone (via compile define ImGui=ImGuiStandalone) and
+// ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used in-game.
 
 #define ImGui      ImGuiStandalone
 #define ImDrawList ImDrawListStandalone
@@ -119,8 +119,7 @@ static void RemoveWrongArchitectureFiles(const std::wstring& dir, bool exeIs64bi
                 if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
                 std::wstring lower = fd.cFileName;
                 for (auto& c : lower) c = (wchar_t)towlower((wint_t)c);
-                if (lower.find(L"display_commander") != std::wstring::npos)
-                    delIfPresent(fd.cFileName);
+                if (lower.find(L"display_commander") != std::wstring::npos) delIfPresent(fd.cFileName);
             } while (FindNextFileW(h, &fd));
             FindClose(h);
         }
@@ -133,8 +132,7 @@ static void RemoveWrongArchitectureFiles(const std::wstring& dir, bool exeIs64bi
                 if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
                 std::wstring lower = fd.cFileName;
                 for (auto& c : lower) c = (wchar_t)towlower((wint_t)c);
-                if (lower.find(L"display_commander") != std::wstring::npos)
-                    delIfPresent(fd.cFileName);
+                if (lower.find(L"display_commander") != std::wstring::npos) delIfPresent(fd.cFileName);
             } while (FindNextFileW(h, &fd));
             FindClose(h);
         }
@@ -455,7 +453,7 @@ static const char* const kReshadeUpdateUrlLatest = "https://reshade.me/downloads
 
 static std::atomic<bool> s_reshadeUpdateInProgress{false};
 static std::string s_reshadeUpdateResult;
-static std::string s_gameDetailsReshadeResult;  // result of "Install ReShade" from Game Details popup
+static std::string s_gameDetailsReshadeResult;  // result of install action from Game Details popup (DC as proxy)
 
 // ReShade versions: hardcoded list (latest, 6.7.2 default, 6.7.1, 6.6.2).
 static std::vector<std::string> s_reshadeVersions;
@@ -468,9 +466,9 @@ struct ReshadeUpdateParams {
     std::string selectedVersion;  // e.g. "6.7.1"
     bool forGameDetails = false;  // if true, result goes to s_gameDetailsReshadeResult
     // For proxy-only install (game folder): install as dxgi.dll / d3d11.dll / etc., never ReShade64/32 by name.
-    std::string proxyName;        // e.g. "dxgi" (empty = legacy: copy both cores to addonDir)
-    std::wstring gameDir;         // target game folder when proxyName non-empty
-    bool gameIs64bit = true;      // which core to copy as proxy (ReShade64 vs ReShade32)
+    std::string proxyName;    // e.g. "dxgi" (empty = legacy: copy both cores to addonDir)
+    std::wstring gameDir;     // target game folder when proxyName non-empty
+    bool gameIs64bit = true;  // which core to copy as proxy (ReShade64 vs ReShade32)
 };
 
 static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
@@ -584,14 +582,16 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
             return 1;
         }
     } else {
-        // Legacy: copy both cores to addon dir (and optionally central).
-        if (!copyTo(extracted64, extracted32, addonDir)) {
-            setResult("Install failed: could not write to game folder.");
+        // Legacy (SetupDC): copy ReShade cores to central only; do not copy to game directory.
+        if (centralDir.empty()) {
+            setResult("Install failed: central ReShade folder not set (LOCALAPPDATA).");
             s_reshadeUpdateInProgress = false;
             return 1;
         }
-        if (!centralDir.empty()) {
-            copyTo(extracted64, extracted32, centralDir);
+        if (!copyTo(extracted64, extracted32, centralDir)) {
+            setResult("Install failed: could not write to central ReShade folder.");
+            s_reshadeUpdateInProgress = false;
+            return 1;
         }
     }
 
@@ -600,7 +600,8 @@ static DWORD WINAPI ReshadeUpdateWorker(LPVOID param) {
     std::string msg;
     if (params->forGameDetails) {
         if (proxyOnlyInstall)
-            msg = "ReShade installed as " + params->proxyName + ".dll (" + (params->gameIs64bit ? "64-bit" : "32-bit") + ").";
+            msg = "ReShade installed as " + params->proxyName + ".dll (" + (params->gameIs64bit ? "64-bit" : "32-bit")
+                  + ").";
         else
             msg = (params->selectedVersion.empty() || params->selectedVersion == "latest")
                       ? "ReShade installed (latest)."
@@ -755,10 +756,11 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
     std::vector<std::wstring> reshadeDllsPresent;
     static std::string s_setupReshadeResult;
     static DWORD s_startedGamePid = 0;
-    static ULONGLONG s_startedGameTick = 0;  // when we started (GetTickCount64), for runtime tooltip
-    static std::string s_preferredSetupApi;  // user's "Setup as X" choice; cleanup keeps this, removes others
+    static ULONGLONG s_startedGameTick = 0;   // when we started (GetTickCount64), for runtime tooltip
+    static std::string s_preferredSetupApi;   // user's "Setup as X" choice; cleanup keeps this, removes others
     static bool s_showDebug = false;          // Debug button toggles advanced/debug UI
     static bool s_autoInstallDone = false;    // one-time auto-install ReShade 6.7.2 when core missing
+    static bool s_autoInstallDcDone = false;  // one-time auto-install DC as proxy when DC not installed (Setup tab)
 
     std::wstring centralReshadeDir = GetCentralReshadeDir();
     std::wstring exeFoundLocal = FindLargestExeInDir(addonDir);
@@ -802,8 +804,7 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
             static bool s_pleaseOpenSteamSearch = false;
             static std::string s_updateDcResult;
             if (!addonDir.empty()) {
-                if (exeDetectOk)
-                    RemoveWrongArchitectureFiles(addonDir, exeDetect.is_64bit);
+                if (exeDetectOk) RemoveWrongArchitectureFiles(addonDir, exeDetect.is_64bit);
                 CollectReShadeDllsInDir(addonDir, reshadeDllsPresent);
                 const char* detectedApi = exeDetectOk ? cli_detect_exe::ReShadeDllFromDetect(exeDetect) : "";
                 const char* preferredApi = s_preferredSetupApi.empty() ? detectedApi : s_preferredSetupApi.c_str();
@@ -845,40 +846,37 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                         (detectedApi && strcmp(detectedApi, "vulkan") != 0 && strcmp(detectedApi, "unknown") != 0);
                     bool canSetup = !addonDir.empty() && exeDetectOk && apiSupported;
 
-                    auto doSetupAs = [&](const char* targetApi) {
+                    // Install Display Commander addon from central as API proxy (e.g. dxgi.dll) in game dir.
+                    auto doInstallDcAsProxy = [&](const char* targetApi) {
                         s_setupReshadeResult.clear();
-                        const wchar_t* sourceDll = exeDetect.is_64bit ? L"ReShade64.dll" : L"ReShade32.dll";
+                        std::wstring centralAddonDir = display_commander::game_launcher_registry::GetCentralAddonDir();
+                        if (centralAddonDir.empty()) {
+                            s_setupReshadeResult = "Install failed: central addon folder not set (LOCALAPPDATA).";
+                            return;
+                        }
+                        const wchar_t* addonFileName =
+                            exeDetect.is_64bit ? L"zzz_display_commander.addon64" : L"zzz_display_commander.addon32";
+                        std::wstring sourcePath = centralAddonDir + L"\\" + addonFileName;
                         std::wstring targetDll;
                         for (const char* p = targetApi; p && *p; ++p) targetDll += (wchar_t)(unsigned char)*p;
                         targetDll += L".dll";
-                        std::wstring sourcePath = addonDir + L"\\" + sourceDll;
                         std::wstring targetPath = addonDir + L"\\" + targetDll;
                         if (GetFileAttributesW(sourcePath.c_str()) == INVALID_FILE_ATTRIBUTES) {
-                            int need = WideCharToMultiByte(CP_UTF8, 0, sourceDll, -1, nullptr, 0, nullptr, nullptr);
-                            std::string srcUtf8(need > 0 ? (size_t)need : 0, 0);
-                            if (need > 0)
-                                WideCharToMultiByte(CP_UTF8, 0, sourceDll, -1, &srcUtf8[0], need, nullptr, nullptr);
-                            s_setupReshadeResult = "Not installed correctly: " + srcUtf8
-                                                   + " not found. Use Update ReShade in Advanced.";
+                            s_setupReshadeResult = "Install failed: " + WstringToUtf8(addonFileName)
+                                + " not found in central folder. Copy the addon to %LOCALAPPDATA%\\Programs\\Display_Commander first.";
                         } else if (CopyFileW(sourcePath.c_str(), targetPath.c_str(), FALSE)) {
                             s_preferredSetupApi = targetApi;
-                            int need = WideCharToMultiByte(CP_UTF8, 0, targetDll.c_str(), (int)targetDll.size(),
-                                                           nullptr, 0, nullptr, nullptr);
-                            std::string tgtUtf8(need > 0 ? (size_t)need : 0, 0);
-                            if (need > 0)
-                                WideCharToMultiByte(CP_UTF8, 0, targetDll.c_str(), (int)targetDll.size(), &tgtUtf8[0],
-                                                    need, nullptr, nullptr);
-                            s_setupReshadeResult = "ReShade installed correctly as " + tgtUtf8 + " ("
+                            s_setupReshadeResult = "Display Commander installed as " + WstringToUtf8(targetDll) + " ("
                                                    + (exeDetect.is_64bit ? "64-bit" : "32-bit") + ").";
                         } else {
-                            s_setupReshadeResult =
-                                "Not installed correctly: could not copy (access denied or disk error).";
+                            s_setupReshadeResult = "Install failed: could not copy (access denied or disk error).";
                         }
                     };
 
                     // ---- Exe name and Start / Stop ----
                     if (!exeFoundUtf8.empty()) {
-                        std::string exeNameUtf8 = WstringToUtf8(std::filesystem::path(exeFoundLocal).filename().wstring());
+                        std::string exeNameUtf8 =
+                            WstringToUtf8(std::filesystem::path(exeFoundLocal).filename().wstring());
                         if (!exeNameUtf8.empty()) {
                             ImGui::Text("Exe: %s", exeNameUtf8.c_str());
                             if (ImGui::IsItemHovered())
@@ -937,8 +935,7 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                     if (exeDetectOk) {
                         const char* apiDisplay = (detectedApi && detectedApi[0]) ? detectedApi : "(not detected)";
                         ImGui::Text("%s  ·  Graphics: %s", is64bit ? "64-bit" : "32-bit", apiDisplay);
-                        if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Detected from exe (override in Advanced).");
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Detected from exe (override in Advanced).");
                     } else if (!exeFoundUtf8.empty()) {
                         ImGui::TextDisabled("(exe not detected: bitness/graphics unknown)");
                     }
@@ -948,11 +945,12 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                     bool dcInstalled = false;
                     std::string reshadeStateDisplay = "Not Installed";
                     std::string reshadeStateTooltip = "ReShade core DLL not found. Use Advanced -> Update ReShade.";
+                    std::string reshadeGlobalVer = "(not installed)";
+                    std::string dcLocalDisplay = "Not installed";
                     if (!addonDir.empty() && exeDetectOk) {
                         const wchar_t* coreName = exeDetect.is_64bit ? L"ReShade64.dll" : L"ReShade32.dll";
                         std::wstring corePath = addonDir + L"\\" + coreName;
-                        reshadeInstalled =
-                            (GetFileAttributesW(corePath.c_str()) != INVALID_FILE_ATTRIBUTES);
+                        reshadeInstalled = (GetFileAttributesW(corePath.c_str()) != INVALID_FILE_ATTRIBUTES);
                         if (reshadeInstalled) {
                             std::string ver = GetFileVersionStringUtf8(corePath);
                             if (ver.empty()) ver = "?";
@@ -978,25 +976,74 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                                 reshadeStateTooltip += WstringToUtf8(coreName);
                                 reshadeStateTooltip += " present (";
                                 reshadeStateTooltip += ver;
-                                reshadeStateTooltip += "). No proxy DLL (dxgi/d3d11/etc.) found; use Advanced -> Override ReShade DLL to install.";
+                                reshadeStateTooltip +=
+                                    "). No proxy DLL (dxgi/d3d11/etc.) found; use Advanced -> Install Display "
+                                    "Commander as proxy to "
+                                    "install.";
                             }
                         }
+                        // ReShade version in central (global)
+                        std::wstring centralCorePath = centralReshadeDir + L"\\" + coreName;
+                        std::string gv = GetFileVersionStringUtf8(centralCorePath);
+                        if (!gv.empty()) reshadeGlobalVer = gv;
                         std::vector<std::wstring> dcAddons;
                         CollectDisplayCommanderAddonsInDir(addonDir, dcAddons);
                         const wchar_t* suffix = exeDetect.is_64bit ? L".addon64" : L".addon32";
                         const size_t suffixLen = wcslen(suffix);
                         for (const auto& n : dcAddons) {
-                            if (n.size() >= suffixLen
-                                && _wcsicmp(n.c_str() + n.size() - suffixLen, suffix) == 0) {
+                            if (n.size() >= suffixLen && _wcsicmp(n.c_str() + n.size() - suffixLen, suffix) == 0) {
                                 dcInstalled = true;
+                                std::wstring addonPath = addonDir + L"\\" + n;
+                                std::string av = GetFileVersionStringUtf8(addonPath);
+                                dcLocalDisplay = WstringToUtf8(n) + (av.empty() ? "" : " " + av);
                                 break;
                             }
                         }
+                        // DC as proxy (.dll): same check as debug (StartAndInject export)
+                        if (dcLocalDisplay == "Not installed") {
+                            static const char* const proxyApis[] = {"dxgi", "d3d11", "d3d12", "d3d9", "opengl32"};
+                            for (const char* api : proxyApis) {
+                                std::wstring path = addonDir + L"\\";
+                                for (const char* p = api; *p; ++p) path += (wchar_t)(unsigned char)*p;
+                                path += L".dll";
+                                if (GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES
+                                    && DllHasExport(path, "StartAndInject")) {
+                                    dcInstalled = true;
+                                    std::string pv = GetFileVersionStringUtf8(path);
+                                    dcLocalDisplay = std::string(api) + ".dll" + (pv.empty() ? "" : " " + pv);
+                                    break;
+                                }
+                            }
+                        }
+                        // Auto-install DC as proxy once when DC not installed and exe detected (API supported)
+                        if (!dcInstalled && !s_autoInstallDcDone && detectedApi && detectedApi[0]
+                            && strcmp(detectedApi, "vulkan") != 0 && strcmp(detectedApi, "unknown") != 0) {
+                            std::wstring centralAddonDir =
+                                display_commander::game_launcher_registry::GetCentralAddonDir();
+                            if (!centralAddonDir.empty()) {
+                                const wchar_t* addonFileName = exeDetect.is_64bit ? L"zzz_display_commander.addon64"
+                                                                                  : L"zzz_display_commander.addon32";
+                                std::wstring sourcePath = centralAddonDir + L"\\" + addonFileName;
+                                std::wstring targetDll;
+                                for (const char* p = detectedApi; p && *p; ++p) targetDll += (wchar_t)(unsigned char)*p;
+                                targetDll += L".dll";
+                                std::wstring targetPath = addonDir + L"\\" + targetDll;
+                                if (GetFileAttributesW(sourcePath.c_str()) != INVALID_FILE_ATTRIBUTES
+                                    && CopyFileW(sourcePath.c_str(), targetPath.c_str(), FALSE)) {
+                                    s_autoInstallDcDone = true;
+                                    s_preferredSetupApi = detectedApi;
+                                    dcInstalled = true;
+                                    std::string pv = GetFileVersionStringUtf8(sourcePath);
+                                    dcLocalDisplay = std::string(detectedApi) + ".dll" + (pv.empty() ? "" : " " + pv);
+                                }
+                            }
+                            s_autoInstallDcDone = true;  // don't retry every frame if copy failed
+                        }
                     }
-                    ImGui::Text("ReShade State: %s", reshadeStateDisplay.c_str());
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("%s", reshadeStateTooltip.c_str());
-                    ImGui::Text("DC State: %s", dcInstalled ? "Installed" : "Not Installed");
+                    ImGui::Text("ReShade (local): %s  |  ReShade (global): %s", reshadeStateDisplay.c_str(),
+                                reshadeGlobalVer.c_str());
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", reshadeStateTooltip.c_str());
+                    ImGui::Text("DC (local): %s", dcLocalDisplay.c_str());
 
                     ImGui::Spacing();
                     if (ImGui::CollapsingHeader("Advanced", ImGuiTreeNodeFlags_None)) {
@@ -1010,14 +1057,13 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                             ShellExecuteExW(&sei);
                         }
                         if (addonDir.empty()) ImGui::EndDisabled();
-                        if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Open this game/addon folder in Explorer.");
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open this game/addon folder in Explorer.");
                         ImGui::Spacing();
 
                         // Debug (inside Advanced)
-                        if (ImGui::Checkbox("Debug", &s_showDebug)) {}
-                        if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Show paths, DLL list, and setup result.");
+                        if (ImGui::Checkbox("Debug", &s_showDebug)) {
+                        }
+                        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Show paths, DLL list, and setup result.");
                         if (s_showDebug) {
                             ImGui::Indent();
                             ImGui::Text("Local (this folder)");
@@ -1077,9 +1123,8 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                                         WideCharToMultiByte(CP_UTF8, 0, n.c_str(), (int)n.size(), &nameUtf8[0], need,
                                                             nullptr, nullptr);
                                         if (strcmp(kind, "Display Commander") == 0) {
-                                            ImGui::BulletText(
-                                                "Display Commander - %s: %s  %s", nameUtf8.c_str(), ver.c_str(),
-                                                hasStartAndInject ? "(StartAndInject)" : "");
+                                            ImGui::BulletText("Display Commander - %s: %s  %s", nameUtf8.c_str(),
+                                                              ver.c_str(), hasStartAndInject ? "(StartAndInject)" : "");
                                         } else if (strcmp(kind, "ReShade") == 0) {
                                             ImGui::BulletText("ReShade - %s: %s", nameUtf8.c_str(), ver.c_str());
                                         } else {
@@ -1100,8 +1145,7 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                                         anyShown = true;
                                     }
                                 }
-                                if (!anyShown)
-                                    ImGui::TextUnformatted("(none for this architecture)");
+                                if (!anyShown) ImGui::TextUnformatted("(none for this architecture)");
                             }
                             if (!s_setupReshadeResult.empty()) {
                                 bool isSuccess = (s_setupReshadeResult.find("correctly") != std::string::npos
@@ -1117,32 +1161,48 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                         }
                         ImGui::Spacing();
 
-                        // Override ReShade DLL (buttons to setup as dxgi, d3d9, etc.)
-                        ImGui::Text("Override ReShade DLL:");
+                        // Install Display Commander as proxy (copy addon from central as dxgi.dll / d3d11.dll / etc.)
+                        ImGui::Text("Install Display Commander as proxy:");
+                        bool hasAnyProxyInDir = false;
+                        {
+                            static const char* const proxyApis[] = {"dxgi", "d3d11", "d3d12", "d3d9", "opengl32"};
+                            for (const char* api : proxyApis) {
+                                std::wstring path = addonDir + L"\\";
+                                for (const char* p = api; *p; ++p) path += (wchar_t)(unsigned char)*p;
+                                path += L".dll";
+                                if (GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                                    hasAnyProxyInDir = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!hasAnyProxyInDir && detectedApi && detectedApi[0]) {
+                            if (strcmp(detectedApi, "vulkan") == 0)
+                                ImGui::TextDisabled("Default (from Graphics): vulkan — not supported yet.");
+                            else
+                                ImGui::Text("Default (from Graphics): %s", detectedApi);
+                        }
                         struct ApiChoice {
                             const char* label;
                             const char* api;
                             bool supported;
                         };
                         const ApiChoice apis[] = {
-                            {"dxgi", "dxgi", true},
-                            {"d3d9", "d3d9", true},
-                            {"d3d11", "d3d11", true},
-                            {"d3d12", "d3d12", true},
-                            {"opengl32", "opengl32", true},
-                            {"vulkan", "vulkan", false},
+                            {"dxgi.dll", "dxgi", true},         {"d3d9.dll", "d3d9", true},
+                            {"d3d11.dll", "d3d11", true},       {"d3d12.dll", "d3d12", true},
+                            {"opengl32.dll", "opengl32", true}, {"vulkan", "vulkan", false},
                         };
                         for (const auto& a : apis) {
                             if (a.label != apis[0].label) ImGui::SameLine();
                             if (!a.supported || !canSetup) ImGui::BeginDisabled();
                             if (ImGui::Button((std::string(a.label) + "##override").c_str())) {
-                                if (a.supported) doSetupAs(a.api);
+                                if (a.supported) doInstallDcAsProxy(a.api);
                             }
                             if (ImGui::IsItemHovered()) {
                                 if (a.supported)
-                                    ImGui::SetTooltip("Setup ReShade as %s.dll", a.api);
+                                    ImGui::SetTooltip("Copy Display Commander addon from central as %s.dll", a.api);
                                 else
-                                    ImGui::SetTooltip("Vulkan uses a different installer; not supported here.");
+                                    ImGui::SetTooltip("Not supported yet.");
                             }
                             if (!a.supported || !canSetup) ImGui::EndDisabled();
                         }
@@ -1189,7 +1249,8 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                         }
                         if (!canUpdate) ImGui::EndDisabled();
                         if (ImGui::IsItemHovered())
-                            ImGui::SetTooltip("Download and overwrite ReShade in this folder and central.");
+                            ImGui::SetTooltip(
+                                "Download and store ReShade in central folder only (not in game directory).");
                     }
 
                     ImGui::Spacing();
@@ -1361,20 +1422,32 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                 if (gameDetectOk) {
                     const char* apiDisplay = (detectedApi && detectedApi[0]) ? detectedApi : "(not detected)";
                     ImGui::Text("%s  ·  Graphics: %s", gameIs64bit ? "64-bit" : "32-bit", apiDisplay);
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("Detected from exe.");
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Detected from exe.");
                 } else {
                     ImGui::TextDisabled("(exe not detected: bitness/graphics unknown)");
                 }
-                // ---- ReShade State: only proxy DLLs (dxgi/d3d11/d3d12/d3d9/opengl32), never ReShade64/32 ----
+                if (!gameDir.empty() && ImGui::Button("Open game folder##game_details")) {
+                    SHELLEXECUTEINFOW sei = {};
+                    sei.cbSize = sizeof(sei);
+                    sei.lpVerb = L"open";
+                    sei.lpFile = gameDir.c_str();
+                    sei.nShow = SW_SHOWNORMAL;
+                    ShellExecuteExW(&sei);
+                }
+                if (ImGui::IsItemHovered() && !gameDir.empty())
+                    ImGui::SetTooltip("Open this game's folder in Explorer.");
+                // ---- ReShade State: proxy DLLs that are ReShade (no StartAndInject = not DC) ----
                 static const char* const kReshadeProxyApis[] = {"dxgi", "d3d11", "d3d12", "d3d9", "opengl32"};
                 std::string reshadeStateDisplay = "Not Installed";
-                std::string reshadeStateTooltip = "No ReShade proxy (dxgi/d3d11/etc.) in this game's folder.";
+                std::string reshadeStateTooltip =
+                    "No ReShade proxy (dxgi/d3d11/etc.) in this game's folder. DC proxy DLLs are excluded.";
                 for (const char* api : kReshadeProxyApis) {
                     std::wstring proxyPath = gameDir + L"\\";
                     for (const char* p = api; *p; ++p) proxyPath += (wchar_t)(unsigned char)*p;
                     proxyPath += L".dll";
                     if (GetFileAttributesW(proxyPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                        if (DllHasExport(proxyPath, "StartAndInject"))
+                            continue;  // Display Commander proxy, not ReShade
                         std::string ver = GetFileVersionStringUtf8(proxyPath);
                         if (ver.empty()) ver = "?";
                         reshadeStateDisplay = std::string(api) + ".dll " + ver;
@@ -1385,139 +1458,218 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                         break;
                     }
                 }
-                ImGui::Text("ReShade State: %s", reshadeStateDisplay.c_str());
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("%s", reshadeStateTooltip.c_str());
-                // ---- DC State: only the single addon matching exe bitness (*.addon64 or *.addon32) ----
-                bool dcInstalledInGame = false;
-                std::wstring dcAddonFound;  // filename if found (e.g. zzz_display_commander.addon64)
-                std::string dcAddonVersion;
+                ImGui::Text("ReShade State(local): %s", reshadeStateDisplay.c_str());
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", reshadeStateTooltip.c_str());
+                // ---- DC State: all proxy DLLs with StartAndInject + all .addon64/.addon32 with
+                // GetDisplayCommanderVersion ----
+                struct DcFileEntry {
+                    std::string name;  // e.g. "dxgi.dll" or "zzz_display_commander.addon64"
+                    std::string version;
+                };
+                std::vector<DcFileEntry> dcProxyList;
+                std::vector<DcFileEntry> dcAddonList;
+                for (const char* api : kReshadeProxyApis) {
+                    std::wstring proxyPath = gameDir + L"\\";
+                    for (const char* p = api; *p; ++p) proxyPath += (wchar_t)(unsigned char)*p;
+                    proxyPath += L".dll";
+                    if (GetFileAttributesW(proxyPath.c_str()) != INVALID_FILE_ATTRIBUTES
+                        && DllHasExport(proxyPath, "StartAndInject")) {
+                        std::string ver = GetFileVersionStringUtf8(proxyPath);
+                        dcProxyList.push_back({std::string(api) + ".dll", ver.empty() ? "?" : ver});
+                    }
+                }
                 {
-                    std::vector<std::wstring> dcAddons;
-                    CollectDisplayCommanderAddonsInDir(gameDir, dcAddons);
-                    const wchar_t* suffix = gameIs64bit ? L".addon64" : L".addon32";
-                    const size_t suffixLen = wcslen(suffix);
-                    for (const auto& n : dcAddons) {
-                        if (n.size() >= suffixLen && _wcsicmp(n.c_str() + n.size() - suffixLen, suffix) == 0) {
-                            dcInstalledInGame = true;
-                            dcAddonFound = n;
-                            std::wstring addonPath = gameDir + L"\\" + n;
-                            dcAddonVersion = GetFileVersionStringUtf8(addonPath);
-                            break;
+                    std::wstring prefix = gameDir;
+                    if (!prefix.empty() && prefix.back() != L'\\') prefix += L'\\';
+                    for (const wchar_t* ext : {L"*.addon64", L"*.addon32"}) {
+                        WIN32_FIND_DATAW fd = {};
+                        HANDLE h = FindFirstFileW((prefix + ext).c_str(), &fd);
+                        if (h == INVALID_HANDLE_VALUE) continue;
+                        do {
+                            if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                            std::wstring path = prefix + fd.cFileName;
+                            if (DllHasExport(path, "GetDisplayCommanderVersion")) {
+                                std::string ver = GetFileVersionStringUtf8(path);
+                                dcAddonList.push_back({WstringToUtf8(fd.cFileName), ver.empty() ? "?" : ver});
+                            }
+                        } while (FindNextFileW(h, &fd));
+                        FindClose(h);
+                    }
+                }
+                bool dcInstalledInGame = !dcProxyList.empty() || !dcAddonList.empty();
+                // Auto-install DC as proxy once per game when no DC proxy and exe detected (API supported)
+                static std::wstring s_autoInstallDcGameDir;
+                if (dcProxyList.empty() && gameDetectOk && detectedApi && detectedApi[0]
+                    && strcmp(detectedApi, "vulkan") != 0 && strcmp(detectedApi, "unknown") != 0
+                    && s_autoInstallDcGameDir != gameDir) {
+                    s_autoInstallDcGameDir = gameDir;
+                    std::wstring centralAddonDir = display_commander::game_launcher_registry::GetCentralAddonDir();
+                    if (!centralAddonDir.empty()) {
+                        const wchar_t* addonFileName =
+                            gameIs64bit ? L"zzz_display_commander.addon64" : L"zzz_display_commander.addon32";
+                        std::wstring sourcePath = centralAddonDir + L"\\" + addonFileName;
+                        std::wstring targetDll;
+                        for (const char* p = detectedApi; p && *p; ++p) targetDll += (wchar_t)(unsigned char)*p;
+                        targetDll += L".dll";
+                        std::wstring targetPath = gameDir + L"\\" + targetDll;
+                        if (GetFileAttributesW(sourcePath.c_str()) != INVALID_FILE_ATTRIBUTES
+                            && CopyFileW(sourcePath.c_str(), targetPath.c_str(), FALSE)) {
+                            dcProxyList.push_back({WstringToUtf8(targetDll), GetFileVersionStringUtf8(sourcePath)});
+                            if (dcProxyList.back().version.empty()) dcProxyList.back().version = "?";
                         }
                     }
                 }
-                const char* expectedSuffix = gameIs64bit ? ".addon64" : ".addon32";
                 if (dcInstalledInGame) {
-                    if (!dcAddonVersion.empty()) {
-                        ImGui::Text("DC State: %s (%s)", dcAddonVersion.c_str(), WstringToUtf8(dcAddonFound).c_str());
-                    } else {
-                        ImGui::Text("DC State: Installed (%s)", WstringToUtf8(dcAddonFound).c_str());
+                    std::string dcLine;
+                    if (!dcProxyList.empty()) {
+                        for (size_t i = 0; i < dcProxyList.size(); ++i) {
+                            if (i) dcLine += "; ";
+                            dcLine += dcProxyList[i].name + " (" + dcProxyList[i].version + ")";
+                        }
                     }
+                    if (!dcAddonList.empty()) {
+                        if (!dcLine.empty()) dcLine += "  |  ";
+                        for (size_t i = 0; i < dcAddonList.size(); ++i) {
+                            if (i) dcLine += "; ";
+                            dcLine += dcAddonList[i].name + " (" + dcAddonList[i].version + ")";
+                        }
+                    }
+                    ImGui::Text("DC State: %s", dcLine.c_str());
+                    std::string dcTooltip = "Display Commander: ";
+                    if (!dcProxyList.empty()) {
+                        dcTooltip += "proxy " + std::to_string(dcProxyList.size()) + " DLL(s). ";
+                        if (!dcAddonList.empty())
+                            dcTooltip += "Remove .addon64/.addon32 when using proxy (redundant). ";
+                    }
+                    if (!dcAddonList.empty()) dcTooltip += std::to_string(dcAddonList.size()) + " addon file(s). ";
+                    dcTooltip += "Identified by StartAndInject (proxy) / GetDisplayCommanderVersion (addon).";
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", dcTooltip.c_str());
                 } else {
-                    ImGui::Text("DC State: Not Installed (expect *%s for %s exe)", expectedSuffix,
-                               gameDetectOk ? (gameIs64bit ? "64-bit" : "32-bit") : "this");
+                    ImGui::Text("DC State: Not Installed (install as proxy: dxgi.dll etc.)");
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip(
+                            "Display Commander is installed as proxy (e.g. dxgi.dll). We do not install "
+                            ".addon64/.addon32 "
+                            "in the game folder.");
                 }
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Display Commander is installed as one file: *.addon64 for 64-bit games or *.addon32 for 32-bit. We only check for the matching architecture.");
                 ImGui::Spacing();
-                // ---- Install ReShade as proxy only (dxgi / d3d11 / d3d12 / d3d9 / opengl32) ----
-                ImGui::Text("Install ReShade as (proxy only; cores stay in central):");
-                if (!s_reshadeVersionsInitialized) {
-                    display_commander::utils::version_check::FetchReShadeVersionsFromGitHub(s_reshadeVersions, nullptr);
-                    if (s_reshadeVersionIndex >= (int)s_reshadeVersions.size()) s_reshadeVersionIndex = 1;
-                    s_reshadeVersionsInitialized = true;
-                }
-                static int s_gameDetailsReshadeVersionIndex = 1;
-                static int s_gameDetailsProxyIndex = 0;  // 0=dxgi, 1=d3d11, 2=d3d12, 3=d3d9, 4=opengl32
-                if (s_gameDetailsReshadeVersionIndex >= (int)s_reshadeVersions.size()) s_gameDetailsReshadeVersionIndex = 1;
-                if (s_gameDetailsProxyIndex < 0 || s_gameDetailsProxyIndex >= 5) s_gameDetailsProxyIndex = 0;
-                std::wstring centralReshadeDir = GetCentralReshadeDir();
-                if (!s_reshadeVersions.empty()) {
-                    auto getter = [](void* data, int idx, const char** out) {
-                        auto* v = (std::vector<std::string>*)data;
-                        if (idx < 0 || (size_t)idx >= v->size()) return false;
-                        *out = (*v)[(size_t)idx].c_str();
-                        return true;
-                    };
-                    ImGui::SetNextItemWidth(100.f);
-                    ImGui::Combo("Version##game_details", &s_gameDetailsReshadeVersionIndex, getter,
-                                 &s_reshadeVersions, (int)s_reshadeVersions.size());
-                    ImGui::SameLine();
-                    ImGui::SetNextItemWidth(100.f);
-                    ImGui::Combo("API##game_details", &s_gameDetailsProxyIndex, "dxgi\0d3d11\0d3d12\0d3d9\0opengl32\0");
-                }
-                bool canInstallReshade = !gameDir.empty() && !s_reshadeUpdateInProgress && !s_reshadeVersions.empty();
-                if (!canInstallReshade) ImGui::BeginDisabled();
-                const char* chosenApi = kReshadeProxyApis[s_gameDetailsProxyIndex];
-                std::string installLabel = "Install ReShade as ";
-                installLabel += chosenApi;
-                installLabel += ".dll";
-                if (ImGui::Button(installLabel.c_str())) {
-                    s_gameDetailsReshadeResult.clear();
-                    std::string ver = (s_reshadeVersions.empty() || s_gameDetailsReshadeVersionIndex >= (int)s_reshadeVersions.size())
-                                          ? "6.7.2"
-                                          : s_reshadeVersions[(size_t)s_gameDetailsReshadeVersionIndex];
-                    auto* params = new ReshadeUpdateParams{};
-                    params->addonDir = gameDir;
-                    params->centralDir = centralReshadeDir;
-                    params->selectedVersion = ver;
-                    params->forGameDetails = true;
-                    params->proxyName = chosenApi;
-                    params->gameDir = gameDir;
-                    params->gameIs64bit = gameIs64bit;
-                    s_reshadeUpdateInProgress = true;
-                    HANDLE h = CreateThread(nullptr, 0, ReshadeUpdateWorker, params, 0, nullptr);
-                    if (h) {
-                        CloseHandle(h);
-                    } else {
-                        delete params;
-                        s_gameDetailsReshadeResult = "Install failed: could not start worker.";
-                        s_reshadeUpdateInProgress = false;
+                // ---- Install Display Commander as proxy (same logic as Setup: central addon -> game as api.dll) ----
+                ImGui::Text("Install Display Commander as proxy:");
+                bool canInstallDcGame = !gameDir.empty() && gameDetectOk && detectedApi && detectedApi[0]
+                                        && strcmp(detectedApi, "vulkan") != 0 && strcmp(detectedApi, "unknown") != 0;
+                struct GameDetailsApiChoice {
+                    const char* label;
+                    const char* api;
+                    bool supported;
+                };
+                const GameDetailsApiChoice gameDetailsApis[] = {
+                    {"dxgi.dll", "dxgi", true},   {"d3d9.dll", "d3d9", true},         {"d3d11.dll", "d3d11", true},
+                    {"d3d12.dll", "d3d12", true}, {"opengl32.dll", "opengl32", true}, {"vulkan", "vulkan", false},
+                };
+                if (!canInstallDcGame) ImGui::BeginDisabled();
+                for (const auto& a : gameDetailsApis) {
+                    if (a.label != gameDetailsApis[0].label) ImGui::SameLine();
+                    if (!a.supported) ImGui::BeginDisabled();
+                    if (ImGui::Button((std::string(a.label) + "##game_details_install").c_str())) {
+                        if (a.supported) {
+                            s_gameDetailsReshadeResult.clear();
+                            std::wstring centralAddonDir =
+                                display_commander::game_launcher_registry::GetCentralAddonDir();
+                            if (centralAddonDir.empty()) {
+                                s_gameDetailsReshadeResult =
+                                    "Install failed: central addon folder not set (LOCALAPPDATA).";
+                            } else {
+                                const wchar_t* addonFileName =
+                                    gameIs64bit ? L"zzz_display_commander.addon64" : L"zzz_display_commander.addon32";
+                                std::wstring sourcePath = centralAddonDir + L"\\" + addonFileName;
+                                std::wstring targetDll;
+                                for (const char* p = a.api; p && *p; ++p) targetDll += (wchar_t)(unsigned char)*p;
+                                targetDll += L".dll";
+                                std::wstring targetPath = gameDir + L"\\" + targetDll;
+                                if (GetFileAttributesW(sourcePath.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                                    s_gameDetailsReshadeResult =
+                                        "Install failed: " + WstringToUtf8(addonFileName)
+                                        + " not found in central folder. Copy the addon to %LOCALAPPDATA%\\Programs\\Display_Commander first.";
+                                } else if (CopyFileW(sourcePath.c_str(), targetPath.c_str(), FALSE)) {
+                                    s_gameDetailsReshadeResult = "Display Commander installed as "
+                                                                 + WstringToUtf8(targetDll) + " ("
+                                                                 + (gameIs64bit ? "64-bit" : "32-bit") + ").";
+                                } else {
+                                    s_gameDetailsReshadeResult =
+                                        "Install failed: could not copy (access denied or disk error).";
+                                }
+                            }
+                        }
                     }
+                    if (ImGui::IsItemHovered()) {
+                        if (a.supported)
+                            ImGui::SetTooltip("Copy Display Commander addon from central as %s.dll", a.api);
+                        else
+                            ImGui::SetTooltip("Not supported yet.");
+                    }
+                    if (!a.supported) ImGui::EndDisabled();
                 }
-                if (!canInstallReshade) ImGui::EndDisabled();
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Download ReShade, store cores in central folder, copy proxy (%s.dll) to this game's folder only.", chosenApi);
-                if (s_reshadeUpdateInProgress)
-                    ImGui::TextDisabled("Installing ReShade...");
-                else if (!s_gameDetailsReshadeResult.empty())
-                    ImGui::TextWrapped("%s", s_gameDetailsReshadeResult.c_str());
+                if (!canInstallDcGame) ImGui::EndDisabled();
+                if (!s_gameDetailsReshadeResult.empty()) ImGui::TextWrapped("%s", s_gameDetailsReshadeResult.c_str());
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
-                if (ImGui::Button("Update DC##game_details")) {
+                // Update DC proxy: overwrite existing proxy DLL(s) in game from central (no .addon64/.addon32)
+                if (ImGui::Button("Update DC proxy##game_details")) {
                     s_updateDcResult.clear();
                     std::wstring centralAddonDir = display_commander::game_launcher_registry::GetCentralAddonDir();
                     if (centralAddonDir.empty()) {
                         s_updateDcResult = "Update failed: LOCALAPPDATA not set.";
                     } else {
-                        std::wstring gameDir =
-                            std::filesystem::path(s_gameDetailsEntry.path).parent_path().wstring();
-                        std::vector<std::wstring> addonFiles;
-                        CollectDisplayCommanderAddonsInDir(centralAddonDir, addonFiles);
-                        bool ok = true;
-                        for (const auto& f : addonFiles) {
-                            std::wstring src = centralAddonDir + L"\\" + f;
-                            std::wstring dst = gameDir + L"\\" + f;
-                            if (GetFileAttributesW(src.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                                if (!CopyFileW(src.c_str(), dst.c_str(), FALSE)) {
-                                    ok = false;
-                                    break;
+                        std::wstring gdir = std::filesystem::path(s_gameDetailsEntry.path).parent_path().wstring();
+                        const wchar_t* addonFileName =
+                            gameIs64bit ? L"zzz_display_commander.addon64" : L"zzz_display_commander.addon32";
+                        std::wstring sourcePath = centralAddonDir + L"\\" + addonFileName;
+                        if (GetFileAttributesW(sourcePath.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                            s_updateDcResult = "No Display Commander addon in central folder for this bitness.";
+                        } else {
+                            int updated = 0;
+                            for (const char* api : kReshadeProxyApis) {
+                                std::wstring proxyPath = gdir + L"\\";
+                                for (const char* p = api; *p; ++p) proxyPath += (wchar_t)(unsigned char)*p;
+                                proxyPath += L".dll";
+                                if (GetFileAttributesW(proxyPath.c_str()) != INVALID_FILE_ATTRIBUTES
+                                    && DllHasExport(proxyPath, "StartAndInject")) {
+                                    if (CopyFileW(sourcePath.c_str(), proxyPath.c_str(), FALSE)) ++updated;
                                 }
                             }
+                            s_updateDcResult = (updated > 0) ? "Display Commander proxy updated ("
+                                                                   + std::to_string(updated) + " DLL(s))."
+                                                             : "No DC proxy DLL found in game folder to update.";
                         }
-                        if (addonFiles.empty())
-                            s_updateDcResult = "No Display Commander addon files in central folder.";
-                        else
-                            s_updateDcResult = ok ? "Display Commander files copied to game folder."
-                                                  : "Update failed: could not copy (access denied?).";
                     }
                 }
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Copy Display Commander addon from central folder to this game's folder.");
-                if (!s_updateDcResult.empty())
-                    ImGui::TextWrapped("%s", s_updateDcResult.c_str());
+                    ImGui::SetTooltip(
+                        "Overwrite existing DC proxy DLL(s) (dxgi/d3d11/etc.) in this game's folder from central. Does "
+                        "not copy .addon64/.addon32.");
+                if (!s_updateDcResult.empty()) ImGui::TextWrapped("%s", s_updateDcResult.c_str());
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                if (ImGui::Button("Remove from list##game_details")) {
+                    ImGui::OpenPopup("Remove game from list?");
+                }
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("Remove this game from the registry. It will no longer appear in the installer list. You can re-add it by running the game with Display Commander.");
+                if (ImGui::BeginPopupModal("Remove game from list?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::Text("Remove this game from the list?");
+                    ImGui::TextUnformatted("It will no longer appear in the installer. You can re-add it by running the game with Display Commander.");
+                    ImGui::Spacing();
+                    if (ImGui::Button("Yes, remove##game_details_confirm")) {
+                        display_commander::game_launcher_registry::RemoveGame(s_gameDetailsEntry.path.c_str());
+                        ImGui::CloseCurrentPopup();
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel##game_details_remove_cancel")) ImGui::CloseCurrentPopup();
+                    ImGui::EndPopup();
+                }
                 ImGui::Spacing();
                 if (ImGui::Button("Close##game_details")) ImGui::CloseCurrentPopup();
                 ImGui::EndPopup();
@@ -1532,7 +1684,8 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                 ImGui::SetNextItemWidth(-1.f);
                 ImGui::InputText("##steam_search", s_steamSearchBuf, sizeof(s_steamSearchBuf));
                 auto toLowerAscii = [](std::string s) {
-                    for (char& c : s) if (c >= 'A' && c <= 'Z') c += 32;
+                    for (char& c : s)
+                        if (c >= 'A' && c <= 'Z') c += 32;
                     return s;
                 };
                 std::string searchLower = toLowerAscii(s_steamSearchBuf);
@@ -1540,8 +1693,7 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                 int shown = 0;
                 for (const auto& game : s_steamGameList) {
                     std::string nameLower = toLowerAscii(game.name);
-                    if (!searchLower.empty() && nameLower.find(searchLower) == std::string::npos)
-                        continue;
+                    if (!searchLower.empty() && nameLower.find(searchLower) == std::string::npos) continue;
                     ++shown;
                     ImGui::PushID((int)(game.app_id));
                     ImGui::TextWrapped("%s", game.name.c_str());

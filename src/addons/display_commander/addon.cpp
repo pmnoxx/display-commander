@@ -334,7 +334,7 @@ static void RunCommandLine(HINSTANCE hinst, LPSTR lpszCmdLine) {
         out_line("Commands:");
         out_line("  version    Print addon version (for scripts)");
         out_line("  DetectExe [dir]  Find largest .exe in directory, detect 32/64-bit and graphics API (ReShade DLL)");
-        out_line("  SetupDC [script_dir]  Show standalone installer UI; script_dir = folder where installer script runs (default: addon dir)");
+        out_line("  SetupDC [script_dir]  Show standalone installer UI; script_dir = folder where installer script runs (default: .)");
         out_line("  help       Show this help");
         out_line("");
         out_line("Output is written to CommandLine.log in this addon's directory.");
@@ -358,14 +358,15 @@ static void RunCommandLine(HINSTANCE hinst, LPSTR lpszCmdLine) {
             path_start++;
             if (path_end > path_start && path_end[-1] == '"') path_end--;
         }
-        const char* script_dir = nullptr;
         std::string script_dir_utf8;
         if (path_start < path_end) {
             script_dir_utf8.assign(path_start, path_end - path_start);
-            if (!script_dir_utf8.empty()) script_dir = script_dir_utf8.c_str();
+        }
+        if (script_dir_utf8.empty()) {
+            script_dir_utf8 = ".";
         }
         if (log_file) fclose(log_file);
-        RunStandaloneUI(hinst, script_dir);
+        RunStandaloneUI(hinst, script_dir_utf8.c_str());
         return;
     }
 

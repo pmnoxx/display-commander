@@ -19,8 +19,8 @@
 #include <algorithm>
 #include <atomic>
 #include <cstring>
-#include <sstream>
 #include <set>
+#include <sstream>
 #include <string>
 
 #include <dxgi1_6.h>
@@ -703,7 +703,8 @@ void DrawHdrDisplaySettings() {
     ImGui::Indent();
 
     // Hide HDR Capabilities
-    if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities, "Hide display's HDR capabilities from game")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities,
+                        "Hide display's HDR capabilities from game")) {
         s_hide_hdr_capabilities.store(settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue());
         LogInfo("HDR hiding setting changed to: %s",
                 settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");

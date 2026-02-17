@@ -150,7 +150,7 @@ static sl::DLSSMode QualityPresetValueToSLMode(NVSDK_NGX_PerfQuality_Value ngxQu
     }
 }
 
-// Map render preset value (0=DLSS Default, 1=Preset A, 2=Preset B, ...) to sl::DLSSPreset
+// Map render preset value (0=DLSS Default, 1=Preset A, 2=Preset B, ... 11=Preset K, ...) to sl::DLSSPreset
 static sl::DLSSPreset PresetValueToSLPreset(int presetValue) {
     switch (presetValue) {
         case 0:  return sl::DLSSPreset::eDefault;
@@ -164,6 +164,7 @@ static sl::DLSSPreset PresetValueToSLPreset(int presetValue) {
         case 8:  return sl::DLSSPreset::ePresetM;
         case 9:  return sl::DLSSPreset::ePresetN;
         case 10: return sl::DLSSPreset::ePresetO;
+        case 11: return sl::DLSSPreset::ePresetK;  // UI "Preset K" -> value 11
         default: return sl::DLSSPreset::eDefault;
     }
 }
@@ -320,6 +321,13 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
 
     if (applied_any) {
         LogInfo("slDLSSSetOptions: applied overrides -> mode=%s", DLSSModeStr(modified_options.mode));
+    } else if (LogDLSSOptions(options)) {
+        // Log why no overrides were applied (only when we're already logging this call)
+        const std::string qPreset = settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue();
+        const bool presetEnabled = settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue();
+        const std::string srPreset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
+        LogInfo("slDLSSSetOptions: no overrides applied (quality_preset=%s preset_override_enabled=%d sr_preset=%s)",
+                qPreset.c_str(), presetEnabled ? 1 : 0, srPreset.c_str());
     }
 
     return slDLSSSetOptions_Original(viewport, modified_options);

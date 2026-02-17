@@ -21,7 +21,7 @@ set "gameFolder="
 
 ::Edit this if you want to use localized installations without symlinks
 set "centralized=true"
-set "centralizedFolder=%LOCALAPPDATA%\Programs\Display Commander"
+set "centralizedFolder=%LOCALAPPDATA%\Programs\Display_Commander"
 
 :: DO NOT EDIT BELOW
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

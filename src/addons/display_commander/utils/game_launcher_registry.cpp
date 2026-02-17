@@ -148,7 +148,7 @@ std::wstring GetCentralAddonDir() {
     if (n == 0 || n >= (DWORD)std::size(buf)) return L"";
     std::wstring path = buf;
     if (!path.empty() && path.back() != L'\\') path += L'\\';
-    path += L"Programs\\Display Commander";
+    path += L"Programs\\Display_Commander";
     return path;
 }
 

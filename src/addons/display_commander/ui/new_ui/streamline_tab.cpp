@@ -102,7 +102,7 @@ void DrawStreamlineTab() {
 
     if (dlss_override_enabled) {
         ImGui::Indent();
-        ImGui::Text("Override location: AppData\\Local\\Programs\\Display Commander\\dlss_override");
+        ImGui::Text("Override location: AppData\\Local\\Programs\\Display_Commander\\dlss_override");
         std::vector<std::string> subfolders = GetDlssOverrideSubfolderNames();
         auto draw_dll_row = [&subfolders](const char* label, bool* p_check,
                                           ui::new_ui::StringSetting& subfolder_setting, int dll_index) {
@@ -187,7 +187,7 @@ void DrawStreamlineTab() {
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Create subfolder under Display Commander\\dlss_override.");
+            ImGui::SetTooltip("Create subfolder under Display_Commander\\dlss_override.");
         }
         ImGui::Unindent();
     }

@@ -65,6 +65,9 @@ void DrawDLLBlockingControls();
 // Draw input test tab
 void DrawInputTestTab();
 
+// Draw NVIDIA Profile tab (standalone top-level tab content)
+void DrawNvidiaProfileTab(reshade::api::effect_runtime* runtime);
+
 // Cleanup function to stop background threads
 void CleanupExperimentalTab();
 

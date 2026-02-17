@@ -280,6 +280,20 @@ void InitializeNewUI() {
         },
         true);  // ReShade tab is advanced
 
+    // NVIDIA Profile tab (always visible, not gated by experimental/Debug)
+    g_tab_manager.AddTab(
+        "NVIDIA Profile", "nvidia_profile",
+        [](reshade::api::effect_runtime* runtime) {
+            try {
+                ui::new_ui::DrawNvidiaProfileTab(runtime);
+            } catch (const std::exception& e) {
+                LogError("Error drawing NVIDIA Profile tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing NVIDIA Profile tab");
+            }
+        },
+        false);  // Not advanced - visible without "Show Debug Tab"
+
     // Add Debug tab last (experimental/debug features; id kept as "experimental" for settings)
     if (enabled_experimental_features) {
         g_tab_manager.AddTab(

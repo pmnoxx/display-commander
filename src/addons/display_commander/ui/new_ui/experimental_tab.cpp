@@ -11,6 +11,7 @@
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../nvapi/nvidia_profile_search.hpp"
+#include "../../nvapi/nvpi_reference.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
@@ -40,12 +41,16 @@ namespace ui::new_ui {
 static void DrawThreadTrackingSubTab();
 
 static std::string s_nvidiaProfileCreateError;
+static std::string s_nvidiaProfileSetError;
+static std::string s_nvidiaProfileDeleteError;
 
 static void DrawNvidiaProfileSearchTab() {
     ImGui::Text("NVIDIA Inspector profile search");
     ImGui::SameLine();
     if (ImGui::Button("Refresh")) {
         display_commander::nvapi::InvalidateProfileSearchCache();
+        s_nvidiaProfileSetError.clear();
+        s_nvidiaProfileDeleteError.clear();
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Re-scan driver profiles (e.g. after changing settings in NVIDIA Profile Inspector).");
@@ -96,6 +101,24 @@ static void DrawNvidiaProfileSearchTab() {
     }
 
     ImGui::TextColored(ui::colors::ICON_SUCCESS, "Matching profile(s): %zu", r.matching_profile_names.size());
+    if (display_commander::nvapi::HasDisplayCommanderProfile(r)) {
+        ImGui::SameLine();
+        if (ImGui::Button("Remove Display Commander profile")) {
+            auto [ok, err] = display_commander::nvapi::DeleteDisplayCommanderProfileForCurrentExe();
+            if (ok) {
+                s_nvidiaProfileDeleteError.clear();
+                display_commander::nvapi::InvalidateProfileSearchCache();
+            } else {
+                s_nvidiaProfileDeleteError = err;
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Remove the NVIDIA profile created by Display Commander for this game (name starts with \"Display Commander -\").");
+        }
+    }
+    if (!s_nvidiaProfileDeleteError.empty()) {
+        ImGui::TextColored(ui::colors::ICON_ERROR, "Remove failed: %s", s_nvidiaProfileDeleteError.c_str());
+    }
     ImGui::Spacing();
     if (ImGui::BeginChild("NvidiaProfileSearchList", ImVec2(-1.f, 180.f), true)) {
         for (const std::string& name : r.matching_profile_names) {
@@ -107,6 +130,12 @@ static void DrawNvidiaProfileSearchTab() {
     if (!r.important_settings.empty()) {
         ImGui::Spacing();
         if (ImGui::CollapsingHeader("Important profile settings (first matching profile)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (!s_nvidiaProfileSetError.empty()) {
+                ImGui::TextColored(ui::colors::ICON_ERROR, "Last change failed: %s", s_nvidiaProfileSetError.c_str());
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Try running the game/ReShade as administrator, or change this setting in NVIDIA Profile Inspector.");
+                }
+            }
             ImGui::TextColored(ui::colors::TEXT_DIMMED,
                 "Key driver settings from the first matching profile above.");
             if (ImGui::BeginTable("NvidiaProfileImportantSettings", 2,
@@ -121,51 +150,109 @@ static void DrawNvidiaProfileSearchTab() {
                     ImGui::TextUnformatted(s.label.c_str());
                     ImGui::TableSetColumnIndex(1);
                     if (s.setting_id != 0) {
-                        float comboWidth = ImGui::GetContentRegionAvail().x - (ImGui::GetStyle().ItemSpacing.x + ImGui::CalcTextSize("Default").x + ImGui::GetStyle().FramePadding.x * 2.f);
-                        if (comboWidth < 80.f) comboWidth = 80.f;
-                        ImGui::SetNextItemWidth(comboWidth);
-                        const char* comboId = nullptr;
-                        {
-                            static char comboBuf[64];
-                            (void)snprintf(comboBuf, sizeof(comboBuf), "##NvidiaProfileSetting_%u", static_cast<unsigned>(s.setting_id));
-                            comboId = comboBuf;
-                        }
-                        if (ImGui::BeginCombo(comboId, s.value.c_str(), 0)) {
-                            std::vector<std::pair<std::uint32_t, std::string>> opts =
-                                display_commander::nvapi::GetSettingAvailableValues(s.setting_id);
-                            for (const auto& opt : opts) {
-                                const bool selected = (opt.first == s.value_id);
-                                if (ImGui::Selectable(opt.second.c_str(), selected)) {
-                                    if (display_commander::nvapi::SetProfileSetting(s.setting_id, opt.first)) {
-                                        /* Cache invalidated; next frame will refresh */
+                        if (s.is_bit_field && s.setting_id == display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+                            std::vector<std::pair<std::uint32_t, std::string>> flags =
+                                display_commander::nvapi::GetSmoothMotionAllowedApisFlags();
+                            std::uint32_t cur = s.value_id;
+                            for (size_t fi = 0; fi < flags.size(); ++fi) {
+                                const auto& fl = flags[fi];
+                                bool checked = (cur & fl.first) != 0;
+                                ImGui::PushID(static_cast<int>(fl.first));
+                                if (ImGui::Checkbox(fl.second.c_str(), &checked)) {
+                                    std::uint32_t newVal = (cur & ~fl.first) | (checked ? fl.first : 0);
+                                    auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, newVal);
+                                    if (ok) {
+                                        s_nvidiaProfileSetError.clear();
+                                        display_commander::nvapi::InvalidateProfileSearchCache();
+                                    } else {
+                                        s_nvidiaProfileSetError = err;
                                     }
                                 }
-                                if (selected) {
-                                    ImGui::SetItemDefaultFocus();
+                                ImGui::PopID();
+                                if (ImGui::IsItemHovered()) {
+                                    ImGui::SetTooltip("Toggle flag; value is a bitmask (saved immediately).");
+                                }
+                                if (fi + 1 < flags.size()) {
+                                    ImGui::SameLine();
                                 }
                             }
-                            ImGui::EndCombo();
-                        }
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Change value and apply to profile (saved immediately).");
-                        }
-                        ImGui::SameLine();
-                        const bool atDefault = (s.value_id == s.default_value);
-                        if (atDefault) {
-                            ImGui::BeginDisabled();
-                        }
-                        ImGui::PushID(static_cast<int>(s.setting_id));
-                        if (ImGui::SmallButton("Default")) {
-                            if (display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value)) {
-                                /* Cache invalidated; next frame will refresh */
+                            ImGui::SameLine();
+                            const bool atDefault = (cur == s.default_value);
+                            if (atDefault) {
+                                ImGui::BeginDisabled();
                             }
-                        }
-                        ImGui::PopID();
-                        if (atDefault) {
-                            ImGui::EndDisabled();
-                        }
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Reset to NVIDIA default value.");
+                            ImGui::PushID(static_cast<int>(s.setting_id));
+                            if (ImGui::SmallButton("Default")) {
+                                auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
+                                if (ok) {
+                                    s_nvidiaProfileSetError.clear();
+                                    display_commander::nvapi::InvalidateProfileSearchCache();
+                                } else {
+                                    s_nvidiaProfileSetError = err;
+                                }
+                            }
+                            ImGui::PopID();
+                            if (atDefault) {
+                                ImGui::EndDisabled();
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Reset to NVIDIA default value.");
+                            }
+                        } else {
+                            float comboWidth = ImGui::GetContentRegionAvail().x - (ImGui::GetStyle().ItemSpacing.x + ImGui::CalcTextSize("Default").x + ImGui::GetStyle().FramePadding.x * 2.f);
+                            if (comboWidth < 80.f) comboWidth = 80.f;
+                            ImGui::SetNextItemWidth(comboWidth);
+                            const char* comboId = nullptr;
+                            {
+                                static char comboBuf[64];
+                                (void)snprintf(comboBuf, sizeof(comboBuf), "##NvidiaProfileSetting_%u", static_cast<unsigned>(s.setting_id));
+                                comboId = comboBuf;
+                            }
+                            if (ImGui::BeginCombo(comboId, s.value.c_str(), 0)) {
+                                std::vector<std::pair<std::uint32_t, std::string>> opts =
+                                    display_commander::nvapi::GetSettingAvailableValues(s.setting_id);
+                                for (const auto& opt : opts) {
+                                    const bool selected = (opt.first == s.value_id);
+                                    if (ImGui::Selectable(opt.second.c_str(), selected)) {
+                                        auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, opt.first);
+                                        if (ok) {
+                                            s_nvidiaProfileSetError.clear();
+                                            display_commander::nvapi::InvalidateProfileSearchCache();
+                                        } else {
+                                            s_nvidiaProfileSetError = err;
+                                        }
+                                    }
+                                    if (selected) {
+                                        ImGui::SetItemDefaultFocus();
+                                    }
+                                }
+                                ImGui::EndCombo();
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Change value and apply to profile (saved immediately).");
+                            }
+                            ImGui::SameLine();
+                            const bool atDefault = (s.value_id == s.default_value);
+                            if (atDefault) {
+                                ImGui::BeginDisabled();
+                            }
+                            ImGui::PushID(static_cast<int>(s.setting_id));
+                            if (ImGui::SmallButton("Default")) {
+                                auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
+                                if (ok) {
+                                    s_nvidiaProfileSetError.clear();
+                                    display_commander::nvapi::InvalidateProfileSearchCache();
+                                } else {
+                                    s_nvidiaProfileSetError = err;
+                                }
+                            }
+                            ImGui::PopID();
+                            if (atDefault) {
+                                ImGui::EndDisabled();
+                            }
+                            if (ImGui::IsItemHovered()) {
+                                ImGui::SetTooltip("Reset to NVIDIA default value.");
+                            }
                         }
                     } else {
                         ImGui::TextUnformatted(s.value.c_str());
@@ -206,6 +293,9 @@ static void DrawNvidiaProfileSearchTab() {
         "These profiles will apply when this game runs. Edit with NVIDIA Profile Inspector.");
 }
 
+void DrawNvidiaProfileTab(reshade::api::effect_runtime* /* runtime */) {
+    DrawNvidiaProfileSearchTab();
+}
 
 // Initialize experimental tab
 void InitExperimentalTab() {
@@ -481,11 +571,6 @@ void DrawExperimentalTab(reshade::api::effect_runtime* runtime) {
 
     if (ImGui::BeginTabItem("Thread Tracking")) {
         DrawThreadTrackingSubTab();
-        ImGui::EndTabItem();
-    }
-
-    if (ImGui::BeginTabItem("NVIDIA Profile")) {
-        DrawNvidiaProfileSearchTab();
         ImGui::EndTabItem();
     }
 

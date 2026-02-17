@@ -25,3 +25,7 @@
 [submodule "external/vulkan-headers"]
 	path = external/vulkan-headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers.git
+
+[submodule "external/NvidiaProfileInspectorRevamped"]
+	path = external/NvidiaProfileInspectorRevamped
+	url = https://github.com/xHybred/NvidiaProfileInspectorRevamped.git

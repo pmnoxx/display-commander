@@ -1,4 +1,4 @@
-name: Build addons
+git statname: Build addons
 
 on:
   push:

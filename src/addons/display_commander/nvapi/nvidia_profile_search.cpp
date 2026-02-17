@@ -7,6 +7,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include "nvpi_reference.hpp"
 
 namespace display_commander::nvapi {
 
@@ -16,39 +17,54 @@ struct ImportantSettingDef {
     NvU32 id;
     const char* label;
     NvU32 default_value;  // NVIDIA driver default when not set in profile
+    bool is_bit_field;    // Value is a bitmask; UI uses checkboxes per flag.
 };
 
 static const ImportantSettingDef k_important_settings[] = {
-    {VSYNCSMOOTHAFR_ID, "Smooth Motion (AFR)", VSYNCSMOOTHAFR_DEFAULT},
-    {NGX_DLSS_SR_MODE_ID, "DLSS-SR mode", static_cast<NvU32>(NGX_DLSS_SR_MODE_DEFAULT)},
-    {NGX_DLSS_SR_OVERRIDE_ID, "DLSS-SR override", static_cast<NvU32>(NGX_DLSS_SR_OVERRIDE_DEFAULT)},
-    {NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID, "DLSS-SR preset", static_cast<NvU32>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT)},
-    {NGX_DLSS_FG_OVERRIDE_ID, "DLSS-FG override", static_cast<NvU32>(NGX_DLSS_FG_OVERRIDE_DEFAULT)},
-    {NGX_DLSS_RR_OVERRIDE_ID, "DLSS-RR override", static_cast<NvU32>(NGX_DLSS_RR_OVERRIDE_DEFAULT)},
-    {NGX_DLSS_RR_MODE_ID, "DLSS-RR mode", static_cast<NvU32>(NGX_DLSS_RR_MODE_DEFAULT)},
-    {NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID, "DLSS-RR preset", static_cast<NvU32>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT)},
-    {NGX_DLAA_OVERRIDE_ID, "DLAA override", static_cast<NvU32>(NGX_DLAA_OVERRIDE_DEFAULT)},
-    {VSYNCMODE_ID, "Vertical Sync", static_cast<NvU32>(VSYNCMODE_DEFAULT)},
-    {VSYNCTEARCONTROL_ID, "Sync tear control", static_cast<NvU32>(VSYNCTEARCONTROL_DEFAULT)},
-    {VRR_APP_OVERRIDE_ID, "G-SYNC / VRR", static_cast<NvU32>(VRR_APP_OVERRIDE_DEFAULT)},
-    {VRR_MODE_ID, "G-SYNC mode", static_cast<NvU32>(VRR_MODE_DEFAULT)},
-    {REFRESH_RATE_OVERRIDE_ID, "Preferred refresh rate", static_cast<NvU32>(REFRESH_RATE_OVERRIDE_DEFAULT)},
-    {PRERENDERLIMIT_ID, "Max pre-rendered frames", static_cast<NvU32>(PRERENDERLIMIT_DEFAULT)},
-    {PREFERRED_PSTATE_ID, "Power management", static_cast<NvU32>(PREFERRED_PSTATE_DEFAULT)},
+    {VSYNCSMOOTHAFR_ID, "Smooth Motion (AFR)", VSYNCSMOOTHAFR_DEFAULT, false},
+    {NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID, "Smooth Motion - Allowed APIs", 0, true},
+    {NGX_DLSS_SR_MODE_ID, "DLSS-SR mode", static_cast<NvU32>(NGX_DLSS_SR_MODE_DEFAULT), false},
+    {NGX_DLSS_SR_OVERRIDE_ID, "DLSS-SR override", static_cast<NvU32>(NGX_DLSS_SR_OVERRIDE_DEFAULT), false},
+    {NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID, "DLSS-SR preset",
+     static_cast<NvU32>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT), false},
+    {NGX_DLSS_FG_OVERRIDE_ID, "DLSS-FG override", static_cast<NvU32>(NGX_DLSS_FG_OVERRIDE_DEFAULT), false},
+    {NGX_DLSS_RR_OVERRIDE_ID, "DLSS-RR override", static_cast<NvU32>(NGX_DLSS_RR_OVERRIDE_DEFAULT), false},
+    {NGX_DLSS_RR_MODE_ID, "DLSS-RR mode", static_cast<NvU32>(NGX_DLSS_RR_MODE_DEFAULT), false},
+    {NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID, "DLSS-RR preset",
+     static_cast<NvU32>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT), false},
+    {NGX_DLAA_OVERRIDE_ID, "DLAA override", static_cast<NvU32>(NGX_DLAA_OVERRIDE_DEFAULT), false},
+    {VSYNCMODE_ID, "Vertical Sync", static_cast<NvU32>(VSYNCMODE_DEFAULT), false},
+    {VSYNCTEARCONTROL_ID, "Sync tear control", static_cast<NvU32>(VSYNCTEARCONTROL_DEFAULT), false},
+    {VRR_APP_OVERRIDE_ID, "G-SYNC / VRR", static_cast<NvU32>(VRR_APP_OVERRIDE_DEFAULT), false},
+    {VRR_MODE_ID, "G-SYNC mode", static_cast<NvU32>(VRR_MODE_DEFAULT), false},
+    {REFRESH_RATE_OVERRIDE_ID, "Preferred refresh rate", static_cast<NvU32>(REFRESH_RATE_OVERRIDE_DEFAULT), false},
+    {PRERENDERLIMIT_ID, "Max pre-rendered frames", static_cast<NvU32>(PRERENDERLIMIT_DEFAULT), false},
+    {PREFERRED_PSTATE_ID, "Power management", static_cast<NvU32>(PREFERRED_PSTATE_DEFAULT), false},
 };
 
 static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
     switch (settingId) {
-        case VSYNCSMOOTHAFR_ID:
-            return (value == VSYNCSMOOTHAFR_ON) ? "On" : "Off";
-        case NGX_DLSS_SR_OVERRIDE_ID:
-            return (value == NGX_DLSS_SR_OVERRIDE_ON) ? "On" : "Off";
-        case NGX_DLSS_FG_OVERRIDE_ID:
-            return (value == NGX_DLSS_FG_OVERRIDE_ON) ? "On" : "Off";
-        case NGX_DLSS_RR_OVERRIDE_ID:
-            return (value == NGX_DLSS_RR_OVERRIDE_ON) ? "On" : "Off";
-        case NGX_DLAA_OVERRIDE_ID:
-            return (value == NGX_DLAA_OVERRIDE_DLAA_ON) ? "On" : "Default";
+        case VSYNCSMOOTHAFR_ID:                  return (value == VSYNCSMOOTHAFR_ON) ? "On" : "Off";
+        case NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID: {
+            const auto& flags = GetSmoothMotionAllowedApisFlags();
+            if (value == 0) {
+                return "None/All";
+            }
+            std::ostringstream o;
+            const char* sep = "";
+            for (const auto& p : flags) {
+                if ((value & p.first) != 0) {
+                    o << sep << p.second;
+                    sep = ", ";
+                }
+            }
+            std::string s = o.str();
+            return s.empty() ? "None/All" : s;
+        }
+        case NGX_DLSS_SR_OVERRIDE_ID: return (value == NGX_DLSS_SR_OVERRIDE_ON) ? "On" : "Off";
+        case NGX_DLSS_FG_OVERRIDE_ID: return (value == NGX_DLSS_FG_OVERRIDE_ON) ? "On" : "Off";
+        case NGX_DLSS_RR_OVERRIDE_ID: return (value == NGX_DLSS_RR_OVERRIDE_ON) ? "On" : "Off";
+        case NGX_DLAA_OVERRIDE_ID:    return (value == NGX_DLAA_OVERRIDE_DLAA_ON) ? "On" : "Default";
         case PRERENDERLIMIT_ID:
             if (value == PRERENDERLIMIT_APP_CONTROLLED) return "App controlled";
             {
@@ -80,25 +96,25 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
             break;
         case NGX_DLSS_SR_MODE_ID:
             switch (value) {
-                case 0: return "Performance";
-                case 1: return "Balanced";
-                case 2: return "Quality";
-                case 3: return "Snippet controlled";
-                case 4: return "DLAA";
-                case 5: return "Ultra Performance";
-                case 6: return "Custom";
+                case 0:  return "Performance";
+                case 1:  return "Balanced";
+                case 2:  return "Quality";
+                case 3:  return "Snippet controlled";
+                case 4:  return "DLAA";
+                case 5:  return "Ultra Performance";
+                case 6:  return "Custom";
                 default: break;
             }
             break;
         case NGX_DLSS_RR_MODE_ID:
             switch (value) {
-                case 0: return "Performance";
-                case 1: return "Balanced";
-                case 2: return "Quality";
-                case 3: return "Snippet controlled";
-                case 4: return "DLAA";
-                case 5: return "Ultra Performance";
-                case 6: return "Custom";
+                case 0:  return "Performance";
+                case 1:  return "Balanced";
+                case 2:  return "Quality";
+                case 3:  return "Snippet controlled";
+                case 4:  return "DLAA";
+                case 5:  return "Ultra Performance";
+                case 6:  return "Custom";
                 default: break;
             }
             break;
@@ -121,8 +137,7 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
             if (value == 0x13245256) return "Flip 4";
             if (value == 0x18888888) return "Virtual";
             break;
-        case VSYNCTEARCONTROL_ID:
-            return (value == 0x99941284) ? "Enable" : "Disable";
+        case VSYNCTEARCONTROL_ID: return (value == 0x99941284) ? "Enable" : "Disable";
         case PREFERRED_PSTATE_ID:
             if (value == 0) return "Adaptive";
             if (value == 1) return "Prefer max";
@@ -131,20 +146,19 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
             if (value == 4) return "Prefer min";
             if (value == 5) return "Optimal power";
             break;
-        default:
-            break;
+        default: break;
     }
     std::ostringstream oss;
     oss << "0x" << std::hex << value << " (" << std::dec << value << ")";
     return oss.str();
 }
 
-static void ReadImportantSettings(NvDRSSessionHandle hSession,
-                                  NvDRSProfileHandle hProfile,
+static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                                   std::vector<ImportantProfileSetting>& out) {
     for (const auto& def : k_important_settings) {
         ImportantProfileSetting entry;
         entry.label = def.label;
+        entry.is_bit_field = def.is_bit_field;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
@@ -203,12 +217,11 @@ static std::string WideToUtf8(const wchar_t* wsz) {
     return out;
 }
 
-static void ReadAllSettings(NvDRSSessionHandle hSession,
-                            NvDRSProfileHandle hProfile,
+static void ReadAllSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                             std::vector<ImportantProfileSetting>& out) {
     constexpr NvU32 kBatchSize = 64;
     std::vector<NVDRS_SETTING> batch(kBatchSize);
-    for (NvU32 startIndex = 0;; ) {
+    for (NvU32 startIndex = 0;;) {
         for (auto& s : batch) {
             memset(&s, 0, sizeof(s));
             s.version = NVDRS_SETTING_VER;
@@ -268,8 +281,7 @@ static std::wstring NormalizePath(const std::wstring& s) {
 }
 
 // True if profile app name matches current exe (path or base name).
-static bool AppMatchesExe(const std::wstring& profileAppName,
-                          const std::wstring& currentPathNorm,
+static bool AppMatchesExe(const std::wstring& profileAppName, const std::wstring& currentPathNorm,
                           const std::wstring& currentNameNorm) {
     if (profileAppName.empty()) {
         return false;
@@ -457,14 +469,15 @@ NvidiaProfileSearchResult GetCachedProfileSearchResult() {
     return s_cachedResult;
 }
 
-void InvalidateProfileSearchCache() {
-    s_cacheValid = false;
-}
+void InvalidateProfileSearchCache() { s_cacheValid = false; }
 
 using ValueList = std::vector<std::pair<std::uint32_t, std::string>>;
 static std::map<std::uint32_t, ValueList> s_availableValuesCache;
 
 std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std::uint32_t settingId) {
+    if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+        return GetSmoothMotionAllowedApisValues();
+    }
     {
         auto it = s_availableValuesCache.find(settingId);
         if (it != s_availableValuesCache.end()) {
@@ -490,19 +503,37 @@ std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std
     return list;
 }
 
-bool SetProfileSetting(std::uint32_t settingId, std::uint32_t value) {
-    NvDRSSessionHandle hSession = nullptr;
-    if (NvAPI_DRS_CreateSession(&hSession) != NVAPI_OK) {
-        return false;
+// Setting name for NVPI custom setting (not in NvApiDriverSettings.h). Required when creating the setting in a profile.
+static const wchar_t k_smoothMotionAllowedApisName[] = L"Smooth Motion - Allowed APIs";
+
+// Build error string: "step: NVAPI description (0xCODE)"
+static std::string MakeNvapiError(const char* step, NvAPI_Status st) {
+    NvAPI_ShortString buf = {};
+    if (NvAPI_GetErrorMessage(st, buf) == NVAPI_OK && buf[0] != '\0') {
+        std::ostringstream o;
+        o << step << ": " << buf << " (0x" << std::hex << static_cast<unsigned>(st) << ")";
+        return o.str();
     }
-    if (NvAPI_DRS_LoadSettings(hSession) != NVAPI_OK) {
+    std::ostringstream o;
+    o << step << ": NVAPI 0x" << std::hex << static_cast<unsigned>(st);
+    return o.str();
+}
+
+std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uint32_t value) {
+    NvDRSSessionHandle hSession = nullptr;
+    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    if (st != NVAPI_OK) {
+        return {false, MakeNvapiError("CreateSession", st)};
+    }
+    st = NvAPI_DRS_LoadSettings(hSession);
+    if (st != NVAPI_OK) {
         NvAPI_DRS_DestroySession(hSession);
-        return false;
+        return {false, MakeNvapiError("LoadSettings", st)};
     }
     NvDRSProfileHandle hProfile = FindFirstMatchingProfile(hSession);
     if (!hProfile) {
         NvAPI_DRS_DestroySession(hSession);
-        return false;
+        return {false, "No profile matches current exe (add this game to a profile first)."};
     }
     NVDRS_SETTING s;
     memset(&s, 0, sizeof(s));
@@ -510,18 +541,32 @@ bool SetProfileSetting(std::uint32_t settingId, std::uint32_t value) {
     s.settingId = static_cast<NvU32>(settingId);
     s.settingType = NVDRS_DWORD_TYPE;
     s.u32CurrentValue = static_cast<NvU32>(value);
-    NvAPI_Status st = NvAPI_DRS_SetSetting(hSession, hProfile, &s);
+
+    // Get existing setting so we pass a full struct (including settingName); driver may require it for SetSetting.
+    if (NvAPI_DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
+        if (s.settingType == NVDRS_DWORD_TYPE) {
+            s.u32CurrentValue = static_cast<NvU32>(value);
+        }
+    } else {
+        // Setting not in profile yet: fill settingName for known custom IDs so driver accepts the new setting.
+        if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+            WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
+        }
+    }
+
+    st = NvAPI_DRS_SetSetting(hSession, hProfile, &s);
     if (st != NVAPI_OK) {
         NvAPI_DRS_DestroySession(hSession);
-        return false;
+        return {false, MakeNvapiError("SetSetting", st)};
     }
-    if (NvAPI_DRS_SaveSettings(hSession) != NVAPI_OK) {
+    st = NvAPI_DRS_SaveSettings(hSession);
+    if (st != NVAPI_OK) {
         NvAPI_DRS_DestroySession(hSession);
-        return false;
+        return {false, MakeNvapiError("SaveSettings", st)};
     }
     NvAPI_DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();
-    return true;
+    return {true, ""};
 }
 
 std::pair<bool, std::string> CreateProfileForCurrentExe() {
@@ -597,6 +642,67 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
     if (NvAPI_DRS_SaveSettings(hSession) != NVAPI_OK) {
         NvAPI_DRS_DestroySession(hSession);
         return {false, "DRS SaveSettings failed"};
+    }
+    NvAPI_DRS_DestroySession(hSession);
+    InvalidateProfileSearchCache();
+    return {true, ""};
+}
+
+static const char k_displayCommanderProfilePrefix[] = "Display Commander - ";
+
+bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& r) {
+    const size_t prefixLen = sizeof(k_displayCommanderProfilePrefix) - 1;
+    for (const std::string& name : r.matching_profile_names) {
+        if (name.size() >= prefixLen && name.compare(0, prefixLen, k_displayCommanderProfilePrefix) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
+    wchar_t exePath[MAX_PATH] = {};
+    if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+        return {false, "GetModuleFileName failed"};
+    }
+    const wchar_t* base = wcsrchr(exePath, L'\\');
+    const wchar_t* exeName = base ? base + 1 : exePath;
+    std::wstring profileNameW = L"Display Commander - ";
+    profileNameW += exeName;
+
+    NvDRSSessionHandle hSession = nullptr;
+    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    if (st != NVAPI_OK) {
+        return {false, MakeNvapiError("CreateSession", st)};
+    }
+    st = NvAPI_DRS_LoadSettings(hSession);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, MakeNvapiError("LoadSettings", st)};
+    }
+
+    NvAPI_UnicodeString profileNameBuf;
+    WideToNvApiUnicode(profileNameW, profileNameBuf);
+
+    NvDRSProfileHandle hProfile = nullptr;
+    st = NvAPI_DRS_FindProfileByName(hSession, profileNameBuf, &hProfile);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        if (st == NVAPI_PROFILE_NOT_FOUND) {
+            return {false, "Display Commander profile not found for this exe."};
+        }
+        return {false, MakeNvapiError("FindProfileByName", st)};
+    }
+
+    st = NvAPI_DRS_DeleteProfile(hSession, hProfile);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, MakeNvapiError("DeleteProfile", st)};
+    }
+    st = NvAPI_DRS_SaveSettings(hSession);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, MakeNvapiError("SaveSettings", st)};
     }
     NvAPI_DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();

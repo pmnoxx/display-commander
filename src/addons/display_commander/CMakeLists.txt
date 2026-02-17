@@ -190,6 +190,18 @@ set_target_properties(zzz_display_commander PROPERTIES
   LINK_OPTIONS "$<$<C_COMPILER_ID:MSVC>:/DEF:${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def>"
 )
 
+# Copy NvidiaProfileInspectorRevamped Reference.xml next to the addon DLL so NVPI reference data can be loaded at runtime.
+set(NVPI_REFERENCE_XML "${CMAKE_CURRENT_LIST_DIR}/../../../external/NvidiaProfileInspectorRevamped/nspector/Reference.xml")
+if(EXISTS "${NVPI_REFERENCE_XML}")
+  add_custom_command(TARGET zzz_display_commander POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${NVPI_REFERENCE_XML}" "$<TARGET_FILE_DIR:zzz_display_commander>/Reference.xml"
+    COMMENT "Copy Reference.xml (NVPI) next to addon DLL"
+  )
+  message(STATUS "NVPI Reference.xml will be copied from NvidiaProfileInspectorRevamped submodule")
+else()
+  message(STATUS "NVPI Reference.xml not found (optional). Run: git submodule update --init external/NvidiaProfileInspectorRevamped")
+endif()
+
 # Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll, version.dll)
 # CMake automatically handles .def files for MSVC when added as a source, but we also explicitly link it
 target_sources(zzz_display_commander PRIVATE

@@ -13,6 +13,7 @@ struct ImportantProfileSetting {
     std::uint32_t setting_id = 0;   // DRS setting ID (0 = not editable)
     std::uint32_t value_id = 0;     // Current or default raw DWORD value
     std::uint32_t default_value = 0; // NVIDIA default (for reset button)
+    bool is_bit_field = false;      // If true, value_id is a bitmask; UI shows checkboxes per flag.
 };
 
 struct NvidiaProfileSearchResult {
@@ -41,13 +42,21 @@ void InvalidateProfileSearchCache();
 std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std::uint32_t settingId);
 
 // Sets a DWORD setting on the first profile matching the current exe. Saves settings and invalidates cache.
-// Returns true if a matching profile was found and the setting was applied.
-bool SetProfileSetting(std::uint32_t settingId, std::uint32_t value);
+// Returns (true, "") on success; (false, error_message) on failure. Error message includes step and NVAPI status.
+std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uint32_t value);
 
 // Creates an NVIDIA driver profile for the current process executable and adds the exe to it.
 // Profile name will be "Display Commander - <exe base name>". If a profile already exists
 // for this exe, does nothing and returns success. Invalidates cache on success.
 // Returns (true, "") on success, (false, error_message) on failure.
 std::pair<bool, std::string> CreateProfileForCurrentExe();
+
+// Returns true if the result includes a profile created by Display Commander (name starts with "Display Commander -").
+bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& r);
+
+// Deletes the NVIDIA profile named "Display Commander - <current exe base name>" if it exists.
+// Only removes profiles we created; requires admin if driver enforces privilege. Invalidates cache on success.
+// Returns (true, "") on success, (false, error_message) on failure.
+std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe();
 
 }  // namespace display_commander::nvapi

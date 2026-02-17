@@ -703,15 +703,16 @@ void DrawHdrDisplaySettings() {
     ImGui::Indent();
 
     // Hide HDR Capabilities
-    if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities, "Hide game's native HDR")) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities, "Hide display's HDR capabilities from game")) {
         s_hide_hdr_capabilities.store(settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue());
         LogInfo("HDR hiding setting changed to: %s",
                 settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
-            "Hides HDR capabilities from applications by intercepting CheckColorSpaceSupport and GetDesc calls.\n"
-            "This can prevent games from detecting HDR support and force them to use SDR mode.");
+            "Tries to prevent the game from turning on its HDR.\n"
+            "Hides HDR capabilities from the game by intercepting CheckColorSpaceSupport and GetDesc calls,\n"
+            "so the game may use SDR mode instead.");
     }
 
     // Enable Flip Chain

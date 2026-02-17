@@ -2749,28 +2749,18 @@ void DrawDisplaySettings_FpsLimiterMode() {
                     }
                 }
 
-                // Show Boost checkbox for both native and injected Reflex
+                // Reflex mode selector for Reflex FPS limiter (same options as OnPresent)
                 ImGui::Spacing();
-#if 0
-                bool reflex_low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
-                if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
-                    settings::g_advancedTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
-                    g_reflex_settings_outdated.store(true);
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Enables NVIDIA Reflex Low Latency Mode to reduce input lag and system latency.\nThis helps improve responsiveness in competitive gaming scenarios.");
-                }
-                ImGui::SameLine();
-#endif
-                bool reflex_boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
-                if (ImGui::Checkbox("Boost", &reflex_boost)) {
-                    settings::g_advancedTabSettings.reflex_boost.SetValue(reflex_boost);
+                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex")) {
                     g_reflex_settings_outdated.store(true);
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
-                        "Enables NVIDIA Reflex Boost mode for maximum latency reduction.\nThis mode may increase GPU "
-                        "power consumption but provides the lowest possible input lag.");
+                        "NVIDIA Reflex setting when using Reflex FPS limiter.\n\n"
+                        "Low latency: Enables Reflex Low Latency Mode (default).\n"
+                        "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
+                        "Off: Disables both Low Latency and Boost.\n"
+                        "Game Defaults: Do not override; use the game's own Reflex settings.");
                 }
                 ImGui::SameLine();
                 bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();

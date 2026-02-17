@@ -1334,14 +1334,16 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
 
     bool override_game_reflex_settings = false;
 
-    // When OnPresentSync is selected and Reflex is "Game Defaults", do not apply our Reflex (let game control it)
+    // When OnPresentSync or Reflex is selected and Reflex mode is "Game Defaults", do not apply our Reflex (let game control it)
     const auto onpresent_reflex =
         static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
+    const auto reflex_limiter_reflex =
+        static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
 
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
         override_game_reflex_settings = (onpresent_reflex != OnPresentReflexMode::kGameDefaults);
     } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
-        override_game_reflex_settings = true;
+        override_game_reflex_settings = (reflex_limiter_reflex != OnPresentReflexMode::kGameDefaults);
     } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kDisabled) {
         override_game_reflex_settings = false;
     } else {
@@ -1376,6 +1378,12 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
                 low_latency = (onpresent_reflex == OnPresentReflexMode::kLowLatency
                                || onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
                 boost = (onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
+            } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
+                const auto reflex_limiter_reflex =
+                    static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
+                low_latency = (reflex_limiter_reflex == OnPresentReflexMode::kLowLatency
+                               || reflex_limiter_reflex == OnPresentReflexMode::kLowLatencyBoost);
+                boost = (reflex_limiter_reflex == OnPresentReflexMode::kLowLatencyBoost);
             } else {
                 low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
                 boost = settings::g_advancedTabSettings.reflex_boost.GetValue();

@@ -2506,6 +2506,35 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     }
                 }
             }
+            // Load all local .dc64 (64-bit) or .dc32 (32-bit) DLLs from the addon directory
+            {
+                WCHAR addon_path[MAX_PATH];
+                if (GetModuleFileNameW(h_module, addon_path, MAX_PATH) > 0) {
+                    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
+#ifdef _WIN64
+                    const std::wstring ext_match = L".dc64";
+#else
+                    const std::wstring ext_match = L".dc32";
+#endif
+                    std::error_code ec;
+                    for (const auto& entry : std::filesystem::directory_iterator(
+                             addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+                        if (ec) break;
+                        if (!entry.is_regular_file()) continue;
+                        std::wstring ext = entry.path().extension().wstring();
+                        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+                        if (ext != ext_match) continue;
+                        const std::wstring path_w = entry.path().wstring();
+                        HMODULE mod = LoadLibraryW(path_w.c_str());
+                        if (mod != nullptr) {
+                            std::string name = entry.path().filename().string();
+                            char msg[384];
+                            snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64/.dc32 DLL: %s\n", name.c_str());
+                            OutputDebugStringA(msg);
+                        }
+                    }
+                }
+            }
 #ifdef _WIN64
             if (!g_reshade_loaded.load()) {
                 // Set environment variable to disable ReShade loading check

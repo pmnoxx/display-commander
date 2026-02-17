@@ -697,23 +697,23 @@ DLSSGSummary GetDLSSGSummary() {
     // Get quality preset based on PerfQualityValue (like Special-K does)
     unsigned int perf_quality;
     if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
-        switch (perf_quality) {
-            case 0:  // NVSDK_NGX_PerfQuality_Value_MaxPerf
+        switch (static_cast<NVSDK_NGX_PerfQuality_Value>(perf_quality)) {
+            case NVSDK_NGX_PerfQuality_Value_MaxPerf:
                 summary.quality_preset = "Performance";
                 break;
-            case 1:  // NVSDK_NGX_PerfQuality_Value_Balanced
+            case NVSDK_NGX_PerfQuality_Value_Balanced:
                 summary.quality_preset = "Balanced";
                 break;
-            case 2:  // NVSDK_NGX_PerfQuality_Value_MaxQuality
+            case NVSDK_NGX_PerfQuality_Value_MaxQuality:
                 summary.quality_preset = "Quality";
                 break;
-            case 3:  // NVSDK_NGX_PerfQuality_Value_UltraPerformance
+            case NVSDK_NGX_PerfQuality_Value_UltraPerformance:
                 summary.quality_preset = "Ultra Performance";
                 break;
-            case 4:  // NVSDK_NGX_PerfQuality_Value_UltraQuality
+            case NVSDK_NGX_PerfQuality_Value_UltraQuality:
                 summary.quality_preset = "Ultra Quality";
                 break;
-            case 5:  // NVSDK_NGX_PerfQuality_Value_DLAA
+            case NVSDK_NGX_PerfQuality_Value_DLAA:
                 summary.quality_preset = "DLAA";
                 break;
             default: summary.quality_preset = "Unknown"; break;

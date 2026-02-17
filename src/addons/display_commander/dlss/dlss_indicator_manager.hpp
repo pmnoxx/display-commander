@@ -33,9 +33,14 @@ public:
     // Get the registry value name for DLSS indicator
     static std::string GetRegistryValueName();
 
+    // DLSS-FG indicator text (DLSSG_IndicatorText): 0 = off, 1 = minimal, 2 = detailed
+    static DWORD GetDlssgIndicatorTextLevel();
+    static bool SetDlssgIndicatorTextLevel(DWORD level);
+
 private:
     static constexpr const char* REGISTRY_KEY_PATH = "SOFTWARE\\NVIDIA Corporation\\Global\\NGXCore";
     static constexpr const char* REGISTRY_VALUE_NAME = "ShowDlssIndicator";
+    static constexpr const char* REGISTRY_VALUE_DLSSG_INDICATOR = "DLSSG_IndicatorText";
     static constexpr DWORD ENABLED_VALUE = 1024;
     static constexpr DWORD DISABLED_VALUE = 0;
 };

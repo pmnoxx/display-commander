@@ -102,4 +102,59 @@ std::string DlssIndicatorManager::GetRegistryValueName() {
     return REGISTRY_VALUE_NAME;
 }
 
+DWORD DlssIndicatorManager::GetDlssgIndicatorTextLevel() {
+    HKEY h_key;
+    LONG result = RegOpenKeyExA(HKEY_LOCAL_MACHINE, REGISTRY_KEY_PATH, 0, KEY_READ, &h_key);
+
+    if (result != ERROR_SUCCESS) {
+        return 0;
+    }
+
+    DWORD value = 0;
+    DWORD value_size = sizeof(DWORD);
+    DWORD value_type = REG_DWORD;
+
+    result = RegQueryValueExA(h_key, REGISTRY_VALUE_DLSSG_INDICATOR, nullptr, &value_type,
+                             reinterpret_cast<BYTE*>(&value), &value_size);
+
+    RegCloseKey(h_key);
+
+    if (result != ERROR_SUCCESS || value > 2) {
+        return 0;
+    }
+    return value;
+}
+
+bool DlssIndicatorManager::SetDlssgIndicatorTextLevel(DWORD level) {
+    if (level > 2) {
+        return false;
+    }
+
+    HKEY h_key;
+    LONG result = RegOpenKeyExA(HKEY_LOCAL_MACHINE, REGISTRY_KEY_PATH, 0, KEY_SET_VALUE, &h_key);
+
+    if (result != ERROR_SUCCESS) {
+        LogInfo("DLSSG_IndicatorText: Failed to open registry key for write, error: %ld (admin may be required)", result);
+        return false;
+    }
+
+    result = RegSetValueExA(h_key, REGISTRY_VALUE_DLSSG_INDICATOR, 0, REG_DWORD,
+                            reinterpret_cast<const BYTE*>(&level), sizeof(DWORD));
+
+    RegCloseKey(h_key);
+
+    if (result != ERROR_SUCCESS) {
+        LogInfo("DLSSG_IndicatorText: Failed to write registry value, error: %ld", result);
+        return false;
+    }
+    const char* level_str = "off";
+    if (level == 1) {
+        level_str = "minimal";
+    } else if (level == 2) {
+        level_str = "detailed";
+    }
+    LogInfo("DLSSG_IndicatorText: Registry set to %u (%s)", static_cast<unsigned>(level), level_str);
+    return true;
+}
+
 } // namespace dlss

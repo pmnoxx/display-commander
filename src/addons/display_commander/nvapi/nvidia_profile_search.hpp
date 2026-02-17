@@ -44,4 +44,10 @@ std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std
 // Returns true if a matching profile was found and the setting was applied.
 bool SetProfileSetting(std::uint32_t settingId, std::uint32_t value);
 
+// Creates an NVIDIA driver profile for the current process executable and adds the exe to it.
+// Profile name will be "Display Commander - <exe base name>". If a profile already exists
+// for this exe, does nothing and returns success. Invalidates cache on success.
+// Returns (true, "") on success, (false, error_message) on failure.
+std::pair<bool, std::string> CreateProfileForCurrentExe();
+
 }  // namespace display_commander::nvapi

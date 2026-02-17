@@ -39,6 +39,8 @@ namespace ui::new_ui {
 
 static void DrawThreadTrackingSubTab();
 
+static std::string s_nvidiaProfileCreateError;
+
 static void DrawNvidiaProfileSearchTab() {
     ImGui::Text("NVIDIA Inspector profile search");
     ImGui::SameLine();
@@ -71,7 +73,25 @@ static void DrawNvidiaProfileSearchTab() {
     if (r.matching_profile_names.empty()) {
         ImGui::TextColored(ui::colors::ICON_WARNING, "No NVIDIA Inspector profile found for this exe.");
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
-            "Create a profile in NVIDIA Profile Inspector and add this executable to it.");
+            "Create a profile to manage NVIDIA driver settings for this game.");
+        ImGui::Spacing();
+        if (ImGui::Button("Create profile for this game")) {
+            auto [ok, err] = display_commander::nvapi::CreateProfileForCurrentExe();
+            if (!ok) {
+                s_nvidiaProfileCreateError = err;
+            } else {
+                s_nvidiaProfileCreateError.clear();
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Creates an NVIDIA driver profile named \"Display Commander - <exe>\" and adds this executable. You can then edit settings here or in NVIDIA Profile Inspector.");
+        }
+        if (!s_nvidiaProfileCreateError.empty()) {
+            ImGui::TextColored(ui::colors::ICON_ERROR, "Error: %s", s_nvidiaProfileCreateError.c_str());
+        }
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+            "Alternatively, create a profile in NVIDIA Profile Inspector and add this executable to it.");
         return;
     }
 

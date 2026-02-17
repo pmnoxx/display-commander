@@ -142,6 +142,16 @@ void EnumerateGames(std::vector<GameEntry>& out) {
     RegCloseKey(hBase);
 }
 
+void RemoveGame(const wchar_t* game_exe_path) {
+    if (!game_exe_path || !game_exe_path[0]) return;
+    std::wstring path(game_exe_path);
+    std::wstring keyName = PathToSubkey(path);
+    std::wstring fullKey = std::wstring(kBaseKey) + L"\\" + keyName;
+    LSTATUS st = RegDeleteKeyW(HKEY_CURRENT_USER, fullKey.c_str());
+    if (st != ERROR_SUCCESS && st != ERROR_FILE_NOT_FOUND)
+        LogInfo("Game launcher registry: failed to delete key, error %ld", (long)st);
+}
+
 std::wstring GetCentralAddonDir() {
     wchar_t buf[MAX_PATH];
     DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", buf, (DWORD)std::size(buf));

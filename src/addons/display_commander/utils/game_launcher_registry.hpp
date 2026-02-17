@@ -28,6 +28,10 @@ void RecordGameRun(const wchar_t* game_exe_path, const wchar_t* launch_arguments
 // Entries are appended to out; out is not cleared.
 void EnumerateGames(std::vector<GameEntry>& out);
 
+// Remove a game from the registry by its exe path. It will no longer appear in the installer list.
+// Safe to call if the key does not exist (no-op).
+void RemoveGame(const wchar_t* game_exe_path);
+
 // Get central Display Commander addon directory (same as installer script: %LOCALAPPDATA%\Programs\Display_Commander).
 std::wstring GetCentralAddonDir();
 

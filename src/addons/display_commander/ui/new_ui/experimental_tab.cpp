@@ -10,7 +10,9 @@
 #include "../../hooks/sleep_hooks.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../nvapi/nvidia_profile_search.hpp"
 #include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils/logging.hpp"
@@ -36,6 +38,154 @@
 namespace ui::new_ui {
 
 static void DrawThreadTrackingSubTab();
+
+static void DrawNvidiaProfileSearchTab() {
+    ImGui::Text("NVIDIA Inspector profile search");
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh")) {
+        display_commander::nvapi::InvalidateProfileSearchCache();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Re-scan driver profiles (e.g. after changing settings in NVIDIA Profile Inspector).");
+    }
+    ImGui::TextColored(ui::colors::TEXT_DIMMED,
+        "Searches all NVIDIA driver profiles for one that includes the current game executable.");
+    ImGui::Spacing();
+
+    display_commander::nvapi::NvidiaProfileSearchResult r =
+        display_commander::nvapi::GetCachedProfileSearchResult();
+
+    ImGui::Text("Current executable:");
+    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Path: %s", r.current_exe_path.c_str());
+    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Name: %s", r.current_exe_name.c_str());
+    ImGui::Spacing();
+
+    if (!r.success) {
+        ImGui::TextColored(ui::colors::ICON_ERROR, "Error: %s", r.error.c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("NVAPI/DRS unavailable. Requires NVIDIA GPU and driver.");
+        }
+        return;
+    }
+
+    if (r.matching_profile_names.empty()) {
+        ImGui::TextColored(ui::colors::ICON_WARNING, "No NVIDIA Inspector profile found for this exe.");
+        ImGui::TextColored(ui::colors::TEXT_DIMMED,
+            "Create a profile in NVIDIA Profile Inspector and add this executable to it.");
+        return;
+    }
+
+    ImGui::TextColored(ui::colors::ICON_SUCCESS, "Matching profile(s): %zu", r.matching_profile_names.size());
+    ImGui::Spacing();
+    if (ImGui::BeginChild("NvidiaProfileSearchList", ImVec2(-1.f, 180.f), true)) {
+        for (const std::string& name : r.matching_profile_names) {
+            ImGui::Text("  %s", name.c_str());
+        }
+    }
+    ImGui::EndChild();
+
+    if (!r.important_settings.empty()) {
+        ImGui::Spacing();
+        if (ImGui::CollapsingHeader("Important profile settings (first matching profile)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                "Key driver settings from the first matching profile above.");
+            if (ImGui::BeginTable("NvidiaProfileImportantSettings", 2,
+                    ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                ImGui::TableHeadersRow();
+                for (size_t idx = 0; idx < r.important_settings.size(); ++idx) {
+                    const auto& s = r.important_settings[idx];
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted(s.label.c_str());
+                    ImGui::TableSetColumnIndex(1);
+                    if (s.setting_id != 0) {
+                        float comboWidth = ImGui::GetContentRegionAvail().x - (ImGui::GetStyle().ItemSpacing.x + ImGui::CalcTextSize("Default").x + ImGui::GetStyle().FramePadding.x * 2.f);
+                        if (comboWidth < 80.f) comboWidth = 80.f;
+                        ImGui::SetNextItemWidth(comboWidth);
+                        const char* comboId = nullptr;
+                        {
+                            static char comboBuf[64];
+                            (void)snprintf(comboBuf, sizeof(comboBuf), "##NvidiaProfileSetting_%u", static_cast<unsigned>(s.setting_id));
+                            comboId = comboBuf;
+                        }
+                        if (ImGui::BeginCombo(comboId, s.value.c_str(), 0)) {
+                            std::vector<std::pair<std::uint32_t, std::string>> opts =
+                                display_commander::nvapi::GetSettingAvailableValues(s.setting_id);
+                            for (const auto& opt : opts) {
+                                const bool selected = (opt.first == s.value_id);
+                                if (ImGui::Selectable(opt.second.c_str(), selected)) {
+                                    if (display_commander::nvapi::SetProfileSetting(s.setting_id, opt.first)) {
+                                        /* Cache invalidated; next frame will refresh */
+                                    }
+                                }
+                                if (selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Change value and apply to profile (saved immediately).");
+                        }
+                        ImGui::SameLine();
+                        const bool atDefault = (s.value_id == s.default_value);
+                        if (atDefault) {
+                            ImGui::BeginDisabled();
+                        }
+                        ImGui::PushID(static_cast<int>(s.setting_id));
+                        if (ImGui::SmallButton("Default")) {
+                            if (display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value)) {
+                                /* Cache invalidated; next frame will refresh */
+                            }
+                        }
+                        ImGui::PopID();
+                        if (atDefault) {
+                            ImGui::EndDisabled();
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Reset to NVIDIA default value.");
+                        }
+                    } else {
+                        ImGui::TextUnformatted(s.value.c_str());
+                    }
+                }
+                ImGui::EndTable();
+            }
+        }
+    }
+
+    if (!r.all_settings.empty()) {
+        ImGui::Spacing();
+        if (ImGui::CollapsingHeader("All settings in profile", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                "Every setting present in the first matching profile (%zu total).", r.all_settings.size());
+            if (ImGui::BeginChild("NvidiaProfileAllSettingsTable", ImVec2(-1.f, 320.f), true)) {
+                if (ImGui::BeginTable("NvidiaProfileAllSettings", 2,
+                        ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY)) {
+                    ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                    ImGui::TableSetupScrollFreeze(0, 1);
+                    ImGui::TableHeadersRow();
+                    for (const auto& s : r.all_settings) {
+                        ImGui::TableNextRow();
+                        ImGui::TableSetColumnIndex(0);
+                        ImGui::TextUnformatted(s.label.c_str());
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::TextUnformatted(s.value.c_str());
+                    }
+                    ImGui::EndTable();
+                }
+            }
+            ImGui::EndChild();
+        }
+    }
+
+    ImGui::TextColored(ui::colors::TEXT_DIMMED,
+        "These profiles will apply when this game runs. Edit with NVIDIA Profile Inspector.");
+}
+
 
 // Initialize experimental tab
 void InitExperimentalTab() {
@@ -311,6 +461,11 @@ void DrawExperimentalTab(reshade::api::effect_runtime* runtime) {
 
     if (ImGui::BeginTabItem("Thread Tracking")) {
         DrawThreadTrackingSubTab();
+        ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("NVIDIA Profile")) {
+        DrawNvidiaProfileSearchTab();
         ImGui::EndTabItem();
     }
 

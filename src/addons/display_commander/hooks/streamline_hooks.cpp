@@ -3,6 +3,7 @@
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
+#include "../settings/swapchain_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -67,23 +68,104 @@ static std::atomic<bool> g_prevent_slupgrade_interface{false};
 // Helpers to log DLSS options
 static const char* DLSSModeStr(sl::DLSSMode m) {
     switch (m) {
-        case sl::DLSSMode::eOff: return "Off";
-        case sl::DLSSMode::eMaxPerformance: return "MaxPerformance";
-        case sl::DLSSMode::eBalanced: return "Balanced";
-        case sl::DLSSMode::eMaxQuality: return "MaxQuality";
+        case sl::DLSSMode::eOff:              return "Off";
+        case sl::DLSSMode::eMaxPerformance:   return "MaxPerformance";
+        case sl::DLSSMode::eBalanced:         return "Balanced";
+        case sl::DLSSMode::eMaxQuality:       return "MaxQuality";
         case sl::DLSSMode::eUltraPerformance: return "UltraPerformance";
-        case sl::DLSSMode::eUltraQuality: return "UltraQuality";
-        case sl::DLSSMode::eDLAA: return "DLAA";
-        default: return "?";
+        case sl::DLSSMode::eUltraQuality:     return "UltraQuality";
+        case sl::DLSSMode::eDLAA:             return "DLAA";
+        default:                              return "?";
     }
 }
-static void LogDLSSOptions(const sl::DLSSOptions& o) {
-    LogInfo("  DLSSOptions: mode=%s output=%ux%u preExposure=%.2f exposureScale=%.2f",
-            DLSSModeStr(o.mode), o.outputWidth, o.outputHeight, o.preExposure, o.exposureScale);
+// Cached DLSS options for change detection (only log when these change)
+struct CachedDLSSOptionsLog {
+    sl::DLSSMode mode{};
+    uint32_t outputWidth{0};
+    uint32_t outputHeight{0};
+    float preExposure{0.f};
+    float exposureScale{0.f};
+    sl::DLSSPreset dlaaPreset{};
+    sl::DLSSPreset qualityPreset{};
+    sl::DLSSPreset balancedPreset{};
+    sl::DLSSPreset performancePreset{};
+    sl::DLSSPreset ultraPerformancePreset{};
+    sl::DLSSPreset ultraQualityPreset{};
+    bool initialized{false};
+};
+static CachedDLSSOptionsLog s_lastLoggedDLSSOptions;
+
+static bool OptionsDifferFromCache(const sl::DLSSOptions& o) {
+    if (!s_lastLoggedDLSSOptions.initialized) return true;
+    return s_lastLoggedDLSSOptions.mode != o.mode || s_lastLoggedDLSSOptions.outputWidth != o.outputWidth
+           || s_lastLoggedDLSSOptions.outputHeight != o.outputHeight
+           || s_lastLoggedDLSSOptions.preExposure != o.preExposure
+           || s_lastLoggedDLSSOptions.exposureScale != o.exposureScale
+           || s_lastLoggedDLSSOptions.dlaaPreset != o.dlaaPreset
+           || s_lastLoggedDLSSOptions.qualityPreset != o.qualityPreset
+           || s_lastLoggedDLSSOptions.balancedPreset != o.balancedPreset
+           || s_lastLoggedDLSSOptions.performancePreset != o.performancePreset
+           || s_lastLoggedDLSSOptions.ultraPerformancePreset != o.ultraPerformancePreset
+           || s_lastLoggedDLSSOptions.ultraQualityPreset != o.ultraQualityPreset;
+}
+
+static void UpdateDLSSOptionsCache(const sl::DLSSOptions& o) {
+    s_lastLoggedDLSSOptions.mode = o.mode;
+    s_lastLoggedDLSSOptions.outputWidth = o.outputWidth;
+    s_lastLoggedDLSSOptions.outputHeight = o.outputHeight;
+    s_lastLoggedDLSSOptions.preExposure = o.preExposure;
+    s_lastLoggedDLSSOptions.exposureScale = o.exposureScale;
+    s_lastLoggedDLSSOptions.dlaaPreset = o.dlaaPreset;
+    s_lastLoggedDLSSOptions.qualityPreset = o.qualityPreset;
+    s_lastLoggedDLSSOptions.balancedPreset = o.balancedPreset;
+    s_lastLoggedDLSSOptions.performancePreset = o.performancePreset;
+    s_lastLoggedDLSSOptions.ultraPerformancePreset = o.ultraPerformancePreset;
+    s_lastLoggedDLSSOptions.ultraQualityPreset = o.ultraQualityPreset;
+    s_lastLoggedDLSSOptions.initialized = true;
+}
+
+// Returns true if options were logged (i.e. they changed from last time).
+static bool LogDLSSOptions(const sl::DLSSOptions& o) {
+    if (!OptionsDifferFromCache(o)) return false;
+    LogInfo("  DLSSOptions: mode=%s output=%ux%u preExposure=%.2f exposureScale=%.2f", DLSSModeStr(o.mode),
+            o.outputWidth, o.outputHeight, o.preExposure, o.exposureScale);
     LogInfo("  presets: dlaa=%u quality=%u balanced=%u perf=%u ultraPerf=%u ultraQual=%u",
             static_cast<unsigned>(o.dlaaPreset), static_cast<unsigned>(o.qualityPreset),
             static_cast<unsigned>(o.balancedPreset), static_cast<unsigned>(o.performancePreset),
             static_cast<unsigned>(o.ultraPerformancePreset), static_cast<unsigned>(o.ultraQualityPreset));
+    UpdateDLSSOptionsCache(o);
+    return true;
+}
+
+// Map main-tab DLSS quality preset (GetDLSSQualityPresetValue) to sl::DLSSMode
+static sl::DLSSMode QualityPresetValueToSLMode(NVSDK_NGX_PerfQuality_Value ngxQualityValue) {
+    switch (ngxQualityValue) {
+        case NVSDK_NGX_PerfQuality_Value_MaxPerf:         return sl::DLSSMode::eMaxPerformance;
+        case NVSDK_NGX_PerfQuality_Value_Balanced:        return sl::DLSSMode::eBalanced;
+        case NVSDK_NGX_PerfQuality_Value_MaxQuality:     return sl::DLSSMode::eMaxQuality;
+        case NVSDK_NGX_PerfQuality_Value_UltraPerformance: return sl::DLSSMode::eUltraPerformance;
+        case NVSDK_NGX_PerfQuality_Value_UltraQuality:   return sl::DLSSMode::eUltraQuality;
+        case NVSDK_NGX_PerfQuality_Value_DLAA:           return sl::DLSSMode::eDLAA;
+        default: return sl::DLSSMode::eMaxQuality;
+    }
+}
+
+// Map render preset value (0=DLSS Default, 1=Preset A, 2=Preset B, ...) to sl::DLSSPreset
+static sl::DLSSPreset PresetValueToSLPreset(int presetValue) {
+    switch (presetValue) {
+        case 0:  return sl::DLSSPreset::eDefault;
+        case 1:  return sl::DLSSPreset::ePresetF;
+        case 2:  return sl::DLSSPreset::ePresetG;
+        case 3:  return sl::DLSSPreset::ePresetH;
+        case 4:  return sl::DLSSPreset::ePresetI;
+        case 5:  return sl::DLSSPreset::ePresetJ;
+        case 6:  return sl::DLSSPreset::ePresetK;
+        case 7:  return sl::DLSSPreset::ePresetL;
+        case 8:  return sl::DLSSPreset::ePresetM;
+        case 9:  return sl::DLSSPreset::ePresetN;
+        case 10: return sl::DLSSPreset::ePresetO;
+        default: return sl::DLSSPreset::eDefault;
+    }
 }
 
 // Hook functions
@@ -145,44 +227,113 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
     return -1;  // Error if original not available
 }
 
-// slDLSSGetOptimalSettings detour: observe calls, increment counter, log arguments and result
+// slDLSSGetOptimalSettings detour: observe calls, apply same quality/preset overrides as slDLSSSetOptions, then call
+// original
 static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    LogInfo("slDLSSGetOptimalSettings called");
-    LogDLSSOptions(options);
+    bool optionsLogged = LogDLSSOptions(options);
 
     if (slDLSSGetOptimalSettings_Original == nullptr) {
         return static_cast<int>(sl::Result::eErrorInvalidParameter);
     }
-    int result = slDLSSGetOptimalSettings_Original(options, settings);
 
-    LogInfo("slDLSSGetOptimalSettings result=%d -> optimalRender=%ux%u sharpness=%.2f renderMin=%ux%u renderMax=%ux%u",
+    sl::DLSSOptions modified_options = options;
+
+    const NVSDK_NGX_PerfQuality_Value qualityVal =
+        GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
+    if (static_cast<int>(qualityVal) >= 0) {
+        modified_options.mode = QualityPresetValueToSLMode(qualityVal);
+    }
+    if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+        const int presetVal = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+        if (presetVal >= 0) {
+            const sl::DLSSPreset p = PresetValueToSLPreset(presetVal);
+            modified_options.dlaaPreset = p;
+            modified_options.qualityPreset = p;
+            modified_options.balancedPreset = p;
+            modified_options.performancePreset = p;
+            modified_options.ultraPerformancePreset = p;
+            modified_options.ultraQualityPreset = p;
+        }
+    }
+
+    int result = slDLSSGetOptimalSettings_Original(modified_options, settings);
+
+    if (optionsLogged) {
+        LogInfo(
+            "slDLSSGetOptimalSettings result=%d -> optimalRender=%ux%u sharpness=%.2f renderMin=%ux%u renderMax=%ux%u",
             result, settings.optimalRenderWidth, settings.optimalRenderHeight, settings.optimalSharpness,
             settings.renderWidthMin, settings.renderHeightMin, settings.renderWidthMax, settings.renderHeightMax);
+    }
     return result;
 }
 
-// slDLSSSetOptions detour: log arguments when game sets DLSS options
+// slDLSSSetOptions detour: log arguments and apply main-tab DLSS overrides (quality preset, render preset,
+// auto-exposure)
 static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options) {
     if (slDLSSSetOptions_Original == nullptr) {
         return static_cast<int>(sl::Result::eErrorInvalidParameter);
     }
     uint32_t viewportId = static_cast<uint32_t>(viewport);
-    LogInfo("slDLSSSetOptions called viewport=%u", viewportId);
-    LogDLSSOptions(options);
-    return slDLSSSetOptions_Original(viewport, options);
+    if (LogDLSSOptions(options)) {
+        LogInfo("slDLSSSetOptions called viewport=%u", viewportId);
+    }
+
+    sl::DLSSOptions modified_options = options;
+    bool applied_any = false;
+
+    // Quality preset override (Performance / Balanced / Quality / Ultra Performance / Ultra Quality / DLAA)
+    const NVSDK_NGX_PerfQuality_Value qualityVal =
+        GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
+    if (static_cast<int>(qualityVal) >= 0) {
+        modified_options.mode = QualityPresetValueToSLMode(qualityVal);
+        applied_any = true;
+    }
+
+    // Render preset override (DLSS Default / Preset A, B, C, ...) – apply to all per-mode presets
+    if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
+        const int presetVal = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
+        if (presetVal >= 0) {
+            const sl::DLSSPreset p = PresetValueToSLPreset(presetVal);
+            modified_options.dlaaPreset = p;
+            modified_options.qualityPreset = p;
+            modified_options.balancedPreset = p;
+            modified_options.performancePreset = p;
+            modified_options.ultraPerformancePreset = p;
+            modified_options.ultraQualityPreset = p;
+            applied_any = true;
+        }
+    }
+
+    // Auto-exposure override (Force Off / Force On)
+    const std::string ae = settings::g_swapchainTabSettings.dlss_forced_auto_exposure.GetValue();
+    if (ae == "Force Off") {
+        modified_options.useAutoExposure = sl::Boolean::eFalse;
+        applied_any = true;
+    } else if (ae == "Force On") {
+        modified_options.useAutoExposure = sl::Boolean::eTrue;
+        applied_any = true;
+    }
+
+    if (applied_any) {
+        LogInfo("slDLSSSetOptions: applied overrides -> mode=%s", DLSSModeStr(modified_options.mode));
+    }
+
+    return slDLSSSetOptions_Original(viewport, modified_options);
 }
 
 // slSetData detour: log when plugin's slSetData is called (inputs chain + cmdBuffer)
 static int slSetData_Detour(const sl::BaseStructure* inputs, sl::CommandBuffer* cmdBuffer) {
     if (inputs != nullptr) {
         const sl::StructType& t = inputs->structType;
-        LogInfo("slSetData called inputs=%p cmdBuffer=%p firstStruct: type=%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X version=%u",
-                inputs, cmdBuffer, t.data1, t.data2, t.data3, t.data4[0], t.data4[1], t.data4[2], t.data4[3],
-                t.data4[4], t.data4[5], t.data4[6], t.data4[7], inputs->structVersion);
+        LogInfo(
+            "slSetData called inputs=%p cmdBuffer=%p firstStruct: "
+            "type=%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X version=%u",
+            inputs, cmdBuffer, t.data1, t.data2, t.data3, t.data4[0], t.data4[1], t.data4[2], t.data4[3], t.data4[4],
+            t.data4[5], t.data4[6], t.data4[7], inputs->structVersion);
         const sl::BaseStructure* n = inputs->next;
         if (n != nullptr) {
             const sl::StructType& t2 = n->structType;
@@ -250,10 +401,12 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
         if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSSetOptions_Detour),
                                 reinterpret_cast<LPVOID*>(&slDLSSSetOptions_Original), "slDLSSSetOptions")) {
             LogInfo("Installed slDLSSSetOptions hook");
-            // Also hook slSetData from the same plugin DLL (game sets DLSS options via slDLSSSetOptions -> plugin calls slSetData)
+            // Also hook slSetData from the same plugin DLL (game sets DLSS options via slDLSSSetOptions -> plugin calls
+            // slSetData)
             HMODULE pluginMod = nullptr;
-            if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                   reinterpret_cast<LPCWSTR>(function), &pluginMod)
+            if (GetModuleHandleExW(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    reinterpret_cast<LPCWSTR>(function), &pluginMod)
                 && pluginMod != nullptr) {
                 FARPROC slSetDataAddr = GetProcAddress(pluginMod, "slSetData");
                 if (slSetDataAddr != nullptr && !g_slSetData_hook_installed.exchange(true)) {

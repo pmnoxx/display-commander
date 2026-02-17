@@ -791,31 +791,30 @@ int GetDLSSPresetValue(const std::string& presetString) {
     return -1;
 }
 
-// Convert DLSS quality preset string to PerfQualityValue (0-5). Returns -1 for "Game Default" (no override).
-// 0=Performance, 1=Balanced, 2=Quality, 3=Ultra Performance, 4=Ultra Quality, 5=DLAA
-int GetDLSSQualityPresetValue(const std::string& presetString) {
+// Convert DLSS quality preset string to NVSDK_NGX_PerfQuality_Value. Returns (NVSDK_NGX_PerfQuality_Value)-1 for "Game Default" (no override).
+NVSDK_NGX_PerfQuality_Value GetDLSSQualityPresetValue(const std::string& presetString) {
     if (presetString == "Game Default") {
-        return -1;
+        return static_cast<NVSDK_NGX_PerfQuality_Value>(-1);
     }
     if (presetString == "Performance") {
-        return 0;  // NVSDK_NGX_PerfQuality_Value_MaxPerf
+        return NVSDK_NGX_PerfQuality_Value_MaxPerf;
     }
     if (presetString == "Balanced") {
-        return 1;  // NVSDK_NGX_PerfQuality_Value_Balanced
+        return NVSDK_NGX_PerfQuality_Value_Balanced;
     }
     if (presetString == "Quality") {
-        return 2;  // NVSDK_NGX_PerfQuality_Value_MaxQuality
+        return NVSDK_NGX_PerfQuality_Value_MaxQuality;
     }
     if (presetString == "Ultra Performance") {
-        return 3;  // NVSDK_NGX_PerfQuality_Value_UltraPerformance
+        return NVSDK_NGX_PerfQuality_Value_UltraPerformance;
     }
     if (presetString == "Ultra Quality") {
-        return 4;  // NVSDK_NGX_PerfQuality_Value_UltraQuality
+        return NVSDK_NGX_PerfQuality_Value_UltraQuality;
     }
     if (presetString == "DLAA") {
-        return 5;  // NVSDK_NGX_PerfQuality_Value_DLAA
+        return NVSDK_NGX_PerfQuality_Value_DLAA;
     }
-    return -1;
+    return static_cast<NVSDK_NGX_PerfQuality_Value>(-1);
 }
 
 // Convert render preset number to letter string for display

@@ -28,7 +28,7 @@ void RecordGameRun(const wchar_t* game_exe_path, const wchar_t* launch_arguments
 // Entries are appended to out; out is not cleared.
 void EnumerateGames(std::vector<GameEntry>& out);
 
-// Get central Display Commander addon directory (same as installer script: %LOCALAPPDATA%\Programs\Display Commander).
+// Get central Display Commander addon directory (same as installer script: %LOCALAPPDATA%\Programs\Display_Commander).
 std::wstring GetCentralAddonDir();
 
 }  // namespace display_commander::game_launcher_registry

@@ -350,16 +350,21 @@ void DoInitializationWithHwnd(HWND hwnd) {
             if (cmdLine && *cmdLine) {
                 if (*cmdLine == L'"') {
                     args = wcschr(cmdLine + 1, L'"');
-                    if (args) args = args + 1; else args = cmdLine;
+                    if (args)
+                        args = args + 1;
+                    else
+                        args = cmdLine;
                 } else {
                     args = wcschr(cmdLine, L' ');
                 }
-                if (args) while (*args == L' ') ++args;
+                if (args)
+                    while (*args == L' ') ++args;
                 if (args && !*args) args = nullptr;
             }
             const wchar_t* titlePtr = nullptr;
             wchar_t windowTitleBuf[4096];
-            if (hwnd != nullptr && IsWindow(hwnd) && GetWindowTextW(hwnd, windowTitleBuf, (int)std::size(windowTitleBuf)) > 0)
+            if (hwnd != nullptr && IsWindow(hwnd)
+                && GetWindowTextW(hwnd, windowTitleBuf, (int)std::size(windowTitleBuf)) > 0)
                 titlePtr = windowTitleBuf;
             display_commander::game_launcher_registry::RecordGameRun(processPath, args, titlePtr);
         }
@@ -1327,12 +1332,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     const bool delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
     const uint64_t current_frame_id = current_frame_id_for_slot;
 
-    // Enable Reflex if:
-    // 1. Advanced tab Reflex is enabled, OR
-    // 2. OnPresentSync mode is selected AND onpresent_sync_enable_reflex is enabled
-    bool should_enable_reflex = settings::g_advancedTabSettings.reflex_enable.GetValue()
-                                || (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync)
-                                       && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
+    bool should_enable_reflex = settings::g_advancedTabSettings.reflex_enable.GetValue();
 
     if (delay_first_500_frames && current_frame_id < 500) {
         should_enable_reflex = false;
@@ -1348,12 +1348,8 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
             float target_fps = GetTargetFps();
-            if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
-                if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
-                    target_fps *= 1.005f;
-                } else {
-                    target_fps = 0.0f;
-                }
+            if (s_fps_limiter_mode.load() != FpsLimiterMode::kReflex) {
+                target_fps = 0.0f;
             }
             g_latencyManager->ApplySleepMode(settings::g_advancedTabSettings.reflex_low_latency.GetValue(),
                                              settings::g_advancedTabSettings.reflex_boost.GetValue(),
@@ -1504,8 +1500,9 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     RECORD_DETOUR_CALL(start_time_ns);
                     // Calculate frame time
                     float adjusted_target_fps = target_fps;
-                    if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
-                        adjusted_target_fps *= 0.995f;  // Subtract 0.5%
+                    if (g_latencyManager->IsInitialized()
+                        && settings::g_advancedTabSettings.reflex_low_latency.GetValue()) {
+                        adjusted_target_fps *= 0.995f;
                     }
                     LONGLONG frame_time_ns = static_cast<LONGLONG>(1'000'000'000.0 / adjusted_target_fps);
 
@@ -1553,9 +1550,6 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     g_onpresent_sync_frame_time_ns.store(0);
                 }
 
-                if (settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
-                    if (!s_reflex_auto_configure.load()) s_reflex_auto_configure.store(true);
-                }
                 break;
             }
             case FpsLimiterMode::kLatentSync: {

@@ -327,7 +327,7 @@ void DrawUpdatesTab() {
 
     if (downloaded_updates.empty()) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                           "No downloaded updates found in %%localappdata%%\\Programs\\Display Commander");
+                           "No downloaded updates found in %%localappdata%%\\Programs\\Display_Commander");
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
                            "Downloaded updates will appear here after downloading from the Main tab or this tab.");

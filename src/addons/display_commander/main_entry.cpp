@@ -1464,7 +1464,7 @@ void OverrideReShadeSettings() {
         wchar_t localappdata_path[MAX_PATH];
         if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
             std::filesystem::path localappdata_dir(localappdata_path);
-            std::filesystem::path dc_base_dir = localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
+            std::filesystem::path dc_base_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
             std::filesystem::path shaders_dir = dc_base_dir / L"Shaders";
             std::filesystem::path textures_dir = dc_base_dir / L"Textures";
 
@@ -1594,7 +1594,7 @@ static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::s
     return false;
 }
 
-// Function to load enabled .addon64/.addon32 files from %localappdata%\Programs\Display Commander\Reshade\Addons
+// Function to load enabled .addon64/.addon32 files from %localappdata%\Programs\Display_Commander\Reshade\Addons
 void LoadAddonsFromPluginsDirectory() {
     OutputDebugStringA("Loading addons from Addons directory");
     wchar_t localappdata_path[MAX_PATH];
@@ -1604,7 +1604,7 @@ void LoadAddonsFromPluginsDirectory() {
     }
 
     std::filesystem::path localappdata_dir(localappdata_path);
-    std::filesystem::path addons_dir = localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Addons";
+    std::filesystem::path addons_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Addons";
 
     // Create Addons directory if it doesn't exist
     try {
@@ -2657,7 +2657,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                                    localappdata_path))) {
                         std::filesystem::path localappdata_dir(localappdata_path);
                         std::filesystem::path dc_reshade_dir =
-                            localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
+                            localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
 #ifdef _WIN64
                         std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
                         const char* dll_name = "Reshade64.dll";
@@ -2766,13 +2766,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 #endif
 
                         // Get LocalAppData folder path with Display Commander subdirectory
-                        std::string localappdata_path_str = "%localappdata%\\Programs\\Display Commander\\Reshade";
+                        std::string localappdata_path_str = "%localappdata%\\Programs\\Display_Commander\\Reshade";
                         wchar_t localappdata_path[MAX_PATH];
                         if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
                                                        localappdata_path))) {
                             std::filesystem::path localappdata_dir(localappdata_path);
                             std::filesystem::path dc_reshade_dir =
-                                localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
+                                localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
                             // Convert wide string to narrow string
                             char localappdata_path_narrow[MAX_PATH];
                             WideCharToMultiByte(CP_ACP, 0, dc_reshade_dir.c_str(), -1, localappdata_path_narrow,
@@ -3172,7 +3172,7 @@ static std::wstring GetReShadeDllPath(bool is_wow64) {
     }
 
     std::filesystem::path localappdata_dir(localappdata_path);
-    std::filesystem::path dc_reshade_dir = localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
+    std::filesystem::path dc_reshade_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
 
     std::filesystem::path reshade_path;
 #ifdef _WIN64

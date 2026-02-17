@@ -3,7 +3,7 @@ SetLocal EnableDelayedExpansion
 
 :: Display Commander launcher for standalone UI test
 :: Downloads bleeding-edge (latest_build) addon .addon64 and .addon32 to a central location;
-:: creates symbolic links in the script folder to the central copies; runs: rundll32 zzz_display_commander.addon64,CommandLine UiTest
+:: creates symbolic links in the script folder to the central copies; copies addon as dc_installer64.dll in central dir and runs: rundll32 dc_installer64.dll,CommandLine SetupDC <script_folder>
 :: Only updates when the release asset is newer (checks via HTTP HEAD: ETag or Last-Modified+Content-Length).
 :: Uses curl when available (built-in on Windows 10+) to reduce AV false positives; falls back to PowerShell.
 :: Symlinks may require "Run as administrator" or Developer Mode on Windows.
@@ -13,13 +13,14 @@ set "OUT64=zzz_display_commander.addon64"
 set "OUT32=zzz_display_commander.addon32"
 
 :: Central location for addon files (one copy per machine)
-set "CENTRAL_DIR=%LOCALAPPDATA%\Programs\Display Commander"
+set "CENTRAL_DIR=%LOCALAPPDATA%\Programs\Display_Commander"
 set "CENTRAL64=%CENTRAL_DIR%\%OUT64%"
 set "CENTRAL32=%CENTRAL_DIR%\%OUT32%"
 set "VER64=%OUT64%.version"
 set "VER32=%OUT32%.version"
 set "CENTRAL_VER64=%CENTRAL_DIR%\%VER64%"
 set "CENTRAL_VER32=%CENTRAL_DIR%\%VER32%"
+set "INSTALLER64=%CENTRAL_DIR%\dc_installer64.dll"
 
 cd /d "%~dp0"
 set "LOCAL_DIR=%~dp0"
@@ -60,6 +61,13 @@ if !NEED64! equ 1 (
     echo Using existing %OUT64% ^(up to date^)
 )
 
+:: Copy central 64-bit addon as dc_installer64.dll for launcher
+copy /Y "%CENTRAL64%" "%INSTALLER64%" >nul
+if errorlevel 1 (
+    echo Failed to copy %OUT64% to dc_installer64.dll
+    exit /b 1
+)
+
 :: Check if 32-bit addon is up to date in central location; download only if missing or outdated.
 set "NEED32=1"
 set "REMOTE_VER32="
@@ -89,34 +97,6 @@ if !NEED32! equ 1 (
     echo Using existing %OUT32% ^(up to date^)
 )
 
-:: In script folder: remove existing .addon64/.addon32 (files or links), then create symlink or hard link to central location.
-:: Hard link is used when symlink fails (no admin / Developer Mode); same volume required.
-if exist "%OUT64%" del "%OUT64%" 2>nul
-if exist "%OUT64%" rmdir "%OUT64%" 2>nul
-mklink "%OUT64%" "%CENTRAL64%" >nul 2>&1
-if errorlevel 1 (
-    mklink /H "%OUT64%" "%CENTRAL64%" >nul 2>&1
-    if errorlevel 1 (
-        echo Failed to link %OUT64% to central copy. Run as Administrator or enable Developer Mode for symlink.
-        exit /b 1
-    )
-    echo Linked ^(hard^): %LOCAL_DIR%\%OUT64% -^> %CENTRAL64%
-) else (
-    echo Linked ^(symlink^): %LOCAL_DIR%\%OUT64% -^> %CENTRAL64%
-)
-if exist "%OUT32%" del "%OUT32%" 2>nul
-if exist "%OUT32%" rmdir "%OUT32%" 2>nul
-mklink "%OUT32%" "%CENTRAL32%" >nul 2>&1
-if errorlevel 1 (
-    mklink /H "%OUT32%" "%CENTRAL32%" >nul 2>&1
-    if errorlevel 1 (
-        echo Failed to link %OUT32% to central copy. Run as Administrator or enable Developer Mode for symlink.
-        exit /b 1
-    )
-    echo Linked ^(hard^): %LOCAL_DIR%\%OUT32% -^> %CENTRAL32%
-) else (
-    echo Linked ^(symlink^): %LOCAL_DIR%\%OUT32% -^> %CENTRAL32%
-)
 
-echo Running: rundll32 %OUT64%,CommandLine UiTest
-rundll32 "%OUT64%",CommandLine UiTest
+echo Running: rundll32 dc_installer64.dll,CommandLine SetupDC "%LOCAL_DIR%"
+rundll32 "%INSTALLER64%",CommandLine SetupDC "%LOCAL_DIR%"

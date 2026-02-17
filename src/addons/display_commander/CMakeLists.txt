@@ -196,7 +196,7 @@ target_sources(zzz_display_commander PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
 )
 
-# Standalone installer UI built into the DLL (CommandLine UITest). Uses a second ImGui in namespace
+# Standalone installer UI built into the DLL (CommandLine SetupDC [script_dir]). Uses a second ImGui in namespace
 # ImGuiStandalone to avoid symbol clash with ReShade's ImGui. No separate .exe.
 # Use an OBJECT library so standalone ImGui is compiled exactly once with ImGui=ImGuiStandalone and
 # ImDrawList=ImDrawListStandalone, avoiding LNK2005 duplicate symbol errors: ReShade's reshade_overlay.hpp

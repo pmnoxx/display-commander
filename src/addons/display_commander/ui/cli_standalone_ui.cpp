@@ -1,4 +1,4 @@
-// UITest: run the installer UI inside the addon DLL (no separate .exe).
+// SetupDC: run the installer UI inside the addon DLL (no separate .exe). Takes optional script directory as argument.
 // Uses a second ImGui build in namespace ImGuiStandalone (via compile define ImGui=ImGuiStandalone)
 // and ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used in-game.
 
@@ -241,14 +241,14 @@ static bool DllHasExport(const std::wstring& filePath, const char* exportName) {
     return false;
 }
 
-// Central Reshade folder: %LOCALAPPDATA%\Programs\Display Commander\Reshade
+// Central Reshade folder: %LOCALAPPDATA%\Programs\Display_Commander\Reshade
 static std::wstring GetCentralReshadeDir() {
     wchar_t buf[MAX_PATH];
     DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", buf, (DWORD)std::size(buf));
     if (n == 0 || n >= (DWORD)std::size(buf)) return {};
     std::wstring path = buf;
     if (!path.empty() && path.back() != L'\\') path += L'\\';
-    path += L"Programs\\Display Commander\\Reshade";
+    path += L"Programs\\Display_Commander\\Reshade";
     return path;
 }
 
@@ -677,7 +677,7 @@ static void ShowReshadeCoreVersionsForDir(const std::wstring& dir, bool onlyCurr
     }
 }
 
-void RunStandaloneUI(HINSTANCE hInst) {
+void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
     ImGui_ImplWin32_EnableDpiAwareness();
 
     WNDCLASSEXW wc = {};
@@ -725,19 +725,32 @@ void RunStandaloneUI(HINSTANCE hInst) {
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    // Use addon DLL's path (not rundll32's). When invoked via rundll32, hInst may be the addon
-    // module, but GetModuleHandleEx(FROM_ADDRESS) guarantees we get this DLL's directory.
-    HMODULE addonModule = nullptr;
-    (void)GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                             reinterpret_cast<LPCWSTR>(&RunStandaloneUI), &addonModule);
-    wchar_t modulePath[2048];
-    DWORD modLen = 0;
-    if (addonModule) modLen = GetModuleFileNameW(addonModule, modulePath, (DWORD)std::size(modulePath));
     std::wstring addonDir;
-    if (modLen > 0 && modLen < (DWORD)std::size(modulePath)) {
-        addonDir.assign(modulePath);
-        size_t last = addonDir.find_last_of(L"\\/");
-        if (last != std::wstring::npos) addonDir.resize(last);
+    if (script_dir_utf8 && script_dir_utf8[0] != '\0') {
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, script_dir_utf8, -1, nullptr, 0);
+        if (wlen > 0) {
+            addonDir.resize(static_cast<size_t>(wlen));
+            if (MultiByteToWideChar(CP_UTF8, 0, script_dir_utf8, -1, &addonDir[0], wlen) > 0) {
+                if (!addonDir.empty() && addonDir.back() == L'\0') addonDir.pop_back();
+            } else {
+                addonDir.clear();
+            }
+        }
+    }
+    if (addonDir.empty()) {
+        // Use addon DLL's path (not rundll32's). When invoked via rundll32, hInst may be the addon
+        // module, but GetModuleHandleEx(FROM_ADDRESS) guarantees we get this DLL's directory.
+        HMODULE addonModule = nullptr;
+        (void)GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                                 reinterpret_cast<LPCWSTR>(&RunStandaloneUI), &addonModule);
+        wchar_t modulePath[2048];
+        DWORD modLen = 0;
+        if (addonModule) modLen = GetModuleFileNameW(addonModule, modulePath, (DWORD)std::size(modulePath));
+        if (modLen > 0 && modLen < (DWORD)std::size(modulePath)) {
+            addonDir.assign(modulePath);
+            size_t last = addonDir.find_last_of(L"\\/");
+            if (last != std::wstring::npos) addonDir.resize(last);
+        }
     }
     std::vector<std::wstring> reshadeDllsPresent;
     static std::string s_setupReshadeResult;
@@ -1022,11 +1035,11 @@ void RunStandaloneUI(HINSTANCE hInst) {
                                 ShowReshadeCoreVersionsForDir(addonDir, exeDetectOk, is64bit);
                             }
                             ImGui::Spacing();
-                            ImGui::Text("Central (Display Commander\\Reshade)");
+                            ImGui::Text("Central (Display_Commander\\Reshade)");
                             if (centralDirUtf8.empty()) {
                                 ImGui::TextDisabled("(LOCALAPPDATA not set)");
                             } else {
-                                ImGui::TextWrapped("%s", "%%LOCALAPPDATA%%\\Programs\\Display Commander\\Reshade");
+                                ImGui::TextWrapped("%s", "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade");
                                 ShowReshadeCoreVersionsForDir(centralReshadeDir, exeDetectOk, is64bit);
                             }
                             ImGui::Spacing();

@@ -32,7 +32,7 @@ VersionCheckState& GetVersionCheckState();
 // Check for updates (runs in background thread)
 void CheckForUpdates();
 
-// Download the latest version to %localappdata%\Programs\Display Commander
+// Download the latest version to %localappdata%\Programs\Display_Commander
 // Returns true on success, false on failure
 // The filename will be zzz_display_commander_BUILD.addon64/32 where BUILD is 6-digit build number
 bool DownloadUpdate(bool is_64bit, const std::string& build_number = "");
@@ -44,7 +44,7 @@ int CompareVersions(const std::string& v1, const std::string& v2);
 // Parse version string (handles formats like "0.10.0" or "v0.10.0")
 std::string ParseVersionString(const std::string& version_str);
 
-// Get the Display Commander base directory (%localappdata%\Programs\Display Commander)
+// Get the Display Commander base directory (%localappdata%\Programs\Display_Commander)
 std::filesystem::path GetDownloadDirectory();
 
 // Download a binary file from URL to the given path (for ReShade update, etc.)

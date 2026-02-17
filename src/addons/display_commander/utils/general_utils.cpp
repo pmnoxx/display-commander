@@ -465,7 +465,7 @@ std::filesystem::path GetAddonDirectory() {
     return std::filesystem::path(module_path).parent_path();
 }
 
-// Default DLSS override folder: AppData\Local\Programs\Display Commander\dlss_override (centralized, shared across
+// Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized, shared across
 // games)
 std::filesystem::path GetDefaultDlssOverrideFolder() {
     wchar_t localappdata_path[MAX_PATH];
@@ -473,7 +473,7 @@ std::filesystem::path GetDefaultDlssOverrideFolder() {
         return std::filesystem::path();
     }
     std::filesystem::path base(localappdata_path);
-    return base / L"Programs" / L"Display Commander" / L"dlss_override";
+    return base / L"Programs" / L"Display_Commander" / L"dlss_override";
 }
 
 // Effective default path: base or base/subfolder (subfolder empty = base only)
@@ -503,7 +503,7 @@ std::vector<std::string> GetDlssOverrideSubfolderNames() {
     return names;
 }
 
-// Create a subfolder under (centralized) Display Commander/dlss_override. Rejects names with path separators or "." /
+// Create a subfolder under (centralized) Display_Commander/dlss_override. Rejects names with path separators or "." /
 // "..".
 bool CreateDlssOverrideSubfolder(const std::string& subfolder_name, std::string* out_error) {
     if (subfolder_name.empty()) {

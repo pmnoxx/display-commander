@@ -40,7 +40,7 @@ std::filesystem::path GetGlobalAddonsDirectory() {
         return std::filesystem::path();
     }
     std::filesystem::path localappdata_dir(localappdata_path);
-    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Addons";
+    return localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Addons";
 }
 
 // Get the shaders directory path
@@ -50,7 +50,7 @@ std::filesystem::path GetShadersDirectory() {
         return std::filesystem::path();
     }
     std::filesystem::path localappdata_dir(localappdata_path);
-    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Shaders";
+    return localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Shaders";
 }
 
 // Get the textures directory path
@@ -60,7 +60,7 @@ std::filesystem::path GetTexturesDirectory() {
         return std::filesystem::path();
     }
     std::filesystem::path localappdata_dir(localappdata_path);
-    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Textures";
+    return localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Textures";
 }
 
 // Get the LocalAppData folder path
@@ -79,11 +79,11 @@ std::filesystem::path GetReshadeDirectory() {
         return std::filesystem::path();
     }
     std::filesystem::path localappdata_dir(localappdata_path);
-    return localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade";
+    return localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
 }
 
 // Convert full path to path relative to LocalAppData (masks username)
-// Example: "C:\Users\Piotr\AppData\Local\Programs\Display Commander\Reshade" -> "%localappdata%\\Programs\\Display
+// Example: "C:\Users\Piotr\AppData\Local\Programs\Display_Commander\Reshade" -> "%localappdata%\\Programs\\Display
 // Commander\\Reshade"
 std::string GetPathRelativeToDocuments(const std::filesystem::path& full_path) {
     std::filesystem::path localappdata_dir = GetDocumentsDirectory();
@@ -125,7 +125,7 @@ bool Reshade64DllExists() {
         return false;
     }
     std::filesystem::path reshade64_path =
-        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
+        localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Reshade64.dll";
     return std::filesystem::exists(reshade64_path);
 }
 
@@ -136,7 +136,7 @@ bool Reshade32DllExists() {
         return false;
     }
     std::filesystem::path reshade32_path =
-        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
+        localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Reshade32.dll";
     return std::filesystem::exists(reshade32_path);
 }
 
@@ -147,7 +147,7 @@ std::string GetReshade64Version() {
         return "";
     }
     std::filesystem::path reshade64_path =
-        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade64.dll";
+        localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Reshade64.dll";
     if (!std::filesystem::exists(reshade64_path)) {
         return "";
     }
@@ -161,7 +161,7 @@ std::string GetReshade32Version() {
         return "";
     }
     std::filesystem::path reshade32_path =
-        localappdata_dir / L"Programs" / L"Display Commander" / L"Reshade" / L"Reshade32.dll";
+        localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Reshade32.dll";
     if (!std::filesystem::exists(reshade32_path)) {
         return "";
     }

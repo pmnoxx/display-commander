@@ -75,7 +75,7 @@ void TestDLSSPresetSupport();  // Test function for debugging
 // Addon directory utilities
 std::filesystem::path GetAddonDirectory();
 
-// Default DLSS override folder: AppData\Local\Programs\Display Commander\dlss_override (centralized location)
+// Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized location)
 std::filesystem::path GetDefaultDlssOverrideFolder();
 
 // Effective default path when using a subfolder: base (dlss_override) or base/subfolder (subfolder empty = base only)

@@ -289,7 +289,7 @@ std::filesystem::path GetDownloadDirectory() {
         return std::filesystem::path();
     }
     std::filesystem::path base(localappdata_path);
-    return base / L"Programs" / L"Display Commander";
+    return base / L"Programs" / L"Display_Commander";
 }
 
 void CheckForUpdates() {

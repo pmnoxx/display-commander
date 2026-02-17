@@ -244,6 +244,15 @@ static std::wstring AppNameToWide(const NvAPI_UnicodeString& appName) {
     return reinterpret_cast<const wchar_t*>(appName);
 }
 
+// Copy wide string into NvAPI_UnicodeString (NvU16). Null-terminated, max NVAPI_UNICODE_STRING_MAX elements.
+static void WideToNvApiUnicode(const std::wstring& src, NvAPI_UnicodeString& dest) {
+    memset(&dest, 0, sizeof(dest));
+    const size_t toCopy = (std::min)(src.size(), static_cast<size_t>(NVAPI_UNICODE_STRING_MAX - 1));
+    if (toCopy > 0) {
+        memcpy(dest, src.c_str(), toCopy * sizeof(NvU16));
+    }
+}
+
 // Normalize for comparison: forward slashes, lowercase.
 static std::wstring NormalizePath(const std::wstring& s) {
     std::wstring r = s;
@@ -513,6 +522,85 @@ bool SetProfileSetting(std::uint32_t settingId, std::uint32_t value) {
     NvAPI_DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();
     return true;
+}
+
+std::pair<bool, std::string> CreateProfileForCurrentExe() {
+    wchar_t exePath[MAX_PATH] = {};
+    if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+        return {false, "GetModuleFileName failed"};
+    }
+    const wchar_t* base = wcsrchr(exePath, L'\\');
+    const wchar_t* exeName = base ? base + 1 : exePath;
+    std::wstring exeNameW(exeName);
+
+    NvDRSSessionHandle hSession = nullptr;
+    NvAPI_Status status = NvAPI_DRS_CreateSession(&hSession);
+    if (status != NVAPI_OK) {
+        if (status == NVAPI_API_NOT_INITIALIZED) {
+            return {false, "NVAPI not available (NVIDIA GPU required)"};
+        }
+        return {false, "DRS CreateSession failed"};
+    }
+    if (NvAPI_DRS_LoadSettings(hSession) != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, "DRS LoadSettings failed"};
+    }
+
+    NvAPI_UnicodeString appNameBuf;
+    WideToNvApiUnicode(exeNameW, appNameBuf);
+
+    NVDRS_APPLICATION app = {0};
+    app.version = NVDRS_APPLICATION_VER;
+    WideToNvApiUnicode(exeNameW, app.appName);
+
+    NvDRSProfileHandle hProfile = nullptr;
+    status = NvAPI_DRS_FindApplicationByName(hSession, appNameBuf, &hProfile, &app);
+
+    if (status == NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        InvalidateProfileSearchCache();
+        return {true, ""};  // Profile already exists
+    }
+    if (status != NVAPI_EXECUTABLE_NOT_FOUND) {
+        NvAPI_DRS_DestroySession(hSession);
+        std::ostringstream oss;
+        oss << "FindApplication failed (status " << static_cast<int>(status) << ")";
+        return {false, oss.str()};
+    }
+
+    // Create new profile named "Display Commander - <exe name>"
+    std::wstring profileNameW = L"Display Commander - ";
+    profileNameW += exeNameW;
+    NVDRS_PROFILE profile = {0};
+    profile.version = NVDRS_PROFILE_VER;
+    profile.isPredefined = 0;
+    WideToNvApiUnicode(profileNameW, profile.profileName);
+
+    status = NvAPI_DRS_CreateProfile(hSession, &profile, &hProfile);
+    if (status != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, "DRS CreateProfile failed"};
+    }
+
+    app.version = NVDRS_APPLICATION_VER;
+    app.isPredefined = 0;
+    app.isMetro = 0;
+    WideToNvApiUnicode(exeNameW, app.appName);
+    WideToNvApiUnicode(exeNameW, app.userFriendlyName);
+
+    status = NvAPI_DRS_CreateApplication(hSession, hProfile, &app);
+    if (status != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, "DRS CreateApplication failed"};
+    }
+
+    if (NvAPI_DRS_SaveSettings(hSession) != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, "DRS SaveSettings failed"};
+    }
+    NvAPI_DRS_DestroySession(hSession);
+    InvalidateProfileSearchCache();
+    return {true, ""};
 }
 
 }  // namespace display_commander::nvapi

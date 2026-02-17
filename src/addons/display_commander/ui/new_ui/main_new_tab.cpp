@@ -627,6 +627,25 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
                 "Show DLSS on-screen indicator (resolution/version) in games. Writes NVIDIA registry; may require "
                 "restart. Admin needed if apply fails.");
         }
+
+        // DLSS-FG indicator text level (DLSSG_IndicatorText): 0=off, 1=minimal, 2=detailed
+        const char* dlssg_indicator_items[] = {"Off", "Minimal", "Detailed"};
+        int dlssg_indicator_current = static_cast<int>(dlss::DlssIndicatorManager::GetDlssgIndicatorTextLevel());
+        if (dlssg_indicator_current < 0 || dlssg_indicator_current > 2) {
+            dlssg_indicator_current = 0;
+        }
+        if (ImGui::Combo("DLSS-FG indicator text##MainTab", &dlssg_indicator_current, dlssg_indicator_items,
+                         static_cast<int>(sizeof(dlssg_indicator_items) / sizeof(dlssg_indicator_items[0])))) {
+            DWORD level = static_cast<DWORD>(dlssg_indicator_current);
+            if (!dlss::DlssIndicatorManager::SetDlssgIndicatorTextLevel(level)) {
+                LogInfo("DLSSG_IndicatorText: Apply to registry failed (run as admin).");
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "DLSS-FG on-screen indicator text level (registry DLSSG_IndicatorText). Off / Minimal / Detailed. "
+                "May require restart. Admin needed if apply fails.");
+        }
     }
 
     // DLSS.Feature.Create.Flags (own field)

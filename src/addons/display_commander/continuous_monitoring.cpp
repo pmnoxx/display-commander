@@ -70,10 +70,7 @@ void HandleReflexAutoConfigure() {
     bool is_native_reflex_active = IsNativeReflexActive(now_ns);
 
     bool is_reflex_mode =
-        static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex
-        || (static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue())
-                == FpsLimiterMode::kOnPresentSync
-            && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue());
+        static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
 
     // Get current settings
     bool reflex_enable = settings::g_advancedTabSettings.reflex_enable.GetValue();
@@ -87,12 +84,6 @@ void HandleReflexAutoConfigure() {
     if (reflex_enable != is_reflex_mode) {
         settings::g_advancedTabSettings.reflex_enable.SetValue(is_reflex_mode);
         g_reflex_settings_outdated.store(true);
-
-        if (is_reflex_mode == false) {
-            // TODO move logic to Con
-            auto params = g_last_nvapi_sleep_mode_params.load();
-            ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(), params ? params.get() : nullptr);
-        }
     }
 
     if (!reflex_low_latency) {

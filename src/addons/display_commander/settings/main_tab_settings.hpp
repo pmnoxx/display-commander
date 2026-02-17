@@ -58,7 +58,6 @@ class MainTabSettings {
     ui::new_ui::IntSettingRef vblank_sync_divisor;
     ui::new_ui::FloatSettingRef fps_limit;
     ui::new_ui::FloatSettingRef fps_limit_background;
-    ui::new_ui::BoolSetting onpresent_sync_enable_reflex;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;
     ui::new_ui::BoolSetting pcl_stats_enabled;

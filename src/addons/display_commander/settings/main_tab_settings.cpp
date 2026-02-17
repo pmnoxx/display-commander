@@ -54,7 +54,6 @@ MainTabSettings::MainTabSettings()
       vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "DisplayCommander"),
       fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "DisplayCommander"),
       fps_limit_background("fps_limit_background", s_fps_limit_background, 30.0f, 0.0f, 240.0f, "DisplayCommander"),
-      onpresent_sync_enable_reflex("onpresent_sync_enable_reflex", true, "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       onpresent_sync_low_latency_ratio(
           "onpresent_sync_low_latency_ratio", 0,
@@ -182,7 +181,6 @@ MainTabSettings::MainTabSettings()
         &vblank_sync_divisor,
         &fps_limit,
         &fps_limit_background,
-        &onpresent_sync_enable_reflex,
         &suppress_reflex_sleep,
         &onpresent_sync_low_latency_ratio,
         &pcl_stats_enabled,

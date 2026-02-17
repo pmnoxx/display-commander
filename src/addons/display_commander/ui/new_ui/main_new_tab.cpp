@@ -2532,11 +2532,6 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 ImGui::TextColored(ui::colors::TEXT_WARNING,
                                    ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
-                bool enable_reflex = settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue();
-                if (ImGui::Checkbox("Enable Reflex as fps limiter", &enable_reflex)) {
-                    settings::g_mainTabSettings.onpresent_sync_enable_reflex.SetValue(enable_reflex);
-                    g_reflex_settings_outdated.store(true);
-                }
                 if (ImGui::IsItemHovered()) {
                     std::string tooltip =
                         "Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS "
@@ -2683,9 +2678,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
             }
         }
 
-        if (current_item == static_cast<int>(FpsLimiterMode::kReflex)
-            || (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
-                && settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue())) {
+        if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
             // Check if we're running on D3D9 and show warning
             int current_api = g_last_reshade_device_api.load();
             if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
@@ -2812,8 +2805,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
         }
 
         // PCL stats checkbox for OnPresentSync mode (when Reflex is not enabled)
-        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)
-            && !settings::g_mainTabSettings.onpresent_sync_enable_reflex.GetValue()) {
+        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             ImGui::Spacing();
             bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
             if (ImGui::Checkbox("PCL stats", &pcl_stats)) {
@@ -2835,7 +2827,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (::IsNativeFramePacingInSync()) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
-                                    "Native Frame Pacing (Experimental)")) {
+                                    "Use Reflex Latency Markers as fps limiter")) {
                     LogInfo("Experimental FG native fps limiter %s",
                             settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() ? "enabled"
                                                                                                       : "disabled");
@@ -2845,9 +2837,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
                         "Experimental; may improve frame pacing with FG.");
                 }
-                if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only,
-                                    "Native pacing with simulation thread instead of rendering thread (matches "
-                                    "Special-K behavior)")) {
+                if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing")) {
                     LogInfo(
                         "Native pacing sim start only %s",
                         settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
@@ -2857,7 +2847,8 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
                         "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
                 }
-                // Schedule present start N frame times after simulation start (default on, improves native frame pacing)
+                // Schedule present start N frame times after simulation start (default on, improves native frame
+                // pacing)
                 if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
                                     "Schedule present start N frame times after simulation start")) {
                     LogInfo("Schedule present start after Sim Start %s",
@@ -2867,7 +2858,8 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip(
                         "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
-                        "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, 1 = one frame, 0.5 = half frame, etc.).");
+                        "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, "
+                        "1 = one frame, 0.5 = half frame, etc.).");
                 }
                 ImGui::SameLine();
                 if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)",

@@ -350,11 +350,11 @@ static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
     }
 
     const bool preset_override_enabled = settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue();
-    const int quality_preset =
+    const NVSDK_NGX_PerfQuality_Value quality_preset =
         GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
 
     // Nothing to apply: skip if neither SR/RR nor Quality preset override is active
-    if (!preset_override_enabled && quality_preset < 0) {
+    if (!preset_override_enabled && static_cast<int>(quality_preset) < 0) {
         return;
     }
 
@@ -401,10 +401,11 @@ static void ApplyDLSSPresetParameters(NVSDK_NGX_Parameter* InParameters) {
     }
 
     // Apply DLSS Quality Preset (PerfQualityValue: Performance, Balanced, Quality, etc.)
-    if (quality_preset >= 0 && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
-        NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, quality_preset);
-        g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, quality_preset);
-        LogInfo("Applied DLSS Quality Preset (PerfQualityValue) -> %d", quality_preset);
+    if (static_cast<int>(quality_preset) >= 0 && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
+        const int quality_preset_int = static_cast<int>(quality_preset);
+        NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, quality_preset_int);
+        g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, quality_preset_int);
+        LogInfo("Applied DLSS Quality Preset (PerfQualityValue) -> %d", quality_preset_int);
     }
 
     // Mark as initialized
@@ -540,11 +541,12 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         }
     }
     if (InName != nullptr && strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
-        const int quality_preset =
+        const NVSDK_NGX_PerfQuality_Value quality_preset =
             GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-        if (quality_preset >= 0 && quality_preset != InValue) {
-            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset);
-            InValue = quality_preset;
+        const int quality_preset_int = static_cast<int>(quality_preset);
+        if (quality_preset_int >= 0 && quality_preset_int != InValue) {
+            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
+            InValue = quality_preset_int;
         }
     }
 
@@ -642,11 +644,12 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         }
     }
     if (InName != nullptr && strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
-        const int quality_preset =
+        const NVSDK_NGX_PerfQuality_Value quality_preset =
             GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-        if (quality_preset >= 0 && quality_preset != InValue) {
-            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset);
-            InValue = quality_preset;
+        const int quality_preset_int = static_cast<int>(quality_preset);
+        if (quality_preset_int >= 0 && quality_preset_int != InValue) {
+            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
+            InValue = quality_preset_int;
         }
     }
 
@@ -729,11 +732,12 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
         }
     }
     if (InName != nullptr && strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
-        const int quality_preset =
+        const NVSDK_NGX_PerfQuality_Value quality_preset =
             GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-        if (quality_preset >= 0 && quality_preset != InValue) {
-            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset);
-            InValue = quality_preset;
+        const int quality_preset_int = static_cast<int>(quality_preset);
+        if (quality_preset_int >= 0 && quality_preset_int != InValue) {
+            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
+            InValue = quality_preset_int;
         }
     }
 
@@ -828,10 +832,11 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetI_Detour(NVSDK_NGX_Parameter*
             }
             // Override DLSS Quality Preset (PerfQualityValue) when override is not Game Default
             if (strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
-                const int quality_preset =
+                const NVSDK_NGX_PerfQuality_Value quality_preset =
                     GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-                if (quality_preset >= 0) {
-                    *OutValue = quality_preset;
+                const int quality_preset_int = static_cast<int>(quality_preset);
+                if (quality_preset_int >= 0) {
+                    *OutValue = quality_preset_int;
                     NVSDK_NGX_Parameter_SetI_Detour(InParameter, InName, *OutValue);
                     res = NVSDK_NGX_Result_Success;
                 }
@@ -905,10 +910,11 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetUI_Detour(NVSDK_NGX_Parameter
             }
             // Override DLSS Quality Preset (PerfQualityValue) when override is not Game Default
             if (strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
-                const int quality_preset =
+                const NVSDK_NGX_PerfQuality_Value quality_preset =
                     GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-                if (quality_preset >= 0) {
-                    *OutValue = static_cast<unsigned int>(quality_preset);
+                const int quality_preset_int = static_cast<int>(quality_preset);
+                if (quality_preset_int >= 0) {
+                    *OutValue = static_cast<unsigned int>(quality_preset_int);
                     NVSDK_NGX_Parameter_SetUI_Detour(InParameter, InName, *OutValue);
                     res = NVSDK_NGX_Result_Success;
                 }
@@ -984,10 +990,11 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetULL_Detour(NVSDK_NGX_Paramete
             }
             // Override DLSS Quality Preset (PerfQualityValue) when override is not Game Default
             if (strcmp(InName, NVSDK_NGX_Parameter_PerfQualityValue) == 0) {
-                const int quality_preset =
+                const NVSDK_NGX_PerfQuality_Value quality_preset =
                     GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-                if (quality_preset >= 0) {
-                    *OutValue = static_cast<unsigned long long>(quality_preset);
+                const int quality_preset_int = static_cast<int>(quality_preset);
+                if (quality_preset_int >= 0) {
+                    *OutValue = static_cast<unsigned long long>(quality_preset_int);
                     NVSDK_NGX_Parameter_SetULL_Detour(InParameter, InName, *OutValue);
                     res = NVSDK_NGX_Result_Success;
                 }
@@ -1169,12 +1176,13 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
         LogNGXCreateFeatureParameters(InParameters);
         // Override PerfQualityValue at CreateFeature for DLSS (FeatureID 1) when user has a non-Game Default preset
         if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
-            const int override_preset =
+            const NVSDK_NGX_PerfQuality_Value override_preset =
                 GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-            if (override_preset >= 0) {
-                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, override_preset);
-                g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset);
-                LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset);
+            const int override_preset_int = static_cast<int>(override_preset);
+            if (override_preset_int >= 0) {
+                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);
             }
         }
     }
@@ -1502,12 +1510,13 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
         LogNGXCreateFeatureParameters(InParameters);
         // Override PerfQualityValue at CreateFeature for DLSS (FeatureID 1) when user has a non-Game Default preset
         if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
-            const int override_preset =
+            const NVSDK_NGX_PerfQuality_Value override_preset =
                 GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
-            if (override_preset >= 0) {
-                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, override_preset);
-                g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset);
-                LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset);
+            const int override_preset_int = static_cast<int>(override_preset);
+            if (override_preset_int >= 0) {
+                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);
             }
         }
     }

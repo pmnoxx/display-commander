@@ -1332,18 +1332,35 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     const bool delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
     const uint64_t current_frame_id = current_frame_id_for_slot;
 
-    bool should_enable_reflex = settings::g_advancedTabSettings.reflex_enable.GetValue();
+    bool override_game_reflex_settings = false;
+
+    // When OnPresentSync is selected and Reflex is "Game Defaults", do not apply our Reflex (let game control it)
+    const auto onpresent_reflex =
+        static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
+
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
+        override_game_reflex_settings = (onpresent_reflex != OnPresentReflexMode::kGameDefaults);
+    } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
+        override_game_reflex_settings = true;
+    } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kDisabled) {
+        override_game_reflex_settings = false;
+    } else {
+        override_game_reflex_settings = false;
+    }
 
     if (delay_first_500_frames && current_frame_id < 500) {
-        should_enable_reflex = false;
+        override_game_reflex_settings = false;
     }
 
     HandleFpsLimiterPost(false, from_wrapper);
     const LONGLONG end_ns = TimerPresentPacingDelayEnd(start_ns);
     g_frame_data[present_slot].sleep_post_present_end_time_ns.store(end_ns);
-
-    if (should_enable_reflex) {
-        if (g_latencyManager->IsInitialized()) {
+    if (g_latencyManager->IsInitialized()) {
+        if (!override_game_reflex_settings) {
+            auto params = g_last_nvapi_sleep_mode_params.load();
+            ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(), params ? params.get() : nullptr);
+            s_reflex_enable_current_frame.store(false);
+        } else {
             s_reflex_enable_current_frame.store(true);
             // Apply sleep mode opportunistically each frame to reflect current
             // toggles
@@ -1351,8 +1368,19 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
             if (s_fps_limiter_mode.load() != FpsLimiterMode::kReflex) {
                 target_fps = 0.0f;
             }
-            g_latencyManager->ApplySleepMode(settings::g_advancedTabSettings.reflex_low_latency.GetValue(),
-                                             settings::g_advancedTabSettings.reflex_boost.GetValue(),
+            bool low_latency;
+            bool boost;
+            if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
+                const auto onpresent_reflex =
+                    static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
+                low_latency = (onpresent_reflex == OnPresentReflexMode::kLowLatency
+                               || onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
+                boost = (onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
+            } else {
+                low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
+                boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
+            }
+            g_latencyManager->ApplySleepMode(low_latency, boost,
                                              settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
             g_reflex_was_enabled_last_frame.store(true);
             if (settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()
@@ -1361,24 +1389,6 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
                 g_latencyManager->Sleep();
                 perf_timer.resume();
             }
-        } else {
-            s_reflex_enable_current_frame.store(false);
-        }
-    } else {
-        s_reflex_enable_current_frame.store(false);
-        // if (g_reflex_was_enabled_last_frame.exchange(false)) {
-        if (g_latencyManager->IsInitialized()) {
-            if (s_fps_limiter_mode.load() == FpsLimiterMode::kDisabled) {
-                auto params = g_last_nvapi_sleep_mode_params.load();
-                ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(),
-                                                params ? params.get() : nullptr);
-            } else {
-                g_latencyManager->ApplySleepMode(settings::g_advancedTabSettings.reflex_low_latency.GetValue(),
-                                                 settings::g_advancedTabSettings.reflex_boost.GetValue(),
-                                                 settings::g_advancedTabSettings.reflex_use_markers.GetValue(), 0.0f);
-            }
-            /**/
-            //    }
         }
     }
 
@@ -1500,8 +1510,11 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     RECORD_DETOUR_CALL(start_time_ns);
                     // Calculate frame time
                     float adjusted_target_fps = target_fps;
-                    if (g_latencyManager->IsInitialized()
-                        && settings::g_advancedTabSettings.reflex_low_latency.GetValue()) {
+                    const auto onpresent_reflex =
+                        static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
+                    const bool onpresent_low_latency = (onpresent_reflex == OnPresentReflexMode::kLowLatency
+                                                        || onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
+                    if (g_latencyManager->IsInitialized() && onpresent_low_latency) {
                         adjusted_target_fps *= 0.995f;
                     }
                     LONGLONG frame_time_ns = static_cast<LONGLONG>(1'000'000'000.0 / adjusted_target_fps);

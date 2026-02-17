@@ -319,6 +319,14 @@ enum class ScreensaverMode : std::uint8_t {
     kDisable = 2              // Disable
 };
 
+// Reflex mode when FPS limiter is OnPresent Sync (main tab combo)
+enum class OnPresentReflexMode : std::uint8_t {
+    kLowLatency = 0,       // Low latency (default)
+    kLowLatencyBoost = 1,  // Low Latency + boost
+    kOff = 2,              // Both low latency and boost disabled
+    kGameDefaults = 3      // Do not override; use game's Reflex settings
+};
+
 enum class InputBlockingMode : std::uint8_t {
     kDisabled = 0,                  // Disabled
     kEnabled = 1,                   // Always enabled

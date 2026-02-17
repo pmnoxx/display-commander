@@ -26,6 +26,7 @@ std::atomic<InputBlockingMode> s_gamepad_input_blocking{InputBlockingMode::kDisa
 std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
+std::atomic<OnPresentReflexMode> s_onpresent_reflex_mode{OnPresentReflexMode::kLowLatency};
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 std::atomic<int> s_cpu_cores{0};  // 0 = default (no change), max = all cores
 
@@ -61,6 +62,10 @@ MainTabSettings::MainTabSettings()
            "62.5% Display / 37.5% Input", "50% Display / 50% Input", "37.5% Display / 62.5% Input",
            "25% Display / 75% Input", "12.5% Display / 87.5% Input", "0% Display / 100% Input"},
           "DisplayCommander"),  // Default to 100% Display / 0% Input (current behavior)
+      onpresent_reflex_mode("onpresent_reflex_mode", s_onpresent_reflex_mode,
+                            static_cast<int>(OnPresentReflexMode::kLowLatency),
+                            {"Low latency", "Low Latency + boost", "Off", "Game Defaults"},
+                            "DisplayCommander"),
       pcl_stats_enabled("pcl_stats_enabled", false, "DisplayCommander"),
       experimental_fg_native_fps_limiter("experimental_fg_native_fps_limiter", true, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only", true, "DisplayCommander"),
@@ -183,6 +188,7 @@ MainTabSettings::MainTabSettings()
         &fps_limit_background,
         &suppress_reflex_sleep,
         &onpresent_sync_low_latency_ratio,
+        &onpresent_reflex_mode,
         &pcl_stats_enabled,
         &experimental_fg_native_fps_limiter,
         &native_pacing_sim_start_only,

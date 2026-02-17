@@ -2561,6 +2561,20 @@ void DrawDisplaySettings_FpsLimiterMode() {
                     ImGui::SetTooltip("%s", tooltip.c_str());
                 }
 
+                // Reflex mode selector for OnPresent: Low latency (default), Low+boost, Off, Game Defaults
+                ImGui::Spacing();
+                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex")) {
+                    // Setting is automatically saved via ComboSettingEnumRefWrapper
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "NVIDIA Reflex setting when using OnPresent FPS limiter.\n\n"
+                        "Low latency: Enables Reflex Low Latency Mode (default).\n"
+                        "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
+                        "Off: Disables both Low Latency and Boost.\n"
+                        "Game Defaults: Do not override; use the game's own Reflex settings.");
+                }
+
                 // Low Latency Ratio Selector (Experimental WIP placeholder)
                 ImGui::Spacing();
                 // ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Low Latency Ratio:");

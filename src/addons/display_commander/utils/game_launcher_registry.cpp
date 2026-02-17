@@ -1,6 +1,6 @@
 #include "game_launcher_registry.hpp"
-#include "logging.hpp"
 #include <ctime>
+#include "logging.hpp"
 
 #include <windows.h>
 
@@ -20,8 +20,10 @@ static std::wstring PathToSubkey(const std::wstring& path) {
     if (path.empty()) return L"empty";
     std::wstring norm = path;
     for (auto& c : norm) {
-        if (c == L'/') c = L'\\';
-        else if (c >= L'A' && c <= L'Z') c = (wchar_t)(c - L'A' + L'a');
+        if (c == L'/')
+            c = L'\\';
+        else if (c >= L'A' && c <= L'Z')
+            c = (wchar_t)(c - L'A' + L'a');
     }
     uint64_t h = 14695981039346656037ULL;  // FNV offset basis
     for (wchar_t c : norm) {
@@ -48,8 +50,7 @@ static std::wstring GetExeNameFromPath(const std::wstring& path) {
 
 }  // namespace
 
-void RecordGameRun(const wchar_t* game_exe_path, const wchar_t* launch_arguments,
-                  const wchar_t* window_title) {
+void RecordGameRun(const wchar_t* game_exe_path, const wchar_t* launch_arguments, const wchar_t* window_title) {
     if (!game_exe_path || !game_exe_path[0]) return;
     std::wstring path(game_exe_path);
     std::wstring keyName = PathToSubkey(path);
@@ -58,16 +59,16 @@ void RecordGameRun(const wchar_t* game_exe_path, const wchar_t* launch_arguments
     std::wstring wtitle(window_title ? window_title : L"");
 
     HKEY hBase = nullptr;
-    LSTATUS st = RegCreateKeyExW(HKEY_CURRENT_USER, kBaseKey, 0, nullptr, REG_OPTION_NON_VOLATILE,
-                                  KEY_READ | KEY_WRITE, nullptr, &hBase, nullptr);
+    LSTATUS st = RegCreateKeyExW(HKEY_CURRENT_USER, kBaseKey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE,
+                                 nullptr, &hBase, nullptr);
     if (st != ERROR_SUCCESS || !hBase) {
         LogInfo("Game launcher registry: failed to open base key, error %ld", (long)st);
         return;
     }
 
     HKEY hSub = nullptr;
-    st = RegCreateKeyExW(hBase, keyName.c_str(), 0, nullptr, REG_OPTION_NON_VOLATILE,
-                         KEY_READ | KEY_WRITE, nullptr, &hSub, nullptr);
+    st = RegCreateKeyExW(hBase, keyName.c_str(), 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE, nullptr,
+                         &hSub, nullptr);
     RegCloseKey(hBase);
     if (st != ERROR_SUCCESS || !hSub) {
         LogInfo("Game launcher registry: failed to create subkey, error %ld", (long)st);
@@ -81,8 +82,7 @@ void RecordGameRun(const wchar_t* game_exe_path, const wchar_t* launch_arguments
         st = RegSetValueExW(hSub, kValueName, 0, REG_SZ, reinterpret_cast<const BYTE*>(name.c_str()),
                             (DWORD)((name.size() + 1) * sizeof(wchar_t)));
     if (st == ERROR_SUCCESS)
-        st = RegSetValueExW(hSub, kValueWindowTitle, 0, REG_SZ,
-                            reinterpret_cast<const BYTE*>(wtitle.c_str()),
+        st = RegSetValueExW(hSub, kValueWindowTitle, 0, REG_SZ, reinterpret_cast<const BYTE*>(wtitle.c_str()),
                             (DWORD)((wtitle.size() + 1) * sizeof(wchar_t)));
     if (st == ERROR_SUCCESS)
         st = RegSetValueExW(hSub, kValueArguments, 0, REG_SZ, reinterpret_cast<const BYTE*>(arguments.c_str()),
@@ -91,8 +91,7 @@ void RecordGameRun(const wchar_t* game_exe_path, const wchar_t* launch_arguments
         st = RegSetValueExW(hSub, kValueLastRun, 0, REG_QWORD, reinterpret_cast<const BYTE*>(&now), sizeof(now));
 
     RegCloseKey(hSub);
-    if (st != ERROR_SUCCESS)
-        LogInfo("Game launcher registry: failed to write values, error %ld", (long)st);
+    if (st != ERROR_SUCCESS) LogInfo("Game launcher registry: failed to write values, error %ld", (long)st);
 }
 
 void EnumerateGames(std::vector<GameEntry>& out) {
@@ -135,8 +134,7 @@ void EnumerateGames(std::vector<GameEntry>& out) {
 
         RegCloseKey(hSub);
 
-        if (!entry.path.empty())
-            out.push_back(entry);
+        if (!entry.path.empty()) out.push_back(entry);
     }
 
     RegCloseKey(hBase);

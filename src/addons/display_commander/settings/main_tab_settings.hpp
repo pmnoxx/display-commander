@@ -60,6 +60,7 @@ class MainTabSettings {
     ui::new_ui::FloatSettingRef fps_limit_background;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;
+    ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> onpresent_reflex_mode;
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting experimental_fg_native_fps_limiter;
     ui::new_ui::BoolSetting native_pacing_sim_start_only;

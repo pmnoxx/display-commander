@@ -1656,10 +1656,14 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                     ImGui::OpenPopup("Remove game from list?");
                 }
                 if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("Remove this game from the registry. It will no longer appear in the installer list. You can re-add it by running the game with Display Commander.");
+                    ImGui::SetTooltip(
+                        "Remove this game from the registry. It will no longer appear in the installer list. You can "
+                        "re-add it by running the game with Display Commander.");
                 if (ImGui::BeginPopupModal("Remove game from list?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                     ImGui::Text("Remove this game from the list?");
-                    ImGui::TextUnformatted("It will no longer appear in the installer. You can re-add it by running the game with Display Commander.");
+                    ImGui::TextUnformatted(
+                        "It will no longer appear in the installer. You can re-add it by running the game with Display "
+                        "Commander.");
                     ImGui::Spacing();
                     if (ImGui::Button("Yes, remove##game_details_confirm")) {
                         display_commander::game_launcher_registry::RemoveGame(s_gameDetailsEntry.path.c_str());

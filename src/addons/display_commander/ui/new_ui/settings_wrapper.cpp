@@ -871,6 +871,11 @@ template class ComboSettingEnumRef<ScreensaverMode>;
 template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>& setting,
                                                           const char* label);
 
+// Explicit template instantiations for OnPresentReflexMode
+template class ComboSettingEnumRef<OnPresentReflexMode>;
+template bool ComboSettingEnumRefWrapper<OnPresentReflexMode>(ComboSettingEnumRef<OnPresentReflexMode>& setting,
+                                                             const char* label);
+
 // Explicit template instantiations for FrameTimeMode
 template class ComboSettingEnumRef<FrameTimeMode>;
 template bool ComboSettingEnumRefWrapper<FrameTimeMode>(ComboSettingEnumRef<FrameTimeMode>& setting, const char* label);

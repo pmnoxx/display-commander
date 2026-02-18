@@ -203,13 +203,20 @@ else()
   message(STATUS "NVPI Reference.xml not found (optional). Run: git submodule update --init external/NvidiaProfileInspectorRevamped")
 endif()
 
-# Copy Display Commander brightness ReShade effect next to the addon DLL (runtime may copy to ReShade Shaders).
+# Embed Display Commander brightness effect in the DLL (RCDATA). Only the DLL is shipped; runtime extracts to shader paths.
 set(DC_BRIGHTNESS_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_Brightness.fx")
+set(DC_BRIGHTNESS_RC "${CMAKE_CURRENT_BINARY_DIR}/brightness_effect.rc")
 if(EXISTS "${DC_BRIGHTNESS_FX}")
-  add_custom_command(TARGET zzz_display_commander POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_BRIGHTNESS_FX}" "$<TARGET_FILE_DIR:zzz_display_commander>/DisplayCommander_Brightness.fx"
-    COMMENT "Copy DisplayCommander_Brightness.fx next to addon DLL"
+  add_custom_target(copy_brightness_fx_for_rc ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_BRIGHTNESS_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Brightness.fx"
+    COMMENT "Copy DisplayCommander_Brightness.fx to build dir for resource embedding"
+    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Brightness.fx"
   )
+  set(BRIGHTNESS_RC_CONTENT "// Generated - embeds DisplayCommander_Brightness.fx in DLL\n#pragma code_page(65001)\n#define IDR_BRIGHTNESS_FX 300\nIDR_BRIGHTNESS_FX RCDATA \"DisplayCommander_Brightness.fx\"\n")
+  file(WRITE "${DC_BRIGHTNESS_RC}" "${BRIGHTNESS_RC_CONTENT}")
+  target_sources(zzz_display_commander PRIVATE ${DC_BRIGHTNESS_RC})
+  add_dependencies(zzz_display_commander copy_brightness_fx_for_rc)
+  set_source_files_properties(${DC_BRIGHTNESS_RC} PROPERTIES GENERATED TRUE)
 endif()
 
 # Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll, version.dll)

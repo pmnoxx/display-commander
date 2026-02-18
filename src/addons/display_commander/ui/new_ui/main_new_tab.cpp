@@ -1640,6 +1640,24 @@ if (enabled_experimental_features) {
 
     ImGui::Spacing();
 
+    // Brightness (Display Commander ReShade effect)
+    g_rendering_ui_section.store("ui:tab:main_new:brightness", std::memory_order_release);
+    if (ImGui::CollapsingHeader("Brightness", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f")) {
+            // Value is applied in OnReShadePresent each frame
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Adjust brightness via Display Commander's ReShade effect (0-200%%, 100%% = neutral).\n"
+                "Requires DisplayCommander_Brightness.fx to be in ReShade's Shaders folder and effect reload (e.g. "
+                "Ctrl+Shift+F5) or game restart.");
+        }
+        ImGui::Unindent();
+    }
+
+    ImGui::Spacing();
+
     // Monitor/Display Resolution Settings Section
     g_rendering_ui_section.store("ui:tab:main_new:resolution", std::memory_order_release);
     if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
@@ -2220,23 +2238,6 @@ if (enabled_experimental_features) {
         ImGui::Unindent();
     }
 
-    ImGui::Spacing();
-
-    // Brightness (Display Commander ReShade effect) - at bottom of main tab
-    g_rendering_ui_section.store("ui:tab:main_new:brightness", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Brightness", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f")) {
-            // Value is applied in OnReShadeBeginEffects each frame
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Adjust brightness via Display Commander's ReShade effect (0-200%%, 100%% = neutral).\n"
-                "Requires DisplayCommander_Brightness.fx to be in ReShade's Shaders folder and effect reload (e.g. "
-                "Ctrl+Shift+F5) or game restart.");
-        }
-        ImGui::Unindent();
-    }
 }
 
 void DrawQuickFpsLimitChanger() {

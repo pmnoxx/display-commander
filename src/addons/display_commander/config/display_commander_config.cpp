@@ -1,4 +1,5 @@
 #include "display_commander_config.hpp"
+#include "hotkeys_file.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -219,6 +220,10 @@ void DisplayCommanderConfigManager::Initialize() {
 }
 
 bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const char* key, std::string& value) {
+    // Hotkeys are stored in hotkeys.toml (Display Commander folder) for sharing across games
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
+        return GetHotkeyValue(key, value);
+    }
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
@@ -357,6 +362,10 @@ void DisplayCommanderConfigManager::GetConfigValueEnsureExists(const char* secti
 }
 
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const std::string& value) {
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
+        SetHotkeyValue(key, value);
+        return;
+    }
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
@@ -365,6 +374,10 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 }
 
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const char* value) {
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
+        SetHotkeyValue(key, value != nullptr ? value : "");
+        return;
+    }
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();

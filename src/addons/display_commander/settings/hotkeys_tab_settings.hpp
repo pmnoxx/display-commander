@@ -17,10 +17,10 @@ class HotkeysTabSettings {
     HotkeysTabSettings();
     ~HotkeysTabSettings() = default;
 
-    // Load all settings from DisplayCommander config
+    // Load all settings from hotkeys.toml (Display Commander folder in Local App Data; shared across games)
     void LoadAll();
 
-    // Save all settings to DisplayCommander config
+    // Save all settings to hotkeys.toml
     void SaveAll();
 
     // Master toggle

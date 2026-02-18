@@ -1927,6 +1927,20 @@ if (enabled_experimental_features) {
                 "- Press Home + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
         }
 
+        ImGui::Spacing();
+
+        // Enable Gamepad Remapping (same value as Controller tab)
+        {
+            auto& remapper = display_commander::input_remapping::InputRemapper::get_instance();
+            bool remapping_enabled = remapper.is_remapping_enabled();
+            if (ImGui::Checkbox("Enable Gamepad Remapping", &remapping_enabled)) {
+                remapper.set_remapping_enabled(remapping_enabled);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("When enabled, gamepad buttons can be mapped to keyboard inputs. Same setting as in Controller tab.");
+            }
+        }
+
         ImGui::Unindent();
     }
 

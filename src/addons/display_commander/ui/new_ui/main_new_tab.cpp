@@ -3,6 +3,7 @@
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
+#include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
@@ -16,7 +17,6 @@
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "../../nvapi/reflex_manager.hpp"
-#include "../../dxgi/vram_info.hpp"
 #include "../../performance_types.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
@@ -1913,31 +1913,33 @@ if (enabled_experimental_features) {
 
         ImGui::Spacing();
 
-        // Home button behavior for Display Commander UI
-        bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
-        if (ImGui::Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {
-            settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.SetValue(require_solo_press);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "When enabled, tapping the Home button will open/close Display Commander UI only if no other\n"
-                "gamepad buttons were pressed between Home down and Home up.\n\n"
-                "Example:\n"
-                "- Press Home, do nothing else, release Home -> Toggle Display Commander UI\n"
-                "- Press Home + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
-        }
-
-        ImGui::Spacing();
-
         // Enable Gamepad Remapping (same value as Controller tab)
         {
             auto& remapper = display_commander::input_remapping::InputRemapper::get_instance();
             bool remapping_enabled = remapper.is_remapping_enabled();
-            if (ImGui::Checkbox("Enable Gamepad Remapping", &remapping_enabled)) {
+            if (ImGui::Checkbox("Enable XBOX-style Gamepad Remapping", &remapping_enabled)) {
                 remapper.set_remapping_enabled(remapping_enabled);
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("When enabled, gamepad buttons can be mapped to keyboard inputs. Same setting as in Controller tab.");
+                ImGui::SetTooltip(
+                    "When enabled, gamepad buttons can be mapped to keyboard inputs. Same setting as in Controller "
+                    "tab.");
+            }
+            if (remapping_enabled) {
+                ImGui::Spacing();
+                // Home button behavior for Display Commander UI
+                bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
+                if (ImGui::Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {
+                    settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.SetValue(require_solo_press);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "When enabled, tapping the Home button will open/close Display Commander UI only if no other\n"
+                        "gamepad buttons were pressed between Home down and Home up.\n\n"
+                        "Example:\n"
+                        "- Press Home, do nothing else, release Home -> Toggle Display Commander UI\n"
+                        "- Press Home + any other button (e.g. volume chords) -> Do NOT toggle Display Commander UI");
+                }
             }
         }
 
@@ -5171,8 +5173,7 @@ void DrawImportantInfo() {
             settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
+            ImGui::SetTooltip("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
         }
         ImGui::NextColumn();
 

@@ -45,6 +45,7 @@
 #include <dxgi.h>
 #include <minwindef.h>
 #include <shellapi.h>
+#include <sysinfoapi.h>
 #include <reshade_imgui.hpp>
 
 // Define IID for IDirect3DDevice9 if not already defined
@@ -2377,7 +2378,7 @@ void DrawDisplaySettings_DisplayAndTarget() {
                     "Refresh rate: actual (NVAPI) when available, else selected display's configured rate.");
             }
 
-            // VRAM usage (NVIDIA, NvAPI) under Render resolution
+            // VRAM and RAM usage on one line under Render resolution
             uint64_t vram_used = 0;
             uint64_t vram_total = 0;
             if (display_commander::nvapi::GetVramInfoNvapi(&vram_used, &vram_total) && vram_total > 0) {
@@ -2396,6 +2397,30 @@ void DrawDisplaySettings_DisplayAndTarget() {
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("VRAM unavailable (non-NVIDIA GPU or NVAPI not available).");
+                }
+            }
+
+            // RAM (system memory) on the same line
+            ImGui::SameLine();
+            MEMORYSTATUSEX mem_status = {};
+            mem_status.dwLength = sizeof(mem_status);
+            if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {
+                const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
+                const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
+                const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "RAM:");
+                ImGui::SameLine();
+                ImGui::Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                            static_cast<unsigned long long>(ram_total_mib));
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
+                }
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "RAM:");
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("System memory info unavailable.");
                 }
             }
 

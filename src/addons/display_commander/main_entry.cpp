@@ -53,6 +53,7 @@
 #include <dxgi1_6.h>
 #include <psapi.h>
 #include <shlobj.h>
+#include <sysinfoapi.h>
 #include <tlhelp32.h>
 #include <winver.h>
 #include <wrl/client.h>
@@ -731,6 +732,31 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRAM: N/A");
             if (ImGui::IsItemHovered() && show_tooltips) {
                 ImGui::SetTooltip("VRAM unavailable (non-NVIDIA GPU or NVAPI not available).");
+            }
+        }
+
+        // RAM (system memory) on the same line
+        ImGui::SameLine();
+        MEMORYSTATUSEX mem_status = {};
+        mem_status.dwLength = sizeof(mem_status);
+        if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {
+            const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
+            const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
+            const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("RAM: %llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                            static_cast<unsigned long long>(ram_total_mib));
+            } else {
+                ImGui::Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                            static_cast<unsigned long long>(ram_total_mib));
+            }
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
+            }
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "RAM: N/A");
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("System memory info unavailable.");
             }
         }
     }

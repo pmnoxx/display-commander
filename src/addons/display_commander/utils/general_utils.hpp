@@ -8,13 +8,13 @@
 
 #include <windef.h>
 
-#include "../../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 #include <MinHook.h>
 #include <atomic>
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
+#include "../../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
 
 // Forward declaration for HookType enum
 namespace display_commanderhooks {
@@ -67,7 +67,8 @@ std::string GetSupportedDLSSRRPresets(int major, int minor, int patch);
 std::string GetSupportedDLSSRRPresetsFromVersionString(const std::string& versionString);
 std::vector<std::string> GetDLSSPresetOptions(const std::string& supportedPresets);
 int GetDLSSPresetValue(const std::string& presetString);
-// DLSS Quality Preset: returns NVSDK_NGX_PerfQuality_Value; (NVSDK_NGX_PerfQuality_Value)-1 = Game Default (no override).
+// DLSS Quality Preset: returns NVSDK_NGX_PerfQuality_Value; (NVSDK_NGX_PerfQuality_Value)-1 = Game Default (no
+// override).
 NVSDK_NGX_PerfQuality_Value GetDLSSQualityPresetValue(const std::string& presetString);
 std::string ConvertRenderPresetToLetter(
     int preset_value);         // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)

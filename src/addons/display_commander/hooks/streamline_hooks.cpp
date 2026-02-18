@@ -140,35 +140,22 @@ static bool LogDLSSOptions(const sl::DLSSOptions& o) {
 // Map main-tab DLSS quality preset (GetDLSSQualityPresetValue) to sl::DLSSMode
 static sl::DLSSMode QualityPresetValueToSLMode(NVSDK_NGX_PerfQuality_Value ngxQualityValue) {
     switch (ngxQualityValue) {
-        case NVSDK_NGX_PerfQuality_Value_MaxPerf:         return sl::DLSSMode::eMaxPerformance;
-        case NVSDK_NGX_PerfQuality_Value_Balanced:        return sl::DLSSMode::eBalanced;
-        case NVSDK_NGX_PerfQuality_Value_MaxQuality:     return sl::DLSSMode::eMaxQuality;
+        case NVSDK_NGX_PerfQuality_Value_MaxPerf:          return sl::DLSSMode::eMaxPerformance;
+        case NVSDK_NGX_PerfQuality_Value_Balanced:         return sl::DLSSMode::eBalanced;
+        case NVSDK_NGX_PerfQuality_Value_MaxQuality:       return sl::DLSSMode::eMaxQuality;
         case NVSDK_NGX_PerfQuality_Value_UltraPerformance: return sl::DLSSMode::eUltraPerformance;
-        case NVSDK_NGX_PerfQuality_Value_UltraQuality:   return sl::DLSSMode::eUltraQuality;
-        case NVSDK_NGX_PerfQuality_Value_DLAA:           return sl::DLSSMode::eDLAA;
-        default: return sl::DLSSMode::eMaxQuality;
+        case NVSDK_NGX_PerfQuality_Value_UltraQuality:     return sl::DLSSMode::eUltraQuality;
+        case NVSDK_NGX_PerfQuality_Value_DLAA:             return sl::DLSSMode::eDLAA;
+        default:                                           return sl::DLSSMode::eMaxQuality;
     }
 }
 
 // Map render preset value (0=DLSS Default, 1=Preset A, 2=Preset B, ... 12=Preset L, 13=Preset M, ...) to sl::DLSSPreset
 static sl::DLSSPreset PresetValueToSLPreset(int presetValue) {
-    switch (presetValue) {
-        case 0:  return sl::DLSSPreset::eDefault;
-        case 1:  return sl::DLSSPreset::ePresetF;
-        case 2:  return sl::DLSSPreset::ePresetG;
-        case 3:  return sl::DLSSPreset::ePresetH;
-        case 4:  return sl::DLSSPreset::ePresetI;
-        case 5:  return sl::DLSSPreset::ePresetJ;
-        case 6:  return sl::DLSSPreset::ePresetK;
-        case 7:  return sl::DLSSPreset::ePresetL;
-        case 8:  return sl::DLSSPreset::ePresetM;
-        case 9:  return sl::DLSSPreset::ePresetN;
-        case 10: return sl::DLSSPreset::ePresetO;
-        case 11: return sl::DLSSPreset::ePresetK;  // UI "Preset K" -> value 11
-        case 12: return sl::DLSSPreset::ePresetL;  // UI "Preset L" -> value 12
-        case 13: return sl::DLSSPreset::ePresetM;  // UI "Preset M" -> value 13
-        default: return sl::DLSSPreset::eDefault;
+    if (presetValue < 0) {
+        return sl::DLSSPreset::eDefault;
     }
+    return static_cast<sl::DLSSPreset>(presetValue);
 }
 
 // Hook functions

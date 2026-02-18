@@ -150,14 +150,6 @@ static sl::DLSSMode QualityPresetValueToSLMode(NVSDK_NGX_PerfQuality_Value ngxQu
     }
 }
 
-// Map render preset value (0=DLSS Default, 1=Preset A, 2=Preset B, ... 12=Preset L, 13=Preset M, ...) to sl::DLSSPreset
-static sl::DLSSPreset PresetValueToSLPreset(int presetValue) {
-    if (presetValue < 0) {
-        return sl::DLSSPreset::eDefault;
-    }
-    return static_cast<sl::DLSSPreset>(presetValue);
-}
-
 // Hook functions
 int slInit_Detour(void* pref, uint64_t sdkVersion) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -239,14 +231,13 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
     }
     if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
         const int presetVal = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
-        if (presetVal >= 0) {
-            const sl::DLSSPreset p = PresetValueToSLPreset(presetVal);
-            modified_options.dlaaPreset = p;
-            modified_options.qualityPreset = p;
-            modified_options.balancedPreset = p;
-            modified_options.performancePreset = p;
-            modified_options.ultraPerformancePreset = p;
-            modified_options.ultraQualityPreset = p;
+        if (presetVal > 0) {
+            modified_options.dlaaPreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.qualityPreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.balancedPreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.performancePreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.ultraPerformancePreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.ultraQualityPreset = static_cast<sl::DLSSPreset>(presetVal);
         }
     }
 
@@ -286,14 +277,13 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
     // Render preset override (DLSS Default / Preset A, B, C, ...) – apply to all per-mode presets
     if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
         const int presetVal = GetDLSSPresetValue(settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue());
-        if (presetVal >= 0) {
-            const sl::DLSSPreset p = PresetValueToSLPreset(presetVal);
-            modified_options.dlaaPreset = p;
-            modified_options.qualityPreset = p;
-            modified_options.balancedPreset = p;
-            modified_options.performancePreset = p;
-            modified_options.ultraPerformancePreset = p;
-            modified_options.ultraQualityPreset = p;
+        if (presetVal > 0) {
+            modified_options.dlaaPreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.qualityPreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.balancedPreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.performancePreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.ultraPerformancePreset = static_cast<sl::DLSSPreset>(presetVal);
+            modified_options.ultraQualityPreset = static_cast<sl::DLSSPreset>(presetVal);
             applied_any = true;
         }
     }

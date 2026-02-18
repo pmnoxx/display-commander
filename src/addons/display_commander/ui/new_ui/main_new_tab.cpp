@@ -16,7 +16,7 @@
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "../../nvapi/reflex_manager.hpp"
-#include "../../nvapi/vram_info.hpp"
+#include "../../dxgi/vram_info.hpp"
 #include "../../performance_types.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
@@ -2381,7 +2381,7 @@ void DrawDisplaySettings_DisplayAndTarget() {
             // VRAM and RAM usage on one line under Render resolution
             uint64_t vram_used = 0;
             uint64_t vram_total = 0;
-            if (display_commander::nvapi::GetVramInfoNvapi(&vram_used, &vram_total) && vram_total > 0) {
+            if (display_commander::dxgi::GetVramInfo(&vram_used, &vram_total) && vram_total > 0) {
                 const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
                 const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "VRAM:");
@@ -2389,14 +2389,14 @@ void DrawDisplaySettings_DisplayAndTarget() {
                 ImGui::Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
                             static_cast<unsigned long long>(total_mib));
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("GPU video memory used / total (NvAPI_GPU_GetMemoryInfoEx). NVIDIA only.");
+                    ImGui::SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
                 }
             } else {
                 ImGui::TextColored(ui::colors::TEXT_LABEL, "VRAM:");
                 ImGui::SameLine();
                 ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("VRAM unavailable (non-NVIDIA GPU or NVAPI not available).");
+                    ImGui::SetTooltip("VRAM unavailable (DXGI adapter or budget query failed).");
                 }
             }
 
@@ -5151,14 +5151,14 @@ void DrawImportantInfo() {
         }
         ImGui::NextColumn();
 
-        // Show VRAM (used / total) in overlay - NVIDIA only, NvAPI
+        // Show VRAM (used / budget) in overlay - DXGI adapter memory budget
         bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
         if (ImGui::Checkbox("VRAM", &show_overlay_vram)) {
             settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Shows GPU video memory used / total (MiB) in the performance overlay. NVIDIA only (NvAPI).");
+                "Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
         }
         ImGui::NextColumn();
 

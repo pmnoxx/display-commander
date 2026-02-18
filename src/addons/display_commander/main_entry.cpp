@@ -63,6 +63,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <fstream>
 #include <reshade.hpp>
 #include <sstream>
 #include <string>
@@ -82,6 +83,7 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
+void OnReShadePresent(reshade::api::effect_runtime* runtime);
 
 // Forward declaration for ReShade settings override
 void OverrideReShadeSettings();
@@ -274,7 +276,8 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
     }
-    ApplyDisplayCommanderBrightness(runtime);
+    // Brightness is applied from OnReShadePresent to avoid modifying technique state/uniforms
+    // during the effect loop (which can cause crashes).
 }
 
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
@@ -288,6 +291,15 @@ void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api:
     // Add any tracking logic here if needed
 }
 
+void OnReShadePresent(reshade::api::effect_runtime* runtime) {
+    if (runtime == nullptr) {
+        return;
+    }
+    // Apply brightness for the next frame. Safe to set technique state and uniforms here
+    // (after effects have been rendered this frame, before the next frame).
+    ApplyDisplayCommanderBrightness(runtime);
+}
+
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
 #ifdef TRY_CATCH_BLOCKS
@@ -298,26 +310,68 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         }
         AddReShadeRuntime(runtime);
 
-        // One-time: copy DisplayCommander_Brightness.fx to ReShade Shaders folder so the effect loads after reload/restart
+        // One-time: extract DisplayCommander_Brightness.fx from DLL (embedded RCDATA) to:
+        // - %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders
+        // - addon_dir\Display_Commander\Reshade\Shaders
+        // - ReShade's Shaders folder (so the effect loads after reload/restart)
+        // Only the DLL is shipped; the .fx is embedded in the binary.
         {
             static std::atomic<bool> brightness_effect_copy_done{false};
             if (!brightness_effect_copy_done.exchange(true)) {
-                wchar_t addon_path[MAX_PATH] = {};
-                if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) > 0) {
-                    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
-                    std::filesystem::path src_fx = addon_dir / L"DisplayCommander_Brightness.fx";
-                    if (std::filesystem::exists(src_fx)) {
-                        char base_path[512] = {};
-                        size_t base_size = sizeof(base_path);
-                        reshade::get_reshade_base_path(base_path, &base_size);
-                        std::filesystem::path dest_dir = std::filesystem::path(base_path) / "Shaders";
-                        std::filesystem::path dest_fx = dest_dir / "DisplayCommander_Brightness.fx";
-                        std::error_code ec;
-                        if (std::filesystem::exists(dest_dir) && std::filesystem::is_directory(dest_dir)) {
-                            std::filesystem::copy_file(src_fx, dest_fx,
-                                                       std::filesystem::copy_options::overwrite_existing, ec);
-                            if (!ec) {
-                                LogInfo("DisplayCommander_Brightness.fx copied to ReShade Shaders - reload effects (e.g. Ctrl+Shift+F5) to use Brightness.");
+                constexpr int IDR_BRIGHTNESS_FX = 300;
+                HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(IDR_BRIGHTNESS_FX), RT_RCDATA);
+                if (hRes != nullptr) {
+                    HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
+                    if (hLoaded != nullptr) {
+                        const void* pData = LockResource(hLoaded);
+                        const DWORD size = SizeofResource(g_hmodule, hRes);
+                        if (pData != nullptr && size > 0) {
+                            std::error_code ec;
+                            auto write_fx = [&pData, &size](const std::filesystem::path& dest_path) -> bool {
+                                std::error_code ec2;
+                                std::filesystem::create_directories(dest_path.parent_path(), ec2);
+                                if (ec2) return false;
+                                std::ofstream of(dest_path, std::ios::binary);
+                                if (!of) return false;
+                                of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
+                                return of.good();
+                            };
+
+                            wchar_t addon_path[MAX_PATH] = {};
+                            if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) > 0) {
+                                std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
+
+                                // %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders
+                                wchar_t localappdata_path[MAX_PATH] = {};
+                                if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr,
+                                                               SHGFP_TYPE_CURRENT, localappdata_path))) {
+                                    std::filesystem::path la_dest = std::filesystem::path(localappdata_path)
+                                                                   / L"Programs" / L"Display_Commander" / L"Reshade"
+                                                                   / L"Shaders" / L"DisplayCommander_Brightness.fx";
+                                    if (write_fx(la_dest)) {
+                                        LogInfo("DisplayCommander_Brightness.fx extracted to %%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders.");
+                                    }
+                                }
+
+                                // addon_dir\Display_Commander\Reshade\Shaders
+                                std::filesystem::path dc_dest =
+                                    addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders"
+                                    / L"DisplayCommander_Brightness.fx";
+                                if (write_fx(dc_dest)) {
+                                    LogInfo("DisplayCommander_Brightness.fx extracted to Display_Commander\\Reshade\\Shaders.");
+                                }
+
+                                // ReShade Shaders folder
+                                char base_path[512] = {};
+                                size_t base_size = sizeof(base_path);
+                                reshade::get_reshade_base_path(base_path, &base_size);
+                                std::filesystem::path reshade_dest =
+                                    std::filesystem::path(base_path) / "Shaders" / "DisplayCommander_Brightness.fx";
+                                if (std::filesystem::exists(reshade_dest.parent_path())
+                                    && std::filesystem::is_directory(reshade_dest.parent_path())
+                                    && write_fx(reshade_dest)) {
+                                    LogInfo("DisplayCommander_Brightness.fx extracted to ReShade Shaders - reload effects (e.g. Ctrl+Shift+F5) to use Brightness.");
+                                }
                             }
                         }
                     }
@@ -2506,6 +2560,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module) {
     // Register ReShade effect rendering events
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(OnReShadeBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
+    reshade::register_event<reshade::addon_event::reshade_present>(OnReShadePresent);
     display_commanderhooks::InstallApiHooks();
 }
 

@@ -22,7 +22,7 @@
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
-#include "nvapi/vram_info.hpp"
+#include "dxgi/vram_info.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
@@ -718,7 +718,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     if (show_overlay_vram) {
         uint64_t vram_used = 0;
         uint64_t vram_total = 0;
-        if (display_commander::nvapi::GetVramInfoNvapi(&vram_used, &vram_total) && vram_total > 0) {
+        if (display_commander::dxgi::GetVramInfo(&vram_used, &vram_total) && vram_total > 0) {
             const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
             const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
             if (settings::g_mainTabSettings.show_labels.GetValue()) {
@@ -729,12 +729,12 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                             static_cast<unsigned long long>(total_mib));
             }
             if (ImGui::IsItemHovered() && show_tooltips) {
-                ImGui::SetTooltip("GPU video memory used / total (NvAPI_GPU_GetMemoryInfoEx). NVIDIA only.");
+                ImGui::SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
             }
         } else {
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRAM: N/A");
             if (ImGui::IsItemHovered() && show_tooltips) {
-                ImGui::SetTooltip("VRAM unavailable (non-NVIDIA GPU or NVAPI not available).");
+                ImGui::SetTooltip("VRAM unavailable (DXGI adapter or budget query failed).");
             }
         }
 

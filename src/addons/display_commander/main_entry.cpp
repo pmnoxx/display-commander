@@ -20,6 +20,7 @@
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
+#include "nvapi/vram_info.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
@@ -460,6 +461,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
+    bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
     // Start/stop NVAPI actual refresh rate monitor when overlay shows actual refresh rate or the refresh rate graph
@@ -705,6 +707,30 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
                     }
                 }
+            }
+        }
+    }
+
+    if (show_overlay_vram) {
+        uint64_t vram_used = 0;
+        uint64_t vram_total = 0;
+        if (display_commander::nvapi::GetVramInfoNvapi(&vram_used, &vram_total) && vram_total > 0) {
+            const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
+            const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                ImGui::Text("VRAM: %llu / %llu MiB", static_cast<unsigned long long>(used_mib),
+                            static_cast<unsigned long long>(total_mib));
+            } else {
+                ImGui::Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
+                            static_cast<unsigned long long>(total_mib));
+            }
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("GPU video memory used / total (NvAPI_GPU_GetMemoryInfoEx). NVIDIA only.");
+            }
+        } else {
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "VRAM: N/A");
+            if (ImGui::IsItemHovered() && show_tooltips) {
+                ImGui::SetTooltip("VRAM unavailable (non-NVIDIA GPU or NVAPI not available).");
             }
         }
     }

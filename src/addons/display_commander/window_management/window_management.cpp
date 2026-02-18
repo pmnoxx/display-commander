@@ -208,7 +208,7 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
     if (!suppression_hint_logged && !settings::g_advancedTabSettings.suppress_window_changes.GetValue()) {
         LogInfo(
             "To suppress ApplyWindowChange, set SuppressWindowChanges=1 in [DisplayCommander] section of "
-            "DisplayCommander.ini");
+            "DisplayCommander.toml");
         suppression_hint_logged = true;
     }
 

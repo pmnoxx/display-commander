@@ -131,11 +131,11 @@ Have ideas for new features? Check out our [Feature Proposals](FEATURE_PROPOSALS
 Need help? Check out our [Support Guide](SUPPORT.md) for detailed information on getting assistance.
 
 **Quick Support Links:**
-- **HDR Den Discord**: [Join our community](https://discord.com/invite/WJ9YZctPND)
-- **Support Thread**: [Display Commander Support](https://discord.com/channels/1161035767917850784/1403983735031857162)
+- **RenoDX Discord**: [Join our community](https://discord.com/invite/jz6ujVpgFB)
+- **Support Thread**: [Display Commander Support](https://discord.com/channels/1408098019194310818/1423918603035476041)
 - **GitHub Issues**: [Report bugs or request features](https://github.com/pmnoxx/display-commander/issues)
 
-The HDR Den Discord community is the best place to get real-time help, discuss features, and connect with other users.
+The RenoDX Discord community is the best place to get real-time help, discuss features, and connect with other users.
 
 ## Credits
 

@@ -543,6 +543,14 @@ void XInputWidget::DrawControllerState() {
     ImGui::TextColored(ui::colors::STATUS_ACTIVE, "Controller %d - Connected", selected_controller_);
     ImGui::Text("Packet Number: %lu", state.dwPacketNumber);
 
+    const std::uint64_t getstate0_calls =
+        display_commanderhooks::GetXInputGetStateUserIndexZeroCallCount();
+    ImGui::Text("Game GetState(0) calls: %llu", static_cast<unsigned long long>(getstate0_calls));
+    if (getstate0_calls == 0) {
+        ImGui::TextColored(ui::colors::ICON_CRITICAL,
+            "Warning: No game calls to XInputGetState(dwUserIndex=0) detected. XInput hooking may not be active.");
+    }
+
     // Debug: Show raw button state
     ImGui::Text("Raw Button State: 0x%04X", state.Gamepad.wButtons);
     ImGui::Text("Home Button Constant: 0x%04X", XINPUT_GAMEPAD_GUIDE);

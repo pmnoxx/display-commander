@@ -22,6 +22,7 @@ struct NvidiaProfileSearchResult {
     std::string current_exe_name;   // Base name (e.g. game.exe)
     std::vector<std::string> matching_profile_names;  // Profiles that list this exe
     std::vector<ImportantProfileSetting> important_settings;  // Key settings from first matching profile (fixed list, "Not set" if missing)
+    std::vector<ImportantProfileSetting> advanced_settings;   // Extra useful settings (Ansel, FXAA, etc.) when "show advanced" is enabled
     std::vector<ImportantProfileSetting> all_settings;        // All settings actually present in first matching profile (from EnumSettings)
     std::string error;              // If success is false
 };

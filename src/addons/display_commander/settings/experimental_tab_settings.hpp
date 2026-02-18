@@ -177,6 +177,9 @@ class ExperimentalTabSettings {
     // Show volume overlay setting
     BoolSetting show_volume;
 
+    // Show advanced NVIDIA profile settings (Ansel, FXAA, etc.) in addition to important settings
+    BoolSetting show_advanced_profile_settings;
+
     // Translate mouse position from window resolution to render resolution (e.g. 3840x2160 -> 1920x1080)
     BoolSetting translate_mouse_position;
     // Override width/height when non-zero; when either is 0 use render width/height

@@ -42,6 +42,13 @@ static const ImportantSettingDef k_important_settings[] = {
     {PREFERRED_PSTATE_ID, "Power management", static_cast<NvU32>(PREFERRED_PSTATE_DEFAULT), false},
 };
 
+// Advanced but useful settings — shown when user enables "Show advanced profile settings"
+static const ImportantSettingDef k_advanced_settings[] = {
+    {ANSEL_ALLOW_ID, "Ansel allow", static_cast<NvU32>(ANSEL_ALLOW_DEFAULT), false},
+    {ANSEL_ALLOWLISTED_ID, "Ansel allowlisted", static_cast<NvU32>(ANSEL_ALLOWLISTED_DEFAULT), false},
+    {ANSEL_ENABLE_ID, "Ansel enable", static_cast<NvU32>(ANSEL_ENABLE_DEFAULT), false},
+};
+
 static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
     switch (settingId) {
         case VSYNCSMOOTHAFR_ID:                  return (value == VSYNCSMOOTHAFR_ON) ? "On" : "Off";
@@ -146,6 +153,12 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
             if (value == 4) return "Prefer min";
             if (value == 5) return "Optimal power";
             break;
+        case ANSEL_ALLOW_ID:
+            return (value == ANSEL_ALLOW_ALLOWED) ? "Allowed" : "Disallowed";
+        case ANSEL_ALLOWLISTED_ID:
+            return (value == ANSEL_ALLOWLISTED_ALLOWED) ? "Allowed" : "Disallowed";
+        case ANSEL_ENABLE_ID:
+            return (value == ANSEL_ENABLE_ON) ? "On" : "Off";
         default: break;
     }
     std::ostringstream oss;
@@ -156,6 +169,37 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
 static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                                   std::vector<ImportantProfileSetting>& out) {
     for (const auto& def : k_important_settings) {
+        ImportantProfileSetting entry;
+        entry.label = def.label;
+        entry.is_bit_field = def.is_bit_field;
+        NVDRS_SETTING s = {0};
+        s.version = NVDRS_SETTING_VER;
+        entry.default_value = def.default_value;
+        if (NvAPI_DRS_GetSetting(hSession, hProfile, def.id, &s) != NVAPI_OK) {
+            std::string defaultStr = FormatImportantValue(def.id, def.default_value);
+            entry.value = "Not set (default: " + defaultStr + ")";
+            entry.setting_id = def.id;
+            entry.value_id = def.default_value;
+            out.push_back(std::move(entry));
+            continue;
+        }
+        if (s.settingType != NVDRS_DWORD_TYPE) {
+            entry.value = "—";
+            entry.setting_id = 0;
+            entry.value_id = 0;
+            out.push_back(std::move(entry));
+            continue;
+        }
+        entry.value = FormatImportantValue(def.id, s.u32CurrentValue);
+        entry.setting_id = def.id;
+        entry.value_id = s.u32CurrentValue;
+        out.push_back(std::move(entry));
+    }
+}
+
+static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
+                                 std::vector<ImportantProfileSetting>& out) {
+    for (const auto& def : k_advanced_settings) {
         ImportantProfileSetting entry;
         entry.label = def.label;
         entry.is_bit_field = def.is_bit_field;
@@ -431,10 +475,11 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
         }
         for (NvU32 a = 0; a < returned; ++a) {
             std::wstring appNameW = AppNameToWide(apps[a].appName);
-            if (AppMatchesExe(appNameW, currentPathNorm, currentNameNorm)) {
+                if (AppMatchesExe(appNameW, currentPathNorm, currentNameNorm)) {
                 result.matching_profile_names.push_back(profileNameUtf8);
                 if (result.matching_profile_names.size() == 1) {
                     ReadImportantSettings(hSession, hProfile, result.important_settings);
+                    ReadAdvancedSettings(hSession, hProfile, result.advanced_settings);
                     ReadAllSettings(hSession, hProfile, result.all_settings);
                 }
                 break;  // One match per profile is enough

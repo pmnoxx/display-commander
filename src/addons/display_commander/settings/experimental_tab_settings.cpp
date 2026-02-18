@@ -167,7 +167,8 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       test_block_keyboard_getkeyboardstate("TestBlockKeyboardGetKeyboardState", false, "DisplayCommander.Experimental"),
       test_block_keyboard_rawinput("TestBlockKeyboardRawInput", false, "DisplayCommander.Experimental"),
       test_block_keyboard_keybdevent("TestBlockKeyboardKeybdEvent", false, "DisplayCommander.Experimental"),
-      test_block_keyboard_sendinput("TestBlockKeyboardSendInput", false, "DisplayCommander.Experimental") {
+      test_block_keyboard_sendinput("TestBlockKeyboardSendInput", false, "DisplayCommander.Experimental"),
+      show_advanced_profile_settings("ShowAdvancedProfileSettings", false, "DisplayCommander.Experimental") {
     // Initialize the all_settings_ vector
     all_settings_ = {
         &auto_click_enabled,
@@ -260,6 +261,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
         &perf_suppress_get_independent_flip_state,
         &perf_suppress_on_present_update_before,
         &show_volume,
+        &show_advanced_profile_settings,
         &translate_mouse_position,
         &translate_mouse_position_override_width,
         &translate_mouse_position_override_height,

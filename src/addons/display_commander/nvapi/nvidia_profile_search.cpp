@@ -569,6 +569,82 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
     return {true, ""};
 }
 
+std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exeName, std::uint32_t settingId,
+                                                            bool deleteSetting, std::uint32_t valueIfSet) {
+    if (exeName.empty()) {
+        return {false, "Executable name is empty."};
+    }
+    // NVIDIA docs: use forward slashes in application name.
+    std::wstring appName = exeName;
+    std::replace(appName.begin(), appName.end(), L'\\', L'/');
+
+    NvDRSSessionHandle hSession = nullptr;
+    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    if (st != NVAPI_OK) {
+        return {false, MakeNvapiError("CreateSession", st)};
+    }
+    st = NvAPI_DRS_LoadSettings(hSession);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, MakeNvapiError("LoadSettings", st)};
+    }
+
+    NvAPI_UnicodeString appNameBuf;
+    WideToNvApiUnicode(appName, appNameBuf);
+
+    NvDRSProfileHandle hProfile = nullptr;
+    NVDRS_APPLICATION app = {0};
+    app.version = NVDRS_APPLICATION_VER;
+    st = NvAPI_DRS_FindApplicationByName(hSession, appNameBuf, &hProfile, &app);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        if (st == NVAPI_EXECUTABLE_NOT_FOUND) {
+            return {false, "No NVIDIA driver profile found for this executable. Add the game to a profile first."};
+        }
+        return {false, MakeNvapiError("FindApplicationByName", st)};
+    }
+
+    if (deleteSetting) {
+        st = NvAPI_DRS_DeleteProfileSetting(hSession, hProfile, static_cast<NvU32>(settingId));
+        if (st != NVAPI_OK) {
+            NvAPI_DRS_DestroySession(hSession);
+            return {false, MakeNvapiError("DeleteProfileSetting", st)};
+        }
+    } else {
+        NVDRS_SETTING s;
+        memset(&s, 0, sizeof(s));
+        s.version = NVDRS_SETTING_VER;
+        s.settingId = static_cast<NvU32>(settingId);
+        s.settingType = NVDRS_DWORD_TYPE;
+        s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
+
+        if (NvAPI_DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
+            if (s.settingType == NVDRS_DWORD_TYPE) {
+                s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
+            }
+        } else {
+            if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+                WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
+            }
+        }
+
+        st = NvAPI_DRS_SetSetting(hSession, hProfile, &s);
+        if (st != NVAPI_OK) {
+            NvAPI_DRS_DestroySession(hSession);
+            return {false, MakeNvapiError("SetSetting", st)};
+        }
+    }
+
+    st = NvAPI_DRS_SaveSettings(hSession);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return {false, MakeNvapiError("SaveSettings", st)};
+    }
+    NvAPI_DRS_DestroySession(hSession);
+    InvalidateProfileSearchCache();
+    return {true, ""};
+}
+
 std::pair<bool, std::string> CreateProfileForCurrentExe() {
     wchar_t exePath[MAX_PATH] = {};
     if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {

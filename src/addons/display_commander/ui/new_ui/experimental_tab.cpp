@@ -12,6 +12,7 @@
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../nvapi/nvidia_profile_search.hpp"
 #include "../../nvapi/nvpi_reference.hpp"
+#include "../../nvapi/run_nvapi_setdword_as_admin.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
@@ -43,6 +44,14 @@ static void DrawThreadTrackingSubTab();
 static std::string s_nvidiaProfileCreateError;
 static std::string s_nvidiaProfileSetError;
 static std::string s_nvidiaProfileDeleteError;
+// When last set failed with NVAPI_INVALID_USER_PRIVILEGE, store the setting we tried for "Apply as administrator".
+static std::uint32_t s_lastFailedSettingId = 0;
+static std::uint32_t s_lastFailedSettingValue = 0;
+
+static bool IsPrivilegeError(const std::string& err) {
+    return err.find("INVALID_USER_PRIVILEGE") != std::string::npos ||
+           err.find("0xffffff77") != std::string::npos;
+}
 
 static void DrawNvidiaProfileSearchTab() {
     ImGui::Text("NVIDIA Inspector profile search");
@@ -51,6 +60,7 @@ static void DrawNvidiaProfileSearchTab() {
         display_commander::nvapi::InvalidateProfileSearchCache();
         s_nvidiaProfileSetError.clear();
         s_nvidiaProfileDeleteError.clear();
+        s_lastFailedSettingId = 0;
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Re-scan driver profiles (e.g. after changing settings in NVIDIA Profile Inspector).");
@@ -135,6 +145,25 @@ static void DrawNvidiaProfileSearchTab() {
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Try running the game/ReShade as administrator, or change this setting in NVIDIA Profile Inspector.");
                 }
+                if (IsPrivilegeError(s_nvidiaProfileSetError) && s_lastFailedSettingId != 0 && !r.current_exe_name.empty()) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Apply as administrator")) {
+                        std::wstring exeNameW;
+                        int n = MultiByteToWideChar(CP_UTF8, 0, r.current_exe_name.c_str(), -1, nullptr, 0);
+                        if (n > 0) {
+                            exeNameW.resize(n);
+                            MultiByteToWideChar(CP_UTF8, 0, r.current_exe_name.c_str(), -1, exeNameW.data(), n);
+                            exeNameW.resize(n - 1);  // drop null
+                        }
+                        if (!exeNameW.empty() && display_commander::RunNvApiSetDwordAsAdmin(s_lastFailedSettingId, s_lastFailedSettingValue, exeNameW)) {
+                            s_nvidiaProfileSetError.clear();
+                            display_commander::nvapi::InvalidateProfileSearchCache();
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Run rundll32 as administrator to apply the last failed setting (UAC prompt may appear).");
+                    }
+                }
             }
             ImGui::TextColored(ui::colors::TEXT_DIMMED,
                 "Key driver settings from the first matching profile above.");
@@ -166,6 +195,10 @@ static void DrawNvidiaProfileSearchTab() {
                                         display_commander::nvapi::InvalidateProfileSearchCache();
                                     } else {
                                         s_nvidiaProfileSetError = err;
+                                        if (IsPrivilegeError(err)) {
+                                            s_lastFailedSettingId = s.setting_id;
+                                            s_lastFailedSettingValue = newVal;
+                                        }
                                     }
                                 }
                                 ImGui::PopID();
@@ -189,6 +222,10 @@ static void DrawNvidiaProfileSearchTab() {
                                     display_commander::nvapi::InvalidateProfileSearchCache();
                                 } else {
                                     s_nvidiaProfileSetError = err;
+                                    if (IsPrivilegeError(err)) {
+                                        s_lastFailedSettingId = s.setting_id;
+                                        s_lastFailedSettingValue = s.default_value;
+                                    }
                                 }
                             }
                             ImGui::PopID();
@@ -220,6 +257,10 @@ static void DrawNvidiaProfileSearchTab() {
                                             display_commander::nvapi::InvalidateProfileSearchCache();
                                         } else {
                                             s_nvidiaProfileSetError = err;
+                                            if (IsPrivilegeError(err)) {
+                                                s_lastFailedSettingId = s.setting_id;
+                                                s_lastFailedSettingValue = opt.first;
+                                            }
                                         }
                                     }
                                     if (selected) {
@@ -244,6 +285,10 @@ static void DrawNvidiaProfileSearchTab() {
                                     display_commander::nvapi::InvalidateProfileSearchCache();
                                 } else {
                                     s_nvidiaProfileSetError = err;
+                                    if (IsPrivilegeError(err)) {
+                                        s_lastFailedSettingId = s.setting_id;
+                                        s_lastFailedSettingValue = s.default_value;
+                                    }
                                 }
                             }
                             ImGui::PopID();

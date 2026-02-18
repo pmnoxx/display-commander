@@ -59,4 +59,12 @@ bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& r);
 // Returns (true, "") on success, (false, error_message) on failure.
 std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe();
 
+// Sets or deletes a DWORD setting for a profile that contains the given executable name.
+// Used by RunDLL_NvAPI_SetDWORD (rundll32). exeName is the executable name or path (e.g. "game.exe").
+// If deleteSetting is true, the setting is removed (reset to driver default); valueIfSet is ignored.
+// If deleteSetting is false, the setting is set to valueIfSet. Requires NVAPI initialized.
+// Returns (true, "") on success, (false, error_message) on failure.
+std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exeName, std::uint32_t settingId,
+                                                            bool deleteSetting, std::uint32_t valueIfSet);
+
 }  // namespace display_commander::nvapi

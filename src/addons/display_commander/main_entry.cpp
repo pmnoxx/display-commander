@@ -20,6 +20,8 @@
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
+#include "nvapi/nvidia_profile_search.hpp"
+#include "nvapi/run_nvapi_setdword_as_admin.hpp"
 #include "nvapi/vram_info.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
@@ -52,6 +54,7 @@
 #include <d3d11.h>
 #include <dxgi1_6.h>
 #include <psapi.h>
+#include <shellapi.h>
 #include <shlobj.h>
 #include <sysinfoapi.h>
 #include <tlhelp32.h>
@@ -3717,3 +3720,105 @@ extern "C" __declspec(dllexport) void CALLBACK WaitAndInject(HWND hwnd, HINSTANC
     // Wait forever and inject into every new process that starts
     WaitForProcessAndInject(exe_name_only);
 }
+
+// RunDLL entry point to set or reset an NVIDIA driver profile DWORD setting (SpecialK-compatible).
+// Allows calling: rundll32.exe "path\to\addon64", RunDLL_NvAPI_SetDWORD <HexID> <HexValue|~> <game.exe>
+// Use ~ for value to reset the setting to driver default (calls NvAPI_DRS_DeleteProfileSetting).
+// Requires admin for DRS changes; run rundll32 elevated if you get NVAPI_INVALID_USER_PRIVILEGE.
+extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
+                                                                     int nCmdShow) {
+    UNREFERENCED_PARAMETER(hwnd);
+    UNREFERENCED_PARAMETER(hInst);
+    UNREFERENCED_PARAMETER(nCmdShow);
+
+    if (lpszCmdLine == nullptr) {
+        std::printf("Arguments: <HexID> <HexValue|~> <ExecutableName.exe>\n");
+        return;
+    }
+    unsigned int settingId = 0, settingVal = 0;
+    int vals = sscanf_s(lpszCmdLine, "%x %x ", &settingId, &settingVal);
+    bool clearSetting = false;
+    if (vals != 2) {
+        vals = sscanf_s(lpszCmdLine, "%x ~ ", &settingId);
+        if (vals != 1) {
+            std::printf("Arguments: <HexID> <HexValue|~> <ExecutableName.exe>\n");
+            return;
+        }
+        clearSetting = true;
+    }
+    // Executable name: after second space (sscanf doesn't consume the rest)
+    const char* p = lpszCmdLine;
+    for (int spaceCount = 0; *p && spaceCount < 2; ++p) {
+        if (*p == ' ') {
+            ++spaceCount;
+            if (spaceCount < 2) {
+                while (*p == ' ') ++p;
+            }
+        }
+    }
+    while (*p == ' ') ++p;
+    std::string exeNameAnsi(p);
+    if (exeNameAnsi.empty()) {
+        std::printf("Missing executable name.\n");
+        return;
+    }
+    int sizeNeeded = MultiByteToWideChar(CP_ACP, 0, exeNameAnsi.c_str(), -1, nullptr, 0);
+    if (sizeNeeded <= 0) {
+        std::printf("Failed to convert executable name to wide string.\n");
+        return;
+    }
+    std::vector<wchar_t> exeNameWide(sizeNeeded);
+    MultiByteToWideChar(CP_ACP, 0, exeNameAnsi.c_str(), -1, exeNameWide.data(), sizeNeeded);
+    std::wstring exeName(exeNameWide.data());
+
+    if (NvAPI_Initialize() != NVAPI_OK) {
+        std::printf("NVAPI failed to initialize (NVIDIA GPU required).\n");
+        return;
+    }
+    auto [ok, err] = display_commander::nvapi::SetOrDeleteProfileSettingForExe(
+        exeName, static_cast<std::uint32_t>(settingId), clearSetting, static_cast<std::uint32_t>(settingVal));
+    if (ok) {
+        std::printf("Setting %s.\n", clearSetting ? "reset to default" : "applied");
+    } else {
+        std::printf("Failed: %s\n", err.c_str());
+    }
+}
+
+namespace display_commander {
+
+bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value,
+                             const std::wstring& exeName) {
+    HMODULE hMod = nullptr;
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            reinterpret_cast<LPCWSTR>(&RunDLL_NvAPI_SetDWORD), &hMod)) {
+        return false;
+    }
+    wchar_t dllPath[MAX_PATH] = {};
+    if (GetModuleFileNameW(hMod, dllPath, MAX_PATH) == 0) {
+        return false;
+    }
+    // Parameters: " \"path\", RunDLL_NvAPI_SetDWORD 0x<id> 0x<val> exeName"
+    // Quote exeName if it contains spaces
+    std::wstring params = L" \"" + std::wstring(dllPath) + L"\", RunDLL_NvAPI_SetDWORD 0x";
+    wchar_t idBuf[16], valBuf[16];
+    (void)swprintf_s(idBuf, L"%X", settingId);
+    (void)swprintf_s(valBuf, L"%X", value);
+    params += idBuf;
+    params += L" 0x";
+    params += valBuf;
+    params += L" ";
+    if (exeName.find(L' ') != std::wstring::npos) {
+        params += L"\"" + exeName + L"\"";
+    } else {
+        params += exeName;
+    }
+    SHELLEXECUTEINFOW sei = {};
+    sei.cbSize = sizeof(sei);
+    sei.lpVerb = L"runas";
+    sei.lpFile = L"rundll32.exe";
+    sei.lpParameters = params.c_str();
+    sei.nShow = SW_SHOWNORMAL;
+    return ShellExecuteExW(&sei) != FALSE;
+}
+
+}  // namespace display_commander

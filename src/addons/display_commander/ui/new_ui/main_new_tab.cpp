@@ -16,6 +16,7 @@
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "../../nvapi/reflex_manager.hpp"
+#include "../../nvapi/vram_info.hpp"
 #include "../../performance_types.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
@@ -2375,6 +2376,29 @@ void DrawDisplaySettings_DisplayAndTarget() {
                     "Matches Special K's render_x/render_y.\n"
                     "Refresh rate: actual (NVAPI) when available, else selected display's configured rate.");
             }
+
+            // VRAM usage (NVIDIA, NvAPI) under Render resolution
+            uint64_t vram_used = 0;
+            uint64_t vram_total = 0;
+            if (display_commander::nvapi::GetVramInfoNvapi(&vram_used, &vram_total) && vram_total > 0) {
+                const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
+                const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "VRAM:");
+                ImGui::SameLine();
+                ImGui::Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
+                            static_cast<unsigned long long>(total_mib));
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("GPU video memory used / total (NvAPI_GPU_GetMemoryInfoEx). NVIDIA only.");
+                }
+            } else {
+                ImGui::TextColored(ui::colors::TEXT_LABEL, "VRAM:");
+                ImGui::SameLine();
+                ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("VRAM unavailable (non-NVIDIA GPU or NVAPI not available).");
+                }
+            }
+
             ImGui::Spacing();
         }
 
@@ -5099,6 +5123,17 @@ void DrawImportantInfo() {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows DLSS internal resolution (e.g., 1920x1080) in the performance overlay.");
+        }
+        ImGui::NextColumn();
+
+        // Show VRAM (used / total) in overlay - NVIDIA only, NvAPI
+        bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
+        if (ImGui::Checkbox("VRAM", &show_overlay_vram)) {
+            settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Shows GPU video memory used / total (MiB) in the performance overlay. NVIDIA only (NvAPI).");
         }
         ImGui::NextColumn();
 

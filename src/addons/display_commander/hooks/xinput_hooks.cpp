@@ -57,6 +57,9 @@ std::array<XInputGetCapabilities_pfn, 5> original_xinput_get_capabilities_procs 
 // Packet number tracking for each controller (0-3)
 static std::array<DWORD, 4> g_packet_numbers = {};
 
+// Number of XInputGetState_Detour_Impl calls with dwUserIndex == 0 (game polling controller 0)
+static std::atomic<std::uint64_t> g_getstate_userindex0_calls{0};
+
 // Forward declarations for per-module detour helpers
 static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState);
 static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState);
@@ -443,6 +446,9 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
 // Per-module implementation helpers used by the per-DLL detours.
 // These route calls to the correct original function for the specific xinput DLL.
 static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
+    if (dwUserIndex == 0) {
+        g_getstate_userindex0_calls.fetch_add(1, std::memory_order_relaxed);
+    }
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
@@ -640,6 +646,10 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
     }
 
     return result;
+}
+
+std::uint64_t GetXInputGetStateUserIndexZeroCallCount() {
+    return g_getstate_userindex0_calls.load(std::memory_order_relaxed);
 }
 
 bool InstallXInputHooks(HMODULE xinput_module) {

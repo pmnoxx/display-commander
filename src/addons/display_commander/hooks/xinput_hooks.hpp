@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <windows.h>
 
 #include <XInput.h>
@@ -29,6 +30,9 @@ DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINP
 
 // Hook management
 bool InstallXInputHooks(HMODULE xinput_module = nullptr);
+
+// Number of game calls to XInputGetState(dwUserIndex=0) seen by the detour (0 = hook likely not active)
+std::uint64_t GetXInputGetStateUserIndexZeroCallCount();
 
 // Helper functions for thumbstick processing
 void ApplyThumbstickProcessing(XINPUT_STATE *pState, float left_max_input, float right_max_input, float left_min_output,

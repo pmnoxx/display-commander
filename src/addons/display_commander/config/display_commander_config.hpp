@@ -1,19 +1,19 @@
 #pragma once
 
+#include <atomic>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include <atomic>
 #include "../utils/srwlock_wrapper.hpp"
 
 namespace display_commander::config {
 
 // Forward declaration
-class IniFile;
+class TomlFile;
 
 // Configuration manager for DisplayCommander settings
 class DisplayCommanderConfigManager {
-public:
+   public:
     static DisplayCommanderConfigManager& GetInstance();
 
     // Initialize the config system
@@ -29,7 +29,8 @@ public:
     bool GetConfigValue(const char* section, const char* key, std::vector<std::string>& values);
 
     // Get configuration value, ensuring it exists (writes default if missing)
-    void GetConfigValueEnsureExists(const char* section, const char* key, std::string& value, const std::string& default_value);
+    void GetConfigValueEnsureExists(const char* section, const char* key, std::string& value,
+                                    const std::string& default_value);
     void GetConfigValueEnsureExists(const char* section, const char* key, int& value, int default_value);
     void GetConfigValueEnsureExists(const char* section, const char* key, uint32_t& value, uint32_t default_value);
     void GetConfigValueEnsureExists(const char* section, const char* key, float& value, float default_value);
@@ -58,7 +59,7 @@ public:
     // Get auto-flush logs mode
     bool GetAutoFlushLogs() const;
 
-private:
+   private:
     DisplayCommanderConfigManager() = default;
     ~DisplayCommanderConfigManager() = default;
     DisplayCommanderConfigManager(const DisplayCommanderConfigManager&) = delete;
@@ -66,8 +67,9 @@ private:
 
     void EnsureConfigFileExists();
     std::string GetConfigFilePath();
+    std::string GetConfigFilePathIni();
 
-    std::unique_ptr<IniFile> config_file_;
+    std::unique_ptr<TomlFile> config_file_;
     std::string config_path_;
     mutable SRWLOCK config_mutex_ = SRWLOCK_INIT;
     bool initialized_ = false;
@@ -98,11 +100,12 @@ void set_config_value(const char* section, const char* key, const std::vector<st
 void save_config(const char* reason = nullptr);
 
 // Get configuration value, ensuring it exists (writes default if missing)
-void get_config_value_ensure_exists(const char* section, const char* key, std::string& value, const std::string& default_value);
+void get_config_value_ensure_exists(const char* section, const char* key, std::string& value,
+                                    const std::string& default_value);
 void get_config_value_ensure_exists(const char* section, const char* key, int& value, int default_value);
 void get_config_value_ensure_exists(const char* section, const char* key, uint32_t& value, uint32_t default_value);
 void get_config_value_ensure_exists(const char* section, const char* key, float& value, float default_value);
 void get_config_value_ensure_exists(const char* section, const char* key, double& value, double default_value);
 void get_config_value_ensure_exists(const char* section, const char* key, bool& value, bool default_value);
 
-} // namespace display_commander::config
+}  // namespace display_commander::config

@@ -840,7 +840,7 @@ void DrawReShadeGlobalConfigSettings() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Reload and compare current game's ReShade settings with global profile\n(Useful if you edited either "
-            "ReShade.ini or DisplayCommander.ini manually)");
+            "ReShade.ini or DisplayCommander.toml manually)");
     }
 
     ImGui::Spacing();
@@ -948,7 +948,7 @@ void DrawReShadeGlobalConfigSettings() {
 
         ImGui::Spacing();
         ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                           "Legend: Local = Current game settings, Global = DisplayCommander.ini profile");
+                           "Legend: Local = Current game settings, Global = DisplayCommander.ini in user folder");
         ImGui::Unindent();  // Unindent content
     }
     ui::colors::PopNestedHeaderColors();  // Restore default header colors
@@ -981,7 +981,7 @@ void DrawReShadeGlobalConfigSettings() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Copy current game's ReShade settings to global profile\n(Overwrites DisplayCommander.ini)");
+        ImGui::SetTooltip("Copy current game's ReShade settings to global profile\n(Overwrites DisplayCommander.ini in user folder)");
     }
 
     ImGui::SameLine();

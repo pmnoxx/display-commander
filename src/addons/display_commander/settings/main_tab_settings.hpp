@@ -27,6 +27,7 @@ extern std::atomic<InputBlockingMode> s_gamepad_input_blocking;
 extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 extern std::atomic<int> s_cpu_cores;
+extern std::atomic<float> s_brightness_percent;
 
 namespace settings {
 
@@ -173,6 +174,9 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_experimental_tab;
     ui::new_ui::BoolSetting show_reshade_tab;
     ui::new_ui::BoolSetting show_performance_tab;
+
+    // Brightness (ReShade effect driven by DC)
+    ui::new_ui::FloatSettingRef brightness_percent;
 
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;

@@ -47,6 +47,18 @@ static std::string s_nvidiaProfileDeleteError;
 // When last set failed with NVAPI_INVALID_USER_PRIVILEGE, store the setting we tried for "Apply as administrator".
 static std::uint32_t s_lastFailedSettingId = 0;
 static std::uint32_t s_lastFailedSettingValue = 0;
+// Set by background thread when "Apply as administrator" process has exited; main thread refreshes on next frame.
+static std::atomic<bool> s_requestProfileRefreshAfterAdmin{false};
+
+static DWORD WINAPI WaitForAdminProcessThenRequestRefresh(LPVOID param) {
+    HANDLE hProcess = static_cast<HANDLE>(param);
+    if (hProcess != nullptr) {
+        WaitForSingleObject(hProcess, 60000);
+        CloseHandle(hProcess);
+        s_requestProfileRefreshAfterAdmin.store(true);
+    }
+    return 0;
+}
 
 static bool IsPrivilegeError(const std::string& err) {
     return err.find("INVALID_USER_PRIVILEGE") != std::string::npos ||
@@ -54,6 +66,11 @@ static bool IsPrivilegeError(const std::string& err) {
 }
 
 static void DrawNvidiaProfileSearchTab() {
+    if (s_requestProfileRefreshAfterAdmin.exchange(false)) {
+        s_nvidiaProfileSetError.clear();
+        s_lastFailedSettingId = 0;
+        display_commander::nvapi::InvalidateProfileSearchCache();
+    }
     ImGui::Text("NVIDIA Inspector profile search");
     ImGui::SameLine();
     if (ImGui::Button("Refresh")) {
@@ -163,13 +180,26 @@ static void DrawNvidiaProfileSearchTab() {
                             MultiByteToWideChar(CP_UTF8, 0, r.current_exe_name.c_str(), -1, exeNameW.data(), n);
                             exeNameW.resize(n - 1);  // drop null
                         }
-                        if (!exeNameW.empty() && display_commander::RunNvApiSetDwordAsAdmin(s_lastFailedSettingId, s_lastFailedSettingValue, exeNameW)) {
-                            s_nvidiaProfileSetError.clear();
-                            display_commander::nvapi::InvalidateProfileSearchCache();
+                        if (!exeNameW.empty()) {
+                            HANDLE hProcess = nullptr;
+                            bool ok = display_commander::RunNvApiSetDwordAsAdmin(s_lastFailedSettingId, s_lastFailedSettingValue, exeNameW, &hProcess);
+                            if (ok && hProcess != nullptr) {
+                                HANDLE hThread = CreateThread(nullptr, 0, WaitForAdminProcessThenRequestRefresh, hProcess, 0, nullptr);
+                                if (hThread != nullptr) {
+                                    CloseHandle(hThread);
+                                } else {
+                                    CloseHandle(hProcess);
+                                    s_requestProfileRefreshAfterAdmin.store(true);
+                                }
+                            } else if (ok) {
+                                s_nvidiaProfileSetError.clear();
+                                s_lastFailedSettingId = 0;
+                                display_commander::nvapi::InvalidateProfileSearchCache();
+                            }
                         }
                     }
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Run rundll32 as administrator to apply the last failed setting (UAC prompt may appear).");
+                        ImGui::SetTooltip("Run rundll32 as administrator to apply the last failed setting (UAC prompt may appear). Profile data will refresh when the process exits.");
                     }
                 }
             }
@@ -205,7 +235,9 @@ static void DrawNvidiaProfileSearchTab() {
                                 const auto& fl = flags[fi];
                                 bool checked = (cur & fl.first) != 0;
                                 ImGui::PushID(static_cast<int>(fl.first));
-                                if (ImGui::Checkbox(fl.second.c_str(), &checked)) {
+                                {
+                                    std::string checkbox_label = fl.second + "##" + std::to_string(static_cast<unsigned>(s.setting_id)) + "_" + std::to_string(static_cast<unsigned>(fl.first));
+                                    if (ImGui::Checkbox(checkbox_label.c_str(), &checked)) {
                                     std::uint32_t newVal = (cur & ~fl.first) | (checked ? fl.first : 0);
                                     auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, newVal);
                                     if (ok) {
@@ -217,6 +249,7 @@ static void DrawNvidiaProfileSearchTab() {
                                             s_lastFailedSettingId = s.setting_id;
                                             s_lastFailedSettingValue = newVal;
                                         }
+                                    }
                                     }
                                 }
                                 ImGui::PopID();
@@ -233,16 +266,20 @@ static void DrawNvidiaProfileSearchTab() {
                                 ImGui::BeginDisabled();
                             }
                             ImGui::PushID(static_cast<int>(s.setting_id));
-                            if (ImGui::SmallButton("Default")) {
-                                auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
-                                if (ok) {
-                                    s_nvidiaProfileSetError.clear();
-                                    display_commander::nvapi::InvalidateProfileSearchCache();
-                                } else {
-                                    s_nvidiaProfileSetError = err;
-                                    if (IsPrivilegeError(err)) {
-                                        s_lastFailedSettingId = s.setting_id;
-                                        s_lastFailedSettingValue = s.default_value;
+                            {
+                                char defaultBtnBuf[64];
+                                (void)snprintf(defaultBtnBuf, sizeof(defaultBtnBuf), "Default##%u", static_cast<unsigned>(s.setting_id));
+                                if (ImGui::SmallButton(defaultBtnBuf)) {
+                                    auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
+                                    if (ok) {
+                                        s_nvidiaProfileSetError.clear();
+                                        display_commander::nvapi::InvalidateProfileSearchCache();
+                                    } else {
+                                        s_nvidiaProfileSetError = err;
+                                        if (IsPrivilegeError(err)) {
+                                            s_lastFailedSettingId = s.setting_id;
+                                            s_lastFailedSettingValue = s.default_value;
+                                        }
                                     }
                                 }
                             }
@@ -296,16 +333,20 @@ static void DrawNvidiaProfileSearchTab() {
                                 ImGui::BeginDisabled();
                             }
                             ImGui::PushID(static_cast<int>(s.setting_id));
-                            if (ImGui::SmallButton("Default")) {
-                                auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
-                                if (ok) {
-                                    s_nvidiaProfileSetError.clear();
-                                    display_commander::nvapi::InvalidateProfileSearchCache();
-                                } else {
-                                    s_nvidiaProfileSetError = err;
-                                    if (IsPrivilegeError(err)) {
-                                        s_lastFailedSettingId = s.setting_id;
-                                        s_lastFailedSettingValue = s.default_value;
+                            {
+                                char defaultBtnBuf[64];
+                                (void)snprintf(defaultBtnBuf, sizeof(defaultBtnBuf), "Default##%u", static_cast<unsigned>(s.setting_id));
+                                if (ImGui::SmallButton(defaultBtnBuf)) {
+                                    auto [ok, err] = display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
+                                    if (ok) {
+                                        s_nvidiaProfileSetError.clear();
+                                        display_commander::nvapi::InvalidateProfileSearchCache();
+                                    } else {
+                                        s_nvidiaProfileSetError = err;
+                                        if (IsPrivilegeError(err)) {
+                                            s_lastFailedSettingId = s.setting_id;
+                                            s_lastFailedSettingValue = s.default_value;
+                                        }
                                     }
                                 }
                             }

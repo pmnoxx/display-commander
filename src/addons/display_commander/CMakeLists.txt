@@ -203,6 +203,15 @@ else()
   message(STATUS "NVPI Reference.xml not found (optional). Run: git submodule update --init external/NvidiaProfileInspectorRevamped")
 endif()
 
+# Copy Display Commander brightness ReShade effect next to the addon DLL (runtime may copy to ReShade Shaders).
+set(DC_BRIGHTNESS_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_Brightness.fx")
+if(EXISTS "${DC_BRIGHTNESS_FX}")
+  add_custom_command(TARGET zzz_display_commander POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_BRIGHTNESS_FX}" "$<TARGET_FILE_DIR:zzz_display_commander>/DisplayCommander_Brightness.fx"
+    COMMENT "Copy DisplayCommander_Brightness.fx next to addon DLL"
+  )
+endif()
+
 # Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll, version.dll)
 # CMake automatically handles .def files for MSVC when added as a source, but we also explicitly link it
 target_sources(zzz_display_commander PRIVATE

@@ -244,14 +244,37 @@ void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain
     // Add any tracking logic here if needed
 }
 
+namespace {
+// Apply Display Commander brightness (0-200%) via ReShade effect DisplayCommander_Brightness.fx.
+// No-op if the effect is not loaded (e.g. user has not added DC effect path or reloaded effects).
+void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
+    if (runtime == nullptr) {
+        return;
+    }
+    const float percent = settings::g_mainTabSettings.brightness_percent.GetValue();
+    const float multiplier = percent / 100.0f;
+    const reshade::api::effect_technique tech =
+        runtime->find_technique("DisplayCommander_Brightness.fx", "Brightness");
+    if (tech == 0) {
+        return;  // Effect not loaded
+    }
+    const reshade::api::effect_uniform_variable var =
+        runtime->find_uniform_variable("DisplayCommander_Brightness.fx", "Brightness");
+    if (var == 0) {
+        return;
+    }
+    runtime->set_uniform_value_float(var, multiplier);
+    runtime->set_technique_state(tech, multiplier != 1.0f);  // Enable only when not 100%
+}
+}  // namespace
+
 void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // ReShade effects begin tracking
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
     }
-    // Add any tracking logic here if needed
+    ApplyDisplayCommanderBrightness(runtime);
 }
 
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
@@ -274,6 +297,34 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             return;
         }
         AddReShadeRuntime(runtime);
+
+        // One-time: copy DisplayCommander_Brightness.fx to ReShade Shaders folder so the effect loads after reload/restart
+        {
+            static std::atomic<bool> brightness_effect_copy_done{false};
+            if (!brightness_effect_copy_done.exchange(true)) {
+                wchar_t addon_path[MAX_PATH] = {};
+                if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) > 0) {
+                    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
+                    std::filesystem::path src_fx = addon_dir / L"DisplayCommander_Brightness.fx";
+                    if (std::filesystem::exists(src_fx)) {
+                        char base_path[512] = {};
+                        size_t base_size = sizeof(base_path);
+                        reshade::get_reshade_base_path(base_path, &base_size);
+                        std::filesystem::path dest_dir = std::filesystem::path(base_path) / "Shaders";
+                        std::filesystem::path dest_fx = dest_dir / "DisplayCommander_Brightness.fx";
+                        std::error_code ec;
+                        if (std::filesystem::exists(dest_dir) && std::filesystem::is_directory(dest_dir)) {
+                            std::filesystem::copy_file(src_fx, dest_fx,
+                                                       std::filesystem::copy_options::overwrite_existing, ec);
+                            if (!ec) {
+                                LogInfo("DisplayCommander_Brightness.fx copied to ReShade Shaders - reload effects (e.g. Ctrl+Shift+F5) to use Brightness.");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         LogInfo("ReShade effect runtime initialized - Input blocking now available");
 
         if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
@@ -3787,7 +3838,7 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
 namespace display_commander {
 
 bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value,
-                             const std::wstring& exeName) {
+                             const std::wstring& exeName, HANDLE* outProcess) {
     HMODULE hMod = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             reinterpret_cast<LPCWSTR>(&RunDLL_NvAPI_SetDWORD), &hMod)) {
@@ -3814,11 +3865,20 @@ bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value,
     }
     SHELLEXECUTEINFOW sei = {};
     sei.cbSize = sizeof(sei);
+    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
     sei.lpVerb = L"runas";
     sei.lpFile = L"rundll32.exe";
     sei.lpParameters = params.c_str();
     sei.nShow = SW_SHOWNORMAL;
-    return ShellExecuteExW(&sei) != FALSE;
+    if (ShellExecuteExW(&sei) == FALSE) {
+        return false;
+    }
+    if (outProcess != nullptr) {
+        *outProcess = sei.hProcess;
+    } else if (sei.hProcess != nullptr) {
+        CloseHandle(sei.hProcess);
+    }
+    return true;
 }
 
 }  // namespace display_commander

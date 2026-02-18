@@ -11,6 +11,7 @@
 #include "../utils/display_commander_logger.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "chords_file.hpp"
 #include "hotkeys_file.hpp"
 
 namespace display_commander::config {
@@ -300,6 +301,10 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
         return GetHotkeyValue(key, value);
     }
+    // Chords / gamepad remap settings are stored in chords.toml for sharing across games
+    if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
+        return GetChordValue(section, key, value);
+    }
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
@@ -455,6 +460,10 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
         SetHotkeyValue(key, value);
         return;
     }
+    if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
+        SetChordValue(section, key, value);
+        return;
+    }
     utils::SRWLockExclusive lock(config_mutex_);
     if (!initialized_) {
         Initialize();
@@ -465,6 +474,10 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const char* value) {
     if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
         SetHotkeyValue(key, value != nullptr ? value : "");
+        return;
+    }
+    if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
+        SetChordValue(section, key, value != nullptr ? value : "");
         return;
     }
     utils::SRWLockExclusive lock(config_mutex_);

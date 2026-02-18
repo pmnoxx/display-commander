@@ -2318,7 +2318,7 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     if (!g_entry_point_to_save.empty()) {
         display_commander::config::set_config_value("DisplayCommander", "EntryPoint", g_entry_point_to_save);
         display_commander::config::save_config("Entry point detection");
-        LogInfo("Entry point logged to DisplayCommander.ini: %s", g_entry_point_to_save.c_str());
+        LogInfo("Entry point logged to DisplayCommander.toml: %s", g_entry_point_to_save.c_str());
     }
 
     // Setup high-resolution timer for maximum precision

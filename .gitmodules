@@ -29,3 +29,6 @@
 [submodule "external/NvidiaProfileInspectorRevamped"]
 	path = external/NvidiaProfileInspectorRevamped
 	url = https://github.com/xHybred/NvidiaProfileInspectorRevamped.git
+[submodule "external/tomlplusplus"]
+	path = external/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git

@@ -465,15 +465,24 @@ std::filesystem::path GetAddonDirectory() {
     return std::filesystem::path(module_path).parent_path();
 }
 
-// Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized, shared across
-// games)
-std::filesystem::path GetDefaultDlssOverrideFolder() {
+// Display Commander folder in Local App Data: %LocalAppData%\Programs\Display_Commander (shared across games)
+std::filesystem::path GetDisplayCommanderAppDataFolder() {
     wchar_t localappdata_path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
     std::filesystem::path base(localappdata_path);
-    return base / L"Programs" / L"Display_Commander" / L"dlss_override";
+    return base / L"Programs" / L"Display_Commander";
+}
+
+// Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized, shared across
+// games)
+std::filesystem::path GetDefaultDlssOverrideFolder() {
+    std::filesystem::path base = GetDisplayCommanderAppDataFolder();
+    if (base.empty()) {
+        return base;
+    }
+    return base / L"dlss_override";
 }
 
 // Effective default path: base or base/subfolder (subfolder empty = base only)

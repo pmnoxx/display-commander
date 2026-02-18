@@ -1922,7 +1922,11 @@ if (enabled_experimental_features) {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "When enabled, gamepad buttons can be mapped to keyboard inputs. Same setting as in Controller "
+                    "When enabled, XINPUT gamepad buttons can be remapped to keyboard keys, other gamepad buttons, "
+                    "or actions (e.g. volume, screenshot). Supports chords (e.g. Home + D-Pad for volume) and hold "
+                    "mode.\n\n"
+                    "This checkbox is the same setting as in the Controller tab. For full setup (remapping list, "
+                    "input method, \"Block Gamepad Input When Home Pressed\", default chords), open the Controller "
                     "tab.");
             }
             if (remapping_enabled) {

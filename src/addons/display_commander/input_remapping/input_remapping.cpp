@@ -641,6 +641,24 @@ std::string InputRemapper::get_button_name(WORD button) const {
 }
 
 std::string InputRemapper::get_keyboard_name(int vk_code) const {
+    switch (vk_code) {
+    case VK_VOLUME_MUTE:
+        return "Volume Mute";
+    case VK_VOLUME_DOWN:
+        return "Volume Down";
+    case VK_VOLUME_UP:
+        return "Volume Up";
+    case VK_MEDIA_NEXT_TRACK:
+        return "Next Track";
+    case VK_MEDIA_PREV_TRACK:
+        return "Previous Track";
+    case VK_MEDIA_STOP:
+        return "Stop Media";
+    case VK_MEDIA_PLAY_PAUSE:
+        return "Play/Pause Media";
+    default:
+        break;
+    }
     char key_name[256];
     int result = GetKeyNameTextA(MapVirtualKey(vk_code, MAPVK_VK_TO_VSC) << 16, key_name, sizeof(key_name));
     if (result > 0) {
@@ -767,6 +785,20 @@ int InputRemapper::get_vk_code_from_name(const std::string &name) const {
         return 'Y';
     if (name == "Z")
         return 'Z';
+    if (name == "Volume Mute")
+        return VK_VOLUME_MUTE;
+    if (name == "Volume Down")
+        return VK_VOLUME_DOWN;
+    if (name == "Volume Up")
+        return VK_VOLUME_UP;
+    if (name == "Next Track")
+        return VK_MEDIA_NEXT_TRACK;
+    if (name == "Previous Track")
+        return VK_MEDIA_PREV_TRACK;
+    if (name == "Stop Media")
+        return VK_MEDIA_STOP;
+    if (name == "Play/Pause Media")
+        return VK_MEDIA_PLAY_PAUSE;
     return 0;
 }
 
@@ -1007,7 +1039,9 @@ std::vector<std::string> get_available_keyboard_keys() {
             "F22",   "F23",   "F24",    "~",   "A",     "B",    "C",   "D",   "E",
             "F",     "G",     "H",      "I",   "J",     "K",    "L",   "M",   "N",
             "O",     "P",     "Q",      "R",   "S",     "T",    "U",   "V",   "W",
-            "X",     "Y",     "Z"};
+            "X",     "Y",     "Z",
+            "Volume Mute", "Volume Down", "Volume Up",
+            "Next Track", "Previous Track", "Stop Media", "Play/Pause Media"};
 }
 
 void InputRemapper::increment_trigger_count(WORD gamepad_button) {

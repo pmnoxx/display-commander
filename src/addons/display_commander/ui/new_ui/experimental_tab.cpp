@@ -139,6 +139,14 @@ static void DrawNvidiaProfileSearchTab() {
 
     if (!r.important_settings.empty()) {
         ImGui::Spacing();
+        bool show_advanced = settings::g_experimentalTabSettings.show_advanced_profile_settings.GetValue();
+        if (ImGui::Checkbox("Show advanced profile settings", &show_advanced)) {
+            settings::g_experimentalTabSettings.show_advanced_profile_settings.SetValue(show_advanced);
+            settings::g_experimentalTabSettings.show_advanced_profile_settings.Save();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Show Ansel profile settings (allow, allowlisted, enable) in addition to the key profile settings.");
+        }
         if (ImGui::CollapsingHeader("Important profile settings (first matching profile)", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (!s_nvidiaProfileSetError.empty()) {
                 ImGui::TextColored(ui::colors::ICON_ERROR, "Last change failed: %s", s_nvidiaProfileSetError.c_str());
@@ -172,8 +180,18 @@ static void DrawNvidiaProfileSearchTab() {
                 ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 0.5f);
                 ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.5f);
                 ImGui::TableHeadersRow();
-                for (size_t idx = 0; idx < r.important_settings.size(); ++idx) {
-                    const auto& s = r.important_settings[idx];
+                // Build list: important first, then advanced if checkbox enabled
+                std::vector<const display_commander::nvapi::ImportantProfileSetting*> to_show;
+                for (const auto& e : r.important_settings) {
+                    to_show.push_back(&e);
+                }
+                if (show_advanced) {
+                    for (const auto& e : r.advanced_settings) {
+                        to_show.push_back(&e);
+                    }
+                }
+                for (size_t idx = 0; idx < to_show.size(); ++idx) {
+                    const auto& s = *to_show[idx];
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::TextUnformatted(s.label.c_str());

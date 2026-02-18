@@ -150,7 +150,7 @@ static sl::DLSSMode QualityPresetValueToSLMode(NVSDK_NGX_PerfQuality_Value ngxQu
     }
 }
 
-// Map render preset value (0=DLSS Default, 1=Preset A, 2=Preset B, ... 11=Preset K, ...) to sl::DLSSPreset
+// Map render preset value (0=DLSS Default, 1=Preset A, 2=Preset B, ... 12=Preset L, 13=Preset M, ...) to sl::DLSSPreset
 static sl::DLSSPreset PresetValueToSLPreset(int presetValue) {
     switch (presetValue) {
         case 0:  return sl::DLSSPreset::eDefault;
@@ -165,6 +165,8 @@ static sl::DLSSPreset PresetValueToSLPreset(int presetValue) {
         case 9:  return sl::DLSSPreset::ePresetN;
         case 10: return sl::DLSSPreset::ePresetO;
         case 11: return sl::DLSSPreset::ePresetK;  // UI "Preset K" -> value 11
+        case 12: return sl::DLSSPreset::ePresetL;  // UI "Preset L" -> value 12
+        case 13: return sl::DLSSPreset::ePresetM;  // UI "Preset M" -> value 13
         default: return sl::DLSSPreset::eDefault;
     }
 }

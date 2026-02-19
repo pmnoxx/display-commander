@@ -1704,6 +1704,13 @@ if (enabled_experimental_features) {
                     "with "
                     "Brightness.");
             }
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f")) {
+                // Value is applied in OnReShadePresent each frame
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
+            }
             ImGui::Unindent();
         }
         ui::colors::PopNestedHeaderColors();

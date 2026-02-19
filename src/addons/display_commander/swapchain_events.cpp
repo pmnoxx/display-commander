@@ -707,8 +707,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
+        bool does_another_runtime_exists_for_same_hwnd = false;  // TODO: implement this
+
         // Enable flip chain if enabled (experimental feature) - forces flip model
-        if (!is_flip
+        if (!does_another_runtime_exists_for_same_hwnd && !is_flip
             && (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
                 || s_enable_flip_chain.load())) {
             // Check if current present mode is NOT a flip model
@@ -1334,7 +1336,8 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
 
     bool override_game_reflex_settings = false;
 
-    // When OnPresentSync or Reflex is selected and Reflex mode is "Game Defaults", do not apply our Reflex (let game control it)
+    // When OnPresentSync or Reflex is selected and Reflex mode is "Game Defaults", do not apply our Reflex (let game
+    // control it)
     const auto onpresent_reflex =
         static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
     const auto reflex_limiter_reflex =

@@ -1253,6 +1253,16 @@ void DrawAdvancedSettings() {
         }
     }
 
+    if (ui::new_ui::g_tab_manager.HasTab("vulkan")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_vulkan_tab, "Show Vulkan (Experimental) tab")) {
+            LogInfo("Show Vulkan (Experimental) tab %s",
+                    settings::g_mainTabSettings.show_vulkan_tab.GetValue() ? "enabled" : "disabled");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
+        }
+    }
+
     ImGui::Unindent();
 
     ImGui::Spacing();
@@ -1709,7 +1719,8 @@ if (enabled_experimental_features) {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
+                    "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
+                    "Brightness.");
             }
             ImGui::Unindent();
         }
@@ -2683,14 +2694,19 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 "Disabled - no FPS limiting\n"
                 "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR - synchronizes frame display "
                 "time "
-                "to the monitor refresh rate.");
+                "to the monitor refresh rate.\n"
+                " src: %s",
+                GetChosenFpsLimiterSiteName());
         }
         ImGui::SameLine();
         ImGui::TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Which path is currently applying the FPS limiter this frame.\n"
-                "Priority: reflex_marker > dxgi_swapchain > dxgi_factory_wrapper > reshade_addon_event.");
+                "Priority: reflex_marker > reflex_marker_vk_nvll > reflex_marker_vk_loader > "
+                "reflex_marker_pclstats_etw > dxgi_swapchain > "
+                "dxgi_factory_wrapper > reshade_addon_event. src: %s",
+                GetChosenFpsLimiterSiteName());
         }
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             // Check if we're running on D3D9 and show warning
@@ -2700,10 +2716,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                                    ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
                 if (ImGui::IsItemHovered()) {
-                    std::string tooltip =
-                        "Enable NVIDIA Reflex alongside OnPresentSync FPS limiter. Reflex will run at +0.5%% FPS "
-                        "limit "
-                        "for better latency reduction.";
+                    std::string tooltip = "Reflex is enabled by default when supported.";
                     auto last_params = ::g_last_reflex_params_set_by_addon.load();
                     if (last_params) {
                         float fps = (last_params->minimumIntervalUs > 0)

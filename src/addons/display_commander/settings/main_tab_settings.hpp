@@ -30,10 +30,10 @@ extern std::atomic<int> s_cpu_cores;
 extern std::atomic<float> s_brightness_percent;
 extern std::atomic<int> s_brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
                                                   // (DisplayCommander_Control.fx DECODE/ENCODE_METHOD)
-extern std::atomic<float> s_gamma_value;      // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
-extern std::atomic<float> s_contrast_value;   // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-extern std::atomic<float> s_saturation_value; // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
-extern std::atomic<float> s_hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
+extern std::atomic<float> s_gamma_value;          // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
+extern std::atomic<float> s_contrast_value;       // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
+extern std::atomic<float> s_saturation_value;     // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+extern std::atomic<float> s_hue_degrees;          // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
 extern std::atomic<float> s_auto_hdr_strength;    // 0.0–2.0, EffectStrength_P3 when AutoHDR on (default 1.0)
 
 namespace settings {
@@ -181,14 +181,21 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_experimental_tab;
     ui::new_ui::BoolSetting show_reshade_tab;
     ui::new_ui::BoolSetting show_performance_tab;
+    ui::new_ui::BoolSetting show_vulkan_tab;
+    /** When enabled, install NvLowLatencyVk hooks when NvLowLatencyVk.dll is loaded (Vulkan Reflex frame pacing). */
+    ui::new_ui::BoolSetting vulkan_nvll_hooks_enabled;
+    /** When enabled, hook vulkan-1.dll vkGetDeviceProcAddr and wrap vkSetLatencyMarkerNV (VK_NV_low_latency2) for frame pacing. */
+    ui::new_ui::BoolSetting vulkan_vk_loader_hooks_enabled;
+    /** When enabled, append VK_NV_low_latency2, VK_KHR_present_id, VK_KHR_timeline_semaphore in vkCreateDevice (Special K style). */
+    ui::new_ui::BoolSetting vulkan_append_reflex_extensions;
 
     // Brightness (ReShade effect driven by DC)
     ui::new_ui::FloatSettingRef brightness_percent;
     ui::new_ui::ComboSettingRef
-        brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; default scRGB
-    ui::new_ui::FloatSettingRef gamma_value;      // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
+        brightness_colorspace;                   // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; default scRGB
+    ui::new_ui::FloatSettingRef gamma_value;     // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
     ui::new_ui::FloatSettingRef contrast_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-    ui::new_ui::FloatSettingRef saturation_value; // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+    ui::new_ui::FloatSettingRef saturation_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
     ui::new_ui::FloatSettingRef hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
     ui::new_ui::BoolSetting
         auto_hdr;  // When enabled, runs DisplayCommander_PerceptualBoost.fx (requires Generic RenoDX for SDR->HDR)

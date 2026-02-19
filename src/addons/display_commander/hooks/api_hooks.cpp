@@ -18,6 +18,7 @@
 #include "hook_suppression_manager.hpp"
 #include "loadlibrary_hooks.hpp"
 #include "opengl_hooks.hpp"
+#include "pclstats_etw_hooks.hpp"
 #include "process_exit_hooks.hpp"
 #include "rand_hooks.hpp"
 #include "sleep_hooks.hpp"
@@ -1075,6 +1076,9 @@ bool InstallApiHooks() {
 
     // Install debug output hooks
     debug_output::InstallDebugOutputHooks();
+
+    // Install PCLStats ETW hooks (EventRegister + EventWriteTransfer) to count game/DC PCLStatsEvent / V2 / V3
+    InstallPCLStatsEtwHooks();
 
     // D3D device creation hooks are now installed via OnModuleLoaded when d3d11.dll or d3d12.dll is loaded
 

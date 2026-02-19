@@ -14,6 +14,7 @@
 #include "main_new_tab.hpp"
 #include "performance_tab.hpp"
 #include "swapchain_tab.hpp"
+#include "vulkan_tab.hpp"
 
 // Current section of the rendering UI (for crash/stuck reporting). Global namespace to match globals.hpp extern.
 std::atomic<const char*> g_rendering_ui_section{nullptr};
@@ -95,6 +96,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                 tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
             } else if (tab_id == "performance") {
                 tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
+            } else if (tab_id == "vulkan") {
+                tab_enabled = settings::g_mainTabSettings.show_vulkan_tab.GetValue();
             }
 
             // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -147,6 +150,8 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                     tab_enabled = settings::g_mainTabSettings.show_reshade_tab.GetValue();
                 } else if (tab_id == "performance") {
                     tab_enabled = settings::g_mainTabSettings.show_performance_tab.GetValue();
+                } else if (tab_id == "vulkan") {
+                    tab_enabled = settings::g_mainTabSettings.show_vulkan_tab.GetValue();
                 }
 
                 // Show tab if individual setting is enabled OR "Show All Tabs" is enabled
@@ -187,6 +192,7 @@ void InitializeNewUI() {
     ui::new_ui::InitSwapchainTab();
     ui::new_ui::InitHotkeysTab();
     ui::new_ui::InitAddonsTab();
+    ui::new_ui::InitVulkanTab();
 
     // Initialize XInput widget
     display_commander::widgets::xinput_widget::InitializeXInputWidget();
@@ -265,6 +271,20 @@ void InitializeNewUI() {
             }
         },
         true);  // Performance tab is advanced
+
+    // Vulkan (experimental) tab - Reflex / frame pacing for Vulkan
+    g_tab_manager.AddTab(
+        "Vulkan (Experimental)", "vulkan",
+        [](reshade::api::effect_runtime* runtime) {
+            try {
+                ui::new_ui::DrawVulkanTab(runtime);
+            } catch (const std::exception& e) {
+                LogError("Error drawing Vulkan tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing Vulkan tab");
+            }
+        },
+        true);  // Vulkan tab is advanced
 
     // Add reshade tab
     g_tab_manager.AddTab(

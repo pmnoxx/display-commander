@@ -24,7 +24,9 @@
 #include "hook_suppression_manager.hpp"
 #include "ngx_hooks.hpp"
 #include "nvapi_hooks.hpp"
+#include "nvlowlatencyvk_hooks.hpp"
 #include "streamline_hooks.hpp"
+#include "vulkan_loader_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "xinput_hooks.hpp"
@@ -929,6 +931,26 @@ bool InstallLoadLibraryHooks() {
     g_loadlibrary_hooks_installed.store(true);
     LogInfo("LoadLibrary hooks installed successfully");
 
+    // If vulkan-1.dll or NvLowLatencyVk.dll was already loaded (e.g. game links them before our hook runs),
+    // install Vulkan Reflex hooks now when settings are enabled. Special K uses the same NvLL hook pattern;
+    // games like Doom use VK_NV_low_latency2 only (vkSetLatencyMarkerNV from loader), not NvLowLatencyVk.dll.
+    {
+        HMODULE vulkan1 = GetModuleHandleW(L"vulkan-1.dll");
+        if (vulkan1 != nullptr && settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled.GetValue()
+            && !AreVulkanLoaderHooksInstalled()) {
+            if (InstallVulkanLoaderHooks(vulkan1)) {
+                LogInfo("Vulkan loader hooks installed (vulkan-1.dll was already loaded)");
+            }
+        }
+        HMODULE nvll = GetModuleHandleW(L"NvLowLatencyVk.dll");
+        if (nvll != nullptr && settings::g_mainTabSettings.vulkan_nvll_hooks_enabled.GetValue()
+            && !AreNvLowLatencyVkHooksInstalled()) {
+            if (InstallNvLowLatencyVkHooks(nvll)) {
+                LogInfo("NvLowLatencyVk hooks installed (NvLowLatencyVk.dll was already loaded)");
+            }
+        }
+    }
+
     // Mark LoadLibrary hooks as installed
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::LOADLIBRARY);
@@ -1199,6 +1221,24 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("NVAPI hooks installed successfully");
         } else {
             LogError("Failed to install NVAPI hooks");
+        }
+    }
+    // NvLowLatencyVk (Vulkan Reflex) hooks
+    else if (lowerModuleName.find(L"nvlowlatencyvk.dll") != std::wstring::npos) {
+        LogInfo("Installing NvLowLatencyVk hooks for module: %ws", moduleName.c_str());
+        if (InstallNvLowLatencyVkHooks(hModule)) {
+            LogInfo("NvLowLatencyVk hooks installed successfully");
+        } else {
+            LogInfo("NvLowLatencyVk hooks not installed (disabled by setting or already installed)");
+        }
+    }
+    // vulkan-1.dll (Vulkan loader) – VK_NV_low_latency2: hook vkGetDeviceProcAddr to wrap vkSetLatencyMarkerNV
+    else if (lowerModuleName.find(L"vulkan-1.dll") != std::wstring::npos) {
+        LogInfo("Installing Vulkan loader hooks for module: %ws", moduleName.c_str());
+        if (InstallVulkanLoaderHooks(hModule)) {
+            LogInfo("Vulkan loader (VK_NV_low_latency2) hooks installed successfully");
+        } else {
+            LogInfo("Vulkan loader hooks not installed (disabled by setting or already installed)");
         }
     }
     // NGX hooks

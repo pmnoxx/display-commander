@@ -99,8 +99,7 @@ class LatencyManager {
 
     // Get full sleep status (for UI display).
     // When returning false, out_reason may be set to explain why (if non-null).
-    bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
-                       SleepStatusUnavailableReason* out_reason = nullptr);
+    bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params, SleepStatusUnavailableReason* out_reason = nullptr);
 
     // Switch between technologies at runtime
     bool SwitchTechnology(LatencyTechnology technology, reshade::api::device* device);
@@ -118,17 +117,17 @@ class LatencyManager {
 // Human-readable reason for sleep status being unavailable (for UI)
 inline const char* SleepStatusUnavailableReasonToString(SleepStatusUnavailableReason r) {
     switch (r) {
-        case SleepStatusUnavailableReason::kNone: return "Available";
+        case SleepStatusUnavailableReason::kNone:             return "Available";
         case SleepStatusUnavailableReason::kNoLatencyManager: return "Latency manager not created";
         case SleepStatusUnavailableReason::kLatencyManagerNotInitialized:
             return "Latency manager not initialized (no D3D device yet)";
         case SleepStatusUnavailableReason::kProviderDoesNotSupport:
             return "Current latency provider does not support sleep status";
         case SleepStatusUnavailableReason::kReflexNotInitialized: return "Reflex manager not initialized";
-        case SleepStatusUnavailableReason::kNoD3DDevice: return "No D3D device (device lost or not set)";
+        case SleepStatusUnavailableReason::kNoD3DDevice:          return "No D3D device (device lost or not set)";
         case SleepStatusUnavailableReason::kNvApiFunctionUnavailable:
             return "NvAPI_D3D_GetSleepStatus not found in nvapi64";
         case SleepStatusUnavailableReason::kNvApiError: return "NvAPI GetSleepStatus returned an error";
-        default: return "Unknown";
+        default:                                        return "Unknown";
     }
 }

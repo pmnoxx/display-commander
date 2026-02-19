@@ -223,11 +223,11 @@ std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount] 
 std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
 
 namespace {
-// Priority order: reflex_marker, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event (indices 0, 1, 3, 2).
-constexpr std::array<FpsLimiterCallSite, 4> kFpsLimiterPriorityOrder = {
-    FpsLimiterCallSite::reflex_marker,
-    FpsLimiterCallSite::dxgi_swapchain,
-    FpsLimiterCallSite::dxgi_factory_wrapper,
+// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event.
+constexpr std::array<FpsLimiterCallSite, 7> kFpsLimiterPriorityOrder = {
+    FpsLimiterCallSite::reflex_marker,            FpsLimiterCallSite::reflex_marker_vk_nvll,
+    FpsLimiterCallSite::reflex_marker_vk_loader,  FpsLimiterCallSite::reflex_marker_pclstats_etw,
+    FpsLimiterCallSite::dxgi_swapchain,           FpsLimiterCallSite::dxgi_factory_wrapper,
     FpsLimiterCallSite::reshade_addon_event,
 };
 
@@ -240,16 +240,20 @@ bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
     return delta_ns <= static_cast<uint64_t>(utils::SEC_TO_NS);
 }
 
+}  // namespace
+
 const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
     switch (site) {
-        case FpsLimiterCallSite::reflex_marker:        return "reflex_marker";
-        case FpsLimiterCallSite::dxgi_swapchain:       return "dxgi_swapchain";
-        case FpsLimiterCallSite::reshade_addon_event:  return "reshade_addon_event";
-        case FpsLimiterCallSite::dxgi_factory_wrapper: return "dxgi_factory_wrapper";
-        default:                                       return "?";
+        case FpsLimiterCallSite::reflex_marker:            return "reflex_marker";
+        case FpsLimiterCallSite::reflex_marker_vk_nvll:    return "reflex_marker_vk_nvll";
+        case FpsLimiterCallSite::reflex_marker_vk_loader: return "reflex_marker_vk_loader";
+        case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
+        case FpsLimiterCallSite::dxgi_swapchain:         return "dxgi_swapchain";
+        case FpsLimiterCallSite::reshade_addon_event:     return "reshade_addon_event";
+        case FpsLimiterCallSite::dxgi_factory_wrapper:    return "dxgi_factory_wrapper";
+        default:                                          return "?";
     }
 }
-}  // namespace
 
 FpsLimiterCallSite GetChosenFrameTimeLocation() {
     const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
@@ -267,7 +271,9 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
     // 1. Make decision based on which sites were hit within the last 1s (before recording this call).
     FpsLimiterCallSite new_chosen = FpsLimiterCallSite::reshade_addon_event;  // default (guaranteed)
     for (FpsLimiterCallSite site : kFpsLimiterPriorityOrder) {
-        if (site == FpsLimiterCallSite::reflex_marker
+        if ((site == FpsLimiterCallSite::reflex_marker || site == FpsLimiterCallSite::reflex_marker_vk_nvll
+             || site == FpsLimiterCallSite::reflex_marker_vk_loader
+             || site == FpsLimiterCallSite::reflex_marker_pclstats_etw)
             && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
             continue;
         }
@@ -307,13 +313,28 @@ const char* GetChosenFpsLimiterSiteName() {
 }
 
 bool IsNativeFramePacingInSync() {
+    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
     const uint64_t reflex_ts =
         g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::reflex_marker)].load();
-    if (reflex_ts == 0) {
-        return false;
+    if (reflex_ts != 0 && (now_ns - reflex_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS)) {
+        return true;
     }
-    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-    return (now_ns - reflex_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS);
+    const uint64_t reflex_vk_nvll_ts =
+        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::reflex_marker_vk_nvll)].load();
+    if (reflex_vk_nvll_ts != 0 && (now_ns - reflex_vk_nvll_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS)) {
+        return true;
+    }
+    const uint64_t reflex_vk_loader_ts =
+        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::reflex_marker_vk_loader)].load();
+    if (reflex_vk_loader_ts != 0 && (now_ns - reflex_vk_loader_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS)) {
+        return true;
+    }
+    const uint64_t reflex_pclstats_ts =
+        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::reflex_marker_pclstats_etw)].load();
+    if (reflex_pclstats_ts != 0 && (now_ns - reflex_pclstats_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS)) {
+        return true;
+    }
+    return false;
 }
 
 bool IsDxgiSwapChainGettingCalled() {
@@ -698,25 +719,13 @@ DLSSGSummary GetDLSSGSummary() {
     unsigned int perf_quality;
     if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
         switch (static_cast<NVSDK_NGX_PerfQuality_Value>(perf_quality)) {
-            case NVSDK_NGX_PerfQuality_Value_MaxPerf:
-                summary.quality_preset = "Performance";
-                break;
-            case NVSDK_NGX_PerfQuality_Value_Balanced:
-                summary.quality_preset = "Balanced";
-                break;
-            case NVSDK_NGX_PerfQuality_Value_MaxQuality:
-                summary.quality_preset = "Quality";
-                break;
-            case NVSDK_NGX_PerfQuality_Value_UltraPerformance:
-                summary.quality_preset = "Ultra Performance";
-                break;
-            case NVSDK_NGX_PerfQuality_Value_UltraQuality:
-                summary.quality_preset = "Ultra Quality";
-                break;
-            case NVSDK_NGX_PerfQuality_Value_DLAA:
-                summary.quality_preset = "DLAA";
-                break;
-            default: summary.quality_preset = "Unknown"; break;
+            case NVSDK_NGX_PerfQuality_Value_MaxPerf:          summary.quality_preset = "Performance"; break;
+            case NVSDK_NGX_PerfQuality_Value_Balanced:         summary.quality_preset = "Balanced"; break;
+            case NVSDK_NGX_PerfQuality_Value_MaxQuality:       summary.quality_preset = "Quality"; break;
+            case NVSDK_NGX_PerfQuality_Value_UltraPerformance: summary.quality_preset = "Ultra Performance"; break;
+            case NVSDK_NGX_PerfQuality_Value_UltraQuality:     summary.quality_preset = "Ultra Quality"; break;
+            case NVSDK_NGX_PerfQuality_Value_DLAA:             summary.quality_preset = "DLAA"; break;
+            default:                                           summary.quality_preset = "Unknown"; break;
         }
     }
 

@@ -277,7 +277,14 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
         runtime->set_uniform_value_int(var_encode, colorspace);
     }
     runtime->set_uniform_value_float(var, multiplier);
-    runtime->set_technique_state(tech, multiplier != 1.0f);  // Enable only when not 100%
+    const float gamma_val = settings::g_mainTabSettings.gamma_value.GetValue();
+    const reshade::api::effect_uniform_variable var_gamma =
+        runtime->find_uniform_variable("DisplayCommander_Control.fx", "Gamma");
+    if (var_gamma != 0) {
+        runtime->set_uniform_value_float(var_gamma, gamma_val);
+    }
+    // Enable technique when brightness != 100% or gamma != 1.0
+    runtime->set_technique_state(tech, multiplier != 1.0f || gamma_val != 1.0f);
 }
 
 // Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same

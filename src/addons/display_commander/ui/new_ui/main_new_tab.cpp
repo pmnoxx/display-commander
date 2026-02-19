@@ -1660,6 +1660,13 @@ if (enabled_experimental_features) {
             ImGui::SetTooltip(
                 "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, multiply.");
         }
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f")) {
+            // Value is applied in OnReShadePresent each frame
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
+        }
         if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR")) {
             // Value is applied in OnReShadePresent each frame
         }

@@ -164,7 +164,7 @@ static int SLModeToPerfQualityValue(sl::DLSSMode m) {
         case sl::DLSSMode::eUltraPerformance: return static_cast<int>(NVSDK_NGX_PerfQuality_Value_UltraPerformance);
         case sl::DLSSMode::eUltraQuality:     return static_cast<int>(NVSDK_NGX_PerfQuality_Value_UltraQuality);
         case sl::DLSSMode::eDLAA:             return static_cast<int>(NVSDK_NGX_PerfQuality_Value_DLAA);
-        default:                             return -1;
+        default:                              return -1;
     }
 }
 
@@ -188,8 +188,7 @@ static void UpdateNGXParamsFromDLSSOptions(const sl::DLSSOptions& options) {
     g_ngx_parameters.update_float("Sharpness", options.sharpness);
     g_ngx_parameters.update_float("DLSS.Pre.Exposure", options.preExposure);
     g_ngx_parameters.update_float("DLSS.Exposure.Scale", options.exposureScale);
-    g_ngx_parameters.update_int("DLSSG.ColorBuffersHDR",
-                                (options.colorBuffersHDR == sl::Boolean::eTrue) ? 1 : 0);
+    g_ngx_parameters.update_int("DLSSG.ColorBuffersHDR", (options.colorBuffersHDR == sl::Boolean::eTrue) ? 1 : 0);
     g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.DLAA", static_cast<int>(options.dlaaPreset));
     g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.Quality", static_cast<int>(options.qualityPreset));
     g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.Balanced", static_cast<int>(options.balancedPreset));
@@ -200,7 +199,8 @@ static void UpdateNGXParamsFromDLSSOptions(const sl::DLSSOptions& options) {
 }
 
 static void UpdateNGXParamsFromDLSSOptimalSettings(const sl::DLSSOptimalSettings& settings) {
-    // Only write internal (subrect) dimensions when both are non-zero to avoid "width x 0" (e.g. Vulkan before plugin fills)
+    // Only write internal (subrect) dimensions when both are non-zero to avoid "width x 0" (e.g. Vulkan before plugin
+    // fills)
     if (settings.optimalRenderWidth > 0 && settings.optimalRenderHeight > 0) {
         g_ngx_parameters.update_uint("DLSS.Render.Subrect.Dimensions.Width", settings.optimalRenderWidth);
         g_ngx_parameters.update_uint("DLSS.Render.Subrect.Dimensions.Height", settings.optimalRenderHeight);
@@ -367,7 +367,15 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
             modified_options.ultraPerformancePreset = static_cast<sl::DLSSPreset>(presetVal);
             modified_options.ultraQualityPreset = static_cast<sl::DLSSPreset>(presetVal);
             applied_any = true;
+
+            if (first_call) {
+                LogInfo("slDLSSSetOptions: applied overrides -> mode=%s preset=%s", DLSSModeStr(modified_options.mode),
+                        presetVal);
+            }
         }
+    }
+    if (LogDLSSOptions(options) && first_call) {
+        LogInfo("slDLSSSetOptions(overriden) called viewport=%u", viewportId);
     }
 
     // Auto-exposure override (Force Off / Force On)
@@ -431,7 +439,8 @@ using slDLSSGGetState_pfn = int (*)(const sl::ViewportHandle& viewport, sl::DLSS
 static slDLSSGGetState_pfn slDLSSGGetState_Original = nullptr;
 static std::atomic<bool> g_slDLSSGGetState_hook_installed{false};
 
-// slDLSSGSetOptions detour: when force_fg_auto is enabled, override options.mode to eAuto; update g_ngx_parameters and FG atomic
+// slDLSSGSetOptions detour: when force_fg_auto is enabled, override options.mode to eAuto; update g_ngx_parameters and
+// FG atomic
 static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options) {
     if (slDLSSGSetOptions_Original == nullptr) {
         return static_cast<int>(sl::Result::eErrorInvalidParameter);

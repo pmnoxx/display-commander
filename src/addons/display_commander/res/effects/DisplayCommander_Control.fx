@@ -80,6 +80,15 @@ uniform float Brightness <
     ui_tooltip = "1.0 = neutral. Set by Display Commander when using Main tab Brightness.";
 > = 1.0;
 
+uniform float Gamma <
+    ui_type = "slider";
+    ui_min = 0.5;
+    ui_max = 2.0;
+    ui_step = 0.01;
+    ui_label = "Gamma";
+    ui_tooltip = "1.0 = neutral. Set by Display Commander when using Main tab Gamma.";
+> = 1.0;
+
 #define COLOR_SPACE_BT709 0.f
 #define COLOR_SPACE_BT2020 1.f
 
@@ -161,6 +170,9 @@ void PostProcessVS2(in uint id : SV_VertexID, out float4 position : SV_Position,
 float4 MainPS(float4 pos : SV_Position, float2 tex : TexCoord) : SV_Target {
     float4 color = tex2D(BackBuffer, tex);
     color = DecodeColor(color);
+
+    // Gamma: linear -> gamma-corrected (1.0 = no change)
+    color.rgb = pow(max(color.rgb, 1e-5), 1.0 / Gamma);
 
     color.rgb *= Brightness;
 

@@ -59,6 +59,9 @@ bool EnumerateLoadedModules();
 std::vector<ModuleInfo> GetLoadedModules();
 bool IsModuleLoaded(const std::wstring &moduleName);
 
+// Call from exit handler: enumerate loaded modules and return hookable module names we never saw
+std::vector<std::string> ReportMissedModulesOnExit();
+
 // Module loading callback
 void OnModuleLoaded(const std::wstring &moduleName, HMODULE hModule);
 

@@ -1640,9 +1640,9 @@ if (enabled_experimental_features) {
 
     ImGui::Spacing();
 
-    // Brightness (Display Commander ReShade effect)
-    g_rendering_ui_section.store("ui:tab:main_new:brightness", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Brightness", ImGuiTreeNodeFlags_None)) {
+    // Brightness and AutoHDR (Display Commander ReShade effects)
+    g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
+    if (ImGui::CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
         ImGui::Indent();
         if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f")) {
             // Value is applied in OnReShadePresent each frame
@@ -1660,13 +1660,6 @@ if (enabled_experimental_features) {
             ImGui::SetTooltip(
                 "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, multiply.");
         }
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f")) {
-            // Value is applied in OnReShadePresent each frame
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
-        }
         if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR")) {
             // Value is applied in OnReShadePresent each frame
         }
@@ -1683,6 +1676,37 @@ if (enabled_experimental_features) {
                 ImGui::SetTooltip("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
             }
         }
+        // Misc subsection: Gamma, Contrast, Saturation (less prominent)
+        ui::colors::PushNestedHeaderColors();
+        if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+            ImGui::Indent();
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f")) {
+                // Value is applied in OnReShadePresent each frame
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
+                    "Brightness.");
+            }
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f")) {
+                // Value is applied in OnReShadePresent each frame
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
+            }
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f")) {
+                // Value is applied in OnReShadePresent each frame
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in DisplayCommander_Control.fx "
+                    "with "
+                    "Brightness.");
+            }
+            ImGui::Unindent();
+        }
+        ui::colors::PopNestedHeaderColors();
         ImGui::Unindent();
     }
 

@@ -8,6 +8,7 @@
 #include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
 #include "display/dpi_management.hpp"
+#include "dxgi/vram_info.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
@@ -22,7 +23,6 @@
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
-#include "dxgi/vram_info.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
@@ -255,8 +255,7 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     }
     const float percent = settings::g_mainTabSettings.brightness_percent.GetValue();
     const float multiplier = percent / 100.0f;
-    const reshade::api::effect_technique tech =
-        runtime->find_technique("DisplayCommander_Control.fx", "Brightness");
+    const reshade::api::effect_technique tech = runtime->find_technique("DisplayCommander_Control.fx", "Brightness");
     if (tech == 0) {
         return;  // Effect not loaded
     }
@@ -279,6 +278,40 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     }
     runtime->set_uniform_value_float(var, multiplier);
     runtime->set_technique_state(tech, multiplier != 1.0f);  // Enable only when not 100%
+}
+
+// Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same
+// DECODE_METHOD/ENCODE_METHOD as brightness (brightness_colorspace). Requires Generic RenoDX to upgrade SDR->HDR.
+void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
+    if (runtime == nullptr) {
+        return;
+    }
+    const bool auto_hdr = settings::g_mainTabSettings.auto_hdr.GetValue();
+    const reshade::api::effect_technique tech =
+        runtime->find_technique("DisplayCommander_PerceptualBoost.fx", "SpecialK_PerceptualBoost");
+    if (tech == 0) {
+        return;  // Effect not loaded
+    }
+    if (auto_hdr) {
+        const int32_t colorspace = static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
+        const reshade::api::effect_uniform_variable var_decode =
+            runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "DECODE_METHOD");
+        if (var_decode != 0) {
+            runtime->set_uniform_value_int(var_decode, colorspace);
+        }
+        const reshade::api::effect_uniform_variable var_encode =
+            runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "ENCODE_METHOD");
+        if (var_encode != 0) {
+            runtime->set_uniform_value_int(var_encode, colorspace);
+        }
+        const reshade::api::effect_uniform_variable var_strength =
+            runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "EffectStrength_P3");
+        if (var_strength != 0) {
+            const float strength = settings::g_mainTabSettings.auto_hdr_strength.GetValue();
+            runtime->set_uniform_value_float(var_strength, strength);
+        }
+    }
+    runtime->set_technique_state(tech, auto_hdr);
 }
 }  // namespace
 
@@ -307,9 +340,10 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
         return;
     }
-    // Apply brightness for the next frame. Safe to set technique state and uniforms here
+    // Apply brightness and AutoHDR for the next frame. Safe to set technique state and uniforms here
     // (after effects have been rendered this frame, before the next frame).
     ApplyDisplayCommanderBrightness(runtime);
+    ApplyDisplayCommanderAutoHdr(runtime);
 }
 
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
@@ -333,8 +367,10 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
                 constexpr int IDR_CONTROL_FX = 300;
                 constexpr int IDR_COLOR_FXH = 301;
                 constexpr int IDR_RESHADE_FXH = 302;
+                constexpr int IDR_PERCEPTUALBOOST_FX = 303;
 
-                auto extract_resource = [](int res_id, const wchar_t* filename_wide, const char* filename_utf8) -> bool {
+                auto extract_resource = [](int res_id, const wchar_t* filename_wide,
+                                           const char* filename_utf8) -> bool {
                     HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
                     if (hRes == nullptr) return false;
                     HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
@@ -361,16 +397,17 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
                     // %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
                     wchar_t localappdata_path[MAX_PATH] = {};
-                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
-                        std::filesystem::path la_dest = std::filesystem::path(localappdata_path)
-                                                       / L"Programs" / L"Display_Commander" / L"Reshade"
-                                                       / L"Shaders" / L"DisplayCommander" / filename_wide;
+                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
+                                                   localappdata_path))) {
+                        std::filesystem::path la_dest = std::filesystem::path(localappdata_path) / L"Programs"
+                                                        / L"Display_Commander" / L"Reshade" / L"Shaders"
+                                                        / L"DisplayCommander" / filename_wide;
                         if (write_to(la_dest)) any_written = true;
                     }
 
                     // addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
                     std::filesystem::path dc_dest = addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders"
-                                                   / L"DisplayCommander" / filename_wide;
+                                                    / L"DisplayCommander" / filename_wide;
                     if (write_to(dc_dest)) any_written = true;
 
                     // ReShade Shaders\DisplayCommander
@@ -379,8 +416,8 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
                     reshade::get_reshade_base_path(base_path, &base_size);
                     std::filesystem::path reshade_base(base_path);
                     std::filesystem::path reshade_dest = reshade_base / "Shaders" / "DisplayCommander" / filename_utf8;
-                    if (std::filesystem::exists(reshade_base / "Shaders") && std::filesystem::is_directory(reshade_base / "Shaders")
-                        && write_to(reshade_dest)) {
+                    if (std::filesystem::exists(reshade_base / "Shaders")
+                        && std::filesystem::is_directory(reshade_base / "Shaders") && write_to(reshade_dest)) {
                         any_written = true;
                     }
 
@@ -388,10 +425,14 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
                 };
 
                 if (extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx", "DisplayCommander_Control.fx")) {
-                    LogInfo("DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. %%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
+                    LogInfo(
+                        "DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. "
+                        "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
                 }
                 extract_resource(IDR_COLOR_FXH, L"color.fxh", "color.fxh");
                 extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh", "ReShade.fxh");
+                extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx",
+                                 "DisplayCommander_PerceptualBoost.fx");
             }
         }
 
@@ -3908,8 +3949,8 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
 
 namespace display_commander {
 
-bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value,
-                             const std::wstring& exeName, HANDLE* outProcess) {
+bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value, const std::wstring& exeName,
+                             HANDLE* outProcess) {
     HMODULE hMod = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             reinterpret_cast<LPCWSTR>(&RunDLL_NvAPI_SetDWORD), &hMod)) {

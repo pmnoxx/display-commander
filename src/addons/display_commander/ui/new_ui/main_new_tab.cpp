@@ -1657,7 +1657,24 @@ if (enabled_experimental_features) {
             // Value is applied in OnReShadePresent each frame
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, multiply.");
+            ImGui::SetTooltip(
+                "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, multiply.");
+        }
+        if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR")) {
+            // Value is applied in OnReShadePresent each frame
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Run DisplayCommander Perceptual Boost effect for HDR-style enhancement. Requires Generic RenoDX to "
+                "upgrade buffers from SDR to HDR.");
+        }
+        if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f")) {
+                // Value is applied in OnReShadePresent each frame
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
+            }
         }
         ImGui::Unindent();
     }
@@ -2243,7 +2260,6 @@ if (enabled_experimental_features) {
         DrawAdvancedSettings();
         ImGui::Unindent();
     }
-
 }
 
 void DrawQuickFpsLimitChanger() {

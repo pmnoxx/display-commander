@@ -28,7 +28,9 @@ extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 extern std::atomic<int> s_cpu_cores;
 extern std::atomic<float> s_brightness_percent;
-extern std::atomic<int> s_brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None (DisplayCommander_Control.fx DECODE/ENCODE_METHOD)
+extern std::atomic<int> s_brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
+                                                  // (DisplayCommander_Control.fx DECODE/ENCODE_METHOD)
+extern std::atomic<float> s_auto_hdr_strength;    // 0.0–2.0, EffectStrength_P3 when AutoHDR on (default 1.0)
 
 namespace settings {
 
@@ -178,7 +180,11 @@ class MainTabSettings {
 
     // Brightness (ReShade effect driven by DC)
     ui::new_ui::FloatSettingRef brightness_percent;
-    ui::new_ui::ComboSettingRef brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; default scRGB
+    ui::new_ui::ComboSettingRef
+        brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; default scRGB
+    ui::new_ui::BoolSetting
+        auto_hdr;  // When enabled, runs DisplayCommander_PerceptualBoost.fx (requires Generic RenoDX for SDR->HDR)
+    ui::new_ui::FloatSettingRef auto_hdr_strength;  // Profile 3 EffectStrength_P3 (0.0–2.0), only used when AutoHDR on
 
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;

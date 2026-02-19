@@ -1029,7 +1029,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
             bool has_output_width = g_ngx_parameters.get_as_uint("Width", output_width);
             bool has_output_height = g_ngx_parameters.get_as_uint("Height", output_height);
 
-            if (has_internal_width && has_internal_height) {
+            if (has_internal_width && has_internal_height && internal_width > 0 && internal_height > 0) {
                 internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
             }
             if (has_output_width && has_output_height) {

@@ -612,6 +612,8 @@ std::atomic<uint32_t> g_ray_reconstruction_enabled{0};  // Ray Reconstruction ac
 std::atomic<bool> g_dlss_was_active_once{false};
 std::atomic<bool> g_dlssg_was_active_once{false};
 std::atomic<bool> g_ray_reconstruction_was_active_once{false};
+std::atomic<bool> g_streamline_dlssg_fg_enabled{false};
+std::atomic<bool> g_streamline_dlss_enabled{false};
 
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
@@ -686,8 +688,8 @@ DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;
 
     // Use the new global tracking variables for more accurate status
-    summary.dlss_active = g_dlss_enabled.load() != 0;
-    summary.dlss_g_active = g_dlssg_enabled.load() != 0;
+    summary.dlss_active = (g_dlss_enabled.load() != 0) || g_streamline_dlss_enabled.load();
+    summary.dlss_g_active = (g_dlssg_enabled.load() != 0) || g_streamline_dlssg_fg_enabled.load();
     summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load() != 0;
     summary.any_dlss_was_active_once =
         g_dlss_was_active_once.load() || g_dlssg_was_active_once.load() || g_ray_reconstruction_was_active_once.load();
@@ -699,7 +701,7 @@ DLSSGSummary GetDLSSGSummary() {
     bool has_output_width = g_ngx_parameters.get_as_uint("Width", output_width);
     bool has_output_height = g_ngx_parameters.get_as_uint("Height", output_height);
 
-    if (has_internal_width && has_internal_height) {
+    if (has_internal_width && has_internal_height && internal_width > 0 && internal_height > 0) {
         summary.internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
     }
     if (has_output_width && has_output_height) {
@@ -976,8 +978,8 @@ DLSSGSummary GetDLSSGSummary() {
 // FPS limiter / overlay)
 DLSSGSummaryLite GetDLSSGSummaryLite() {
     DLSSGSummaryLite summary;
-    summary.dlss_active = g_dlss_enabled.load() != 0;
-    summary.dlss_g_active = g_dlssg_enabled.load() != 0;
+    summary.dlss_active = (g_dlss_enabled.load() != 0) || g_streamline_dlss_enabled.load();
+    summary.dlss_g_active = (g_dlssg_enabled.load() != 0) || g_streamline_dlssg_fg_enabled.load();
     summary.ray_reconstruction_active = g_ray_reconstruction_enabled.load() != 0;
     summary.any_dlss_active = summary.dlss_active || summary.dlss_g_active || summary.ray_reconstruction_active;
 

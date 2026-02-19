@@ -33,11 +33,11 @@ std::atomic<int> s_cpu_cores{0};                  // 0 = default (no change), ma
 std::atomic<float> s_brightness_percent{100.0f};  // 0-200%, 100 = neutral (Display Commander brightness effect)
 std::atomic<int> s_brightness_colorspace{
     1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None (DisplayCommander_Control DECODE/ENCODE_METHOD)
-std::atomic<float> s_gamma_value{1.0f};       // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
+std::atomic<float> s_gamma_value{1.0f};        // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
 std::atomic<float> s_contrast_value{1.0f};     // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-std::atomic<float> s_saturation_value{1.0f};  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
-std::atomic<float> s_hue_degrees{0.0f};       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
-std::atomic<float> s_auto_hdr_strength{1.0f}; // Profile 3 EffectStrength_P3 (0.0–2.0), default 1.0
+std::atomic<float> s_saturation_value{1.0f};   // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+std::atomic<float> s_hue_degrees{0.0f};        // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
+std::atomic<float> s_auto_hdr_strength{1.0f};  // Profile 3 EffectStrength_P3 (0.0–2.0), default 1.0
 
 namespace settings {
 
@@ -176,6 +176,10 @@ MainTabSettings::MainTabSettings()
       show_experimental_tab("show_experimental_tab", false, "DisplayCommander"),
       show_reshade_tab("show_reshade_tab", false, "DisplayCommander"),
       show_performance_tab("show_performance_tab", false, "DisplayCommander"),
+      show_vulkan_tab("show_vulkan_tab", false, "DisplayCommander"),
+      vulkan_nvll_hooks_enabled("vulkan_nvll_hooks_enabled", false, "DisplayCommander"),
+      vulkan_vk_loader_hooks_enabled("vulkan_vk_loader_hooks_enabled", false, "DisplayCommander"),
+      vulkan_append_reflex_extensions("vulkan_append_reflex_extensions", false, "DisplayCommander"),
       skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander"),
       force_anisotropic_filtering("force_anisotropic_filtering", false, "DisplayCommander"),
       upgrade_min_mag_mip_linear("upgrade_min_mag_mip_linear", true, "DisplayCommander"),
@@ -292,6 +296,10 @@ MainTabSettings::MainTabSettings()
         &show_experimental_tab,
         &show_reshade_tab,
         &show_performance_tab,
+        &show_vulkan_tab,
+        &vulkan_nvll_hooks_enabled,
+        &vulkan_vk_loader_hooks_enabled,
+        &vulkan_append_reflex_extensions,
         &skip_ansel_loading,
         &force_anisotropic_filtering,
         &upgrade_min_mag_mip_linear,

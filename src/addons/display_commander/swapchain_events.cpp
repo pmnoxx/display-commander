@@ -707,7 +707,20 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        bool does_another_runtime_exists_for_same_hwnd = false;  // TODO: implement this
+        // Skip forcing flip if another ReShade effect runtime already exists for this window
+        // (e.g. previous swapchain not yet destroyed, or multiple swapchains). Forcing flip
+        // in that case can conflict with the existing runtime.
+        bool does_another_runtime_exists_for_same_hwnd = false;
+        {
+            const std::vector<reshade::api::effect_runtime*> runtimes = GetAllReShadeRuntimes();
+            HWND target_hwnd = static_cast<HWND>(hwnd);
+            for (reshade::api::effect_runtime* rt : runtimes) {
+                if (rt != nullptr && rt->get_hwnd() == target_hwnd) {
+                    does_another_runtime_exists_for_same_hwnd = true;
+                    break;
+                }
+            }
+        }
 
         // Enable flip chain if enabled (experimental feature) - forces flip model
         if (!does_another_runtime_exists_for_same_hwnd && !is_flip

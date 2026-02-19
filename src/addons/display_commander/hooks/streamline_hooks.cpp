@@ -94,6 +94,8 @@ struct CachedDLSSOptionsLog {
     bool initialized{false};
 };
 static CachedDLSSOptionsLog s_lastLoggedDLSSOptions;
+static constexpr uint32_t kMaxDLSSOptionsLogCount = 10u;
+static std::atomic<uint32_t> s_dlssOptionsLogCount{0u};
 
 static bool OptionsDifferFromCache(const sl::DLSSOptions& o) {
     if (!s_lastLoggedDLSSOptions.initialized) return true;
@@ -124,9 +126,11 @@ static void UpdateDLSSOptionsCache(const sl::DLSSOptions& o) {
     s_lastLoggedDLSSOptions.initialized = true;
 }
 
-// Returns true if options were logged (i.e. they changed from last time).
+// Returns true if options were logged (i.e. they changed from last time). Logs at most kMaxDLSSOptionsLogCount times.
 static bool LogDLSSOptions(const sl::DLSSOptions& o) {
     if (!OptionsDifferFromCache(o)) return false;
+    uint32_t n = s_dlssOptionsLogCount.fetch_add(1, std::memory_order_relaxed);
+    if (n >= kMaxDLSSOptionsLogCount) return false;
     LogInfo("  DLSSOptions: mode=%s output=%ux%u preExposure=%.2f exposureScale=%.2f", DLSSModeStr(o.mode),
             o.outputWidth, o.outputHeight, o.preExposure, o.exposureScale);
     LogInfo("  presets: dlaa=%u quality=%u balanced=%u perf=%u ultraPerf=%u ultraQual=%u",
@@ -212,11 +216,15 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
 // slDLSSGetOptimalSettings detour: observe calls, apply same quality/preset overrides as slDLSSSetOptions, then call
 // original
 static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
+    static bool first_call = true;
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    bool optionsLogged = LogDLSSOptions(options);
+    bool optionsLogged = false;
+    if (first_call) {
+        optionsLogged = LogDLSSOptions(options);
+    }
 
     if (slDLSSGetOptimalSettings_Original == nullptr) {
         return static_cast<int>(sl::Result::eErrorInvalidParameter);
@@ -243,11 +251,15 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
 
     int result = slDLSSGetOptimalSettings_Original(modified_options, settings);
 
-    if (optionsLogged) {
+    if (optionsLogged && first_call) {
         LogInfo(
             "slDLSSGetOptimalSettings result=%d -> optimalRender=%ux%u sharpness=%.2f renderMin=%ux%u renderMax=%ux%u",
             result, settings.optimalRenderWidth, settings.optimalRenderHeight, settings.optimalSharpness,
             settings.renderWidthMin, settings.renderHeightMin, settings.renderWidthMax, settings.renderHeightMax);
+    }
+    if (first_call) {
+        first_call = false;
+        LogInfo("Streamline: slDLSSGetOptimalSettings first call");
     }
     return result;
 }
@@ -255,11 +267,12 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
 // slDLSSSetOptions detour: log arguments and apply main-tab DLSS overrides (quality preset, render preset,
 // auto-exposure)
 static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSOptions& options) {
+    static bool first_call = true;
     if (slDLSSSetOptions_Original == nullptr) {
         return static_cast<int>(sl::Result::eErrorInvalidParameter);
     }
     uint32_t viewportId = static_cast<uint32_t>(viewport);
-    if (LogDLSSOptions(options)) {
+    if (LogDLSSOptions(options) && first_call) {
         LogInfo("slDLSSSetOptions called viewport=%u", viewportId);
     }
 
@@ -299,14 +312,19 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
     }
 
     if (applied_any) {
-        LogInfo("slDLSSSetOptions: applied overrides -> mode=%s", DLSSModeStr(modified_options.mode));
-    } else if (LogDLSSOptions(options)) {
+        if (first_call) {
+            LogInfo("slDLSSSetOptions: applied overrides -> mode=%s", DLSSModeStr(modified_options.mode));
+        }
+    } else if (first_call && LogDLSSOptions(options)) {
         // Log why no overrides were applied (only when we're already logging this call)
         const std::string qPreset = settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue();
         const bool presetEnabled = settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue();
         const std::string srPreset = settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue();
         LogInfo("slDLSSSetOptions: no overrides applied (quality_preset=%s preset_override_enabled=%d sr_preset=%s)",
                 qPreset.c_str(), presetEnabled ? 1 : 0, srPreset.c_str());
+    }
+    if (first_call) {
+        first_call = false;
     }
 
     return slDLSSSetOptions_Original(viewport, modified_options);

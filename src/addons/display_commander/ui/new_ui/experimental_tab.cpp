@@ -830,13 +830,9 @@ static void DrawThreadTrackingSubTab() {
         ImGui::Indent();
         ImGui::Text("Last thread ID that called ChooseFpsLimiter for each option (0 = not yet called):");
         ImGui::Spacing();
-        const char* fps_limiter_site_names[] = {"reflex_marker", "dxgi_swapchain", "reshade_addon_event",
-                                                "dxgi_factory_wrapper"};
         for (size_t i = 0; i < kFpsLimiterCallSiteCount; i++) {
             DWORD tid = g_fps_limiter_site_thread_id[i].load(std::memory_order_relaxed);
-            const char* name = (i < sizeof(fps_limiter_site_names) / sizeof(fps_limiter_site_names[0]))
-                                   ? fps_limiter_site_names[i]
-                                   : "?";
+            const char* name = FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(i));
             ImGui::Text("%s: %lu (0x%lX)", name, static_cast<unsigned long>(tid), static_cast<unsigned long>(tid));
         }
         ImGui::Unindent();

@@ -640,13 +640,16 @@ extern std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id;
 /** Entry points where use_fps_limiter is computed; last frame_id per site is tracked to know which paths are available.
  */
 enum class FpsLimiterCallSite {
-    reflex_marker,         // NVAPI SetLatencyMarker path
-    dxgi_swapchain,        // DXGI Present/Present1 detour or wrapper
-    reshade_addon_event,   // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
-    dxgi_factory_wrapper,  // Currently unused in practice
+    reflex_marker,           // NVAPI SetLatencyMarker path (D3D)
+    reflex_marker_vk_nvll,   // NvLowLatencyVk.dll SetLatencyMarker path (Vulkan)
+    reflex_marker_vk_loader, // vulkan-1 / VK_NV_low_latency2 vkSetLatencyMarkerNV wrapper
+    reflex_marker_pclstats_etw, // PCLStats ETW (EventWriteTransfer) – first 6 markers only
+    dxgi_swapchain,         // DXGI Present/Present1 detour or wrapper
+    reshade_addon_event,    // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
+    dxgi_factory_wrapper,   // Currently unused in practice
 };
 
-constexpr size_t kFpsLimiterCallSiteCount = 4;
+constexpr size_t kFpsLimiterCallSiteCount = 7;
 
 /** Last timestamp (ns) at which each FPS limiter call site was hit (0 = never). */
 extern std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount];
@@ -654,7 +657,7 @@ extern std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSite
 /** Sentinel for "no FPS limiter source chosen yet". */
 constexpr uint8_t kFpsLimiterChosenUnset = 0xFF;
 
-/** Index of the chosen FPS limiter source (0..3 = FpsLimiterCallSite, kFpsLimiterChosenUnset = unset). */
+/** Index of the chosen FPS limiter source (0..6 = FpsLimiterCallSite, kFpsLimiterChosenUnset = unset). */
 extern std::atomic<uint8_t> g_chosen_fps_limiter_site;
 
 /** Register this call site with current timestamp and recompute chosen source. Decision is based on which sites were
@@ -666,6 +669,9 @@ bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum);
 
 /** Returns the chosen FPS limiter call site for the current frame (dxgi_swapchain or reshade_addon_event). */
 FpsLimiterCallSite GetChosenFrameTimeLocation();
+
+/** Returns display name for a FPS limiter call site ("reflex_marker", "reflex_marker_vk_nvll", etc.). */
+const char* FpsLimiterSiteName(FpsLimiterCallSite site);
 
 /** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset".
  */

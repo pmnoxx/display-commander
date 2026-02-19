@@ -40,6 +40,9 @@ class HotkeysTabSettings {
     StringSetting hotkey_volume_down;
     StringSetting hotkey_system_volume_up;
     StringSetting hotkey_system_volume_down;
+    StringSetting hotkey_auto_hdr;
+    StringSetting hotkey_brightness_up;
+    StringSetting hotkey_brightness_down;
 
     // Exclusive key groups - predefined groups
     BoolSetting exclusive_keys_ad_enabled;      // A and D keys

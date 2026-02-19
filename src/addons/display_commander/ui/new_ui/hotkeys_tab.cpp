@@ -271,11 +271,45 @@ void InitializeHotkeyDefinitions() {
              } else {
                  LogWarn("Failed to decrease system volume via hotkey");
              }
+         }},
+        {"auto_hdr", "AutoHDR Toggle", "",
+         "Toggle AutoHDR (DisplayCommander_PerceptualBoost SDR-to-HDR effect)",
+         []() {
+             bool current_state = settings::g_mainTabSettings.auto_hdr.GetValue();
+             bool new_state = !current_state;
+             settings::g_mainTabSettings.auto_hdr.SetValue(new_state);
+             std::ostringstream oss;
+             oss << "AutoHDR " << (new_state ? "enabled" : "disabled") << " via hotkey";
+             LogInfo(oss.str().c_str());
+         }},
+        {"brightness_down", "Brightness Down", "",
+         "Decrease Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)",
+         []() {
+             constexpr float step = 10.0f;
+             constexpr float min_percent = 0.0f;
+             float current = settings::g_mainTabSettings.brightness_percent.GetValue();
+             float next = (std::max)(min_percent, current - step);
+             settings::g_mainTabSettings.brightness_percent.SetValue(next);
+             std::ostringstream oss;
+             oss << "Brightness decreased to " << std::fixed << std::setprecision(0) << next << "%% via hotkey";
+             LogInfo(oss.str().c_str());
+         }},
+        {"brightness_up", "Brightness Up", "",
+         "Increase Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)",
+         []() {
+             constexpr float step = 10.0f;
+             constexpr float max_percent = 200.0f;
+             float current = settings::g_mainTabSettings.brightness_percent.GetValue();
+             float next = (std::min)(max_percent, current + step);
+             settings::g_mainTabSettings.brightness_percent.SetValue(next);
+             std::ostringstream oss;
+             oss << "Brightness increased to " << std::fixed << std::setprecision(0) << next << "%% via hotkey";
+             LogInfo(oss.str().c_str());
          }}};
 
     // Map settings to definitions
     auto& settings = settings::g_hotkeysTabSettings;
-    if (g_hotkey_definitions.size() >= 13) {
+    if (g_hotkey_definitions.size() >= 16) {
         // Load parsed shortcuts from settings
         g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
@@ -292,6 +326,9 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[10].parsed = ParseHotkeyString(settings.hotkey_volume_down.GetValue());
         g_hotkey_definitions[11].parsed = ParseHotkeyString(settings.hotkey_system_volume_up.GetValue());
         g_hotkey_definitions[12].parsed = ParseHotkeyString(settings.hotkey_system_volume_down.GetValue());
+        g_hotkey_definitions[13].parsed = ParseHotkeyString(settings.hotkey_auto_hdr.GetValue());
+        g_hotkey_definitions[14].parsed = ParseHotkeyString(settings.hotkey_brightness_down.GetValue());
+        g_hotkey_definitions[15].parsed = ParseHotkeyString(settings.hotkey_brightness_up.GetValue());
     }
 }
 
@@ -346,6 +383,10 @@ ParsedHotkey ParseHotkeyString(const std::string& shortcut) {
         result.key_code = std::toupper(static_cast<unsigned char>(key_str[0]));
     } else if (key_str == "`" || key_str == "backtick" || key_str == "grave") {
         result.key_code = VK_OEM_3;
+    } else if (key_str == "\\" || key_str == "backslash") {
+        result.key_code = VK_OEM_5;  // \| on US keyboard
+    } else if (key_str == "/" || key_str == "slash") {
+        result.key_code = VK_OEM_2;  // /? on US keyboard
     } else if (key_str == "backspace") {
         result.key_code = VK_BACK;
     } else if (key_str == "tab") {
@@ -423,6 +464,10 @@ std::string FormatHotkeyString(const ParsedHotkey& hotkey) {
         oss << static_cast<char>(std::tolower(hotkey.key_code));
     } else if (hotkey.key_code == VK_OEM_3) {
         oss << "`";
+    } else if (hotkey.key_code == VK_OEM_5) {
+        oss << "\\";
+    } else if (hotkey.key_code == VK_OEM_2) {
+        oss << "/";
     } else if (hotkey.key_code == VK_BACK) {
         oss << "backspace";
     } else if (hotkey.key_code >= VK_F1 && hotkey.key_code <= VK_F24) {
@@ -477,6 +522,9 @@ void DrawHotkeysTab() {
         g_hotkey_definitions[10].parsed = ParseHotkeyString(settings.hotkey_volume_down.GetValue());
         g_hotkey_definitions[11].parsed = ParseHotkeyString(settings.hotkey_system_volume_up.GetValue());
         g_hotkey_definitions[12].parsed = ParseHotkeyString(settings.hotkey_system_volume_down.GetValue());
+        g_hotkey_definitions[13].parsed = ParseHotkeyString(settings.hotkey_auto_hdr.GetValue());
+        g_hotkey_definitions[14].parsed = ParseHotkeyString(settings.hotkey_brightness_down.GetValue());
+        g_hotkey_definitions[15].parsed = ParseHotkeyString(settings.hotkey_brightness_up.GetValue());
 
         // Create a table for hotkeys
         if (ImGui::BeginTable("HotkeysTable", 4,
@@ -511,6 +559,9 @@ void DrawHotkeysTab() {
                     case 10: setting_ptr = &settings.hotkey_volume_down; break;
                     case 11: setting_ptr = &settings.hotkey_system_volume_up; break;
                     case 12: setting_ptr = &settings.hotkey_system_volume_down; break;
+                    case 13: setting_ptr = &settings.hotkey_auto_hdr; break;
+                    case 14: setting_ptr = &settings.hotkey_brightness_down; break;
+                    case 15: setting_ptr = &settings.hotkey_brightness_up; break;
                     default: setting_ptr = nullptr; break;
                 }
 

@@ -295,10 +295,16 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (var_saturation != 0) {
         runtime->set_uniform_value_float(var_saturation, saturation_val);
     }
+    const float hue_val = settings::g_mainTabSettings.hue_degrees.GetValue();
+    const reshade::api::effect_uniform_variable var_hue =
+        runtime->find_uniform_variable("DisplayCommander_Control.fx", "HueDegrees");
+    if (var_hue != 0) {
+        runtime->set_uniform_value_float(var_hue, hue_val);
+    }
     // Enable technique when any display tweak is non-neutral
     runtime->set_technique_state(tech,
                                 multiplier != 1.0f || gamma_val != 1.0f || contrast_val != 1.0f ||
-                                    saturation_val != 1.0f);
+                                    saturation_val != 1.0f || hue_val != 0.0f);
 }
 
 // Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same

@@ -107,6 +107,15 @@ uniform float Saturation <
     ui_tooltip = "1.0 = neutral, 0 = grayscale. Set by Display Commander when using Main tab Misc Saturation.";
 > = 1.0;
 
+uniform float HueDegrees <
+    ui_type = "slider";
+    ui_min = -15.0;
+    ui_max = 15.0;
+    ui_step = 0.5;
+    ui_label = "Hue (degrees)";
+    ui_tooltip = "0 = neutral. Shift hue by -15 to +15 degrees. Set by Display Commander when using Main tab Misc Hue.";
+> = 0.0;
+
 #define COLOR_SPACE_BT709 0.f
 #define COLOR_SPACE_BT2020 1.f
 
@@ -177,6 +186,35 @@ float3 EncodeColor(float3 color)
     return ConvertColorSpace(color, WORKING_COLOR_SPACE, COLOR_SPACE_BT709) ; // Default fallback
 }
 
+// Hue/chroma/value and HSV conversion (Chilliant-style, H in 0-1; perfect round-trip)
+#define HSV_EPS 1e-10
+
+float3 HUEtoRGB(float H) {
+    float R = abs(H * 6.0 - 3.0) - 1.0;
+    float G = 2.0 - abs(H * 6.0 - 2.0);
+    float B = 2.0 - abs(H * 6.0 - 4.0);
+    return saturate(float3(R, G, B));
+}
+
+float3 RGBtoHCV(float3 RGB) {
+    float4 P = (RGB.g < RGB.b) ? float4(RGB.bg, -1.0, 2.0 / 3.0) : float4(RGB.gb, 0.0, -1.0 / 3.0);
+    float4 Q = (RGB.r < P.x) ? float4(P.xyw, RGB.r) : float4(RGB.r, P.yzx);
+    float C = Q.x - min(Q.w, Q.y);
+    float H = abs((Q.w - Q.y) / (6.0 * C + HSV_EPS) + Q.z);
+    return float3(H, C, Q.x);
+}
+
+float3 RGBtoHSV(float3 RGB) {
+    float3 HCV = RGBtoHCV(RGB);
+    float S = HCV.y / (HCV.z + HSV_EPS);
+    return float3(HCV.x, S, HCV.z);
+}
+
+float3 HSVtoRGB(float3 HSV) {
+    float3 RGB = HUEtoRGB(HSV.x);
+    return ((RGB - 1.0) * HSV.y + 1.0) * HSV.z;
+}
+
 // Fullscreen triangle vertex shader (no vertex buffer needed)
 void PostProcessVS2(in uint id : SV_VertexID, out float4 position : SV_Position, out float2 texcoord : TEXCOORD) {
     texcoord.x = (id == 2) ? 2.0 : 0.0;
@@ -195,6 +233,11 @@ float4 MainPS(float4 pos : SV_Position, float2 tex : TexCoord) : SV_Target {
     // Saturation: 1.0 = no change, 0 = grayscale
     float luma = dot(color.rgb, float3(0.2126, 0.7152, 0.0722));
     color.rgb = lerp(float3(luma, luma, luma), color.rgb, Saturation);
+
+    // Hue: shift hue by HueDegrees (-15 to +15). Always use same path so 0 and near-0 are continuous.
+    float3 hsv = RGBtoHSV(color.rgb);
+    hsv.x = frac(hsv.x + HueDegrees / 360.0);
+    color.rgb = HSVtoRGB(hsv);
 
     // Gamma: linear -> gamma-corrected (1.0 = no change)
     color.rgb = pow(max(color.rgb, 1e-5), 1.0 / Gamma);

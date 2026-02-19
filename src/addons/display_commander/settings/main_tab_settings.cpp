@@ -36,6 +36,7 @@ std::atomic<int> s_brightness_colorspace{
 std::atomic<float> s_gamma_value{1.0f};       // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
 std::atomic<float> s_contrast_value{1.0f};     // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
 std::atomic<float> s_saturation_value{1.0f};  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+std::atomic<float> s_hue_degrees{0.0f};       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
 std::atomic<float> s_auto_hdr_strength{1.0f}; // Profile 3 EffectStrength_P3 (0.0–2.0), default 1.0
 
 namespace settings {
@@ -189,6 +190,7 @@ MainTabSettings::MainTabSettings()
       gamma_value("gamma_value", s_gamma_value, 1.0f, 0.5f, 2.0f, "DisplayCommander"),
       contrast_value("contrast_value", s_contrast_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
       saturation_value("saturation_value", s_saturation_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
+      hue_degrees("hue_degrees", s_hue_degrees, 0.0f, -15.0f, 15.0f, "DisplayCommander"),
       auto_hdr("auto_hdr", false, "DisplayCommander"),
       auto_hdr_strength("auto_hdr_strength", s_auto_hdr_strength, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
       auto_enable_disable_hdr("auto_enable_disable_hdr", false, "DisplayCommander"),
@@ -303,6 +305,7 @@ MainTabSettings::MainTabSettings()
         &gamma_value,
         &contrast_value,
         &saturation_value,
+        &hue_degrees,
         &auto_hdr,
         &auto_hdr_strength,
         &auto_enable_disable_hdr,

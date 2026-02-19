@@ -33,6 +33,7 @@ extern std::atomic<int> s_brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3
 extern std::atomic<float> s_gamma_value;      // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
 extern std::atomic<float> s_contrast_value;   // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
 extern std::atomic<float> s_saturation_value; // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+extern std::atomic<float> s_hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
 extern std::atomic<float> s_auto_hdr_strength;    // 0.0–2.0, EffectStrength_P3 when AutoHDR on (default 1.0)
 
 namespace settings {
@@ -188,6 +189,7 @@ class MainTabSettings {
     ui::new_ui::FloatSettingRef gamma_value;      // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
     ui::new_ui::FloatSettingRef contrast_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
     ui::new_ui::FloatSettingRef saturation_value; // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+    ui::new_ui::FloatSettingRef hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
     ui::new_ui::BoolSetting
         auto_hdr;  // When enabled, runs DisplayCommander_PerceptualBoost.fx (requires Generic RenoDX for SDR->HDR)
     ui::new_ui::FloatSettingRef auto_hdr_strength;  // Profile 3 EffectStrength_P3 (0.0–2.0), only used when AutoHDR on

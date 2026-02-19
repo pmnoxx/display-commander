@@ -127,6 +127,18 @@ FreeLibraryAndExitThread_pfn FreeLibraryAndExitThread_Original = nullptr;
 // LoadPackagedLibrary is resolved at runtime (Windows 8+); store target for Uninstall.
 static LPVOID g_LoadPackagedLibrary_target = nullptr;
 
+// LdrLoadDll (ntdll) - resolved at runtime; store target for Uninstall.
+LdrLoadDll_pfn LdrLoadDll_Original = nullptr;
+static LPVOID g_LdrLoadDll_target = nullptr;
+
+// UNICODE_STRING layout (ntdll) for parsing DllName in LdrLoadDll_Detour
+struct UnicodeStringNtdll {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR Buffer;
+};
+static constexpr LONG STATUS_ACCESS_DENIED_NT = 0xC0000022L;
+
 // GetModuleHandle / GetModuleHandleEx (for DLSS override: return override module so hooks and version reporting use it)
 using GetModuleHandleW_pfn = HMODULE(WINAPI*)(LPCWSTR);
 using GetModuleHandleA_pfn = HMODULE(WINAPI*)(LPCSTR);
@@ -781,6 +793,96 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
     return result;
 }
 
+// Hooked LdrLoadDll (ntdll). Catches loads that bypass kernel32 (e.g. direct ntdll calls). Blocking + tracking only
+// (no DLSS path override from this path).
+LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    const auto* name = static_cast<const UnicodeStringNtdll*>(DllName);
+    std::wstring dll_name_wide;
+    if (name != nullptr && name->Buffer != nullptr && name->Length > 0) {
+        size_t char_count = name->Length / sizeof(wchar_t);
+        dll_name_wide.assign(name->Buffer, char_count);
+    }
+    std::string dll_name = WideToNarrow(dll_name_wide);
+    std::string timestamp = GetCurrentTimestamp();
+    // Only log "called" when the library is not already in our tracked set (avoids spam for e.g. gdi32.dll)
+    const bool already_loaded = !dll_name_wide.empty() && IsModuleLoaded(dll_name_wide);
+    if (!already_loaded) {
+        LogInfo("[%s] LdrLoadDll called: %s", timestamp.c_str(), dll_name.empty() ? "(no name)" : dll_name.c_str());
+    }
+
+    if (!dll_name_wide.empty()) {
+        if (ShouldBlockSpecialKDLL(dll_name_wide)) {
+            LogInfo("[%s] SpecialK Block (LdrLoadDll): Blocking %s", timestamp.c_str(), dll_name.c_str());
+            if (DllHandle != nullptr) {
+                *DllHandle = nullptr;
+            }
+            return STATUS_ACCESS_DENIED_NT;
+        }
+        if (ShouldBlockAnselDLL(dll_name_wide)) {
+            LogInfo("[%s] Ansel Block (LdrLoadDll): Blocking %s", timestamp.c_str(), dll_name.c_str());
+            if (DllHandle != nullptr) {
+                *DllHandle = nullptr;
+            }
+            return STATUS_ACCESS_DENIED_NT;
+        }
+        if (ShouldBlockDLL(dll_name_wide)) {
+            LogInfo("[%s] DLL Block (LdrLoadDll): Blocking %s", timestamp.c_str(), dll_name.c_str());
+            if (DllHandle != nullptr) {
+                *DllHandle = nullptr;
+            }
+            return STATUS_ACCESS_DENIED_NT;
+        }
+    }
+
+    if (!LdrLoadDll_Original || DllHandle == nullptr) {
+        return STATUS_ACCESS_DENIED_NT;
+    }
+    LONG status = LdrLoadDll_Original(DllPath, DllCharacteristics, DllName, DllHandle);
+    PVOID base = *DllHandle;
+
+    if (status == 0 && base != nullptr) {
+        HMODULE hMod = static_cast<HMODULE>(base);
+        bool added = false;
+        {
+            utils::SRWLockExclusive lock(g_module_srwlock);
+            if (g_module_handles.find(hMod) == g_module_handles.end()) {
+                added = true;
+                ModuleInfo moduleInfo;
+                moduleInfo.hModule = hMod;
+                moduleInfo.moduleName = dll_name_wide.empty() ? L"Unknown" : dll_name_wide;
+                wchar_t modulePath[MAX_PATH];
+                if (GetModuleFileNameW(hMod, modulePath, MAX_PATH)) {
+                    moduleInfo.fullPath = modulePath;
+                }
+                MODULEINFO modInfo;
+                if (GetModuleInformation(GetCurrentProcess(), hMod, &modInfo, sizeof(modInfo))) {
+                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+                    moduleInfo.entryPoint = modInfo.EntryPoint;
+                }
+                moduleInfo.loadTime = GetModuleFileTime(hMod);
+                moduleInfo.loadedBeforeHooks = false;
+                g_loaded_modules.push_back(moduleInfo);
+                g_module_handles.insert(hMod);
+                LogInfo("Added new module to tracking (LdrLoadDll): %s (0x%p)",
+                        dll_name.empty() ? "Unknown" : dll_name.c_str(), moduleInfo.baseAddress);
+                OnModuleLoaded(moduleInfo.moduleName, hMod);
+            }
+        }
+        // Only log success when we actually added (avoids spam when library was already loaded)
+        if (added) {
+            LogInfo("[%s] LdrLoadDll success: %s -> 0x%p", timestamp.c_str(),
+                    dll_name.empty() ? "(no name)" : dll_name.c_str(), base);
+        }
+    } else if (status != 0) {
+        LogInfo("[%s] LdrLoadDll failed: %s -> NTSTATUS 0x%08lX", timestamp.c_str(),
+                dll_name.empty() ? "(no name)" : dll_name.c_str(), static_cast<unsigned long>(status));
+    }
+
+    return status;
+}
+
 // Hooked GetModuleHandleW: return DLSS override module when we loaded it via redirect (so hooks and version use it)
 HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
     HMODULE override_handle = GetDlssOverrideHandle(lpModuleName ? lpModuleName : L"");
@@ -979,6 +1081,25 @@ bool InstallLoadLibraryHooks() {
         }
     }
 
+    // Hook LdrLoadDll (ntdll) - catches loads that bypass kernel32
+    HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+    if (hNtdll != nullptr) {
+        auto pLdrLoadDll =
+            reinterpret_cast<LdrLoadDll_pfn>(GetProcAddress(hNtdll, "LdrLoadDll"));
+        if (pLdrLoadDll != nullptr) {
+            g_LdrLoadDll_target = reinterpret_cast<LPVOID>(pLdrLoadDll);
+            if (!CreateAndEnableHook(g_LdrLoadDll_target, LdrLoadDll_Detour,
+                                    reinterpret_cast<LPVOID*>(&LdrLoadDll_Original), "LdrLoadDll")) {
+                LogError("Failed to create and enable LdrLoadDll hook");
+                g_LdrLoadDll_target = nullptr;
+            } else {
+                LogInfo("LdrLoadDll hook installed");
+            }
+        } else {
+            LogInfo("LdrLoadDll not found in ntdll, skipping hook");
+        }
+    }
+
     // Hook GetModuleHandleW / GetModuleHandleA / GetModuleHandleEx (so DLSS override handle is returned for
     // hooks/version)
     if (!CreateAndEnableHook(GetModuleHandleW, GetModuleHandleW_Detour, (LPVOID*)&GetModuleHandleW_Original,
@@ -1046,6 +1167,10 @@ void UninstallLoadLibraryHooks() {
         MH_RemoveHook(g_LoadPackagedLibrary_target);
         g_LoadPackagedLibrary_target = nullptr;
     }
+    if (g_LdrLoadDll_target != nullptr) {
+        MH_RemoveHook(g_LdrLoadDll_target);
+        g_LdrLoadDll_target = nullptr;
+    }
     MH_RemoveHook(GetModuleHandleW);
     MH_RemoveHook(GetModuleHandleA);
     MH_RemoveHook(GetModuleHandleExW);
@@ -1062,6 +1187,7 @@ void UninstallLoadLibraryHooks() {
     LoadLibraryExA_Original = nullptr;
     LoadLibraryExW_Original = nullptr;
     LoadPackagedLibrary_Original = nullptr;
+    LdrLoadDll_Original = nullptr;
     GetModuleHandleW_Original = nullptr;
     GetModuleHandleA_Original = nullptr;
     GetModuleHandleExW_Original = nullptr;

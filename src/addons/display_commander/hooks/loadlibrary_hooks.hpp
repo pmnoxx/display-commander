@@ -35,6 +35,10 @@ struct ModuleInfo {
     }
 };
 
+// LdrLoadDll (ntdll) - optional hook for loads that bypass kernel32. DllName is UNICODE_STRING (opaque here).
+using LdrLoadDll_pfn = LONG(NTAPI*)(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle);
+extern LdrLoadDll_pfn LdrLoadDll_Original;
+
 // Original function pointers
 extern LoadLibraryA_pfn LoadLibraryA_Original;
 extern LoadLibraryW_pfn LoadLibraryW_Original;
@@ -50,6 +54,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName);
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
 HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Reserved);
+LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle);
 BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule);
 VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode);
 

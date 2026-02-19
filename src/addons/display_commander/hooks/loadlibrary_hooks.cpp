@@ -119,8 +119,12 @@ LoadLibraryA_pfn LoadLibraryA_Original = nullptr;
 LoadLibraryW_pfn LoadLibraryW_Original = nullptr;
 LoadLibraryExA_pfn LoadLibraryExA_Original = nullptr;
 LoadLibraryExW_pfn LoadLibraryExW_Original = nullptr;
+LoadPackagedLibrary_pfn LoadPackagedLibrary_Original = nullptr;
 FreeLibrary_pfn FreeLibrary_Original = nullptr;
 FreeLibraryAndExitThread_pfn FreeLibraryAndExitThread_Original = nullptr;
+
+// LoadPackagedLibrary is resolved at runtime (Windows 8+); store target for Uninstall.
+static LPVOID g_LoadPackagedLibrary_target = nullptr;
 
 // GetModuleHandle / GetModuleHandleEx (for DLSS override: return override module so hooks and version reporting use it)
 using GetModuleHandleW_pfn = HMODULE(WINAPI*)(LPCWSTR);
@@ -711,6 +715,71 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     return result;
 }
 
+// Hooked LoadPackagedLibrary (Windows 8+; UWP packaged apps). Same blocking/tracking as LoadLibraryW; no DLSS path
+// override (package full name is not a file path).
+HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Reserved) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    std::string timestamp = GetCurrentTimestamp();
+    std::string name_str = lpwszPackageFullName ? WideToNarrow(lpwszPackageFullName) : "NULL";
+
+    LogInfo("[%s] LoadPackagedLibrary called: %s, Reserved: 0x%08X", timestamp.c_str(), name_str.c_str(), Reserved);
+
+    if (lpwszPackageFullName) {
+        std::wstring w_name = lpwszPackageFullName;
+        if (ShouldBlockSpecialKDLL(w_name)) {
+            LogInfo("[%s] SpecialK Block: Blocking packaged lib %s from loading", timestamp.c_str(), name_str.c_str());
+            SetLastError(ERROR_ACCESS_DENIED);
+            return nullptr;
+        }
+        if (ShouldBlockAnselDLL(w_name)) {
+            LogInfo("[%s] Ansel Block: Blocking packaged lib %s from loading", timestamp.c_str(), name_str.c_str());
+            return nullptr;
+        }
+        if (ShouldBlockDLL(w_name)) {
+            LogInfo("[%s] DLL Block: Blocking packaged lib %s from loading", timestamp.c_str(), name_str.c_str());
+            return nullptr;
+        }
+    }
+
+    // Original is always set when this hook is installed; no fallback (API resolved at install time).
+    HMODULE result =
+        LoadPackagedLibrary_Original ? LoadPackagedLibrary_Original(lpwszPackageFullName, Reserved) : nullptr;
+
+    if (result) {
+        LogInfo("[%s] LoadPackagedLibrary success: %s -> HMODULE: 0x%p", timestamp.c_str(), name_str.c_str(), result);
+        {
+            utils::SRWLockExclusive lock(g_module_srwlock);
+            if (g_module_handles.find(result) == g_module_handles.end()) {
+                ModuleInfo moduleInfo;
+                moduleInfo.hModule = result;
+                moduleInfo.moduleName = std::wstring(name_str.begin(), name_str.end());
+                wchar_t modulePath[MAX_PATH];
+                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
+                    moduleInfo.fullPath = modulePath;
+                }
+                MODULEINFO modInfo;
+                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
+                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+                    moduleInfo.entryPoint = modInfo.EntryPoint;
+                }
+                moduleInfo.loadTime = GetModuleFileTime(result);
+                moduleInfo.loadedBeforeHooks = false;
+                g_loaded_modules.push_back(moduleInfo);
+                g_module_handles.insert(result);
+                LogInfo("Added new module to tracking (LoadPackagedLibrary): %s (0x%p)", name_str.c_str(),
+                        moduleInfo.baseAddress);
+                OnModuleLoaded(moduleInfo.moduleName, result);
+            }
+        }
+    } else {
+        DWORD error = GetLastError();
+        LogInfo("[%s] LoadPackagedLibrary failed: %s -> Error: %lu", timestamp.c_str(), name_str.c_str(), error);
+    }
+
+    return result;
+}
+
 // Hooked GetModuleHandleW: return DLSS override module when we loaded it via redirect (so hooks and version use it)
 HMODULE WINAPI GetModuleHandleW_Detour(LPCWSTR lpModuleName) {
     HMODULE override_handle = GetDlssOverrideHandle(lpModuleName ? lpModuleName : L"");
@@ -887,6 +956,23 @@ bool InstallLoadLibraryHooks() {
         return false;
     }
 
+    // Hook LoadPackagedLibrary (Windows 8+; optional - skip if not available e.g. Windows 7)
+    HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    if (hKernel32) {
+        auto pLoadPackagedLibrary =
+            reinterpret_cast<LoadPackagedLibrary_pfn>(GetProcAddress(hKernel32, "LoadPackagedLibrary"));
+        if (pLoadPackagedLibrary != nullptr) {
+            g_LoadPackagedLibrary_target = reinterpret_cast<LPVOID>(pLoadPackagedLibrary);
+            if (!CreateAndEnableHook(g_LoadPackagedLibrary_target, LoadPackagedLibrary_Detour,
+                                     (LPVOID*)&LoadPackagedLibrary_Original, "LoadPackagedLibrary")) {
+                LogError("Failed to create and enable LoadPackagedLibrary hook");
+                g_LoadPackagedLibrary_target = nullptr;
+            }
+        } else {
+            LogInfo("LoadPackagedLibrary not available (e.g. Windows 7), skipping hook");
+        }
+    }
+
     // Hook GetModuleHandleW / GetModuleHandleA / GetModuleHandleEx (so DLSS override handle is returned for
     // hooks/version)
     if (!CreateAndEnableHook(GetModuleHandleW, GetModuleHandleW_Detour, (LPVOID*)&GetModuleHandleW_Original,
@@ -947,6 +1033,10 @@ void UninstallLoadLibraryHooks() {
     MH_RemoveHook(LoadLibraryW);
     MH_RemoveHook(LoadLibraryExA);
     MH_RemoveHook(LoadLibraryExW);
+    if (g_LoadPackagedLibrary_target != nullptr) {
+        MH_RemoveHook(g_LoadPackagedLibrary_target);
+        g_LoadPackagedLibrary_target = nullptr;
+    }
     MH_RemoveHook(GetModuleHandleW);
     MH_RemoveHook(GetModuleHandleA);
     MH_RemoveHook(GetModuleHandleExW);
@@ -962,6 +1052,7 @@ void UninstallLoadLibraryHooks() {
     LoadLibraryW_Original = nullptr;
     LoadLibraryExA_Original = nullptr;
     LoadLibraryExW_Original = nullptr;
+    LoadPackagedLibrary_Original = nullptr;
     GetModuleHandleW_Original = nullptr;
     GetModuleHandleA_Original = nullptr;
     GetModuleHandleExW_Original = nullptr;
@@ -1057,10 +1148,10 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
 
 // Module name substrings we install hooks for (must match OnModuleLoaded logic)
 static const std::wstring* GetInterestingModulePatterns(size_t* out_count) {
-    static const std::wstring k_patterns[] = {
-        L"dxgi.dll", L"d3d11.dll", L"d3d12.dll", L"sl.interposer.dll", L"xinput",
-        L"windows.gaming.input", L"gameinput", L"nvapi64.dll", L"nvlowlatencyvk.dll",
-        L"vulkan-1.dll", L"_nvngx.dll", L"dbghelp.dll"};
+    static const std::wstring k_patterns[] = {L"dxgi.dll",          L"d3d11.dll",   L"d3d12.dll",
+                                              L"sl.interposer.dll", L"xinput",      L"windows.gaming.input",
+                                              L"gameinput",         L"nvapi64.dll", L"nvlowlatencyvk.dll",
+                                              L"vulkan-1.dll",      L"_nvngx.dll",  L"dbghelp.dll"};
     *out_count = sizeof(k_patterns) / sizeof(k_patterns[0]);
     return k_patterns;
 }
@@ -1110,9 +1201,10 @@ std::vector<std::string> ReportMissedModulesOnExit() {
             continue;
         }
         std::string narrow_fn(fn.begin(), fn.end());
-        LogError("Missed module on exit: '%s' was loaded in process but we never received OnModuleLoaded for it "
-                 "(e.g. loaded via LdrLoadDll, static import before hooks, or manual map)",
-                 narrow_fn.c_str());
+        LogError(
+            "Missed module on exit: '%s' was loaded in process but we never received OnModuleLoaded for it "
+            "(e.g. loaded via LdrLoadDll, static import before hooks, or manual map)",
+            narrow_fn.c_str());
         missed.push_back(narrow_fn);
     }
     return missed;

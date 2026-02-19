@@ -1076,6 +1076,10 @@ void UninstallLoadLibraryHooks() {
     g_loadlibrary_hooks_installed.store(false);
     LogInfo("LoadLibrary hooks uninstalled successfully");
 }
+
+// modules_loaded_late_without_noticing is needed for Doom Dark Ages
+// NvLowLatencyVk.dll - gets loaded by unknown api
+// dinput9_1.dll - gets loaded by unknown api
 bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
     utils::SRWLockExclusive lock(g_module_srwlock);
 
@@ -1094,8 +1098,7 @@ bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
         return false;
     }
 
-    const DWORD moduleCount =
-        (cbNeeded / sizeof(HMODULE) < kMaxModules) ? (cbNeeded / sizeof(HMODULE)) : kMaxModules;
+    const DWORD moduleCount = (cbNeeded / sizeof(HMODULE) < kMaxModules) ? (cbNeeded / sizeof(HMODULE)) : kMaxModules;
     if (!modules_loaded_late_without_noticing) {
         LogInfo("Found %lu loaded modules", moduleCount);
     }

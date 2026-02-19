@@ -1538,9 +1538,6 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                         static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
                     const bool onpresent_low_latency = (onpresent_reflex == OnPresentReflexMode::kLowLatency
                                                         || onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
-                    if (g_latencyManager->IsInitialized() && onpresent_low_latency) {
-                        adjusted_target_fps *= 0.995f;
-                    }
                     LONGLONG frame_time_ns = static_cast<LONGLONG>(1'000'000'000.0 / adjusted_target_fps);
 
                     // Store delay_bias and frame_time for post-sleep calculation

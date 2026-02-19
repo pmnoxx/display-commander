@@ -58,7 +58,9 @@ bool InstallLoadLibraryHooks();
 void UninstallLoadLibraryHooks();
 
 // Module enumeration and tracking
-bool EnumerateLoadedModules();
+// modules_loaded_late_without_noticing: when true (e.g. from continuous monitoring), merge into existing list
+// without clearing; newly discovered modules are marked loadedBeforeHooks=false and OnModuleLoaded is called.
+bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing = false);
 std::vector<ModuleInfo> GetLoadedModules();
 bool IsModuleLoaded(const std::wstring &moduleName);
 

@@ -876,6 +876,31 @@ void ContinuousMonitoringThread() {
                 g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
                 HandleDiscordOverlayAutoHide();
 
+                // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules
+                // loaded via paths EnumProcessModules misses at init, e.g. NvLowLatencyVk.dll.
+                RECORD_DETOUR_CALL(utils::get_now_ns());
+                g_continuous_monitoring_section.store("enumerate_loaded_modules_10s", std::memory_order_release);
+                {
+                    static int enumerate_after_10s_count = 0;
+                    constexpr int kEnumerateRuns = 6;
+                    constexpr LONGLONG kIntervalNs = 10 * utils::SEC_TO_NS;
+                    if (enumerate_after_10s_count < kEnumerateRuns) {
+                        LONGLONG elapsed_ns = now_ns - start_time;
+                        LONGLONG next_run_at_ns = (enumerate_after_10s_count + 1) * kIntervalNs;
+                        if (elapsed_ns >= next_run_at_ns) {
+                            enumerate_after_10s_count++;
+                            if (display_commanderhooks::EnumerateLoadedModules(
+                                    true)) {  // modules loaded late without us noticing
+                                LogInfo("Continuous monitoring: EnumerateLoadedModules run %d/6 (at %lld s) completed",
+                                        enumerate_after_10s_count, elapsed_ns / utils::SEC_TO_NS);
+                            } else {
+                                LogError("Continuous monitoring: EnumerateLoadedModules run %d/6 failed",
+                                         enumerate_after_10s_count);
+                            }
+                        }
+                    }
+                }
+
                 // wait 10s before configuring reflex
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);

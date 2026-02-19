@@ -1,5 +1,6 @@
 #include "loadlibrary_hooks.hpp"
 #include <MinHook.h>
+#include <tlhelp32.h>
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -892,6 +893,9 @@ bool InstallLoadLibraryHooks() {
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::LOADLIBRARY);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogError("Failed to initialize MinHook for LoadLibrary hooks - Status: %d", init_status);
+        if (!EnumerateLoadedModules()) {
+            LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+        }
         return false;
     }
 
@@ -901,11 +905,10 @@ bool InstallLoadLibraryHooks() {
         LogInfo("MinHook initialized successfully for LoadLibrary hooks");
     }
 
-    if (!EnumerateLoadedModules()) {
-        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
-    }
-
     if (g_loadlibrary_hooks_installed.load()) {
+        if (!EnumerateLoadedModules()) {
+            LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+        }
         LogInfo("LoadLibrary hooks already installed");
         return true;
     }
@@ -913,6 +916,9 @@ bool InstallLoadLibraryHooks() {
     // Check if LoadLibrary hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::LOADLIBRARY)) {
+        if (!EnumerateLoadedModules()) {
+            LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+        }
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
         return false;
     }
@@ -1012,6 +1018,9 @@ bool InstallLoadLibraryHooks() {
     g_loadlibrary_hooks_installed.store(true);
     LogInfo("LoadLibrary hooks installed successfully");
 
+    if (!EnumerateLoadedModules()) {
+        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
+    }
     // Mark LoadLibrary hooks as installed
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::LOADLIBRARY);
@@ -1067,14 +1076,17 @@ void UninstallLoadLibraryHooks() {
     g_loadlibrary_hooks_installed.store(false);
     LogInfo("LoadLibrary hooks uninstalled successfully");
 }
-bool EnumerateLoadedModules() {
+bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
     utils::SRWLockExclusive lock(g_module_srwlock);
 
-    g_loaded_modules.clear();
-    g_module_handles.clear();
+    if (!modules_loaded_late_without_noticing) {
+        g_loaded_modules.clear();
+        g_module_handles.clear();
+    }
 
-    HMODULE hModules[1024];
-    DWORD cbNeeded;
+    constexpr DWORD kMaxModules = 1024;
+    HMODULE hModules[kMaxModules];
+    DWORD cbNeeded = 0;
 
     HANDLE hProcess = GetCurrentProcess();
     if (!EnumProcessModules(hProcess, hModules, sizeof(hModules), &cbNeeded)) {
@@ -1082,16 +1094,20 @@ bool EnumerateLoadedModules() {
         return false;
     }
 
-    DWORD moduleCount = cbNeeded / sizeof(HMODULE);
-    LogInfo("Found %lu loaded modules", moduleCount);
+    const DWORD moduleCount =
+        (cbNeeded / sizeof(HMODULE) < kMaxModules) ? (cbNeeded / sizeof(HMODULE)) : kMaxModules;
+    if (!modules_loaded_late_without_noticing) {
+        LogInfo("Found %lu loaded modules", moduleCount);
+    }
 
+    int added = 0;
     for (DWORD i = 0; i < moduleCount; i++) {
-        ModuleInfo moduleInfo;
-        moduleInfo.hModule = hModules[i];
-
         if (g_module_handles.find(hModules[i]) != g_module_handles.end()) {
             continue;
         }
+
+        ModuleInfo moduleInfo;
+        moduleInfo.hModule = hModules[i];
 
         // Get module file name
         wchar_t modulePath[MAX_PATH];
@@ -1114,17 +1130,27 @@ bool EnumerateLoadedModules() {
         // Get file time
         moduleInfo.loadTime = GetModuleFileTime(hModules[i]);
 
-        // Mark as loaded before hooks (enumerated modules were all loaded before Display Commander)
-        moduleInfo.loadedBeforeHooks = true;
+        // Late enumeration: we discovered this module now; initial enumeration: loaded before our hooks
+        moduleInfo.loadedBeforeHooks = !modules_loaded_late_without_noticing;
 
         g_loaded_modules.push_back(moduleInfo);
         g_module_handles.insert(hModules[i]);
+        added++;
 
-        LogInfo("Module %lu: %ws (0x%p, %u bytes)", i, moduleInfo.moduleName.c_str(), moduleInfo.baseAddress,
-                moduleInfo.sizeOfImage);
+        if (modules_loaded_late_without_noticing) {
+            LogInfo("Late enumeration: added %ws (0x%p) - was loaded without us noticing",
+                    moduleInfo.moduleName.c_str(), moduleInfo.baseAddress);
+        } else {
+            LogInfo("Module %lu: %ws (0x%p, %u bytes)", i, moduleInfo.moduleName.c_str(), moduleInfo.baseAddress,
+                    moduleInfo.sizeOfImage);
+        }
 
-        // Call the module loaded callback for existing modules
+        // Call the module loaded callback (so hooks can be installed for this module)
         OnModuleLoaded(moduleInfo.moduleName, hModules[i]);
+    }
+
+    if (modules_loaded_late_without_noticing && added > 0) {
+        LogInfo("Late enumeration: %d new module(s) added", added);
     }
 
     return true;
@@ -1180,33 +1206,66 @@ std::vector<std::string> ReportMissedModulesOnExit() {
         }
     }
 
-    HMODULE hModules[1024];
-    DWORD cbNeeded = 0;
-    if (!EnumProcessModules(GetCurrentProcess(), hModules, sizeof(hModules), &cbNeeded)) {
-        return missed;
-    }
-    const DWORD moduleCount = cbNeeded / sizeof(HMODULE);
+    // Set of module names we've already added to missed (avoids duplicates when using multiple enumeration methods)
+    std::unordered_set<std::wstring> reported;
 
-    for (DWORD i = 0; i < moduleCount; i++) {
-        wchar_t modulePath[MAX_PATH];
-        if (GetModuleFileNameW(hModules[i], modulePath, MAX_PATH) == 0) {
-            continue;
+    constexpr DWORD kMaxModules = 1024;
+    HMODULE hModules[kMaxModules];
+    DWORD cbNeeded = 0;
+    if (EnumProcessModules(GetCurrentProcess(), hModules, sizeof(hModules), &cbNeeded)) {
+        const DWORD moduleCount =
+            (cbNeeded / sizeof(HMODULE) < kMaxModules) ? (cbNeeded / sizeof(HMODULE)) : kMaxModules;
+        for (DWORD i = 0; i < moduleCount; i++) {
+            wchar_t modulePath[MAX_PATH];
+            if (GetModuleFileNameW(hModules[i], modulePath, MAX_PATH) == 0) {
+                continue;
+            }
+            std::wstring fn = ExtractModuleName(modulePath);
+            std::transform(fn.begin(), fn.end(), fn.begin(), ::towlower);
+            if (!IsInterestingModule(fn)) {
+                continue;
+            }
+            if (tracked.find(fn) != tracked.end() || reported.find(fn) != reported.end()) {
+                continue;
+            }
+            reported.insert(fn);
+            std::string narrow_fn(fn.begin(), fn.end());
+            LogError(
+                "Missed module on exit: '%s' was loaded in process but we never received OnModuleLoaded for it "
+                "(e.g. loaded via LdrLoadDll, static import before hooks, or manual map)",
+                narrow_fn.c_str());
+            missed.push_back(narrow_fn);
         }
-        std::wstring fn = ExtractModuleName(modulePath);
-        std::transform(fn.begin(), fn.end(), fn.begin(), ::towlower);
-        if (!IsInterestingModule(fn)) {
-            continue;
-        }
-        if (tracked.find(fn) != tracked.end()) {
-            continue;
-        }
-        std::string narrow_fn(fn.begin(), fn.end());
-        LogError(
-            "Missed module on exit: '%s' was loaded in process but we never received OnModuleLoaded for it "
-            "(e.g. loaded via LdrLoadDll, static import before hooks, or manual map)",
-            narrow_fn.c_str());
-        missed.push_back(narrow_fn);
     }
+
+    // Fallback: enumerate via Tool Help API (CreateToolhelp32Snapshot). Some modules (e.g. NvLowLatencyVk.dll)
+    // can be missed by EnumProcessModules but appear in the snapshot.
+    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, GetCurrentProcessId());
+    if (hSnap != INVALID_HANDLE_VALUE) {
+        MODULEENTRY32W me;
+        me.dwSize = sizeof(me);
+        if (Module32FirstW(hSnap, &me)) {
+            do {
+                std::wstring fn = me.szModule;
+                std::transform(fn.begin(), fn.end(), fn.begin(), ::towlower);
+                if (!IsInterestingModule(fn)) {
+                    continue;
+                }
+                if (tracked.find(fn) != tracked.end() || reported.find(fn) != reported.end()) {
+                    continue;
+                }
+                reported.insert(fn);
+                std::string narrow_fn(fn.begin(), fn.end());
+                LogError(
+                    "Missed module on exit (Toolhelp32): '%s' was loaded in process but we never received "
+                    "OnModuleLoaded for it",
+                    narrow_fn.c_str());
+                missed.push_back(narrow_fn);
+            } while (Module32NextW(hSnap, &me));
+        }
+        CloseHandle(hSnap);
+    }
+
     return missed;
 }
 

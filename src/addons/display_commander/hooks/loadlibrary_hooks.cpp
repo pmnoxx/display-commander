@@ -26,8 +26,8 @@
 #include "nvapi_hooks.hpp"
 #include "nvlowlatencyvk_hooks.hpp"
 #include "streamline_hooks.hpp"
-#include "vulkan_loader_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"
+#include "vulkan_loader_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "xinput_hooks.hpp"
 

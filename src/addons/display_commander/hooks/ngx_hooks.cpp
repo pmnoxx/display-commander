@@ -1999,9 +1999,13 @@ uint64_t GetTotalNGXHookCount() {
 bool AreNGXParameterVTableHooksInstalled() { return g_ngx_vtable_hooks_installed; }
 
 // Feature status checking functions (active if any handle exists)
-bool IsDLSSEnabled() { return g_dlss_enabled.load() != 0; }
+bool IsDLSSEnabled() {
+    return g_dlss_enabled.load() != 0 || g_streamline_dlss_enabled.load();
+}
 
-bool IsDLSSGEnabled() { return g_dlssg_enabled.load() != 0; }
+bool IsDLSSGEnabled() {
+    return g_dlssg_enabled.load() != 0 || g_streamline_dlssg_fg_enabled.load();
+}
 
 bool IsRayReconstructionEnabled() { return g_ray_reconstruction_enabled.load() != 0; }
 

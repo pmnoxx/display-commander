@@ -154,6 +154,71 @@ static sl::DLSSMode QualityPresetValueToSLMode(NVSDK_NGX_PerfQuality_Value ngxQu
     }
 }
 
+// Map sl::DLSSMode to NGX PerfQualityValue for g_ngx_parameters (DLSS Information tab). Returns -1 for eOff.
+static int SLModeToPerfQualityValue(sl::DLSSMode m) {
+    switch (m) {
+        case sl::DLSSMode::eOff:              return -1;
+        case sl::DLSSMode::eMaxPerformance:   return static_cast<int>(NVSDK_NGX_PerfQuality_Value_MaxPerf);
+        case sl::DLSSMode::eBalanced:         return static_cast<int>(NVSDK_NGX_PerfQuality_Value_Balanced);
+        case sl::DLSSMode::eMaxQuality:       return static_cast<int>(NVSDK_NGX_PerfQuality_Value_MaxQuality);
+        case sl::DLSSMode::eUltraPerformance: return static_cast<int>(NVSDK_NGX_PerfQuality_Value_UltraPerformance);
+        case sl::DLSSMode::eUltraQuality:     return static_cast<int>(NVSDK_NGX_PerfQuality_Value_UltraQuality);
+        case sl::DLSSMode::eDLAA:             return static_cast<int>(NVSDK_NGX_PerfQuality_Value_DLAA);
+        default:                             return -1;
+    }
+}
+
+// Update g_ngx_parameters from Streamline DLSS options/settings so Vulkan (and other SL-only) titles
+// show correct values in the DLSS Information tab, which reads from g_ngx_parameters (NGX path).
+// Also sets g_streamline_dlss_enabled so DLSS can be shown as on elsewhere (e.g. summary, IsDLSSEnabled).
+static void UpdateNGXParamsFromDLSSOptions(const sl::DLSSOptions& options) {
+    const bool dlss_on = (options.mode != sl::DLSSMode::eOff);
+    g_streamline_dlss_enabled.store(dlss_on);
+    if (dlss_on) {
+        g_dlss_was_active_once.store(true);
+    }
+    if (options.outputWidth != sl::INVALID_UINT && options.outputHeight != sl::INVALID_UINT) {
+        g_ngx_parameters.update_uint("Width", options.outputWidth);
+        g_ngx_parameters.update_uint("Height", options.outputHeight);
+    }
+    const int perfVal = SLModeToPerfQualityValue(options.mode);
+    if (perfVal >= 0) {
+        g_ngx_parameters.update_int("PerfQualityValue", perfVal);
+    }
+    g_ngx_parameters.update_float("Sharpness", options.sharpness);
+    g_ngx_parameters.update_float("DLSS.Pre.Exposure", options.preExposure);
+    g_ngx_parameters.update_float("DLSS.Exposure.Scale", options.exposureScale);
+    g_ngx_parameters.update_int("DLSSG.ColorBuffersHDR",
+                                (options.colorBuffersHDR == sl::Boolean::eTrue) ? 1 : 0);
+    g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.DLAA", static_cast<int>(options.dlaaPreset));
+    g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.Quality", static_cast<int>(options.qualityPreset));
+    g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.Balanced", static_cast<int>(options.balancedPreset));
+    g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.Performance", static_cast<int>(options.performancePreset));
+    g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.UltraPerformance",
+                                static_cast<int>(options.ultraPerformancePreset));
+    g_ngx_parameters.update_int("DLSS.Hint.Render.Preset.UltraQuality", static_cast<int>(options.ultraQualityPreset));
+}
+
+static void UpdateNGXParamsFromDLSSOptimalSettings(const sl::DLSSOptimalSettings& settings) {
+    // Only write internal (subrect) dimensions when both are non-zero to avoid "width x 0" (e.g. Vulkan before plugin fills)
+    if (settings.optimalRenderWidth > 0 && settings.optimalRenderHeight > 0) {
+        g_ngx_parameters.update_uint("DLSS.Render.Subrect.Dimensions.Width", settings.optimalRenderWidth);
+        g_ngx_parameters.update_uint("DLSS.Render.Subrect.Dimensions.Height", settings.optimalRenderHeight);
+    }
+    g_ngx_parameters.update_float("Sharpness", settings.optimalSharpness);
+}
+
+// Update g_ngx_parameters and FG atomic from Streamline DLSS-G options (for Vulkan/Streamline DLSS Information tab).
+static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGOptions& options) {
+    const bool fg_on = (options.mode != sl::DLSSGMode::eOff);
+    g_streamline_dlssg_fg_enabled.store(fg_on);
+    if (fg_on) {
+        g_dlssg_was_active_once.store(true);
+    }
+    g_ngx_parameters.update_int("DLSSG.EnableInterp", fg_on ? 1 : 0);
+    g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", options.numFramesToGenerate);
+}
+
 // Hook functions
 int slInit_Detour(void* pref, uint64_t sdkVersion) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -251,6 +316,10 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
 
     int result = slDLSSGetOptimalSettings_Original(modified_options, settings);
 
+    // Update g_ngx_parameters so DLSS Information tab shows values for Vulkan/Streamline (no NGX path)
+    UpdateNGXParamsFromDLSSOptions(modified_options);
+    UpdateNGXParamsFromDLSSOptimalSettings(settings);
+
     if (optionsLogged && first_call) {
         LogInfo(
             "slDLSSGetOptimalSettings result=%d -> optimalRender=%ux%u sharpness=%.2f renderMin=%ux%u renderMax=%ux%u",
@@ -327,6 +396,9 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
         first_call = false;
     }
 
+    // Update g_ngx_parameters so DLSS Information tab shows values for Vulkan/Streamline (no NGX path)
+    UpdateNGXParamsFromDLSSOptions(modified_options);
+
     return slDLSSSetOptions_Original(viewport, modified_options);
 }
 
@@ -353,7 +425,13 @@ static int slSetData_Detour(const sl::BaseStructure* inputs, sl::CommandBuffer* 
     return static_cast<int>(sl::Result::eErrorInvalidParameter);
 }
 
-// slDLSSGSetOptions detour: when force_fg_auto is enabled, override options.mode to eAuto
+// slDLSSGGetState: Result(viewport, state, options) - hooked when game requests it via slGetFeatureFunction
+using slDLSSGGetState_pfn = int (*)(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
+                                    const sl::DLSSGOptions* options);
+static slDLSSGGetState_pfn slDLSSGGetState_Original = nullptr;
+static std::atomic<bool> g_slDLSSGGetState_hook_installed{false};
+
+// slDLSSGSetOptions detour: when force_fg_auto is enabled, override options.mode to eAuto; update g_ngx_parameters and FG atomic
 static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options) {
     if (slDLSSGSetOptions_Original == nullptr) {
         return static_cast<int>(sl::Result::eErrorInvalidParameter);
@@ -365,7 +443,21 @@ static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl
             modified_options.numFramesToGenerate = 1;
         }
     }
+    UpdateNGXParamsFromDLSSGOptions(modified_options);
     return slDLSSGSetOptions_Original(viewport, modified_options);
+}
+
+// slDLSSGGetState detour: after original, update g_ngx_parameters and FG atomic from options when non-null
+static int slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
+                                  const sl::DLSSGOptions* options) {
+    if (slDLSSGGetState_Original == nullptr) {
+        return static_cast<int>(sl::Result::eErrorInvalidParameter);
+    }
+    int result = slDLSSGGetState_Original(viewport, state, options);
+    if (result == static_cast<int>(sl::Result::eOk) && options != nullptr) {
+        UpdateNGXParamsFromDLSSGOptions(*options);
+    }
+    return result;
 }
 
 // slGetFeatureFunction detour: when game requests slDLSSGSetOptions, hook it for force_fg_auto
@@ -386,6 +478,17 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
         } else {
             g_slDLSSGSetOptions_hook_installed.store(false);
             LogError("Failed to install slDLSSGSetOptions hook");
+        }
+    }
+    // Install slDLSSGGetState hook on first successful lookup
+    if (functionName != nullptr && std::strcmp(functionName, "slDLSSGGetState") == 0
+        && !g_slDLSSGGetState_hook_installed.exchange(true)) {
+        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSGGetState_Detour),
+                                reinterpret_cast<LPVOID*>(&slDLSSGGetState_Original), "slDLSSGGetState")) {
+            LogInfo("Installed slDLSSGGetState hook");
+        } else {
+            g_slDLSSGGetState_hook_installed.store(false);
+            LogError("Failed to install slDLSSGGetState hook");
         }
     }
     // Install slDLSSGetOptimalSettings hook on first successful lookup

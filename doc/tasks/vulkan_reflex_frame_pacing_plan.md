@@ -65,29 +65,29 @@ Vulkan Reflex is exposed in two ways; we need to support both for broad game cov
 
 Implement in small steps; each step should be reviewable and optionally toggleable.
 
-1. **Phase 1 – Plan and structure (this doc)**  
-   - [x] Write this plan in `doc/tasks`.  
+1. **Phase 1 – Plan and structure (this doc)**
+   - [x] Write this plan in `doc/tasks`.
    - [ ] Optional: Add “Vulkan (experimental)” tab shell only (no hooks yet), with a setting to show the tab.
 
-2. **Phase 2 – NvLowLatencyVk.dll hooks**  
-   - [x] Load `NvLowLatencyVk.dll` (or hook its load) and resolve `NvLL_VK_SetLatencyMarker`, `NvLL_VK_Sleep`, `NvLL_VK_SetSleepMode`.  
-   - [x] Implement detours; in the SetLatencyMarker detour, at the chosen marker type(s), call existing FPS limiter / present logic (no new limiter).  
-   - [x] Gate by a Vulkan-tab or global “enable Vulkan Reflex hooks” setting.  
+2. **Phase 2 – NvLowLatencyVk.dll hooks**
+   - [x] Load `NvLowLatencyVk.dll` (or hook its load) and resolve `NvLL_VK_SetLatencyMarker`, `NvLL_VK_Sleep`, `NvLL_VK_SetSleepMode`.
+   - [x] Implement detours; in the SetLatencyMarker detour, at the chosen marker type(s), call existing FPS limiter / present logic (no new limiter).
+   - [x] Gate by a Vulkan-tab or global “enable Vulkan Reflex hooks” setting.
    - [ ] Verify in one Vulkan + Reflex game (e.g. title known to use NvLL).
 
-3. **Phase 3 – vulkan-1.dll loader hooks (VK_NV_low_latency2)**  
-   - [x] Hook `vkGetDeviceProcAddr` in `vulkan-1.dll` (when vulkan-1.dll is loaded via LoadLibrary).  
-   - [x] Intercept requests for `vkSetLatencyMarkerNV`; return wrapped pointer; store real pointer and call it from wrapper.  
-   - [x] In the wrapper, map VK marker types to existing Reflex semantics and call the same limiter/present path as D3D (reflex_marker_vk, OnPresentFlags2, RecordNativeFrameTime, HandlePresentAfter).  
+3. **Phase 3 – vulkan-1.dll loader hooks (VK_NV_low_latency2)**
+   - [x] Hook `vkGetDeviceProcAddr` in `vulkan-1.dll` (when vulkan-1.dll is loaded via LoadLibrary).
+   - [x] Intercept requests for `vkSetLatencyMarkerNV`; return wrapped pointer; store real pointer and call it from wrapper.
+   - [x] In the wrapper, map VK marker types to existing Reflex semantics and call the same limiter/present path as D3D (reflex_marker_vk, OnPresentFlags2, RecordNativeFrameTime, HandlePresentAfter).
    - [x] Vulkan tab: enable/disable vulkan-1 hooks, show "VK_NV_low_latency2 hooks active" and debug state (marker count, last marker, presentID).
 
-4. **Phase 4 – Vulkan tab and settings**  
-   - [x] Vulkan (experimental) tab: enable/disable NvLL hooks, enable/disable vulkan-1 hooks, status (which path active), link to FPS limit (reuse main/advanced settings).  
+4. **Phase 4 – Vulkan tab and settings**
+   - [x] Vulkan (experimental) tab: enable/disable NvLL hooks, enable/disable vulkan-1 hooks, status (which path active), link to FPS limit (reuse main/advanced settings).
    - [x] Persist “Vulkan Reflex hooks” (vulkan_nvll_hooks_enabled, vulkan_vk_loader_hooks_enabled) in main tab settings.
 
-5. **Phase 5 – Tuning and edge cases**  
-   - [ ] Handle multiple devices/swapchains if needed (track per-device or per-swapchain like D3D).  
-   - [ ] Optional: NvLL_VK_InitLowLatencyDevice detour to track “Reflex initialized” state.  
+5. **Phase 5 – Tuning and edge cases**
+   - [ ] Handle multiple devices/swapchains if needed (track per-device or per-swapchain like D3D).
+   - [ ] Optional: NvLL_VK_InitLowLatencyDevice detour to track “Reflex initialized” state.
    - [ ] Testing on several Vulkan Reflex games (NvLL path and VK_NV_low_latency2 path).
 
 ---
@@ -96,23 +96,23 @@ Implement in small steps; each step should be reviewable and optionally toggleab
 
 - **NvLL vs VK_NV_low_latency2:** Many Vulkan Reflex games (e.g. Doom) use only the extension path: they get `vkSetLatencyMarkerNV` via `vkGetDeviceProcAddr` from vulkan-1.dll and never load NvLowLatencyVk.dll. So `NvLL_VK_SetLatencyMarker` is not called for those titles; the vulkan-1 loader hook (Phase 3) wraps `vkSetLatencyMarkerNV` instead. Special K uses the same split: `SK_CreateDLLHook2` on NvLowLatencyVk.dll for the NvLL path, and the loader’s `vkSetLatencyMarkerNV` for VK_NV_low_latency2.
 - **Already-loaded loader:** If vulkan-1.dll (or NvLowLatencyVk.dll) is loaded before our LoadLibrary hook runs, we install the corresponding hooks right after InstallLoadLibraryHooks() when the setting is enabled, so we don’t miss them.
-- **No std::mutex:** Use SRWLOCK / `utils::SRWLock*` for any new shared state (per project rules).  
-- **MinHook:** Same pattern as `nvapi_hooks.cpp`: resolve target via GetProcAddress (or QueryInterface equivalent), then `CreateAndEnableHook`.  
-- **Vulkan types:** For VK_NV_low_latency2 we need minimal Vulkan types (e.g. `VkDevice`, `VkSwapchainKHR`, marker enum). Either a small local header or conditional include of Vulkan headers; avoid pulling in full SDK if not necessary.  
+- **No std::mutex:** Use SRWLOCK / `utils::SRWLock*` for any new shared state (per project rules).
+- **MinHook:** Same pattern as `nvapi_hooks.cpp`: resolve target via GetProcAddress (or QueryInterface equivalent), then `CreateAndEnableHook`.
+- **Vulkan types:** For VK_NV_low_latency2 we need minimal Vulkan types (e.g. `VkDevice`, `VkSwapchainKHR`, marker enum). Either a small local header or conditional include of Vulkan headers; avoid pulling in full SDK if not necessary.
 - **ReShade:** ReShade may not inject into Vulkan runtimes the same way as D3D; confirm that the addon is loaded in Vulkan games and that hooking vulkan-1.dll and NvLowLatencyVk.dll is feasible (e.g. LoadLibrary order, 32/64-bit).
 
 ---
 
 ## 7. Success criteria
 
-- Vulkan games using **NvLowLatencyVk** or **VK_NV_low_latency2** can use the same FPS limiter and frame pacing behavior as D3D Reflex games.  
-- One “Vulkan (experimental)” tab to enable/disable and observe Vulkan Reflex hooks.  
+- Vulkan games using **NvLowLatencyVk** or **VK_NV_low_latency2** can use the same FPS limiter and frame pacing behavior as D3D Reflex games.
+- One “Vulkan (experimental)” tab to enable/disable and observe Vulkan Reflex hooks.
 - No duplicate limiter logic; single code path for “Reflex-style” pacing, with D3D and Vulkan as two call sites.
 
 ---
 
 ## 8. References
 
-- Special K reflex.cpp (Vulkan): https://github.com/SpecialKO/SpecialK/blob/a69d3a0d3a751decb065715bf3a95317de60c7df/src/render/reflex/reflex.cpp#L1233-L1704  
-- NVAPI D3D Reflex hooks in this repo: `src/addons/display_commander/hooks/nvapi_hooks.cpp` (`NvAPI_D3D_SetLatencyMarker_Detour`, FPS limiter at PRESENT_START / SIMULATION_START / PRESENT_END).  
+- Special K reflex.cpp (Vulkan): https://github.com/SpecialKO/SpecialK/blob/a69d3a0d3a751decb065715bf3a95317de60c7df/src/render/reflex/reflex.cpp#L1233-L1704
+- NVAPI D3D Reflex hooks in this repo: `src/addons/display_commander/hooks/nvapi_hooks.cpp` (`NvAPI_D3D_SetLatencyMarker_Detour`, FPS limiter at PRESENT_START / SIMULATION_START / PRESENT_END).
 - Tab registration: `src/addons/display_commander/ui/new_ui/new_ui_tabs.cpp` (`AddTab`, `tab_id == "experimental"` for visibility).

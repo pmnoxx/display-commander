@@ -1247,6 +1247,10 @@ extern std::atomic<uint32_t> g_ray_reconstruction_enabled;  // Ray Reconstructio
 extern std::atomic<bool> g_dlss_was_active_once;
 extern std::atomic<bool> g_dlssg_was_active_once;
 extern std::atomic<bool> g_ray_reconstruction_was_active_once;
+// Streamline (Vulkan/sl.dlss_g): true when slDLSSGSetOptions/slDLSSGGetState reported FG mode != eOff
+extern std::atomic<bool> g_streamline_dlssg_fg_enabled;
+// Streamline (Vulkan/sl.dlss): true when slDLSSSetOptions/slDLSSGetOptimalSettings reported DLSS mode != eOff
+extern std::atomic<bool> g_streamline_dlss_enabled;
 
 // NGX Parameter Storage (unified thread-safe atomic shared_ptr hashmap)
 extern UnifiedParameterMap g_ngx_parameters;  // Unified NGX parameters supporting all types

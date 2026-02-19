@@ -2380,7 +2380,7 @@ void DrawQuickFpsLimitChanger() {
 
         {
             // Gsync formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
-            double gsync_target = refresh_hz - (refresh_hz * refresh_hz / 3600.0);
+            double gsync_target = (refresh_hz - (refresh_hz * refresh_hz / 3600.0)) * 0.995;
             float precise_target = static_cast<float>(gsync_target);
             if (precise_target < 1.0f) precise_target = 1.0f;
             bool selected =

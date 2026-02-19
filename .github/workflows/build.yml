@@ -1,4 +1,4 @@
-gname: Build addons
+name: Build addons
 
 on:
   push:

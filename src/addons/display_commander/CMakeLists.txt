@@ -205,18 +205,30 @@ endif()
 
 # Embed Display Commander shader files in the DLL (RCDATA). Only the DLL is shipped; runtime extracts to Reshade\Shaders\DisplayCommander.
 set(DC_CONTROL_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_Control.fx")
+set(DC_PERCEPTUALBOOST_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_PerceptualBoost.fx")
 set(DC_COLOR_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/color.fxh")
 set(DC_RESHADE_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/ReShade.fxh")
 set(DC_SHADER_RC "${CMAKE_CURRENT_BINARY_DIR}/shader_effect.rc")
 if(EXISTS "${DC_CONTROL_FX}")
+  if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
+    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx")
+    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders in DLL (extracted to Reshade\\Shaders\\DisplayCommander)\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_PERCEPTUALBOOST_FX 303\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"\n")
+  else()
+    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh")
+    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders in DLL (extracted to Reshade\\Shaders\\DisplayCommander)\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\n")
+  endif()
   add_custom_target(copy_shader_files_for_rc ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_CONTROL_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_COLOR_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_RESHADE_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
     COMMENT "Copy DisplayCommander shader files to build dir for resource embedding"
-    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
+    BYPRODUCTS ${DC_SHADER_RC_BYPRODUCTS}
   )
-  set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders in DLL (extracted to Reshade\\Shaders\\DisplayCommander)\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\n")
+  if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
+    add_custom_command(TARGET copy_shader_files_for_rc POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_PERCEPTUALBOOST_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx"
+    )
+  endif()
   file(WRITE "${DC_SHADER_RC}" "${DC_SHADER_RC_CONTENT}")
   target_sources(zzz_display_commander PRIVATE ${DC_SHADER_RC})
   add_dependencies(zzz_display_commander copy_shader_files_for_rc)
@@ -226,6 +238,9 @@ if(EXISTS "${DC_CONTROL_FX}")
   endif()
   if(NOT EXISTS "${DC_RESHADE_FXH}")
     message(WARNING "ReShade.fxh not found at ${DC_RESHADE_FXH} - resource 302 will be missing")
+  endif()
+  if(NOT EXISTS "${DC_PERCEPTUALBOOST_FX}")
+    message(WARNING "DisplayCommander_PerceptualBoost.fx not found at ${DC_PERCEPTUALBOOST_FX} - resource 303 will be missing")
   endif()
 endif()
 

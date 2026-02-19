@@ -203,20 +203,30 @@ else()
   message(STATUS "NVPI Reference.xml not found (optional). Run: git submodule update --init external/NvidiaProfileInspectorRevamped")
 endif()
 
-# Embed Display Commander brightness effect in the DLL (RCDATA). Only the DLL is shipped; runtime extracts to shader paths.
-set(DC_BRIGHTNESS_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_Brightness.fx")
-set(DC_BRIGHTNESS_RC "${CMAKE_CURRENT_BINARY_DIR}/brightness_effect.rc")
-if(EXISTS "${DC_BRIGHTNESS_FX}")
-  add_custom_target(copy_brightness_fx_for_rc ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_BRIGHTNESS_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Brightness.fx"
-    COMMENT "Copy DisplayCommander_Brightness.fx to build dir for resource embedding"
-    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Brightness.fx"
+# Embed Display Commander shader files in the DLL (RCDATA). Only the DLL is shipped; runtime extracts to Reshade\Shaders\DisplayCommander.
+set(DC_CONTROL_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_Control.fx")
+set(DC_COLOR_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/color.fxh")
+set(DC_RESHADE_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/ReShade.fxh")
+set(DC_SHADER_RC "${CMAKE_CURRENT_BINARY_DIR}/shader_effect.rc")
+if(EXISTS "${DC_CONTROL_FX}")
+  add_custom_target(copy_shader_files_for_rc ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_CONTROL_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_COLOR_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_RESHADE_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
+    COMMENT "Copy DisplayCommander shader files to build dir for resource embedding"
+    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
   )
-  set(BRIGHTNESS_RC_CONTENT "// Generated - embeds DisplayCommander_Brightness.fx in DLL\n#pragma code_page(65001)\n#define IDR_BRIGHTNESS_FX 300\nIDR_BRIGHTNESS_FX RCDATA \"DisplayCommander_Brightness.fx\"\n")
-  file(WRITE "${DC_BRIGHTNESS_RC}" "${BRIGHTNESS_RC_CONTENT}")
-  target_sources(zzz_display_commander PRIVATE ${DC_BRIGHTNESS_RC})
-  add_dependencies(zzz_display_commander copy_brightness_fx_for_rc)
-  set_source_files_properties(${DC_BRIGHTNESS_RC} PROPERTIES GENERATED TRUE)
+  set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders in DLL (extracted to Reshade\\Shaders\\DisplayCommander)\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\n")
+  file(WRITE "${DC_SHADER_RC}" "${DC_SHADER_RC_CONTENT}")
+  target_sources(zzz_display_commander PRIVATE ${DC_SHADER_RC})
+  add_dependencies(zzz_display_commander copy_shader_files_for_rc)
+  set_source_files_properties(${DC_SHADER_RC} PROPERTIES GENERATED TRUE)
+  if(NOT EXISTS "${DC_COLOR_FXH}")
+    message(WARNING "color.fxh not found at ${DC_COLOR_FXH} - resource 301 will be missing")
+  endif()
+  if(NOT EXISTS "${DC_RESHADE_FXH}")
+    message(WARNING "ReShade.fxh not found at ${DC_RESHADE_FXH} - resource 302 will be missing")
+  endif()
 endif()
 
 # Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll, version.dll)

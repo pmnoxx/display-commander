@@ -31,6 +31,7 @@ std::atomic<OnPresentReflexMode> s_reflex_limiter_reflex_mode{OnPresentReflexMod
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 std::atomic<int> s_cpu_cores{0};  // 0 = default (no change), max = all cores
 std::atomic<float> s_brightness_percent{100.0f};  // 0-200%, 100 = neutral (Display Commander brightness effect)
+std::atomic<int> s_brightness_colorspace{1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None (DisplayCommander_Control DECODE/ENCODE_METHOD)
 
 namespace settings {
 
@@ -180,6 +181,8 @@ MainTabSettings::MainTabSettings()
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       brightness_percent("brightness_percent", s_brightness_percent, 100.0f, 0.0f, 200.0f, "DisplayCommander"),
+      brightness_colorspace("brightness_colorspace", s_brightness_colorspace, 1,
+                             {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
       auto_enable_disable_hdr("auto_enable_disable_hdr", false, "DisplayCommander"),
       auto_apply_maxmdl_1000_hdr_metadata("auto_apply_maxmdl_1000_hdr_metadata", false, "DisplayCommander") {
     // Initialize the all_settings_ vector
@@ -288,6 +291,7 @@ MainTabSettings::MainTabSettings()
         &max_anisotropy,
         &force_mipmap_lod_bias,
         &brightness_percent,
+        &brightness_colorspace,
         &auto_enable_disable_hdr,
         &auto_apply_maxmdl_1000_hdr_metadata,
     };

@@ -1650,8 +1650,14 @@ if (enabled_experimental_features) {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
                 "Adjust brightness via Display Commander's ReShade effect (0-200%%, 100%% = neutral).\n"
-                "Requires DisplayCommander_Brightness.fx to be in ReShade's Shaders folder and effect reload (e.g. "
+                "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                 "Ctrl+Shift+F5) or game restart.");
+        }
+        if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space")) {
+            // Value is applied in OnReShadePresent each frame
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, multiply.");
         }
         ImGui::Unindent();
     }

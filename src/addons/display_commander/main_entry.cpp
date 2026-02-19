@@ -247,7 +247,7 @@ void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain
 }
 
 namespace {
-// Apply Display Commander brightness (0-200%) via ReShade effect DisplayCommander_Brightness.fx.
+// Apply Display Commander brightness (0-200%) via ReShade effect DisplayCommander_Control.fx.
 // No-op if the effect is not loaded (e.g. user has not added DC effect path or reloaded effects).
 void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
@@ -256,14 +256,26 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     const float percent = settings::g_mainTabSettings.brightness_percent.GetValue();
     const float multiplier = percent / 100.0f;
     const reshade::api::effect_technique tech =
-        runtime->find_technique("DisplayCommander_Brightness.fx", "Brightness");
+        runtime->find_technique("DisplayCommander_Control.fx", "Brightness");
     if (tech == 0) {
         return;  // Effect not loaded
     }
     const reshade::api::effect_uniform_variable var =
-        runtime->find_uniform_variable("DisplayCommander_Brightness.fx", "Brightness");
+        runtime->find_uniform_variable("DisplayCommander_Control.fx", "Brightness");
     if (var == 0) {
         return;
+    }
+    // Color Space sets both DECODE_METHOD and ENCODE_METHOD (0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None)
+    const int32_t colorspace = static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
+    const reshade::api::effect_uniform_variable var_decode =
+        runtime->find_uniform_variable("DisplayCommander_Control.fx", "DECODE_METHOD");
+    if (var_decode != 0) {
+        runtime->set_uniform_value_int(var_decode, colorspace);
+    }
+    const reshade::api::effect_uniform_variable var_encode =
+        runtime->find_uniform_variable("DisplayCommander_Control.fx", "ENCODE_METHOD");
+    if (var_encode != 0) {
+        runtime->set_uniform_value_int(var_encode, colorspace);
     }
     runtime->set_uniform_value_float(var, multiplier);
     runtime->set_technique_state(tech, multiplier != 1.0f);  // Enable only when not 100%
@@ -310,72 +322,76 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         }
         AddReShadeRuntime(runtime);
 
-        // One-time: extract DisplayCommander_Brightness.fx from DLL (embedded RCDATA) to:
-        // - %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders
-        // - addon_dir\Display_Commander\Reshade\Shaders
-        // - ReShade's Shaders folder (so the effect loads after reload/restart)
-        // Only the DLL is shipped; the .fx is embedded in the binary.
+        // One-time: extract DisplayCommander shaders from DLL (embedded RCDATA) to Reshade\Shaders\DisplayCommander:
+        // - %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
+        // - addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
+        // - ReShade's Shaders\DisplayCommander folder (so the effect loads after reload/restart)
+        // Only the DLL is shipped; .fx and .fxh are embedded in the binary.
         {
-            static std::atomic<bool> brightness_effect_copy_done{false};
-            if (!brightness_effect_copy_done.exchange(true)) {
-                constexpr int IDR_BRIGHTNESS_FX = 300;
-                HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(IDR_BRIGHTNESS_FX), RT_RCDATA);
-                if (hRes != nullptr) {
+            static std::atomic<bool> shader_extract_done{false};
+            if (!shader_extract_done.exchange(true)) {
+                constexpr int IDR_CONTROL_FX = 300;
+                constexpr int IDR_COLOR_FXH = 301;
+                constexpr int IDR_RESHADE_FXH = 302;
+
+                auto extract_resource = [](int res_id, const wchar_t* filename_wide, const char* filename_utf8) -> bool {
+                    HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
+                    if (hRes == nullptr) return false;
                     HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
-                    if (hLoaded != nullptr) {
-                        const void* pData = LockResource(hLoaded);
-                        const DWORD size = SizeofResource(g_hmodule, hRes);
-                        if (pData != nullptr && size > 0) {
-                            std::error_code ec;
-                            auto write_fx = [&pData, &size](const std::filesystem::path& dest_path) -> bool {
-                                std::error_code ec2;
-                                std::filesystem::create_directories(dest_path.parent_path(), ec2);
-                                if (ec2) return false;
-                                std::ofstream of(dest_path, std::ios::binary);
-                                if (!of) return false;
-                                of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
-                                return of.good();
-                            };
+                    if (hLoaded == nullptr) return false;
+                    const void* pData = LockResource(hLoaded);
+                    const DWORD size = SizeofResource(g_hmodule, hRes);
+                    if (pData == nullptr || size == 0) return false;
 
-                            wchar_t addon_path[MAX_PATH] = {};
-                            if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) > 0) {
-                                std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
+                    auto write_to = [&pData, size](const std::filesystem::path& dest_path) -> bool {
+                        std::error_code ec2;
+                        std::filesystem::create_directories(dest_path.parent_path(), ec2);
+                        if (ec2) return false;
+                        std::ofstream of(dest_path, std::ios::binary);
+                        if (!of) return false;
+                        of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
+                        return of.good();
+                    };
 
-                                // %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders
-                                wchar_t localappdata_path[MAX_PATH] = {};
-                                if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr,
-                                                               SHGFP_TYPE_CURRENT, localappdata_path))) {
-                                    std::filesystem::path la_dest = std::filesystem::path(localappdata_path)
-                                                                   / L"Programs" / L"Display_Commander" / L"Reshade"
-                                                                   / L"Shaders" / L"DisplayCommander_Brightness.fx";
-                                    if (write_fx(la_dest)) {
-                                        LogInfo("DisplayCommander_Brightness.fx extracted to %%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders.");
-                                    }
-                                }
+                    wchar_t addon_path[MAX_PATH] = {};
+                    if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) == 0) return false;
+                    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
 
-                                // addon_dir\Display_Commander\Reshade\Shaders
-                                std::filesystem::path dc_dest =
-                                    addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders"
-                                    / L"DisplayCommander_Brightness.fx";
-                                if (write_fx(dc_dest)) {
-                                    LogInfo("DisplayCommander_Brightness.fx extracted to Display_Commander\\Reshade\\Shaders.");
-                                }
+                    bool any_written = false;
 
-                                // ReShade Shaders folder
-                                char base_path[512] = {};
-                                size_t base_size = sizeof(base_path);
-                                reshade::get_reshade_base_path(base_path, &base_size);
-                                std::filesystem::path reshade_dest =
-                                    std::filesystem::path(base_path) / "Shaders" / "DisplayCommander_Brightness.fx";
-                                if (std::filesystem::exists(reshade_dest.parent_path())
-                                    && std::filesystem::is_directory(reshade_dest.parent_path())
-                                    && write_fx(reshade_dest)) {
-                                    LogInfo("DisplayCommander_Brightness.fx extracted to ReShade Shaders - reload effects (e.g. Ctrl+Shift+F5) to use Brightness.");
-                                }
-                            }
-                        }
+                    // %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
+                    wchar_t localappdata_path[MAX_PATH] = {};
+                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+                        std::filesystem::path la_dest = std::filesystem::path(localappdata_path)
+                                                       / L"Programs" / L"Display_Commander" / L"Reshade"
+                                                       / L"Shaders" / L"DisplayCommander" / filename_wide;
+                        if (write_to(la_dest)) any_written = true;
                     }
+
+                    // addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
+                    std::filesystem::path dc_dest = addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders"
+                                                   / L"DisplayCommander" / filename_wide;
+                    if (write_to(dc_dest)) any_written = true;
+
+                    // ReShade Shaders\DisplayCommander
+                    char base_path[512] = {};
+                    size_t base_size = sizeof(base_path);
+                    reshade::get_reshade_base_path(base_path, &base_size);
+                    std::filesystem::path reshade_base(base_path);
+                    std::filesystem::path reshade_dest = reshade_base / "Shaders" / "DisplayCommander" / filename_utf8;
+                    if (std::filesystem::exists(reshade_base / "Shaders") && std::filesystem::is_directory(reshade_base / "Shaders")
+                        && write_to(reshade_dest)) {
+                        any_written = true;
+                    }
+
+                    return any_written;
+                };
+
+                if (extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx", "DisplayCommander_Control.fx")) {
+                    LogInfo("DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. %%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
                 }
+                extract_resource(IDR_COLOR_FXH, L"color.fxh", "color.fxh");
+                extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh", "ReShade.fxh");
             }
         }
 

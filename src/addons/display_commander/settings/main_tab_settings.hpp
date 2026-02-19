@@ -28,6 +28,7 @@ extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 extern std::atomic<int> s_cpu_cores;
 extern std::atomic<float> s_brightness_percent;
+extern std::atomic<int> s_brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None (DisplayCommander_Control.fx DECODE/ENCODE_METHOD)
 
 namespace settings {
 
@@ -177,6 +178,7 @@ class MainTabSettings {
 
     // Brightness (ReShade effect driven by DC)
     ui::new_ui::FloatSettingRef brightness_percent;
+    ui::new_ui::ComboSettingRef brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; default scRGB
 
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;

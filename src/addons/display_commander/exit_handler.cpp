@@ -3,8 +3,10 @@
 #include <atomic>
 #include <reshade.hpp>
 #include <sstream>
+#include <vector>
 #include "config/display_commander_config.hpp"
 #include "display_restore.hpp"
+#include "hooks/loadlibrary_hooks.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "utils.hpp"
 #include "utils/detour_call_tracker.hpp"
@@ -74,6 +76,16 @@ void OnHandleExit(ExitSource source, const std::string& message) {
     }
 
     WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
+
+    // Enumerate loaded modules and report any hookable module we never saw (e.g. LdrLoadDll or load before hooks)
+    std::vector<std::string> missed_modules = display_commanderhooks::ReportMissedModulesOnExit();
+    if (!missed_modules.empty()) {
+        WriteToDebugLog("=== MISSED MODULES (loaded but we never received OnModuleLoaded) ===");
+        for (const std::string& name : missed_modules) {
+            WriteToDebugLog(std::string("Missed: ") + name);
+        }
+        WriteToDebugLog("=== END MISSED MODULES ===");
+    }
 
     // Best-effort display restoration on any exit
     display_restore::RestoreAllIfEnabled();

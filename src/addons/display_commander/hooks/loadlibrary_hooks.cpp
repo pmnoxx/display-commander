@@ -847,11 +847,6 @@ bool InstallLoadLibraryHooks() {
         LogInfo("LoadLibrary hooks installation suppressed by user setting");
         return false;
     }
-
-    if (!EnumerateLoadedModules()) {
-        LogError("Failed to enumerate loaded modules, but continuing with hook installation");
-    }
-
     // Load blocked DLLs list BEFORE installing hooks to ensure blocking works
     if (settings::g_experimentalTabSettings.dll_blocking_enabled.GetValue()) {
         settings::g_experimentalTabSettings.blocked_dlls.Load();
@@ -930,26 +925,6 @@ bool InstallLoadLibraryHooks() {
 
     g_loadlibrary_hooks_installed.store(true);
     LogInfo("LoadLibrary hooks installed successfully");
-
-    // If vulkan-1.dll or NvLowLatencyVk.dll was already loaded (e.g. game links them before our hook runs),
-    // install Vulkan Reflex hooks now when settings are enabled. Special K uses the same NvLL hook pattern;
-    // games like Doom use VK_NV_low_latency2 only (vkSetLatencyMarkerNV from loader), not NvLowLatencyVk.dll.
-    {
-        HMODULE vulkan1 = GetModuleHandleW(L"vulkan-1.dll");
-        if (vulkan1 != nullptr && settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled.GetValue()
-            && !AreVulkanLoaderHooksInstalled()) {
-            if (InstallVulkanLoaderHooks(vulkan1)) {
-                LogInfo("Vulkan loader hooks installed (vulkan-1.dll was already loaded)");
-            }
-        }
-        HMODULE nvll = GetModuleHandleW(L"NvLowLatencyVk.dll");
-        if (nvll != nullptr && settings::g_mainTabSettings.vulkan_nvll_hooks_enabled.GetValue()
-            && !AreNvLowLatencyVkHooksInstalled()) {
-            if (InstallNvLowLatencyVkHooks(nvll)) {
-                LogInfo("NvLowLatencyVk hooks installed (NvLowLatencyVk.dll was already loaded)");
-            }
-        }
-    }
 
     // Mark LoadLibrary hooks as installed
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
@@ -1078,6 +1053,69 @@ bool IsModuleLoaded(const std::wstring& moduleName) {
         }
     }
     return false;
+}
+
+// Module name substrings we install hooks for (must match OnModuleLoaded logic)
+static const std::wstring* GetInterestingModulePatterns(size_t* out_count) {
+    static const std::wstring k_patterns[] = {
+        L"dxgi.dll", L"d3d11.dll", L"d3d12.dll", L"sl.interposer.dll", L"xinput",
+        L"windows.gaming.input", L"gameinput", L"nvapi64.dll", L"nvlowlatencyvk.dll",
+        L"vulkan-1.dll", L"_nvngx.dll", L"dbghelp.dll"};
+    *out_count = sizeof(k_patterns) / sizeof(k_patterns[0]);
+    return k_patterns;
+}
+
+static bool IsInterestingModule(const std::wstring& lowerFilename) {
+    size_t count = 0;
+    const std::wstring* patterns = GetInterestingModulePatterns(&count);
+    for (size_t i = 0; i < count; ++i) {
+        if (lowerFilename.find(patterns[i]) != std::wstring::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<std::string> ReportMissedModulesOnExit() {
+    std::vector<std::string> missed;
+    std::unordered_set<std::wstring> tracked;
+    {
+        utils::SRWLockShared lock(g_module_srwlock);
+        for (const auto& m : g_loaded_modules) {
+            std::wstring path = m.fullPath.empty() ? m.moduleName : m.fullPath;
+            std::wstring fn = ExtractModuleName(path);
+            std::transform(fn.begin(), fn.end(), fn.begin(), ::towlower);
+            tracked.insert(fn);
+        }
+    }
+
+    HMODULE hModules[1024];
+    DWORD cbNeeded = 0;
+    if (!EnumProcessModules(GetCurrentProcess(), hModules, sizeof(hModules), &cbNeeded)) {
+        return missed;
+    }
+    const DWORD moduleCount = cbNeeded / sizeof(HMODULE);
+
+    for (DWORD i = 0; i < moduleCount; i++) {
+        wchar_t modulePath[MAX_PATH];
+        if (GetModuleFileNameW(hModules[i], modulePath, MAX_PATH) == 0) {
+            continue;
+        }
+        std::wstring fn = ExtractModuleName(modulePath);
+        std::transform(fn.begin(), fn.end(), fn.begin(), ::towlower);
+        if (!IsInterestingModule(fn)) {
+            continue;
+        }
+        if (tracked.find(fn) != tracked.end()) {
+            continue;
+        }
+        std::string narrow_fn(fn.begin(), fn.end());
+        LogError("Missed module on exit: '%s' was loaded in process but we never received OnModuleLoaded for it "
+                 "(e.g. loaded via LdrLoadDll, static import before hooks, or manual map)",
+                 narrow_fn.c_str());
+        missed.push_back(narrow_fn);
+    }
+    return missed;
 }
 
 // Helper function to check if any loaded module has "reframework\plugins" in its path
@@ -1225,7 +1263,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     // NvLowLatencyVk (Vulkan Reflex) hooks
     else if (lowerModuleName.find(L"nvlowlatencyvk.dll") != std::wstring::npos) {
-        LogInfo("Installing NvLowLatencyVk hooks for module: %ws", moduleName.c_str());
+        LogInfo("Installing nvlowlatencyvk.dll hooks for module: %ws", moduleName.c_str());
         if (InstallNvLowLatencyVkHooks(hModule)) {
             LogInfo("NvLowLatencyVk hooks installed successfully");
         } else {
@@ -1234,7 +1272,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     // vulkan-1.dll (Vulkan loader) – VK_NV_low_latency2: hook vkGetDeviceProcAddr to wrap vkSetLatencyMarkerNV
     else if (lowerModuleName.find(L"vulkan-1.dll") != std::wstring::npos) {
-        LogInfo("Installing Vulkan loader hooks for module: %ws", moduleName.c_str());
+        LogInfo("Installing vulkan-1.dll loader hooks for module: %ws", moduleName.c_str());
         if (InstallVulkanLoaderHooks(hModule)) {
             LogInfo("Vulkan loader (VK_NV_low_latency2) hooks installed successfully");
         } else {

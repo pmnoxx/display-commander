@@ -19,6 +19,9 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_volume_down("HotkeyVolumeDown", "ctrl+shift+down", "DisplayCommander"),
       hotkey_system_volume_up("HotkeySystemVolumeUp", "ctrl+alt+up", "DisplayCommander"),
       hotkey_system_volume_down("HotkeySystemVolumeDown", "ctrl+alt+down", "DisplayCommander"),
+      hotkey_auto_hdr("HotkeyAutoHdr", "", "DisplayCommander"),
+      hotkey_brightness_up("HotkeyBrightnessUp", "", "DisplayCommander"),
+      hotkey_brightness_down("HotkeyBrightnessDown", "", "DisplayCommander"),
       exclusive_keys_ad_enabled("ExclusiveKeysADEnabled", false, "DisplayCommander"),
       exclusive_keys_ws_enabled("ExclusiveKeysWSEnabled", false, "DisplayCommander"),
       exclusive_keys_awsd_enabled("ExclusiveKeysAWSDEnabled", false, "DisplayCommander"),
@@ -51,6 +54,9 @@ void HotkeysTabSettings::SaveAll() {
     hotkey_volume_down.Save();
     hotkey_system_volume_up.Save();
     hotkey_system_volume_down.Save();
+    hotkey_auto_hdr.Save();
+    hotkey_brightness_up.Save();
+    hotkey_brightness_down.Save();
     exclusive_keys_ad_enabled.Save();
     exclusive_keys_ws_enabled.Save();
     exclusive_keys_awsd_enabled.Save();
@@ -61,7 +67,8 @@ std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
     return {&enable_hotkeys, &hotkey_mute_unmute, &hotkey_background_toggle, &hotkey_timeslowdown,
             &hotkey_adhd_toggle, &hotkey_autoclick, &hotkey_input_blocking, &hotkey_display_commander_ui,
             &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up, &hotkey_volume_down,
-            &hotkey_system_volume_up, &hotkey_system_volume_down, &exclusive_keys_ad_enabled,
+            &hotkey_system_volume_up, &hotkey_system_volume_down, &hotkey_auto_hdr, &hotkey_brightness_up,
+            &hotkey_brightness_down, &exclusive_keys_ad_enabled,
             &exclusive_keys_ws_enabled, &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups};
 }
 

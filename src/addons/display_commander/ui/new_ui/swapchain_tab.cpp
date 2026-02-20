@@ -1340,17 +1340,16 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
     // ReShade Runtimes Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 0: Main section header
     if (ImGui::CollapsingHeader("ReShade Runtimes", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "ReShade runtimes count: %zu", g_reshade_runtimes.size());
+        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "ReShade runtimes count: %zu", GetReShadeRuntimeCount());
         ImGui::Separator();
 
         // Depth 1: Nested subsections with indentation and distinct colors
         ImGui::Indent();  // Indent nested headers
-        for (size_t i = 0; i < g_reshade_runtimes.size(); ++i) {
-            auto* runtime = g_reshade_runtimes[i];
-
-            // Create a collapsible header for each runtime
-            std::stringstream ss;
-            ss << "Runtime " << i << " (0x" << std::hex << std::uppercase << reinterpret_cast<uintptr_t>(runtime)
+        EnumerateReShadeRuntimes(
+            [](size_t index, reshade::api::effect_runtime* runtime, void* /*user_data*/) {
+                // Create a collapsible header for each runtime
+                std::stringstream ss;
+                ss << "Runtime " << index << " (0x" << std::hex << std::uppercase << reinterpret_cast<uintptr_t>(runtime)
                << ")";
             std::string runtime_header = ss.str();
             ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested headers
@@ -1603,7 +1602,9 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
                 ImGui::Unindent();  // Unindent content
             }
             ui::colors::PopNestedHeaderColors();  // Restore default header colors
-        }
+                return false;
+            },
+            nullptr);
         ImGui::Unindent();  // Unindent nested headers section
     }
 

@@ -1046,9 +1046,12 @@ reshade::api::effect_runtime* GetFirstReShadeRuntime() {
     return g_reshade_runtimes.front();
 }
 
-std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes() {
+void EnumerateReShadeRuntimes(EnumerateReShadeRuntimesCallback callback, void* user_data) {
+    if (callback == nullptr) return;
     utils::SRWLockShared lock(g_reshade_runtimes_lock);
-    return g_reshade_runtimes;
+    for (size_t i = 0; i < g_reshade_runtimes.size(); ++i) {
+        if (callback(i, g_reshade_runtimes[i], user_data)) break;
+    }
 }
 
 size_t GetReShadeRuntimeCount() {

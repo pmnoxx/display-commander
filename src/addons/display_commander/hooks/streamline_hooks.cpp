@@ -369,7 +369,7 @@ static int slDLSSSetOptions_Detour(const sl::ViewportHandle& viewport, const sl:
             applied_any = true;
 
             if (first_call) {
-                LogInfo("slDLSSSetOptions: applied overrides -> mode=%s preset=%s", DLSSModeStr(modified_options.mode),
+                LogInfo("slDLSSSetOptions: applied overrides -> mode=%s preset=%d", DLSSModeStr(modified_options.mode),
                         presetVal);
             }
         }

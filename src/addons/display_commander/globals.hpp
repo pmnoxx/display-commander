@@ -577,8 +577,12 @@ void AddReShadeRuntime(reshade::api::effect_runtime* runtime);
 void RemoveReShadeRuntime(reshade::api::effect_runtime* runtime);
 void OnReshadeUnload();
 reshade::api::effect_runtime* GetFirstReShadeRuntime();
-std::vector<reshade::api::effect_runtime*> GetAllReShadeRuntimes();
 size_t GetReShadeRuntimeCount();
+
+/// Enumerate all ReShade runtimes while holding the runtimes lock. Callback receives (index, runtime, user_data).
+/// Return true from callback to stop enumeration early. Do not store runtime pointers beyond the callback.
+using EnumerateReShadeRuntimesCallback = bool (*)(size_t index, reshade::api::effect_runtime* runtime, void* user_data);
+void EnumerateReShadeRuntimes(EnumerateReShadeRuntimesCallback callback, void* user_data);
 
 // Monitor Management
 // g_monitor_labels removed - UI now uses GetDisplayInfoForUI() directly for better reliability

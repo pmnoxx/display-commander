@@ -32,3 +32,48 @@ void LogErrorDirect(const char *msg, ...);
             } \
         } \
     } while(0)
+
+// Throttled info logging macro
+// Usage: LogInfoThrottled(10, "Info message %d", value);
+// Logs only the first throttle_count times per call site, then suppresses
+#define LogInfoThrottled(throttle_count, ...) \
+    do { \
+        static int _info_throttle_counter = 0; \
+        if (_info_throttle_counter < (throttle_count)) { \
+            _info_throttle_counter++; \
+            LogInfo(__VA_ARGS__); \
+            if (_info_throttle_counter == (throttle_count)) { \
+                LogInfo("(Suppressing further occurrences of this info log)"); \
+            } \
+        } \
+    } while(0)
+
+// Throttled warn logging macro
+// Usage: LogWarnThrottled(10, "Warn message %d", value);
+// Logs only the first throttle_count times per call site, then suppresses
+#define LogWarnThrottled(throttle_count, ...) \
+    do { \
+        static int _warn_throttle_counter = 0; \
+        if (_warn_throttle_counter < (throttle_count)) { \
+            _warn_throttle_counter++; \
+            LogWarn(__VA_ARGS__); \
+            if (_warn_throttle_counter == (throttle_count)) { \
+                LogWarn("(Suppressing further occurrences of this warning)"); \
+            } \
+        } \
+    } while(0)
+
+// Throttled debug logging macro
+// Usage: LogDebugThrottled(5, "Debug message %p", ptr);
+// Logs only the first throttle_count times per call site, then suppresses
+#define LogDebugThrottled(throttle_count, ...) \
+    do { \
+        static int _dbg_throttle_counter = 0; \
+        if (_dbg_throttle_counter < (throttle_count)) { \
+            _dbg_throttle_counter++; \
+            LogDebug(__VA_ARGS__); \
+            if (_dbg_throttle_counter == (throttle_count)) { \
+                LogDebug("(Suppressing further occurrences of this debug log)"); \
+            } \
+        } \
+    } while(0)

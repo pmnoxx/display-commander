@@ -1827,8 +1827,8 @@ HWND WINAPI SetCapture_Detour(HWND hWnd) {
     //     return hWnd;
     // }
 
-    // Log the capture attempt
-    LogDebug("SetCapture_Detour: hWnd=0x%p", hWnd);
+    // Log the capture attempt (throttled to avoid log spam)
+    LogDebugThrottled(5, "SetCapture_Detour: hWnd=0x%p", hWnd);
 
     // Call original function
     HWND result = SetCapture_Original ? SetCapture_Original(hWnd) : SetCapture(hWnd);
@@ -1845,8 +1845,8 @@ BOOL WINAPI ReleaseCapture_Detour() {
     // Track total calls
     g_hook_stats[HOOK_ReleaseCapture].increment_total();
 
-    // Log the release attempt
-    LogDebug("ReleaseCapture_Detour: called");
+    // Log the release attempt (throttled to avoid log spam)
+    LogDebugThrottled(5, "ReleaseCapture_Detour: called");
 
     // Call original function
     BOOL result = ReleaseCapture_Original ? ReleaseCapture_Original() : ReleaseCapture();

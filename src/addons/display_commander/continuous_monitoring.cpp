@@ -418,11 +418,21 @@ static void Every1sVrrStatus() {
 
 void every1s_tasks() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    Every1sScreensaver();
-    Every1sFpsAggregate();
-    Every1sVolume();
-    Every1sRefreshRate();
-    Every1sVrrStatus();
+    if (settings::g_advancedTabSettings.monitor_screensaver.GetValue()) {
+        Every1sScreensaver();
+    }
+    if (settings::g_advancedTabSettings.monitor_fps_aggregate.GetValue()) {
+        Every1sFpsAggregate();
+    }
+    if (settings::g_advancedTabSettings.monitor_volume.GetValue()) {
+        Every1sVolume();
+    }
+    if (settings::g_advancedTabSettings.monitor_refresh_rate.GetValue()) {
+        Every1sRefreshRate();
+    }
+    if (settings::g_advancedTabSettings.monitor_vrr_status.GetValue()) {
+        Every1sVrrStatus();
+    }
 }
 
 void HandleKeyboardShortcuts() {
@@ -748,11 +758,15 @@ void ContinuousMonitoringThread() {
         LONGLONG last_60fps_update_ns = start_time;
         LONGLONG last_1s_update_ns = start_time;
         LONGLONG last_exclusive_keys_cache_update_ns = start_time;
-        const LONGLONG fps_120_interval_ns = utils::SEC_TO_NS / 120;
 
         while (g_monitoring_thread_running.load()) {
+            const bool high_freq_enabled = settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue();
+            const int high_freq_ms = settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue();
+            const LONGLONG sleep_ns = high_freq_enabled
+                                         ? (static_cast<LONGLONG>(high_freq_ms) * 1000000)
+                                         : (50 * 1000000);  // 50 ms when high-freq disabled
             g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
-            std::this_thread::sleep_for(std::chrono::nanoseconds(fps_120_interval_ns));
+            std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_ns));
             RECORD_DETOUR_CALL(utils::get_now_ns());
             LONGLONG loop_time_ns = utils::get_real_time_ns();
             g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
@@ -766,11 +780,14 @@ void ContinuousMonitoringThread() {
             {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 LONGLONG now_ns = utils::get_now_ns();
-                if (now_ns - last_cache_refresh_ns >= 2 * utils::SEC_TO_NS) {
-                    g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
-                    display_cache::g_displayCache.Refresh();
-                    last_cache_refresh_ns = now_ns;
-                    // No longer need to cache monitor labels - UI calls GetDisplayInfoForUI() directly
+                if (settings::g_advancedTabSettings.monitor_display_cache.GetValue()) {
+                    const int cache_interval_sec =
+                        settings::g_advancedTabSettings.monitor_display_cache_interval_sec.GetValue();
+                    if (now_ns - last_cache_refresh_ns >= static_cast<LONGLONG>(cache_interval_sec) * utils::SEC_TO_NS) {
+                        g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
+                        display_cache::g_displayCache.Refresh();
+                        last_cache_refresh_ns = now_ns;
+                    }
                 }
                 g_continuous_monitoring_section.store("after_cache_refresh", std::memory_order_release);
             }
@@ -835,10 +852,13 @@ void ContinuousMonitoringThread() {
             }
             g_continuous_monitoring_section.store("after_cpu_affinity", std::memory_order_release);
 
-            // Auto-apply is always enabled (checkbox removed)
-            // 60 FPS updates (every ~16.67ms)
+            // High-frequency updates (background check, ADHD, keyboard, hotkeys)
             LONGLONG now_ns = utils::get_now_ns();
-            if (now_ns - last_60fps_update_ns >= fps_120_interval_ns) {
+            const LONGLONG high_freq_interval_ns =
+                static_cast<LONGLONG>(settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue())
+                * 1000000;
+            if (settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue()
+                && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
                 check_is_background();
@@ -860,21 +880,26 @@ void ContinuousMonitoringThread() {
             }
             g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
 
-            if (now_ns - last_1s_update_ns >= 1 * utils::SEC_TO_NS) {
+            const int per_second_interval_sec =
+                settings::g_advancedTabSettings.monitor_per_second_interval_sec.GetValue();
+            if (settings::g_advancedTabSettings.monitor_per_second_enabled.GetValue()
+                && now_ns - last_1s_update_ns >= static_cast<LONGLONG>(per_second_interval_sec) * utils::SEC_TO_NS) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 last_1s_update_ns = now_ns;
                 g_continuous_monitoring_section.store("every1s_tasks", std::memory_order_release);
                 every1s_tasks();
 
-                // Update cached list of keys belonging to active exclusive groups (once per second)
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
-                display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
+                if (settings::g_advancedTabSettings.monitor_exclusive_key_groups.GetValue()) {
+                    RECORD_DETOUR_CALL(utils::get_now_ns());
+                    g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
+                    display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
+                }
 
-                // Auto-hide Discord Overlay (runs every second)
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
-                HandleDiscordOverlayAutoHide();
+                if (settings::g_advancedTabSettings.monitor_discord_overlay.GetValue()) {
+                    RECORD_DETOUR_CALL(utils::get_now_ns());
+                    g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
+                    HandleDiscordOverlayAutoHide();
+                }
 
                 // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules
                 // loaded via paths EnumProcessModules misses at init, e.g. NvLowLatencyVk.dll.
@@ -901,17 +926,18 @@ void ContinuousMonitoringThread() {
                     }
                 }
 
-                // wait 10s before configuring reflex
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
-                if (now_ns - start_time >= 10 * utils::SEC_TO_NS) {
+                if (settings::g_advancedTabSettings.monitor_reflex_auto_configure.GetValue()
+                    && now_ns - start_time >= 10 * utils::SEC_TO_NS) {
+                    RECORD_DETOUR_CALL(utils::get_now_ns());
+                    g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
                     HandleReflexAutoConfigure();
                 }
 
-                // Call auto-apply HDR metadata trigger
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
-                ui::new_ui::AutoApplyTrigger();
+                if (settings::g_advancedTabSettings.monitor_auto_apply_trigger.GetValue()) {
+                    RECORD_DETOUR_CALL(utils::get_now_ns());
+                    g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
+                    ui::new_ui::AutoApplyTrigger();
+                }
 
                 // Auto-apply resolution on game start
                 RECORD_DETOUR_CALL(utils::get_now_ns());

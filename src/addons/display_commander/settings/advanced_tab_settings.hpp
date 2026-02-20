@@ -98,6 +98,23 @@ class AdvancedTabSettings {
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;
 
+    // Continuous monitoring: trigger toggles and intervals
+    BoolSetting monitor_high_freq_enabled;
+    IntSetting monitor_high_freq_interval_ms;
+    BoolSetting monitor_per_second_enabled;
+    IntSetting monitor_per_second_interval_sec;
+    BoolSetting monitor_screensaver;
+    BoolSetting monitor_fps_aggregate;
+    BoolSetting monitor_volume;
+    BoolSetting monitor_refresh_rate;
+    BoolSetting monitor_vrr_status;
+    BoolSetting monitor_exclusive_key_groups;
+    BoolSetting monitor_discord_overlay;
+    BoolSetting monitor_reflex_auto_configure;
+    BoolSetting monitor_auto_apply_trigger;
+    BoolSetting monitor_display_cache;
+    IntSetting monitor_display_cache_interval_sec;
+
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();
 };

@@ -89,7 +89,24 @@ AdvancedTabSettings::AdvancedTabSettings()
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander"),
-      disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander") {}
+      disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
+
+      // Continuous monitoring
+      monitor_high_freq_enabled("MonitorHighFreqEnabled", true, "DisplayCommander"),
+      monitor_high_freq_interval_ms("MonitorHighFreqIntervalMs", 8, 5, 100, "DisplayCommander"),
+      monitor_per_second_enabled("MonitorPerSecondEnabled", true, "DisplayCommander"),
+      monitor_per_second_interval_sec("MonitorPerSecondIntervalSec", 1, 1, 60, "DisplayCommander"),
+      monitor_screensaver("MonitorScreensaver", true, "DisplayCommander"),
+      monitor_fps_aggregate("MonitorFpsAggregate", true, "DisplayCommander"),
+      monitor_volume("MonitorVolume", true, "DisplayCommander"),
+      monitor_refresh_rate("MonitorRefreshRate", true, "DisplayCommander"),
+      monitor_vrr_status("MonitorVrrStatus", true, "DisplayCommander"),
+      monitor_exclusive_key_groups("MonitorExclusiveKeyGroups", true, "DisplayCommander"),
+      monitor_discord_overlay("MonitorDiscordOverlay", true, "DisplayCommander"),
+      monitor_reflex_auto_configure("MonitorReflexAutoConfigure", true, "DisplayCommander"),
+      monitor_auto_apply_trigger("MonitorAutoApplyTrigger", true, "DisplayCommander"),
+      monitor_display_cache("MonitorDisplayCache", true, "DisplayCommander"),
+      monitor_display_cache_interval_sec("MonitorDisplayCacheIntervalSec", 2, 1, 60, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -115,6 +132,22 @@ void AdvancedTabSettings::SaveAll() {
     enable_presentmon_tracing.Save();
     disable_dpi_scaling.Save();
 
+    monitor_high_freq_enabled.Save();
+    monitor_high_freq_interval_ms.Save();
+    monitor_per_second_enabled.Save();
+    monitor_per_second_interval_sec.Save();
+    monitor_screensaver.Save();
+    monitor_fps_aggregate.Save();
+    monitor_volume.Save();
+    monitor_refresh_rate.Save();
+    monitor_vrr_status.Save();
+    monitor_exclusive_key_groups.Save();
+    monitor_discord_overlay.Save();
+    monitor_reflex_auto_configure.Save();
+    monitor_auto_apply_trigger.Save();
+    monitor_display_cache.Save();
+    monitor_display_cache_interval_sec.Save();
+
     // All Ref classes automatically save when values change
 }
 
@@ -133,7 +166,13 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
             &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled, &debug_break_on_severity,
-            &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing, &disable_dpi_scaling};
+            &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing, &disable_dpi_scaling,
+
+            &monitor_high_freq_enabled, &monitor_high_freq_interval_ms, &monitor_per_second_enabled,
+            &monitor_per_second_interval_sec, &monitor_screensaver, &monitor_fps_aggregate, &monitor_volume,
+            &monitor_refresh_rate, &monitor_vrr_status, &monitor_exclusive_key_groups, &monitor_discord_overlay,
+            &monitor_reflex_auto_configure, &monitor_auto_apply_trigger, &monitor_display_cache,
+            &monitor_display_cache_interval_sec};
 }
 
 }  // namespace settings

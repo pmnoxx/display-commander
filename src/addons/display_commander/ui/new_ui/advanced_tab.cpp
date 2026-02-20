@@ -34,6 +34,7 @@ namespace ui::new_ui {
 
 void DrawFeaturesEnabledByDefault();
 void DrawAdvancedTabSettingsSection();
+void DrawContinuousMonitoringSection();
 void DrawHdrDisplaySettings();
 void DrawNvapiSettings();
 void DrawNewExperimentalFeatures();
@@ -63,6 +64,13 @@ void DrawAdvancedTab(reshade::api::effect_runtime* /*runtime*/) {
     // Advanced Settings Section
     if (ImGui::CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
         DrawAdvancedTabSettingsSection();
+    }
+
+    ImGui::Spacing();
+
+    // Continuous monitoring Section
+    if (ImGui::CollapsingHeader("Triggers Settings (for debugging purposes)", ImGuiTreeNodeFlags_None)) {
+        DrawContinuousMonitoringSection();
     }
 
     ImGui::Spacing();
@@ -694,6 +702,69 @@ void DrawAdvancedTabSettingsSection() {
                 "Requires a game restart to take effect.");
         }
         ImGui::Unindent();
+    }
+
+    ImGui::Unindent();
+}
+
+void DrawContinuousMonitoringSection() {
+    ImGui::Indent();
+
+    if (ImGui::TreeNodeEx("High-frequency updates (~120 Hz)", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_high_freq_enabled, "Enable high-frequency updates");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Background/foreground check, ADHD multi-monitor, keyboard tracking, hotkeys.\n"
+                "Disable to reduce CPU when these features are not needed.");
+        }
+        SliderIntSetting(settings::g_advancedTabSettings.monitor_high_freq_interval_ms, "Interval (ms)", "%d ms");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Loop interval: 8 = ~120 Hz, 16 = ~60 Hz, 33 = ~30 Hz. When disabled, loop sleeps 50 ms.");
+        }
+        ImGui::Unindent();
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNodeEx("Per-second tasks", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_per_second_enabled, "Enable per-second tasks");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Screensaver, FPS aggregate, volume, refresh rate, VRR status, and other periodic tasks.");
+        }
+        SliderIntSetting(settings::g_advancedTabSettings.monitor_per_second_interval_sec,
+                         "Interval (seconds)", "%d s");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("How often the per-second block runs (1–60 seconds).");
+        }
+        ImGui::Spacing();
+        ImGui::TextColored(ui::colors::TEXT_LABEL, "Triggers:");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Screensaver / display required");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_fps_aggregate, "FPS aggregate (overlay stats)");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_volume, "Volume (game & system)");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_refresh_rate, "Refresh rate stats");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_vrr_status, "VRR status (NVAPI)");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_exclusive_key_groups, "Exclusive key groups cache");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_discord_overlay, "Discord overlay auto-hide");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_reflex_auto_configure, "Reflex auto-configure");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_auto_apply_trigger, "Auto-apply (HDR/resolution) trigger");
+        ImGui::Unindent();
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNodeEx("Display cache refresh", ImGuiTreeNodeFlags_None)) {
+        ImGui::Indent();
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_display_cache, "Enable display cache refresh");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Refreshes display list off the UI thread. Disable to reduce overhead.");
+        }
+        SliderIntSetting(settings::g_advancedTabSettings.monitor_display_cache_interval_sec,
+                         "Interval (seconds)", "%d s");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("How often to refresh the display cache (1–60 seconds).");
+        }
+        ImGui::Unindent();
+        ImGui::TreePop();
     }
 
     ImGui::Unindent();

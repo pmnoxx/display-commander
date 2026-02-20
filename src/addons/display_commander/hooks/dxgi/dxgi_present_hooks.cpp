@@ -1286,56 +1286,63 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     // ============================================================================
     LogInfo("Hooking IDXGISwapChain methods (indices 8-17)");
 
-    // Hook Present (index 8) - Critical method, always present
-    if (!CreateAndEnableHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID*)&IDXGISwapChain_Present_Original,
-                             "IDXGISwapChain::Present")) {
-        LogError("Failed to create and enable IDXGISwapChain::Present hook");
-        return false;
-    }
+    {
+        // Hook Present (index 8) - Critical method, always present
+        if (!CreateAndEnableHook(vtable[8], IDXGISwapChain_Present_Detour, (LPVOID*)&IDXGISwapChain_Present_Original,
+                                 "IDXGISwapChain::Present")) {
+            LogError("Failed to create and enable IDXGISwapChain::Present hook");
+            return false;
+        }
 
-    // Hook other IDXGISwapChain methods (9-11, 13-17)
-    if (!CreateAndEnableHook(vtable[9], IDXGISwapChain_GetBuffer_Detour, (LPVOID*)&IDXGISwapChain_GetBuffer_Original,
-                             "IDXGISwapChain::GetBuffer")) {
-        LogError("Failed to create and enable IDXGISwapChain::GetBuffer hook");
-    }
-    if (!CreateAndEnableHook(vtable[10], IDXGISwapChain_SetFullscreenState_Detour,
-                             (LPVOID*)&IDXGISwapChain_SetFullscreenState_Original,
-                             "IDXGISwapChain::SetFullscreenState")) {
-        LogError("Failed to create and enable IDXGISwapChain::SetFullscreenState hook");
-    }
-    if (!CreateAndEnableHook(vtable[11], IDXGISwapChain_GetFullscreenState_Detour,
-                             (LPVOID*)&IDXGISwapChain_GetFullscreenState_Original,
-                             "IDXGISwapChain::GetFullscreenState")) {
-        LogError("Failed to create and enable IDXGISwapChain::GetFullscreenState hook");
-    }
-    // Hook GetDesc (index 12) - Always present in base interface
-    if (!CreateAndEnableHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID*)&IDXGISwapChain_GetDesc_Original,
-                             "IDXGISwapChain::GetDesc")) {
-        LogError("Failed to create and enable IDXGISwapChain::GetDesc hook");
-        // Don't return false, this is not critical
-    }
-    if (!CreateAndEnableHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour,
-                             (LPVOID*)&IDXGISwapChain_ResizeBuffers_Original, "IDXGISwapChain::ResizeBuffers")) {
-        LogError("Failed to create and enable IDXGISwapChain::ResizeBuffers hook");
-    }
-    if (!CreateAndEnableHook(vtable[14], IDXGISwapChain_ResizeTarget_Detour,
-                             (LPVOID*)&IDXGISwapChain_ResizeTarget_Original, "IDXGISwapChain::ResizeTarget")) {
-        LogError("Failed to create and enable IDXGISwapChain::ResizeTarget hook");
-    }
-    if (!CreateAndEnableHook(vtable[15], IDXGISwapChain_GetContainingOutput_Detour,
-                             (LPVOID*)&IDXGISwapChain_GetContainingOutput_Original,
-                             "IDXGISwapChain::GetContainingOutput")) {
-        LogError("Failed to create and enable IDXGISwapChain::GetContainingOutput hook");
-    }
-    if (!CreateAndEnableHook(vtable[16], IDXGISwapChain_GetFrameStatistics_Detour,
-                             (LPVOID*)&IDXGISwapChain_GetFrameStatistics_Original,
-                             "IDXGISwapChain::GetFrameStatistics")) {
-        LogError("Failed to create and enable IDXGISwapChain::GetFrameStatistics hook");
-    }
-    if (!CreateAndEnableHook(vtable[17], IDXGISwapChain_GetLastPresentCount_Detour,
-                             (LPVOID*)&IDXGISwapChain_GetLastPresentCount_Original,
-                             "IDXGISwapChain::GetLastPresentCount")) {
-        LogError("Failed to create and enable IDXGISwapChain::GetLastPresentCount hook");
+        /*
+        // Hook other IDXGISwapChain methods (9-11, 13-17)
+        if (!CreateAndEnableHook(vtable[9], IDXGISwapChain_GetBuffer_Detour,
+        (LPVOID*)&IDXGISwapChain_GetBuffer_Original, "IDXGISwapChain::GetBuffer")) { LogError("Failed to create and
+        enable IDXGISwapChain::GetBuffer hook");
+        }*/
+        if (!CreateAndEnableHook(vtable[10], IDXGISwapChain_SetFullscreenState_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetFullscreenState_Original,
+                                 "IDXGISwapChain::SetFullscreenState")) {
+            LogError("Failed to create and enable IDXGISwapChain::SetFullscreenState hook");
+        }
+        if (!CreateAndEnableHook(vtable[11], IDXGISwapChain_GetFullscreenState_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetFullscreenState_Original,
+                                 "IDXGISwapChain::GetFullscreenState")) {
+            LogError("Failed to create and enable IDXGISwapChain::GetFullscreenState hook");
+        }
+        /*
+        // Hook GetDesc (index 12) - Always present in base interface
+        if (!CreateAndEnableHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID*)&IDXGISwapChain_GetDesc_Original,
+                                "IDXGISwapChain::GetDesc")) {
+            LogError("Failed to create and enable IDXGISwapChain::GetDesc hook");
+            // Don't return false, this is not critical
+        }
+        */
+        if (!CreateAndEnableHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour,
+                                 (LPVOID*)&IDXGISwapChain_ResizeBuffers_Original, "IDXGISwapChain::ResizeBuffers")) {
+            LogError("Failed to create and enable IDXGISwapChain::ResizeBuffers hook");
+        }
+        if (!CreateAndEnableHook(vtable[14], IDXGISwapChain_ResizeTarget_Detour,
+                                 (LPVOID*)&IDXGISwapChain_ResizeTarget_Original, "IDXGISwapChain::ResizeTarget")) {
+            LogError("Failed to create and enable IDXGISwapChain::ResizeTarget hook");
+        }
+        if (!CreateAndEnableHook(vtable[15], IDXGISwapChain_GetContainingOutput_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetContainingOutput_Original,
+                                 "IDXGISwapChain::GetContainingOutput")) {
+            LogError("Failed to create and enable IDXGISwapChain::GetContainingOutput hook");
+        }
+        /*
+        if (!CreateAndEnableHook(vtable[16], IDXGISwapChain_GetFrameStatistics_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetFrameStatistics_Original,
+                                 "IDXGISwapChain::GetFrameStatistics")) {
+            LogError("Failed to create and enable IDXGISwapChain::GetFrameStatistics hook");
+        }
+        if (!CreateAndEnableHook(vtable[17], IDXGISwapChain_GetLastPresentCount_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetLastPresentCount_Original,
+                                 "IDXGISwapChain::GetLastPresentCount")) {
+            LogError("Failed to create and enable IDXGISwapChain::GetLastPresentCount hook");
+        }
+        */
     }
 
     // ============================================================================
@@ -1343,34 +1350,35 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     // ============================================================================
     if (vtable_version >= 1) {
         LogInfo("Hooking IDXGISwapChain1 methods (indices 18-28)");
+        /*
+                // Hook GetDesc1 (index 18) - Critical for IDXGISwapChain1
+                if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour,
+           (LPVOID*)&IDXGISwapChain_GetDesc1_Original, "IDXGISwapChain1::GetDesc1")) { LogError("Failed to create and
+           enable IDXGISwapChain1::GetDesc1 hook"); return false;
+                }
 
-        // Hook GetDesc1 (index 18) - Critical for IDXGISwapChain1
-        if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID*)&IDXGISwapChain_GetDesc1_Original,
-                                 "IDXGISwapChain1::GetDesc1")) {
-            LogError("Failed to create and enable IDXGISwapChain1::GetDesc1 hook");
-            return false;
-        }
-
-        // Hook other IDXGISwapChain1 methods (19-21, 23-28)
-        if (!CreateAndEnableHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour,
-                                 (LPVOID*)&IDXGISwapChain_GetFullscreenDesc_Original,
-                                 "IDXGISwapChain1::GetFullscreenDesc")) {
-            LogError("Failed to create and enable IDXGISwapChain1::GetFullscreenDesc hook");
-        }
-        if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour, (LPVOID*)&IDXGISwapChain_GetHwnd_Original,
-                                 "IDXGISwapChain1::GetHwnd")) {
-            LogError("Failed to create and enable IDXGISwapChain1::GetHwnd hook");
-        }
-        if (!CreateAndEnableHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour,
-                                 (LPVOID*)&IDXGISwapChain_GetCoreWindow_Original, "IDXGISwapChain1::GetCoreWindow")) {
-            LogError("Failed to create and enable IDXGISwapChain1::GetCoreWindow hook");
-        }
+                // Hook other IDXGISwapChain1 methods (19-21, 23-28)
+                if (!CreateAndEnableHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour,
+                                         (LPVOID*)&IDXGISwapChain_GetFullscreenDesc_Original,
+                                         "IDXGISwapChain1::GetFullscreenDesc")) {
+                    LogError("Failed to create and enable IDXGISwapChain1::GetFullscreenDesc hook");
+                }
+                if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour,
+           (LPVOID*)&IDXGISwapChain_GetHwnd_Original, "IDXGISwapChain1::GetHwnd")) { LogError("Failed to create and
+           enable IDXGISwapChain1::GetHwnd hook");
+                }
+                if (!CreateAndEnableHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour,
+                                         (LPVOID*)&IDXGISwapChain_GetCoreWindow_Original,
+           "IDXGISwapChain1::GetCoreWindow")) { LogError("Failed to create and enable IDXGISwapChain1::GetCoreWindow
+           hook");
+                }*/
 
         // Hook Present1 (index 22) - Critical for IDXGISwapChain1
         if (!CreateAndEnableHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID*)&IDXGISwapChain_Present1_Original,
                                  "IDXGISwapChain1::Present1")) {
             LogError("Failed to create and enable IDXGISwapChain1::Present1 hook");
         }
+        /*
         if (!CreateAndEnableHook(vtable[23], IDXGISwapChain_IsTemporaryMonoSupported_Detour,
                                  (LPVOID*)&IDXGISwapChain_IsTemporaryMonoSupported_Original,
                                  "IDXGISwapChain1::IsTemporaryMonoSupported")) {
@@ -1399,12 +1407,13 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  (LPVOID*)&IDXGISwapChain_GetRotation_Original, "IDXGISwapChain1::GetRotation")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetRotation hook");
         }
+        */
     }
 
     // ============================================================================
     // GROUP 2: IDXGISwapChain2 (Extended Interface) - Indices 29-35
     // ============================================================================
-    if (vtable_version >= 2) {
+    /*if (vtable_version >= 2) {
         LogInfo("Hooking IDXGISwapChain2 methods (indices 29-35)");
 
         // Hook IDXGISwapChain2 methods (29-35)
@@ -1441,22 +1450,23 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  "IDXGISwapChain2::GetMatrixTransform")) {
             LogError("Failed to create and enable IDXGISwapChain2::GetMatrixTransform hook");
         }
-    }
+
+    }*/
 
     // ============================================================================
     // GROUP 3: IDXGISwapChain3 (Extended Interface) - Indices 36-39
     // ============================================================================
     if (vtable_version >= 3) {
         LogInfo("Hooking IDXGISwapChain3 methods (indices 36-39)");
+        /*
+                // Hook IDXGISwapChain3 methods (36-39)
+                if (!CreateAndEnableHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour,
+                                         (LPVOID*)&IDXGISwapChain_GetCurrentBackBufferIndex_Original,
+                                         "IDXGISwapChain3::GetCurrentBackBufferIndex")) {
+                    LogError("Failed to create and enable IDXGISwapChain3::GetCurrentBackBufferIndex hook");
+                }
 
-        // Hook IDXGISwapChain3 methods (36-39)
-        if (!CreateAndEnableHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour,
-                                 (LPVOID*)&IDXGISwapChain_GetCurrentBackBufferIndex_Original,
-                                 "IDXGISwapChain3::GetCurrentBackBufferIndex")) {
-            LogError("Failed to create and enable IDXGISwapChain3::GetCurrentBackBufferIndex hook");
-        }
-
-        // Hook CheckColorSpaceSupport (index 37)
+          */      // Hook CheckColorSpaceSupport (index 37)
         if (!CreateAndEnableHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour,
                                  (LPVOID*)&IDXGISwapChain_CheckColorSpaceSupport_Original,
                                  "IDXGISwapChain3::CheckColorSpaceSupport")) {
@@ -1474,6 +1484,7 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
         }
     }
 
+    /*
     // ============================================================================
     // GROUP 4: IDXGISwapChain4 (Extended Interface) - Indices 40+
     // ============================================================================
@@ -1481,12 +1492,12 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
         LogInfo("Hooking IDXGISwapChain4 methods (indices 40+)");
 
         // Hook SetHDRMetaData (index 40) - HDR metadata setting
-        if (!CreateAndEnableHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour,
-                                 (LPVOID*)&IDXGISwapChain_SetHDRMetaData_Original, "IDXGISwapChain4::SetHDRMetaData")) {
-            LogError("Failed to create and enable IDXGISwapChain4::SetHDRMetaData hook");
+        if (!CreateAndEnableHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour, // causes crash in Crimson Freedom
+    Demo (LPVOID*)&IDXGISwapChain_SetHDRMetaData_Original, "IDXGISwapChain4::SetHDRMetaData")) { LogError("Failed to
+    create and enable IDXGISwapChain4::SetHDRMetaData hook");
             // Don't return false, this is not critical for basic functionality
         }
-    }
+    }*/
 
     LogInfo("Successfully hooked IDXGISWAPCHAIN4 for swapchain: %x%p", swapchain);
 

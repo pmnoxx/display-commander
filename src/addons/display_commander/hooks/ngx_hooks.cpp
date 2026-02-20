@@ -1047,7 +1047,9 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
         g_ngx_dlss_optimal_settings_callback_original =
             reinterpret_cast<PFN_NVSDK_NGX_DLSS_GetOptimalSettingsCallback>(*OutValue);
         *OutValue = reinterpret_cast<void*>(DLSSOptimalSettingsCallback_Proxy);
-        LogInfo("NGX DLSSOptimalSettingsCallback replaced with proxy");
+        if (log_count <= 1) {
+            LogInfo("NGX DLSSOptimalSettingsCallback replaced with proxy");
+        }
     }
 
     return res;
@@ -1180,7 +1182,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
                 GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
             const int override_preset_int = static_cast<int>(override_preset);
             if (override_preset_int >= 0) {
-                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue,
+                                                  override_preset_int);
                 g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
                 LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);
             }
@@ -1514,7 +1517,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
                 GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
             const int override_preset_int = static_cast<int>(override_preset);
             if (override_preset_int >= 0) {
-                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
+                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue,
+                                                  override_preset_int);
                 g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
                 LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);
             }
@@ -1999,13 +2003,9 @@ uint64_t GetTotalNGXHookCount() {
 bool AreNGXParameterVTableHooksInstalled() { return g_ngx_vtable_hooks_installed; }
 
 // Feature status checking functions (active if any handle exists)
-bool IsDLSSEnabled() {
-    return g_dlss_enabled.load() != 0 || g_streamline_dlss_enabled.load();
-}
+bool IsDLSSEnabled() { return g_dlss_enabled.load() != 0 || g_streamline_dlss_enabled.load(); }
 
-bool IsDLSSGEnabled() {
-    return g_dlssg_enabled.load() != 0 || g_streamline_dlssg_fg_enabled.load();
-}
+bool IsDLSSGEnabled() { return g_dlssg_enabled.load() != 0 || g_streamline_dlssg_fg_enabled.load(); }
 
 bool IsRayReconstructionEnabled() { return g_ray_reconstruction_enabled.load() != 0; }
 

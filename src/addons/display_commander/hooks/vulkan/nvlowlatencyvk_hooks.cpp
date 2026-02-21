@@ -1,5 +1,6 @@
 #include "nvlowlatencyvk_hooks.hpp"
 #include "../../globals.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
@@ -120,6 +121,20 @@ static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEE
     g_nvll_set_sleep_mode_call_count.fetch_add(1);
     if (NvLL_VK_SetSleepMode_Original == nullptr) {
         return 1;
+    }
+    // Override params from addon Reflex settings (same idea as D3D ApplySleepMode on present path).
+    // For Vulkan there is no ReflexManager/ApplySleepMode on present, so we override in the detour.
+    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+        return NVLL_VK_OK;
+    }
+    if (settings::g_advancedTabSettings.reflex_enable.GetValue()) {
+        const float fps_limit = GetTargetFps();
+        NVLL_VK_SET_SLEEP_MODE_PARAMS overridden = {};
+        overridden.bLowLatencyMode = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
+        overridden.bLowLatencyBoost = settings::g_advancedTabSettings.reflex_boost.GetValue();
+        overridden.minimumIntervalUs =
+            (fps_limit > 0.0f) ? static_cast<uint32_t>(1000000.0f / fps_limit) : 0u;
+        return NvLL_VK_SetSleepMode_Original(device, &overridden);
     }
     return NvLL_VK_SetSleepMode_Original(device, params);
 }

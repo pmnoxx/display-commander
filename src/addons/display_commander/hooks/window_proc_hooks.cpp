@@ -238,6 +238,15 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             break;
         }
 
+        case WM_SIZE:
+            // When continue rendering is on, prevent the game from seeing WM_SIZE SIZE_MINIMIZED so it doesn't know it's minimized
+            if (continue_rendering_enabled && game_window == hwnd && wParam == SIZE_MINIMIZED) {
+                LogInfo("WM_SIZE: Suppressing SIZE_MINIMIZED message due to continue rendering - HWND: 0x%p", hwnd);
+                ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
+                return true;  // Suppress the message
+            }
+            break;
+
         case WM_QUIT:
             // Handle window quit message
             LogInfo("WM_QUIT: Window quit message received - HWND: 0x%p", hwnd);

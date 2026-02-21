@@ -38,6 +38,7 @@ GetActiveWindow_pfn GetActiveWindow_Original = nullptr;
 GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
 IsIconic_pfn IsIconic_Original = nullptr;
 IsWindowVisible_pfn IsWindowVisible_Original = nullptr;
+GetWindowPlacement_pfn GetWindowPlacement_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
 SetWindowLongA_pfn SetWindowLongA_Original = nullptr;
@@ -253,6 +254,20 @@ BOOL WINAPI IsWindowVisible_Detour(HWND hWnd) {
     BOOL ret = IsWindowVisible_Original ? IsWindowVisible_Original(hWnd) : IsWindowVisible(hWnd);
     RecordCRDebug(CR_IsWindowVisible, ret ? 1u : 0u, false);
     return ret;
+}
+
+// Hooked GetWindowPlacement: when Continue Rendering is on, game window must not report SW_SHOWMINIMIZED (games treat
+// minimized as background).
+BOOL WINAPI GetWindowPlacement_Detour(HWND hWnd, WINDOWPLACEMENT* lpwndpl) {
+    BOOL result =
+        GetWindowPlacement_Original ? GetWindowPlacement_Original(hWnd, lpwndpl) : GetWindowPlacement(hWnd, lpwndpl);
+    if (result && lpwndpl != nullptr && settings::g_advancedTabSettings.continue_rendering.GetValue()
+        && hWnd == g_last_swapchain_hwnd.load()) {
+        if (lpwndpl->showCmd == SW_SHOWMINIMIZED) {
+            lpwndpl->showCmd = SW_SHOWNORMAL;  // Spoof "not minimized"
+        }
+    }
+    return result;
 }
 
 // Hooked SetThreadExecutionState function
@@ -1058,6 +1073,10 @@ bool InstallWindowsApiHooks() {
                              reinterpret_cast<LPVOID*>(&IsWindowVisible_Original), "IsWindowVisible")) {
         LogError("Failed to create and enable IsWindowVisible hook");
     }
+    if (!CreateAndEnableHook(GetWindowPlacement, GetWindowPlacement_Detour,
+                             reinterpret_cast<LPVOID*>(&GetWindowPlacement_Original), "GetWindowPlacement")) {
+        LogError("Failed to create and enable GetWindowPlacement hook");
+    }
 
     // Hook SetThreadExecutionState
     if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour,
@@ -1237,6 +1256,7 @@ void UninstallApiHooks() {
     MH_RemoveHook(GetGUIThreadInfo);
     MH_RemoveHook(IsIconic);
     MH_RemoveHook(IsWindowVisible);
+    MH_RemoveHook(GetWindowPlacement);
     MH_RemoveHook(SetThreadExecutionState);
     MH_RemoveHook(SetWindowLongPtrW);
     MH_RemoveHook(SetWindowLongA);
@@ -1281,6 +1301,7 @@ void UninstallApiHooks() {
     GetGUIThreadInfo_Original = nullptr;
     IsIconic_Original = nullptr;
     IsWindowVisible_Original = nullptr;
+    GetWindowPlacement_Original = nullptr;
     SetThreadExecutionState_Original = nullptr;
     SetWindowLongPtrW_Original = nullptr;
     SetWindowLongA_Original = nullptr;

@@ -100,7 +100,7 @@ void AdhdMultiMonitorManager::Update() {
         }
     }
 
-    // Check focus changes using original GetForegroundWindow
+    // Check focus changes using GetForegroundWindow_Direct
     HWND current_foreground = GetOriginalForegroundWindow();
     if (current_foreground != last_foreground_window_) {
         last_foreground_window_ = current_foreground;
@@ -273,15 +273,7 @@ void AdhdMultiMonitorManager::UpdateMonitorInfo() {
 }
 
 HWND AdhdMultiMonitorManager::GetOriginalForegroundWindow() {
-    // Use the original function pointer from MinHook if available
-    // This is the correct way to bypass our hook - GetProcAddress won't work because
-    // MinHook has already modified the function entry point
-    if (display_commanderhooks::GetForegroundWindow_Original) {
-        return display_commanderhooks::GetForegroundWindow_Original();
-    }
-
-    // Fallback to the regular function if hook isn't installed
-    return ::GetForegroundWindow();
+    return display_commanderhooks::GetForegroundWindow_Direct();
 }
 
 LRESULT CALLBACK AdhdMultiMonitorManager::BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

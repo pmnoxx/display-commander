@@ -5,6 +5,7 @@
 #include "../../display_cache.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/display_settings_hooks.hpp"
+#include "../../hooks/api_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
@@ -824,7 +825,7 @@ void ProcessExclusiveKeyGroups() {
 
     // Check if game is in foreground OR UI is open (same conditions as ProcessHotkeys)
     HWND game_hwnd = g_last_swapchain_hwnd.load();
-    HWND foreground_hwnd = GetForegroundWindow();
+    HWND foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
     bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
     bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
 
@@ -950,7 +951,7 @@ void ProcessHotkeys() {
     // Handle keyboard shortcuts (when game is in foreground OR when Display Commander UI is open)
     // When the UI is open, it becomes the foreground window, but we still want hotkeys to work
     HWND game_hwnd = g_last_swapchain_hwnd.load();
-    HWND foreground_hwnd = GetForegroundWindow();
+    HWND foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
     bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
     bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
 

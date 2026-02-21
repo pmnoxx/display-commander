@@ -1,6 +1,10 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.20 (2026-02-21)
+
+- **ADHD Multi-Monitor Mode** - Now reacts when the game window is moved to another display: the black background overlay is repositioned so it covers all monitors except the one the game is on.
+
 ## v0.12.19 (2026-02-21)
 
 - **Prevent Minimize** - Default on (Advanced tab). Prevents game window minimize on alt-tab (e.g. Doom Dark Ages).

@@ -75,15 +75,29 @@ void AdhdMultiMonitorManager::Update() {
     if (!enabled_ || !initialized_)
         return;
 
-    // Update monitor info if game window changed
+    // Update monitor info if game window changed or moved to another display
     HWND current_hwnd = g_last_swapchain_hwnd.load();
     if (!current_hwnd) {
         return;
     }
     static HWND last_hwnd = nullptr;
-    if (current_hwnd && current_hwnd != last_hwnd) {
+    if (current_hwnd != last_hwnd) {
         last_hwnd = current_hwnd;
         UpdateMonitorInfo();
+    } else if (background_window_created_) {
+        // Game window handle unchanged - check if it moved to another monitor
+        HMONITOR current_monitor = MonitorFromWindow(current_hwnd, MONITOR_DEFAULTTONEAREST);
+        if (current_monitor) {
+            MONITORINFO mi = {};
+            mi.cbSize = sizeof(mi);
+            if (GetMonitorInfoW(current_monitor, &mi)
+                && (mi.rcMonitor.left != game_monitor_rect_.left || mi.rcMonitor.top != game_monitor_rect_.top
+                    || mi.rcMonitor.right != game_monitor_rect_.right
+                    || mi.rcMonitor.bottom != game_monitor_rect_.bottom)) {
+                UpdateMonitorInfo();
+                PositionBackgroundWindow();
+            }
+        }
     }
 
     // Check focus changes using original GetForegroundWindow

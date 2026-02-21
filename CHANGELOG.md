@@ -1,6 +1,14 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.19 (2026-02-21)
+
+- **Prevent Minimize** - Default on (Advanced tab). Prevents game window minimize on alt-tab (e.g. Doom Dark Ages).
+
+## v0.12.18 (2026-02-21)
+
+- **Prevent Minimize** - Default changed from off to on (Advanced tab). When enabled, the game window is not minimized when it loses focus (e.g. alt-tab).
+
 ## v0.12.17 (2026-02-21)
 
 - **Continue rendering in background** - When enabled, the game no longer sees that it is minimized (e.g. after alt-tab), so it keeps rendering as if it were in the foreground.

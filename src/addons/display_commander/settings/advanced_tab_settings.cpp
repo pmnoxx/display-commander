@@ -32,7 +32,7 @@ AdvancedTabSettings::AdvancedTabSettings()
     : prevent_fullscreen("PreventFullscreen", true, "DisplayCommander"),
       continue_rendering("ContinueRendering", false, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
-      prevent_minimize("PreventMinimize", false, "DisplayCommander"),
+      prevent_minimize("PreventMinimize", true, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", false, "DisplayCommander"),

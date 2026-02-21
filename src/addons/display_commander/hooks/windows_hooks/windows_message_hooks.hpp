@@ -283,6 +283,10 @@ void UninstallWindowsMessageHooks();
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
 void SuppressMessage(LPMSG lpMsg);
 
+// Debug: suppress all GetMessage/PeekMessage (default off, not saved). Use to test if we forgot to spoof some message type for continue rendering.
+bool GetDebugSuppressAllGetMessage();
+void SetDebugSuppressAllGetMessage(bool enable);
+
 // Input blocking helper functions
 bool ShouldBlockKeyboardInput(bool assume_foreground);
 bool ShouldBlockMouseInput(bool assume_foreground);

@@ -5,13 +5,6 @@
 
 #include <atomic>
 
-// Atomic variables for advanced tab settings
-std::atomic<bool> s_continue_rendering{false};  // Disabled by default
-std::atomic<bool> s_hide_hdr_capabilities{false};
-std::atomic<bool> s_enable_flip_chain{false};
-std::atomic<bool> s_auto_colorspace{false};
-std::atomic<bool> s_nvapi_auto_enable_enabled{true};  // enabled by default
-
 // Reflex settings
 std::atomic<bool> s_reflex_auto_configure{false};        // Disabled by default
 std::atomic<bool> s_reflex_enable_current_frame{false};  // Enable NVIDIA Reflex integration for current frame
@@ -37,16 +30,14 @@ namespace settings {
 // Constructor - initialize all settings with proper keys and default values
 AdvancedTabSettings::AdvancedTabSettings()
     : prevent_fullscreen("PreventFullscreen", true, "DisplayCommander"),
-      continue_rendering("ContinueRendering", s_continue_rendering, s_continue_rendering.load(), "DisplayCommander"),
+      continue_rendering("ContinueRendering", false, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
       prevent_minimize("PreventMinimize", false, "DisplayCommander"),
-      hide_hdr_capabilities("HideHDRCapabilities", s_hide_hdr_capabilities, s_hide_hdr_capabilities.load(),
-                            "DisplayCommander"),
-      enable_flip_chain("EnableFlipChain", s_enable_flip_chain, s_enable_flip_chain.load(), "DisplayCommander"),
-      auto_colorspace("AutoColorspace", s_auto_colorspace, s_auto_colorspace.load(), "DisplayCommander"),
+      hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
+      enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
+      auto_colorspace("AutoColorspace", false, "DisplayCommander"),
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
-      nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", s_nvapi_auto_enable_enabled,
-                                s_nvapi_auto_enable_enabled.load(), "DisplayCommander"),
+      nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
       reflex_auto_configure("ReflexAutoConfigure", s_reflex_auto_configure, s_reflex_auto_configure.load(),
@@ -121,6 +112,11 @@ void AdvancedTabSettings::LoadAll() {
 void AdvancedTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();
+    continue_rendering.Save();
+    hide_hdr_capabilities.Save();
+    enable_flip_chain.Save();
+    auto_colorspace.Save();
+    nvapi_auto_enable_enabled.Save();
     enable_hotkeys.Save();
     safemode.Save();
     fake_nvapi_enabled.Save();

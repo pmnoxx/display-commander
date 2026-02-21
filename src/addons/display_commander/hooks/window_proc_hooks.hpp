@@ -9,6 +9,9 @@
 
 namespace display_commanderhooks {
 
+// True if window has caption or thick frame (standard bordered window). Borderless windows return false.
+bool WindowHasBorder(HWND hwnd);
+
 // Window procedure hook functions
 bool InstallWindowProcHooks(HWND hwnd);
 void UninstallWindowProcHooks();

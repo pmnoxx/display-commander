@@ -864,12 +864,6 @@ extern std::atomic<bool> s_suppress_dinput_hooks;
 // Logging level control
 extern std::atomic<LogLevel> g_min_log_level;
 
-// External declarations for atomic variables moved to advanced_tab_settings.cpp
-extern std::atomic<bool> s_continue_rendering;
-extern std::atomic<bool> s_hide_hdr_capabilities;
-extern std::atomic<bool> s_enable_flip_chain;
-extern std::atomic<bool> s_auto_colorspace;
-
 // Reflex settings
 extern std::atomic<bool> s_reflex_auto_configure;
 extern std::atomic<bool> s_reflex_enable_current_frame;

@@ -36,6 +36,8 @@ GetFocus_pfn GetFocus_Original = nullptr;
 GetForegroundWindow_pfn GetForegroundWindow_Original = nullptr;
 GetActiveWindow_pfn GetActiveWindow_Original = nullptr;
 GetGUIThreadInfo_pfn GetGUIThreadInfo_Original = nullptr;
+IsIconic_pfn IsIconic_Original = nullptr;
+IsWindowVisible_pfn IsWindowVisible_Original = nullptr;
 SetThreadExecutionState_pfn SetThreadExecutionState_Original = nullptr;
 SetWindowLongPtrW_pfn SetWindowLongPtrW_Original = nullptr;
 SetWindowLongA_pfn SetWindowLongA_Original = nullptr;
@@ -54,10 +56,43 @@ D3D12CreateDevice_pfn D3D12CreateDevice_Original = nullptr;
 // Hook state
 static std::atomic<bool> g_api_hooks_installed{false};
 
-// Get the game window handle (we'll need to track this)
-static std::atomic<HWND> g_game_window = nullptr;
+// Continue Rendering API debug: last return value and override per API (written in detours, read by UI).
+namespace {
+enum CRDebugIndex {
+    CR_GetFocus = 0,
+    CR_GetForegroundWindow,
+    CR_GetActiveWindow,
+    CR_GetGUIThreadInfo,
+    CR_IsIconic,
+    CR_IsWindowVisible,
+};
+struct CRDebugEntry {
+    std::atomic<uintptr_t> last_value{0};
+    std::atomic<uint64_t> last_call_time_ns{0};
+    std::atomic<bool> did_override{false};
+};
+static CRDebugEntry g_cr_debug[CR_DEBUG_API_COUNT];
+static const char* const g_cr_names[CR_DEBUG_API_COUNT] = {
+    "GetFocus", "GetForegroundWindow", "GetActiveWindow", "GetGUIThreadInfo", "IsIconic", "IsWindowVisible",
+};
+static void RecordCRDebug(int idx, uintptr_t value, bool did_override) {
+    g_cr_debug[idx].last_value.store(value, std::memory_order_relaxed);
+    g_cr_debug[idx].last_call_time_ns.store(utils::get_now_ns(), std::memory_order_relaxed);
+    g_cr_debug[idx].did_override.store(did_override, std::memory_order_relaxed);
+}
+}  // namespace
 
-HWND GetGameWindow() { return g_game_window; }
+void GetContinueRenderingApiDebugSnapshots(ContinueRenderingApiDebugSnapshot* out) {
+    for (int i = 0; i < CR_DEBUG_API_COUNT && out != nullptr; ++i) {
+        out[i].api_name = g_cr_names[i];
+        out[i].last_value = g_cr_debug[i].last_value.load(std::memory_order_relaxed);
+        out[i].last_call_time_ns = g_cr_debug[i].last_call_time_ns.load(std::memory_order_relaxed);
+        out[i].did_override = g_cr_debug[i].did_override.load(std::memory_order_relaxed);
+        out[i].value_is_bool = (i == CR_IsIconic || i == CR_IsWindowVisible);
+    }
+}
+
+HWND GetGameWindow() { return g_last_swapchain_hwnd.load(); }
 
 bool HWNDBelongsToCurrentProcess(HWND hwnd) {
     DWORD dwPid = 0;
@@ -71,16 +106,19 @@ HWND WINAPI GetFocus_Detour() {
     auto hwnd = GetFocus_Original ? GetFocus_Original() : GetFocus();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
+        RecordCRDebug(CR_GetFocus, reinterpret_cast<uintptr_t>(hwnd), false);
         return hwnd;
     }
 
-    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
-        // Return the game window even when it doesn't have focus
-        //   LogInfo("GetFocus_Detour: Returning game window due to continue rendering - HWND: 0x%p", g_game_window);
-        return g_game_window;
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue()) {
+        HWND game_hwnd = g_last_swapchain_hwnd.load();
+        if (game_hwnd != nullptr) {
+            RecordCRDebug(CR_GetFocus, reinterpret_cast<uintptr_t>(game_hwnd), true);
+            return game_hwnd;
+        }
     }
 
-    // Call original function
+    RecordCRDebug(CR_GetFocus, reinterpret_cast<uintptr_t>(hwnd), false);
     return hwnd;
 }
 
@@ -94,17 +132,19 @@ HWND WINAPI GetForegroundWindow_Detour() {
     auto hwnd = GetForegroundWindow_Direct();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
+        RecordCRDebug(CR_GetForegroundWindow, reinterpret_cast<uintptr_t>(hwnd), false);
         return hwnd;
     }
 
-    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
-        // Return the game window even when it's not in foreground
-        //    LogInfo("GetForegroundWindow_Detour: Returning game window due to continue rendering - HWND: 0x%p",
-        //    g_game_window);
-        return g_game_window;
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue()) {
+        HWND game_hwnd = g_last_swapchain_hwnd.load();
+        if (game_hwnd != nullptr) {
+            RecordCRDebug(CR_GetForegroundWindow, reinterpret_cast<uintptr_t>(game_hwnd), true);
+            return game_hwnd;
+        }
     }
 
-    // Call original function
+    RecordCRDebug(CR_GetForegroundWindow, reinterpret_cast<uintptr_t>(hwnd), false);
     return hwnd;
 }
 
@@ -114,66 +154,105 @@ HWND WINAPI GetActiveWindow_Detour() {
     auto hwnd = GetActiveWindow_Original ? GetActiveWindow_Original() : GetActiveWindow();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
+        RecordCRDebug(CR_GetActiveWindow, reinterpret_cast<uintptr_t>(hwnd), false);
         return hwnd;
     }
 
-    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
-        // Return the game window even when it's not the active window
-        // Check if we're in the same thread as the game window
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue()) {
+        HWND game_hwnd = g_last_swapchain_hwnd.load();
+        if (game_hwnd == nullptr) {
+            RecordCRDebug(CR_GetActiveWindow, 0, false);
+            return nullptr;
+        }
         DWORD dwPid = 0;
-        DWORD dwTid = GetWindowThreadProcessId(g_game_window, &dwPid);
+        DWORD dwTid = GetWindowThreadProcessId(game_hwnd, &dwPid);
 
         if (GetCurrentThreadId() == dwTid) {
-            // We're in the same thread as the game window, return it
-            return g_game_window;
+            RecordCRDebug(CR_GetActiveWindow, reinterpret_cast<uintptr_t>(game_hwnd), true);
+            return game_hwnd;
         }
-
-        // For other threads, check if the current process owns the game window
         if (GetCurrentProcessId() == dwPid) {
-            return g_game_window;
+            RecordCRDebug(CR_GetActiveWindow, reinterpret_cast<uintptr_t>(game_hwnd), true);
+            return game_hwnd;
         }
-        return g_game_window;
+        RecordCRDebug(CR_GetActiveWindow, reinterpret_cast<uintptr_t>(game_hwnd), true);
+        return game_hwnd;
     }
 
-    // Call original function
+    RecordCRDebug(CR_GetActiveWindow, reinterpret_cast<uintptr_t>(hwnd), false);
     return hwnd;
 }
 
 // Hooked GetGUIThreadInfo function
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (s_continue_rendering.load() && g_game_window.load() != nullptr && IsWindow(g_game_window.load())) {
+    HWND game_hwnd = g_last_swapchain_hwnd.load();
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue() && game_hwnd != nullptr
+        && IsWindow(game_hwnd)) {
         // Call original function first
         BOOL result =
             GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
 
-        if (result && pgui) {
+        if (result) {
             // Modify the thread info to show game window as active
             DWORD dwPid = 0;
-            DWORD dwTid = GetWindowThreadProcessId(g_game_window, &dwPid);
+            DWORD dwTid = GetWindowThreadProcessId(game_hwnd, &dwPid);
 
             if (idThread == dwTid || idThread == 0) {
                 // Set the game window as active and focused
-                pgui->hwndActive = g_game_window;
-                pgui->hwndFocus = g_game_window;
+                pgui->hwndActive = game_hwnd;
+                pgui->hwndFocus = game_hwnd;
                 pgui->hwndCapture = nullptr;      // Clear capture to prevent issues
-                pgui->hwndCaret = g_game_window;  // Set caret to game window
+                pgui->hwndCaret = game_hwnd;      // Set caret to game window
 
                 // Set appropriate flags (using standard Windows constants)
                 pgui->flags = 0x00000001 | 0x00000002;  // GTI_CARETBLINKING | GTI_CARETSHOWN
 
+                RecordCRDebug(CR_GetGUIThreadInfo, reinterpret_cast<uintptr_t>(game_hwnd), true);
                 LogInfo(
                     "GetGUIThreadInfo_Detour: Modified thread info to show game window as active - HWND: 0x%p, "
                     "Thread: %lu",
-                    g_game_window.load(), idThread);
+                    game_hwnd, idThread);
+            } else {
+                RecordCRDebug(CR_GetGUIThreadInfo, pgui ? reinterpret_cast<uintptr_t>(pgui->hwndActive) : 0, false);
             }
+        } else {
+            RecordCRDebug(CR_GetGUIThreadInfo, 0, false);
         }
 
         return result;
     }
 
-    // Call original function
-    return GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
+    BOOL result =
+        GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
+    RecordCRDebug(CR_GetGUIThreadInfo, (pgui && result) ? reinterpret_cast<uintptr_t>(pgui->hwndActive) : 0, false);
+    return result;
+}
+
+// Hooked IsIconic: when Continue Rendering is on, game window must not appear minimized (games treat minimized as
+// background).
+BOOL WINAPI IsIconic_Detour(HWND hWnd) {
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue()
+        && hWnd == g_last_swapchain_hwnd.load()) {
+        RecordCRDebug(CR_IsIconic, 0, true);   // we return FALSE (0)
+        return FALSE;  // Spoof "not minimized"
+    }
+    BOOL ret = IsIconic_Original ? IsIconic_Original(hWnd) : IsIconic(hWnd);
+    RecordCRDebug(CR_IsIconic, ret ? 1u : 0u, false);
+    return ret;
+}
+
+// Hooked IsWindowVisible: when Continue Rendering is on, game window must appear visible (some games check this for
+// foreground).
+BOOL WINAPI IsWindowVisible_Detour(HWND hWnd) {
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue()
+        && hWnd == g_last_swapchain_hwnd.load()) {
+        RecordCRDebug(CR_IsWindowVisible, 1, true);   // we return TRUE (1)
+        return TRUE;  // Spoof "visible"
+    }
+    BOOL ret = IsWindowVisible_Original ? IsWindowVisible_Original(hWnd) : IsWindowVisible(hWnd);
+    RecordCRDebug(CR_IsWindowVisible, ret ? 1u : 0u, false);
+    return ret;
 }
 
 // Hooked SetThreadExecutionState function
@@ -202,7 +281,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
-    if (hWnd == g_game_window) {
+    if (hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
@@ -217,7 +296,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
-    if (hWnd == g_game_window) {
+    if (hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
@@ -231,7 +310,7 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
     // Check if fullscreen prevention is enabled
-    if (hWnd == g_game_window) {
+    if (hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
@@ -247,7 +326,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     // Check if fullscreen prevention is enabled
     // if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
     // Prevent window style changes that enable fullscreen
-    if (hWnd == g_game_window) {
+    if (hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
     // }
@@ -259,7 +338,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Only process if prevent_always_on_top is enabled
-    if (hWnd == g_game_window && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
+    if (hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
         && hWndInsertAfter != HWND_NOTOPMOST) {
         hWndInsertAfter = HWND_NOTOPMOST;
         // uFlags |= SWP_FRAMECHANGED; perhaphs not needed
@@ -970,6 +1049,16 @@ bool InstallWindowsApiHooks() {
         LogError("Failed to create and enable GetGUIThreadInfo hook");
     }
 
+    // Hook IsIconic / IsWindowVisible so the game does not see "minimized" or "not visible" when Continue Rendering is
+    // on
+    if (!CreateAndEnableHook(IsIconic, IsIconic_Detour, reinterpret_cast<LPVOID*>(&IsIconic_Original), "IsIconic")) {
+        LogError("Failed to create and enable IsIconic hook");
+    }
+    if (!CreateAndEnableHook(IsWindowVisible, IsWindowVisible_Detour,
+                             reinterpret_cast<LPVOID*>(&IsWindowVisible_Original), "IsWindowVisible")) {
+        LogError("Failed to create and enable IsWindowVisible hook");
+    }
+
     // Hook SetThreadExecutionState
     if (!CreateAndEnableHook(SetThreadExecutionState, SetThreadExecutionState_Detour,
                              reinterpret_cast<LPVOID*>(&SetThreadExecutionState_Original), "SetThreadExecutionState")) {
@@ -1091,7 +1180,7 @@ bool InstallApiHooks() {
     LogInfo("API hooks installed successfully");
 
     // Debug: Show current continue rendering state
-    bool current_state = s_continue_rendering.load();
+    bool current_state = settings::g_advancedTabSettings.continue_rendering.GetValue();
     LogInfo("API hooks installed - continue_rendering state: %s", current_state ? "enabled" : "disabled");
 
     return true;
@@ -1146,6 +1235,8 @@ void UninstallApiHooks() {
     MH_RemoveHook(GetForegroundWindow);
     MH_RemoveHook(GetActiveWindow);
     MH_RemoveHook(GetGUIThreadInfo);
+    MH_RemoveHook(IsIconic);
+    MH_RemoveHook(IsWindowVisible);
     MH_RemoveHook(SetThreadExecutionState);
     MH_RemoveHook(SetWindowLongPtrW);
     MH_RemoveHook(SetWindowLongA);
@@ -1188,6 +1279,8 @@ void UninstallApiHooks() {
     GetForegroundWindow_Original = nullptr;
     GetActiveWindow_Original = nullptr;
     GetGUIThreadInfo_Original = nullptr;
+    IsIconic_Original = nullptr;
+    IsWindowVisible_Original = nullptr;
     SetThreadExecutionState_Original = nullptr;
     SetWindowLongPtrW_Original = nullptr;
     SetWindowLongA_Original = nullptr;
@@ -1206,10 +1299,9 @@ void UninstallApiHooks() {
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");
 }
-// Function to set the game window (should be called when we detect the game window)
-void SetGameWindow(HWND hwnd) {
-    g_game_window = hwnd;
-    LogInfo("Game window set for API hooks - HWND: 0x%p", hwnd);
+// Game window is taken from g_last_swapchain_hwnd (set in swapchain_events). Kept for compatibility with callers.
+void SetGameWindow(HWND /*hwnd*/) {
+    // No-op: we use g_last_swapchain_hwnd as the single source of truth for the game/swapchain window.
 }
 
 }  // namespace display_commanderhooks

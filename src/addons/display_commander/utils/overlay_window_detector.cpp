@@ -1,6 +1,7 @@
 #include "overlay_window_detector.hpp"
-#include <set>
+#include "../hooks/api_hooks.hpp"
 #include <algorithm>
+#include <set>
 
 namespace display_commander::utils {
 
@@ -77,13 +78,15 @@ std::vector<HWND> GetWindowsAboveGameWindow(HWND game_window) {
     std::set<HWND> hWndTopLevel;
     std::set<HWND> hWndTopLevelOnGameMonitor;
 
-    EnumWindows([](HWND hWnd, LPARAM lParam) -> BOOL {
-        std::set<HWND>* pTopLevelSet = reinterpret_cast<std::set<HWND>*>(lParam);
-        if (pTopLevelSet != nullptr) {
-            pTopLevelSet->emplace(hWnd);
-        }
-        return TRUE;
-    }, reinterpret_cast<LPARAM>(&hWndTopLevel));
+    EnumWindows(
+        [](HWND hWnd, LPARAM lParam) -> BOOL {
+            std::set<HWND>* pTopLevelSet = reinterpret_cast<std::set<HWND>*>(lParam);
+            if (pTopLevelSet != nullptr) {
+                pTopLevelSet->emplace(hWnd);
+            }
+            return TRUE;
+        },
+        reinterpret_cast<LPARAM>(&hWndTopLevel));
 
     // Filter windows by monitor (check if window rect overlaps with game monitor rect)
     for (HWND hWnd : hWndTopLevel) {
@@ -104,7 +107,8 @@ std::vector<HWND> GetWindowsAboveGameWindow(HWND game_window) {
 
     while (hWndAbove != nullptr && IsWindow(hWndAbove)) {
         // Only include visible windows that are on the same monitor
-        if (IsWindowVisible(hWndAbove) != FALSE && hWndTopLevelOnGameMonitor.count(hWndAbove) > 0) {
+        if (display_commanderhooks::IsWindowVisible_direct(hWndAbove) != FALSE
+            && hWndTopLevelOnGameMonitor.count(hWndAbove) > 0) {
             windows_above.push_back(hWndAbove);
         }
 
@@ -167,18 +171,20 @@ std::vector<OverlayWindowInfo> DetectOverlayWindows(HWND game_window) {
     std::set<HWND> hWndTopLevel;
     std::set<HWND> hWndTopLevelOnGameMonitor;
 
-    EnumWindows([](HWND hWnd, LPARAM lParam) -> BOOL {
-        std::set<HWND>* pTopLevelSet = reinterpret_cast<std::set<HWND>*>(lParam);
-        if (pTopLevelSet != nullptr) {
-            pTopLevelSet->emplace(hWnd);
-        }
-        return TRUE;
-    }, reinterpret_cast<LPARAM>(&hWndTopLevel));
+    EnumWindows(
+        [](HWND hWnd, LPARAM lParam) -> BOOL {
+            std::set<HWND>* pTopLevelSet = reinterpret_cast<std::set<HWND>*>(lParam);
+            if (pTopLevelSet != nullptr) {
+                pTopLevelSet->emplace(hWnd);
+            }
+            return TRUE;
+        },
+        reinterpret_cast<LPARAM>(&hWndTopLevel));
 
     // Filter windows by monitor (check if window rect overlaps with game monitor rect - area-based)
     for (HWND hWnd : hWndTopLevel) {
         // Only check visible windows
-        if (IsWindowVisible(hWnd) == FALSE) {
+        if (display_commanderhooks::IsWindowVisible_direct(hWnd) == FALSE) {
             continue;
         }
 
@@ -200,7 +206,7 @@ std::vector<OverlayWindowInfo> DetectOverlayWindows(HWND game_window) {
             continue;  // Skip the game window itself
         }
 
-        if (!IsWindow(hwnd) || IsWindowVisible(hwnd) == FALSE) {
+        if (!IsWindow(hwnd) || !display_commanderhooks::IsWindowVisible_direct(hwnd)) {
             continue;
         }
 
@@ -244,7 +250,7 @@ std::vector<OverlayWindowInfo> DetectOverlayWindows(HWND game_window) {
         DWORD process_id = 0;
         GetWindowThreadProcessId(hwnd, &process_id);
 
-        bool is_visible = IsWindowVisible(hwnd) != FALSE;
+        bool is_visible = display_commanderhooks::IsWindowVisible_direct(hwnd) != FALSE;
 
         // Check if window is above the game window in Z-order
         bool is_above = windows_above_set.count(hwnd) > 0 || IsWindowAboveInZOrder(hwnd, game_window);
@@ -276,37 +282,38 @@ bool IsWindowWithTitleVisible(const std::wstring& window_title) {
         bool found;
     };
 
-    EnumData data = { &window_title, false };
+    EnumData data = {&window_title, false};
 
-    EnumWindows([](HWND hWnd, LPARAM lParam) -> BOOL {
-        EnumData* pData = reinterpret_cast<EnumData*>(lParam);
+    EnumWindows(
+        [](HWND hWnd, LPARAM lParam) -> BOOL {
+            EnumData* pData = reinterpret_cast<EnumData*>(lParam);
 
-        if (IsWindowVisible(hWnd) == FALSE) {
-            return TRUE;  // Continue enumeration
-        }
-
-        std::wstring title = GetWindowTitle(hWnd);
-
-        // Case-insensitive comparison
-        if (title.length() >= pData->target_title->length()) {
-            std::wstring title_upper = title;
-            std::wstring target_upper = *pData->target_title;
-
-            // Convert to uppercase for comparison
-            std::transform(title_upper.begin(), title_upper.end(), title_upper.begin(), ::towupper);
-            std::transform(target_upper.begin(), target_upper.end(), target_upper.begin(), ::towupper);
-
-            if (title_upper.find(target_upper) != std::wstring::npos) {
-                pData->found = true;
-                return FALSE;  // Stop enumeration
+            if (display_commanderhooks::IsWindowVisible_direct(hWnd) == FALSE) {
+                return TRUE;  // Continue enumeration
             }
-        }
 
-        return TRUE;  // Continue enumeration
-    }, reinterpret_cast<LPARAM>(&data));
+            std::wstring title = GetWindowTitle(hWnd);
+
+            // Case-insensitive comparison
+            if (title.length() >= pData->target_title->length()) {
+                std::wstring title_upper = title;
+                std::wstring target_upper = *pData->target_title;
+
+                // Convert to uppercase for comparison
+                std::transform(title_upper.begin(), title_upper.end(), title_upper.begin(), ::towupper);
+                std::transform(target_upper.begin(), target_upper.end(), target_upper.begin(), ::towupper);
+
+                if (title_upper.find(target_upper) != std::wstring::npos) {
+                    pData->found = true;
+                    return FALSE;  // Stop enumeration
+                }
+            }
+
+            return TRUE;  // Continue enumeration
+        },
+        reinterpret_cast<LPARAM>(&data));
 
     return data.found;
 }
 
-} // namespace display_commander::utils
-
+}  // namespace display_commander::utils

@@ -8,15 +8,14 @@
 #include "../../window_management/window_management.hpp"
 
 #include <imgui.h>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
 extern HWND GetCurrentForeGroundWindow();
 
 // Message history storage
 static std::vector<ui::new_ui::MessageHistoryEntry> g_message_history;
 static const size_t MAX_MESSAGE_HISTORY = 50;
-
 
 namespace ui::new_ui {
 
@@ -72,26 +71,25 @@ void DrawBasicWindowInfo() {
 
             ImGui::Separator();
             ImGui::Text("Backbuffer Size: %dx%d", bb_w, bb_h);
-            
+
             // Display game render resolution (before any modifications) - matches Special K's render_x/render_y
             int game_render_w = g_game_render_width.load();
             int game_render_h = g_game_render_height.load();
             if (game_render_w > 0 && game_render_h > 0) {
                 ImGui::Separator();
                 ImGui::Text("Game Render Resolution: %dx%d", game_render_w, game_render_h);
-                
+
                 // Show difference if backbuffer differs from render resolution
                 if (bb_w != game_render_w || bb_h != game_render_h) {
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), 
-                        "  (Modified: Backbuffer differs from render resolution)");
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
+                                       "  (Modified: Backbuffer differs from render resolution)");
                 } else {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 
-                        "  (Unmodified: Backbuffer matches render resolution)");
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                       "  (Unmodified: Backbuffer matches render resolution)");
                 }
             } else {
                 ImGui::Separator();
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
-                    "Game Render Resolution: Not captured yet");
+                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Game Render Resolution: Not captured yet");
             }
         } else {
             ImGui::Text("No window available");
@@ -149,8 +147,8 @@ void DrawWindowState() {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr) {
             // Window state
-            bool is_visible = IsWindowVisible(hwnd) != FALSE;
-            bool is_iconic = IsIconic(hwnd) != FALSE;
+            bool is_visible = display_commanderhooks::IsWindowVisible_direct(hwnd) != FALSE;
+            bool is_iconic = display_commanderhooks::IsIconic_direct(hwnd) != FALSE;
             bool is_zoomed = IsZoomed(hwnd) != FALSE;
             bool is_enabled = IsWindowEnabled(hwnd) != FALSE;
 
@@ -167,7 +165,6 @@ void DrawGlobalWindowState() {
     if (ImGui::CollapsingHeader("Global Window State", ImGuiTreeNodeFlags_DefaultOpen)) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr) {
-
             auto window_state = ::g_window_state.load();
             if (window_state) {
                 auto s = *window_state;
@@ -227,20 +224,23 @@ void DrawContinueRenderingAndInputBlocking() {
 
         ImGui::Text("Continue Rendering (in background):");
         ImGui::Text("  Setting: %s", continue_rendering ? "Enabled" : "Disabled");
-        ImGui::Text("  IsContinueRenderingEnabled(): %s", display_commanderhooks::IsContinueRenderingEnabled() ? "Yes" : "No");
+        ImGui::Text("  IsContinueRenderingEnabled(): %s",
+                    display_commanderhooks::IsContinueRenderingEnabled() ? "Yes" : "No");
         if (!same_as_hook) {
             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  (Mismatch - hook state differs from setting)");
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When enabled, rendering continues when the game loses focus (e.g. alt-tab).\n"
-                              "Uses window proc hooks to spoof focus/activation.");
+            ImGui::SetTooltip(
+                "When enabled, rendering continues when the game loses focus (e.g. alt-tab).\n"
+                "Uses window proc hooks to spoof focus/activation.");
         }
 
         ImGui::Separator();
         ImGui::Text("Should block input (current runtime result):");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Whether input is currently blocked for the game.\n"
-                              "Depends on input blocking mode (Main tab), app in background, and Ctrl+I toggle.");
+            ImGui::SetTooltip(
+                "Whether input is currently blocked for the game.\n"
+                "Depends on input blocking mode (Main tab), app in background, and Ctrl+I toggle.");
         }
         bool block_kb = display_commanderhooks::ShouldBlockKeyboardInput(false);
         bool block_mouse = display_commanderhooks::ShouldBlockMouseInput(false);
@@ -255,16 +255,18 @@ void DrawContinueRenderingAndInputBlocking() {
             display_commanderhooks::SetDebugSuppressAllGetMessage(debug_suppress_all);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When on, every message from GetMessage/PeekMessage is skipped (game receives none).\n"
-                              "Use to see if we forgot to spoof some message type for continue rendering.\n"
-                              "Default off, not saved to config.");
+            ImGui::SetTooltip(
+                "When on, every message from GetMessage/PeekMessage is skipped (game receives none).\n"
+                "Use to see if we forgot to spoof some message type for continue rendering.\n"
+                "Default off, not saved to config.");
         }
 
         ImGui::Separator();
         if (ImGui::TreeNodeEx("Continue Rendering API debug", ImGuiTreeNodeFlags_DefaultOpen)) {
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Last return value (HWND or BOOL) and override state for each API.\n"
-                                  "'(game window)' = returned HWND is the game/swapchain window.");
+                ImGui::SetTooltip(
+                    "Last return value (HWND or BOOL) and override state for each API.\n"
+                    "'(game window)' = returned HWND is the game/swapchain window.");
             }
             display_commanderhooks::ContinueRenderingApiDebugSnapshot snap[display_commanderhooks::CR_DEBUG_API_COUNT];
             display_commanderhooks::GetContinueRenderingApiDebugSnapshots(snap);
@@ -296,8 +298,9 @@ void DrawContinueRenderingAndInputBlocking() {
                         }
                     }
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::TextColored(snap[i].did_override ? ImVec4(0.2f, 0.8f, 0.2f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-                                       snap[i].did_override ? "Yes" : "No");
+                    ImGui::TextColored(
+                        snap[i].did_override ? ImVec4(0.2f, 0.8f, 0.2f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                        snap[i].did_override ? "Yes" : "No");
                     ImGui::TableSetColumnIndex(3);
                     if (snap[i].last_call_time_ns == 0) {
                         ImGui::TextUnformatted("never");
@@ -328,8 +331,8 @@ void DrawCursorInfo() {
             // Check for cursor confinement
             POINT cursor_pos;
             GetCursorPos(&cursor_pos);
-            bool cursor_in_window = (cursor_pos.x >= window_rect.left && cursor_pos.x <= window_rect.right &&
-                                     cursor_pos.y >= window_rect.top && cursor_pos.y <= window_rect.bottom);
+            bool cursor_in_window = (cursor_pos.x >= window_rect.left && cursor_pos.x <= window_rect.right
+                                     && cursor_pos.y >= window_rect.top && cursor_pos.y <= window_rect.bottom);
 
             ImGui::Text("Cursor Information:");
             ImGui::Text("  Cursor Pos: (%ld, %ld)", cursor_pos.x, cursor_pos.y);
@@ -381,24 +384,22 @@ void DrawMessageSendingUI() {
         static char custom_message[32] = "0";
 
         // Common Windows messages
-        const char* message_names[] = {
-            "WM_ACTIVATE (0x0006)",
-            "WM_SETFOCUS (0x0007)",
-            "WM_KILLFOCUS (0x0008)",
-            "WM_ACTIVATEAPP (0x001C)",
-            "WM_NCACTIVATE (0x0086)",
-            "WM_WINDOWPOSCHANGING (0x0046)",
-            "WM_WINDOWPOSCHANGED (0x0047)",
-            "WM_SHOWWINDOW (0x0018)",
-            "WM_MOUSEACTIVATE (0x0021)",
-            "WM_SYSCOMMAND (0x0112)",
-            "WM_ENTERSIZEMOVE (0x0231)",
-            "WM_EXITSIZEMOVE (0x0232)",
-            "WM_QUIT (0x0012)",
-            "WM_CLOSE (0x0010)",
-            "WM_DESTROY (0x0002)",
-            "Custom Message"
-        };
+        const char* message_names[] = {"WM_ACTIVATE (0x0006)",
+                                       "WM_SETFOCUS (0x0007)",
+                                       "WM_KILLFOCUS (0x0008)",
+                                       "WM_ACTIVATEAPP (0x001C)",
+                                       "WM_NCACTIVATE (0x0086)",
+                                       "WM_WINDOWPOSCHANGING (0x0046)",
+                                       "WM_WINDOWPOSCHANGED (0x0047)",
+                                       "WM_SHOWWINDOW (0x0018)",
+                                       "WM_MOUSEACTIVATE (0x0021)",
+                                       "WM_SYSCOMMAND (0x0112)",
+                                       "WM_ENTERSIZEMOVE (0x0231)",
+                                       "WM_EXITSIZEMOVE (0x0232)",
+                                       "WM_QUIT (0x0012)",
+                                       "WM_CLOSE (0x0010)",
+                                       "WM_DESTROY (0x0002)",
+                                       "Custom Message"};
 
         const UINT message_values[] = {
             WM_ACTIVATE,
@@ -416,7 +417,7 @@ void DrawMessageSendingUI() {
             WM_QUIT,
             WM_CLOSE,
             WM_DESTROY,
-            0 // Custom message placeholder
+            0  // Custom message placeholder
         };
 
         ImGui::Text("Send Window Message");
@@ -442,9 +443,9 @@ void DrawMessageSendingUI() {
 
         // Send button
         if (ImGui::Button("Send Message")) {
-            UINT message = (selected_message == IM_ARRAYSIZE(message_values) - 1) ?
-                          static_cast<UINT>(std::strtoul(custom_message, nullptr, 16)) :
-                          message_values[selected_message];
+            UINT message = (selected_message == IM_ARRAYSIZE(message_values) - 1)
+                               ? static_cast<UINT>(std::strtoul(custom_message, nullptr, 16))
+                               : message_values[selected_message];
 
             WPARAM wParam = static_cast<WPARAM>(std::strtoul(wparam_input, nullptr, 16));
             LPARAM lParam = static_cast<LPARAM>(std::strtoul(lparam_input, nullptr, 16));
@@ -460,9 +461,9 @@ void DrawMessageSendingUI() {
 
         ImGui::SameLine();
         if (ImGui::Button("Post Message")) {
-            UINT message = (selected_message == IM_ARRAYSIZE(message_values) - 1) ?
-                          static_cast<UINT>(std::strtoul(custom_message, nullptr, 16)) :
-                          message_values[selected_message];
+            UINT message = (selected_message == IM_ARRAYSIZE(message_values) - 1)
+                               ? static_cast<UINT>(std::strtoul(custom_message, nullptr, 16))
+                               : message_values[selected_message];
 
             WPARAM wParam = static_cast<WPARAM>(std::strtoul(wparam_input, nullptr, 16));
             LPARAM lParam = static_cast<LPARAM>(std::strtoul(lparam_input, nullptr, 16));
@@ -514,7 +515,8 @@ void DrawMessageHistory() {
 
         // Add helpful information about suppression
         ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-            "Note: Messages are only suppressed when Continue Rendering is enabled or Input Blocking is active (Ctrl+I)");
+                           "Note: Messages are only suppressed when Continue Rendering is enabled or Input Blocking is "
+                           "active (Ctrl+I)");
         ImGui::Separator();
 
         // Create a table-like display
@@ -609,9 +611,7 @@ void AddMessageToHistoryIfKnown(UINT message, WPARAM wParam, LPARAM lParam, bool
         case WM_EXITSIZEMOVE:
         case WM_QUIT:
         case WM_CLOSE:
-        case WM_DESTROY:
-            AddMessageToHistory(message, wParam, lParam, wasSuppressed);
-            break;
+        case WM_DESTROY:           AddMessageToHistory(message, wParam, lParam, wasSuppressed); break;
         default:
             // Don't track unknown messages
             break;
@@ -620,22 +620,22 @@ void AddMessageToHistoryIfKnown(UINT message, WPARAM wParam, LPARAM lParam, bool
 
 std::string GetMessageName(UINT message) {
     switch (message) {
-        case WM_ACTIVATE: return "WM_ACTIVATE";
-        case WM_SETFOCUS: return "WM_SETFOCUS";
-        case WM_KILLFOCUS: return "WM_KILLFOCUS";
-        case WM_ACTIVATEAPP: return "WM_ACTIVATEAPP";
-        case WM_NCACTIVATE: return "WM_NCACTIVATE";
+        case WM_ACTIVATE:          return "WM_ACTIVATE";
+        case WM_SETFOCUS:          return "WM_SETFOCUS";
+        case WM_KILLFOCUS:         return "WM_KILLFOCUS";
+        case WM_ACTIVATEAPP:       return "WM_ACTIVATEAPP";
+        case WM_NCACTIVATE:        return "WM_NCACTIVATE";
         case WM_WINDOWPOSCHANGING: return "WM_WINDOWPOSCHANGING";
-        case WM_WINDOWPOSCHANGED: return "WM_WINDOWPOSCHANGED";
-        case WM_SHOWWINDOW: return "WM_SHOWWINDOW";
-        case WM_MOUSEACTIVATE: return "WM_MOUSEACTIVATE";
-        case WM_SYSCOMMAND: return "WM_SYSCOMMAND";
-        case WM_ENTERSIZEMOVE: return "WM_ENTERSIZEMOVE";
-        case WM_EXITSIZEMOVE: return "WM_EXITSIZEMOVE";
-        case WM_QUIT: return "WM_QUIT";
-        case WM_CLOSE: return "WM_CLOSE";
-        case WM_DESTROY: return "WM_DESTROY";
-        default: {
+        case WM_WINDOWPOSCHANGED:  return "WM_WINDOWPOSCHANGED";
+        case WM_SHOWWINDOW:        return "WM_SHOWWINDOW";
+        case WM_MOUSEACTIVATE:     return "WM_MOUSEACTIVATE";
+        case WM_SYSCOMMAND:        return "WM_SYSCOMMAND";
+        case WM_ENTERSIZEMOVE:     return "WM_ENTERSIZEMOVE";
+        case WM_EXITSIZEMOVE:      return "WM_EXITSIZEMOVE";
+        case WM_QUIT:              return "WM_QUIT";
+        case WM_CLOSE:             return "WM_CLOSE";
+        case WM_DESTROY:           return "WM_DESTROY";
+        default:                   {
             std::stringstream ss;
             ss << "0x" << std::hex << std::uppercase << message;
             return ss.str();
@@ -651,8 +651,8 @@ std::string GetMessageDescription(UINT message, WPARAM wParam, LPARAM lParam) {
             if (LOWORD(wParam) == WA_CLICKACTIVE) return "Window activated by click";
             return "Window activation state changed";
         }
-        case WM_SETFOCUS: return "Window gained focus";
-        case WM_KILLFOCUS: return "Window lost focus";
+        case WM_SETFOCUS:    return "Window gained focus";
+        case WM_KILLFOCUS:   return "Window lost focus";
         case WM_ACTIVATEAPP: {
             return wParam ? "Application activated" : "Application deactivated";
         }
@@ -660,24 +660,24 @@ std::string GetMessageDescription(UINT message, WPARAM wParam, LPARAM lParam) {
             return wParam ? "Non-client area activated" : "Non-client area deactivated";
         }
         case WM_WINDOWPOSCHANGING: return "Window position changing";
-        case WM_WINDOWPOSCHANGED: return "Window position changed";
-        case WM_SHOWWINDOW: {
+        case WM_WINDOWPOSCHANGED:  return "Window position changed";
+        case WM_SHOWWINDOW:        {
             return wParam ? "Window shown" : "Window hidden";
         }
         case WM_MOUSEACTIVATE: return "Mouse activation";
-        case WM_SYSCOMMAND: {
+        case WM_SYSCOMMAND:    {
             if (wParam == SC_MINIMIZE) return "System command: Minimize";
             if (wParam == SC_MAXIMIZE) return "System command: Maximize";
             if (wParam == SC_RESTORE) return "System command: Restore";
             return "System command";
         }
         case WM_ENTERSIZEMOVE: return "Enter size/move mode";
-        case WM_EXITSIZEMOVE: return "Exit size/move mode";
-        case WM_QUIT: return "Quit message";
-        case WM_CLOSE: return "Close message";
-        case WM_DESTROY: return "Destroy message";
-        default: return "Unknown message";
+        case WM_EXITSIZEMOVE:  return "Exit size/move mode";
+        case WM_QUIT:          return "Quit message";
+        case WM_CLOSE:         return "Close message";
+        case WM_DESTROY:       return "Destroy message";
+        default:               return "Unknown message";
     }
 }
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

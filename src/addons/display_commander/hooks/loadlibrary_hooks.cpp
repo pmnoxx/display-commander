@@ -272,7 +272,10 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
-    LogInfo("[%s] LoadLibraryA called: %s", timestamp.c_str(), dll_name.c_str());
+    const bool already_loaded = (lpLibFileName && GetModuleHandleA(lpLibFileName) != nullptr);
+    if (!already_loaded) {
+        LogInfo("[%s] LoadLibraryA called: %s", timestamp.c_str(), dll_name.c_str());
+    }
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
@@ -334,7 +337,9 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     }
 
     if (result) {
-        LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+        if (!already_loaded) {
+            LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+        }
 
         // Track the newly loaded module
         {
@@ -385,7 +390,10 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
-    LogInfo("[%s] LoadLibraryW called: %s", timestamp.c_str(), dll_name.c_str());
+    const bool already_loaded = (lpLibFileName && GetModuleHandleW(lpLibFileName) != nullptr);
+    if (!already_loaded) {
+        LogInfo("[%s] LoadLibraryW called: %s", timestamp.c_str(), dll_name.c_str());
+    }
 
     // Check for SpecialK blocking (incompatible with Display Commander)
     if (lpLibFileName) {
@@ -445,7 +453,9 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     }
 
     if (result) {
-        LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+        if (!already_loaded) {
+            LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
+        }
 
         // Track the newly loaded module
         {

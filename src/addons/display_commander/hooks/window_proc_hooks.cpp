@@ -46,9 +46,8 @@ static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, L
     if (orig == nullptr) {
         return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }
-    LRESULT ret = IsWindowUnicode(hwnd)
-                      ? CallWindowProcW(orig, hwnd, uMsg, wParam, lParam)
-                      : CallWindowProcA(orig, hwnd, uMsg, wParam, lParam);
+    LRESULT ret = IsWindowUnicode(hwnd) ? CallWindowProcW(orig, hwnd, uMsg, wParam, lParam)
+                                        : CallWindowProcA(orig, hwnd, uMsg, wParam, lParam);
     if (uMsg == WM_DESTROY) {
         utils::SRWLockExclusive guard(g_wndproc_map_lock);
         g_original_wndproc.erase(hwnd);
@@ -178,7 +177,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 WINDOWPOS* pWp = reinterpret_cast<WINDOWPOS*>(lParam);
                 if (pWp != nullptr && (pWp->flags & SWP_SHOWWINDOW)) {
                     // Check if window is being minimized
-                    if (IsIconic(hwnd)) {
+                    if (IsIconic_direct(hwnd)) {
                         // Suppress the message to prevent minimization
                         LogInfo("WM_WINDOWPOSCHANGING: Suppressing minimize - HWND: 0x%p", hwnd);
                         ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
@@ -239,11 +238,17 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         }
 
         case WM_SIZE:
-            // When continue rendering is on, prevent the game from seeing WM_SIZE SIZE_MINIMIZED so it doesn't know it's minimized
+            // When continue rendering is on, prevent the game from seeing WM_SIZE SIZE_MINIMIZED so it doesn't know
+            // it's minimized. Allow SIZE_RESTORED through so the game can react when the user restores the window.
             if (continue_rendering_enabled && game_window == hwnd && wParam == SIZE_MINIMIZED) {
                 LogInfo("WM_SIZE: Suppressing SIZE_MINIMIZED message due to continue rendering - HWND: 0x%p", hwnd);
                 ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
                 return true;  // Suppress the message
+            }
+            if (wParam == SIZE_MINIMIZED) {
+                LogInfo("WM_SIZE SIZE_MINIMIZED received by game (not suppressed) - HWND: 0x%p", hwnd);
+            } else if (wParam == SIZE_RESTORED) {
+                LogInfo("WM_SIZE SIZE_RESTORED received by game (not suppressed) - HWND: 0x%p", hwnd);
             }
             break;
 
@@ -326,9 +331,7 @@ void UninstallWindowProcHooks() {
     g_original_wndproc.clear();
 }
 
-bool IsContinueRenderingEnabled() {
-    return settings::g_advancedTabSettings.continue_rendering.GetValue();
-}
+bool IsContinueRenderingEnabled() { return settings::g_advancedTabSettings.continue_rendering.GetValue(); }
 
 // Fake activation functions
 void SendFakeActivationMessages(HWND hwnd) {

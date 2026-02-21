@@ -1,11 +1,12 @@
 #include "process_window_enumerator.hpp"
-#include "overlay_window_detector.hpp"
-#include "../utils/logging.hpp"
 #include <windows.h>
-#include <tlhelp32.h>
 #include <psapi.h>
-#include <vector>
+#include <tlhelp32.h>
 #include <string>
+#include <vector>
+#include "../hooks/api_hooks.hpp"
+#include "../utils/logging.hpp"
+#include "overlay_window_detector.hpp"
 
 namespace display_commander::utils {
 
@@ -24,7 +25,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
         data->windows.push_back(hwnd);
     }
 
-    return TRUE; // Continue enumeration
+    return TRUE;  // Continue enumeration
 }
 
 std::wstring GetProcessFullPath(DWORD process_id) {
@@ -97,7 +98,7 @@ void LogAllProcessesAndWindows() {
                 if (title.empty()) {
                     title = L"(No Title)";
                 }
-                bool is_visible = IsWindowVisible(hwnd) != FALSE;
+                bool is_visible = display_commanderhooks::IsWindowVisible_direct(hwnd);
 
                 RECT window_rect = {};
                 bool has_rect = GetWindowRect(hwnd, &window_rect) != FALSE;
@@ -107,21 +108,16 @@ void LogAllProcessesAndWindows() {
 
                 // Log window information
                 if (has_rect) {
-                    LogInfo("    HWND: 0x%p | Title: %ls | Visible: %s | Rect: (%ld,%ld)-(%ld,%ld) | Style: 0x%08lX | ExStyle: 0x%08lX",
-                          hwnd,
-                          title.c_str(),
-                          is_visible ? "Yes" : "No",
-                          window_rect.left, window_rect.top,
-                          window_rect.right, window_rect.bottom,
-                          static_cast<unsigned long>(style),
-                          static_cast<unsigned long>(ex_style));
+                    LogInfo(
+                        "    HWND: 0x%p | Title: %ls | Visible: %s | Rect: (%ld,%ld)-(%ld,%ld) | Style: 0x%08lX | "
+                        "ExStyle: 0x%08lX",
+                        hwnd, title.c_str(), is_visible ? "Yes" : "No", window_rect.left, window_rect.top,
+                        window_rect.right, window_rect.bottom, static_cast<unsigned long>(style),
+                        static_cast<unsigned long>(ex_style));
                 } else {
-                    LogInfo("    HWND: 0x%p | Title: %ls | Visible: %s | Style: 0x%08lX | ExStyle: 0x%08lX",
-                          hwnd,
-                          title.c_str(),
-                          is_visible ? "Yes" : "No",
-                          static_cast<unsigned long>(style),
-                          static_cast<unsigned long>(ex_style));
+                    LogInfo("    HWND: 0x%p | Title: %ls | Visible: %s | Style: 0x%08lX | ExStyle: 0x%08lX", hwnd,
+                            title.c_str(), is_visible ? "Yes" : "No", static_cast<unsigned long>(style),
+                            static_cast<unsigned long>(ex_style));
                 }
             }
         }
@@ -133,5 +129,4 @@ void LogAllProcessesAndWindows() {
     LogInfo("=== Enumeration Complete: %d processes, %d windows ===", process_count, window_count);
 }
 
-} // namespace display_commander::utils
-
+}  // namespace display_commander::utils

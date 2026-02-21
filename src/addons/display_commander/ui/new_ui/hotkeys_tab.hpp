@@ -12,13 +12,14 @@ using HotkeyAction = std::function<void()>;
 // Parsed hotkey structure
 struct ParsedHotkey {
     int key_code = 0;              // Virtual key code (VK_*)
-    bool ctrl = false;             // Control modifier
+    bool ctrl = false;              // Control modifier
     bool shift = false;             // Shift modifier
     bool alt = false;               // Alt modifier
+    bool win = false;              // Windows key modifier
     std::string original_string;   // Original string for display
 
     bool IsValid() const { return key_code != 0; }
-    bool IsEmpty() const { return key_code == 0 && !ctrl && !shift && !alt; }
+    bool IsEmpty() const { return key_code == 0 && !ctrl && !shift && !alt && !win; }
 };
 
 // Hotkey definition structure

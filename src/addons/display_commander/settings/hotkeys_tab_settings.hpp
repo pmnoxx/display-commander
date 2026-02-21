@@ -44,6 +44,12 @@ class HotkeysTabSettings {
     StringSetting hotkey_brightness_up;
     StringSetting hotkey_brightness_down;
 
+    // Window management (borderless minimize/restore, target display)
+    StringSetting hotkey_win_down;
+    StringSetting hotkey_win_up;
+    StringSetting hotkey_win_left;
+    StringSetting hotkey_win_right;
+
     // Exclusive key groups - predefined groups
     BoolSetting exclusive_keys_ad_enabled;      // A and D keys
     BoolSetting exclusive_keys_ws_enabled;      // W and S keys

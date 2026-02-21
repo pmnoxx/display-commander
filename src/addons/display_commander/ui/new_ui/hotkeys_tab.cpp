@@ -19,7 +19,7 @@
 #include "../../utils/timing.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
-
+#include "utils/timing.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -46,6 +46,19 @@ struct HotkeyDebugInfo {
     HWND game_hwnd = nullptr;
 };
 HotkeyDebugInfo g_hotkey_debug_info;
+
+// Returns true if the current keyboard state (key just pressed + modifiers) matches the given parsed hotkey.
+static bool HotkeyMatchesCurrentState(const ParsedHotkey& p) {
+    if (!p.IsValid()) return false;
+    if (!display_commanderhooks::keyboard_tracker::IsKeyPressed(p.key_code)) return false;
+    if (p.ctrl != display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL)) return false;
+    if (p.shift != display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT)) return false;
+    if (p.alt != display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU)) return false;
+    bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
+                    || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+    if (p.win != win_down) return false;
+    return true;
+}
 
 // Draw a single hotkey entry in the table
 void DrawHotkeyEntry(HotkeyDefinition& def, ui::new_ui::StringSetting& setting, int index) {
@@ -301,7 +314,8 @@ void InitializeHotkeyDefinitions() {
              LogInfo(oss.str().c_str());
          }},
         {"brightness_up", "Brightness Up", "",
-         "Increase Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)", []() {
+         "Increase Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)",
+         []() {
              constexpr float step = 10.0f;
              constexpr float max_percent = 200.0f;
              float current = settings::g_mainTabSettings.brightness_percent.GetValue();
@@ -310,11 +324,96 @@ void InitializeHotkeyDefinitions() {
              std::ostringstream oss;
              oss << "Brightness increased to " << std::fixed << std::setprecision(0) << next << "%% via hotkey";
              LogInfo(oss.str().c_str());
+         }},
+        {"win_down", "Win+Down (Minimize)", "win+down",
+         "Minimize borderless game window (Special-K style). Only when game is in foreground.",
+         []() {
+             HWND game_hwnd = g_last_swapchain_hwnd.load();
+             if (!game_hwnd) return;
+             if (display_commanderhooks::GetForegroundWindow_Direct() != game_hwnd) return;
+             if (display_commanderhooks::WindowHasBorder(game_hwnd)) return;
+             LogInfo("Hotkey Win+Down: minimizing game window HWND 0x%p", game_hwnd);
+             ShowWindow_Direct(game_hwnd, SW_MINIMIZE);
+         }},
+        {"win_up", "Win+Up (Restore)", "win+up",
+         "Restore minimized borderless game. Works in foreground or within grace period (Advanced tab).",
+         []() {
+             HWND game_hwnd = g_last_swapchain_hwnd.load();
+             if (!game_hwnd) return;
+             if (display_commanderhooks::WindowHasBorder(game_hwnd)) return;
+             HWND fg = display_commanderhooks::GetForegroundWindow_Direct();
+             bool is_fg = (fg == game_hwnd);
+             int grace_sec = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
+             LONGLONG last_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
+             LONGLONG now_ns = utils::get_now_ns();
+             bool grace_ok = (grace_sec >= 61)
+                             || (grace_sec > 0 && last_ns != 0
+                                 && (now_ns - last_ns <= static_cast<LONGLONG>(grace_sec) * utils::SEC_TO_NS));
+             if (is_fg || grace_ok) {
+                 ShowWindow_Direct(game_hwnd, SW_RESTORE);
+             }
+         }},
+        {"win_left", "Win+Left (Previous display)", "win+left",
+         "Set target display to previous monitor. Only when game is in foreground.",
+         []() {
+             if (display_commanderhooks::GetForegroundWindow_Direct() != g_last_swapchain_hwnd.load()) return;
+             if (!display_cache::g_displayCache.IsInitialized()) return;
+             HWND game_hwnd = g_last_swapchain_hwnd.load();
+             std::string current_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
+             if (current_id.empty())
+                 current_id = settings::g_mainTabSettings.target_extended_display_device_id.GetValue();
+             if (current_id.empty() && game_hwnd)
+                 current_id = settings::GetExtendedDisplayDeviceIdFromWindow(game_hwnd);
+             if (current_id.empty() || current_id == "No Window" || current_id == "No Monitor"
+                 || current_id == "Monitor Info Failed")
+                 return;
+             std::string new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, true);
+             if (new_id.empty()) {
+                 LogInfo("Win+Left: no adjacent display.");
+                 return;
+             }
+             bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+             if (switched_mode) {
+                 settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
+                 s_window_mode.store(WindowMode::kFullscreen);
+                 settings::g_mainTabSettings.window_mode.Save();
+             }
+             settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
+             settings::g_mainTabSettings.target_extended_display_device_id.SetValue(new_id);
+             LogInfo("Win+Left: target display set to \"%s\".", new_id.c_str());
+         }},
+        {"win_right", "Win+Right (Next display)", "win+right",
+         "Set target display to next monitor. Only when game is in foreground.", []() {
+             if (display_commanderhooks::GetForegroundWindow_Direct() != g_last_swapchain_hwnd.load()) return;
+             if (!display_cache::g_displayCache.IsInitialized()) return;
+             HWND game_hwnd = g_last_swapchain_hwnd.load();
+             std::string current_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
+             if (current_id.empty())
+                 current_id = settings::g_mainTabSettings.target_extended_display_device_id.GetValue();
+             if (current_id.empty() && game_hwnd)
+                 current_id = settings::GetExtendedDisplayDeviceIdFromWindow(game_hwnd);
+             if (current_id.empty() || current_id == "No Window" || current_id == "No Monitor"
+                 || current_id == "Monitor Info Failed")
+                 return;
+             std::string new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, false);
+             if (new_id.empty()) {
+                 LogInfo("Win+Right: no adjacent display.");
+                 return;
+             }
+             bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+             if (switched_mode) {
+                 settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
+                 s_window_mode.store(WindowMode::kFullscreen);
+                 settings::g_mainTabSettings.window_mode.Save();
+             }
+             settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
+             settings::g_mainTabSettings.target_extended_display_device_id.SetValue(new_id);
+             LogInfo("Win+Right: target display set to \"%s\".", new_id.c_str());
          }}};
 
     // Map settings to definitions
     auto& settings = settings::g_hotkeysTabSettings;
-    if (g_hotkey_definitions.size() >= 16) {
+    if (g_hotkey_definitions.size() >= 20) {
         // Load parsed shortcuts from settings
         g_hotkey_definitions[0].parsed = ParseHotkeyString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[1].parsed = ParseHotkeyString(settings.hotkey_background_toggle.GetValue());
@@ -334,6 +433,10 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[13].parsed = ParseHotkeyString(settings.hotkey_auto_hdr.GetValue());
         g_hotkey_definitions[14].parsed = ParseHotkeyString(settings.hotkey_brightness_down.GetValue());
         g_hotkey_definitions[15].parsed = ParseHotkeyString(settings.hotkey_brightness_up.GetValue());
+        g_hotkey_definitions[16].parsed = ParseHotkeyString(settings.hotkey_win_down.GetValue());
+        g_hotkey_definitions[17].parsed = ParseHotkeyString(settings.hotkey_win_up.GetValue());
+        g_hotkey_definitions[18].parsed = ParseHotkeyString(settings.hotkey_win_left.GetValue());
+        g_hotkey_definitions[19].parsed = ParseHotkeyString(settings.hotkey_win_right.GetValue());
     }
 }
 
@@ -376,6 +479,8 @@ ParsedHotkey ParseHotkeyString(const std::string& shortcut) {
             result.shift = true;
         } else if (tokens[i] == "alt") {
             result.alt = true;
+        } else if (tokens[i] == "win" || tokens[i] == "windows") {
+            result.win = true;
         }
     }
 
@@ -461,6 +566,11 @@ std::string FormatHotkeyString(const ParsedHotkey& hotkey) {
         oss << "alt";
         first = false;
     }
+    if (hotkey.win) {
+        if (!first) oss << "+";
+        oss << "win";
+        first = false;
+    }
 
     if (!first) oss << "+";
 
@@ -475,6 +585,14 @@ std::string FormatHotkeyString(const ParsedHotkey& hotkey) {
         oss << "/";
     } else if (hotkey.key_code == VK_BACK) {
         oss << "backspace";
+    } else if (hotkey.key_code == VK_UP) {
+        oss << "up";
+    } else if (hotkey.key_code == VK_DOWN) {
+        oss << "down";
+    } else if (hotkey.key_code == VK_LEFT) {
+        oss << "left";
+    } else if (hotkey.key_code == VK_RIGHT) {
+        oss << "right";
     } else if (hotkey.key_code >= VK_F1 && hotkey.key_code <= VK_F24) {
         oss << "f" << (hotkey.key_code - VK_F1 + 1);
     } else {
@@ -530,6 +648,10 @@ void DrawHotkeysTab() {
         g_hotkey_definitions[13].parsed = ParseHotkeyString(settings.hotkey_auto_hdr.GetValue());
         g_hotkey_definitions[14].parsed = ParseHotkeyString(settings.hotkey_brightness_down.GetValue());
         g_hotkey_definitions[15].parsed = ParseHotkeyString(settings.hotkey_brightness_up.GetValue());
+        g_hotkey_definitions[16].parsed = ParseHotkeyString(settings.hotkey_win_down.GetValue());
+        g_hotkey_definitions[17].parsed = ParseHotkeyString(settings.hotkey_win_up.GetValue());
+        g_hotkey_definitions[18].parsed = ParseHotkeyString(settings.hotkey_win_left.GetValue());
+        g_hotkey_definitions[19].parsed = ParseHotkeyString(settings.hotkey_win_right.GetValue());
 
         // Create a table for hotkeys
         if (ImGui::BeginTable("HotkeysTable", 4,
@@ -567,6 +689,10 @@ void DrawHotkeysTab() {
                     case 13: setting_ptr = &settings.hotkey_auto_hdr; break;
                     case 14: setting_ptr = &settings.hotkey_brightness_down; break;
                     case 15: setting_ptr = &settings.hotkey_brightness_up; break;
+                    case 16: setting_ptr = &settings.hotkey_win_down; break;
+                    case 17: setting_ptr = &settings.hotkey_win_up; break;
+                    case 18: setting_ptr = &settings.hotkey_win_left; break;
+                    case 19: setting_ptr = &settings.hotkey_win_right; break;
                     default: setting_ptr = nullptr; break;
                 }
 
@@ -964,21 +1090,38 @@ void ProcessHotkeys() {
     g_hotkey_debug_info.game_in_foreground = is_game_in_foreground;
     g_hotkey_debug_info.ui_open = is_ui_open;
 
-    // Win+Down / Win+Up: need win_down for grace-period check below
-    bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
-                    || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+    static auto last_foreground_time_ns = utils::get_now_ns();
+    if (is_game_in_foreground) {
+        last_foreground_time_ns = now_ns;
+    }
 
+    // Successfully passed all checks - update successful call time
+    g_hotkey_debug_info.last_successful_call_time_ns = now_ns;
+    g_hotkey_debug_info.last_block_reason = "";
+
+    // Win+Down / Win+Up / Win+Left / Win+Right are handled by configurable hotkeys (see definitions with id win_down,
+    // win_up, win_left, win_right) and processed in the generic loop below.
+
+    // Process exclusive key groups first (before hotkeys)
+    ProcessExclusiveKeyGroups();
+
+    // Update exclusive key groups - simulate key presses for keys that became active
+    display_commanderhooks::exclusive_key_groups::Update();
     // Allow hotkeys if game is in foreground OR if UI is open (UI is an overlay, so hotkeys should work)
     if (!is_game_in_foreground) {
-        // Win+Up (restore) grace: allow for a short time after leaving foreground, or forever if setting is 61
+        // Win+Up (restore) grace: allow for a short time after leaving foreground, or forever if setting is 61.
+        // Use the configured Win+Up hotkey (may be remapped in Hotkeys tab).
         int grace_sec = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
-        LONGLONG last_switch_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
-        bool grace_ok = (grace_sec >= 61)
-                        || (grace_sec > 0 && last_switch_ns != 0
-                            && (now_ns - last_switch_ns <= static_cast<LONGLONG>(grace_sec) * utils::SEC_TO_NS));
-        if (grace_ok && win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_UP)
-            && game_hwnd != nullptr && !display_commanderhooks::WindowHasBorder(game_hwnd)) {
-            ShowWindow_Direct(game_hwnd, SW_RESTORE);
+        bool grace_ok =
+            (grace_sec >= 61)
+            || (grace_sec > 0 && last_foreground_time_ns != 0
+                && (now_ns - last_foreground_time_ns <= static_cast<LONGLONG>(grace_sec) * utils::SEC_TO_NS));
+        for (const auto& def : g_hotkey_definitions) {
+            if (def.id == "win_up" && def.parsed.IsValid() && HotkeyMatchesCurrentState(def.parsed) && grace_ok
+                && game_hwnd != nullptr && !display_commanderhooks::WindowHasBorder(game_hwnd)) {
+                ShowWindow_Direct(game_hwnd, SW_RESTORE);
+                break;
+            }
         }
         if (game_hwnd == nullptr) {
             g_hotkey_debug_info.last_block_reason = "No game window detected (swapchain not initialized)";
@@ -987,83 +1130,6 @@ void ProcessHotkeys() {
         }
         return;
     }
-
-    // Successfully passed all checks - update successful call time
-    g_hotkey_debug_info.last_successful_call_time_ns = now_ns;
-    g_hotkey_debug_info.last_block_reason = "";
-
-    // Win+Down / Win+Up: minimize/restore borderless game (Special-K style). Win+Up also works in grace period (see
-    // above).
-    bool left_pressed = display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_LEFT);
-    bool right_pressed = display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_RIGHT);
-    if (is_game_in_foreground && game_hwnd != nullptr && !display_commanderhooks::WindowHasBorder(game_hwnd)) {
-        if (win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_DOWN)) {
-            ShowWindow_Direct(game_hwnd, SW_MINIMIZE);
-        } else if (win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_UP)) {
-            ShowWindow_Direct(game_hwnd, SW_RESTORE);
-        }
-    }
-
-    // Win+Left / Win+Right: change Target Display to previous/next display. Only when app is in foreground.
-    // If window mode is "No changes", switch to Borderless fullscreen so the move is applied.
-
-    if (is_game_in_foreground && display_cache::g_displayCache.IsInitialized()) {
-        if (win_down) {
-            // Prefer UI selection, then config target, then game window's display so Win+Left/Right works reliably.
-            std::string current_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
-            if (current_id.empty()) {
-                current_id = settings::g_mainTabSettings.target_extended_display_device_id.GetValue();
-            }
-            if (current_id.empty() && game_hwnd != nullptr) {
-                current_id = settings::GetExtendedDisplayDeviceIdFromWindow(game_hwnd);
-            }
-            if (!current_id.empty() && current_id != "No Window" && current_id != "No Monitor"
-                && current_id != "Monitor Info Failed") {
-                std::string new_id;
-                if (left_pressed) {
-                    new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, true);
-                    if (left_pressed || right_pressed) {
-                        LogInfo("Win+Left new_id: %s", new_id.c_str());
-                    }
-                } else if (right_pressed) {
-                    new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, false);
-                    if (left_pressed || right_pressed) {
-                        LogInfo("Win+Right new_id: %s", new_id.c_str());
-                    }
-                }
-                if (left_pressed || right_pressed) {
-                    std::ostringstream oss;
-                    oss << "Win+" << (left_pressed ? "Left" : "Right") << " pressed. Current display: \"" << current_id
-                        << "\".";
-                    if (!new_id.empty()) {
-                        bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
-                        if (switched_mode) {
-                            settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
-                            s_window_mode.store(WindowMode::kFullscreen);
-                            settings::g_mainTabSettings.window_mode.Save();
-                        }
-                        settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
-                        settings::g_mainTabSettings.target_extended_display_device_id.SetValue(new_id);
-                        oss << " Target display set to \"" << new_id << "\"."
-                            << (switched_mode ? " Window mode switched to Borderless fullscreen." : "");
-                        LogInfo("%s", oss.str().c_str());
-                    } else {
-                        oss << " No adjacent display in that direction.";
-                        LogInfo("%s", oss.str().c_str());
-                    }
-                }
-            } else if (display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_LEFT)
-                       || display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_RIGHT)) {
-                LogInfo("Win+Left/Right pressed but no current display (target/selected empty or invalid).");
-            }
-        }
-    }
-
-    // Process exclusive key groups first (before hotkeys)
-    ProcessExclusiveKeyGroups();
-
-    // Update exclusive key groups - simulate key presses for keys that became active
-    display_commanderhooks::exclusive_key_groups::Update();
 
     // Process each hotkey definition
     for (auto& def : g_hotkey_definitions) {
@@ -1084,11 +1150,14 @@ void ProcessHotkeys() {
         bool ctrl_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL);
         bool shift_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT);
         bool alt_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU);
+        bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
+                        || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
 
         // Check if modifiers match exactly
         if (hotkey.ctrl != ctrl_down) continue;
         if (hotkey.shift != shift_down) continue;
         if (hotkey.alt != alt_down) continue;
+        if (hotkey.win != win_down) continue;
 
         // All conditions met - execute the action
         if (def.action) {

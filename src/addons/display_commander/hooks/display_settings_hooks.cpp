@@ -246,18 +246,46 @@ LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode
 }
 
 BOOL ShowWindow_Direct(HWND hWnd, int nCmdShow) {
-    if (ShowWindow_Original) {
-        return ShowWindow_Original(hWnd, nCmdShow);
-    }
-    static ShowWindow_pfn s_direct_func = nullptr;
-    if (!s_direct_func) {
-        HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
-        if (hUser32) {
-            s_direct_func = reinterpret_cast<ShowWindow_pfn>(GetProcAddress(hUser32, "ShowWindow"));
+    // Throttle per message type: no more than once per 100 ms for minimize or restore
+    constexpr LONGLONG throttle_ns = 100 * 1000000;  // 100 ms
+    static LONGLONG s_last_minimize_ns = 0;
+    static LONGLONG s_last_restore_ns = 0;
+
+    LONGLONG now_ns = utils::get_now_ns();
+    if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED) {
+        if (s_last_minimize_ns != 0 && (now_ns - s_last_minimize_ns) < throttle_ns) {
+            return TRUE;  // Throttled
+        }
+    } else if (nCmdShow == SW_RESTORE) {
+        if (s_last_restore_ns != 0 && (now_ns - s_last_restore_ns) < throttle_ns) {
+            return TRUE;  // Throttled
         }
     }
-    if (s_direct_func) {
-        return s_direct_func(hWnd, nCmdShow);
+
+    BOOL result = FALSE;
+    if (ShowWindow_Original) {
+        result = ShowWindow_Original(hWnd, nCmdShow);
+    } else {
+        static ShowWindow_pfn s_direct_func = nullptr;
+        if (!s_direct_func) {
+            HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
+            if (hUser32) {
+                s_direct_func = reinterpret_cast<ShowWindow_pfn>(GetProcAddress(hUser32, "ShowWindow"));
+            }
+        }
+        if (s_direct_func) {
+            result = s_direct_func(hWnd, nCmdShow);
+        } else {
+            result = ShowWindow(hWnd, nCmdShow);
+        }
     }
-    return ShowWindow(hWnd, nCmdShow);
+
+    if (result) {
+        if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED) {
+            s_last_minimize_ns = now_ns;
+        } else if (nCmdShow == SW_RESTORE) {
+            s_last_restore_ns = now_ns;
+        }
+    }
+    return result;
 }

@@ -2,6 +2,7 @@
 #include "../addon.hpp"
 #include "../display_cache.hpp"
 #include "../globals.hpp"
+#include "../hooks/api_hooks.hpp"
 #include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"
@@ -200,6 +201,12 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
     // Validate window handle
     if (IsWindow(hwnd) == FALSE) {
         LogWarn("ApplyWindowChange: Invalid window handle 0x%p", hwnd);
+        return;
+    }
+
+    // Do not apply position/size when window is minimized (use direct API so Continue Rendering spoof doesn't hide it).
+    if (display_commanderhooks::IsIconic_direct(hwnd)) {
+        LogDebug("ApplyWindowChange: Skipping - window is minimized");
         return;
     }
 

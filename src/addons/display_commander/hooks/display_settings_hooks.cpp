@@ -10,6 +10,7 @@
 #include "../utils/timing.hpp"
 #include "api_hooks.hpp"  // GetGameWindow
 #include "hook_suppression_manager.hpp"
+#include "window_proc_hooks.hpp"  // WindowHasBorder
 
 // Original function pointers
 ChangeDisplaySettingsA_pfn ChangeDisplaySettingsA_Original = nullptr;
@@ -99,11 +100,12 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
         }
     }
 
-    // Block minimize when Prevent Minimize or Continue Rendering is enabled (game window only)
+    // Block minimize when Prevent Minimize or Continue Rendering is enabled (game window only).
+    // For borderless windows, allow minimize/restore so Win+Down/Win+Up work (Special-K style).
     bool prevent_minimize = settings::g_advancedTabSettings.prevent_minimize.GetValue();
-    bool continue_rendering = s_continue_rendering.load();
+    bool continue_rendering = settings::g_advancedTabSettings.continue_rendering.GetValue();
     if (hWnd == display_commanderhooks::GetGameWindow() && (prevent_minimize || continue_rendering)
-        && (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED)) {
+        && display_commanderhooks::WindowHasBorder(hWnd) && (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED)) {
         LogInfo("ShowWindow blocked minimize - HWND: 0x%p", hWnd);
         return ShowWindow_Original(hWnd, SW_SHOW);  // Keep window visible
     }
@@ -160,13 +162,6 @@ bool InstallDisplaySettingsHooks() {
         LogError("Failed to create and enable ShowWindow hook");
         return false;
     }
-
-#if 0
-    if (!CreateAndEnableHook(SetWindowLongPtrW, SetWindowLongPtrW_Detour, (LPVOID*)&SetWindowLongPtrW_Original, "SetWindowLongPtrW")) {
-        LogError("Failed to create and enable SetWindowLongPtrW hook");
-        return false;
-    }
-#endif
 
     g_display_settings_hooks_installed.store(true);
     LogInfo("Display settings hooks installed successfully");
@@ -248,4 +243,21 @@ LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode
     // Last resort: call the function normally (will be hooked if hooks are installed, but we tried)
     // This shouldn't happen in practice, but provides a fallback
     return ChangeDisplaySettingsExW(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
+}
+
+BOOL ShowWindow_Direct(HWND hWnd, int nCmdShow) {
+    if (ShowWindow_Original) {
+        return ShowWindow_Original(hWnd, nCmdShow);
+    }
+    static ShowWindow_pfn s_direct_func = nullptr;
+    if (!s_direct_func) {
+        HMODULE hUser32 = GetModuleHandleW(L"user32.dll");
+        if (hUser32) {
+            s_direct_func = reinterpret_cast<ShowWindow_pfn>(GetProcAddress(hUser32, "ShowWindow"));
+        }
+    }
+    if (s_direct_func) {
+        return s_direct_func(hWnd, nCmdShow);
+    }
+    return ShowWindow(hWnd, nCmdShow);
 }

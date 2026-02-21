@@ -66,14 +66,12 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 3) {
-        LogInfo("NVAPI HDR Capabilities called - DisplayId: %u s_hide_hdr_capabilities: %d", displayId,
-                s_hide_hdr_capabilities.load());
+        LogInfo("NVAPI HDR Capabilities called - DisplayId: %u hide_hdr_capabilities: %d", displayId,
+                settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue());
         log_count++;
     }
 
-    // Check if HDR hiding is enabled
-    extern std::atomic<bool> s_hide_hdr_capabilities;
-    if (s_hide_hdr_capabilities.load()) {
+    if (settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
         // Hide HDR capabilities by returning a modified structure
         if (pHdrCapabilities != nullptr) {
             // Call original function first to get the real capabilities

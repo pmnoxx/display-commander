@@ -2049,7 +2049,6 @@ if (enabled_experimental_features) {
         // Continue Rendering in Background
         if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background")) {
             bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
-            s_continue_rendering.store(new_value);
             LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
 
             // Install or uninstall window proc hooks based on the setting
@@ -2415,6 +2414,10 @@ void DrawQuickFpsLimitChanger() {
 
 void DrawDisplaySettings_DisplayAndTarget() {
     {
+        // Refresh target display from config so hotkey changes (Win+Left/Win+Right) are visible on the UI thread
+        settings::g_mainTabSettings.selected_extended_display_device_id.Load();
+        settings::g_mainTabSettings.target_display.Load();
+
         // Target Display list and selection (needed for refresh rate fallback on same line as Game Render Resolution)
         auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
         std::string current_device_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
@@ -3383,7 +3386,6 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
         ImGui::SameLine();
         if (ImGui::Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
             settings::g_advancedTabSettings.enable_flip_chain.SetValue(enable_flip);
-            s_enable_flip_chain.store(enable_flip);
             s_restart_needed_vsync_tearing.store(true);
             LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
         }

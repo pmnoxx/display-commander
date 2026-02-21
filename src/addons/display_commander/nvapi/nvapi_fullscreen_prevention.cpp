@@ -2,14 +2,12 @@
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "globals.hpp"
+#include "settings/advanced_tab_settings.hpp"
 #include <NvApiDriverSettings.h>
 #include <algorithm>
 #include <chrono>
 #include <sstream>
 #include <vector>
-
-// External atomic variables from settings
-extern std::atomic<bool> s_nvapi_auto_enable_enabled;
 
 NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {}
 
@@ -303,7 +301,7 @@ bool NVAPIFullscreenPrevention::IsGameInAutoEnableList(const std::string& proces
 void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
 
     // Check if NVAPI auto-enable is enabled in settings
-    if (!s_nvapi_auto_enable_enabled.load()) {
+    if (!settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue()) {
         LogInfo("NVAPI Auto-enable: Disabled in settings, skipping auto-enable");
         return;
     }
@@ -343,8 +341,8 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
             LogWarn("NVAPI Auto-enable: Failed to enable fullscreen prevention for '%s'", processName.c_str());
         }
 
-        s_enable_flip_chain.store(true);
-        s_auto_colorspace.store(true);
+        settings::g_advancedTabSettings.enable_flip_chain.SetValue(true);
+        settings::g_advancedTabSettings.auto_colorspace.SetValue(true);
         LogInfo("NVAPI Auto-enable: Enabled flip chain for '%s'", processName.c_str());
     }
 }

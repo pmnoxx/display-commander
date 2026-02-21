@@ -684,4 +684,53 @@ std::string DisplayCache::GetExtendedDeviceIdFromMonitor(HMONITOR monitor) const
     return "Conversion Failed";
 }
 
+std::string DisplayCache::GetAdjacentDisplayDeviceId(const std::string& current_device_id, bool to_the_left) const {
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    if (!displays_ptr || displays_ptr->empty()) {
+        return {};
+    }
+
+    std::vector<std::pair<std::string, LONG>> id_and_left;
+    id_and_left.reserve(displays_ptr->size());
+    for (const auto& uptr : *displays_ptr) {
+        const DisplayInfo* d = uptr.get();
+        if (!d) {
+            continue;
+        }
+        std::string eid = GetExtendedDeviceIdFromMonitor(d->monitor_handle);
+        if (eid.empty() || eid == "No Monitor" || eid == "Monitor Info Failed" || eid == "Conversion Failed") {
+            continue;
+        }
+        id_and_left.emplace_back(eid, d->monitor_rect.left);
+    }
+    if (id_and_left.size() < 2) {
+        return {};
+    }
+
+    std::sort(id_and_left.begin(), id_and_left.end(),
+              [](const std::pair<std::string, LONG>& a, const std::pair<std::string, LONG>& b) {
+                  return a.second < b.second;
+              });
+
+    size_t idx = 0;
+    for (; idx < id_and_left.size(); ++idx) {
+        if (id_and_left[idx].first == current_device_id) {
+            break;
+        }
+    }
+    if (idx >= id_and_left.size()) {
+        return {};
+    }
+    if (to_the_left) {
+        if (idx == 0) {
+            return {};
+        }
+        return id_and_left[idx - 1].first;
+    }
+    if (idx + 1 >= id_and_left.size()) {
+        return {};
+    }
+    return id_and_left[idx + 1].first;
+}
+
 } // namespace display_cache

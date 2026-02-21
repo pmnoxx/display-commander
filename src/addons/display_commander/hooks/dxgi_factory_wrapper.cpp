@@ -10,6 +10,7 @@
 #include <initguid.h>
 #include <cmath>
 #include "../globals.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../swapchain_events.hpp"
 #include "../utils/detour_call_tracker.hpp"
@@ -765,7 +766,7 @@ bool DXGIFactoryWrapper::ShouldInterceptSwapChainCreation() const {
 IDXGIOutput6* CreateOutputWrapper(IDXGIOutput* output) {
     // TODO: (fixme), this is wrong way to do it, there is memory leak here
     // don't do anything if hide native hdr is disabled
-    if (!s_hide_hdr_capabilities.load()) {
+    if (!settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
         return nullptr;
     }
 
@@ -990,7 +991,7 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetDesc1(DXGI_OUTPUT_DESC1* pDesc) {
     HRESULT hr = m_originalOutput->GetDesc1(pDesc);
 
     // Hide HDR capabilities if enabled (similar to Special-K's approach)
-    if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+    if (SUCCEEDED(hr) && pDesc != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
         // Change HDR10 color space to sRGB to hide HDR support
         if (pDesc->ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) {
             pDesc->ColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;

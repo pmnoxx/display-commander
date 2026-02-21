@@ -518,10 +518,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
             if (sr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = sr_preset;
                 if (sr_preset == 0) {
-                    LogInfo("DLSS SR preset override: %s -> %d (DLSS Default)", param_name.c_str(), InValue);
+                    LogInfoThrottled(100, "DLSS SR preset override: %s -> %d (DLSS Default)", param_name.c_str(),
+                                     InValue);
                 } else {
-                    LogInfo("DLSS SR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue,
-                            'A' + sr_preset - 1);
+                    LogInfoThrottled(100, "DLSS SR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue,
+                                     'A' + sr_preset - 1);
                 }
             }
         }
@@ -532,10 +533,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
             if (rr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = rr_preset;
                 if (rr_preset == 0) {
-                    LogInfo("DLSS RR preset override: %s -> %d (DLSS Default)", param_name.c_str(), InValue);
+                    LogInfoThrottled(100, "DLSS RR preset override: %s -> %d (DLSS Default)", param_name.c_str(),
+                                     InValue);
                 } else {
-                    LogInfo("DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue,
-                            'A' + rr_preset - 1);
+                    LogInfoThrottled(100, "DLSS RR preset override: %s -> %d (Preset %c)", param_name.c_str(), InValue,
+                                     'A' + rr_preset - 1);
                 }
             }
         }
@@ -545,7 +547,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
             GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
         const int quality_preset_int = static_cast<int>(quality_preset);
         if (quality_preset_int >= 0 && quality_preset_int != InValue) {
-            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
+            LogInfoThrottled(100, "DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
             InValue = quality_preset_int;
         }
     }
@@ -558,12 +560,12 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetI_Detour(NVSDK_NGX_Parameter* InParameter
         if (force_ae == "Force Off") {
             if ((flags & k_auto_exposure) == k_auto_exposure) {
                 InValue = static_cast<int>(flags & ~k_auto_exposure);
-                LogInfo("DLSS auto-exposure override: Force Off");
+                LogInfoThrottled(100, "DLSS auto-exposure override: Force Off");
             }
         } else if (force_ae == "Force On") {
             if ((flags & k_auto_exposure) == 0) {
                 InValue = static_cast<int>(flags | k_auto_exposure);
-                LogInfo("DLSS auto-exposure override: Force On");
+                LogInfoThrottled(100, "DLSS auto-exposure override: Force On");
             }
         }
     }
@@ -621,10 +623,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
             if (sr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(sr_preset);
                 if (sr_preset == 0) {
-                    LogInfo("DLSS SR preset override: %s -> %u (DLSS Default)", param_name.c_str(), InValue);
+                    LogInfoThrottled(20, "DLSS SR preset override: %s -> %u (DLSS Default)", param_name.c_str(),
+                                     InValue);
                 } else {
-                    LogInfo("DLSS SR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue,
-                            'A' + sr_preset - 1);
+                    LogInfoThrottled(20, "DLSS SR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue,
+                                     'A' + sr_preset - 1);
                 }
             }
         }
@@ -635,10 +638,11 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
             if (rr_preset >= 0) {  // -1 = Game Default (no override), 0 = DLSS Default, 1+ = Preset A+
                 InValue = static_cast<unsigned int>(rr_preset);
                 if (rr_preset == 0) {
-                    LogInfo("DLSS RR preset override: %s -> %u (DLSS Default)", param_name.c_str(), InValue);
+                    LogInfoThrottled(20, "DLSS RR preset override: %s -> %u (DLSS Default)", param_name.c_str(),
+                                     InValue);
                 } else {
-                    LogInfo("DLSS RR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue,
-                            'A' + rr_preset - 1);
+                    LogInfoThrottled(20, "DLSS RR preset override: %s -> %u (Preset %c)", param_name.c_str(), InValue,
+                                     'A' + rr_preset - 1);
                 }
             }
         }
@@ -648,7 +652,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
             GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
         const int quality_preset_int = static_cast<int>(quality_preset);
         if (quality_preset_int >= 0 && quality_preset_int != InValue) {
-            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
+            LogInfoThrottled(20, "DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
             InValue = quality_preset_int;
         }
     }
@@ -661,12 +665,12 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetUI_Detour(NVSDK_NGX_Parameter* InParamete
         if (force_ae == "Force Off") {
             if ((flags & k_auto_exposure) == k_auto_exposure) {
                 InValue = flags & ~k_auto_exposure;
-                LogInfo("DLSS auto-exposure override (SetUI): Force Off");
+                LogInfoThrottled(20, "DLSS auto-exposure override (SetUI): Force Off");
             }
         } else if (force_ae == "Force On") {
             if ((flags & k_auto_exposure) == 0) {
                 InValue = flags | k_auto_exposure;
-                LogInfo("DLSS auto-exposure override (SetUI): Force On");
+                LogInfoThrottled(20, "DLSS auto-exposure override (SetUI): Force On");
             }
         }
     }
@@ -722,12 +726,12 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
         if (force_ae == "Force Off") {
             if ((flags & k_auto_exposure) == k_auto_exposure) {
                 InValue = (InValue & ~0xFFFFFFFFULL) | (flags & ~k_auto_exposure);
-                LogInfo("DLSS auto-exposure override (SetULL): Force Off");
+                LogInfoThrottled(20, "DLSS auto-exposure override (SetULL): Force Off");
             }
         } else if (force_ae == "Force On") {
             if ((flags & k_auto_exposure) == 0) {
                 InValue = (InValue & ~0xFFFFFFFFULL) | (flags | k_auto_exposure);
-                LogInfo("DLSS auto-exposure override (SetULL): Force On");
+                LogInfoThrottled(20, "DLSS auto-exposure override (SetULL): Force On");
             }
         }
     }
@@ -736,7 +740,7 @@ void NVSDK_CONV NVSDK_NGX_Parameter_SetULL_Detour(NVSDK_NGX_Parameter* InParamet
             GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
         const int quality_preset_int = static_cast<int>(quality_preset);
         if (quality_preset_int >= 0 && quality_preset_int != InValue) {
-            LogInfo("DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
+            LogInfoThrottled(20, "DLSS Quality Preset override: %s -> %d -> %d", InName, InValue, quality_preset_int);
             InValue = quality_preset_int;
         }
     }

@@ -70,6 +70,11 @@ extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
 extern D3D11CreateDevice_pfn D3D11CreateDevice_Original;
 extern D3D12CreateDevice_pfn D3D12CreateDevice_Original;
 
+// True minimized state, bypassing IsIconic detour (e.g. for ApplyWindowChange - do not move/resize minimized windows).
+bool IsIconic_direct(HWND hwnd);
+// True visibility state, bypassing IsWindowVisible detour (e.g. when code needs real visibility, not Continue Rendering spoof).
+bool IsWindowVisible_direct(HWND hwnd);
+
 // Hooked API functions
 HWND WINAPI GetFocus_Detour();
 HWND WINAPI GetForegroundWindow_Detour();

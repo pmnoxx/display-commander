@@ -847,7 +847,7 @@ void ContinuousMonitoringThread() {
             LONGLONG now_ns = utils::get_now_ns();
             const LONGLONG high_freq_interval_ns =
                 static_cast<LONGLONG>(settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue())
-                * 1000000;
+                * utils::NS_TO_MS;
             if (settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue()
                 && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());

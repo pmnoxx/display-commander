@@ -188,8 +188,7 @@ HWND WINAPI GetActiveWindow_Detour() {
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HWND game_hwnd = g_last_swapchain_hwnd.load();
-    if (settings::g_advancedTabSettings.continue_rendering.GetValue() && game_hwnd != nullptr
-        && IsWindow(game_hwnd)) {
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue() && game_hwnd != nullptr && IsWindow(game_hwnd)) {
         // Call original function first
         BOOL result =
             GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
@@ -203,8 +202,8 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
                 // Set the game window as active and focused
                 pgui->hwndActive = game_hwnd;
                 pgui->hwndFocus = game_hwnd;
-                pgui->hwndCapture = nullptr;      // Clear capture to prevent issues
-                pgui->hwndCaret = game_hwnd;      // Set caret to game window
+                pgui->hwndCapture = nullptr;  // Clear capture to prevent issues
+                pgui->hwndCaret = game_hwnd;  // Set caret to game window
 
                 // Set appropriate flags (using standard Windows constants)
                 pgui->flags = 0x00000001 | 0x00000002;  // GTI_CARETBLINKING | GTI_CARETSHOWN
@@ -230,13 +229,20 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
     return result;
 }
 
+// True minimized state, bypassing our IsIconic detour (used when we need real state, e.g. skip ApplyWindowChange).
+bool IsIconic_direct(HWND hwnd) { return (IsIconic_Original ? IsIconic_Original(hwnd) : IsIconic(hwnd)) != FALSE; }
+
+// True visibility state, bypassing our IsWindowVisible detour (used when code needs real visibility).
+bool IsWindowVisible_direct(HWND hwnd) {
+    return (IsWindowVisible_Original ? IsWindowVisible_Original(hwnd) : IsWindowVisible(hwnd)) != FALSE;
+}
+
 // Hooked IsIconic: when Continue Rendering is on, game window must not appear minimized (games treat minimized as
 // background).
 BOOL WINAPI IsIconic_Detour(HWND hWnd) {
-    if (settings::g_advancedTabSettings.continue_rendering.GetValue()
-        && hWnd == g_last_swapchain_hwnd.load()) {
-        RecordCRDebug(CR_IsIconic, 0, true);   // we return FALSE (0)
-        return FALSE;  // Spoof "not minimized"
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue() && hWnd == g_last_swapchain_hwnd.load()) {
+        RecordCRDebug(CR_IsIconic, 0, true);  // we return FALSE (0)
+        return FALSE;                         // Spoof "not minimized"
     }
     BOOL ret = IsIconic_Original ? IsIconic_Original(hWnd) : IsIconic(hWnd);
     RecordCRDebug(CR_IsIconic, ret ? 1u : 0u, false);
@@ -246,12 +252,11 @@ BOOL WINAPI IsIconic_Detour(HWND hWnd) {
 // Hooked IsWindowVisible: when Continue Rendering is on, game window must appear visible (some games check this for
 // foreground).
 BOOL WINAPI IsWindowVisible_Detour(HWND hWnd) {
-    if (settings::g_advancedTabSettings.continue_rendering.GetValue()
-        && hWnd == g_last_swapchain_hwnd.load()) {
-        RecordCRDebug(CR_IsWindowVisible, 1, true);   // we return TRUE (1)
-        return TRUE;  // Spoof "visible"
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue() && hWnd == g_last_swapchain_hwnd.load()) {
+        RecordCRDebug(CR_IsWindowVisible, 1, true);  // we return TRUE (1)
+        return TRUE;                                 // Spoof "visible"
     }
-    BOOL ret = IsWindowVisible_Original ? IsWindowVisible_Original(hWnd) : IsWindowVisible(hWnd);
+    BOOL ret = IsWindowVisible_direct(hWnd);
     RecordCRDebug(CR_IsWindowVisible, ret ? 1u : 0u, false);
     return ret;
 }
@@ -1323,8 +1328,6 @@ void UninstallApiHooks() {
 // Game window (atomic): same as SK's game_window.hWnd. Set when we install the WNDPROC hook and when
 // we get the swapchain output window. GetGameWindow() returns this. Single source of truth for the
 // hooked/game window.
-void SetGameWindow(HWND hwnd) {
-    g_last_swapchain_hwnd.store(hwnd, std::memory_order_release);
-}
+void SetGameWindow(HWND hwnd) { g_last_swapchain_hwnd.store(hwnd, std::memory_order_release); }
 
 }  // namespace display_commanderhooks

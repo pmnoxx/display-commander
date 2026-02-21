@@ -1,9 +1,22 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.25 (2026-02-21)
+
+- **Changelog** - Deduplicate window restore/minimize entries (throttle, continue-rendering SIZE_RESTORED).
+- **ApplyWindowChange** - Do not apply window position/size when the window is minimized; use `IsIconic_direct` (original API) so Continue Rendering’s spoof does not hide the real minimized state, avoiding incorrect SetWindowPos on minimized windows.
+
+## v0.12.24 (2026-02-21)
+
+- **Window minimize/restore (Win+Down / Win+Up)** - Throttle in ShowWindow_Direct: minimize and restore each limited to once per 100 ms per message type. When continue rendering is on, only WM_SIZE SIZE_MINIMIZED is suppressed; SIZE_RESTORED is delivered so the game can react when the user restores the window. Log when Win+Down minimizes the game window.
+
+## v0.12.23 (2026-02-21)
+
+- **Hotkeys tab** - Window and display hotkeys (Win+Down/Win+Up for minimize/restore, Win+Left/Win+Right for previous/next display) are now configurable in the Hotkeys tab; you can change or disable each shortcut (defaults: win+down, win+up, win+left, win+right). Hotkey parser supports the Win modifier.
+
 ## v0.12.22 (2026-02-21)
 
-- **Win+Up grace period** - Win+Up (restore borderless window) now works for up to 1 second after the game lost focus (configurable in Advanced tab: 0–60 s or Forever).
+- **Win+Up grace period** - Win+Up (restore) works for a configurable time after the game lost focus (Advanced tab: 0–60 s or Forever).
 
 ## v0.12.21 (2026-02-21)
 
@@ -42,10 +55,10 @@
 ## v0.12.13 (2026-02-21)
 
 - **Windows.Gaming.Input** - Auto-suppress Windows.Gaming.Input.dll by default, forcing the game to use XInput so continue rendering in background works with gamepad. Toggle in Advanced tab (default on).
+- **Win+Down / Win+Up** - Minimize and restore borderless games (handled in ProcessHotkeys when app is in foreground; uses ShowWindow_Direct to prevent spoofing).
 
 ## v0.12.12 (2026-02-21)
 
-- **Win+Down / Win+Up** - Minimize and restore borderless games (handled in ProcessHotkeys when app is in foreground; uses ShowWindow_Direct to prevent spoofing).
 - **Win+Left / Win+Right** - Move game to previous/next display (updates Target Display); if window mode is "No changes", automatically switches to Borderless fullscreen so the move is applied.
 
 ## v0.12.11 (2026-02-21)

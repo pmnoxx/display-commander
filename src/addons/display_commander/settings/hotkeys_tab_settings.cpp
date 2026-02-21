@@ -22,6 +22,10 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_auto_hdr("HotkeyAutoHdr", "", "DisplayCommander"),
       hotkey_brightness_up("HotkeyBrightnessUp", "", "DisplayCommander"),
       hotkey_brightness_down("HotkeyBrightnessDown", "", "DisplayCommander"),
+      hotkey_win_down("HotkeyWinDown", "win+down", "DisplayCommander"),
+      hotkey_win_up("HotkeyWinUp", "win+up", "DisplayCommander"),
+      hotkey_win_left("HotkeyWinLeft", "win+left", "DisplayCommander"),
+      hotkey_win_right("HotkeyWinRight", "win+right", "DisplayCommander"),
       exclusive_keys_ad_enabled("ExclusiveKeysADEnabled", false, "DisplayCommander"),
       exclusive_keys_ws_enabled("ExclusiveKeysWSEnabled", false, "DisplayCommander"),
       exclusive_keys_awsd_enabled("ExclusiveKeysAWSDEnabled", false, "DisplayCommander"),
@@ -57,6 +61,10 @@ void HotkeysTabSettings::SaveAll() {
     hotkey_auto_hdr.Save();
     hotkey_brightness_up.Save();
     hotkey_brightness_down.Save();
+    hotkey_win_down.Save();
+    hotkey_win_up.Save();
+    hotkey_win_left.Save();
+    hotkey_win_right.Save();
     exclusive_keys_ad_enabled.Save();
     exclusive_keys_ws_enabled.Save();
     exclusive_keys_awsd_enabled.Save();
@@ -68,7 +76,8 @@ std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
             &hotkey_adhd_toggle, &hotkey_autoclick, &hotkey_input_blocking, &hotkey_display_commander_ui,
             &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up, &hotkey_volume_down,
             &hotkey_system_volume_up, &hotkey_system_volume_down, &hotkey_auto_hdr, &hotkey_brightness_up,
-            &hotkey_brightness_down, &exclusive_keys_ad_enabled,
+            &hotkey_brightness_down, &hotkey_win_down, &hotkey_win_up, &hotkey_win_left, &hotkey_win_right,
+            &exclusive_keys_ad_enabled,
             &exclusive_keys_ws_enabled, &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups};
 }
 

@@ -1,6 +1,7 @@
 #include "advanced_tab.hpp"
 #include "../../display/dpi_management.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../latency/latency_manager.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
@@ -8,6 +9,7 @@
 #include "../../res/ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
+#include "../../swapchain_events.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
@@ -964,14 +966,26 @@ void DrawNvapiSettings() {
         }
 
         bool reflex_auto_configure = settings::g_advancedTabSettings.reflex_auto_configure.GetValue();
-        bool reflex_enable = settings::g_advancedTabSettings.reflex_enable.GetValue();
         bool reflex_delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
-
-        bool reflex_low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
-        bool reflex_boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
         bool reflex_use_markers = settings::g_advancedTabSettings.reflex_use_markers.GetValue();
         bool reflex_generate_markers = settings::g_advancedTabSettings.reflex_generate_markers.GetValue();
         bool reflex_enable_sleep = settings::g_advancedTabSettings.reflex_enable_sleep.GetValue();
+
+        // Reflex enable / low latency / boost are derived from Main tab FPS limiter mode (onpresent_reflex_mode,
+        // reflex_limiter_reflex_mode, reflex_disabled_limiter_mode). Shown as read-only Yes/No.
+        const bool reflex_enabled = ShouldReflexBeEnabled();
+        const bool reflex_low_latency = ShouldReflexLowLatencyBeEnabled();
+        const bool reflex_boost = ShouldReflexBoostBeEnabled();
+        ImGui::Text("Reflex: %s", reflex_enabled ? "Yes" : "No");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Derived from Main tab FPS Limiter Mode and Reflex combo (OnPresent / Reflex / Disabled).");
+        }
+        ImGui::Text("Low Latency: %s", reflex_low_latency ? "Yes" : "No");
+        ImGui::Text("Boost: %s", reflex_boost ? "Yes" : "No");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Configure in Main tab under FPS Limiter Mode (Reflex combo).");
+        }
 
         if (ImGui::Checkbox("Delay Reflex for first 500 frames", &reflex_delay_first_500_frames)) {
             settings::g_advancedTabSettings.reflex_delay_first_500_frames.SetValue(reflex_delay_first_500_frames);
@@ -980,7 +994,7 @@ void DrawNvapiSettings() {
             ImGui::SetTooltip(
                 "When enabled, NVIDIA Reflex integration will not be activated\n"
                 "until after the first 500 frames of the game (g_global_frame_id >= 500),\n"
-                "even if 'Enable Reflex' or auto-configure would normally turn it on.");
+                "even if Reflex (from Main tab) or auto-configure would normally turn it on.");
         }
 
         if (ImGui::Checkbox("Auto Configure Reflex", &reflex_auto_configure)) {
@@ -990,20 +1004,10 @@ void DrawNvapiSettings() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Automatically configure Reflex settings on startup");
         }
-        if (ImGui::Checkbox("Enable Reflex", &reflex_enable)) {
-            settings::g_advancedTabSettings.reflex_enable.SetValue(reflex_enable);
-        }
         if (reflex_auto_configure) {
-            ImGui::EndDisabled();
             ImGui::Text("Auto-configure is handled by continuous monitoring");
         }
-        if (reflex_enable) {
-            if (ImGui::Checkbox("Low Latency Mode", &reflex_low_latency)) {
-                settings::g_advancedTabSettings.reflex_low_latency.SetValue(reflex_low_latency);
-            }
-            if (ImGui::Checkbox("Boost", &reflex_boost)) {
-                settings::g_advancedTabSettings.reflex_boost.SetValue(reflex_boost);
-            }
+        if (reflex_enabled) {
             if (reflex_auto_configure) {
                 ImGui::BeginDisabled();
             }
@@ -1131,6 +1135,47 @@ void DrawNvapiSettings() {
                         "Sleep status requires an initialized DirectX 11/12 device and NVIDIA GPU with Reflex "
                         "support.");
                 }
+            }
+
+            // NvLL VK (Vulkan Reflex) params when NvLowLatencyVk hooks are active
+            if (AreNvLowLatencyVkHooksInstalled()) {
+                ImGui::Spacing();
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "NvLL VK (Vulkan Reflex) SetSleepMode:");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "When NvLowLatencyVk hooks are installed, we re-apply SleepMode on SIMULATION_START.\n"
+                        "'Last applied' is what we sent to the driver; 'Game tried to set' is what the game passed.");
+                }
+                ImGui::Indent();
+                NvLLVkSleepModeParamsView last_applied = {};
+                GetNvLowLatencyVkLastAppliedSleepModeParams(&last_applied);
+                if (last_applied.has_value) {
+                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Last applied (via SetSleepMode_Original):");
+                    ImGui::Text("  Low Latency: %s  Boost: %s  Min interval: %u us",
+                               last_applied.low_latency ? "Yes" : "No", last_applied.boost ? "Yes" : "No",
+                               last_applied.minimum_interval_us);
+                    if (last_applied.minimum_interval_us > 0) {
+                        float fps = 1000000.0f / last_applied.minimum_interval_us;
+                        ImGui::Text("  Target FPS: %.1f", fps);
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Last applied: (none yet)");
+                }
+                NvLLVkSleepModeParamsView game_params = {};
+                GetNvLowLatencyVkGameSleepModeParams(&game_params);
+                if (game_params.has_value) {
+                    ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Game tried to set (NvLL_VK_SetSleepMode):");
+                    ImGui::Text("  Low Latency: %s  Boost: %s  Min interval: %u us",
+                               game_params.low_latency ? "Yes" : "No", game_params.boost ? "Yes" : "No",
+                               game_params.minimum_interval_us);
+                    if (game_params.minimum_interval_us > 0) {
+                        float fps = 1000000.0f / game_params.minimum_interval_us;
+                        ImGui::Text("  Target FPS: %.1f", fps);
+                    }
+                } else {
+                    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Game tried to set: (none yet)");
+                }
+                ImGui::Unindent();
             }
         }
 

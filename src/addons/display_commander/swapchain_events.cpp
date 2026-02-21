@@ -54,6 +54,11 @@
 // Forward declaration for VRR status query function (moved to continuous_monitoring.cpp)
 // Function is in nvapi namespace, declared in nvapi/vrr_status.hpp
 
+// Forward declaration for effective reflex mode (defined with GetTargetFps / reflex getters)
+static OnPresentReflexMode GetEffectiveReflexMode();
+static bool GetReflexLowLatency();
+static bool GetReflexBoost();
+
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -1351,25 +1356,8 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     const bool delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
     const uint64_t current_frame_id = current_frame_id_for_slot;
 
-    bool override_game_reflex_settings = false;
-
-    // When OnPresentSync or Reflex is selected and Reflex mode is "Game Defaults", do not apply our Reflex (let game
-    // control it)
-    const auto onpresent_reflex =
-        static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
-    const auto reflex_limiter_reflex =
-        static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
-
-    if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
-        override_game_reflex_settings = (onpresent_reflex != OnPresentReflexMode::kGameDefaults);
-    } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
-        override_game_reflex_settings = (reflex_limiter_reflex != OnPresentReflexMode::kGameDefaults);
-    } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kDisabled) {
-        override_game_reflex_settings = false;
-    } else {
-        override_game_reflex_settings = false;
-    }
-
+    // Override game Reflex when effective reflex mode (from FPS limiter + main tab reflex combo) is not "Game Defaults"
+    bool override_game_reflex_settings = (GetEffectiveReflexMode() != OnPresentReflexMode::kGameDefaults);
     if (delay_first_500_frames && current_frame_id < 500) {
         override_game_reflex_settings = false;
     }
@@ -1392,22 +1380,8 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
             }
             bool low_latency;
             bool boost;
-            if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
-                const auto onpresent_reflex =
-                    static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
-                low_latency = (onpresent_reflex == OnPresentReflexMode::kLowLatency
-                               || onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
-                boost = (onpresent_reflex == OnPresentReflexMode::kLowLatencyBoost);
-            } else if (s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
-                const auto reflex_limiter_reflex =
-                    static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
-                low_latency = (reflex_limiter_reflex == OnPresentReflexMode::kLowLatency
-                               || reflex_limiter_reflex == OnPresentReflexMode::kLowLatencyBoost);
-                boost = (reflex_limiter_reflex == OnPresentReflexMode::kLowLatencyBoost);
-            } else {
-                low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
-                boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
-            }
+            low_latency = GetReflexLowLatency();
+            boost = GetReflexBoost();
             g_latencyManager->ApplySleepMode(low_latency, boost,
                                              settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
             g_reflex_was_enabled_last_frame.store(true);
@@ -1479,6 +1453,54 @@ float GetTargetFps() {
     }
     return target_fps;
 }
+
+static OnPresentReflexMode GetEffectiveReflexMode() {
+    switch (s_fps_limiter_mode.load()) {
+        case FpsLimiterMode::kOnPresentSync:
+            return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
+        case FpsLimiterMode::kReflex:
+            return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
+        case FpsLimiterMode::kDisabled:
+        case FpsLimiterMode::kLatentSync:
+        default:
+            return static_cast<OnPresentReflexMode>(
+                settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
+    }
+}
+
+bool ShouldReflexBeEnabled() {
+    const auto mode = GetEffectiveReflexMode();
+    if (mode == OnPresentReflexMode::kGameDefaults) {
+        GameReflexSleepModeParams p = {};
+        GetGameReflexSleepModeParams(&p);
+        return p.low_latency;
+    }
+    return (mode == OnPresentReflexMode::kLowLatency || mode == OnPresentReflexMode::kLowLatencyBoost);
+}
+
+bool GetReflexLowLatency() {
+    const auto mode = GetEffectiveReflexMode();
+    if (mode == OnPresentReflexMode::kGameDefaults) {
+        GameReflexSleepModeParams p = {};
+        GetGameReflexSleepModeParams(&p);
+        return p.has_value ? p.low_latency : false;
+    }
+    return (mode == OnPresentReflexMode::kLowLatency || mode == OnPresentReflexMode::kLowLatencyBoost);
+}
+
+bool GetReflexBoost() {
+    const auto mode = GetEffectiveReflexMode();
+    if (mode == OnPresentReflexMode::kGameDefaults) {
+        GameReflexSleepModeParams p = {};
+        GetGameReflexSleepModeParams(&p);
+        return p.has_value ? p.boost : false;
+    }
+    return (mode == OnPresentReflexMode::kLowLatencyBoost);
+}
+
+bool ShouldReflexLowLatencyBeEnabled() { return GetReflexLowLatency(); }
+
+bool ShouldReflexBoostBeEnabled() { return GetReflexBoost(); }
 
 // Helper function to convert low latency ratio index to delay_bias value
 // Ratio index: 0 = 100% Display/0% Input, 1 = 87.5%/12.5%, 2 = 75%/25%, 3 = 62.5%/37.5%,

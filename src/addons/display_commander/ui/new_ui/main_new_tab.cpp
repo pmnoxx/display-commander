@@ -2662,7 +2662,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
 
     // FPS Limiter Mode
     {
-        const char* items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan not supported)", "Disabled",
+        const char* items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)", "Disabled",
                                "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR"};
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
@@ -2995,6 +2995,20 @@ void DrawDisplaySettings_FpsLimiterMode() {
             }
         }
 
+        // Reflex config when FPS limiter is Disabled or LatentSync (used when no FPS limiter is active)
+        if (current_item == static_cast<int>(FpsLimiterMode::kDisabled)
+            || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
+            ImGui::Spacing();
+            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex")) {
+                g_reflex_settings_outdated.store(true);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Reflex setting when FPS limiter is Disabled or LatentSync.\n"
+                    "Used for Vulkan NvLL and other paths when no FPS limiter mode is active.");
+            }
+        }
+
         // PCL stats checkbox for OnPresentSync mode (when Reflex is not enabled)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             ImGui::Spacing();
@@ -3198,7 +3212,7 @@ void DrawDisplaySettings_FpsAndBackground() {
 
     bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
                                  && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
-                             || settings::g_advancedTabSettings.reflex_enable.GetValue();
+                             || ShouldReflexBeEnabled();
 
     {
         if (!fps_limit_enabled) {
@@ -3260,7 +3274,7 @@ struct VSyncTearingTooltipContext {
 static void DrawDisplaySettings_VSyncAndTearing_FpsSliders() {
     bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
                                  && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
-                             || settings::g_advancedTabSettings.reflex_enable.GetValue();
+                             || ShouldReflexBeEnabled();
     {
         if (!fps_limit_enabled) {
             ImGui::BeginDisabled();

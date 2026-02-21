@@ -2544,9 +2544,11 @@ void DrawDisplaySettings_DisplayAndTarget() {
             monitor_c_labels.push_back(info.display_label.c_str());
         }
 
+        static bool s_target_display_changed = false;
         if (ImGui::Combo("Target Display", &selected_index, monitor_c_labels.data(),
                          static_cast<int>(monitor_c_labels.size()))) {
             if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
+                s_target_display_changed = true;
                 // Store the device ID
                 std::string new_device_id = display_info[selected_index].extended_device_id;
                 settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_device_id);
@@ -2565,6 +2567,11 @@ void DrawDisplaySettings_DisplayAndTarget() {
                 tooltip_text += "\n\nGame window is on: " + saved_device_id;
             }
             ImGui::SetTooltip("%s", tooltip_text.c_str());
+        }
+        // warn if "no changes mode", moving to another display isn't implemented in that mode
+        if (s_target_display_changed && s_window_mode.load() == WindowMode::kNoChanges) {
+            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                               "Warning: Moving to another display isn't implemented in 'No Changes' mode.");
         }
     }
 }

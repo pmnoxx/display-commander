@@ -92,7 +92,7 @@ void GetContinueRenderingApiDebugSnapshots(ContinueRenderingApiDebugSnapshot* ou
     }
 }
 
-HWND GetGameWindow() { return g_last_swapchain_hwnd.load(); }
+HWND GetGameWindow() { return g_last_swapchain_hwnd.load(std::memory_order_acquire); }
 
 bool HWNDBelongsToCurrentProcess(HWND hwnd) {
     DWORD dwPid = 0;
@@ -1299,9 +1299,11 @@ void UninstallApiHooks() {
     g_api_hooks_installed.store(false);
     LogInfo("API hooks uninstalled successfully");
 }
-// Game window is taken from g_last_swapchain_hwnd (set in swapchain_events). Kept for compatibility with callers.
-void SetGameWindow(HWND /*hwnd*/) {
-    // No-op: we use g_last_swapchain_hwnd as the single source of truth for the game/swapchain window.
+// Game window (atomic): same as SK's game_window.hWnd. Set when we install the WNDPROC hook and when
+// we get the swapchain output window. GetGameWindow() returns this. Single source of truth for the
+// hooked/game window.
+void SetGameWindow(HWND hwnd) {
+    g_last_swapchain_hwnd.store(hwnd, std::memory_order_release);
 }
 
 }  // namespace display_commanderhooks

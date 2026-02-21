@@ -271,7 +271,8 @@ void DisplayCommanderConfigManager::Initialize() {
         if (config_file_->LoadFromFile(config_path_)) {
             LogInfo("DisplayCommanderConfigManager: Loaded config from %s", config_path_.c_str());
         } else {
-            LogInfo("DisplayCommanderConfigManager: Opened config file at %s (load failed, using empty)", config_path_.c_str());
+            LogInfo("DisplayCommanderConfigManager: Opened config file at %s (load failed, using empty)",
+                    config_path_.c_str());
         }
     } else if (ini_exists) {
         IniFile ini;
@@ -282,9 +283,13 @@ void DisplayCommanderConfigManager::Initialize() {
             if (config_file_->SaveToFile(config_path_)) {
                 std::error_code ec;
                 std::filesystem::remove(ini_path, ec);
-                LogInfo("DisplayCommanderConfigManager: Migrated config from %s to %s and removed .ini", ini_path.c_str(), config_path_.c_str());
+                LogInfo("DisplayCommanderConfigManager: Migrated config from %s to %s and removed .ini",
+                        ini_path.c_str(), config_path_.c_str());
             } else {
-                LogInfo("DisplayCommanderConfigManager: Migrated config from %s to memory; save to %s failed (will retry on next save)", ini_path.c_str(), config_path_.c_str());
+                LogInfo(
+                    "DisplayCommanderConfigManager: Migrated config from %s to memory; save to %s failed (will retry "
+                    "on next save)",
+                    ini_path.c_str(), config_path_.c_str());
             }
         } else {
             LogInfo("DisplayCommanderConfigManager: Created new config file at %s", config_path_.c_str());
@@ -311,16 +316,6 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     }
     if (!config_file_->GetValue(section != nullptr ? section : "", key != nullptr ? key : "", value)) {
         return false;
-    }
-    // Migration: device ID settings that were saved as integers (old format) -> clear to use default
-    const std::string key_str = key != nullptr ? key : "";
-    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && !value.empty() &&
-        (key_str.find("device_id") != std::string::npos || key_str.find("display_device_id") != std::string::npos ||
-         key_str == "target_display") &&
-        std::all_of(value.begin(), value.end(), ::isdigit)) {
-        value = "";
-        config_file_->SetValue(section, key, "");
-        // Next SaveConfig() will persist; avoid SaveConfig here to prevent deadlock
     }
     return true;
 }

@@ -395,8 +395,9 @@ class DisplayCache {
     // Get extended device ID from monitor handle
     std::string GetExtendedDeviceIdFromMonitor(HMONITOR monitor) const;
 
-    // Get device ID of the display to the left (to_the_left true) or right (to_the_left false) of the current one.
-    // Displays are ordered by monitor_rect.left. Returns empty string if no adjacent display.
+    // Get extended device ID of the display to the left (to_the_left true) or right (to_the_left false).
+    // Order is by Windows display number (DISPLAY1 -> DISPLAY2 -> DISPLAY4). current_device_id can be
+    // extended or simple ID; matching falls back to display number. Returns empty if no adjacent display.
     std::string GetAdjacentDisplayDeviceId(const std::string& current_device_id, bool to_the_left) const;
 
     // Get resolution labels for a specific display

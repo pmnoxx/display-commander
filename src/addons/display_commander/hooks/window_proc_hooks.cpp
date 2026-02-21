@@ -1,15 +1,21 @@
 /*
  * Copyright (C) 2024 Display Commander
- * Window procedure hooks implementation - logic moved to message retrieval hooks
+ * Window procedure hooks implementation - same approach as Special-K SK_InstallWindowHook:
+ * - Hook into window message queue via SetWindowLongPtr(GWLP_WNDPROC) on the target HWND.
+ * - Trampoline (WindowProc_Detour): call ProcessWindowMessage; if not suppressed, call
+ *   original WNDPROC (from map). Original is stored before swapping to avoid early-message race.
+ * - Game window is stored in atomic (SetGameWindow/GetGameWindow) like SK's game_window.hWnd.
  */
 
 #include "window_proc_hooks.hpp"
 #include <atomic>
+#include <unordered_map>
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
 #include "../ui/new_ui/window_info_tab.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
 
 #include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
@@ -18,6 +24,37 @@ namespace display_commanderhooks {
 
 // Global variables for hook state
 static std::atomic<bool> g_sent_activate{false};
+
+// HWND -> original WNDPROC. Store original *before* swapping to detour (avoids race with DefWindowProc).
+static std::unordered_map<HWND, WNDPROC> g_original_wndproc;
+static SRWLOCK g_wndproc_map_lock;
+static std::atomic<bool> g_wndproc_lock_initialized{false};
+
+// Trampoline (SK-style): 1) ProcessWindowMessage; 2) if not skipped, call original WNDPROC.
+static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (ProcessWindowMessage(hwnd, uMsg, wParam, lParam)) {
+        return 0;  // Message suppressed (skipped)
+    }
+    WNDPROC orig = nullptr;
+    {
+        utils::SRWLockShared guard(g_wndproc_map_lock);
+        auto it = g_original_wndproc.find(hwnd);
+        if (it != g_original_wndproc.end()) {
+            orig = it->second;
+        }
+    }
+    if (orig == nullptr) {
+        return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+    }
+    LRESULT ret = IsWindowUnicode(hwnd)
+                      ? CallWindowProcW(orig, hwnd, uMsg, wParam, lParam)
+                      : CallWindowProcA(orig, hwnd, uMsg, wParam, lParam);
+    if (uMsg == WM_DESTROY) {
+        utils::SRWLockExclusive guard(g_wndproc_map_lock);
+        g_original_wndproc.erase(hwnd);
+    }
+    return ret;
+}
 
 // True if window has caption or thick frame (standard bordered window). Borderless windows return false.
 bool WindowHasBorder(HWND hwnd) {
@@ -228,21 +265,56 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     return false;  // Don't suppress the message
 }
 
+// Install WNDPROC hook on target_hwnd (SK_InstallWindowHook style). Sets game window (atomic).
 bool InstallWindowProcHooks(HWND target_hwnd) {
-    // Window proc hooks are now handled via message retrieval hooks (GetMessage/PeekMessage)
-    // This function is kept for compatibility but just sets the game window
-    // Logic has been moved to ProcessWindowMessage() which is called from message hooks
-    if (target_hwnd != nullptr) {
-        SetGameWindow(target_hwnd);
-        g_sent_activate.store(false);  // Reset activation flag when game window changes
+    if (target_hwnd == nullptr || !IsWindow(target_hwnd)) {
+        return false;
     }
+    if (!IsWindowFromCurrentProcess(target_hwnd)) {
+        return false;
+    }
+
+    // Initialize SRWLOCK once (safe for concurrent first-time callers)
+    if (!g_wndproc_lock_initialized.exchange(true)) {
+        InitializeSRWLock(&g_wndproc_map_lock);
+    }
+
+    WNDPROC current = reinterpret_cast<WNDPROC>(GetWindowLongPtrW(target_hwnd, GWLP_WNDPROC));
+    if (current == WindowProc_Detour) {
+        SetGameWindow(target_hwnd);  // game_window (atomic) = this HWND
+        g_sent_activate.store(false);
+        return true;  // Already hooked this window
+    }
+
+    // Store original *before* swapping to detour (per memory: avoid early-message race)
+    {
+        utils::SRWLockExclusive guard(g_wndproc_map_lock);
+        g_original_wndproc[target_hwnd] = current;
+    }
+    SetWindowLongPtrW(target_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WindowProc_Detour));
+
+    SetGameWindow(target_hwnd);  // game_window (atomic), like SK game_window.hWnd
+    g_sent_activate.store(false);
+    LogInfo("Window procedure hook installed for HWND: 0x%p", target_hwnd);
     return true;
+    // Window proc hooks are now handled via message retrieval hooks
+    // Just reset the activation flag
 }
 
 void UninstallWindowProcHooks() {
-    // Window proc hooks are now handled via message retrieval hooks
-    // Just reset the activation flag
     g_sent_activate.store(false);
+    if (!g_wndproc_lock_initialized.load()) {
+        return;
+    }
+    utils::SRWLockExclusive guard(g_wndproc_map_lock);
+    for (const auto& kv : g_original_wndproc) {
+        HWND hwnd = kv.first;
+        WNDPROC orig = kv.second;
+        if (IsWindow(hwnd)) {
+            SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(orig));
+        }
+    }
+    g_original_wndproc.clear();
 }
 
 bool IsContinueRenderingEnabled() {

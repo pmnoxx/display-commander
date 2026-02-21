@@ -1512,7 +1512,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // XInput hooks
     else if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
         LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
-        if (InstallXInputHooks(hModule)) {
+        if ((hModule)) {
             LogInfo("XInput hooks installed successfully");
         } else {
             LogError("Failed to install XInput hooks");

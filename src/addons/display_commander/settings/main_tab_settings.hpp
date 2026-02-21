@@ -158,8 +158,10 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnumRef<FrameTimeMode> frame_time_mode;
 
     // Display Information
-    ui::new_ui::StringSetting target_display;
-    ui::new_ui::StringSetting game_window_display_device_id;
+    /** Extended device ID of the target display (for window move, Win+Left/Right, etc.). */
+    ui::new_ui::StringSetting target_extended_display_device_id;
+    /** Extended device ID of the display containing the game window (from GetExtendedDisplayDeviceIdFromWindow). */
+    ui::new_ui::StringSetting game_window_extended_display_device_id;
     ui::new_ui::StringSetting selected_extended_display_device_id;
 
     // Screensaver Control
@@ -228,7 +230,8 @@ class MainTabSettings {
 extern MainTabSettings g_mainTabSettings;
 
 // Utility functions
-std::string GetDisplayDeviceIdFromWindow(HWND hwnd);
+/** Returns the extended display device ID for the monitor containing the window. */
+std::string GetExtendedDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);
 void UpdateTargetDisplayFromGameWindow();
 void UpdateFpsLimitMaximums();

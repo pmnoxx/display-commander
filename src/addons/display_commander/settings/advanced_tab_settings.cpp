@@ -80,6 +80,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
+      win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
       enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
 
@@ -164,7 +165,8 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
             &fake_nvapi_enabled, &suppress_minhook, &suppress_windows_gaming_input, &debug_layer_enabled, &debug_break_on_severity,
-            &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing, &disable_dpi_scaling,
+            &auto_hide_discord_overlay, &suppress_window_changes, &win_up_grace_seconds, &enable_presentmon_tracing,
+            &disable_dpi_scaling,
 
             &monitor_high_freq_enabled, &monitor_high_freq_interval_ms, &monitor_per_second_enabled,
             &monitor_per_second_interval_sec, &monitor_screensaver, &monitor_fps_aggregate, &monitor_volume,

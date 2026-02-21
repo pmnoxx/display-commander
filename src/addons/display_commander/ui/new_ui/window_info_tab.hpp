@@ -37,6 +37,9 @@ void DrawGlobalWindowState();
 // Draw focus and input state
 void DrawFocusAndInputState();
 
+// Draw continue rendering and should-block-input debug info
+void DrawContinueRenderingAndInputBlocking();
+
 // Draw cursor information
 void DrawCursorInfo();
 

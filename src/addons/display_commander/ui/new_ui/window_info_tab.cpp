@@ -1,6 +1,10 @@
 #include "window_info_tab.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
+#include "../../hooks/window_proc_hooks.hpp"
+#include "../../hooks/windows_hooks/windows_message_hooks.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
+#include "../../utils/timing.hpp"
 #include "../../window_management/window_management.hpp"
 
 #include <imgui.h>
@@ -30,6 +34,8 @@ void DrawWindowInfoTab() {
     DrawGlobalWindowState();
     ImGui::Spacing();
     DrawFocusAndInputState();
+    ImGui::Spacing();
+    DrawContinueRenderingAndInputBlocking();
     ImGui::Spacing();
     DrawCursorInfo();
     ImGui::Spacing();
@@ -210,6 +216,104 @@ void DrawFocusAndInputState() {
             ImGui::Text("  current process id: %lu", current_process_id);
             ImGui::Text("  foreground window pid: %lu", window_pid);
             ImGui::Text("  foreground window: %p", foreground_window);
+        }
+    }
+}
+
+void DrawContinueRenderingAndInputBlocking() {
+    if (ImGui::CollapsingHeader("Continue Rendering & Input Blocking", ImGuiTreeNodeFlags_DefaultOpen)) {
+        bool continue_rendering = settings::g_advancedTabSettings.continue_rendering.GetValue();
+        bool same_as_hook = (display_commanderhooks::IsContinueRenderingEnabled() == continue_rendering);
+
+        ImGui::Text("Continue Rendering (in background):");
+        ImGui::Text("  Setting: %s", continue_rendering ? "Enabled" : "Disabled");
+        ImGui::Text("  IsContinueRenderingEnabled(): %s", display_commanderhooks::IsContinueRenderingEnabled() ? "Yes" : "No");
+        if (!same_as_hook) {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  (Mismatch - hook state differs from setting)");
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When enabled, rendering continues when the game loses focus (e.g. alt-tab).\n"
+                              "Uses window proc hooks to spoof focus/activation.");
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Should block input (current runtime result):");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Whether input is currently blocked for the game.\n"
+                              "Depends on input blocking mode (Main tab), app in background, and Ctrl+I toggle.");
+        }
+        bool block_kb = display_commanderhooks::ShouldBlockKeyboardInput(false);
+        bool block_mouse = display_commanderhooks::ShouldBlockMouseInput(false);
+        bool block_gamepad = display_commanderhooks::ShouldBlockGamepadInput();
+        ImGui::Text("  Keyboard: %s", block_kb ? "Yes" : "No");
+        ImGui::Text("  Mouse:    %s", block_mouse ? "Yes" : "No");
+        ImGui::Text("  Gamepad:  %s", block_gamepad ? "Yes" : "No");
+
+        ImGui::Separator();
+        bool debug_suppress_all = display_commanderhooks::GetDebugSuppressAllGetMessage();
+        if (ImGui::Checkbox("Debug: Suppress all GetMessage/PeekMessage", &debug_suppress_all)) {
+            display_commanderhooks::SetDebugSuppressAllGetMessage(debug_suppress_all);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("When on, every message from GetMessage/PeekMessage is skipped (game receives none).\n"
+                              "Use to see if we forgot to spoof some message type for continue rendering.\n"
+                              "Default off, not saved to config.");
+        }
+
+        ImGui::Separator();
+        if (ImGui::TreeNodeEx("Continue Rendering API debug", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Last return value (HWND or BOOL) and override state for each API.\n"
+                                  "'(game window)' = returned HWND is the game/swapchain window.");
+            }
+            display_commanderhooks::ContinueRenderingApiDebugSnapshot snap[display_commanderhooks::CR_DEBUG_API_COUNT];
+            display_commanderhooks::GetContinueRenderingApiDebugSnapshots(snap);
+            const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
+            HWND swap_hwnd = g_last_swapchain_hwnd.load();
+            if (ImGui::BeginTable("CR API Debug", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                ImGui::TableSetupColumn("API", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+                ImGui::TableSetupColumn("Returned", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Override", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupColumn("Last call", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableHeadersRow();
+                for (int i = 0; i < display_commanderhooks::CR_DEBUG_API_COUNT; ++i) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted(snap[i].api_name);
+                    ImGui::TableSetColumnIndex(1);
+                    if (snap[i].value_is_bool) {
+                        ImGui::Text("%s", snap[i].last_value ? "TRUE" : "FALSE");
+                    } else {
+                        HWND h = reinterpret_cast<HWND>(snap[i].last_value);
+                        if (h == nullptr) {
+                            ImGui::Text("null");
+                        } else {
+                            ImGui::Text("0x%p", (void*)h);
+                            if (h == swap_hwnd) {
+                                ImGui::SameLine();
+                                ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "(game window)");
+                            }
+                        }
+                    }
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TextColored(snap[i].did_override ? ImVec4(0.2f, 0.8f, 0.2f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                                       snap[i].did_override ? "Yes" : "No");
+                    ImGui::TableSetColumnIndex(3);
+                    if (snap[i].last_call_time_ns == 0) {
+                        ImGui::TextUnformatted("never");
+                    } else {
+                        uint64_t ago_ns = now_ns - snap[i].last_call_time_ns;
+                        double ago_s = static_cast<double>(ago_ns) / 1e9;
+                        if (ago_s < 1.0) {
+                            ImGui::Text("%.0f ms ago", ago_s * 1000.0);
+                        } else {
+                            ImGui::Text("%.2f s ago", ago_s);
+                        }
+                    }
+                }
+                ImGui::EndTable();
+            }
+            ImGui::TreePop();
         }
     }
 }

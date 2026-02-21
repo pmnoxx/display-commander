@@ -482,7 +482,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DX
         HRESULT hr = IDXGISwapChain_GetDesc_Original(This, pDesc);
         /*
                 // Hide HDR capabilities if enabled
-                if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+                if (SUCCEEDED(hr) && pDesc != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
                     // Check if the format is HDR-capable and hide it
                     bool is_hdr_format = false;
                     switch (pDesc->BufferDesc.Format) {
@@ -550,7 +550,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1* This, 
         HRESULT hr = IDXGISwapChain_GetDesc1_Original(This, pDesc);
         /*
                 // Hide HDR capabilities if enabled
-                if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+                if (SUCCEEDED(hr) && pDesc != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
                     // Check if the format is HDR-capable and hide it
                     bool is_hdr_format = false;
                     switch (pDesc->Format) {
@@ -625,7 +625,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
         HRESULT hr = IDXGISwapChain_CheckColorSpaceSupport_Original(This, ColorSpace, pColorSpaceSupport);
 
         // Hide HDR capabilities if enabled
-        if (SUCCEEDED(hr) && pColorSpaceSupport != nullptr && s_hide_hdr_capabilities.load()) {
+        if (SUCCEEDED(hr) && pColorSpaceSupport != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
             // Check if this is an HDR color space
             bool is_hdr_colorspace = false;
             switch (ColorSpace) {
@@ -1113,7 +1113,7 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6* This, DXGI_
     }
 
     // Hide HDR capabilities if enabled (similar to Special-K's approach)
-    if (SUCCEEDED(hr) && pDesc != nullptr && s_hide_hdr_capabilities.load()) {
+    if (SUCCEEDED(hr) && pDesc != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
         // Change HDR10 color space to sRGB to hide HDR support
         if (pDesc->ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020) {
             pDesc->ColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;

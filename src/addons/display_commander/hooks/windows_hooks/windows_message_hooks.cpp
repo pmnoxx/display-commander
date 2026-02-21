@@ -3,7 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <sstream>
-#include "../../globals.hpp"                             // For s_continue_rendering
+#include "../../globals.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
 #include "../../process_exit_hooks.hpp"                  // For UnhandledExceptionHandler
 #include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
 #include "../../settings/hotkeys_tab_settings.hpp"       // For exclusive key groups
@@ -75,6 +76,11 @@ bool ShouldBlockMouseInput(bool assume_foreground) {
 }
 
 bool ShouldBlockGamepadInput() {
+    // When Continue Rendering is on, never block gamepad so it keeps working in background (Special K behavior).
+    if (settings::g_advancedTabSettings.continue_rendering.GetValue()) {
+        return false;
+    }
+
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
     const InputBlockingMode mode = s_gamepad_input_blocking.load();
 
@@ -301,6 +307,17 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
     return false;
 }
 
+// Debug: when true, all GetMessage/PeekMessage are treated as suppressed (game receives no messages). Not saved to config.
+static std::atomic<bool> s_debug_suppress_all_getmessage{false};
+
+bool GetDebugSuppressAllGetMessage() {
+    return s_debug_suppress_all_getmessage.load(std::memory_order_relaxed);
+}
+
+void SetDebugSuppressAllGetMessage(bool enable) {
+    s_debug_suppress_all_getmessage.store(enable, std::memory_order_relaxed);
+}
+
 // Suppress a message by modifying it
 void SuppressMessage(LPMSG lpMsg) {
     if (lpMsg == nullptr) {
@@ -450,263 +467,244 @@ void ApplySpoofGameResolutionInSizeMessages(LPMSG lpMsg) {
     }
 }
 
+// When Continue Rendering is on, games must not see RIM_INPUTSINK (background) or they
+// treat the app as in background. Rewrite WM_INPUT wParam from RIM_INPUTSINK to RIM_INPUT
+// (Special K "RAW Input Background Hack" in GetMessage/PeekMessage).
+static void RewriteWmInputBackgroundToForeground(LPMSG lpMsg) {
+    if (lpMsg == nullptr) {
+        return;
+    }
+    if (lpMsg->message != WM_INPUT) {
+        return;
+    }
+    // RIM_INPUTSINK (1) = input while app in background; RIM_INPUT (0) = foreground (winuser.h)
+    if (lpMsg->wParam != RIM_INPUTSINK) {
+        return;
+    }
+    if (!settings::g_advancedTabSettings.continue_rendering.GetValue()) {
+        return;
+    }
+    lpMsg->wParam = RIM_INPUT;
+}
+
 // Hooked GetMessageA function
+// Loop until we get a message we do not suppress, so the app never sees suppressed messages.
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Track total calls
     g_hook_stats[HOOK_GetMessageA].increment_total();
 
-    // Call original function first
-    BOOL result = GetMessageA_Original ? GetMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
-                                       : GetMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
-    ApplySpoofGameResolutionInSizeMessages(lpMsg);
-
-    // If we got a message
-    if (result > 0 && lpMsg != nullptr) {
-        DETOUR_SET_CONTEXT_AT(455, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
-        // Process window messages for windows belonging to current process
-        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
-            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-                // Message was suppressed by ProcessWindowMessage
-                SuppressMessage(lpMsg);
-                // Track suppressed message in history
-                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-                return result;  // Return the result but message is suppressed
-            }
+    for (;;) {
+        BOOL result = GetMessageA_Original ? GetMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
+                                           : GetMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+        if (result <= 0 || lpMsg == nullptr) {
+            return result;
         }
+        ApplySpoofGameResolutionInSizeMessages(lpMsg);
+        RewriteWmInputBackgroundToForeground(lpMsg);
 
-        // Exclusive key groups: Check if keyboard message should be suppressed
+        DETOUR_SET_CONTEXT_AT(455, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
+
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)
+            && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-            // Mark key as down in exclusive groups (even though we're suppressing the message)
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            continue;
         }
-        // Check if we should suppress this message (input blocking)
-        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
+        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
         }
-        // Check if we should intercept it for other purposes
-        else {
-            // Update exclusive key groups state for keyboard messages
-            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
-                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
-            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
-                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
-            }
+        if (GetDebugSuppressAllGetMessage()) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
 
-            g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
-            // Track unsuppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
-            // Translate mouse position from window resolution to render resolution
-            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
-                HWND game_hwnd = g_last_swapchain_hwnd.load();
-                if (lpMsg->hwnd == game_hwnd) {
-                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
-                }
+        // Deliver this message
+        if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+            exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+        }
+        g_hook_stats[HOOK_GetMessageA].increment_unsuppressed();
+        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+        if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+            HWND game_hwnd = g_last_swapchain_hwnd.load();
+            if (lpMsg->hwnd == game_hwnd) {
+                lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
             }
         }
+        return result;
     }
-
-    return result;
 }
 
 // Hooked GetMessageW function
+// Loop until we get a message we do not suppress, so the app never sees suppressed messages.
 BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Track total calls
     g_hook_stats[HOOK_GetMessageW].increment_total();
 
-    // Call original function first
-    BOOL result = GetMessageW_Original ? GetMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
-                                       : GetMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
-    ApplySpoofGameResolutionInSizeMessages(lpMsg);
-
-    // If we got a message
-    if (result > 0 && lpMsg != nullptr) {
-        DETOUR_SET_CONTEXT_AT(519, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
-        // Process window messages for windows belonging to current process
-        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
-            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-                // Message was suppressed by ProcessWindowMessage
-                SuppressMessage(lpMsg);
-                // Track suppressed message in history
-                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-                return result;  // Return the result but message is suppressed
-            }
+    for (;;) {
+        BOOL result = GetMessageW_Original ? GetMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax)
+                                           : GetMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+        if (result <= 0 || lpMsg == nullptr) {
+            return result;
         }
+        ApplySpoofGameResolutionInSizeMessages(lpMsg);
+        RewriteWmInputBackgroundToForeground(lpMsg);
 
-        // Exclusive key groups: Check if keyboard message should be suppressed
+        DETOUR_SET_CONTEXT_AT(519, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
+
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)
+            && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-            // Mark key as down in exclusive groups (even though we're suppressing the message)
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            continue;
         }
-        // Check if we should suppress this message (input blocking)
-        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
+        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
         }
-        // Check if we should intercept it for other purposes
-        else {
-            // Update exclusive key groups state for keyboard messages
-            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
-                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
-            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
-                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
-            }
+        if (GetDebugSuppressAllGetMessage()) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
 
-            // Track unsuppressed calls
-            g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
-            // Track unsuppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
-            // Translate mouse position from window resolution to render resolution
-            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
-                HWND game_hwnd = g_last_swapchain_hwnd.load();
-                if (lpMsg->hwnd == game_hwnd) {
-                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
-                }
+        // Deliver this message
+        if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+            exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+        }
+        g_hook_stats[HOOK_GetMessageW].increment_unsuppressed();
+        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+        if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+            HWND game_hwnd = g_last_swapchain_hwnd.load();
+            if (lpMsg->hwnd == game_hwnd) {
+                lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
             }
         }
+        return result;
     }
-
-    return result;
 }
 
 // Hooked PeekMessageA function
+// Loop until we get a message we do not suppress (or no message), so the app never sees suppressed messages.
 BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Track total calls
     g_hook_stats[HOOK_PeekMessageA].increment_total();
 
-    // Call original function first
-    BOOL result = PeekMessageA_Original ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
-                                        : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-    ApplySpoofGameResolutionInSizeMessages(lpMsg);
-
-    // If we got a message
-    if (result && lpMsg != nullptr) {
-        DETOUR_SET_CONTEXT_AT(584, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
-        // Process window messages for windows belonging to current process
-        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
-            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-                // Message was suppressed by ProcessWindowMessage
-                SuppressMessage(lpMsg);
-                // Track suppressed message in history
-                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-                return result;  // Return the result but message is suppressed
-            }
+    for (;;) {
+        BOOL result = PeekMessageA_Original ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
+                                            : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+        if (!result || lpMsg == nullptr) {
+            return result;
         }
+        ApplySpoofGameResolutionInSizeMessages(lpMsg);
+        RewriteWmInputBackgroundToForeground(lpMsg);
 
-        // Exclusive key groups: Check if keyboard message should be suppressed
+        DETOUR_SET_CONTEXT_AT(584, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
+
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)
+            && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-            // Mark key as down in exclusive groups (even though we're suppressing the message)
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            continue;
         }
-        // Check if we should suppress this message (input blocking)
-        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
+        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-        } else {
-            // Update exclusive key groups state for keyboard messages
-            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
-                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
-            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
-                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
-            }
+            continue;
+        }
+        if (GetDebugSuppressAllGetMessage()) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
 
-            // Track unsuppressed calls (when we call the original function)
-            g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
-            // Track unsuppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
-            // Translate mouse position from window resolution to render resolution
-            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
-                HWND game_hwnd = g_last_swapchain_hwnd.load();
-                if (lpMsg->hwnd == game_hwnd) {
-                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
-                }
+        // Deliver this message
+        if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+            exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+        }
+        g_hook_stats[HOOK_PeekMessageA].increment_unsuppressed();
+        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+        if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+            HWND game_hwnd = g_last_swapchain_hwnd.load();
+            if (lpMsg->hwnd == game_hwnd) {
+                lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
             }
         }
+        return result;
     }
-
-    return result;
 }
 
 // Hooked PeekMessageW function
+// Loop until we get a message we do not suppress (or no message), so the app never sees suppressed messages.
 BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Track total calls
     g_hook_stats[HOOK_PeekMessageW].increment_total();
 
-    // Call original function first
-    BOOL result = PeekMessageW_Original ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
-                                        : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-    ApplySpoofGameResolutionInSizeMessages(lpMsg);
-
-    // If we got a message
-    if (result && lpMsg != nullptr) {
-        DETOUR_SET_CONTEXT_AT(647, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
-        // Process window messages for windows belonging to current process
-        if (IsWindowFromCurrentProcess(lpMsg->hwnd)) {
-            if (ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
-                // Message was suppressed by ProcessWindowMessage
-                SuppressMessage(lpMsg);
-                // Track suppressed message in history
-                ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-                return result;  // Return the result but message is suppressed
-            }
+    for (;;) {
+        BOOL result = PeekMessageW_Original ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
+                                             : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+        if (!result || lpMsg == nullptr) {
+            return result;
         }
+        ApplySpoofGameResolutionInSizeMessages(lpMsg);
+        RewriteWmInputBackgroundToForeground(lpMsg);
 
-        // Exclusive key groups: Check if keyboard message should be suppressed
+        DETOUR_SET_CONTEXT_AT(647, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
+
+        if (IsWindowFromCurrentProcess(lpMsg->hwnd)
+            && ProcessWindowMessage(lpMsg->hwnd, lpMsg->message, lpMsg->wParam, lpMsg->lParam)) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
         if ((lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN)
             && exclusive_key_groups::ShouldSuppressKey(static_cast<int>(lpMsg->wParam))) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-            // Mark key as down in exclusive groups (even though we're suppressing the message)
             exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+            continue;
         }
-        // Check if we should suppress this message (input blocking)
-        else if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
-            SuppressMessage(lpMsg);
-            // Track suppressed message in history
+        if (ShouldSuppressMessage(hWnd, lpMsg->message)) {
             ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
-        } else {
-            // Update exclusive key groups state for keyboard messages
-            if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
-                exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
-            } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
-                exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
-            }
+            continue;
+        }
+        if (GetDebugSuppressAllGetMessage()) {
+            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, true);
+            continue;
+        }
 
-            // Track unsuppressed calls (when we call the original function)
-            g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
-            // Track unsuppressed message in history
-            ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
-            // Translate mouse position from window resolution to render resolution
-            if (IsMouseMessageWithClientCoords(lpMsg->message)) {
-                HWND game_hwnd = g_last_swapchain_hwnd.load();
-                if (lpMsg->hwnd == game_hwnd) {
-                    lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
-                }
+        // Deliver this message
+        if (lpMsg->message == WM_KEYDOWN || lpMsg->message == WM_SYSKEYDOWN) {
+            exclusive_key_groups::MarkKeyDown(static_cast<int>(lpMsg->wParam));
+        } else if (lpMsg->message == WM_KEYUP || lpMsg->message == WM_SYSKEYUP) {
+            exclusive_key_groups::MarkKeyUp(static_cast<int>(lpMsg->wParam));
+        }
+        g_hook_stats[HOOK_PeekMessageW].increment_unsuppressed();
+        ui::new_ui::AddMessageToHistoryIfKnown(lpMsg->message, lpMsg->wParam, lpMsg->lParam, false);
+        if (IsMouseMessageWithClientCoords(lpMsg->message)) {
+            HWND game_hwnd = g_last_swapchain_hwnd.load();
+            if (lpMsg->hwnd == game_hwnd) {
+                lpMsg->lParam = TranslateMouseLParam(game_hwnd, lpMsg->lParam);
             }
         }
+        return result;
     }
-
-    return result;
 }
 
 // Hooked PostMessageA function
@@ -1172,6 +1170,12 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
             // This size is needed to correctly advance to the next RAWINPUT block
             const UINT original_size = current->header.dwSize;
 
+            // When Continue Rendering is on, rewrite RIM_INPUTSINK -> RIM_INPUT so gamepad/HID raw input is not seen as background
+            if (settings::g_advancedTabSettings.continue_rendering.GetValue()
+                && current->header.wParam == RIM_INPUTSINK) {
+                current->header.wParam = RIM_INPUT;
+            }
+
             // Validate that we have a valid size (safety check)
             if (original_size < sizeof(RAWINPUTHEADER) || original_size > 1024) {
                 // Invalid size, skip this block to avoid crash
@@ -1381,6 +1385,18 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
     UINT result = GetRawInputData_Original
                       ? GetRawInputData_Original(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader)
                       : GetRawInputData(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
+
+    // If we got data, rewrite RIM_INPUTSINK -> RIM_INPUT when Continue Rendering is on,
+    // so the game does not see "background" in the RAWINPUT buffer (it reads header.wParam).
+    if (result != UINT(-1) && pData != nullptr && pcbSize != nullptr && *pcbSize >= sizeof(RAWINPUTHEADER)) {
+        if (uiCommand == RID_INPUT) {
+            RAWINPUT* rawInput = static_cast<RAWINPUT*>(pData);
+            if (rawInput->header.wParam == RIM_INPUTSINK
+                && settings::g_advancedTabSettings.continue_rendering.GetValue()) {
+                rawInput->header.wParam = RIM_INPUT;
+            }
+        }
+    }
 
     // If input blocking is enabled and we got data, filter it
     if (result != UINT(-1) && pData != nullptr && pcbSize != nullptr) {
@@ -1904,7 +1920,7 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER* 
 
     bool supressed_hdr = false;
     // Hide HDR capabilities if enabled and this is an advanced color info request
-    if (SUCCEEDED(result) && requestPacket != nullptr && s_hide_hdr_capabilities.load()) {
+    if (SUCCEEDED(result) && requestPacket != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
         if (requestPacket->type == DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO) {
             auto* colorInfo = reinterpret_cast<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO*>(requestPacket);
 

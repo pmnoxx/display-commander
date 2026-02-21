@@ -30,10 +30,15 @@ target_compile_definitions(zzz_display_commander PRIVATE GIT_COMMIT_COUNT=${GIT_
 target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_DATE_DEFINE})
 target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 
-# Version resource (must match version.hpp so DLL shows version when used as proxy e.g. d3d12.dll)
+# Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
-set(DISPLAY_COMMANDER_VERSION_MINOR 11)
-set(DISPLAY_COMMANDER_VERSION_PATCH 0)
+set(DISPLAY_COMMANDER_VERSION_MINOR 12)
+set(DISPLAY_COMMANDER_VERSION_PATCH 11)
+target_compile_definitions(zzz_display_commander PRIVATE
+  DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
+  DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
+  DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
+)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 configure_file(
   ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/version.rc.in

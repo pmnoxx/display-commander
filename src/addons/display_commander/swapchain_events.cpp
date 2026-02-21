@@ -734,7 +734,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         // Enable flip chain if enabled (experimental feature) - forces flip model
         if (!does_another_runtime_exists_for_same_hwnd && !is_flip
             && (settings::g_experimentalTabSettings.enable_flip_chain_enabled.GetValue()
-                || s_enable_flip_chain.load())) {
+                || settings::g_advancedTabSettings.enable_flip_chain.GetValue())) {
             // Check if current present mode is NOT a flip model
 
             if (desc.back_buffer_count < 3) {
@@ -1647,7 +1647,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
 
 // Helper function to automatically set color space based on format
 void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
-    if (!s_auto_colorspace.load()) {
+    if (!settings::g_advancedTabSettings.auto_colorspace.GetValue()) {
         return;
     }
 

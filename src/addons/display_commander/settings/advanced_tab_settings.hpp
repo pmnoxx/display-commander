@@ -29,20 +29,20 @@ class AdvancedTabSettings {
 
     // Developer Settings
     BoolSetting prevent_fullscreen;
-    BoolSettingRef continue_rendering;
+    BoolSetting continue_rendering;
     BoolSetting prevent_always_on_top;
     BoolSetting prevent_minimize;
 
     // HDR and Colorspace Settings
-    BoolSettingRef hide_hdr_capabilities;
-    BoolSettingRef enable_flip_chain;
-    BoolSettingRef auto_colorspace;
+    BoolSetting hide_hdr_capabilities;
+    BoolSetting enable_flip_chain;
+    BoolSetting auto_colorspace;
 
     // D3D9 to D3D9Ex Upgrade
     // BoolSettingRef enable_d3d9e_upgrade;
 
     // NVAPI Settings
-    BoolSettingRef nvapi_auto_enable_enabled;
+    BoolSetting nvapi_auto_enable_enabled;
 
     // Keyboard Shortcut Settings (Experimental)
     BoolSetting enable_hotkeys;

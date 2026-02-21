@@ -39,3 +39,6 @@ bool AreDisplaySettingsHooksInstalled();
 // Direct function that bypasses hooks - use this when we want to change resolution ourselves
 LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode, HWND hWnd, DWORD dwFlags,
                                      LPVOID lParam);
+
+// Bypass ShowWindow hook - use when we intentionally minimize/restore (e.g. Win+Down/Win+Up) to prevent spoofing
+BOOL ShowWindow_Direct(HWND hWnd, int nCmdShow);

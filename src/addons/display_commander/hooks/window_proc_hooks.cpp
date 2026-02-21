@@ -19,6 +19,15 @@ namespace display_commanderhooks {
 // Global variables for hook state
 static std::atomic<bool> g_sent_activate{false};
 
+// True if window has caption or thick frame (standard bordered window). Borderless windows return false.
+bool WindowHasBorder(HWND hwnd) {
+    if (hwnd == nullptr || !IsWindow(hwnd)) {
+        return false;
+    }
+    LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
+    return (style & (WS_CAPTION | WS_THICKFRAME)) != 0;
+}
+
 // Helper function to check if HWND belongs to current process
 static bool IsWindowFromCurrentProcess(HWND hwnd) {
     if (hwnd == nullptr) {
@@ -44,7 +53,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         PCLSTATS_MARKER(PC_LATENCY_PING, g_pclstats_frame_id.load());
     }
 
-    bool continue_rendering_enabled = s_continue_rendering.load();
+    bool continue_rendering_enabled = settings::g_advancedTabSettings.continue_rendering.GetValue();
 
     // Send fake activation messages once when continue rendering is enabled
     HWND game_window = GetGameWindow();
@@ -236,7 +245,9 @@ void UninstallWindowProcHooks() {
     g_sent_activate.store(false);
 }
 
-bool IsContinueRenderingEnabled() { return s_continue_rendering.load(); }
+bool IsContinueRenderingEnabled() {
+    return settings::g_advancedTabSettings.continue_rendering.GetValue();
+}
 
 // Fake activation functions
 void SendFakeActivationMessages(HWND hwnd) {

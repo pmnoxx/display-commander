@@ -230,7 +230,6 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
                                    const std::function<DWORD(DWORD, XINPUT_STATE*)>& call_original_func) {
     // Track hook call statistics
     g_hook_stats[hook_index].increment_total();
-
     // Measure timing for smooth call rate calculation
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     if (shared_state && dwUserIndex == 0) {

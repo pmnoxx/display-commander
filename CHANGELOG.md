@@ -1,3 +1,72 @@
+**When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
+
+---
+
+## v0.12.12 (2026-02-21)
+
+- **Win+Down / Win+Up** - Minimize and restore borderless games (handled in ProcessHotkeys when app is in foreground; uses ShowWindow_Direct to prevent spoofing).
+- **Win+Left / Win+Right** - Move game to previous/next display (updates Target Display); if window mode is "No changes", automatically switches to Borderless fullscreen so the move is applied.
+
+## v0.12.11 (2026-02-21)
+
+- **Reflex and Vulkan** - Do not suppress NvAPI_D3D_Sleep in Default FPS limiter mode so Reflex works correctly; make Reflex configurable in Vulkan.
+
+## v0.12.10 (2026-02-20)
+
+- **VRR and triggers** - Change -0.05% to only affect VRR cap (not general FPS); add triggers configuration for continuous monitoring.
+- **Stability** - Fix crash in Crimson Freedom Demo; fix general crash; reduce log spam.
+- **UI** - Add warning that Changing Display is not implemented in "No Changes" mode.
+- **Vulkan** - Reorganize Vulkan hooks and loader files.
+
+## v0.12.9 (2026-02-19)
+
+- **Load library hooks** - Add hooks to LdrLoadDll; add LoadPackagedLibrary; monitor modules every 10s for late-loaded modules; log missed modules that loaded in unknown way.
+- **Vulkan** - Add Native Frame Pacing for Vulkan; fix DLSS information tab for Vulkan.
+
+## v0.12.8 (2026-02-18)
+
+- **Image adjustment** - Rewritten brightness adjustment; add gamma, saturation, and hue sliders; add AutoHDR.
+- **Build** - Fix GitHub build.
+
+## v0.12.7 (2026-02-18)
+
+- **Config** - Migrate Display Commander to TOML; store keyboard hotkeys in Display_Commander\\hotkeys.toml; add chords global file.
+- **NVIDIA profile** - Auto refresh after apply as administrator.
+- **Code** - Code cleanup; fix GitHub build.
+
+## v0.12.6 (2026-02-18)
+
+- **Controller remapping** - Add controller remapping to main tab; add more remapping keys; fix L preset; fix setting correct render presets.
+- **UI** - Add UI to debug controllers; rework main tab UI; update README with correct Discord links.
+
+## v0.12.5 (2026-02-17)
+
+- **NVIDIA profile** - Create NVIDIA profile; add extender XML info; show advanced settings in NVIDIA profile; option to apply NVIDIA profile settings as administrator.
+- **System info** - Show VRAM usage (using DXGI adapter); show RAM usage.
+- **DLSS** - Add overrides to slDLSSGetOptimalSettings.
+- **Experimental** - Add experimental feature to see/edit NVIDIA Profile Inspector features.
+- **Loading** - Add loading libraries through .dc64/.dc32.
+- **Reflex** - Add reflex settings selector to default FPS limiter mode.
+- **UI** - UI improvements.
+
+## v0.12.4 (2026-02-17)
+
+- **Install and config** - Move central location to Display_Commander folder; rewrite SetupDC code.
+
+## v0.12.3 (2026-02-16)
+
+- **UI** - UI fixes (advanced tab and related).
+
+## v0.12.2 (2026-02-16)
+
+- **Game launcher** - Add game launcher support.
+- **Frame pacing** - Turn on by default "Schedule present start N frame times after simulation start" (improves frame pacing at minimal latency cost).
+- **Reflex** - Remove "use Reflex as FPS limiter" option.
+
+## v0.12.1 (2026-02-21)
+
+- **Borderless window minimize/restore** - Support for minimizing and restoring borderless games using standard Windows keybinds (Win+Down to minimize, Win+Up to restore). ShowWindow hook only blocks minimize for bordered windows so borderless Win+Down/Win+Up works (Special-K style, see [SpecialK@fe80f1d](https://github.com/SpecialKO/SpecialK/commit/fe80f1dc06d7360475c689479d0afbe224e0f68a)). Handled in ProcessHotkeys when app is in foreground only; ShowWindow_Direct used to prevent spoofing.
+
 ## v0.12.0 (unreleased)
 
 - **DLSS overrides** - Added DLSS override feature with loading from dlss_override folder, Quality Preset setting, internal resolution scale slider, and M–Z presets; re-enabled DLSS-G profile setting; hook to slDLSSGetOptimalSettings

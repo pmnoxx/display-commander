@@ -2,7 +2,10 @@
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
+#include "../../display_cache.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/display_settings_hooks.hpp"
+#include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
 #include "../../res/forkawesome.h"
@@ -249,7 +252,8 @@ void InitializeHotkeyDefinitions() {
              }
          }},
         {"system_volume_down", "System Volume Down", "ctrl+alt+down",
-         "Decrease system master volume (percentage-based, min 1%)", []() {
+         "Decrease system master volume (percentage-based, min 1%)",
+         []() {
              float current_volume = 0.0f;
              if (!GetSystemVolume(&current_volume)) {
                  current_volume = s_system_volume_percent.load();
@@ -272,8 +276,7 @@ void InitializeHotkeyDefinitions() {
                  LogWarn("Failed to decrease system volume via hotkey");
              }
          }},
-        {"auto_hdr", "AutoHDR Toggle", "",
-         "Toggle AutoHDR (DisplayCommander_PerceptualBoost SDR-to-HDR effect)",
+        {"auto_hdr", "AutoHDR Toggle", "", "Toggle AutoHDR (DisplayCommander_PerceptualBoost SDR-to-HDR effect)",
          []() {
              bool current_state = settings::g_mainTabSettings.auto_hdr.GetValue();
              bool new_state = !current_state;
@@ -295,8 +298,7 @@ void InitializeHotkeyDefinitions() {
              LogInfo(oss.str().c_str());
          }},
         {"brightness_up", "Brightness Up", "",
-         "Increase Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)",
-         []() {
+         "Increase Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)", []() {
              constexpr float step = 10.0f;
              constexpr float max_percent = 200.0f;
              float current = settings::g_mainTabSettings.brightness_percent.GetValue();
@@ -607,8 +609,7 @@ void DrawHotkeysTab() {
 
         CheckboxSetting(settings.exclusive_keys_awsd_enabled, "AWSD Group (A, W, S, D keys)");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
+            ImGui::SetTooltip("When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
         }
 
         ImGui::Spacing();
@@ -793,11 +794,11 @@ void DrawHotkeysTab() {
 int ParseKeyNameToVKey(const std::string& key_name) {
     std::string lower = key_name;
     std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-    
+
     // Trim whitespace
     lower.erase(0, lower.find_first_not_of(" \t"));
     lower.erase(lower.find_last_not_of(" \t") + 1);
-    
+
     if (lower.length() == 1 && lower[0] >= 'a' && lower[0] <= 'z') {
         return std::toupper(static_cast<unsigned char>(lower[0]));
     } else if (lower == "left") {
@@ -809,7 +810,7 @@ int ParseKeyNameToVKey(const std::string& key_name) {
     } else if (lower == "down") {
         return VK_DOWN;
     }
-    
+
     return 0;  // Invalid key
 }
 
@@ -826,31 +827,31 @@ void ProcessExclusiveKeyGroups() {
     HWND foreground_hwnd = GetForegroundWindow();
     bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
     bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-    
+
     if (!is_game_in_foreground && !is_ui_open) {
         return;
     }
 
     auto& settings = settings::g_hotkeysTabSettings;
-    
+
     // Build list of active exclusive groups
     std::vector<std::vector<int>> active_groups;
-    
+
     // Predefined AD group
     if (settings.exclusive_keys_ad_enabled.GetValue()) {
         active_groups.push_back({'A', 'D'});
     }
-    
+
     // Predefined WS group
     if (settings.exclusive_keys_ws_enabled.GetValue()) {
         active_groups.push_back({'W', 'S'});
     }
-    
+
     // Predefined AWSD group
     if (settings.exclusive_keys_awsd_enabled.GetValue()) {
         active_groups.push_back({'A', 'W', 'S', 'D'});
     }
-    
+
     // Parse custom groups
     std::string custom_groups_str = settings.exclusive_keys_custom_groups.GetValue();
     if (!custom_groups_str.empty()) {
@@ -873,7 +874,7 @@ void ProcessExclusiveKeyGroups() {
             }
         }
     }
-    
+
     // Process each active group
     for (const auto& group : active_groups) {
         // Check if any key in this group was just pressed
@@ -882,7 +883,7 @@ void ProcessExclusiveKeyGroups() {
                 // This key was just pressed - release all other keys in the group
                 INPUT inputs[256];
                 int input_count = 0;
-                
+
                 for (int other_key : group) {
                     if (other_key != pressed_key) {
                         // Check if the other key is currently down
@@ -898,22 +899,22 @@ void ProcessExclusiveKeyGroups() {
                         }
                     }
                 }
-                
+
                 // Send all key up events at once
                 if (input_count > 0) {
                     SendInput(static_cast<UINT>(input_count), inputs, sizeof(INPUT));
                     LogDebug("Exclusive keys: Released %d keys when %c was pressed", input_count, pressed_key);
                 }
-                
+
                 // Mark the pressed key as active in exclusive groups
                 // This records the timestamp and updates the active key to be the most recently pressed one
                 display_commanderhooks::exclusive_key_groups::MarkKeyDown(pressed_key);
-                
+
                 // Only process one key press per group per frame
                 break;
             }
         }
-        
+
         // Check for keys that were released (not simulated releases, but actual releases)
         // MarkKeyUp will be called from the hooks when keys are actually released,
         // which will automatically update the active key to be the most recently pressed one
@@ -968,9 +969,60 @@ void ProcessHotkeys() {
     g_hotkey_debug_info.last_successful_call_time_ns = now_ns;
     g_hotkey_debug_info.last_block_reason = "";
 
+    // Win+Down / Win+Up: minimize/restore borderless game (Special-K style). Only when app is in foreground.
+    if (is_game_in_foreground && game_hwnd != nullptr && !display_commanderhooks::WindowHasBorder(game_hwnd)) {
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN);
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_DOWN);
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_UP);
+        bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
+                        || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+        if (win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_DOWN)) {
+            ShowWindow_Direct(game_hwnd, SW_MINIMIZE);
+        } else if (win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_UP)) {
+            ShowWindow_Direct(game_hwnd, SW_RESTORE);
+        }
+    }
+
+    // Win+Left / Win+Right: change Target Display to previous/next display. Only when app is in foreground.
+    // If window mode is "No changes", switch to Borderless fullscreen so the move is applied.
+    if (is_game_in_foreground && display_cache::g_displayCache.IsInitialized()) {
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN);
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LEFT);
+        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RIGHT);
+        bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
+                        || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+        if (win_down) {
+            std::string current_id = settings::g_mainTabSettings.target_display.GetValue();
+            if (current_id.empty()) {
+                current_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
+            }
+            if (!current_id.empty() && current_id != "No Window" && current_id != "No Monitor"
+                && current_id != "Monitor Info Failed") {
+                std::string new_id;
+                if (display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_LEFT)) {
+                    new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, true);
+                } else if (display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_RIGHT)) {
+                    new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, false);
+                }
+                if (!new_id.empty()) {
+                    // Moving to another display requires window management; switch from "No changes" to Borderless fullscreen if needed
+                    if (s_window_mode.load() == WindowMode::kNoChanges) {
+                        settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
+                        s_window_mode.store(WindowMode::kFullscreen);
+                        settings::g_mainTabSettings.window_mode.Save();
+                    }
+                    settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
+                    settings::g_mainTabSettings.target_display.SetValue(new_id);
+                }
+            }
+        }
+    }
+
     // Process exclusive key groups first (before hotkeys)
     ProcessExclusiveKeyGroups();
-    
+
     // Update exclusive key groups - simulate key presses for keys that became active
     display_commanderhooks::exclusive_key_groups::Update();
 

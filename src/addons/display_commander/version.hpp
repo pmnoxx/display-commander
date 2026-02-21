@@ -5,10 +5,26 @@
 #ifndef DISPLAY_COMMANDER_VERSION_HPP
 #define DISPLAY_COMMANDER_VERSION_HPP
 
-// Version numbers (major.minor.patch)
+// String conversion macro (used for version string)
+#define STRINGIFY(x)  STRINGIFY_(x)
+#define STRINGIFY_(x) #x
+
+// Version numbers (major.minor.patch) - set by CMake from CMakeLists.txt; fallbacks for non-CMake use (e.g. IDE)
+#ifndef DISPLAY_COMMANDER_VERSION_MAJOR
 #define DISPLAY_COMMANDER_VERSION_MAJOR 0
+#endif
+#ifndef DISPLAY_COMMANDER_VERSION_MINOR
 #define DISPLAY_COMMANDER_VERSION_MINOR 12
-#define DISPLAY_COMMANDER_VERSION_PATCH 0
+#endif
+#ifndef DISPLAY_COMMANDER_VERSION_PATCH
+#define DISPLAY_COMMANDER_VERSION_PATCH 11
+#endif
+
+// Version string major.minor.patch (derived from the numeric macros above)
+#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH          \
+    STRINGIFY(DISPLAY_COMMANDER_VERSION_MAJOR) "."                  \
+    STRINGIFY(DISPLAY_COMMANDER_VERSION_MINOR) "."                  \
+    STRINGIFY(DISPLAY_COMMANDER_VERSION_PATCH)
 
 // Build number from git commit count (set by CMake)
 #ifndef GIT_COMMIT_COUNT
@@ -19,12 +35,7 @@
 #define DISPLAY_COMMANDER_VERSION_BUILD_STRING STRINGIFY(GIT_COMMIT_COUNT)
 #endif
 
-// String conversion macro
-#define STRINGIFY(x)  STRINGIFY_(x)
-#define STRINGIFY_(x) #x
-
 // Version string (includes build number)
-#define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "0.12.0"
 #define DISPLAY_COMMANDER_VERSION_STRING \
     DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH "." DISPLAY_COMMANDER_VERSION_BUILD_STRING
 

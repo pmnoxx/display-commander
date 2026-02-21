@@ -29,9 +29,6 @@
 #include <windows.h>
 #include <wrl/client.h>
 
-// External atomic variables from settings
-extern std::atomic<bool> s_nvapi_auto_enable_enabled;
-
 namespace ui::new_ui {
 
 void DrawFeaturesEnabledByDefault();
@@ -778,7 +775,6 @@ void DrawHdrDisplaySettings() {
     // Hide HDR Capabilities
     if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities,
                         "Hide display's HDR capabilities from game")) {
-        s_hide_hdr_capabilities.store(settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue());
         LogInfo("HDR hiding setting changed to: %s",
                 settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
     }
@@ -791,7 +787,6 @@ void DrawHdrDisplaySettings() {
 
     // Enable Flip Chain
     if (CheckboxSetting(settings::g_advancedTabSettings.enable_flip_chain, "Enable flip chain")) {
-        s_enable_flip_chain.store(settings::g_advancedTabSettings.enable_flip_chain.GetValue());
         LogInfo("Enable flip chain setting changed to: %s",
                 settings::g_advancedTabSettings.enable_flip_chain.GetValue() ? "true" : "false");
     }
@@ -870,7 +865,6 @@ void DrawNvapiSettings() {
             // NVAPI Auto-enable checkbox
             if (CheckboxSetting(settings::g_advancedTabSettings.nvapi_auto_enable_enabled,
                                 "Enable NVAPI Auto-enable for Games")) {
-                s_nvapi_auto_enable_enabled.store(settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue());
                 LogInfo("NVAPI Auto-enable setting changed to: %s",
                         settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
             }

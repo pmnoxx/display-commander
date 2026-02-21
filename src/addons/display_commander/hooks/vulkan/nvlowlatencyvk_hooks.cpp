@@ -1,11 +1,11 @@
 #include "nvlowlatencyvk_hooks.hpp"
-#include "../globals.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../swapchain_events.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/timing.hpp"
-#include "dxgi/dxgi_present_hooks.hpp"
+#include "../../globals.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../swapchain_events.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/timing.hpp"
+#include "../dxgi/dxgi_present_hooks.hpp"
 
 #include <MinHook.h>
 #include <atomic>

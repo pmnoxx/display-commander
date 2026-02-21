@@ -25,10 +25,10 @@
 #include "hook_suppression_manager.hpp"
 #include "ngx_hooks.hpp"
 #include "nvapi_hooks.hpp"
-#include "nvlowlatencyvk_hooks.hpp"
 #include "streamline_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"
-#include "vulkan_loader_hooks.hpp"
+#include "vulkan/nvlowlatencyvk_hooks.hpp"
+#include "vulkan/vulkan_loader_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "xinput_hooks.hpp"
 
@@ -1084,12 +1084,11 @@ bool InstallLoadLibraryHooks() {
     // Hook LdrLoadDll (ntdll) - catches loads that bypass kernel32
     HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
     if (hNtdll != nullptr) {
-        auto pLdrLoadDll =
-            reinterpret_cast<LdrLoadDll_pfn>(GetProcAddress(hNtdll, "LdrLoadDll"));
+        auto pLdrLoadDll = reinterpret_cast<LdrLoadDll_pfn>(GetProcAddress(hNtdll, "LdrLoadDll"));
         if (pLdrLoadDll != nullptr) {
             g_LdrLoadDll_target = reinterpret_cast<LPVOID>(pLdrLoadDll);
             if (!CreateAndEnableHook(g_LdrLoadDll_target, LdrLoadDll_Detour,
-                                    reinterpret_cast<LPVOID*>(&LdrLoadDll_Original), "LdrLoadDll")) {
+                                     reinterpret_cast<LPVOID*>(&LdrLoadDll_Original), "LdrLoadDll")) {
                 LogError("Failed to create and enable LdrLoadDll hook");
                 g_LdrLoadDll_target = nullptr;
             } else {

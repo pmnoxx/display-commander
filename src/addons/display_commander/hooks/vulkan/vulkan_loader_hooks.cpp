@@ -1,12 +1,12 @@
 #include "vulkan_loader_hooks.hpp"
-#include "../globals.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../swapchain_events.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../utils/timing.hpp"
-#include "dxgi/dxgi_present_hooks.hpp"
+#include "../../globals.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../swapchain_events.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "../../utils/timing.hpp"
+#include "../dxgi/dxgi_present_hooks.hpp"
 
 #include <MinHook.h>
 #include <atomic>
@@ -25,15 +25,15 @@ using PFN_vkGetDeviceProcAddr_t = PFN_vkGetDeviceProcAddr;
 using PFN_vkSetLatencyMarkerNV_t = PFN_vkSetLatencyMarkerNV;
 using PFN_vkCreateDevice_t = PFN_vkCreateDevice;
 
-// Dummy implementations returned when the loader reports null for VK_NV_low_latency2 (so we can see if the game calls them).
+// Dummy implementations returned when the loader reports null for VK_NV_low_latency2 (so we can see if the game calls
+// them).
 static std::atomic<uint64_t> g_dummy_SetLatencySleepModeNV_calls{0};
 static std::atomic<uint64_t> g_dummy_LatencySleepNV_calls{0};
 static std::atomic<uint64_t> g_dummy_SetLatencyMarkerNV_calls{0};
 static std::atomic<uint64_t> g_dummy_GetLatencyTimingsNV_calls{0};
 
-static VkResult VKAPI_CALL Dummy_vkSetLatencySleepModeNV(VkDevice device,
-                                                          VkSwapchainKHR swapchain,
-                                                          const VkLatencySleepModeInfoNV* pSleepModeInfo) {
+static VkResult VKAPI_CALL Dummy_vkSetLatencySleepModeNV(VkDevice device, VkSwapchainKHR swapchain,
+                                                         const VkLatencySleepModeInfoNV* pSleepModeInfo) {
     (void)device;
     (void)swapchain;
     (void)pSleepModeInfo;
@@ -42,8 +42,7 @@ static VkResult VKAPI_CALL Dummy_vkSetLatencySleepModeNV(VkDevice device,
     return VK_SUCCESS;
 }
 
-static VkResult VKAPI_CALL Dummy_vkLatencySleepNV(VkDevice device,
-                                                  VkSwapchainKHR swapchain,
+static VkResult VKAPI_CALL Dummy_vkLatencySleepNV(VkDevice device, VkSwapchainKHR swapchain,
                                                   const VkLatencySleepInfoNV* pSleepInfo) {
     (void)device;
     (void)swapchain;
@@ -53,21 +52,21 @@ static VkResult VKAPI_CALL Dummy_vkLatencySleepNV(VkDevice device,
     return VK_SUCCESS;
 }
 
-static void VKAPI_CALL Dummy_vkSetLatencyMarkerNV(VkDevice device,
-                                                  VkSwapchainKHR swapchain,
+static void VKAPI_CALL Dummy_vkSetLatencyMarkerNV(VkDevice device, VkSwapchainKHR swapchain,
                                                   const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
     (void)device;
     (void)swapchain;
     uint64_t count = g_dummy_SetLatencyMarkerNV_calls.fetch_add(1) + 1;
     int marker = (pLatencyMarkerInfo != nullptr) ? static_cast<int>(pLatencyMarkerInfo->marker) : -1;
     uint64_t present_id = (pLatencyMarkerInfo != nullptr) ? pLatencyMarkerInfo->presentID : 0;
-    LogInfo("VulkanLoader: Dummy_vkSetLatencyMarkerNV called (driver returned null) marker=%d presentID=%llu total_calls=%llu",
-            marker, static_cast<unsigned long long>(present_id), static_cast<unsigned long long>(count));
+    LogInfo(
+        "VulkanLoader: Dummy_vkSetLatencyMarkerNV called (driver returned null) marker=%d presentID=%llu "
+        "total_calls=%llu",
+        marker, static_cast<unsigned long long>(present_id), static_cast<unsigned long long>(count));
 }
 
-static void VKAPI_CALL Dummy_vkGetLatencyTimingsNV(VkDevice device,
-                                                    VkSwapchainKHR swapchain,
-                                                    VkGetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
+static void VKAPI_CALL Dummy_vkGetLatencyTimingsNV(VkDevice device, VkSwapchainKHR swapchain,
+                                                   VkGetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
     (void)device;
     (void)swapchain;
     (void)pLatencyMarkerInfo;
@@ -156,8 +155,7 @@ static VkResult VKAPI_CALL vkCreateDevice_Wrapper(VkPhysicalDevice physicalDevic
             mod.enabledExtensionCount = static_cast<uint32_t>(ptrs.size());
             VkResult r = g_real_vkCreateDevice(physicalDevice, &mod, pAllocator, pDevice);
             if (r == VK_SUCCESS) {
-                LogInfo("VulkanLoader: vkCreateDevice with %zu extensions (appended Reflex) succeeded",
-                        ptrs.size());
+                LogInfo("VulkanLoader: vkCreateDevice with %zu extensions (appended Reflex) succeeded", ptrs.size());
                 utils::SRWLockExclusive lock(g_vulkan_extensions_lock);
                 g_vulkan_enabled_extensions = std::move(exts_for_ui);
                 return r;
@@ -276,7 +274,8 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice dev
         return nullptr;
     }
     PFN_vkVoidFunction result = orig(device, pName);
-    LogInfo("VulkanLoader: vkGetDeviceProcAddr_Detour called with pName=%s result=%p", pName ? pName : "(null)", result);
+    LogInfo("VulkanLoader: vkGetDeviceProcAddr_Detour called with pName=%s result=%p", pName ? pName : "(null)",
+            result);
 
     // If loader returned null for a Reflex proc, return our dummies so we can observe if the game calls them.
     result = ReturnDummyIfNull(pName, result);
@@ -287,9 +286,9 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice dev
             LogInfo("VulkanLoader: vkSetLatencyMarkerNV found (real)");
             g_loader_intercept_count.fetch_add(1);
             if (g_real_vkSetLatencyMarkerNV == nullptr) {
-                if (CreateAndEnableHook(reinterpret_cast<LPVOID>(result),
-                                        reinterpret_cast<LPVOID>(&VkSetLatencyMarkerNV_Wrapper),
-                                        reinterpret_cast<LPVOID*>(&g_real_vkSetLatencyMarkerNV), "vkSetLatencyMarkerNV")) {
+                if (CreateAndEnableHook(
+                        reinterpret_cast<LPVOID>(result), reinterpret_cast<LPVOID>(&VkSetLatencyMarkerNV_Wrapper),
+                        reinterpret_cast<LPVOID*>(&g_real_vkSetLatencyMarkerNV), "vkSetLatencyMarkerNV")) {
                     g_hooked_vkSetLatencyMarkerNV_target = result;
                     LogInfo(
                         "VulkanLoader: hooked real vkSetLatencyMarkerNV (callers that cached the pointer will now go "
@@ -331,8 +330,7 @@ bool InstallVulkanLoaderHooks(void* vulkan1_module) {
     if (pGetInstanceProcAddr != nullptr) {
         if (CreateAndEnableHook(reinterpret_cast<LPVOID>(pGetInstanceProcAddr),
                                 reinterpret_cast<LPVOID>(&vkGetInstanceProcAddr_Detour),
-                                reinterpret_cast<LPVOID*>(&vkGetInstanceProcAddr_Original),
-                                "vkGetInstanceProcAddr")) {
+                                reinterpret_cast<LPVOID*>(&vkGetInstanceProcAddr_Original), "vkGetInstanceProcAddr")) {
             LogInfo("VulkanLoader: vkGetInstanceProcAddr hooked (vkCreateDevice wrapper for extensions)");
         } else {
             LogInfo("VulkanLoader: failed to hook vkGetInstanceProcAddr");
@@ -422,10 +420,8 @@ void GetVulkanEnabledExtensions(std::vector<std::string>& out) {
     out = g_vulkan_enabled_extensions;
 }
 
-void GetVulkanLoaderDummyCallCounts(uint64_t* out_set_sleep_mode,
-                                    uint64_t* out_latency_sleep,
-                                    uint64_t* out_set_latency_marker,
-                                    uint64_t* out_get_latency_timings) {
+void GetVulkanLoaderDummyCallCounts(uint64_t* out_set_sleep_mode, uint64_t* out_latency_sleep,
+                                    uint64_t* out_set_latency_marker, uint64_t* out_get_latency_timings) {
     if (out_set_sleep_mode) *out_set_sleep_mode = g_dummy_SetLatencySleepModeNV_calls.load();
     if (out_latency_sleep) *out_latency_sleep = g_dummy_LatencySleepNV_calls.load();
     if (out_set_latency_marker) *out_set_latency_marker = g_dummy_SetLatencyMarkerNV_calls.load();

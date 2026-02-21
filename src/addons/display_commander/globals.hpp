@@ -1452,6 +1452,16 @@ DLSSGSummaryLite GetDLSSGSummaryLite();
 // Function to get DLSS Model Profile
 DLSSModelProfile GetDLSSModelProfile();
 
+// Unified game Reflex sleep mode params (D3D and Vulkan both write here; used for Game Defaults mode)
+struct GameReflexSleepModeParams {
+    bool low_latency = false;
+    bool boost = false;
+    uint32_t minimum_interval_us = 0;
+    bool has_value = false;
+};
+void SetGameReflexSleepModeParams(bool low_latency, bool boost, uint32_t minimum_interval_us);
+void GetGameReflexSleepModeParams(GameReflexSleepModeParams* out);
+
 // NVAPI SetSleepMode tracking
 extern std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>>
     g_last_nvapi_sleep_mode_params;                             // Last SetSleepMode parameters

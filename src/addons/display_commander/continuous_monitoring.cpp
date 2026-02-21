@@ -15,6 +15,7 @@
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
+#include "swapchain_events.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
 #include "utils/detour_call_tracker.hpp"
@@ -72,30 +73,20 @@ void HandleReflexAutoConfigure() {
     bool is_reflex_mode =
         static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()) == FpsLimiterMode::kReflex;
 
-    // Get current settings
-    bool reflex_enable = settings::g_advancedTabSettings.reflex_enable.GetValue();
-    bool reflex_low_latency = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
-    bool reflex_boost = settings::g_advancedTabSettings.reflex_boost.GetValue();
+    // Get current settings (Reflex enable/low-latency/boost are derived from Main tab FPS limiter mode)
     bool reflex_use_markers = settings::g_advancedTabSettings.reflex_use_markers.GetValue();
     bool reflex_generate_markers = settings::g_advancedTabSettings.reflex_generate_markers.GetValue();
     bool reflex_enable_sleep = settings::g_advancedTabSettings.reflex_enable_sleep.GetValue();
 
-    // Auto-configure Reflex settings
-    if (reflex_enable != is_reflex_mode) {
-        settings::g_advancedTabSettings.reflex_enable.SetValue(is_reflex_mode);
-        g_reflex_settings_outdated.store(true);
-    }
-
-    if (!reflex_low_latency) {
-        if (!settings::g_advancedTabSettings.reflex_low_latency.GetValue()) {
-            settings::g_advancedTabSettings.reflex_low_latency.SetValue(false);
+    // Auto-configure Reflex: when in Reflex FPS limiter mode, ensure reflex_limiter_reflex_mode is LowLatency so Reflex
+    // is enabled
+    if (is_reflex_mode) {
+        auto cur = static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
+        if (cur == OnPresentReflexMode::kOff || cur == OnPresentReflexMode::kGameDefaults) {
             g_reflex_settings_outdated.store(true);
         }
     }
-    /*
-         if (!reflex_boost) {
-             settings::g_advancedTabSettings.reflex_boost.SetValue(true);
-         } */
+
     {
         if (!settings::g_advancedTabSettings.reflex_use_markers.GetValue()) {
             settings::g_advancedTabSettings.reflex_use_markers.SetValue(true);
@@ -762,9 +753,8 @@ void ContinuousMonitoringThread() {
         while (g_monitoring_thread_running.load()) {
             const bool high_freq_enabled = settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue();
             const int high_freq_ms = settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue();
-            const LONGLONG sleep_ns = high_freq_enabled
-                                         ? (static_cast<LONGLONG>(high_freq_ms) * 1000000)
-                                         : (50 * 1000000);  // 50 ms when high-freq disabled
+            const LONGLONG sleep_ns = high_freq_enabled ? (static_cast<LONGLONG>(high_freq_ms) * 1000000)
+                                                        : (50 * 1000000);  // 50 ms when high-freq disabled
             g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
             std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_ns));
             RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -783,7 +773,8 @@ void ContinuousMonitoringThread() {
                 if (settings::g_advancedTabSettings.monitor_display_cache.GetValue()) {
                     const int cache_interval_sec =
                         settings::g_advancedTabSettings.monitor_display_cache_interval_sec.GetValue();
-                    if (now_ns - last_cache_refresh_ns >= static_cast<LONGLONG>(cache_interval_sec) * utils::SEC_TO_NS) {
+                    if (now_ns - last_cache_refresh_ns
+                        >= static_cast<LONGLONG>(cache_interval_sec) * utils::SEC_TO_NS) {
                         g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
                         display_cache::g_displayCache.Refresh();
                         last_cache_refresh_ns = now_ns;

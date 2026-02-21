@@ -295,11 +295,14 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
         return NVAPI_OK;
     }
 
-    // Store the parameters for UI display
+    // Store the parameters for UI display and unified game reflex params (for Game Defaults mode)
     if (pSetSleepModeParams != nullptr) {
         auto params = std::make_shared<NV_SET_SLEEP_MODE_PARAMS>(*pSetSleepModeParams);
         g_last_nvapi_sleep_mode_params.store(params);
         g_last_nvapi_sleep_mode_dev_ptr.store(pDev);
+        SetGameReflexSleepModeParams(pSetSleepModeParams->bLowLatencyMode != 0,
+                                    pSetSleepModeParams->bLowLatencyBoost != 0,
+                                    pSetSleepModeParams->minimumIntervalUs);
     }
     // Suppress detour if _Direct was called within the last 5 frames
     uint64_t current_frame_id = g_global_frame_id.load();

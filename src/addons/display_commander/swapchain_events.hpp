@@ -119,6 +119,12 @@ extern std::atomic<bool> s_suppress_memory_ops_in_background;
 // Get target FPS based on background state
 float GetTargetFps();
 
+// Reflex enable/params derived from FPS limiter mode (Main tab: onpresent_reflex_mode, reflex_limiter_reflex_mode,
+// reflex_disabled_limiter_mode). Use these instead of deprecated reflex_enable / reflex_low_latency / reflex_boost.
+bool ShouldReflexBeEnabled();
+bool ShouldReflexLowLatencyBeEnabled();
+bool ShouldReflexBoostBeEnabled();
+
 // DXGI composition state utilities
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain* dxgi_swapchain);
 const char* DxgiBypassModeToString(DxgiBypassMode mode);

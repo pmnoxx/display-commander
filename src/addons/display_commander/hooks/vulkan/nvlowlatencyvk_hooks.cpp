@@ -5,6 +5,7 @@
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
 #include "../dxgi/dxgi_present_hooks.hpp"
 
@@ -61,6 +62,15 @@ static std::atomic<uint64_t> g_nvll_sleep_call_count{0};
 static std::atomic<int> g_nvll_last_marker_type{-1};
 static std::atomic<uint64_t> g_nvll_last_frame_id{0};
 
+// Last params the game tried to set via NvLL_VK_SetSleepMode (for re-apply on SIMULATION_START when not overriding)
+static SRWLOCK g_nvll_sleep_mode_params_lock = SRWLOCK_INIT;
+static NVLL_VK_SET_SLEEP_MODE_PARAMS g_last_nvll_vk_game_sleep_mode_params = {};
+static void* g_last_nvll_vk_sleep_mode_device = nullptr;
+static std::atomic<bool> g_nvll_vk_has_stored_game_params{false};
+// Last params actually sent to NvLL_VK_SetSleepMode_Original (for UI)
+static NVLL_VK_SET_SLEEP_MODE_PARAMS g_last_nvll_vk_applied_sleep_mode_params = {};
+static std::atomic<bool> g_nvll_vk_has_applied_params{false};
+
 static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATENCY_MARKER_PARAMS* params) {
     static bool first_call = true;
     if (first_call) {
@@ -103,6 +113,44 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
         }
     }
 
+    // Re-apply SleepMode on SIMULATION_START (same idea as D3D ApplySleepMode on present): either our
+    // overridden params or the last params the game tried to set.
+    if (params != nullptr && params->markerType == VK_SIMULATION_START
+        && NvLL_VK_SetSleepMode_Original != nullptr) {
+        if (!settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+            if (ShouldReflexBeEnabled()) {
+                const float fps_limit = GetTargetFps();
+                NVLL_VK_SET_SLEEP_MODE_PARAMS overridden = {};
+                overridden.bLowLatencyMode = ShouldReflexLowLatencyBeEnabled();
+                overridden.bLowLatencyBoost = ShouldReflexBoostBeEnabled();
+                overridden.minimumIntervalUs =
+                    (fps_limit > 0.0f) ? static_cast<uint32_t>(1000000.0f / fps_limit) : 0u;
+                {
+                    utils::SRWLockExclusive lock(g_nvll_sleep_mode_params_lock);
+                    g_last_nvll_vk_applied_sleep_mode_params = overridden;
+                    g_nvll_vk_has_applied_params.store(true);
+                }
+                (void)NvLL_VK_SetSleepMode_Original(device, &overridden);
+            } else if (g_nvll_vk_has_stored_game_params.load()) {
+                NVLL_VK_SET_SLEEP_MODE_PARAMS stored;
+                void* stored_device = nullptr;
+                {
+                    utils::SRWLockShared lock(g_nvll_sleep_mode_params_lock);
+                    stored = g_last_nvll_vk_game_sleep_mode_params;
+                    stored_device = g_last_nvll_vk_sleep_mode_device;
+                }
+                if (stored_device == device) {
+                    {
+                        utils::SRWLockExclusive lock(g_nvll_sleep_mode_params_lock);
+                        g_last_nvll_vk_applied_sleep_mode_params = stored;
+                        g_nvll_vk_has_applied_params.store(true);
+                    }
+                    (void)NvLL_VK_SetSleepMode_Original(device, &stored);
+                }
+            }
+        }
+    }
+
     if (NvLL_VK_SetLatencyMarker_Original == nullptr) {
         return 1;  // error
     }
@@ -122,19 +170,38 @@ static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEE
     if (NvLL_VK_SetSleepMode_Original == nullptr) {
         return 1;
     }
+    // Record last params the game tried to set (for re-apply on SIMULATION_START when not overriding)
+    if (params != nullptr) {
+        utils::SRWLockExclusive lock(g_nvll_sleep_mode_params_lock);
+        g_last_nvll_vk_game_sleep_mode_params = *params;
+        g_last_nvll_vk_sleep_mode_device = device;
+        g_nvll_vk_has_stored_game_params.store(true);
+        SetGameReflexSleepModeParams(params->bLowLatencyMode, params->bLowLatencyBoost,
+                                    params->minimumIntervalUs);
+    }
     // Override params from addon Reflex settings (same idea as D3D ApplySleepMode on present path).
     // For Vulkan there is no ReflexManager/ApplySleepMode on present, so we override in the detour.
     if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         return NVLL_VK_OK;
     }
-    if (settings::g_advancedTabSettings.reflex_enable.GetValue()) {
+    if (ShouldReflexBeEnabled()) {
         const float fps_limit = GetTargetFps();
         NVLL_VK_SET_SLEEP_MODE_PARAMS overridden = {};
-        overridden.bLowLatencyMode = settings::g_advancedTabSettings.reflex_low_latency.GetValue();
-        overridden.bLowLatencyBoost = settings::g_advancedTabSettings.reflex_boost.GetValue();
+        overridden.bLowLatencyMode = ShouldReflexLowLatencyBeEnabled();
+        overridden.bLowLatencyBoost = ShouldReflexBoostBeEnabled();
         overridden.minimumIntervalUs =
             (fps_limit > 0.0f) ? static_cast<uint32_t>(1000000.0f / fps_limit) : 0u;
+        {
+            utils::SRWLockExclusive lock(g_nvll_sleep_mode_params_lock);
+            g_last_nvll_vk_applied_sleep_mode_params = overridden;
+            g_nvll_vk_has_applied_params.store(true);
+        }
         return NvLL_VK_SetSleepMode_Original(device, &overridden);
+    }
+    if (params != nullptr) {
+        utils::SRWLockExclusive lock(g_nvll_sleep_mode_params_lock);
+        g_last_nvll_vk_applied_sleep_mode_params = *params;
+        g_nvll_vk_has_applied_params.store(true);
     }
     return NvLL_VK_SetSleepMode_Original(device, params);
 }
@@ -265,4 +332,26 @@ void GetNvLowLatencyVkDetourCallCounts(uint64_t* out_init_count, uint64_t* out_s
     if (out_sleep_count) {
         *out_sleep_count = g_nvll_sleep_call_count.load();
     }
+}
+
+void GetNvLowLatencyVkLastAppliedSleepModeParams(NvLLVkSleepModeParamsView* out) {
+    if (out == nullptr) return;
+    *out = {};
+    if (!g_nvll_vk_has_applied_params.load()) return;
+    utils::SRWLockShared lock(g_nvll_sleep_mode_params_lock);
+    out->low_latency = g_last_nvll_vk_applied_sleep_mode_params.bLowLatencyMode;
+    out->boost = g_last_nvll_vk_applied_sleep_mode_params.bLowLatencyBoost;
+    out->minimum_interval_us = g_last_nvll_vk_applied_sleep_mode_params.minimumIntervalUs;
+    out->has_value = true;
+}
+
+void GetNvLowLatencyVkGameSleepModeParams(NvLLVkSleepModeParamsView* out) {
+    if (out == nullptr) return;
+    *out = {};
+    if (!g_nvll_vk_has_stored_game_params.load()) return;
+    utils::SRWLockShared lock(g_nvll_sleep_mode_params_lock);
+    out->low_latency = g_last_nvll_vk_game_sleep_mode_params.bLowLatencyMode;
+    out->boost = g_last_nvll_vk_game_sleep_mode_params.bLowLatencyBoost;
+    out->minimum_interval_us = g_last_nvll_vk_game_sleep_mode_params.minimumIntervalUs;
+    out->has_value = true;
 }

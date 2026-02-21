@@ -13,6 +13,7 @@
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../../utils/mpo_registry.hpp"
 #include "../../utils/process_window_enumerator.hpp"
 #include "../../utils/timing.hpp"
 #include "imgui.h"
@@ -35,6 +36,7 @@ void DrawFeaturesEnabledByDefault();
 void DrawAdvancedTabSettingsSection();
 void DrawContinuousMonitoringSection();
 void DrawHdrDisplaySettings();
+void DrawMpoSection();
 void DrawNvapiSettings();
 void DrawNewExperimentalFeatures();
 
@@ -80,6 +82,15 @@ void DrawAdvancedTab(reshade::api::effect_runtime* /*runtime*/) {
     }
 
     ImGui::Spacing();
+
+    if (enabled_experimental_features) {
+        // Disable MPO (fix black screen on multimonitor) Section
+        if (ImGui::CollapsingHeader("Disable MPO (fix black screen issues on multimonitor setup)", ImGuiTreeNodeFlags_None)) {
+            DrawMpoSection();
+        }
+
+        ImGui::Spacing();
+    }
 
     // NVAPI Settings Section - only show if game is in NVAPI game list
     DrawNvapiSettings();
@@ -888,6 +899,58 @@ void DrawHdrDisplaySettings() {
                 "If the game is not using D3D9, this setting has no effect.");
         }
         ImGui::Unindent();
+    }
+
+    ImGui::Unindent();
+}
+
+void DrawMpoSection() {
+    ImGui::Indent();
+
+    display_commander::utils::MpoRegistryStatus status = {};
+    display_commander::utils::MpoRegistryGetStatus(&status);
+
+    ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                      "MPO registry options. Check to enable each. Restart required. Requires administrator.");
+    ImGui::Spacing();
+
+    // Status of the other two (Windows options)
+    ImGui::TextColored(ui::colors::TEXT_LABEL, "Status:");
+    ImGui::SameLine();
+    ImGui::Text("OverlayTestMode %s, DisableMPO %s, DisableOverlays %s",
+                status.overlay_test_mode_5 ? "= 5" : "not set",
+                status.disable_mpo ? "= 1" : "not set",
+                status.disable_overlays ? "= 1" : "not set");
+    ImGui::Spacing();
+
+    bool overlay_test_mode = status.overlay_test_mode_5;
+    if (ImGui::Checkbox("OverlayTestMode = 5 (Dwm)", &overlay_test_mode)) {
+        if (display_commander::utils::MpoRegistrySetOverlayTestMode(overlay_test_mode)) {
+            LogInfo("MPO: OverlayTestMode set via Advanced tab.");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("HKLM\\SOFTWARE\\Microsoft\\Windows\\Dwm -> OverlayTestMode. Classic Windows option to disable MPO.");
+    }
+
+    bool disable_mpo = status.disable_mpo;
+    if (ImGui::Checkbox("DisableMPO = 1 (GraphicsDrivers)", &disable_mpo)) {
+        if (display_commander::utils::MpoRegistrySetDisableMPO(disable_mpo)) {
+            LogInfo("MPO: DisableMPO set via Advanced tab.");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("HKLM\\...\\GraphicsDrivers -> DisableMPO. Classic Windows option to disable MPO.");
+    }
+
+    bool disable_overlays = status.disable_overlays;
+    if (ImGui::Checkbox("DisableOverlays = 1 (Disable MPO Windows 11 25H2 solution)", &disable_overlays)) {
+        if (display_commander::utils::MpoRegistrySetDisableOverlays(disable_overlays)) {
+            LogInfo("MPO: DisableOverlays set via Advanced tab.");
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("HKLM\\...\\GraphicsDrivers -> DisableOverlays. Disables all overlays (Discord, GPU overlays); may affect VRR.");
     }
 
     ImGui::Unindent();

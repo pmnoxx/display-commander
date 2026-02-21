@@ -1,13 +1,13 @@
 #include "windows_gaming_input_hooks.hpp"
-#include "hook_suppression_manager.hpp"
+#include <MinHook.h>
+#include <windows.gaming.input.h>
+#include <atomic>
+#include <string>
+#include "../settings/advanced_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include <MinHook.h>
-#include <atomic>
-#include <string>
-#include <windows.gaming.input.h>
-
+#include "hook_suppression_manager.hpp"
 
 namespace display_commanderhooks {
 
@@ -15,7 +15,7 @@ namespace display_commanderhooks {
 RoGetActivationFactory_pfn RoGetActivationFactory_Original = nullptr;
 
 // Helper function to convert IID to GUID string format
-std::string IIDToGUIDString(const IID &iid) {
+std::string IIDToGUIDString(const IID& iid) {
     char guid_str[64];
     sprintf_s(guid_str, sizeof(guid_str), "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", iid.Data1, iid.Data2,
               iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4], iid.Data4[5],
@@ -42,12 +42,18 @@ std::atomic<bool> g_wgi_hooks_installed{false};
 //   Reference: https://learn.microsoft.com/en-us/uwp/api/windows.ui.core.icorewindow?view=winrt-26100
 // ABI::Windows::UI::Core::IID_ICoreWindow
 
-HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void **factory) {
+HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void** factory) {
+    // When "Suppress Windows.Gaming.Input" is on (Advanced tab), fail all WGI factory requests so the game
+    // falls back to XInput. That makes continue rendering in background work with gamepad (WGI drops input when
+    // inactive). Example: Hollow Knight
+    if (settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue()) {
+        return E_NOTIMPL;
+    }
     std::string guid_str = IIDToGUIDString(iid);
-  //  LogInfo("RoGetActivationFactory called with IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
-   //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4], iid.Data4[5],
+    //  LogInfo("RoGetActivationFactory called with IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
+    //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4], iid.Data4[5],
     //        iid.Data4[6], iid.Data4[7]);
-    //LogInfo(" => GUID: %s", guid_str.c_str());
+    // LogInfo(" => GUID: %s", guid_str.c_str());
 
     // Switch statement to handle all Windows.Gaming.Input ABI interfaces
     if (iid == ABI::Windows::Gaming::Input::IID_IArcadeStick) {
@@ -120,16 +126,17 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
     // Handle ICoreWindow interface (Windows.UI.Core.ICoreWindow)
     else if (iid == ABI::Windows::UI::Core::IID_ICoreWindow) {
         LogInfo("RoGetActivationFactory (ICoreWindow) - DISABLED");
-        LogInfo(" => Windows.UI.Core.ICoreWindow interface - "
-                "https://learn.microsoft.com/en-us/uwp/api/windows.ui.core.icorewindow?view=winrt-26100");
+        LogInfo(
+            " => Windows.UI.Core.ICoreWindow interface - "
+            "https://learn.microsoft.com/en-us/uwp/api/windows.ui.core.icorewindow?view=winrt-26100");
         LogInfo(" => Disabling Interface for Current Game.");
         return E_NOTIMPL;
     }
     // Handle unknown IID that appears frequently: (242708616, 30204, 18607, 135, 88, 6, 82, 246, 240, 124, 89)
     // GUID: {0E6A0E38-761F-4A57-5888-06-52F6F07C59}
-    else if (iid.Data1 == 242708616 && iid.Data2 == 30204 && iid.Data3 == 18607 && iid.Data4[0] == 135 &&
-             iid.Data4[1] == 88 && iid.Data4[2] == 6 && iid.Data4[3] == 82 && iid.Data4[4] == 246 &&
-             iid.Data4[5] == 240 && iid.Data4[6] == 124 && iid.Data4[7] == 89) {
+    else if (iid.Data1 == 242708616 && iid.Data2 == 30204 && iid.Data3 == 18607 && iid.Data4[0] == 135
+             && iid.Data4[1] == 88 && iid.Data4[2] == 6 && iid.Data4[3] == 82 && iid.Data4[4] == 246
+             && iid.Data4[5] == 240 && iid.Data4[6] == 124 && iid.Data4[7] == 89) {
         LogInfo("RoGetActivationFactory (Unknown Interface) - UNHANDLED");
         LogInfo(" => GUID: {0E6A0E38-761F-4A57-5888-06-52F6F07C59} - Need to identify this interface");
         LogInfo(" => This appears to be a non-standard Windows Gaming Input interface");
@@ -138,12 +145,12 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
         return RoGetActivationFactory_Original(activatableClassId, iid, factory);
     } else {
         // Log all unhandled IID calls for debugging
-       std::string guid_str = IIDToGUIDString(iid);
-      //  LogInfo("RoGetActivationFactory - UNHANDLED IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
-       //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4],
-       //         iid.Data4[5], iid.Data4[6], iid.Data4[7]);
-      //  LogInfo(" => GUID: %s", guid_str.c_str());
-      //  LogInfo(" => Calling original function for non-Windows.Gaming.Input interface");
+        std::string guid_str = IIDToGUIDString(iid);
+        //  LogInfo("RoGetActivationFactory - UNHANDLED IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
+        //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4],
+        //         iid.Data4[5], iid.Data4[6], iid.Data4[7]);
+        //  LogInfo(" => GUID: %s", guid_str.c_str());
+        //  LogInfo(" => Calling original function for non-Windows.Gaming.Input interface");
         return RoGetActivationFactory_Original(activatableClassId, iid, factory);
     }
 }
@@ -154,8 +161,13 @@ bool InstallWindowsGamingInputHooks(HMODULE module) {
         return true;
     }
 
-    // Check if Windows Gaming Input hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::WINDOWS_GAMING_INPUT)) {
+    // Only install when user has "Suppress Windows.Gaming.Input" enabled in Advanced tab (default on).
+    if (!settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue()) {
+        LogInfo("Windows Gaming Input hooks not installed (Suppress Windows.Gaming.Input is off in Advanced tab)");
+        return false;
+    }
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::WINDOWS_GAMING_INPUT)) {
         LogInfo("Windows Gaming Input hooks installation suppressed by user setting");
         return false;
     }
@@ -180,12 +192,13 @@ bool InstallWindowsGamingInputHooks(HMODULE module) {
 
     // Create and enable the hook
     if (CreateAndEnableHook(ro_get_activation_factory_proc, RoGetActivationFactory_Detour,
-                           (LPVOID *)&RoGetActivationFactory_Original, "RoGetActivationFactory")) {
+                            (LPVOID*)&RoGetActivationFactory_Original, "RoGetActivationFactory")) {
         g_wgi_hooks_installed.store(true);
         LogInfo("Successfully hooked RoGetActivationFactory");
 
         // Mark Windows Gaming Input hooks as installed
-        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::WINDOWS_GAMING_INPUT);
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+            display_commanderhooks::HookType::WINDOWS_GAMING_INPUT);
 
         return true;
     } else {
@@ -217,4 +230,4 @@ void UninstallWindowsGamingInputHooks() {
     LogInfo("Windows.Gaming.Input hooks uninstalled successfully");
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

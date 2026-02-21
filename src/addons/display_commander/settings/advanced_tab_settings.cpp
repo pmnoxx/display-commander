@@ -75,6 +75,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       dlls_to_load_before("DllsToLoadBefore", "", "DisplayCommander"),
       fake_nvapi_enabled("FakeNvapiEnabled", false, "DisplayCommander"),
       suppress_minhook("SuppressMinhook", false, "DisplayCommander.Safemode"),
+      suppress_windows_gaming_input("SuppressWindowsGamingInput", true, "DisplayCommander"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
@@ -121,6 +122,7 @@ void AdvancedTabSettings::SaveAll() {
     safemode.Save();
     fake_nvapi_enabled.Save();
     suppress_minhook.Save();
+    suppress_windows_gaming_input.Save();
     debug_layer_enabled.Save();
     debug_break_on_severity.Save();
     auto_hide_discord_overlay.Save();
@@ -161,7 +163,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
             &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
             &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
-            &fake_nvapi_enabled, &suppress_minhook, &debug_layer_enabled, &debug_break_on_severity,
+            &fake_nvapi_enabled, &suppress_minhook, &suppress_windows_gaming_input, &debug_layer_enabled, &debug_break_on_severity,
             &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing, &disable_dpi_scaling,
 
             &monitor_high_freq_enabled, &monitor_high_freq_interval_ms, &monitor_per_second_enabled,

@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.13 (2026-02-21)
+
+- **Windows.Gaming.Input** - Auto-suppress Windows.Gaming.Input.dll by default, forcing the game to use XInput so continue rendering in background works with gamepad. Toggle in Advanced tab (default on).
+
 ## v0.12.12 (2026-02-21)
 
 - **Win+Down / Win+Up** - Minimize and restore borderless games (handled in ProcessHotkeys when app is in foreground; uses ShowWindow_Direct to prevent spoofing).

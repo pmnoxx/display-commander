@@ -82,6 +82,9 @@ class AdvancedTabSettings {
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 
+    // Windows.Gaming.Input suppression (force XInput fallback for continue rendering with gamepad)
+    BoolSetting suppress_windows_gaming_input;
+
     // Debug Layer setting
     BoolSetting debug_layer_enabled;
     BoolSetting debug_break_on_severity;

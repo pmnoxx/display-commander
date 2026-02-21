@@ -28,6 +28,7 @@ std::atomic<bool> s_no_present_in_background{false};
 std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
 std::atomic<OnPresentReflexMode> s_onpresent_reflex_mode{OnPresentReflexMode::kLowLatency};
 std::atomic<OnPresentReflexMode> s_reflex_limiter_reflex_mode{OnPresentReflexMode::kLowLatency};
+std::atomic<OnPresentReflexMode> s_reflex_disabled_limiter_mode{OnPresentReflexMode::kGameDefaults};
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 std::atomic<int> s_cpu_cores{0};                  // 0 = default (no change), max = all cores
 std::atomic<float> s_brightness_percent{100.0f};  // 0-200%, 100 = neutral (Display Commander brightness effect)
@@ -77,6 +78,9 @@ MainTabSettings::MainTabSettings()
       reflex_limiter_reflex_mode("reflex_limiter_reflex_mode", s_reflex_limiter_reflex_mode,
                                  static_cast<int>(OnPresentReflexMode::kLowLatency),
                                  {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
+      reflex_disabled_limiter_mode("reflex_disabled_limiter_mode", s_reflex_disabled_limiter_mode,
+                                   static_cast<int>(OnPresentReflexMode::kOff),
+                                   {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
       pcl_stats_enabled("pcl_stats_enabled", false, "DisplayCommander"),
       experimental_fg_native_fps_limiter("experimental_fg_native_fps_limiter", true, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only", true, "DisplayCommander"),
@@ -215,6 +219,7 @@ MainTabSettings::MainTabSettings()
         &onpresent_sync_low_latency_ratio,
         &onpresent_reflex_mode,
         &reflex_limiter_reflex_mode,
+        &reflex_disabled_limiter_mode,
         &pcl_stats_enabled,
         &experimental_fg_native_fps_limiter,
         &native_pacing_sim_start_only,

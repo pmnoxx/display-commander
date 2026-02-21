@@ -615,6 +615,26 @@ std::atomic<bool> g_ray_reconstruction_was_active_once{false};
 std::atomic<bool> g_streamline_dlssg_fg_enabled{false};
 std::atomic<bool> g_streamline_dlss_enabled{false};
 
+// Unified game Reflex sleep mode params (D3D and Vulkan both write; read for Game Defaults)
+static GameReflexSleepModeParams g_game_reflex_sleep_mode_params = {};
+static SRWLOCK g_game_reflex_sleep_mode_params_lock = SRWLOCK_INIT;
+
+void SetGameReflexSleepModeParams(bool low_latency, bool boost, uint32_t minimum_interval_us) {
+    utils::SRWLockExclusive lock(g_game_reflex_sleep_mode_params_lock);
+    g_game_reflex_sleep_mode_params.low_latency = low_latency;
+    g_game_reflex_sleep_mode_params.boost = boost;
+    g_game_reflex_sleep_mode_params.minimum_interval_us = minimum_interval_us;
+    g_game_reflex_sleep_mode_params.has_value = true;
+}
+
+void GetGameReflexSleepModeParams(GameReflexSleepModeParams* out) {
+    if (out == nullptr) {
+        return;
+    }
+    utils::SRWLockShared lock(g_game_reflex_sleep_mode_params_lock);
+    *out = g_game_reflex_sleep_mode_params;
+}
+
 // NVAPI SetSleepMode tracking
 std::atomic<std::shared_ptr<NV_SET_SLEEP_MODE_PARAMS>> g_last_nvapi_sleep_mode_params{nullptr};
 std::atomic<IUnknown*> g_last_nvapi_sleep_mode_dev_ptr{nullptr};

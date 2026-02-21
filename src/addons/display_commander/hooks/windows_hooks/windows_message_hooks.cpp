@@ -2519,7 +2519,7 @@ static std::vector<std::vector<int>> GetActiveGroups() {
 
     // Check if game is in foreground OR UI is open
     HWND game_hwnd = g_last_swapchain_hwnd.load();
-    HWND foreground_hwnd = GetForegroundWindow();
+    HWND foreground_hwnd = GetForegroundWindow_Direct();
     bool is_game_in_foreground = (game_hwnd != nullptr && foreground_hwnd == game_hwnd);
     bool is_ui_open = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
 

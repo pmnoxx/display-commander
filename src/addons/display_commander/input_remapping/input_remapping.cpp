@@ -14,6 +14,7 @@
 #include "../settings/experimental_tab_settings.hpp"
 #include "../audio/audio_management.hpp"
 #include "../adhd_multi_monitor/adhd_simple_api.hpp"
+#include "../hooks/api_hooks.hpp"
 #include <reshade.hpp>
 
 namespace display_commander::input_remapping {
@@ -802,7 +803,7 @@ int InputRemapper::get_vk_code_from_name(const std::string &name) const {
     return 0;
 }
 
-HWND InputRemapper::get_active_window() const { return GetForegroundWindow(); }
+HWND InputRemapper::get_active_window() const { return display_commanderhooks::GetForegroundWindow_Direct(); }
 
 void InputRemapper::update_button_states(DWORD user_index, WORD button_state) {
     if (user_index >= XUSER_MAX_COUNT)

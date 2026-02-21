@@ -196,7 +196,7 @@ void DrawFocusAndInputState() {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd != nullptr) {
             // Check for cursor confinement and focus
-            bool is_foreground = (GetForegroundWindow() == hwnd);
+            bool is_foreground = (display_commanderhooks::GetForegroundWindow_Direct() == hwnd);
             bool is_active = (GetActiveWindow() == hwnd);
             bool is_focused = (GetFocus() == hwnd);
             bool is_any_game_window_active = GetCurrentForeGroundWindow() != nullptr;

@@ -4778,7 +4778,7 @@ void DrawAudioSettings() {
         if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
             // Use actual focus state for background audio (not spoofed)
-            bool want_mute = (mute_in_bg && hwnd != nullptr && GetForegroundWindow() != hwnd);
+            bool want_mute = (mute_in_bg && hwnd != nullptr && display_commanderhooks::GetForegroundWindow_Direct() != hwnd);
             if (::SetMuteForCurrentProcess(want_mute)) {
                 ::g_muted_applied.store(want_mute);
                 std::ostringstream oss;
@@ -4805,7 +4805,7 @@ void DrawAudioSettings() {
         ::g_muted_applied.store(false);
         if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
-            bool is_background = (hwnd != nullptr && GetForegroundWindow() != hwnd);
+            bool is_background = (hwnd != nullptr && display_commanderhooks::GetForegroundWindow_Direct() != hwnd);
             bool want_mute = (mute_in_bg_if_other && is_background && ::IsOtherAppPlayingAudio());
             if (::SetMuteForCurrentProcess(want_mute)) {
                 ::g_muted_applied.store(want_mute);

@@ -1,6 +1,10 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.22 (2026-02-21)
+
+- **Win+Up grace period** - Win+Up (restore borderless window) now works for up to 1 second after the game lost focus (configurable in Advanced tab: 0–60 s or Forever).
+
 ## v0.12.21 (2026-02-21)
 
 - **Improvements** - More reliable foreground/background detection for hotkeys, ADHD mode, and input handling.

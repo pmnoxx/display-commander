@@ -302,6 +302,28 @@ void DrawAdvancedTabSettingsSection() {
 
     ImGui::Spacing();
 
+    // Win+Up grace period (global setting, stored in Display Commander folder)
+    {
+        int grace = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
+        const char* format = (grace >= 61) ? "Forever" : "%d s";
+        if (ImGui::SliderInt("Win+Up grace period (after leaving foreground)", &grace, 0, 61, format)) {
+            if (grace < 0) {
+                grace = 0;
+            } else if (grace > 61) {
+                grace = 61;
+            }
+            settings::g_advancedTabSettings.win_up_grace_seconds.SetValue(grace);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "For borderless windows: how long after the game loses focus Win+Up (restore) still works.\n"
+                "0 = only when game is in foreground; 1-60 = seconds; 61 = Forever (Win+Up always works).\n"
+                "Stored in Display Commander config (global). Default: 1 s.");
+        }
+    }
+
+    ImGui::Spacing();
+
     // PresentMon ETW Tracing setting
     if (CheckboxSetting(settings::g_advancedTabSettings.enable_presentmon_tracing, "Enable PresentMon ETW Tracing")) {
         LogInfo("PresentMon ETW tracing setting changed to: %s",

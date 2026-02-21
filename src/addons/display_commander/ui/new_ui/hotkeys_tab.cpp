@@ -4,13 +4,14 @@
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../display_cache.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/display_settings_hooks.hpp"
 #include "../../hooks/api_hooks.hpp"
+#include "../../hooks/display_settings_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/hotkeys_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -18,6 +19,7 @@
 #include "../../utils/timing.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
+
 
 #include <algorithm>
 #include <cctype>
@@ -962,8 +964,22 @@ void ProcessHotkeys() {
     g_hotkey_debug_info.game_in_foreground = is_game_in_foreground;
     g_hotkey_debug_info.ui_open = is_ui_open;
 
+    // Win+Down / Win+Up: need win_down for grace-period check below
+    bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
+                    || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+
     // Allow hotkeys if game is in foreground OR if UI is open (UI is an overlay, so hotkeys should work)
-    if (!is_game_in_foreground && !is_ui_open) {
+    if (!is_game_in_foreground) {
+        // Win+Up (restore) grace: allow for a short time after leaving foreground, or forever if setting is 61
+        int grace_sec = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
+        LONGLONG last_switch_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
+        bool grace_ok = (grace_sec >= 61)
+                        || (grace_sec > 0 && last_switch_ns != 0
+                            && (now_ns - last_switch_ns <= static_cast<LONGLONG>(grace_sec) * utils::SEC_TO_NS));
+        if (grace_ok && win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_UP)
+            && game_hwnd != nullptr && !display_commanderhooks::WindowHasBorder(game_hwnd)) {
+            ShowWindow_Direct(game_hwnd, SW_RESTORE);
+        }
         if (game_hwnd == nullptr) {
             g_hotkey_debug_info.last_block_reason = "No game window detected (swapchain not initialized)";
         } else {
@@ -976,9 +992,8 @@ void ProcessHotkeys() {
     g_hotkey_debug_info.last_successful_call_time_ns = now_ns;
     g_hotkey_debug_info.last_block_reason = "";
 
-    // Win+Down / Win+Up: minimize/restore borderless game (Special-K style). Only when app is in foreground.
-    bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
-                    || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+    // Win+Down / Win+Up: minimize/restore borderless game (Special-K style). Win+Up also works in grace period (see
+    // above).
     bool left_pressed = display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_LEFT);
     bool right_pressed = display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_RIGHT);
     if (is_game_in_foreground && game_hwnd != nullptr && !display_commanderhooks::WindowHasBorder(game_hwnd)) {

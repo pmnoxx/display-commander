@@ -1,6 +1,20 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.16 (2026-02-21)
+
+- **Win+Left / Win+Right** - Fix target display on game load: when loading from config, validate target/selected display IDs against current monitors; if stored ID is empty or stale (e.g. after reboot), set from game window and sync both so Win+Left/Win+Right works reliably.
+
+## v0.12.15 (2026-02-21)
+
+- **Win+Left / Win+Right** - Fix hotkeys not working sometimes: order displays by Windows display number (DISPLAY1 → DISPLAY2 → DISPLAY4); fallback match by display number when stored ID format differs (extended vs simple); when no target/selected display is set, use the game window's display so Win+Left/Right works from current monitor; keep Target Display combo and `target_extended_display_device_id` in sync when user changes selection.
+- **GetAdjacentDisplayDeviceId** - Fix match failure when current extended device ID has a different UID (e.g. UID4357) than cached entries (e.g. UID4353/UID4355) for the same display: add fallback that normalizes extended IDs by stripping the UID number so same-display IDs compare equal; only log "Failed to match" when all fallbacks fail; return empty instead of wrong first entry when no match.
+- **Naming** - Rename settings `target_display` → `target_extended_display_device_id` and `game_window_display_device_id` → `game_window_extended_display_device_id`. Target display config key is now `target_extended_display_device_id` (visible in settings log and config file); config still loads from old key `target_display` (migration).
+
+
+## v0.12.14 (2026-02-21)
+
+- **Continue rendering in background** - Fix for games that call SetWindowLongPtr(GWLP_WNDPROC) to subclass the window: intercept that call on our hooked game window, update our chained "original" to their new WNDPROC, and do not call the real SetWindowLongPtr so our detour stays in place and continue rendering keeps working (SetWindowLongPtrW/SetWindowLongPtrA).
 
 ## v0.12.13 (2026-02-21)
 

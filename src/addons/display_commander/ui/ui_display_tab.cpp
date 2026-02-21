@@ -59,7 +59,7 @@ int FindMonitorIndexByDeviceId(const std::string &device_id) {
 // Function to get the correct monitor index for target monitor selection
 int GetTargetMonitorIndex() {
     // Get the saved game window display device ID
-    std::string saved_device_id = settings::g_mainTabSettings.game_window_display_device_id.GetValue();
+    std::string saved_device_id = settings::g_mainTabSettings.game_window_extended_display_device_id.GetValue();
 
     // Try to find the monitor by device ID
     int monitor_index = FindMonitorIndexByDeviceId(saved_device_id);

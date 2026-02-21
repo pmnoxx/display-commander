@@ -940,6 +940,12 @@ void ProcessHotkeys() {
     display_commanderhooks::keyboard_tracker::IsKeyDown(VK_CONTROL);
     display_commanderhooks::keyboard_tracker::IsKeyDown(VK_SHIFT);
     display_commanderhooks::keyboard_tracker::IsKeyDown(VK_MENU);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_DOWN);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_UP);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LEFT);
+    display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RIGHT);
 
     // Handle keyboard shortcuts (when game is in foreground OR when Display Commander UI is open)
     // When the UI is open, it becomes the foreground window, but we still want hotkeys to work
@@ -970,13 +976,11 @@ void ProcessHotkeys() {
     g_hotkey_debug_info.last_block_reason = "";
 
     // Win+Down / Win+Up: minimize/restore borderless game (Special-K style). Only when app is in foreground.
+    bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
+                    || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
+    bool left_pressed = display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_LEFT);
+    bool right_pressed = display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_RIGHT);
     if (is_game_in_foreground && game_hwnd != nullptr && !display_commanderhooks::WindowHasBorder(game_hwnd)) {
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN);
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_DOWN);
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_UP);
-        bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
-                        || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
         if (win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_DOWN)) {
             ShowWindow_Direct(game_hwnd, SW_MINIMIZE);
         } else if (win_down && display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_UP)) {
@@ -986,36 +990,55 @@ void ProcessHotkeys() {
 
     // Win+Left / Win+Right: change Target Display to previous/next display. Only when app is in foreground.
     // If window mode is "No changes", switch to Borderless fullscreen so the move is applied.
+
     if (is_game_in_foreground && display_cache::g_displayCache.IsInitialized()) {
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN);
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LEFT);
-        display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RIGHT);
-        bool win_down = display_commanderhooks::keyboard_tracker::IsKeyDown(VK_LWIN)
-                        || display_commanderhooks::keyboard_tracker::IsKeyDown(VK_RWIN);
         if (win_down) {
-            std::string current_id = settings::g_mainTabSettings.target_display.GetValue();
+            // Prefer UI selection, then config target, then game window's display so Win+Left/Right works reliably.
+            std::string current_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
             if (current_id.empty()) {
-                current_id = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
+                current_id = settings::g_mainTabSettings.target_extended_display_device_id.GetValue();
+            }
+            if (current_id.empty() && game_hwnd != nullptr) {
+                current_id = settings::GetExtendedDisplayDeviceIdFromWindow(game_hwnd);
             }
             if (!current_id.empty() && current_id != "No Window" && current_id != "No Monitor"
                 && current_id != "Monitor Info Failed") {
                 std::string new_id;
-                if (display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_LEFT)) {
+                if (left_pressed) {
                     new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, true);
-                } else if (display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_RIGHT)) {
-                    new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, false);
-                }
-                if (!new_id.empty()) {
-                    // Moving to another display requires window management; switch from "No changes" to Borderless fullscreen if needed
-                    if (s_window_mode.load() == WindowMode::kNoChanges) {
-                        settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
-                        s_window_mode.store(WindowMode::kFullscreen);
-                        settings::g_mainTabSettings.window_mode.Save();
+                    if (left_pressed || right_pressed) {
+                        LogInfo("Win+Left new_id: %s", new_id.c_str());
                     }
-                    settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
-                    settings::g_mainTabSettings.target_display.SetValue(new_id);
+                } else if (right_pressed) {
+                    new_id = display_cache::g_displayCache.GetAdjacentDisplayDeviceId(current_id, false);
+                    if (left_pressed || right_pressed) {
+                        LogInfo("Win+Right new_id: %s", new_id.c_str());
+                    }
                 }
+                if (left_pressed || right_pressed) {
+                    std::ostringstream oss;
+                    oss << "Win+" << (left_pressed ? "Left" : "Right") << " pressed. Current display: \"" << current_id
+                        << "\".";
+                    if (!new_id.empty()) {
+                        bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+                        if (switched_mode) {
+                            settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
+                            s_window_mode.store(WindowMode::kFullscreen);
+                            settings::g_mainTabSettings.window_mode.Save();
+                        }
+                        settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
+                        settings::g_mainTabSettings.target_extended_display_device_id.SetValue(new_id);
+                        oss << " Target display set to \"" << new_id << "\"."
+                            << (switched_mode ? " Window mode switched to Borderless fullscreen." : "");
+                        LogInfo("%s", oss.str().c_str());
+                    } else {
+                        oss << " No adjacent display in that direction.";
+                        LogInfo("%s", oss.str().c_str());
+                    }
+                }
+            } else if (display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_LEFT)
+                       || display_commanderhooks::keyboard_tracker::IsKeyPressed(VK_RIGHT)) {
+                LogInfo("Win+Left/Right pressed but no current display (target/selected empty or invalid).");
             }
         }
     }

@@ -157,8 +157,8 @@ MainTabSettings::MainTabSettings()
       overlay_horizontal_spacing("overlay_horizontal_spacing", 0.0f, 0.0f,
                                  static_cast<float>(GetSystemMetrics(SM_CXSCREEN)), "DisplayCommander"),
       gpu_measurement_enabled("gpu_measurement_enabled", 1, 0, 1, "DisplayCommander"),
-      target_display("target_display", "", "DisplayCommander"),
-      game_window_display_device_id("game_window_display_device_id", "", "DisplayCommander"),
+      target_extended_display_device_id("target_extended_display_device_id", "", "DisplayCommander"),
+      game_window_extended_display_device_id("game_window_display_device_id", "", "DisplayCommander"),
       selected_extended_display_device_id("selected_extended_display_device_id", "", "DisplayCommander"),
       adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "DisplayCommander"),
       screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
@@ -284,8 +284,8 @@ MainTabSettings::MainTabSettings()
         &overlay_horizontal_spacing,
         &gpu_measurement_enabled,
         &frame_time_mode,
-        &target_display,
-        &game_window_display_device_id,
+        &target_extended_display_device_id,
+        &game_window_extended_display_device_id,
         &selected_extended_display_device_id,
         &adhd_multi_monitor_enabled,
         &screensaver_mode,
@@ -357,8 +357,8 @@ std::string WStringToString(const std::wstring& wstr) {
     return result;
 }
 
-// Function to get display device ID from a window
-std::string GetDisplayDeviceIdFromWindow(HWND hwnd) {
+// Returns the extended display device ID for the monitor containing the window.
+std::string GetExtendedDisplayDeviceIdFromWindow(HWND hwnd) {
     if (hwnd == nullptr || !IsWindow(hwnd)) {
         return "No Window";
     }
@@ -373,10 +373,10 @@ std::string GetDisplayDeviceIdFromWindow(HWND hwnd) {
     return display_cache::g_displayCache.GetExtendedDeviceIdFromMonitor(hmon);
 }
 
-// Function to save the display device ID for the game window
+// Function to save the extended display device ID for the game window
 void SaveGameWindowDisplayDeviceId(HWND hwnd) {
-    std::string device_id = GetDisplayDeviceIdFromWindow(hwnd);
-    settings::g_mainTabSettings.game_window_display_device_id.SetValue(device_id);
+    std::string device_id = GetExtendedDisplayDeviceIdFromWindow(hwnd);
+    settings::g_mainTabSettings.game_window_extended_display_device_id.SetValue(device_id);
 
     std::ostringstream oss;
     oss << "Saved game window display device ID: " << device_id;
@@ -388,8 +388,8 @@ void UpdateTargetDisplayFromGameWindow() {
     // Get the game window from the API hooks
     HWND game_window = display_commanderhooks::GetGameWindow();
 
-    std::string display_id = GetDisplayDeviceIdFromWindow(game_window);
-    settings::g_mainTabSettings.target_display.SetValue(display_id);
+    std::string display_id = GetExtendedDisplayDeviceIdFromWindow(game_window);
+    settings::g_mainTabSettings.target_extended_display_device_id.SetValue(display_id);
 }
 
 void UpdateFpsLimitMaximums() {

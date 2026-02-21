@@ -13,6 +13,7 @@
 #include <wrl/client.h>
 
 #include <algorithm>
+#include <cstring>
 #include <iomanip>
 #include <map>
 #include <set>
@@ -26,7 +27,7 @@ namespace display_cache {
 DisplayCache g_displayCache;
 
 // Helper function to get monitor friendly name using multiple methods
-std::wstring GetMonitorFriendlyName(MONITORINFOEXW &mi) {
+std::wstring GetMonitorFriendlyName(MONITORINFOEXW& mi) {
     // Method 1: Try to get the monitor name using QueryDisplayConfig (most reliable)
     // This should give us the actual monitor model name like "PG32UQX"
     auto timing_info_list = QueryDisplayTimingInfo();
@@ -53,7 +54,7 @@ std::wstring GetMonitorFriendlyName(MONITORINFOEXW &mi) {
 }
 
 // Helper function to enumerate resolutions and refresh rates using DXGI
-void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution> &resolutions) {
+void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolutions) {
     ComPtr<IDXGIFactory1> factory = GetSharedDXGIFactory();
     if (!factory) {
         return;
@@ -64,23 +65,18 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution> &resolution
 
     for (UINT a = 0;; ++a) {
         ComPtr<IDXGIAdapter1> adapter;
-        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND)
-            break;
+        if (factory->EnumAdapters1(a, &adapter) == DXGI_ERROR_NOT_FOUND) break;
 
         for (UINT o = 0;; ++o) {
             ComPtr<IDXGIOutput> output;
-            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND)
-                break;
+            if (adapter->EnumOutputs(o, &output) == DXGI_ERROR_NOT_FOUND) break;
 
             DXGI_OUTPUT_DESC desc{};
-            if (FAILED(output->GetDesc(&desc)))
-                continue;
-            if (desc.Monitor != monitor)
-                continue;
+            if (FAILED(output->GetDesc(&desc))) continue;
+            if (desc.Monitor != monitor) continue;
 
             ComPtr<IDXGIOutput1> output1;
-            if (FAILED(output.As(&output1)) || !output1)
-                continue;
+            if (FAILED(output.As(&output1)) || !output1) continue;
 
             UINT num_modes = 0;
             if (FAILED(output1->GetDisplayModeList1(DXGI_FORMAT_R8G8B8A8_UNORM, 0, &num_modes, nullptr))) {
@@ -95,7 +91,7 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution> &resolution
             // Group modes by resolution
             std::map<std::pair<int, int>, std::vector<DXGI_RATIONAL>> resolution_modes;
 
-            for (const auto &mode : modes) {
+            for (const auto& mode : modes) {
                 if (mode.Width > 0 && mode.Height > 0 && mode.RefreshRate.Denominator > 0) {
                     auto key = std::make_pair(static_cast<int>(mode.Width), static_cast<int>(mode.Height));
                     resolution_modes[key].push_back(mode.RefreshRate);
@@ -103,13 +99,13 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution> &resolution
             }
 
             // Convert to our Resolution structures
-            for (const auto &[res_pair, refresh_rates] : resolution_modes) {
-                if (resolution_set.insert(res_pair).second) { // Only add if new
+            for (const auto& [res_pair, refresh_rates] : resolution_modes) {
+                if (resolution_set.insert(res_pair).second) {  // Only add if new
                     Resolution res(res_pair.first, res_pair.second);
 
                     // Convert refresh rates and deduplicate
                     std::set<RationalRefreshRate> unique_rates;
-                    for (const auto &rate : refresh_rates) {
+                    for (const auto& rate : refresh_rates) {
                         RationalRefreshRate rational_rate(rate.Numerator, rate.Denominator);
                         unique_rates.insert(rational_rate);
                     }
@@ -122,9 +118,9 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution> &resolution
                 }
             }
 
-            break; // Found our monitor
+            break;  // Found our monitor
         }
-        break; // Found our adapter
+        break;  // Found our adapter
     }
 }
 
@@ -149,7 +145,8 @@ bool DisplayCache::Refresh() {
     std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
 
-    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr) != ERROR_SUCCESS) {
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr)
+        != ERROR_SUCCESS) {
         LogError("DisplayCache: Failed to query display configuration");
         return false;
     }
@@ -159,7 +156,7 @@ bool DisplayCache::Refresh() {
     EnumDisplayMonitors(
         nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
-            auto *monitors_ptr = reinterpret_cast<std::vector<HMONITOR> *>(lparam);
+            auto* monitors_ptr = reinterpret_cast<std::vector<HMONITOR>*>(lparam);
             monitors_ptr->push_back(hmon);
             return TRUE;
         },
@@ -170,7 +167,6 @@ bool DisplayCache::Refresh() {
     }
 
     static bool first_time_log = true;
-
 
     auto old_displays = displays.load(std::memory_order_acquire);
 
@@ -195,20 +191,20 @@ bool DisplayCache::Refresh() {
         display_info->work_rect = mi.rcWork;
 
         // Get current settings
-        if (!GetCurrentDisplaySettingsQueryConfig(
-                monitor, display_info->width, display_info->height, display_info->current_refresh_rate.numerator,
-                display_info->current_refresh_rate.denominator, display_info->x, display_info->y, first_time_log,
-                paths, modes)) {
+        if (!GetCurrentDisplaySettingsQueryConfig(monitor, display_info->width, display_info->height,
+                                                  display_info->current_refresh_rate.numerator,
+                                                  display_info->current_refresh_rate.denominator, display_info->x,
+                                                  display_info->y, first_time_log, paths, modes)) {
             continue;
         }
 
-        for (const auto &old_display_info : *old_displays) {
+        for (const auto& old_display_info : *old_displays) {
             if (old_display_info->simple_device_id == display_info->simple_device_id) {
                 display_info->resolutions = old_display_info->resolutions;
             }
         }
 
-        if (display_info->resolutions.empty()) { // only update resolutions if they are not already set
+        if (display_info->resolutions.empty()) {  // only update resolutions if they are not already set
             // Enumerate resolutions and refresh rates
             EnumerateDisplayModes(monitor, display_info->resolutions);
 
@@ -226,27 +222,53 @@ bool DisplayCache::Refresh() {
                    std::memory_order_release);
     is_initialized.store(true, std::memory_order_release);
 
-    // Update target_display if it's unset or the current display is not found
-    std::string current_target_display = settings::g_mainTabSettings.target_display.GetValue();
-    if (current_target_display.empty() || current_target_display == "No Window" ||
-        current_target_display == "No Monitor" || current_target_display == "Monitor Info Failed") {
-        // Try to get the display device ID from the current game window
+    auto displays_ptr = displays.load(std::memory_order_acquire);
+    // Helper: true if device_id matches a current display (extended or simple ID)
+    auto is_known_display_id = [this, &displays_ptr](const std::string& device_id) -> bool {
+        if (device_id.empty() || device_id == "No Window" || device_id == "No Monitor"
+            || device_id == "Monitor Info Failed") {
+            return false;
+        }
+        for (const auto& uptr : *displays_ptr) {
+            const DisplayInfo* d = uptr.get();
+            if (!d) continue;
+            std::string eid = GetExtendedDeviceIdFromMonitor(d->monitor_handle);
+            std::string simple_utf8 = WideCharToUTF8(d->simple_device_id);
+            if (device_id == eid || device_id == simple_utf8) return true;
+        }
+        return false;
+    };
+
+    // On game load, config may have stale target/selected display IDs (e.g. after reboot).
+    // Fix: if stored ID is unset or not in current display list, set from game window and sync both.
+    std::string current_target = settings::g_mainTabSettings.target_extended_display_device_id.GetValue();
+    std::string current_selected = settings::g_mainTabSettings.selected_extended_display_device_id.GetValue();
+    bool target_ok = is_known_display_id(current_target);
+    bool selected_ok = is_known_display_id(current_selected);
+
+    if (target_ok && !selected_ok) {
+        settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(current_target);
+        LogInfo("Selected display fixed on load (was stale): synced to target \"%s\"", current_target.c_str());
+    } else if (!target_ok) {
         settings::UpdateTargetDisplayFromGameWindow();
+        std::string new_target = settings::g_mainTabSettings.target_extended_display_device_id.GetValue();
+        if (!new_target.empty()) {
+            settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_target);
+            LogInfo("Target/selected display fixed on load (was empty or stale): now \"%s\"", new_target.c_str());
+        }
     }
 
     // Update FPS limit maximums based on monitor refresh rates
     settings::UpdateFpsLimitMaximums();
 
-    auto displays_ptr = displays.load(std::memory_order_acquire);
     return displays_ptr && !displays_ptr->empty();
 }
 
-const DisplayInfo *DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
+const DisplayInfo* DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr)
-        return nullptr;
+    if (!displays_ptr) return nullptr;
 
-    for (const auto &display : *displays_ptr) {
+    for (const auto& display : *displays_ptr) {
         if (display->monitor_handle == monitor) {
             return display.get();
         }
@@ -254,12 +276,11 @@ const DisplayInfo *DisplayCache::GetDisplayByHandle(HMONITOR monitor) const {
     return nullptr;
 }
 
-const DisplayInfo *DisplayCache::GetDisplayByDeviceName(const std::wstring &device_name) const {
+const DisplayInfo* DisplayCache::GetDisplayByDeviceName(const std::wstring& device_name) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr)
-        return nullptr;
+    if (!displays_ptr) return nullptr;
 
-    for (const auto &display : *displays_ptr) {
+    for (const auto& display : *displays_ptr) {
         if (display->simple_device_id == device_name) {
             return display.get();
         }
@@ -267,16 +288,15 @@ const DisplayInfo *DisplayCache::GetDisplayByDeviceName(const std::wstring &devi
     return nullptr;
 }
 
-int DisplayCache::GetDisplayIndexByDeviceName(const std::string &device_name) const {
+int DisplayCache::GetDisplayIndexByDeviceName(const std::string& device_name) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr)
-        return -1;
+    if (!displays_ptr) return -1;
 
     // Convert string to wstring for comparison
     std::wstring wdevice_name(device_name.begin(), device_name.end());
 
     for (size_t i = 0; i < displays_ptr->size(); ++i) {
-        const auto &display = (*displays_ptr)[i];
+        const auto& display = (*displays_ptr)[i];
         if (display && display->simple_device_id == wdevice_name) {
             return static_cast<int>(i);
         }
@@ -286,21 +306,17 @@ int DisplayCache::GetDisplayIndexByDeviceName(const std::string &device_name) co
 
 std::vector<std::string> DisplayCache::GetResolutionLabels(size_t display_index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size())
-        return {};
-    const auto *display = (*displays_ptr)[display_index].get();
-    if (!display)
-        return {};
+    if (!displays_ptr || display_index >= displays_ptr->size()) return {};
+    const auto* display = (*displays_ptr)[display_index].get();
+    if (!display) return {};
     return display->GetResolutionLabels();
 }
 
 std::vector<std::string> DisplayCache::GetRefreshRateLabels(size_t display_index, size_t resolution_index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size())
-        return {};
-    const auto *display = (*displays_ptr)[display_index].get();
-    if (!display)
-        return {};
+    if (!displays_ptr || display_index >= displays_ptr->size()) return {};
+    const auto* display = (*displays_ptr)[display_index].get();
+    if (!display) return {};
     return display->GetRefreshRateLabels(resolution_index);
 }
 
@@ -316,7 +332,7 @@ std::vector<std::string> DisplayCache::GetMonitorLabels() const {
 
     // Add monitor options (0-based indexing)
     for (size_t i = 0; i < display_count; ++i) {
-        const auto *display = (*displays_ptr)[i].get();
+        const auto* display = (*displays_ptr)[i].get();
         if (display) {
             std::ostringstream oss;
 
@@ -364,7 +380,7 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
     ui_info.reserve(display_count);
 
     for (size_t i = 0; i < display_count; ++i) {
-        const auto *display = (*displays_ptr)[i].get();
+        const auto* display = (*displays_ptr)[i].get();
         if (!display) {
             continue;
         }
@@ -413,8 +429,8 @@ std::vector<DisplayInfoForUI> DisplayCache::GetDisplayInfoForUI() const {
 
         // Format: [ExtendedDeviceID] Friendly Name - Resolution @ PreciseRefreshRateHz [Raw: num/den]
         std::string simple_device_id = WideCharToUTF8(display->simple_device_id);
-        oss << "[" << simple_device_id << "] " << info.friendly_name << " - " << info.current_resolution
-            << "@" << rate_str << "Hz";
+        oss << "[" << simple_device_id << "] " << info.friendly_name << " - " << info.current_resolution << "@"
+            << rate_str << "Hz";
         info.display_label = oss.str();
 
         ui_info.push_back(std::move(info));
@@ -433,50 +449,42 @@ const DisplayInfoForUI* DisplayCache::GetDisplayInfoByDeviceId(const std::string
     return nullptr;
 }
 
-bool DisplayCache::GetCurrentResolution(size_t display_index, int &width, int &height) const {
+bool DisplayCache::GetCurrentResolution(size_t display_index, int& width, int& height) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size())
-        return false;
-    const auto *display = (*displays_ptr)[display_index].get();
-    if (!display)
-        return false;
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
+    if (!display) return false;
     width = display->width;
     height = display->height;
     return true;
 }
 
-bool DisplayCache::GetCurrentRefreshRate(size_t display_index, RationalRefreshRate &refresh_rate) const {
+bool DisplayCache::GetCurrentRefreshRate(size_t display_index, RationalRefreshRate& refresh_rate) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size())
-        return false;
-    const auto *display = (*displays_ptr)[display_index].get();
-    if (!display)
-        return false;
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
+    if (!display) return false;
     refresh_rate = display->current_refresh_rate;
     return true;
 }
 
 bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolution_index, size_t refresh_rate_index,
-                                          RationalRefreshRate &refresh_rate) const {
+                                          RationalRefreshRate& refresh_rate) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size())
-        return false;
-    const auto *display = (*displays_ptr)[display_index].get();
-    if (!display)
-        return false;
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
+    if (!display) return false;
     // Map UI resolution index: 0 = Current Resolution, otherwise shift by one
     size_t effective_index = resolution_index;
     if (resolution_index == 0) {
         auto idx = display->FindResolutionIndex(display->width, display->height);
-        if (!idx.has_value())
-            return false;
+        if (!idx.has_value()) return false;
         effective_index = idx.value();
     } else {
-        if ((resolution_index - 1) >= display->resolutions.size())
-            return false;
+        if ((resolution_index - 1) >= display->resolutions.size()) return false;
         effective_index = resolution_index - 1;
     }
-    const auto &res = display->resolutions[effective_index];
+    const auto& res = display->resolutions[effective_index];
     if (refresh_rate_index == 0) {
         refresh_rate = display->current_refresh_rate;
         return true;
@@ -495,27 +503,23 @@ bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolutio
     return false;
 }
 
-bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int &width, int &height,
-                                         RationalRefreshRate &refresh_rate) const {
+bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int& width, int& height,
+                                         RationalRefreshRate& refresh_rate) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size())
-        return false;
-    const auto *display = (*displays_ptr)[display_index].get();
-    if (!display)
-        return false;
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
+    if (!display) return false;
     width = display->width;
     height = display->height;
     refresh_rate = display->current_refresh_rate;
     return true;
 }
 
-bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolution> &resolutions) const {
+bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolution>& resolutions) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size())
-        return false;
-    const auto *display = (*displays_ptr)[display_index].get();
-    if (!display)
-        return false;
+    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
+    const auto* display = (*displays_ptr)[display_index].get();
+    if (!display) return false;
     resolutions = display->resolutions;
     return true;
 }
@@ -529,26 +533,23 @@ size_t DisplayCache::GetDisplayCount() const {
     return displays_ptr ? displays_ptr->size() : 0;
 }
 
-const DisplayInfo *DisplayCache::GetDisplay(size_t index) const {
+const DisplayInfo* DisplayCache::GetDisplay(size_t index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || index >= displays_ptr->size())
-        return nullptr;
+    if (!displays_ptr || index >= displays_ptr->size()) return nullptr;
     return (*displays_ptr)[index].get();
 }
 
-void DisplayCache::SwapFrom(DisplayCache &&other) {
-    if (&other == this)
-        return;
+void DisplayCache::SwapFrom(DisplayCache&& other) {
+    if (&other == this) return;
     // Atomically swap the displays data
     auto other_displays = other.displays.load(std::memory_order_acquire);
     displays.store(other_displays, std::memory_order_release);
     is_initialized.store(other.is_initialized.load(std::memory_order_acquire), std::memory_order_release);
 }
 
-bool DisplayCache::CopyDisplay(size_t index, DisplayInfo &out) const {
+bool DisplayCache::CopyDisplay(size_t index, DisplayInfo& out) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || index >= displays_ptr->size() || !(*displays_ptr)[index])
-        return false;
+    if (!displays_ptr || index >= displays_ptr->size() || !(*displays_ptr)[index]) return false;
     out = *(*displays_ptr)[index];
     return true;
 }
@@ -562,9 +563,8 @@ void DisplayCache::PrintVSyncFreqDivider() const {
     }
 
     for (size_t i = 0; i < displays_ptr->size(); ++i) {
-        const auto &display = (*displays_ptr)[i];
-        if (!display)
-            continue;
+        const auto& display = (*displays_ptr)[i];
+        if (!display) continue;
 
         std::ostringstream oss;
         oss << "Display " << i << " (";
@@ -584,8 +584,7 @@ void DisplayCache::PrintVSyncFreqDivider() const {
             for (int divider = 1; divider <= 6; ++divider) {
                 double divided_hz = current_hz / divider;
                 oss << divider << ":" << std::fixed << std::setprecision(2) << divided_hz << "Hz";
-                if (divider < 6)
-                    oss << ", ";
+                if (divider < 6) oss << ", ";
             }
         }
 
@@ -596,15 +595,14 @@ void DisplayCache::PrintVSyncFreqDivider() const {
 double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     if (!displays_ptr || displays_ptr->empty()) {
-        return 60.0; // Default fallback
+        return 60.0;  // Default fallback
     }
 
     // Ensure we have a reasonable minimum
     double max_refresh_rate = 60.0;
 
-    for (const auto &display : *displays_ptr) {
-        if (!display)
-            continue;
+    for (const auto& display : *displays_ptr) {
+        if (!display) continue;
 
         // Check current refresh rate
         double current_rate = display->current_refresh_rate.ToHz();
@@ -613,8 +611,8 @@ double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {
         }
 
         // Check all supported refresh rates for all resolutions
-        for (const auto &resolution : display->resolutions) {
-            for (const auto &refresh_rate : resolution.refresh_rates) {
+        for (const auto& resolution : display->resolutions) {
+            for (const auto& refresh_rate : resolution.refresh_rates) {
                 double rate_hz = refresh_rate.ToHz();
                 if (rate_hz > max_refresh_rate) {
                     max_refresh_rate = rate_hz;
@@ -673,7 +671,8 @@ std::string DisplayCache::GetExtendedDeviceIdFromMonitor(HMONITOR monitor) const
         deviceIndex++;
     }
 
-    // Fallback to simple device name if full device ID not found
+    // Fallback: use simple device name (e.g. \\.\DISPLAY3) when device interface is not available.
+    // Ensures every monitor gets an entry in GetAdjacentDisplayDeviceId so Win+Left/Right can match.
     int size = WideCharToMultiByte(CP_UTF8, 0, mi.szDevice, -1, nullptr, 0, nullptr, nullptr);
     if (size > 0) {
         std::string result(size - 1, '\0');
@@ -684,53 +683,133 @@ std::string DisplayCache::GetExtendedDeviceIdFromMonitor(HMONITOR monitor) const
     return "Conversion Failed";
 }
 
+// Parse display number from device name (e.g. \\.\DISPLAY1 -> 1, \\.\DISPLAY4 -> 4).
+// Used to order displays by Windows display number (DISPLAY1, DISPLAY2, DISPLAY4) for Win+Left/Right.
+static int ParseDisplayNumberFromDeviceName(const std::wstring& device_name) {
+    const std::wstring prefix = L"DISPLAY";
+    size_t pos = device_name.find(prefix);
+    if (pos == std::wstring::npos) {
+        return 9999;
+    }
+    pos += prefix.size();
+    if (pos >= device_name.size()) {
+        return 9999;
+    }
+    int num = 0;
+    while (pos < device_name.size() && device_name[pos] >= L'0' && device_name[pos] <= L'9') {
+        num = num * 10 + static_cast<int>(device_name[pos] - L'0');
+        ++pos;
+    }
+    return num > 0 ? num : 9999;
+}
+
+// Parse display number from UTF-8 device ID (e.g. "DISPLAY1", "\\.\DISPLAY1", "\\\\.\\DISPLAY4").
+// Used as fallback when matching current_device_id in GetAdjacentDisplayDeviceId. Returns -1 if not parseable.
+static int ParseDisplayNumberFromDeviceIdUtf8(const std::string& device_id_utf8) {
+    const std::string prefix = "DISPLAY";
+    size_t pos = device_id_utf8.find(prefix);
+    if (pos == std::string::npos) {
+        return -1;
+    }
+    pos += prefix.size();
+    if (pos >= device_id_utf8.size()) {
+        return -1;
+    }
+    int num = 0;
+    while (pos < device_id_utf8.size() && device_id_utf8[pos] >= '0' && device_id_utf8[pos] <= '9') {
+        num = num * 10 + static_cast<int>(device_id_utf8[pos] - '0');
+        ++pos;
+    }
+    return num > 0 ? num : -1;
+}
+
+// Normalize extended device ID by stripping the UID number (e.g. &UID4357 -> &UID) so IDs that refer to the
+// same display but were returned with different UIDs (e.g. from different API paths) compare equal.
+static std::string NormalizeExtendedIdForMatch(const std::string& device_id) {
+    std::string out = device_id;
+    const std::string uid_prefix = "&UID";
+    size_t pos = 0;
+    while ((pos = out.find(uid_prefix, pos)) != std::string::npos) {
+        size_t end = pos + uid_prefix.size();
+        while (end < out.size() && out[end] >= '0' && out[end] <= '9') {
+            ++end;
+        }
+        if (end > pos + uid_prefix.size()) {
+            out.erase(pos + uid_prefix.size(), end - (pos + uid_prefix.size()));
+            break;
+        }
+        pos = end;
+    }
+    return out;
+}
+
 std::string DisplayCache::GetAdjacentDisplayDeviceId(const std::string& current_device_id, bool to_the_left) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     if (!displays_ptr || displays_ptr->empty()) {
         return {};
     }
 
-    std::vector<std::pair<std::string, LONG>> id_and_left;
-    id_and_left.reserve(displays_ptr->size());
+    struct DisplayEntry {
+        std::string extended_id;
+        std::string simple_id_utf8;
+        int display_number = 0;
+    };
+    std::vector<DisplayEntry> entries;
+    entries.reserve(displays_ptr->size());
     for (const auto& uptr : *displays_ptr) {
         const DisplayInfo* d = uptr.get();
         if (!d) {
             continue;
         }
         std::string eid = GetExtendedDeviceIdFromMonitor(d->monitor_handle);
+        // Use simple device name as fallback so every monitor gets an entry (Win+Left/Right can then match).
         if (eid.empty() || eid == "No Monitor" || eid == "Monitor Info Failed" || eid == "Conversion Failed") {
-            continue;
+            eid = WideCharToUTF8(d->simple_device_id);
         }
-        id_and_left.emplace_back(eid, d->monitor_rect.left);
+        std::string simple_utf8 = WideCharToUTF8(d->simple_device_id);
+        int display_num = ParseDisplayNumberFromDeviceName(d->simple_device_id);
+        entries.push_back({eid, simple_utf8, display_num});
     }
-    if (id_and_left.size() < 2) {
+    if (entries.size() < 2) {
+        LogError("GetAdjacentDisplayDeviceId: Not enough displays to get adjacent display");
         return {};
     }
 
-    std::sort(id_and_left.begin(), id_and_left.end(),
-              [](const std::pair<std::string, LONG>& a, const std::pair<std::string, LONG>& b) {
-                  return a.second < b.second;
-              });
+    // Order by Windows display number (DISPLAY1 -> DISPLAY2 -> DISPLAY4) so Win+Right = next display, Win+Left =
+    // previous.
+    std::sort(entries.begin(), entries.end(),
+              [](const DisplayEntry& a, const DisplayEntry& b) { return a.display_number < b.display_number; });
 
     size_t idx = 0;
-    for (; idx < id_and_left.size(); ++idx) {
-        if (id_and_left[idx].first == current_device_id) {
+    for (; idx < entries.size(); ++idx) {
+        if (entries[idx].extended_id == current_device_id || entries[idx].simple_id_utf8 == current_device_id) {
             break;
+            LogError("GetAdjacentDisplayDeviceId: Failed to match current_device_id: %s", current_device_id.c_str());
+            for (size_t i = 0; i < entries.size(); ++i) {
+                LogInfo("GetAdjacentDisplayDeviceId: entry[%zu]: %s", i, entries[i].extended_id.c_str());
+            }
         }
     }
-    if (idx >= id_and_left.size()) {
-        return {};
+    if (idx >= entries.size()) {
+        // in case current_device_id is not found, return first entry
+        // Workaround when config data is invalid
+        LogError("GetAdjacentDisplayDeviceId: Failed to match current_device_id: %s", current_device_id.c_str());
+        for (size_t i = 0; i < entries.size(); ++i) {
+            LogInfo("GetAdjacentDisplayDeviceId: entry[%zu]: %s", i, entries[i].extended_id.c_str());
+        }
+        // fallback to first entry
+        return entries[0].extended_id;
     }
     if (to_the_left) {
         if (idx == 0) {
             return {};
         }
-        return id_and_left[idx - 1].first;
+        return entries[idx - 1].extended_id;
     }
-    if (idx + 1 >= id_and_left.size()) {
+    if (idx + 1 >= entries.size()) {
         return {};
     }
-    return id_and_left[idx + 1].first;
+    return entries[idx + 1].extended_id;
 }
 
-} // namespace display_cache
+}  // namespace display_cache

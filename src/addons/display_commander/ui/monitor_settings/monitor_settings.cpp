@@ -316,7 +316,7 @@ void HandleAutoDetection() {
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd) {
             // First try to use the saved device ID for more reliable matching
-            std::string saved_device_id = settings::g_mainTabSettings.game_window_display_device_id.GetValue();
+            std::string saved_device_id = settings::g_mainTabSettings.game_window_extended_display_device_id.GetValue();
             int monitor_index = ui::FindMonitorIndexByDeviceId(saved_device_id);
 
             if (monitor_index >= 0) {

@@ -2416,7 +2416,7 @@ void DrawDisplaySettings_DisplayAndTarget() {
     {
         // Refresh target display from config so hotkey changes (Win+Left/Win+Right) are visible on the UI thread
         settings::g_mainTabSettings.selected_extended_display_device_id.Load();
-        settings::g_mainTabSettings.target_display.Load();
+        settings::g_mainTabSettings.target_extended_display_device_id.Load();
 
         // Target Display list and selection (needed for refresh rate fallback on same line as Game Render Resolution)
         auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
@@ -2552,16 +2552,17 @@ void DrawDisplaySettings_DisplayAndTarget() {
                          static_cast<int>(monitor_c_labels.size()))) {
             if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
                 s_target_display_changed = true;
-                // Store the device ID
+                // Store extended device ID so Win+Left/Right and window management use the same value.
                 std::string new_device_id = display_info[selected_index].extended_device_id;
                 settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_device_id);
+                settings::g_mainTabSettings.target_extended_display_device_id.SetValue(new_device_id);
 
                 LogInfo("Target monitor changed to device ID: %s", new_device_id.c_str());
             }
         }
         if (ImGui::IsItemHovered()) {
             // Get the saved game window display device ID for tooltip
-            std::string saved_device_id = settings::g_mainTabSettings.game_window_display_device_id.GetValue();
+            std::string saved_device_id = settings::g_mainTabSettings.game_window_extended_display_device_id.GetValue();
             std::string tooltip_text =
                 "Choose which monitor to apply size/pos to. The monitor corresponding to the "
                 "game window is automatically selected.";

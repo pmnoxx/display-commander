@@ -652,6 +652,9 @@ std::uint64_t GetXInputGetStateUserIndexZeroCallCount() {
 }
 
 bool InstallXInputHooks(HMODULE xinput_module) {
+    if (true) {
+        return true;
+    }
     // Check if XInput hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::XINPUT)) {

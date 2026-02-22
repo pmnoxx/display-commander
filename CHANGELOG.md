@@ -3,6 +3,14 @@
 ---
 
 
+## v0.12.32 (unreleased)
+
+- **ADHD Multi-Monitor** - Background overlay is shown only when the game is in the foreground. Uses the same logic as `g_app_in_background`: extracted `IsAppInBackground()` (foreground PID vs current process PID via `GetForegroundWindow_Direct`) and use it for ADHD show/hide and in continuous monitoring.
+
+## v0.12.31 (2026-02-21)
+
+- **Load library hooks** - Release `g_module_srwlock` before calling `OnModuleLoaded` in all six load paths (LoadLibraryA/W, LoadLibraryExA/W, LoadPackagedLibrary, LdrLoadDll) to avoid deadlock or re-entrancy if the callback takes locks or triggers further loads.
+
 ## v0.12.25 (2026-02-21)
 
 - **Changelog** - Deduplicate window restore/minimize entries (throttle, continue-rendering SIZE_RESTORED).

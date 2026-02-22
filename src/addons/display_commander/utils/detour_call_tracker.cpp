@@ -1,4 +1,5 @@
 #include "detour_call_tracker.hpp"
+#include "srwlock_registry.hpp"
 #include "srwlock_wrapper.hpp"
 #include <algorithm>
 #include <cstdarg>
@@ -13,7 +14,6 @@ namespace {
 
 Entry g_entries[MAX_ENTRIES];
 std::atomic<uint64_t> g_used_entries{0};
-SRWLOCK g_context_lock = SRWLOCK_INIT;
 
 }  // anonymous namespace
 
@@ -38,7 +38,7 @@ void SetCallSiteContextByKey(const char* key, const char* fmt, ...) {
     }
     va_list args;
     va_start(args, fmt);
-    utils::SRWLockExclusive lock(g_context_lock);
+    utils::SRWLockExclusive lock(utils::g_context_lock);
     uint64_t used = g_used_entries.load(std::memory_order_acquire);
     size_t limit = (std::min)(static_cast<uint64_t>(MAX_ENTRIES), used);
     for (size_t i = 0; i < limit; ++i) {

@@ -1134,9 +1134,6 @@ void InitMainNewTab() {
         // Update input blocking system with loaded settings
         // Input blocking is now handled by Windows message hooks
 
-        // Apply ADHD Multi-Monitor Mode settings
-        adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
-
         settings_loaded_once = true;
 
         // FPS limiter mode
@@ -2629,20 +2626,8 @@ void DrawDisplaySettings_WindowModeAndApply() {
                 "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
-    // Background Black Curtain checkbox (only shown in Aspect Ratio mode)
-    if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (CheckboxSetting(settings::g_mainTabSettings.background_feature, "Background Black Curtain")) {
-            LogInfo("Background black curtain setting changed");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Creates a black background behind the game window when it doesn't cover the full screen.");
-        }
-        ImGui::SameLine();
-    }
-
     // ADHD Multi-Monitor Mode controls
-    DrawAdhdMultiMonitorControls(s_window_mode.load() == WindowMode::kAspectRatio);
+    DrawAdhdMultiMonitorControls();
 
     // Apply Changes button
     ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
@@ -4778,7 +4763,8 @@ void DrawAudioSettings() {
         if (!s_audio_mute.load()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
             // Use actual focus state for background audio (not spoofed)
-            bool want_mute = (mute_in_bg && hwnd != nullptr && display_commanderhooks::GetForegroundWindow_Direct() != hwnd);
+            bool want_mute =
+                (mute_in_bg && hwnd != nullptr && display_commanderhooks::GetForegroundWindow_Direct() != hwnd);
             if (::SetMuteForCurrentProcess(want_mute)) {
                 ::g_muted_applied.store(want_mute);
                 std::ostringstream oss;
@@ -5898,26 +5884,32 @@ void DrawImportantInfo() {
     ImGui::Unindent();                    // Unindent nested header section
 }
 
-void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting) {
+void DrawAdhdMultiMonitorControls() {
     // Check if multiple monitors are available
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 
     if (!hasMultipleMonitors) {
         return;
     }
-    if (hasBlackCurtainSetting) ImGui::SameLine();
+    // Enabled for game display (black window on the same monitor as the game)
+    bool adhdGameDisplay = settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue();
+    if (ImGui::Checkbox("ADHD on game display", &adhdGameDisplay)) {
+        settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.SetValue(adhdGameDisplay);
+        LogInfo("ADHD on game display %s", adhdGameDisplay ? "enabled" : "disabled");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Show the black background window on the same monitor as the game (behind the game window).\n"
+            "Use with \"ADHD Multi-Monitor Mode\" to cover other displays, or alone to only cover the game display.");
+    }
 
-    // Main ADHD mode checkbox
+    ImGui::SameLine();
+
+    // Main ADHD mode checkbox (other displays)
     bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
     if (ImGui::Checkbox("ADHD Multi-Monitor Mode", &adhdEnabled)) {
         settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(adhdEnabled);
-        // adhd_multi_monitor::api::SetEnabled(adhdEnabled);
-        LogInfo("ADHD Multi-Monitor Mode %s", adhdEnabled ? "enabled" : "disabled");
-    }
-
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Covers secondary monitors with a black window to reduce distractions while playing this game.");
+        LogInfo("ADHD Multi-Monitor Mode (other displays) %s", adhdEnabled ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(

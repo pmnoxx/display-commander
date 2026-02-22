@@ -151,8 +151,6 @@ void InitializeHotkeyDefinitions() {
          []() {
              bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
              bool new_state = !current_state;
-             settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
-             adhd_multi_monitor::api::SetEnabled(new_state);
              std::ostringstream oss;
              oss << "ADHD Multi-Monitor Mode " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());

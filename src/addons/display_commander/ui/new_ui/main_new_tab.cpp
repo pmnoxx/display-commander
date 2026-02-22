@@ -28,6 +28,7 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/streamline_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
+#include "../../config/display_commander_config.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
@@ -5086,6 +5087,36 @@ void DrawWindowControls() {
 
     ImGui::SameLine();
 
+    // Open DisplayCommander.toml (config) Button
+    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+    if (ImGui::Button(ICON_FK_FILE " Config")) {
+        std::string config_path = display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
+        if (!config_path.empty()) {
+            std::thread([config_path]() {
+                LogDebug("Open DisplayCommander.toml button pressed (bg thread)");
+                LogInfo("Opening DisplayCommander.toml: %s", config_path.c_str());
+                HINSTANCE result = ShellExecuteA(nullptr, "open", config_path.c_str(), nullptr, nullptr, SW_SHOW);
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open DisplayCommander.toml: %s (Error: %ld)", config_path.c_str(),
+                             reinterpret_cast<intptr_t>(result));
+                } else {
+                    LogInfo("Successfully opened DisplayCommander.toml: %s", config_path.c_str());
+                }
+            }).detach();
+        }
+    }
+    ui::colors::PopIconColor();
+    if (ImGui::IsItemHovered()) {
+        std::string config_path = display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
+        if (!config_path.empty()) {
+            ImGui::SetTooltip("Open DisplayCommander config in the default text editor.\nFull path: %s", config_path.c_str());
+        } else {
+            ImGui::SetTooltip("Open DisplayCommander.toml (config path not available).");
+        }
+    }
+
+    ImGui::SameLine();
+
     // Restore Window Button
     ui::colors::PushIconColor(ui::colors::ICON_ACTION);
     if (ImGui::Button(ICON_FK_UNDO " Restore Window")) {
@@ -5104,7 +5135,7 @@ void DrawWindowControls() {
 
     // Open DisplayCommander.log Button
     ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_FILE " DisplayCommander.log")) {
+    if (ImGui::Button(ICON_FK_FILE " Log")) {
         std::thread([]() {
             LogDebug("Open DisplayCommander.log button pressed (bg thread)");
 
@@ -5142,7 +5173,19 @@ void DrawWindowControls() {
     }
     ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.");
+        char process_path[MAX_PATH];
+        if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+            if (last_slash != std::string::npos) {
+                std::string log_path = full_path.substr(0, last_slash) + "\\DisplayCommander.log";
+                ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.\nFull path: %s", log_path.c_str());
+            } else {
+                ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.");
+            }
+        } else {
+            ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.");
+        }
     }
 
     ImGui::SameLine();
@@ -5187,7 +5230,73 @@ void DrawWindowControls() {
     }
     ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Open reshade.log in the default text editor.");
+        char process_path[MAX_PATH];
+        if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+            if (last_slash != std::string::npos) {
+                std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
+                ImGui::SetTooltip("Open reshade.log in the default text editor.\nFull path: %s", log_path.c_str());
+            } else {
+                ImGui::SetTooltip("Open reshade.log in the default text editor.");
+            }
+        } else {
+            ImGui::SetTooltip("Open reshade.log in the default text editor.");
+        }
+    }
+
+    ImGui::SameLine();
+
+    // Open reshade.ini Button
+    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+    if (ImGui::Button(ICON_FK_FILE " reshade.ini")) {
+        std::thread([]() {
+            LogDebug("Open reshade.ini button pressed (bg thread)");
+
+            char process_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
+
+            if (path_length == 0) {
+                LogError("Failed to get current process path for reshade.ini opening");
+                return;
+            }
+
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+
+            if (last_slash == std::string::npos) {
+                LogError("Invalid process path format: %s", full_path.c_str());
+                return;
+            }
+
+            std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
+            LogInfo("Opening reshade.ini: %s", ini_path.c_str());
+
+            HINSTANCE result = ShellExecuteA(nullptr, "open", ini_path.c_str(), nullptr, nullptr, SW_SHOW);
+
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open reshade.ini: %s (Error: %ld)", ini_path.c_str(),
+                         reinterpret_cast<intptr_t>(result));
+            } else {
+                LogInfo("Successfully opened reshade.ini: %s", ini_path.c_str());
+            }
+        }).detach();
+    }
+    ui::colors::PopIconColor();
+    if (ImGui::IsItemHovered()) {
+        char process_path[MAX_PATH];
+        if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
+            std::string full_path(process_path);
+            size_t last_slash = full_path.find_last_of("\\/");
+            if (last_slash != std::string::npos) {
+                std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
+                ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s", ini_path.c_str());
+            } else {
+                ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
+            }
+        } else {
+            ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
+        }
     }
 
 #if 0

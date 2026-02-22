@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.45 (2026-02-22)
+
+- **Main tab** - Config and log file buttons: "Config" opens DisplayCommander.toml, "Log" opens DisplayCommander.log, plus buttons for reshade.log and reshade.ini. All show full path in tooltip on hover.
+
 ## v0.12.44 (2026-02-22)
 
 - **Main tab (Vulkan/OpenGL)** - Hovering over "Current Present Mode" for Vulkan/OpenGL now shows the full swapchain tooltip (present mode, flags, back buffer, format, sync interval, etc.), same as DXGI. Tooltip content is API-aware (Vulkan/OpenGL get a short API line; DXGI flip state only for DXGI).

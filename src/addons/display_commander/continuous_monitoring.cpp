@@ -107,6 +107,14 @@ void HandleReflexAutoConfigure() {
     }
 }
 
+bool IsAppInBackground() {
+    HWND current_foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
+    DWORD current_pid = GetCurrentProcessId();
+    DWORD foreground_pid = 0;
+    GetWindowThreadProcessId(current_foreground_hwnd, &foreground_pid);
+    return foreground_pid != current_pid;
+}
+
 void check_is_background() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get the current swapchain window
@@ -114,17 +122,8 @@ void check_is_background() {
     if (hwnd == nullptr) {
         return;
     }
-    // BACKGROUND DETECTION: Check if the app is in background using original GetForegroundWindow
-    HWND current_foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
-
-    // current pid
-    DWORD current_pid = GetCurrentProcessId();
-
-    // foreground pid
-    DWORD foreground_pid = 0;
-    DWORD foreground_tid = GetWindowThreadProcessId(current_foreground_hwnd, &foreground_pid);
-
-    bool app_in_background = foreground_pid != current_pid;
+    // BACKGROUND DETECTION: Check if the app is in background using same logic as IsAppInBackground()
+    bool app_in_background = IsAppInBackground();
 
     if (app_in_background != g_app_in_background.load()) {
         g_app_in_background.store(app_in_background);
@@ -176,7 +175,8 @@ void check_is_background() {
     }
 
     if (s_background_feature_enabled.load()) {
-        // Only create/update background window if main window has focus
+        // Only create/update background window if main window has focus (game in foreground)
+        HWND current_foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
         if (current_foreground_hwnd != nullptr) {
             g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
         }

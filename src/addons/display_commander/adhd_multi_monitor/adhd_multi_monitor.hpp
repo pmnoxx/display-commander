@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <atomic>
 #include <optional>
+#include <thread>
 #include <vector>
 
 namespace adhd_multi_monitor {
@@ -45,12 +46,18 @@ class AdhdMultiMonitorManager {
     // Window procedure for the background window
     static LRESULT CALLBACK BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+    // Dedicated thread that runs the message pump for the background window (so the game does not crash if continuous monitoring stops)
+    void MessagePumpThreadFunc();
+
     // Member variables
     std::atomic<bool> enabled_for_other_displays_ = false;
     std::atomic<bool> enabled_for_game_display_ = false;
 
     // Single window stretching over all displays, inserted after game_hwnd
     HWND background_hwnd_ = nullptr;
+
+    HANDLE pump_stop_event_ = nullptr;
+    std::thread message_pump_thread_;
 
     std::vector<RECT> monitor_rects_;
     RECT game_monitor_rect_;

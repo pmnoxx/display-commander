@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.35 (2026-02-21)
+
+- **ADHD Multi-Monitor** - The background overlay's message pump (PeekMessage/DispatchMessage) now runs on a dedicated thread instead of inside the continuous-monitoring Update() loop. If continuous monitoring stops, the overlay window still processes messages so the game is less likely to hang or crash from a full message queue.
+
 ## v0.12.34 (2026-02-21)
 
 - **SRWLOCK registry** - All 15 global/static SRWLOCKs are now declared in `utils/srwlock_registry.hpp` and defined in `utils/srwlock_registry.cpp`. Stuck-detection log reports every lock (HELD/free) via `LogAllSrwlockStatus()`, making it easier to see which lock is hanging when diagnosing deadlocks.

@@ -3,6 +3,13 @@
 ---
 
 
+## v0.12.39 (2026-02-22)
+
+- **Hotkeys tab** - Each shortcut row has a "..." (Capture) button: click it, then press the key combination you want (numpad and modifiers supported). Existing shortcuts in config still load.
+- **Hotkeys tab** - Added hotkey for moving to primary monitor (default: numpad+).
+- **ADHD hotkey** - Fixed ADHD Multi-Monitor Mode hotkey so the Main tab checkbox stays in sync when toggled via shortcut.
+- **Hotkeys config** - Shortcuts in hotkeys.toml are now stored as readable space-separated strings (e.g. `"ctrl a"`, `"alt numpad+"`). Defaults use this format. Plus-separated form (e.g. `ctrl+shift+m`) still loads for compatibility.
+
 ## v0.12.38 (2026-02-22)
 
 - **Auto color space** - Madew "Auto Color Space" setting available only on dxgi, to prevent crashes.

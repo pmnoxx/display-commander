@@ -5895,11 +5895,10 @@ void DrawAdhdMultiMonitorControls() {
     if (!hasMultipleMonitors) {
         return;
     }
-    // Enabled for game display (black window on the same monitor as the game)
-    bool adhdGameDisplay = settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue();
-    if (ImGui::Checkbox("ADHD on game display", &adhdGameDisplay)) {
-        settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.SetValue(adhdGameDisplay);
-        LogInfo("ADHD on game display %s", adhdGameDisplay ? "enabled" : "disabled");
+    // Use CheckboxSetting so the checkbox always reflects the current setting (e.g. when toggled via hotkey)
+    if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display, "ADHD on game display")) {
+        LogInfo("ADHD on game display %s",
+                settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
@@ -5909,11 +5908,9 @@ void DrawAdhdMultiMonitorControls() {
 
     ImGui::SameLine();
 
-    // Main ADHD mode checkbox (other displays)
-    bool adhdEnabled = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
-    if (ImGui::Checkbox("ADHD Multi-Monitor Mode", &adhdEnabled)) {
-        settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(adhdEnabled);
-        LogInfo("ADHD Multi-Monitor Mode (other displays) %s", adhdEnabled ? "enabled" : "disabled");
+    if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode")) {
+        LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
+                settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(

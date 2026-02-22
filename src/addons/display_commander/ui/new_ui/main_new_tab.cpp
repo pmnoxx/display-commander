@@ -3327,15 +3327,20 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
         }
-        ImGui::SameLine();
-
-        bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
-        if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
-            settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+        int current_api_pt = g_last_reshade_device_api.load();
+        bool is_dxgi_pt = (current_api_pt == static_cast<int>(reshade::api::device_api::d3d10)
+                          || current_api_pt == static_cast<int>(reshade::api::device_api::d3d11)
+                          || current_api_pt == static_cast<int>(reshade::api::device_api::d3d12));
+        if (is_dxgi_pt) {
+            ImGui::SameLine();
+            bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
+            if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
+                settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
+                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+            }
         }
     } else {
         ImGui::TextColored(ui::colors::TEXT_WARNING,

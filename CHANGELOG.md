@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.42 (2026-02-22)
+
+- **Main tab** - "Prevent Tearing" checkbox is shown only for DXGI (DirectX 10/11/12); it has no effect on Vulkan/OpenGL.
+
 ## v0.12.41 (2026-02-22)
 
 - **Hotkeys tab** - Brightness Up/Down hotkey step is now configurable (slider at bottom of Hotkeys tab, 1–50%). Default 5%.

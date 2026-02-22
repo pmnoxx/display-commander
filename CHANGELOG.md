@@ -3,6 +3,11 @@
 ---
 
 
+## v0.12.43 (2026-02-22)
+
+- **Main tab (Vulkan/OpenGL)** - For non-DXGI APIs, the main tab now shows current present mode (e.g. FIFO, MAILBOX, IMMEDIATE for Vulkan) instead of only the DXGI "Prevent Tearing" option. Present mode line in VSync & Tearing section shows VkPresentModeKHR names for Vulkan.
+- **Swapchain tooltip** - Present flags label and interpretation are now API-aware per ReShade: DXGI (DXGI_SWAP_CHAIN_FLAG), Vulkan (VkSwapchainCreateFlagsKHR), or generic for other APIs.
+
 ## v0.12.42 (2026-02-22)
 
 - **Main tab** - "Prevent Tearing" checkbox is shown only for DXGI (DirectX 10/11/12); it has no effect on Vulkan/OpenGL.

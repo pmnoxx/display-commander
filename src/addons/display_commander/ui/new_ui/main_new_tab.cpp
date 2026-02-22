@@ -3299,8 +3299,27 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders() {
     }
 }
 
+/// Returns present mode display name for non-DXGI APIs (Vulkan, OpenGL).
+/// ReShade: present_mode is VkPresentModeKHR for Vulkan, WGL_SWAP_METHOD_ARB for OpenGL.
+static const char* GetPresentModeNameNonDxgi(int device_api_value, uint32_t present_mode) {
+    if (device_api_value == static_cast<int>(reshade::api::device_api::vulkan)) {
+        switch (present_mode) {
+            case 0: return "IMMEDIATE (Vulkan)";
+            case 1: return "MAILBOX (Vulkan)";
+            case 2: return "FIFO (Vulkan)";
+            case 3: return "FIFO_RELAXED (Vulkan)";
+            default: return "VkPresentMode (Vulkan)";
+        }
+    }
+    if (device_api_value == static_cast<int>(reshade::api::device_api::opengl)) {
+        return "OpenGL";
+    }
+    return "Other";
+}
+
 static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
+        auto desc_ptr_cb = g_last_swapchain_desc.load();
         bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
         if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
             s_restart_needed_vsync_tearing.store(true);
@@ -3340,6 +3359,13 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+            }
+        } else if (desc_ptr_cb) {
+            ImGui::SameLine();
+            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
+                              GetPresentModeNameNonDxgi(current_api_pt, desc_ptr_cb->present_mode));
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
             }
         }
     } else {
@@ -3759,20 +3785,31 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
         ImGui::Unindent();
     }
 
+    // ReShade: present_flags is DXGI_SWAP_CHAIN_FLAG (DXGI), VkSwapchainCreateFlagsKHR (Vulkan), or PFD_* (OpenGL).
     if (desc.present_flags != 0) {
-        ImGui::Text("Device Creation Flags: 0x%X", desc.present_flags);
-        ImGui::Text("Flags:");
-        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
-            ImGui::Text("  • ALLOW_TEARING (VRR/G-Sync)");
-        }
-        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
-            ImGui::Text("  • FRAME_LATENCY_WAITABLE_OBJECT");
-        }
-        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
-            ImGui::Text("  • DISPLAY_ONLY");
-        }
-        if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
-            ImGui::Text("  • RESTRICTED_CONTENT");
+        int api_val = g_last_reshade_device_api.load();
+        bool is_dxgi_flags = (api_val == static_cast<int>(reshade::api::device_api::d3d10)
+                              || api_val == static_cast<int>(reshade::api::device_api::d3d11)
+                              || api_val == static_cast<int>(reshade::api::device_api::d3d12));
+        if (is_dxgi_flags) {
+            ImGui::Text("Swap chain creation flags (DXGI): 0x%X", desc.present_flags);
+            ImGui::Text("Flags:");
+            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
+                ImGui::Text("  • ALLOW_TEARING (VRR/G-Sync)");
+            }
+            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
+                ImGui::Text("  • FRAME_LATENCY_WAITABLE_OBJECT");
+            }
+            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
+                ImGui::Text("  • DISPLAY_ONLY");
+            }
+            if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
+                ImGui::Text("  • RESTRICTED_CONTENT");
+            }
+        } else if (api_val == static_cast<int>(reshade::api::device_api::vulkan)) {
+            ImGui::Text("Swapchain creation flags (VkSwapchainCreateFlagsKHR): 0x%X", desc.present_flags);
+        } else {
+            ImGui::Text("Creation flags: 0x%X", desc.present_flags);
         }
     }
 }
@@ -4102,14 +4139,15 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
         return status_hovered;
     }
 
-    // Unsupported API (Vulkan, OpenGL, etc.)
-    present_mode_name = "Non-DXGI";
+    // Vulkan, OpenGL, etc.: show present mode (ReShade: VkPresentModeKHR or WGL)
+    present_mode_name = GetPresentModeNameNonDxgi(current_api, desc.present_mode);
+    present_mode_color = ui::colors::TEXT_DIMMED;
     ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
     DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
     if (out_ctx) {
         out_ctx->desc = desc_ptr.get();
         out_ctx->flip_state = DxgiBypassMode::kUnset;
-        out_ctx->flip_state_str = "Unknown";
+        out_ctx->flip_state_str = "N/A";
         out_ctx->present_mode_name = std::move(present_mode_name);
     }
     return false;

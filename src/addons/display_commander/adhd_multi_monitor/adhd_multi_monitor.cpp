@@ -1,7 +1,6 @@
 #include "adhd_multi_monitor.hpp"
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
-#include "../hooks/api_hooks.hpp"
 #include <algorithm>
 #include <dwmapi.h>
 
@@ -19,7 +18,7 @@ namespace adhd_multi_monitor {
 AdhdMultiMonitorManager g_adhdManager;
 
 AdhdMultiMonitorManager::AdhdMultiMonitorManager()
-    : enabled_(false), background_hwnd_(nullptr), last_foreground_window_(nullptr), initialized_(false),
+    : enabled_(false), background_hwnd_(nullptr), last_game_in_foreground_(false), initialized_(false),
       background_window_created_(false) {
     game_monitor_rect_ = {0, 0, 0, 0};
 }
@@ -100,24 +99,15 @@ void AdhdMultiMonitorManager::Update() {
         }
     }
 
-    // Check focus changes using GetForegroundWindow_Direct
-    HWND current_foreground = GetOriginalForegroundWindow();
-    if (current_foreground != last_foreground_window_) {
-        last_foreground_window_ = current_foreground;
-
-        // Check if we should show the background window
-        bool shouldShow = true;
-
-        // Always disengage on focus loss (focus disengagement is always enabled)
-        HWND game_hwnd = g_last_swapchain_hwnd.load();
-        if (game_hwnd && current_foreground != game_hwnd) {
-            shouldShow = false;
-        }
+    // Only show background window when game is in foreground (same logic as g_app_in_background)
+    bool game_in_foreground = !IsAppInBackground();
+    if (game_in_foreground != last_game_in_foreground_) {
+        last_game_in_foreground_ = game_in_foreground;
 
         if (background_window_created_) {
-            ShowBackgroundWindow(shouldShow);
+            ShowBackgroundWindow(game_in_foreground);
 
-            if (shouldShow) {
+            if (game_in_foreground) {
                 PositionBackgroundWindow();
             }
         }
@@ -140,8 +130,10 @@ void AdhdMultiMonitorManager::SetEnabled(bool enabled) {
         }
         UpdateMonitorInfo();
         PositionBackgroundWindow();
-        ShowBackgroundWindow(true);
+        last_game_in_foreground_ = !IsAppInBackground();
+        ShowBackgroundWindow(last_game_in_foreground_);
     } else {
+        last_game_in_foreground_ = false;
         ShowBackgroundWindow(false);
     }
 }
@@ -230,8 +222,11 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow() {
     int width = boundingRect.right - boundingRect.left;
     int height = boundingRect.bottom - boundingRect.top;
 
-    SetWindowPos(background_hwnd_, HWND_TOPMOST, boundingRect.left, boundingRect.top, width, height,
-                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    UINT swp_flags = SWP_NOACTIVATE;
+    if (!IsAppInBackground()) {
+        swp_flags |= SWP_SHOWWINDOW;
+    }
+    SetWindowPos(background_hwnd_, HWND_TOPMOST, boundingRect.left, boundingRect.top, width, height, swp_flags);
 }
 
 void AdhdMultiMonitorManager::ShowBackgroundWindow(bool show) {
@@ -270,10 +265,6 @@ void AdhdMultiMonitorManager::UpdateMonitorInfo() {
             game_monitor_rect_ = mi.rcMonitor;
         }
     }
-}
-
-HWND AdhdMultiMonitorManager::GetOriginalForegroundWindow() {
-    return display_commanderhooks::GetForegroundWindow_Direct();
 }
 
 LRESULT CALLBACK AdhdMultiMonitorManager::BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {

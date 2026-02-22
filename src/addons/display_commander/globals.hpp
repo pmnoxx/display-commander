@@ -760,6 +760,8 @@ extern std::atomic<int> g_translate_mouse_debug_screen_out_y;
 
 // Background/foreground state
 extern std::atomic<bool> g_app_in_background;
+// Returns true if the current process is not the foreground process (same logic as g_app_in_background).
+bool IsAppInBackground();
 // Timestamp (ns) of last foreground<->background switch; used to limit VRR/NVAPI updates to 5s after switch
 extern std::atomic<LONGLONG> g_last_foreground_background_switch_ns;
 

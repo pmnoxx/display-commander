@@ -45,14 +45,11 @@ class AdhdMultiMonitorManager {
     // Window procedure for the background window
     static LRESULT CALLBACK BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-    // Get the original GetForegroundWindow function
-    static HWND GetOriginalForegroundWindow();
-
     // Member variables
     std::atomic<bool> enabled_;
 
     HWND background_hwnd_;
-    HWND last_foreground_window_;
+    bool last_game_in_foreground_;
 
     std::vector<RECT> monitor_rects_;
     RECT game_monitor_rect_;

@@ -15,6 +15,7 @@
 #include "../settings/advanced_tab_settings.hpp"
 #include "../ui/new_ui/window_info_tab.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_registry.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
 
@@ -27,7 +28,6 @@ static std::atomic<bool> g_sent_activate{false};
 
 // HWND -> original WNDPROC. Store original *before* swapping to detour (avoids race with DefWindowProc).
 static std::unordered_map<HWND, WNDPROC> g_original_wndproc;
-static SRWLOCK g_wndproc_map_lock;
 static std::atomic<bool> g_wndproc_lock_initialized{false};
 
 // Trampoline (SK-style): 1) ProcessWindowMessage; 2) if not skipped, call original WNDPROC.
@@ -37,7 +37,7 @@ static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, L
     }
     WNDPROC orig = nullptr;
     {
-        utils::SRWLockShared guard(g_wndproc_map_lock);
+        utils::SRWLockShared guard(utils::g_wndproc_map_lock);
         auto it = g_original_wndproc.find(hwnd);
         if (it != g_original_wndproc.end()) {
             orig = it->second;
@@ -49,7 +49,7 @@ static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, L
     LRESULT ret = IsWindowUnicode(hwnd) ? CallWindowProcW(orig, hwnd, uMsg, wParam, lParam)
                                         : CallWindowProcA(orig, hwnd, uMsg, wParam, lParam);
     if (uMsg == WM_DESTROY) {
-        utils::SRWLockExclusive guard(g_wndproc_map_lock);
+        utils::SRWLockExclusive guard(utils::g_wndproc_map_lock);
         g_original_wndproc.erase(hwnd);
     }
     return ret;
@@ -288,10 +288,7 @@ bool InstallWindowProcHooks(HWND target_hwnd) {
         return false;
     }
 
-    // Initialize SRWLOCK once (safe for concurrent first-time callers)
-    if (!g_wndproc_lock_initialized.exchange(true)) {
-        InitializeSRWLock(&g_wndproc_map_lock);
-    }
+    g_wndproc_lock_initialized.store(true);
 
     WNDPROC current = reinterpret_cast<WNDPROC>(GetWindowLongPtrW(target_hwnd, GWLP_WNDPROC));
     if (current == WindowProc_Detour) {
@@ -302,7 +299,7 @@ bool InstallWindowProcHooks(HWND target_hwnd) {
 
     // Store original *before* swapping to detour (per memory: avoid early-message race)
     {
-        utils::SRWLockExclusive guard(g_wndproc_map_lock);
+        utils::SRWLockExclusive guard(utils::g_wndproc_map_lock);
         g_original_wndproc[target_hwnd] = current;
     }
     SetWindowLongPtrW(target_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WindowProc_Detour));
@@ -320,7 +317,7 @@ void UninstallWindowProcHooks() {
     if (!g_wndproc_lock_initialized.load()) {
         return;
     }
-    utils::SRWLockExclusive guard(g_wndproc_map_lock);
+    utils::SRWLockExclusive guard(utils::g_wndproc_map_lock);
     for (const auto& kv : g_original_wndproc) {
         HWND hwnd = kv.first;
         WNDPROC orig = kv.second;

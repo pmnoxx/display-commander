@@ -1,9 +1,10 @@
-# Known Bugs
+# Known Issues
+
+## Reflex / ETW
+
+- **PCL stats (ETW)** – PCL Stats (ETW) reporting is currently disabled when using injected Reflex (e.g. Vulkan), due to conflict with Native Frame Pacing code.
 
 ## Game Compatibility Issues
-
-### Silent Hill 2 Remake
-**Current Behavior:** Game crashes on launch or during gameplay when Display Commander addon is active.
 
 ## Workarounds
 

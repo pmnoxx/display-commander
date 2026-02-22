@@ -2938,6 +2938,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "Off: Disables both Low Latency and Boost.\n"
                         "Game Defaults: Do not override; use the game's own Reflex settings.");
                 }
+#if 0
                 ImGui::SameLine();
                 bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
                 if (ImGui::Checkbox("PCL stats", &pcl_stats)) {
@@ -2953,6 +2954,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be "
                         "installed.\nWorks with Reflex and OnPresent sync modes.");
                 }
+#endif
             }
             if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
@@ -2998,6 +3000,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
             }
         }
 
+#if 0
         // PCL stats checkbox for OnPresentSync mode (when Reflex is not enabled)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             ImGui::Spacing();
@@ -3016,6 +3019,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                     "installed.\nNote: PCL stats markers are only emitted when Reflex is enabled.");
             }
         }
+#endif
 
         // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected and in sync)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {

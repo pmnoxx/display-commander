@@ -1758,23 +1758,29 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     hookToSwapChain(swapchain);
 
     // Auto set color space if enabled
-    AutoSetColorSpace(swapchain);
-
     auto api = swapchain->get_device()->get_api();
+    bool idx_dx12 = api == reshade::api::device_api::d3d12;
+    bool dx_dx11 = api == reshade::api::device_api::d3d11;
+    bool dx_dx10 = api == reshade::api::device_api::d3d10;
+    bool dx_d3d9 = api == reshade::api::device_api::d3d9;
+    bool is_dxgi = idx_dx12 || dx_dx11 || dx_dx10;
+    if (is_dxgi) {
+        AutoSetColorSpace(swapchain);
+    }
 
-    if (api == reshade::api::device_api::d3d12) {
+    if (idx_dx12) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
-    } else if (api == reshade::api::device_api::d3d11) {
+    } else if (dx_dx11) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
-    } else if (api == reshade::api::device_api::d3d10) {
+    } else if (dx_dx10) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
@@ -1783,7 +1789,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     }
 
     // Record the native D3D9 device for Present detour filtering
-    if (api == reshade::api::device_api::d3d9) {
+    if (dx_d3d9) {
         // query don't assume
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_device()->get_native());
 

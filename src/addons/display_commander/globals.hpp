@@ -564,7 +564,7 @@ extern std::atomic<bool> g_auto_click_enabled;
 
 // ReShade Integration
 extern std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
-extern SRWLOCK g_reshade_runtimes_lock;
+#include "utils/srwlock_registry.hpp"  // g_reshade_runtimes_lock and other global SRWLOCKs
 
 // SRWLOCK diagnostics for stuck-detection reporting (returns true if lock is currently held)
 bool IsReshadeRuntimesLockHeld();

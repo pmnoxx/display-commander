@@ -34,9 +34,6 @@ NvAPI_D3D_Sleep_pfn NvAPI_D3D_Sleep_Original = nullptr;
 NvAPI_D3D_GetLatency_pfn NvAPI_D3D_GetLatency_Original = nullptr;
 NvAPI_D3D_GetSleepStatus_pfn NvAPI_D3D_GetSleepStatus_Original = nullptr;
 
-// SRWLOCK for thread-safe NVAPI hook access
-static SRWLOCK g_nvapi_lock = SRWLOCK_INIT;
-
 // Timer handle for delay-present-start wait (created on first use in wait_until_ns)
 static HANDLE g_timer_handle_delay_present_start = nullptr;
 
@@ -627,4 +624,4 @@ void UninstallNVAPIHooks() {
     }
 }
 
-bool IsNvapiLockHeld() { return utils::TryIsSRWLockHeld(g_nvapi_lock); }
+bool IsNvapiLockHeld() { return utils::TryIsSRWLockHeld(utils::g_nvapi_lock); }

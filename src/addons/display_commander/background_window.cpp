@@ -1,6 +1,5 @@
 #include "background_window.hpp"
 #include "globals.hpp"
-#include "settings/main_tab_settings.hpp"
 #include "utils.hpp"
 #include "utils/logging.hpp"
 #include <algorithm>
@@ -278,16 +277,6 @@ void BackgroundWindowManager::UpdateBackgroundWindowPosition(HWND game_hwnd) {
 
 void BackgroundWindowManager::UpdateBackgroundWindow(HWND game_hwnd) {
     if (game_hwnd == nullptr) {
-        return;
-    }
-
-    // Check if background feature is enabled
-    if (!s_background_feature_enabled.load()) {
-        // Feature disabled, destroy background window if it exists
-        if (m_has_background_window.load()) {
-
-            //    DestroyBackgroundWindow();
-        }
         return;
     }
 

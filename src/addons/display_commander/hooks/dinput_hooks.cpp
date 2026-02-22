@@ -26,7 +26,6 @@ static std::atomic<bool> g_dinput_hooks_installed{false};
 
 // Device tracking
 static std::vector<DInputDeviceInfo> g_dinput_devices;
-static SRWLOCK g_dinput_devices_mutex = SRWLOCK_INIT;
 
 // Device state hooking
 struct DInputDeviceHook {
@@ -39,7 +38,6 @@ struct DInputDeviceHook {
 };
 
 static std::unordered_map<LPVOID, DInputDeviceHook> g_dinput_device_hooks;
-static SRWLOCK g_dinput_device_hooks_mutex = SRWLOCK_INIT;
 
 // Hook statistics are now part of the main system
 
@@ -69,7 +67,7 @@ std::string GetInterfaceName(REFIID riid) {
 
 // Track device creation
 void TrackDInputDeviceCreation(const std::string& device_name, DWORD device_type, const std::string& interface_name) {
-    utils::SRWLockExclusive lock(g_dinput_devices_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_devices_mutex);
 
     DInputDeviceInfo info;
     info.device_name = device_name;
@@ -90,7 +88,7 @@ const std::vector<DInputDeviceInfo>& GetDInputDevices() {
 }
 
 void ClearDInputDevices() {
-    utils::SRWLockExclusive lock(g_dinput_devices_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_devices_mutex);
     g_dinput_devices.clear();
 }
 
@@ -292,7 +290,7 @@ void UninstallDirectInputHooks() {
 HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, LPVOID lpvData) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get the original function from the device hook
-    utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
     auto it = g_dinput_device_hooks.find(pDevice);
     if (it == g_dinput_device_hooks.end()) {
         LogWarn("DInputDevice_GetDeviceState_Detour: Device not found in hooks map");
@@ -340,7 +338,7 @@ HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, 
 HRESULT WINAPI DInputDevice_GetDeviceData_Detour(LPVOID pDevice, DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get the original function from the device hook
-    utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
     auto it = g_dinput_device_hooks.find(pDevice);
     if (it == g_dinput_device_hooks.end()) {
         LogWarn("DInputDevice_GetDeviceData_Detour: Device not found in hooks map");
@@ -386,7 +384,7 @@ void HookDirectInputDeviceVTable(LPVOID device, const std::string& device_name, 
         return;
     }
 
-    utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
 
     // Check if already hooked
     if (g_dinput_device_hooks.find(device) != g_dinput_device_hooks.end()) {
@@ -460,7 +458,7 @@ void UnhookDirectInputDeviceVTable(LPVOID device) {
         return;
     }
 
-    utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
 
     auto it = g_dinput_device_hooks.find(device);
     if (it == g_dinput_device_hooks.end()) {
@@ -488,7 +486,7 @@ void UnhookDirectInputDeviceVTable(LPVOID device) {
 
 // Clear all DirectInput device hooks
 void ClearAllDirectInputDeviceHooks() {
-    utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
 
     for (auto& pair : g_dinput_device_hooks) {
         DInputDeviceHook& hook = pair.second;
@@ -511,7 +509,7 @@ void ClearAllDirectInputDeviceHooks() {
 
 // Hook all DirectInput devices (for manual hooking)
 void HookAllDirectInputDevices() {
-    utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
 
     // This is a placeholder function - in a real implementation, you would need to
     // enumerate all existing DirectInput devices and hook them
@@ -522,7 +520,7 @@ void HookAllDirectInputDevices() {
 
 // Get count of hooked DirectInput devices
 int GetDirectInputDeviceHookCount() {
-    utils::SRWLockExclusive lock(g_dinput_device_hooks_mutex);
+    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
     return static_cast<int>(g_dinput_device_hooks.size());
 }
 

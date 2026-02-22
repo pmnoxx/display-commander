@@ -7,7 +7,6 @@
 #include <windows.h>
 
 // Atomic variables used by main tab settings
-std::atomic<bool> s_background_feature_enabled{false};  // Disabled by default
 std::atomic<int> s_scanline_offset{0};
 std::atomic<int> s_vblank_sync_divisor{1};
 std::atomic<float> s_fps_limit{0.f};
@@ -52,8 +51,6 @@ MainTabSettings::MainTabSettings()
       window_aspect_width("aspect_width", s_aspect_width, 0,
                           {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"},
                           "DisplayCommander"),
-      background_feature("background_feature", s_background_feature_enabled, s_background_feature_enabled.load(),
-                         "DisplayCommander"),
       alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "DisplayCommander"),
       fps_limiter_mode("fps_limiter_mode", 0,
                        {"Disabled", "Reflex (low latency)",
@@ -160,6 +157,8 @@ MainTabSettings::MainTabSettings()
       target_extended_display_device_id("target_extended_display_device_id", "", "DisplayCommander"),
       game_window_extended_display_device_id("game_window_display_device_id", "", "DisplayCommander"),
       selected_extended_display_device_id("selected_extended_display_device_id", "", "DisplayCommander"),
+      adhd_multi_monitor_enabled_for_game_display("adhd_multi_monitor_enabled_for_game_display", false,
+                                                   "DisplayCommander"),
       adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "DisplayCommander"),
       screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
                        {"Default (no change)", "Disable when Focused", "Disable"}, "DisplayCommander"),
@@ -208,7 +207,6 @@ MainTabSettings::MainTabSettings()
         &window_mode,
         &aspect_index,
         &window_aspect_width,
-        &background_feature,
         &alignment,
         &fps_limiter_mode,
         &scanline_offset,
@@ -287,6 +285,7 @@ MainTabSettings::MainTabSettings()
         &target_extended_display_device_id,
         &game_window_extended_display_device_id,
         &selected_extended_display_device_id,
+        &adhd_multi_monitor_enabled_for_game_display,
         &adhd_multi_monitor_enabled,
         &screensaver_mode,
         &advanced_settings_enabled,
@@ -330,9 +329,6 @@ MainTabSettings::MainTabSettings()
 void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
-
-    // Apply ADHD Multi-Monitor Mode settings after loading
-    adhd_multi_monitor::api::SetEnabled(adhd_multi_monitor_enabled.GetValue());
 
     // Update CPU cores maximum based on system CPU count
     UpdateCpuCoresMaximum();

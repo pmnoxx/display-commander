@@ -8,7 +8,6 @@
 #include <vector>
 
 // Forward declarations for atomic variables used by main tab settings
-extern std::atomic<bool> s_background_feature_enabled;
 extern std::atomic<int> s_scanline_offset;
 extern std::atomic<int> s_vblank_sync_divisor;
 extern std::atomic<float> s_fps_limit;
@@ -54,10 +53,10 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnumRef<WindowMode> window_mode;
     ui::new_ui::ComboSetting aspect_index;
     ui::new_ui::ComboSettingRef window_aspect_width;
-    ui::new_ui::BoolSettingRef background_feature;
     ui::new_ui::ComboSetting alignment;
 
     // ADHD Multi-Monitor Mode Settings
+    ui::new_ui::BoolSetting adhd_multi_monitor_enabled_for_game_display;
     ui::new_ui::BoolSetting adhd_multi_monitor_enabled;
 
     // FPS Settings

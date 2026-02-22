@@ -151,7 +151,6 @@ static GetModuleHandleExA_pfn GetModuleHandleExA_Original = nullptr;
 
 // DLSS override: logical module name (lowercase) -> HMODULE we loaded via redirect (so GetModuleHandle returns this)
 static std::unordered_map<std::wstring, HMODULE> g_dlss_override_handles;
-static SRWLOCK g_dlss_override_handles_srwlock = SRWLOCK_INIT;
 
 static const wchar_t* k_dlss_dll_names[] = {L"nvngx_dlss.dll", L"nvngx_dlssd.dll", L"nvngx_dlssg.dll"};
 
@@ -181,21 +180,21 @@ static bool IsDlssOverrideDllName(const std::wstring& lowerName) {
 static void RecordDlssOverrideHandle(const std::wstring& logicalName, HMODULE hMod) {
     std::wstring key = ToLowerModuleName(logicalName.c_str());
     if (!IsDlssOverrideDllName(key)) return;
-    utils::SRWLockExclusive lock(g_dlss_override_handles_srwlock);
+    utils::SRWLockExclusive lock(utils::g_dlss_override_handles_srwlock);
     g_dlss_override_handles[key] = hMod;
 }
 
 static HMODULE GetDlssOverrideHandle(const std::wstring& logicalName) {
     std::wstring key = ToLowerModuleName(logicalName.c_str());
     if (!IsDlssOverrideDllName(key)) return nullptr;
-    utils::SRWLockShared lock(g_dlss_override_handles_srwlock);
+    utils::SRWLockShared lock(utils::g_dlss_override_handles_srwlock);
     auto it = g_dlss_override_handles.find(key);
     return (it != g_dlss_override_handles.end()) ? it->second : nullptr;
 }
 
 static void RemoveDlssOverrideHandle(HMODULE hMod) {
     if (!hMod) return;
-    utils::SRWLockExclusive lock(g_dlss_override_handles_srwlock);
+    utils::SRWLockExclusive lock(utils::g_dlss_override_handles_srwlock);
     for (auto it = g_dlss_override_handles.begin(); it != g_dlss_override_handles.end();) {
         if (it->second == hMod)
             it = g_dlss_override_handles.erase(it);
@@ -210,14 +209,12 @@ static std::atomic<bool> g_loadlibrary_hooks_installed{false};
 // Module tracking
 static std::vector<ModuleInfo> g_loaded_modules;
 static std::unordered_set<HMODULE> g_module_handles;
-static SRWLOCK g_module_srwlock = SRWLOCK_INIT;
 
 // Display Commander module handle (for determining which modules can be blocked)
 static HMODULE g_display_commander_module = nullptr;
 
 // Blocked DLL tracking
 static std::set<std::wstring> g_blocked_dlls;
-static SRWLOCK g_blocked_dlls_srwlock = SRWLOCK_INIT;
 
 // Helper function to get current timestamp as string
 std::string GetCurrentTimestamp() {
@@ -345,7 +342,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
         {
-            utils::SRWLockExclusive lock(g_module_srwlock);
+            utils::SRWLockExclusive lock(utils::g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
                 ModuleInfo moduleInfo;
                 moduleInfo.hModule = result;
@@ -466,7 +463,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
         {
-            utils::SRWLockExclusive lock(g_module_srwlock);
+            utils::SRWLockExclusive lock(utils::g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
                 ModuleInfo moduleInfo;
                 moduleInfo.hModule = result;
@@ -585,7 +582,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
         {
-            utils::SRWLockExclusive lock(g_module_srwlock);
+            utils::SRWLockExclusive lock(utils::g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
                 ModuleInfo moduleInfo;
                 moduleInfo.hModule = result;
@@ -713,7 +710,7 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
         {
-            utils::SRWLockExclusive lock(g_module_srwlock);
+            utils::SRWLockExclusive lock(utils::g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
                 ModuleInfo moduleInfo;
                 moduleInfo.hModule = result;
@@ -793,7 +790,7 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
         {
-            utils::SRWLockExclusive lock(g_module_srwlock);
+            utils::SRWLockExclusive lock(utils::g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
                 ModuleInfo moduleInfo;
                 moduleInfo.hModule = result;
@@ -883,7 +880,7 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
         {
-            utils::SRWLockExclusive lock(g_module_srwlock);
+            utils::SRWLockExclusive lock(utils::g_module_srwlock);
             if (g_module_handles.find(hMod) == g_module_handles.end()) {
                 added = true;
                 ModuleInfo moduleInfo;
@@ -1236,7 +1233,7 @@ void UninstallLoadLibraryHooks() {
     FreeLibrary_Original = nullptr;
     FreeLibraryAndExitThread_Original = nullptr;
     {
-        utils::SRWLockExclusive lock(g_dlss_override_handles_srwlock);
+        utils::SRWLockExclusive lock(utils::g_dlss_override_handles_srwlock);
         g_dlss_override_handles.clear();
     }
 
@@ -1248,7 +1245,7 @@ void UninstallLoadLibraryHooks() {
 // NvLowLatencyVk.dll - gets loaded by unknown api
 // dinput9_1.dll - gets loaded by unknown api
 bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
-    utils::SRWLockExclusive lock(g_module_srwlock);
+    utils::SRWLockExclusive lock(utils::g_module_srwlock);
 
     if (!modules_loaded_late_without_noticing) {
         g_loaded_modules.clear();
@@ -1327,12 +1324,12 @@ bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
 }
 
 std::vector<ModuleInfo> GetLoadedModules() {
-    utils::SRWLockShared lock(g_module_srwlock);
+    utils::SRWLockShared lock(utils::g_module_srwlock);
     return g_loaded_modules;
 }
 
 bool IsModuleLoaded(const std::wstring& moduleName) {
-    utils::SRWLockShared lock(g_module_srwlock);
+    utils::SRWLockShared lock(utils::g_module_srwlock);
 
     for (const auto& module : g_loaded_modules) {
         if (_wcsicmp(module.moduleName.c_str(), moduleName.c_str()) == 0) {
@@ -1367,7 +1364,7 @@ std::vector<std::string> ReportMissedModulesOnExit() {
     std::vector<std::string> missed;
     std::unordered_set<std::wstring> tracked;
     {
-        utils::SRWLockShared lock(g_module_srwlock);
+        utils::SRWLockShared lock(utils::g_module_srwlock);
         for (const auto& m : g_loaded_modules) {
             std::wstring path = m.fullPath.empty() ? m.moduleName : m.fullPath;
             std::wstring fn = ExtractModuleName(path);
@@ -1447,7 +1444,7 @@ bool HasReframeworkPluginModule() {
     // Enumerate all loaded modules
     if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
         // If enumeration fails, fall back to checking tracked modules
-        utils::SRWLockShared lock(g_module_srwlock);
+        utils::SRWLockShared lock(utils::g_module_srwlock);
         for (const auto& module : g_loaded_modules) {
             if (!module.fullPath.empty()) {
                 std::wstring lowerPath = module.fullPath;
@@ -1635,7 +1632,7 @@ bool ShouldBlockDLL(const std::wstring& dll_path) {
     // Convert to lowercase for case-insensitive comparison
     std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
 
-    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
     bool is_blocked = g_blocked_dlls.find(filename) != g_blocked_dlls.end();
 
     if (is_blocked) {
@@ -1651,7 +1648,7 @@ bool IsDLLBlocked(const std::wstring& module_name) {
     std::wstring lower_name = module_name;
     std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
 
-    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
     return g_blocked_dlls.find(lower_name) != g_blocked_dlls.end();
 }
 
@@ -1659,7 +1656,7 @@ void SetDLLBlocked(const std::wstring& module_name, bool blocked) {
     std::wstring lower_name = module_name;
     std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::towlower);
 
-    utils::SRWLockExclusive lock(g_blocked_dlls_srwlock);
+    utils::SRWLockExclusive lock(utils::g_blocked_dlls_srwlock);
     if (blocked) {
         g_blocked_dlls.insert(lower_name);
     } else {
@@ -1672,7 +1669,7 @@ void LoadBlockedDLLsFromSettings(const std::string& blocked_dlls_str) {
         return;
     }
 
-    utils::SRWLockExclusive lock(g_blocked_dlls_srwlock);
+    utils::SRWLockExclusive lock(utils::g_blocked_dlls_srwlock);
     g_blocked_dlls.clear();
 
     // Parse comma-separated DLL names
@@ -1711,7 +1708,7 @@ void LoadBlockedDLLsFromSettings(const std::string& blocked_dlls_str) {
 }
 
 std::string SaveBlockedDLLsToSettings() {
-    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
 
     std::string result;
     for (auto it = g_blocked_dlls.begin(); it != g_blocked_dlls.end(); ++it) {
@@ -1727,7 +1724,7 @@ std::string SaveBlockedDLLsToSettings() {
 }
 
 std::vector<std::wstring> GetBlockedDLLs() {
-    utils::SRWLockShared lock(g_blocked_dlls_srwlock);
+    utils::SRWLockShared lock(utils::g_blocked_dlls_srwlock);
 
     std::vector<std::wstring> result;
     result.reserve(g_blocked_dlls.size());
@@ -1756,8 +1753,8 @@ bool CanBlockDLL(const ModuleInfo& module_info) {
     return true;
 }
 
-bool IsModuleSrwlockHeld() { return utils::TryIsSRWLockHeld(g_module_srwlock); }
+bool IsModuleSrwlockHeld() { return utils::TryIsSRWLockHeld(utils::g_module_srwlock); }
 
-bool IsBlockedDllsSrwlockHeld() { return utils::TryIsSRWLockHeld(g_blocked_dlls_srwlock); }
+bool IsBlockedDllsSrwlockHeld() { return utils::TryIsSRWLockHeld(utils::g_blocked_dlls_srwlock); }
 
 }  // namespace display_commanderhooks

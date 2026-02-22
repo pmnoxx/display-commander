@@ -128,7 +128,6 @@ std::atomic<bool> g_dx9_swapchain_detected{false};    // Set when D3D9 swapchain
 // 3. Reshade Unloads - needs to clean up OnReshadeUnload
 // 4. Reshade loads again without unloading Display Commander
 std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
-SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 HMODULE g_reshade_module = nullptr;
 
 // Prevent always on top behavior
@@ -617,10 +616,9 @@ std::atomic<bool> g_streamline_dlss_enabled{false};
 
 // Unified game Reflex sleep mode params (D3D and Vulkan both write; read for Game Defaults)
 static GameReflexSleepModeParams g_game_reflex_sleep_mode_params = {};
-static SRWLOCK g_game_reflex_sleep_mode_params_lock = SRWLOCK_INIT;
 
 void SetGameReflexSleepModeParams(bool low_latency, bool boost, uint32_t minimum_interval_us) {
-    utils::SRWLockExclusive lock(g_game_reflex_sleep_mode_params_lock);
+    utils::SRWLockExclusive lock(utils::g_game_reflex_sleep_mode_params_lock);
     g_game_reflex_sleep_mode_params.low_latency = low_latency;
     g_game_reflex_sleep_mode_params.boost = boost;
     g_game_reflex_sleep_mode_params.minimum_interval_us = minimum_interval_us;
@@ -631,7 +629,7 @@ void GetGameReflexSleepModeParams(GameReflexSleepModeParams* out) {
     if (out == nullptr) {
         return;
     }
-    utils::SRWLockShared lock(g_game_reflex_sleep_mode_params_lock);
+    utils::SRWLockShared lock(utils::g_game_reflex_sleep_mode_params_lock);
     *out = g_game_reflex_sleep_mode_params;
 }
 
@@ -1032,7 +1030,7 @@ void AddReShadeRuntime(reshade::api::effect_runtime* runtime) {
         return;
     }
 
-    utils::SRWLockExclusive lock(g_reshade_runtimes_lock);
+    utils::SRWLockExclusive lock(utils::g_reshade_runtimes_lock);
 
     // Check if runtime is already in the vector
     auto it = std::find(g_reshade_runtimes.begin(), g_reshade_runtimes.end(), runtime);
@@ -1047,7 +1045,7 @@ void RemoveReShadeRuntime(reshade::api::effect_runtime* runtime) {
         return;
     }
 
-    utils::SRWLockExclusive lock(g_reshade_runtimes_lock);
+    utils::SRWLockExclusive lock(utils::g_reshade_runtimes_lock);
 
     auto it = std::find(g_reshade_runtimes.begin(), g_reshade_runtimes.end(), runtime);
     if (it != g_reshade_runtimes.end()) {
@@ -1057,7 +1055,7 @@ void RemoveReShadeRuntime(reshade::api::effect_runtime* runtime) {
 }
 
 reshade::api::effect_runtime* GetFirstReShadeRuntime() {
-    utils::SRWLockShared lock(g_reshade_runtimes_lock);
+    utils::SRWLockShared lock(utils::g_reshade_runtimes_lock);
 
     if (g_reshade_runtimes.empty()) {
         return nullptr;
@@ -1068,19 +1066,19 @@ reshade::api::effect_runtime* GetFirstReShadeRuntime() {
 
 void EnumerateReShadeRuntimes(EnumerateReShadeRuntimesCallback callback, void* user_data) {
     if (callback == nullptr) return;
-    utils::SRWLockShared lock(g_reshade_runtimes_lock);
+    utils::SRWLockShared lock(utils::g_reshade_runtimes_lock);
     for (size_t i = 0; i < g_reshade_runtimes.size(); ++i) {
         if (callback(i, g_reshade_runtimes[i], user_data)) break;
     }
 }
 
 size_t GetReShadeRuntimeCount() {
-    utils::SRWLockShared lock(g_reshade_runtimes_lock);
+    utils::SRWLockShared lock(utils::g_reshade_runtimes_lock);
     return g_reshade_runtimes.size();
 }
 
 void OnReshadeUnload() {
-    utils::SRWLockExclusive lock(g_reshade_runtimes_lock);
+    utils::SRWLockExclusive lock(utils::g_reshade_runtimes_lock);
     g_reshade_runtimes.clear();
     LogInfo("OnReshadeUnload: Cleared all ReShade runtimes");
 }
@@ -1089,7 +1087,7 @@ bool SwapchainTrackingManager::IsLockHeldForDiagnostics() const {
     return utils::TryIsSRWLockHeld(const_cast<SRWLOCK&>(lock_));
 }
 
-bool IsReshadeRuntimesLockHeld() { return utils::TryIsSRWLockHeld(g_reshade_runtimes_lock); }
+bool IsReshadeRuntimesLockHeld() { return utils::TryIsSRWLockHeld(utils::g_reshade_runtimes_lock); }
 
 bool IsSwapchainTrackingLockHeld() { return g_swapchainTrackingManager.IsLockHeldForDiagnostics(); }
 

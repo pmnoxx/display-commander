@@ -11,14 +11,18 @@ void Shutdown() { g_adhdManager.Shutdown(); }
 
 void Update() { g_adhdManager.Update(); }
 
-void SetEnabled(bool enabled) { g_adhdManager.SetEnabled(enabled); }
+void SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays) {
+    g_adhdManager.SetEnabled(enabled_for_game_display, enabled_for_other_displays);
+}
 
-bool IsEnabled() { return g_adhdManager.IsEnabled(); }
+bool IsEnabledForGameDisplay() { return g_adhdManager.IsEnabledForGameDisplay(); }
+
+bool IsEnabledForOtherDisplays() { return g_adhdManager.IsEnabledForOtherDisplays(); }
 
 bool IsFocusDisengage() { return g_adhdManager.IsFocusDisengage(); }
 
 bool HasMultipleMonitors() { return g_adhdManager.HasMultipleMonitors(); }
 
-} // namespace api
+}  // namespace api
 
-} // namespace adhd_multi_monitor
+}  // namespace adhd_multi_monitor

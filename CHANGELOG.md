@@ -3,6 +3,11 @@
 ---
 
 
+## v0.12.44 (2026-02-22)
+
+- **Main tab (Vulkan/OpenGL)** - Hovering over "Current Present Mode" for Vulkan/OpenGL now shows the full swapchain tooltip (present mode, flags, back buffer, format, sync interval, etc.), same as DXGI. Tooltip content is API-aware (Vulkan/OpenGL get a short API line; DXGI flip state only for DXGI).
+- **Swapchain tooltip** - DXGI flip state explanation (Composed/Independent/query failed) moved to a dedicated function for clarity; Vulkan/OpenGL tooltips no longer show DXGI flip-state text.
+
 ## v0.12.43 (2026-02-22)
 
 - **Main tab (Vulkan/OpenGL)** - For non-DXGI APIs, the main tab now shows current present mode (e.g. FIFO, MAILBOX, IMMEDIATE for Vulkan) instead of only the DXGI "Prevent Tearing" option. Present mode line in VSync & Tearing section shows VkPresentModeKHR names for Vulkan.

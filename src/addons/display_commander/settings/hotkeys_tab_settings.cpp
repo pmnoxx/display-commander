@@ -1,31 +1,33 @@
 #include "hotkeys_tab_settings.hpp"
 #include "../globals.hpp"
+#include "../ui/new_ui/hotkeys_tab.hpp"
 
 namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
 HotkeysTabSettings::HotkeysTabSettings()
     : enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
-      hotkey_mute_unmute("HotkeyMuteUnmute", "ctrl+shift+m", "DisplayCommander"),
+      hotkey_mute_unmute("HotkeyMuteUnmute", "ctrl shift m", "DisplayCommander"),
       hotkey_background_toggle("HotkeyBackgroundToggle", "", "DisplayCommander"),
       hotkey_timeslowdown("HotkeyTimeslowdown", "", "DisplayCommander"),
-      hotkey_adhd_toggle("HotkeyAdhdToggle", "ctrl+shift+d", "DisplayCommander"),
+      hotkey_adhd_toggle("HotkeyAdhdToggle", "ctrl shift d", "DisplayCommander"),
       hotkey_autoclick("HotkeyAutoclick", "", "DisplayCommander"),
       hotkey_input_blocking("HotkeyInputBlocking", "", "DisplayCommander"),
       hotkey_display_commander_ui("HotkeyDisplayCommanderUi", "end", "DisplayCommander"),
-      hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl+shift+o", "DisplayCommander"),
-      hotkey_stopwatch("HotkeyStopwatch", "ctrl+shift+s", "DisplayCommander"),
-      hotkey_volume_up("HotkeyVolumeUp", "ctrl+shift+up", "DisplayCommander"),
-      hotkey_volume_down("HotkeyVolumeDown", "ctrl+shift+down", "DisplayCommander"),
-      hotkey_system_volume_up("HotkeySystemVolumeUp", "ctrl+alt+up", "DisplayCommander"),
-      hotkey_system_volume_down("HotkeySystemVolumeDown", "ctrl+alt+down", "DisplayCommander"),
+      hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl shift o", "DisplayCommander"),
+      hotkey_stopwatch("HotkeyStopwatch", "ctrl shift s", "DisplayCommander"),
+      hotkey_volume_up("HotkeyVolumeUp", "ctrl shift up", "DisplayCommander"),
+      hotkey_volume_down("HotkeyVolumeDown", "ctrl shift down", "DisplayCommander"),
+      hotkey_system_volume_up("HotkeySystemVolumeUp", "ctrl alt up", "DisplayCommander"),
+      hotkey_system_volume_down("HotkeySystemVolumeDown", "ctrl alt down", "DisplayCommander"),
       hotkey_auto_hdr("HotkeyAutoHdr", "", "DisplayCommander"),
       hotkey_brightness_up("HotkeyBrightnessUp", "", "DisplayCommander"),
       hotkey_brightness_down("HotkeyBrightnessDown", "", "DisplayCommander"),
-      hotkey_win_down("HotkeyWinDown", "win+down", "DisplayCommander"),
-      hotkey_win_up("HotkeyWinUp", "win+up", "DisplayCommander"),
-      hotkey_win_left("HotkeyWinLeft", "win+left", "DisplayCommander"),
-      hotkey_win_right("HotkeyWinRight", "win+right", "DisplayCommander"),
+      hotkey_win_down("HotkeyWinDown", "win down", "DisplayCommander"),
+      hotkey_win_up("HotkeyWinUp", "win up", "DisplayCommander"),
+      hotkey_win_left("HotkeyWinLeft", "win left", "DisplayCommander"),
+      hotkey_win_right("HotkeyWinRight", "win right", "DisplayCommander"),
+      hotkey_move_to_primary("HotkeyMoveToPrimary", "numpad+", "DisplayCommander"),
       exclusive_keys_ad_enabled("ExclusiveKeysADEnabled", false, "DisplayCommander"),
       exclusive_keys_ws_enabled("ExclusiveKeysWSEnabled", false, "DisplayCommander"),
       exclusive_keys_awsd_enabled("ExclusiveKeysAWSDEnabled", false, "DisplayCommander"),
@@ -43,6 +45,8 @@ void HotkeysTabSettings::LoadAll() {
 }
 
 void HotkeysTabSettings::SaveAll() {
+    // Push in-memory parsed hotkeys (numeric) to string settings so file reflects current state
+    ui::new_ui::SyncHotkeySettingsFromParsed();
     // Save all settings
     enable_hotkeys.Save();
     hotkey_mute_unmute.Save();
@@ -65,6 +69,7 @@ void HotkeysTabSettings::SaveAll() {
     hotkey_win_up.Save();
     hotkey_win_left.Save();
     hotkey_win_right.Save();
+    hotkey_move_to_primary.Save();
     exclusive_keys_ad_enabled.Save();
     exclusive_keys_ws_enabled.Save();
     exclusive_keys_awsd_enabled.Save();
@@ -77,6 +82,7 @@ std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
             &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up, &hotkey_volume_down,
             &hotkey_system_volume_up, &hotkey_system_volume_down, &hotkey_auto_hdr, &hotkey_brightness_up,
             &hotkey_brightness_down, &hotkey_win_down, &hotkey_win_up, &hotkey_win_left, &hotkey_win_right,
+            &hotkey_move_to_primary,
             &exclusive_keys_ad_enabled,
             &exclusive_keys_ws_enabled, &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups};
 }

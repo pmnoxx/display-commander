@@ -2,7 +2,9 @@
 #include <dwmapi.h>
 #include <algorithm>
 #include "../globals.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/timing.hpp"
 
 // Undefine Windows min/max macros to avoid conflicts with std::min/std::max
 #ifdef min
@@ -104,9 +106,9 @@ bool AdhdMultiMonitorManager::CreateBackgroundWindow() {
     if (!game_hwnd) return false;
 
     HINSTANCE hInstance = GetModuleHandle(nullptr);
-    background_hwnd_ = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED, BACKGROUND_WINDOW_CLASS,
-                                       BACKGROUND_WINDOW_TITLE, WS_POPUP, 0, 0, 1, 1,
-                                       nullptr, nullptr, hInstance, this);
+    background_hwnd_ =
+        CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED, BACKGROUND_WINDOW_CLASS, BACKGROUND_WINDOW_TITLE, WS_POPUP, 0,
+                        0, 1, 1, nullptr, nullptr, hInstance, this);
 
     if (!background_hwnd_) {
         LogError("Failed to create ADHD background window");
@@ -115,7 +117,7 @@ bool AdhdMultiMonitorManager::CreateBackgroundWindow() {
 
     SetLayeredWindowAttributes(background_hwnd_, 0, 255, LWA_ALPHA);
     SetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE,
-                     GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
+                      GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
 
     pump_stop_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (pump_stop_event_) {
@@ -145,8 +147,10 @@ void AdhdMultiMonitorManager::DestroyBackgroundWindow() {
 void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
     const HANDLE stop = pump_stop_event_;
     if (!stop) return;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
 
     while (true) {
+        RECORD_DETOUR_CALL(utils::get_now_ns());
         DWORD r = MsgWaitForMultipleObjects(1, &stop, FALSE, 50, QS_ALLINPUT);
         if (r == WAIT_OBJECT_0) break;
         if (r == WAIT_OBJECT_0 + 1) {

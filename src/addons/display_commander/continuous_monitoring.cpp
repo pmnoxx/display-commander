@@ -21,11 +21,12 @@
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
-#include "utils/srwlock_registry.hpp"
 #include "utils/overlay_window_detector.hpp"
+#include "utils/srwlock_registry.hpp"
 #include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
 #include "widgets/resolution_widget/resolution_widget.hpp"
+
 
 #include <algorithm>
 #include <chrono>
@@ -174,7 +175,6 @@ void check_is_background() {
         && s_window_mode.load() != WindowMode::kNoChanges) {
         ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
     }
-
 }
 
 void HandleDiscordOverlayAutoHide() {

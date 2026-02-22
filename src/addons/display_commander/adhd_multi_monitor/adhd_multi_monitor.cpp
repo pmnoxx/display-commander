@@ -64,14 +64,8 @@ void AdhdMultiMonitorManager::Shutdown() {
 }
 
 void AdhdMultiMonitorManager::Update() {
-    // Process all pending messages for the ADHD background window (so BackgroundWindowProc runs on this thread)
-    if (initialized_ && background_hwnd_) {
-        MSG msg = {};
-        while (PeekMessageW(&msg, background_hwnd_, 0, 0, PM_REMOVE)) {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-        }
-    }
+    // Message pump for the background window runs on a dedicated thread (MessagePumpThreadFunc)
+    // so the game does not crash if continuous monitoring stops calling Update().
 
     if ((!enabled_for_other_displays_.load() && !enabled_for_game_display_.load()) || !initialized_) return;
 
@@ -123,16 +117,49 @@ bool AdhdMultiMonitorManager::CreateBackgroundWindow() {
     SetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE,
                      GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
 
+    pump_stop_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (pump_stop_event_) {
+        message_pump_thread_ = std::thread(&AdhdMultiMonitorManager::MessagePumpThreadFunc, this);
+    }
+
     background_window_created_ = true;
     return true;
 }
 
 void AdhdMultiMonitorManager::DestroyBackgroundWindow() {
+    if (pump_stop_event_) {
+        SetEvent(pump_stop_event_);
+        if (message_pump_thread_.joinable()) {
+            message_pump_thread_.join();
+        }
+        CloseHandle(pump_stop_event_);
+        pump_stop_event_ = nullptr;
+    }
     if (background_hwnd_) {
         DestroyWindow(background_hwnd_);
         background_hwnd_ = nullptr;
     }
     background_window_created_ = false;
+}
+
+void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
+    const HANDLE stop = pump_stop_event_;
+    if (!stop) return;
+
+    while (true) {
+        DWORD r = MsgWaitForMultipleObjects(1, &stop, FALSE, 50, QS_ALLINPUT);
+        if (r == WAIT_OBJECT_0) break;
+        if (r == WAIT_OBJECT_0 + 1) {
+            HWND hwnd = background_hwnd_;
+            if (hwnd && IsWindow(hwnd)) {
+                MSG msg = {};
+                while (PeekMessageW(&msg, hwnd, 0, 0, PM_REMOVE)) {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
+        }
+    }
 }
 
 void AdhdMultiMonitorManager::PositionBackgroundWindow() {

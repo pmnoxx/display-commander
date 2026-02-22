@@ -342,6 +342,8 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
         }
 
         // Track the newly loaded module
+        std::wstring callback_module_name;
+        HMODULE callback_hmodule = nullptr;
         {
             utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
@@ -372,9 +374,12 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
                 LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
                         moduleInfo.sizeOfImage);
 
-                // Call the module loaded callback
-                OnModuleLoaded(moduleInfo.moduleName, result);
+                callback_module_name = moduleInfo.moduleName;
+                callback_hmodule = result;
             }
+        }
+        if (callback_hmodule != nullptr) {
+            OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
         DWORD error = GetLastError();
@@ -458,6 +463,8 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
         }
 
         // Track the newly loaded module
+        std::wstring callback_module_name;
+        HMODULE callback_hmodule = nullptr;
         {
             utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
@@ -488,9 +495,12 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
                 LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
                         moduleInfo.sizeOfImage);
 
-                // Call the module loaded callback
-                OnModuleLoaded(moduleInfo.moduleName, result);
+                callback_module_name = moduleInfo.moduleName;
+                callback_hmodule = result;
             }
+        }
+        if (callback_hmodule != nullptr) {
+            OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
         DWORD error = GetLastError();
@@ -572,6 +582,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
         LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
 
         // Track the module if it's not already tracked
+        std::wstring callback_module_name;
+        HMODULE callback_hmodule = nullptr;
         {
             utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
@@ -613,9 +625,12 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
                 LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
                         moduleInfo.sizeOfImage);
 
-                // Call the module loaded callback
-                OnModuleLoaded(moduleInfo.moduleName, result);
+                callback_module_name = moduleInfo.moduleName;
+                callback_hmodule = result;
             }
+        }
+        if (callback_hmodule != nullptr) {
+            OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
         DWORD error = GetLastError();
@@ -695,6 +710,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
         LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
 
         // Track the module if it's not already tracked
+        std::wstring callback_module_name;
+        HMODULE callback_hmodule = nullptr;
         {
             utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
@@ -726,9 +743,12 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
                 LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
                         moduleInfo.sizeOfImage);
 
-                // Call the module loaded callback
-                OnModuleLoaded(moduleInfo.moduleName, result);
+                callback_module_name = moduleInfo.moduleName;
+                callback_hmodule = result;
             }
+        }
+        if (callback_hmodule != nullptr) {
+            OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
         DWORD error = GetLastError();
@@ -770,6 +790,8 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
 
     if (result) {
         LogInfo("[%s] LoadPackagedLibrary success: %s -> HMODULE: 0x%p", timestamp.c_str(), name_str.c_str(), result);
+        std::wstring callback_module_name;
+        HMODULE callback_hmodule = nullptr;
         {
             utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(result) == g_module_handles.end()) {
@@ -792,8 +814,12 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
                 g_module_handles.insert(result);
                 LogInfo("Added new module to tracking (LoadPackagedLibrary): %s (0x%p)", name_str.c_str(),
                         moduleInfo.baseAddress);
-                OnModuleLoaded(moduleInfo.moduleName, result);
+                callback_module_name = moduleInfo.moduleName;
+                callback_hmodule = result;
             }
+        }
+        if (callback_hmodule != nullptr) {
+            OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
         DWORD error = GetLastError();
@@ -854,6 +880,8 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
     if (status == 0 && base != nullptr) {
         HMODULE hMod = static_cast<HMODULE>(base);
         bool added = false;
+        std::wstring callback_module_name;
+        HMODULE callback_hmodule = nullptr;
         {
             utils::SRWLockExclusive lock(g_module_srwlock);
             if (g_module_handles.find(hMod) == g_module_handles.end()) {
@@ -877,8 +905,12 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
                 g_module_handles.insert(hMod);
                 LogInfo("Added new module to tracking (LdrLoadDll): %s (0x%p)",
                         dll_name.empty() ? "Unknown" : dll_name.c_str(), moduleInfo.baseAddress);
-                OnModuleLoaded(moduleInfo.moduleName, hMod);
+                callback_module_name = moduleInfo.moduleName;
+                callback_hmodule = hMod;
             }
+        }
+        if (callback_hmodule != nullptr) {
+            OnModuleLoaded(callback_module_name, callback_hmodule);
         }
         // Only log success when we actually added (avoids spam when library was already loaded)
         if (added) {

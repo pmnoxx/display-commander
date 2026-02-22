@@ -89,7 +89,6 @@ static std::atomic<uint64_t> g_loader_last_present_id{0};
 static std::atomic<uint64_t> g_loader_intercept_count{0};  // times we returned wrapper from vkGetDeviceProcAddr
 
 /** Enabled device extensions from last vkCreateDevice (thread-safe). */
-static SRWLOCK g_vulkan_extensions_lock = SRWLOCK_INIT;
 static std::vector<std::string> g_vulkan_enabled_extensions;
 
 // VK_NV_low_latency2 marker enum (same order as NvLL): 0=SIMULATION_START, 4=PRESENT_START, 5=PRESENT_END
@@ -156,7 +155,7 @@ static VkResult VKAPI_CALL vkCreateDevice_Wrapper(VkPhysicalDevice physicalDevic
             VkResult r = g_real_vkCreateDevice(physicalDevice, &mod, pAllocator, pDevice);
             if (r == VK_SUCCESS) {
                 LogInfo("VulkanLoader: vkCreateDevice with %zu extensions (appended Reflex) succeeded", ptrs.size());
-                utils::SRWLockExclusive lock(g_vulkan_extensions_lock);
+                utils::SRWLockExclusive lock(utils::g_vulkan_extensions_lock);
                 g_vulkan_enabled_extensions = std::move(exts_for_ui);
                 return r;
             }
@@ -175,7 +174,7 @@ static VkResult VKAPI_CALL vkCreateDevice_Wrapper(VkPhysicalDevice physicalDevic
 
     VkResult r = g_real_vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
     if (!exts_for_ui.empty()) {
-        utils::SRWLockExclusive lock(g_vulkan_extensions_lock);
+        utils::SRWLockExclusive lock(utils::g_vulkan_extensions_lock);
         g_vulkan_enabled_extensions = std::move(exts_for_ui);
     }
     if (pCreateInfo != nullptr) {
@@ -390,7 +389,7 @@ void UninstallVulkanLoaderHooks() {
     g_real_vkCreateDevice = nullptr;
     g_real_vkSetLatencyMarkerNV = nullptr;
     {
-        utils::SRWLockExclusive lock(g_vulkan_extensions_lock);
+        utils::SRWLockExclusive lock(utils::g_vulkan_extensions_lock);
         g_vulkan_enabled_extensions.clear();
     }
     LogInfo("VulkanLoader: hooks uninstalled");
@@ -416,7 +415,7 @@ void GetVulkanLoaderDebugState(uint64_t* out_marker_count, int* out_last_marker_
 
 void GetVulkanEnabledExtensions(std::vector<std::string>& out) {
     out.clear();
-    utils::SRWLockShared lock(g_vulkan_extensions_lock);
+    utils::SRWLockShared lock(utils::g_vulkan_extensions_lock);
     out = g_vulkan_enabled_extensions;
 }
 

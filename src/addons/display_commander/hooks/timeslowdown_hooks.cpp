@@ -122,7 +122,6 @@ thread_local DWORD tls_thread_id = 0;
 
 namespace {
 // QPC calling module tracking
-SRWLOCK g_qpc_modules_srwlock = SRWLOCK_INIT;
 std::set<HMODULE> g_qpc_calling_modules;
 // Map to track which modules have QPC enabled (default: enabled for all)
 std::map<HMODULE, bool> g_qpc_module_enabled_states;
@@ -305,7 +304,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
     if (calling_module != nullptr) {
         bool is_new_module = false;
         {
-            utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+            utils::SRWLockExclusive lock(utils::g_qpc_modules_srwlock);
             is_new_module = (g_qpc_calling_modules.find(calling_module) == g_qpc_calling_modules.end());
             g_qpc_calling_modules.insert(calling_module);
             // Default to disabled if not in map
@@ -341,7 +340,7 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
         // Check if this module has QPC enabled
         bool module_enabled = false;
         {
-            utils::SRWLockShared lock(g_qpc_modules_srwlock);
+            utils::SRWLockShared lock(utils::g_qpc_modules_srwlock);
             auto it = g_qpc_module_enabled_states.find(calling_module);
             if (it != g_qpc_module_enabled_states.end()) {
                 module_enabled = it->second;
@@ -973,7 +972,7 @@ const char* GetHookNameById(TimerHookIdentifier id) {
 
 // QPC calling module tracking functions
 std::vector<std::wstring> GetQPCallingModules() {
-    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+    utils::SRWLockShared lock(utils::g_qpc_modules_srwlock);
     std::vector<std::wstring> module_names;
     module_names.reserve(g_qpc_calling_modules.size());
 
@@ -985,7 +984,7 @@ std::vector<std::wstring> GetQPCallingModules() {
 }
 
 std::vector<std::pair<HMODULE, std::wstring>> GetQPCallingModulesWithHandles() {
-    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+    utils::SRWLockShared lock(utils::g_qpc_modules_srwlock);
     std::vector<std::pair<HMODULE, std::wstring>> modules;
     modules.reserve(g_qpc_calling_modules.size());
 
@@ -997,7 +996,7 @@ std::vector<std::pair<HMODULE, std::wstring>> GetQPCallingModulesWithHandles() {
 }
 
 void ClearQPCallingModules() {
-    utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+    utils::SRWLockExclusive lock(utils::g_qpc_modules_srwlock);
     g_qpc_calling_modules.clear();
     g_qpc_module_enabled_states.clear();
 }
@@ -1007,7 +1006,7 @@ bool IsQPCModuleEnabled(HMODULE hModule) {
         return false;  // Default disabled
     }
 
-    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+    utils::SRWLockShared lock(utils::g_qpc_modules_srwlock);
     auto it = g_qpc_module_enabled_states.find(hModule);
     if (it != g_qpc_module_enabled_states.end()) {
         return it->second;
@@ -1020,7 +1019,7 @@ void SetQPCModuleEnabled(HMODULE hModule, bool enabled) {
         return;
     }
 
-    utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+    utils::SRWLockExclusive lock(utils::g_qpc_modules_srwlock);
     g_qpc_module_enabled_states[hModule] = enabled;
     // Also ensure it's in the calling modules set
     g_qpc_calling_modules.insert(hModule);
@@ -1031,7 +1030,7 @@ void LoadQPCEnabledModulesFromSettings(const std::string& enabled_modules_str) {
         return;
     }
 
-    utils::SRWLockExclusive lock(g_qpc_modules_srwlock);
+    utils::SRWLockExclusive lock(utils::g_qpc_modules_srwlock);
 
     // Parse comma-separated module names
     std::stringstream ss(enabled_modules_str);
@@ -1058,7 +1057,7 @@ void LoadQPCEnabledModulesFromSettings(const std::string& enabled_modules_str) {
 }
 
 std::string SaveQPCEnabledModulesToSettings() {
-    utils::SRWLockShared lock(g_qpc_modules_srwlock);
+    utils::SRWLockShared lock(utils::g_qpc_modules_srwlock);
 
     std::vector<std::wstring> enabled_modules;
     for (const auto& pair : g_qpc_module_enabled_states) {

@@ -3,7 +3,11 @@
 ---
 
 
-## v0.12.32 (unreleased)
+## v0.12.34 (2026-02-21)
+
+- **SRWLOCK registry** - All 15 global/static SRWLOCKs are now declared in `utils/srwlock_registry.hpp` and defined in `utils/srwlock_registry.cpp`. Stuck-detection log reports every lock (HELD/free) via `LogAllSrwlockStatus()`, making it easier to see which lock is hanging when diagnosing deadlocks.
+
+## v0.12.33 (2026-02-21)
 
 - **ADHD Multi-Monitor** - Background overlay is shown only when the game is in the foreground. Uses the same logic as `g_app_in_background`: extracted `IsAppInBackground()` (foreground PID vs current process PID via `GetForegroundWindow_Direct`) and use it for ADHD show/hide and in continuous monitoring.
 

@@ -4,18 +4,19 @@
  */
 
 #include "input_remapping.hpp"
-#include "../globals.hpp"
-#include "../utils/logging.hpp"
-#include "utils/srwlock_wrapper.hpp"
-#include "../hooks/timeslowdown_hooks.hpp"
-#include "../config/display_commander_config.hpp"
-#include "../widgets/xinput_widget/xinput_widget.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include "../audio/audio_management.hpp"
-#include "../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../hooks/api_hooks.hpp"
 #include <reshade.hpp>
+#include "../adhd_multi_monitor/adhd_simple_api.hpp"
+#include "../audio/audio_management.hpp"
+#include "../config/display_commander_config.hpp"
+#include "../globals.hpp"
+#include "../hooks/api_hooks.hpp"
+#include "../hooks/timeslowdown_hooks.hpp"
+#include "../settings/experimental_tab_settings.hpp"
+#include "../settings/main_tab_settings.hpp"
+#include "../utils/logging.hpp"
+#include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "utils/srwlock_wrapper.hpp"
+
 
 namespace display_commander::input_remapping {
 
@@ -28,7 +29,7 @@ static ULONGLONG GetOriginalTickCount64() {
     }
 }
 
-InputRemapper &InputRemapper::get_instance() {
+InputRemapper& InputRemapper::get_instance() {
     static InputRemapper instance;
     return instance;
 }
@@ -51,8 +52,7 @@ InputRemapper::~InputRemapper() {
 }
 
 bool InputRemapper::initialize() {
-    if (_initialized.load())
-        return true;
+    if (_initialized.load()) return true;
 
     LogInfo("InputRemapper::initialize() - Starting input remapping initialization");
 
@@ -71,8 +71,7 @@ bool InputRemapper::initialize() {
 }
 
 void InputRemapper::cleanup() {
-    if (!_initialized.load())
-        return;
+    if (!_initialized.load()) return;
 
     // Save settings
     save_settings();
@@ -84,7 +83,7 @@ void InputRemapper::cleanup() {
     LogInfo("InputRemapper::cleanup() - Input remapping cleanup complete");
 }
 
-void InputRemapper::process_gamepad_input(DWORD user_index, XINPUT_STATE *state) {
+void InputRemapper::process_gamepad_input(DWORD user_index, XINPUT_STATE* state) {
     if (!_remapping_enabled.load() || state == nullptr || user_index >= XUSER_MAX_COUNT) {
         return;
     }
@@ -124,62 +123,61 @@ void InputRemapper::add_default_chord_type(DefaultChordType chord_type) {
 
     // Map chord type to button and action
     switch (chord_type) {
-    case DefaultChordType::VolumeUp:
-        button = XINPUT_GAMEPAD_DPAD_UP;
-        action_name = "increase volume";
-        log_name = "Home + D-Pad Up = Increase Volume";
-        break;
-    case DefaultChordType::VolumeDown:
-        button = XINPUT_GAMEPAD_DPAD_DOWN;
-        action_name = "decrease volume";
-        log_name = "Home + D-Pad Down = Decrease Volume";
-        break;
-    case DefaultChordType::MuteUnmute:
-        button = XINPUT_GAMEPAD_RIGHT_SHOULDER;
-        action_name = "mute/unmute audio";
-        log_name = "Home + Right Shoulder = Mute/Unmute Audio";
-        break;
-    case DefaultChordType::PerformanceOverlay:
-        button = XINPUT_GAMEPAD_START;
-        action_name = "performance overlay toggle";
-        log_name = "Home + Menu = Toggle Performance Overlay";
-        break;
-    case DefaultChordType::Screenshot:
-        button = XINPUT_GAMEPAD_BACK;
-        action_name = "screenshot";
-        log_name = "Home + View = Take Screenshot";
-        break;
-    case DefaultChordType::IncreaseGameSpeed:
-        button = XINPUT_GAMEPAD_DPAD_RIGHT;
-        action_name = "increase game speed";
-        log_name = "Home + D-Pad Right = Increase Game Speed (10%)";
-        break;
-    case DefaultChordType::DecreaseGameSpeed:
-        button = XINPUT_GAMEPAD_DPAD_LEFT;
-        action_name = "decrease game speed";
-        log_name = "Home + D-Pad Left = Decrease Game Speed (10%)";
-        break;
-    case DefaultChordType::DisplayCommanderUI:
-        // Guide-alone toggle for Display Commander UI
-        button = XINPUT_GAMEPAD_GUIDE;
-        action_name = "display commander ui toggle";
-        log_name = "Home = Toggle Display Commander UI";
-        // For this action we want release-based handling with optional solo requirement
-        hold_mode = true;    // ensure release handler runs
-        chord_mode = false;  // no Guide chord for Guide itself
-        break;
-    case DefaultChordType::SystemVolumeUp:
-        button = XINPUT_GAMEPAD_RIGHT_THUMB;
-        action_name = "increase system volume";
-        log_name = "Home + Right Thumbstick = Increase System Volume";
-        break;
-    case DefaultChordType::SystemVolumeDown:
-        button = XINPUT_GAMEPAD_LEFT_THUMB;
-        action_name = "decrease system volume";
-        log_name = "Home + Left Thumbstick = Decrease System Volume";
-        break;
-    default:
-        return;
+        case DefaultChordType::VolumeUp:
+            button = XINPUT_GAMEPAD_DPAD_UP;
+            action_name = "increase volume";
+            log_name = "Home + D-Pad Up = Increase Volume";
+            break;
+        case DefaultChordType::VolumeDown:
+            button = XINPUT_GAMEPAD_DPAD_DOWN;
+            action_name = "decrease volume";
+            log_name = "Home + D-Pad Down = Decrease Volume";
+            break;
+        case DefaultChordType::MuteUnmute:
+            button = XINPUT_GAMEPAD_RIGHT_SHOULDER;
+            action_name = "mute/unmute audio";
+            log_name = "Home + Right Shoulder = Mute/Unmute Audio";
+            break;
+        case DefaultChordType::PerformanceOverlay:
+            button = XINPUT_GAMEPAD_START;
+            action_name = "performance overlay toggle";
+            log_name = "Home + Menu = Toggle Performance Overlay";
+            break;
+        case DefaultChordType::Screenshot:
+            button = XINPUT_GAMEPAD_BACK;
+            action_name = "screenshot";
+            log_name = "Home + View = Take Screenshot";
+            break;
+        case DefaultChordType::IncreaseGameSpeed:
+            button = XINPUT_GAMEPAD_DPAD_RIGHT;
+            action_name = "increase game speed";
+            log_name = "Home + D-Pad Right = Increase Game Speed (10%)";
+            break;
+        case DefaultChordType::DecreaseGameSpeed:
+            button = XINPUT_GAMEPAD_DPAD_LEFT;
+            action_name = "decrease game speed";
+            log_name = "Home + D-Pad Left = Decrease Game Speed (10%)";
+            break;
+        case DefaultChordType::DisplayCommanderUI:
+            // Guide-alone toggle for Display Commander UI
+            button = XINPUT_GAMEPAD_GUIDE;
+            action_name = "display commander ui toggle";
+            log_name = "Home = Toggle Display Commander UI";
+            // For this action we want release-based handling with optional solo requirement
+            hold_mode = true;    // ensure release handler runs
+            chord_mode = false;  // no Guide chord for Guide itself
+            break;
+        case DefaultChordType::SystemVolumeUp:
+            button = XINPUT_GAMEPAD_RIGHT_THUMB;
+            action_name = "increase system volume";
+            log_name = "Home + Right Thumbstick = Increase System Volume";
+            break;
+        case DefaultChordType::SystemVolumeDown:
+            button = XINPUT_GAMEPAD_LEFT_THUMB;
+            action_name = "decrease system volume";
+            log_name = "Home + Left Thumbstick = Decrease System Volume";
+            break;
+        default: return;
     }
 
     // Check if remapping already exists for this button (don't overwrite user settings)
@@ -211,38 +209,17 @@ void InputRemapper::remove_default_chord_type(DefaultChordType chord_type) {
 
     // Map chord type to button
     switch (chord_type) {
-    case DefaultChordType::VolumeUp:
-        target_button = XINPUT_GAMEPAD_DPAD_UP;
-        break;
-    case DefaultChordType::VolumeDown:
-        target_button = XINPUT_GAMEPAD_DPAD_DOWN;
-        break;
-    case DefaultChordType::MuteUnmute:
-        target_button = XINPUT_GAMEPAD_RIGHT_SHOULDER;
-        break;
-    case DefaultChordType::PerformanceOverlay:
-        target_button = XINPUT_GAMEPAD_START;
-        break;
-    case DefaultChordType::Screenshot:
-        target_button = XINPUT_GAMEPAD_BACK;
-        break;
-    case DefaultChordType::IncreaseGameSpeed:
-        target_button = XINPUT_GAMEPAD_DPAD_RIGHT;
-        break;
-    case DefaultChordType::DecreaseGameSpeed:
-        target_button = XINPUT_GAMEPAD_DPAD_LEFT;
-        break;
-    case DefaultChordType::DisplayCommanderUI:
-        target_button = XINPUT_GAMEPAD_LEFT_SHOULDER;
-        break;
-    case DefaultChordType::SystemVolumeUp:
-        target_button = XINPUT_GAMEPAD_RIGHT_THUMB;
-        break;
-    case DefaultChordType::SystemVolumeDown:
-        target_button = XINPUT_GAMEPAD_LEFT_THUMB;
-        break;
-    default:
-        return;
+        case DefaultChordType::VolumeUp:           target_button = XINPUT_GAMEPAD_DPAD_UP; break;
+        case DefaultChordType::VolumeDown:         target_button = XINPUT_GAMEPAD_DPAD_DOWN; break;
+        case DefaultChordType::MuteUnmute:         target_button = XINPUT_GAMEPAD_RIGHT_SHOULDER; break;
+        case DefaultChordType::PerformanceOverlay: target_button = XINPUT_GAMEPAD_START; break;
+        case DefaultChordType::Screenshot:         target_button = XINPUT_GAMEPAD_BACK; break;
+        case DefaultChordType::IncreaseGameSpeed:  target_button = XINPUT_GAMEPAD_DPAD_RIGHT; break;
+        case DefaultChordType::DecreaseGameSpeed:  target_button = XINPUT_GAMEPAD_DPAD_LEFT; break;
+        case DefaultChordType::DisplayCommanderUI: target_button = XINPUT_GAMEPAD_LEFT_SHOULDER; break;
+        case DefaultChordType::SystemVolumeUp:     target_button = XINPUT_GAMEPAD_RIGHT_THUMB; break;
+        case DefaultChordType::SystemVolumeDown:   target_button = XINPUT_GAMEPAD_LEFT_THUMB; break;
+        default:                                   return;
     }
 
     // Find and remove the default chord for this button
@@ -259,7 +236,7 @@ void InputRemapper::remove_default_chord_type(DefaultChordType chord_type) {
             _remappings.erase(_remappings.begin() + idx);
 
             // Update indices in button_to_remap_index for all remappings after the removed one
-            for (auto &pair : _button_to_remap_index) {
+            for (auto& pair : _button_to_remap_index) {
                 if (pair.second > idx) {
                     pair.second--;
                 }
@@ -305,7 +282,7 @@ void InputRemapper::remove_default_chords() {
     remove_default_chord_type(DefaultChordType::DecreaseGameSpeed);
 }
 
-void InputRemapper::add_button_remap(const ButtonRemap &remap) {
+void InputRemapper::add_button_remap(const ButtonRemap& remap) {
     utils::SRWLockExclusive lock(_srwlock);
 
     // Check if remap already exists for this button
@@ -336,7 +313,7 @@ void InputRemapper::remove_button_remap(WORD gamepad_button) {
         _button_to_remap_index.erase(it);
 
         // Update indices for remaining remaps
-        for (auto &pair : _button_to_remap_index) {
+        for (auto& pair : _button_to_remap_index) {
             if (pair.second > index) {
                 pair.second--;
             }
@@ -373,7 +350,8 @@ void InputRemapper::set_block_input_on_home_button(bool enabled) {
     // Save the setting to config immediately
     display_commander::config::set_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton", enabled);
 
-    LogInfo("InputRemapper::set_block_input_on_home_button() - Block input on home button %s", enabled ? "enabled" : "disabled");
+    LogInfo("InputRemapper::set_block_input_on_home_button() - Block input on home button %s",
+            enabled ? "enabled" : "disabled");
 }
 
 void InputRemapper::set_default_input_method(KeyboardInputMethod method) {
@@ -381,20 +359,20 @@ void InputRemapper::set_default_input_method(KeyboardInputMethod method) {
     LogInfo("InputRemapper::set_default_input_method() - Set to %s", get_keyboard_input_method_name(method).c_str());
 }
 
-const ButtonRemap *InputRemapper::get_button_remap(WORD gamepad_button) const {
+const ButtonRemap* InputRemapper::get_button_remap(WORD gamepad_button) const {
     utils::SRWLockShared lock(_srwlock);
     auto it = _button_to_remap_index.find(gamepad_button);
     return (it != _button_to_remap_index.end()) ? &_remappings[it->second] : nullptr;
 }
 
-void InputRemapper::update_remap(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
+void InputRemapper::update_remap(WORD gamepad_button, int keyboard_vk, const std::string& keyboard_name,
                                  KeyboardInputMethod method, bool hold_mode, bool chord_mode) {
     ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name, true, method, hold_mode, chord_mode);
     add_button_remap(remap);
 }
 
-void InputRemapper::update_remap_keyboard(WORD gamepad_button, int keyboard_vk, const std::string &keyboard_name,
-                                         KeyboardInputMethod method, bool hold_mode, bool chord_mode) {
+void InputRemapper::update_remap_keyboard(WORD gamepad_button, int keyboard_vk, const std::string& keyboard_name,
+                                          KeyboardInputMethod method, bool hold_mode, bool chord_mode) {
     ButtonRemap remap(gamepad_button, keyboard_vk, keyboard_name, true, method, hold_mode, chord_mode);
     add_button_remap(remap);
 }
@@ -404,24 +382,26 @@ void InputRemapper::update_remap_gamepad(WORD gamepad_button, WORD target_button
     add_button_remap(remap);
 }
 
-void InputRemapper::update_remap_action(WORD gamepad_button, const std::string &action_name, bool hold_mode, bool chord_mode) {
+void InputRemapper::update_remap_action(WORD gamepad_button, const std::string& action_name, bool hold_mode,
+                                        bool chord_mode) {
     ButtonRemap remap(gamepad_button, action_name, true, hold_mode, chord_mode);
     add_button_remap(remap);
 }
 
 void InputRemapper::load_settings() {
     // Load remapping enabled state
-    bool remapping_enabled = _remapping_enabled.load(); // Get current default value
+    bool remapping_enabled = _remapping_enabled.load();  // Get current default value
     display_commander::config::get_config_value("DisplayCommander.InputRemapping", "Enabled", remapping_enabled);
     _remapping_enabled.store(remapping_enabled);
 
     // Load block input on home button setting
-    bool block_input_on_home_button = _block_input_on_home_button.load(); // Get current default value
-    display_commander::config::get_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton", block_input_on_home_button);
+    bool block_input_on_home_button = _block_input_on_home_button.load();  // Get current default value
+    display_commander::config::get_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton",
+                                                block_input_on_home_button);
     _block_input_on_home_button.store(block_input_on_home_button);
 
     // Load default input method
-    int default_method = static_cast<int>(_default_input_method); // Get current default value
+    int default_method = static_cast<int>(_default_input_method);  // Get current default value
     display_commander::config::get_config_value("DisplayCommander.InputRemapping", "DefaultMethod", default_method);
     _default_input_method = static_cast<KeyboardInputMethod>(default_method);
 
@@ -437,24 +417,24 @@ void InputRemapper::load_settings() {
 
             // Load common fields
             if (!display_commander::config::get_config_value("DisplayCommander.InputRemapping",
-                                          (key_prefix + "GamepadButton").c_str(), gamepad_button) ||
-                !display_commander::config::get_config_value("DisplayCommander.InputRemapping",
-                                          (key_prefix + "RemapType").c_str(), remap_type_int) ||
-                !display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "Enabled").c_str(),
-                                          enabled) ||
-                !display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "HoldMode").c_str(),
-                                          hold_mode)) {
+                                                             (key_prefix + "GamepadButton").c_str(), gamepad_button)
+                || !display_commander::config::get_config_value("DisplayCommander.InputRemapping",
+                                                                (key_prefix + "RemapType").c_str(), remap_type_int)
+                || !display_commander::config::get_config_value("DisplayCommander.InputRemapping",
+                                                                (key_prefix + "Enabled").c_str(), enabled)
+                || !display_commander::config::get_config_value("DisplayCommander.InputRemapping",
+                                                                (key_prefix + "HoldMode").c_str(), hold_mode)) {
                 continue;
             }
 
             // Load chord_mode (optional, defaults to false for backward compatibility)
-            display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "ChordMode").c_str(),
-                                      chord_mode);
+            display_commander::config::get_config_value("DisplayCommander.InputRemapping",
+                                                        (key_prefix + "ChordMode").c_str(), chord_mode);
 
             // Load is_default_chord (optional, defaults to false for backward compatibility)
             bool is_default_chord = false;
-            display_commander::config::get_config_value("DisplayCommander.InputRemapping", (key_prefix + "IsDefaultChord").c_str(),
-                                      is_default_chord);
+            display_commander::config::get_config_value("DisplayCommander.InputRemapping",
+                                                        (key_prefix + "IsDefaultChord").c_str(), is_default_chord);
 
             RemapType remap_type = static_cast<RemapType>(remap_type_int);
             ButtonRemap remap;
@@ -472,11 +452,12 @@ void InputRemapper::load_settings() {
                 size_t keyboard_name_size = sizeof(keyboard_name);
 
                 if (display_commander::config::get_config_value("DisplayCommander.InputRemapping",
-                                              (key_prefix + "KeyboardVk").c_str(), keyboard_vk) &&
-                    display_commander::config::get_config_value("DisplayCommander.InputRemapping",
-                                              (key_prefix + "InputMethod").c_str(), input_method) &&
-                    display_commander::config::get_config_value("DisplayCommander.InputRemapping",
-                                              (key_prefix + "KeyboardName").c_str(), keyboard_name, &keyboard_name_size)) {
+                                                                (key_prefix + "KeyboardVk").c_str(), keyboard_vk)
+                    && display_commander::config::get_config_value("DisplayCommander.InputRemapping",
+                                                                   (key_prefix + "InputMethod").c_str(), input_method)
+                    && display_commander::config::get_config_value("DisplayCommander.InputRemapping",
+                                                                   (key_prefix + "KeyboardName").c_str(), keyboard_name,
+                                                                   &keyboard_name_size)) {
                     remap.keyboard_vk = keyboard_vk;
                     remap.keyboard_name = keyboard_name;
                     remap.input_method = static_cast<KeyboardInputMethod>(input_method);
@@ -485,7 +466,8 @@ void InputRemapper::load_settings() {
             } else if (remap_type == RemapType::Gamepad) {
                 int gamepad_target_button;
                 if (display_commander::config::get_config_value("DisplayCommander.InputRemapping",
-                                              (key_prefix + "GamepadTargetButton").c_str(), gamepad_target_button)) {
+                                                                (key_prefix + "GamepadTargetButton").c_str(),
+                                                                gamepad_target_button)) {
                     remap.gamepad_target_button = static_cast<WORD>(gamepad_target_button);
                     add_button_remap(remap);
                 }
@@ -493,7 +475,8 @@ void InputRemapper::load_settings() {
                 char action_name[256] = {0};
                 size_t action_name_size = sizeof(action_name);
                 if (display_commander::config::get_config_value("DisplayCommander.InputRemapping",
-                                              (key_prefix + "ActionName").c_str(), action_name, &action_name_size)) {
+                                                                (key_prefix + "ActionName").c_str(), action_name,
+                                                                &action_name_size)) {
                     remap.action_name = action_name;
                     add_button_remap(remap);
                 }
@@ -506,52 +489,57 @@ void InputRemapper::load_settings() {
 
 void InputRemapper::save_settings() {
     // Save remapping enabled state
-    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Enabled", _remapping_enabled.load());
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Enabled",
+                                                _remapping_enabled.load());
 
     // Save block input on home button setting
-    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton", _block_input_on_home_button.load());
+    display_commander::config::set_config_value("DisplayCommander.InputRemapping", "BlockInputOnHomeButton",
+                                                _block_input_on_home_button.load());
 
     // Save default input method
     display_commander::config::set_config_value("DisplayCommander.InputRemapping", "DefaultMethod",
-                              static_cast<int>(_default_input_method));
+                                                static_cast<int>(_default_input_method));
 
     // Save remappings count
     display_commander::config::set_config_value("DisplayCommander.InputRemapping", "Count",
-                              static_cast<int>(_remappings.size()));
+                                                static_cast<int>(_remappings.size()));
 
     // Save each remapping
     for (size_t i = 0; i < _remappings.size(); ++i) {
-        const auto &remap = _remappings[i];
+        const auto& remap = _remappings[i];
         std::string key_prefix = "Remapping" + std::to_string(i) + ".";
 
         // Save common fields
-        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "GamepadButton").c_str(),
-                                  static_cast<int>(remap.gamepad_button));
-        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "RemapType").c_str(),
-                                  static_cast<int>(remap.remap_type));
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                    (key_prefix + "GamepadButton").c_str(),
+                                                    static_cast<int>(remap.gamepad_button));
+        display_commander::config::set_config_value(
+            "DisplayCommander.InputRemapping", (key_prefix + "RemapType").c_str(), static_cast<int>(remap.remap_type));
         display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "Enabled").c_str(),
-                                  remap.enabled);
-        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "HoldMode").c_str(),
-                                  remap.hold_mode);
-        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "ChordMode").c_str(),
-                                  remap.chord_mode);
-        display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "IsDefaultChord").c_str(),
-                                  remap.is_default_chord);
+                                                    remap.enabled);
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                    (key_prefix + "HoldMode").c_str(), remap.hold_mode);
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                    (key_prefix + "ChordMode").c_str(), remap.chord_mode);
+        display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                    (key_prefix + "IsDefaultChord").c_str(), remap.is_default_chord);
 
         // Save type-specific fields
         if (remap.remap_type == RemapType::Keyboard) {
-            display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "KeyboardVk").c_str(),
-                                      remap.keyboard_vk);
-            display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "InputMethod").c_str(),
-                                      static_cast<int>(remap.input_method));
-            display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "KeyboardName").c_str(),
-                                      remap.keyboard_name.c_str());
+            display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                        (key_prefix + "KeyboardVk").c_str(), remap.keyboard_vk);
+            display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                        (key_prefix + "InputMethod").c_str(),
+                                                        static_cast<int>(remap.input_method));
+            display_commander::config::set_config_value(
+                "DisplayCommander.InputRemapping", (key_prefix + "KeyboardName").c_str(), remap.keyboard_name.c_str());
         } else if (remap.remap_type == RemapType::Gamepad) {
-            display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "GamepadTargetButton").c_str(),
-                                      static_cast<int>(remap.gamepad_target_button));
+            display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                        (key_prefix + "GamepadTargetButton").c_str(),
+                                                        static_cast<int>(remap.gamepad_target_button));
         } else if (remap.remap_type == RemapType::Action) {
-            display_commander::config::set_config_value("DisplayCommander.InputRemapping", (key_prefix + "ActionName").c_str(),
-                                      remap.action_name.c_str());
+            display_commander::config::set_config_value("DisplayCommander.InputRemapping",
+                                                        (key_prefix + "ActionName").c_str(), remap.action_name.c_str());
         }
     }
 
@@ -584,7 +572,7 @@ bool InputRemapper::send_keyboard_input_sendmessage(int vk_code, bool key_down) 
 
     UINT message = key_down ? WM_KEYDOWN : WM_KEYUP;
     WPARAM wParam = vk_code;
-    LPARAM lParam = 0; // Could be enhanced with scan code and repeat count
+    LPARAM lParam = 0;  // Could be enhanced with scan code and repeat count
 
     LRESULT result = SendMessage(hwnd, message, wParam, lParam);
     return result != 0;
@@ -598,7 +586,7 @@ bool InputRemapper::send_keyboard_input_postmessage(int vk_code, bool key_down) 
 
     UINT message = key_down ? WM_KEYDOWN : WM_KEYUP;
     WPARAM wParam = vk_code;
-    LPARAM lParam = 0; // Could be enhanced with scan code and repeat count
+    LPARAM lParam = 0;  // Could be enhanced with scan code and repeat count
 
     BOOL result = PostMessage(hwnd, message, wParam, lParam);
     return result != FALSE;
@@ -606,59 +594,35 @@ bool InputRemapper::send_keyboard_input_postmessage(int vk_code, bool key_down) 
 
 std::string InputRemapper::get_button_name(WORD button) const {
     switch (button) {
-    case XINPUT_GAMEPAD_DPAD_UP:
-        return "D-Pad Up";
-    case XINPUT_GAMEPAD_DPAD_DOWN:
-        return "D-Pad Down";
-    case XINPUT_GAMEPAD_DPAD_LEFT:
-        return "D-Pad Left";
-    case XINPUT_GAMEPAD_DPAD_RIGHT:
-        return "D-Pad Right";
-    case XINPUT_GAMEPAD_START:
-        return "Menu";
-    case XINPUT_GAMEPAD_BACK:
-        return "View";
-    case XINPUT_GAMEPAD_LEFT_THUMB:
-        return "Left Stick";
-    case XINPUT_GAMEPAD_RIGHT_THUMB:
-        return "Right Stick";
-    case XINPUT_GAMEPAD_LEFT_SHOULDER:
-        return "Left Bumper";
-    case XINPUT_GAMEPAD_RIGHT_SHOULDER:
-        return "Right Bumper";
-    case XINPUT_GAMEPAD_A:
-        return "A";
-    case XINPUT_GAMEPAD_B:
-        return "B";
-    case XINPUT_GAMEPAD_X:
-        return "X";
-    case XINPUT_GAMEPAD_Y:
-        return "Y";
-    case XINPUT_GAMEPAD_GUIDE:
-        return "Home";
-    default:
-        return "Unknown";
+        case XINPUT_GAMEPAD_DPAD_UP:        return "D-Pad Up";
+        case XINPUT_GAMEPAD_DPAD_DOWN:      return "D-Pad Down";
+        case XINPUT_GAMEPAD_DPAD_LEFT:      return "D-Pad Left";
+        case XINPUT_GAMEPAD_DPAD_RIGHT:     return "D-Pad Right";
+        case XINPUT_GAMEPAD_START:          return "Menu";
+        case XINPUT_GAMEPAD_BACK:           return "View";
+        case XINPUT_GAMEPAD_LEFT_THUMB:     return "Left Stick";
+        case XINPUT_GAMEPAD_RIGHT_THUMB:    return "Right Stick";
+        case XINPUT_GAMEPAD_LEFT_SHOULDER:  return "Left Bumper";
+        case XINPUT_GAMEPAD_RIGHT_SHOULDER: return "Right Bumper";
+        case XINPUT_GAMEPAD_A:              return "A";
+        case XINPUT_GAMEPAD_B:              return "B";
+        case XINPUT_GAMEPAD_X:              return "X";
+        case XINPUT_GAMEPAD_Y:              return "Y";
+        case XINPUT_GAMEPAD_GUIDE:          return "Home";
+        default:                            return "Unknown";
     }
 }
 
 std::string InputRemapper::get_keyboard_name(int vk_code) const {
     switch (vk_code) {
-    case VK_VOLUME_MUTE:
-        return "Volume Mute";
-    case VK_VOLUME_DOWN:
-        return "Volume Down";
-    case VK_VOLUME_UP:
-        return "Volume Up";
-    case VK_MEDIA_NEXT_TRACK:
-        return "Next Track";
-    case VK_MEDIA_PREV_TRACK:
-        return "Previous Track";
-    case VK_MEDIA_STOP:
-        return "Stop Media";
-    case VK_MEDIA_PLAY_PAUSE:
-        return "Play/Pause Media";
-    default:
-        break;
+        case VK_VOLUME_MUTE:      return "Volume Mute";
+        case VK_VOLUME_DOWN:      return "Volume Down";
+        case VK_VOLUME_UP:        return "Volume Up";
+        case VK_MEDIA_NEXT_TRACK: return "Next Track";
+        case VK_MEDIA_PREV_TRACK: return "Previous Track";
+        case VK_MEDIA_STOP:       return "Stop Media";
+        case VK_MEDIA_PLAY_PAUSE: return "Play/Pause Media";
+        default:                  break;
     }
     char key_name[256];
     int result = GetKeyNameTextA(MapVirtualKey(vk_code, MAPVK_VK_TO_VSC) << 16, key_name, sizeof(key_name));
@@ -668,155 +632,88 @@ std::string InputRemapper::get_keyboard_name(int vk_code) const {
     return "Unknown";
 }
 
-int InputRemapper::get_vk_code_from_name(const std::string &name) const {
+int InputRemapper::get_vk_code_from_name(const std::string& name) const {
     // Simple mapping for common keys
-    if (name == "Space")
-        return VK_SPACE;
-    if (name == "Enter")
-        return VK_RETURN;
-    if (name == "Escape")
-        return VK_ESCAPE;
-    if (name == "Tab")
-        return VK_TAB;
-    if (name == "Shift")
-        return VK_SHIFT;
-    if (name == "Ctrl")
-        return VK_CONTROL;
-    if (name == "Alt")
-        return VK_MENU;
-    if (name == "F1")
-        return VK_F1;
-    if (name == "F2")
-        return VK_F2;
-    if (name == "F3")
-        return VK_F3;
-    if (name == "F4")
-        return VK_F4;
-    if (name == "F5")
-        return VK_F5;
-    if (name == "F6")
-        return VK_F6;
-    if (name == "F7")
-        return VK_F7;
-    if (name == "F8")
-        return VK_F8;
-    if (name == "F9")
-        return VK_F9;
-    if (name == "F10")
-        return VK_F10;
-    if (name == "F11")
-        return VK_F11;
-    if (name == "F12")
-        return VK_F12;
-    if (name == "F13")
-        return VK_F13;
-    if (name == "F14")
-        return VK_F14;
-    if (name == "F15")
-        return VK_F15;
-    if (name == "F16")
-        return VK_F16;
-    if (name == "F17")
-        return VK_F17;
-    if (name == "F18")
-        return VK_F18;
-    if (name == "F19")
-        return VK_F19;
-    if (name == "F20")
-        return VK_F20;
-    if (name == "F21")
-        return VK_F21;
-    if (name == "F22")
-        return VK_F22;
-    if (name == "F23")
-        return VK_F23;
-    if (name == "F24")
-        return VK_F24;
-    if (name == "~")
-        return VK_OEM_3; // Tilde key
-    if (name == "A")
-        return 'A';
-    if (name == "B")
-        return 'B';
-    if (name == "C")
-        return 'C';
-    if (name == "D")
-        return 'D';
-    if (name == "E")
-        return 'E';
-    if (name == "F")
-        return 'F';
-    if (name == "G")
-        return 'G';
-    if (name == "H")
-        return 'H';
-    if (name == "I")
-        return 'I';
-    if (name == "J")
-        return 'J';
-    if (name == "K")
-        return 'K';
-    if (name == "L")
-        return 'L';
-    if (name == "M")
-        return 'M';
-    if (name == "N")
-        return 'N';
-    if (name == "O")
-        return 'O';
-    if (name == "P")
-        return 'P';
-    if (name == "Q")
-        return 'Q';
-    if (name == "R")
-        return 'R';
-    if (name == "S")
-        return 'S';
-    if (name == "T")
-        return 'T';
-    if (name == "U")
-        return 'U';
-    if (name == "V")
-        return 'V';
-    if (name == "W")
-        return 'W';
-    if (name == "X")
-        return 'X';
-    if (name == "Y")
-        return 'Y';
-    if (name == "Z")
-        return 'Z';
-    if (name == "Volume Mute")
-        return VK_VOLUME_MUTE;
-    if (name == "Volume Down")
-        return VK_VOLUME_DOWN;
-    if (name == "Volume Up")
-        return VK_VOLUME_UP;
-    if (name == "Next Track")
-        return VK_MEDIA_NEXT_TRACK;
-    if (name == "Previous Track")
-        return VK_MEDIA_PREV_TRACK;
-    if (name == "Stop Media")
-        return VK_MEDIA_STOP;
-    if (name == "Play/Pause Media")
-        return VK_MEDIA_PLAY_PAUSE;
+    if (name == "Space") return VK_SPACE;
+    if (name == "Enter") return VK_RETURN;
+    if (name == "Escape") return VK_ESCAPE;
+    if (name == "Tab") return VK_TAB;
+    if (name == "Shift") return VK_SHIFT;
+    if (name == "Ctrl") return VK_CONTROL;
+    if (name == "Alt") return VK_MENU;
+    if (name == "F1") return VK_F1;
+    if (name == "F2") return VK_F2;
+    if (name == "F3") return VK_F3;
+    if (name == "F4") return VK_F4;
+    if (name == "F5") return VK_F5;
+    if (name == "F6") return VK_F6;
+    if (name == "F7") return VK_F7;
+    if (name == "F8") return VK_F8;
+    if (name == "F9") return VK_F9;
+    if (name == "F10") return VK_F10;
+    if (name == "F11") return VK_F11;
+    if (name == "F12") return VK_F12;
+    if (name == "F13") return VK_F13;
+    if (name == "F14") return VK_F14;
+    if (name == "F15") return VK_F15;
+    if (name == "F16") return VK_F16;
+    if (name == "F17") return VK_F17;
+    if (name == "F18") return VK_F18;
+    if (name == "F19") return VK_F19;
+    if (name == "F20") return VK_F20;
+    if (name == "F21") return VK_F21;
+    if (name == "F22") return VK_F22;
+    if (name == "F23") return VK_F23;
+    if (name == "F24") return VK_F24;
+    if (name == "~") return VK_OEM_3;  // Tilde key
+    if (name == "A") return 'A';
+    if (name == "B") return 'B';
+    if (name == "C") return 'C';
+    if (name == "D") return 'D';
+    if (name == "E") return 'E';
+    if (name == "F") return 'F';
+    if (name == "G") return 'G';
+    if (name == "H") return 'H';
+    if (name == "I") return 'I';
+    if (name == "J") return 'J';
+    if (name == "K") return 'K';
+    if (name == "L") return 'L';
+    if (name == "M") return 'M';
+    if (name == "N") return 'N';
+    if (name == "O") return 'O';
+    if (name == "P") return 'P';
+    if (name == "Q") return 'Q';
+    if (name == "R") return 'R';
+    if (name == "S") return 'S';
+    if (name == "T") return 'T';
+    if (name == "U") return 'U';
+    if (name == "V") return 'V';
+    if (name == "W") return 'W';
+    if (name == "X") return 'X';
+    if (name == "Y") return 'Y';
+    if (name == "Z") return 'Z';
+    if (name == "Volume Mute") return VK_VOLUME_MUTE;
+    if (name == "Volume Down") return VK_VOLUME_DOWN;
+    if (name == "Volume Up") return VK_VOLUME_UP;
+    if (name == "Next Track") return VK_MEDIA_NEXT_TRACK;
+    if (name == "Previous Track") return VK_MEDIA_PREV_TRACK;
+    if (name == "Stop Media") return VK_MEDIA_STOP;
+    if (name == "Play/Pause Media") return VK_MEDIA_PLAY_PAUSE;
     return 0;
 }
 
 HWND InputRemapper::get_active_window() const { return display_commanderhooks::GetForegroundWindow_Direct(); }
 
 void InputRemapper::update_button_states(DWORD user_index, WORD button_state) {
-    if (user_index >= XUSER_MAX_COUNT)
-        return;
+    if (user_index >= XUSER_MAX_COUNT) return;
 
     _previous_button_states[user_index].store(_current_button_states[user_index].load());
     _current_button_states[user_index].store(button_state);
 }
 
 void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, WORD current_button_state) {
-    ButtonRemap *remap = const_cast<ButtonRemap *>(get_button_remap(gamepad_button));
-    if (!remap || !remap->enabled)
-        return;
+    ButtonRemap* remap = const_cast<ButtonRemap*>(get_button_remap(gamepad_button));
+    if (!remap || !remap->enabled) return;
 
     // If Home-based Display Commander UI solo toggle is pending, any other button press cancels "solo" state
     if (gamepad_button != XINPUT_GAMEPAD_GUIDE && user_index < XUSER_MAX_COUNT) {
@@ -828,10 +725,8 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, W
     // Special handling for Home button mapped to Display Commander UI toggle:
     // - We want to trigger the action on Home RELEASE, optionally only if no other buttons were pressed.
     // - So we do NOT execute the action here on press; we just start tracking a potential solo press.
-    if (remap->remap_type == RemapType::Action &&
-        remap->action_name == "display commander ui toggle" &&
-        gamepad_button == XINPUT_GAMEPAD_GUIDE &&
-        user_index < XUSER_MAX_COUNT) {
+    if (remap->remap_type == RemapType::Action && remap->action_name == "display commander ui toggle"
+        && gamepad_button == XINPUT_GAMEPAD_GUIDE && user_index < XUSER_MAX_COUNT) {
         _guide_solo_candidate[user_index].store(true);
 
         // If any other button is currently held down, this cannot be a "solo" press
@@ -856,52 +751,53 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, W
 
     // Handle different remap types
     switch (remap->remap_type) {
-    case RemapType::Keyboard: {
-        // Send keyboard input
-        switch (remap->input_method) {
-        case KeyboardInputMethod::SendInput:
-            success = send_keyboard_input_sendinput(remap->keyboard_vk, true);
+        case RemapType::Keyboard: {
+            // Send keyboard input
+            switch (remap->input_method) {
+                case KeyboardInputMethod::SendInput:
+                    success = send_keyboard_input_sendinput(remap->keyboard_vk, true);
+                    break;
+                case KeyboardInputMethod::KeybdEvent:
+                    success = send_keyboard_input_keybdevent(remap->keyboard_vk, true);
+                    break;
+                case KeyboardInputMethod::SendMessage:
+                    success = send_keyboard_input_sendmessage(remap->keyboard_vk, true);
+                    break;
+                case KeyboardInputMethod::PostMessage:
+                    success = send_keyboard_input_postmessage(remap->keyboard_vk, true);
+                    break;
+                case KeyboardInputMethod::Count:
+                    // Should never happen
+                    break;
+            }
+
+            if (success) {
+                LogInfo("InputRemapper::handle_button_press() - Mapped %s to keyboard %s (Controller %lu)",
+                        get_button_name(gamepad_button).c_str(), remap->keyboard_name.c_str(), user_index);
+            } else {
+                LogError("InputRemapper::handle_button_press() - Failed to send keyboard input for %s",
+                         remap->keyboard_name.c_str());
+            }
             break;
-        case KeyboardInputMethod::KeybdEvent:
-            success = send_keyboard_input_keybdevent(remap->keyboard_vk, true);
+        }
+        case RemapType::Gamepad:
+            // Gamepad remapping is handled in apply_gamepad_remapping
+            // Just mark as success for logging
+            success = true;
+            LogInfo("InputRemapper::handle_button_press() - Mapped %s to gamepad %s (Controller %lu)",
+                    get_button_name(gamepad_button).c_str(), get_button_name(remap->gamepad_target_button).c_str(),
+                    user_index);
             break;
-        case KeyboardInputMethod::SendMessage:
-            success = send_keyboard_input_sendmessage(remap->keyboard_vk, true);
+        case RemapType::Action:
+            // Execute action
+            execute_action(remap->action_name);
+            success = true;
+            LogInfo("InputRemapper::handle_button_press() - Mapped %s to action %s (Controller %lu)",
+                    get_button_name(gamepad_button).c_str(), remap->action_name.c_str(), user_index);
             break;
-        case KeyboardInputMethod::PostMessage:
-            success = send_keyboard_input_postmessage(remap->keyboard_vk, true);
-            break;
-        case KeyboardInputMethod::Count:
+        case RemapType::Count:
             // Should never happen
             break;
-        }
-
-        if (success) {
-            LogInfo("InputRemapper::handle_button_press() - Mapped %s to keyboard %s (Controller %lu)",
-                    get_button_name(gamepad_button).c_str(), remap->keyboard_name.c_str(), user_index);
-        } else {
-            LogError("InputRemapper::handle_button_press() - Failed to send keyboard input for %s",
-                     remap->keyboard_name.c_str());
-        }
-        break;
-    }
-    case RemapType::Gamepad:
-        // Gamepad remapping is handled in apply_gamepad_remapping
-        // Just mark as success for logging
-        success = true;
-        LogInfo("InputRemapper::handle_button_press() - Mapped %s to gamepad %s (Controller %lu)",
-                get_button_name(gamepad_button).c_str(), get_button_name(remap->gamepad_target_button).c_str(), user_index);
-        break;
-    case RemapType::Action:
-        // Execute action
-        execute_action(remap->action_name);
-        success = true;
-        LogInfo("InputRemapper::handle_button_press() - Mapped %s to action %s (Controller %lu)",
-                get_button_name(gamepad_button).c_str(), remap->action_name.c_str(), user_index);
-        break;
-    case RemapType::Count:
-        // Should never happen
-        break;
     }
 
     if (success) {
@@ -911,9 +807,8 @@ void InputRemapper::handle_button_press(WORD gamepad_button, DWORD user_index, W
 }
 
 void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index, WORD current_button_state) {
-    ButtonRemap *remap = const_cast<ButtonRemap *>(get_button_remap(gamepad_button));
-    if (!remap || !remap->enabled || !remap->hold_mode)
-        return;
+    ButtonRemap* remap = const_cast<ButtonRemap*>(get_button_remap(gamepad_button));
+    if (!remap || !remap->enabled || !remap->hold_mode) return;
 
     // Check chord mode: if enabled, home button must also be pressed (or was pressed when button was released)
     // For release, we check if home button is still pressed or if it was pressed when the button was held
@@ -930,72 +825,72 @@ void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index,
 
     // Handle different remap types
     switch (remap->remap_type) {
-    case RemapType::Keyboard: {
-        // Send keyboard release
-        switch (remap->input_method) {
-        case KeyboardInputMethod::SendInput:
-            success = send_keyboard_input_sendinput(remap->keyboard_vk, false);
+        case RemapType::Keyboard: {
+            // Send keyboard release
+            switch (remap->input_method) {
+                case KeyboardInputMethod::SendInput:
+                    success = send_keyboard_input_sendinput(remap->keyboard_vk, false);
+                    break;
+                case KeyboardInputMethod::KeybdEvent:
+                    success = send_keyboard_input_keybdevent(remap->keyboard_vk, false);
+                    break;
+                case KeyboardInputMethod::SendMessage:
+                    success = send_keyboard_input_sendmessage(remap->keyboard_vk, false);
+                    break;
+                case KeyboardInputMethod::PostMessage:
+                    success = send_keyboard_input_postmessage(remap->keyboard_vk, false);
+                    break;
+                case KeyboardInputMethod::Count:
+                    // Should never happen
+                    break;
+            }
+
+            if (success) {
+                LogInfo("InputRemapper::handle_button_release() - Released keyboard %s (Controller %lu)",
+                        remap->keyboard_name.c_str(), user_index);
+            }
             break;
-        case KeyboardInputMethod::KeybdEvent:
-            success = send_keyboard_input_keybdevent(remap->keyboard_vk, false);
+        }
+        case RemapType::Gamepad:
+            // Gamepad remapping release is handled in apply_gamepad_remapping
+            // Just mark as success for logging
+            success = true;
+            LogInfo("InputRemapper::handle_button_release() - Released gamepad %s (Controller %lu)",
+                    get_button_name(remap->gamepad_target_button).c_str(), user_index);
             break;
-        case KeyboardInputMethod::SendMessage:
-            success = send_keyboard_input_sendmessage(remap->keyboard_vk, false);
+        case RemapType::Action:
+            // Special handling for Home-based Display Commander UI toggle:
+            // - Trigger on Home RELEASE
+            // - Optionally require that no other buttons were pressed while Home was held
+            if (remap->action_name == "display commander ui toggle" && gamepad_button == XINPUT_GAMEPAD_GUIDE
+                && user_index < XUSER_MAX_COUNT) {
+                bool candidate_active = _guide_solo_candidate[user_index].load();
+                bool other_pressed = _guide_other_button_pressed[user_index].load();
+
+                // Clear tracking state
+                _guide_solo_candidate[user_index].store(false);
+                _guide_other_button_pressed[user_index].store(false);
+
+                if (candidate_active) {
+                    bool require_solo = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
+
+                    if (!require_solo || !other_pressed) {
+                        execute_action(remap->action_name);
+                        success = true;
+                        LogInfo(
+                            "InputRemapper::handle_button_release() - Home solo Display Commander UI toggle "
+                            "(Controller %lu)",
+                            user_index);
+                    }
+                }
+            } else {
+                // Other actions typically don't need release handling
+                success = true;
+            }
             break;
-        case KeyboardInputMethod::PostMessage:
-            success = send_keyboard_input_postmessage(remap->keyboard_vk, false);
-            break;
-        case KeyboardInputMethod::Count:
+        case RemapType::Count:
             // Should never happen
             break;
-        }
-
-        if (success) {
-            LogInfo("InputRemapper::handle_button_release() - Released keyboard %s (Controller %lu)",
-                    remap->keyboard_name.c_str(), user_index);
-        }
-        break;
-    }
-    case RemapType::Gamepad:
-        // Gamepad remapping release is handled in apply_gamepad_remapping
-        // Just mark as success for logging
-        success = true;
-        LogInfo("InputRemapper::handle_button_release() - Released gamepad %s (Controller %lu)",
-                get_button_name(remap->gamepad_target_button).c_str(), user_index);
-        break;
-    case RemapType::Action:
-        // Special handling for Home-based Display Commander UI toggle:
-        // - Trigger on Home RELEASE
-        // - Optionally require that no other buttons were pressed while Home was held
-        if (remap->action_name == "display commander ui toggle" &&
-            gamepad_button == XINPUT_GAMEPAD_GUIDE &&
-            user_index < XUSER_MAX_COUNT) {
-            bool candidate_active = _guide_solo_candidate[user_index].load();
-            bool other_pressed = _guide_other_button_pressed[user_index].load();
-
-            // Clear tracking state
-            _guide_solo_candidate[user_index].store(false);
-            _guide_other_button_pressed[user_index].store(false);
-
-            if (candidate_active) {
-                bool require_solo =
-                    settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
-
-                if (!require_solo || !other_pressed) {
-                    execute_action(remap->action_name);
-                    success = true;
-                    LogInfo("InputRemapper::handle_button_release() - Home solo Display Commander UI toggle (Controller %lu)",
-                            user_index);
-                }
-            }
-        } else {
-            // Other actions typically don't need release handling
-            success = true;
-        }
-        break;
-    case RemapType::Count:
-        // Should never happen
-        break;
     }
 }
 
@@ -1004,23 +899,18 @@ void initialize_input_remapping() { InputRemapper::get_instance().initialize(); 
 
 void cleanup_input_remapping() { InputRemapper::get_instance().cleanup(); }
 
-void process_gamepad_input_for_remapping(DWORD user_index, XINPUT_STATE *state) {
+void process_gamepad_input_for_remapping(DWORD user_index, XINPUT_STATE* state) {
     InputRemapper::get_instance().process_gamepad_input(user_index, state);
 }
 
 // Utility functions
 std::string get_keyboard_input_method_name(KeyboardInputMethod method) {
     switch (method) {
-    case KeyboardInputMethod::SendInput:
-        return "SendInput";
-    case KeyboardInputMethod::KeybdEvent:
-        return "keybd_event";
-    case KeyboardInputMethod::SendMessage:
-        return "SendMessage";
-    case KeyboardInputMethod::PostMessage:
-        return "PostMessage";
-    default:
-        return "Unknown";
+        case KeyboardInputMethod::SendInput:   return "SendInput";
+        case KeyboardInputMethod::KeybdEvent:  return "keybd_event";
+        case KeyboardInputMethod::SendMessage: return "SendMessage";
+        case KeyboardInputMethod::PostMessage: return "PostMessage";
+        default:                               return "Unknown";
     }
 }
 
@@ -1029,35 +919,91 @@ std::vector<std::string> get_available_keyboard_input_methods() {
 }
 
 std::vector<std::string> get_available_gamepad_buttons() {
-    return {"A",     "B",    "X",     "Y",          "D-Pad Up",    "D-Pad Down",  "D-Pad Left",  "D-Pad Right",
+    return {"A",    "B",    "X",    "Y",          "D-Pad Up",    "D-Pad Down",  "D-Pad Left",  "D-Pad Right",
             "Menu", "View", "Home", "Left Stick", "Right Stick", "Left Bumper", "Right Bumper"};
 }
 
 std::vector<std::string> get_available_keyboard_keys() {
-    return {"Space", "Enter", "Escape", "Tab", "Shift", "Ctrl", "Alt", "F1",  "F2", "F3",
-            "F4",    "F5",    "F6",     "F7",  "F8",    "F9",   "F10", "F11", "F12",
-            "F13",   "F14",   "F15",    "F16", "F17",   "F18",  "F19", "F20", "F21",
-            "F22",   "F23",   "F24",    "~",   "A",     "B",    "C",   "D",   "E",
-            "F",     "G",     "H",      "I",   "J",     "K",    "L",   "M",   "N",
-            "O",     "P",     "Q",      "R",   "S",     "T",    "U",   "V",   "W",
-            "X",     "Y",     "Z",
-            "Volume Mute", "Volume Down", "Volume Up",
-            "Next Track", "Previous Track", "Stop Media", "Play/Pause Media"};
+    return {"Space",
+            "Enter",
+            "Escape",
+            "Tab",
+            "Shift",
+            "Ctrl",
+            "Alt",
+            "F1",
+            "F2",
+            "F3",
+            "F4",
+            "F5",
+            "F6",
+            "F7",
+            "F8",
+            "F9",
+            "F10",
+            "F11",
+            "F12",
+            "F13",
+            "F14",
+            "F15",
+            "F16",
+            "F17",
+            "F18",
+            "F19",
+            "F20",
+            "F21",
+            "F22",
+            "F23",
+            "F24",
+            "~",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "H",
+            "I",
+            "J",
+            "K",
+            "L",
+            "M",
+            "N",
+            "O",
+            "P",
+            "Q",
+            "R",
+            "S",
+            "T",
+            "U",
+            "V",
+            "W",
+            "X",
+            "Y",
+            "Z",
+            "Volume Mute",
+            "Volume Down",
+            "Volume Up",
+            "Next Track",
+            "Previous Track",
+            "Stop Media",
+            "Play/Pause Media"};
 }
 
 void InputRemapper::increment_trigger_count(WORD gamepad_button) {
-    ButtonRemap *remap = const_cast<ButtonRemap *>(get_button_remap(gamepad_button));
+    ButtonRemap* remap = const_cast<ButtonRemap*>(get_button_remap(gamepad_button));
     if (remap) {
         remap->trigger_count.fetch_add(1);
     }
 }
 
 uint64_t InputRemapper::get_trigger_count(WORD gamepad_button) const {
-    const ButtonRemap *remap = get_button_remap(gamepad_button);
+    const ButtonRemap* remap = get_button_remap(gamepad_button);
     return remap ? remap->trigger_count.load() : 0;
 }
 
-void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *state) {
+void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE* state) {
     if (!state || user_index >= XUSER_MAX_COUNT) {
         return;
     }
@@ -1065,7 +1011,7 @@ void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE *stat
     utils::SRWLockShared lock(_srwlock);
 
     // Apply all gamepad-to-gamepad remappings
-    for (const auto &remap : _remappings) {
+    for (const auto& remap : _remappings) {
         if (!remap.enabled || remap.remap_type != RemapType::Gamepad) {
             continue;
         }
@@ -1117,9 +1063,9 @@ void ToggleStopwatch() {
     }
 }
 
-void InputRemapper::execute_action(const std::string &action_name) {
+void InputRemapper::execute_action(const std::string& action_name) {
     // Helper function to trigger generic action notification
-    auto trigger_action_notification = [](const std::string &name) {
+    auto trigger_action_notification = [](const std::string& name) {
         ActionNotification notification = {};
         notification.type = ActionNotificationType::GenericAction;
         notification.timestamp_ns = utils::get_now_ns();
@@ -1168,7 +1114,8 @@ void InputRemapper::execute_action(const std::string &action_name) {
         bool new_state = !current_state;
         settings::g_mainTabSettings.show_test_overlay.SetValue(new_state);
         trigger_action_notification("Performance Overlay " + std::string(new_state ? "On" : "Off"));
-        LogInfo("InputRemapper::execute_action() - Performance overlay %s via action", new_state ? "enabled" : "disabled");
+        LogInfo("InputRemapper::execute_action() - Performance overlay %s via action",
+                new_state ? "enabled" : "disabled");
     } else if (action_name == "mute/unmute audio") {
         // Toggle audio mute state
         bool current_state = settings::g_mainTabSettings.audio_mute.GetValue();
@@ -1209,7 +1156,7 @@ void InputRemapper::execute_action(const std::string &action_name) {
         if (AdjustVolumeForCurrentProcess(percent_change)) {
             float new_volume = ::s_audio_volume_percent.load();
             LogInfo("InputRemapper::execute_action() - Volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
-                   current_volume, new_volume, percent_change);
+                    current_volume, new_volume, percent_change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to increase volume");
         }
@@ -1239,7 +1186,7 @@ void InputRemapper::execute_action(const std::string &action_name) {
         if (AdjustVolumeForCurrentProcess(percent_change)) {
             float final_volume = ::s_audio_volume_percent.load();
             LogInfo("InputRemapper::execute_action() - Volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
-                   current_volume, final_volume, percent_change);
+                    current_volume, final_volume, percent_change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to decrease volume");
         }
@@ -1257,7 +1204,8 @@ void InputRemapper::execute_action(const std::string &action_name) {
         }
         display_commanderhooks::SetTimeslowdownMultiplier(new_multiplier);
         trigger_action_notification("Game Speed: " + std::to_string(new_multiplier) + "x");
-        LogInfo("InputRemapper::execute_action() - Game speed increased from %.2fx to %.2fx", current_multiplier, new_multiplier);
+        LogInfo("InputRemapper::execute_action() - Game speed increased from %.2fx to %.2fx", current_multiplier,
+                new_multiplier);
     } else if (action_name == "decrease game speed") {
         // Decrease game speed by 10% (divide multiplier by 1.1)
         if (!enabled_experimental_features) {
@@ -1266,20 +1214,22 @@ void InputRemapper::execute_action(const std::string &action_name) {
         }
         float current_multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
         float new_multiplier = current_multiplier / 1.1f;
-        float min_multiplier = 0.1f; // Minimum multiplier
+        float min_multiplier = 0.1f;  // Minimum multiplier
         if (new_multiplier < min_multiplier) {
             new_multiplier = min_multiplier;
         }
         display_commanderhooks::SetTimeslowdownMultiplier(new_multiplier);
         trigger_action_notification("Game Speed: " + std::to_string(new_multiplier) + "x");
-        LogInfo("InputRemapper::execute_action() - Game speed decreased from %.2fx to %.2fx", current_multiplier, new_multiplier);
+        LogInfo("InputRemapper::execute_action() - Game speed decreased from %.2fx to %.2fx", current_multiplier,
+                new_multiplier);
     } else if (action_name == "display commander ui toggle") {
         // Toggle Display Commander UI
         bool current_state = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
         bool new_state = !current_state;
         settings::g_mainTabSettings.show_display_commander_ui.SetValue(new_state);
         trigger_action_notification("Display Commander UI " + std::string(new_state ? "On" : "Off"));
-        LogInfo("InputRemapper::execute_action() - Display Commander UI %s via action", new_state ? "enabled" : "disabled");
+        LogInfo("InputRemapper::execute_action() - Display Commander UI %s via action",
+                new_state ? "enabled" : "disabled");
     } else if (action_name == "increase system volume") {
         // Increase system volume by relative 20% (multiply by 1.2), minimum 1% change
         float current_volume = 0.0f;
@@ -1307,7 +1257,7 @@ void InputRemapper::execute_action(const std::string &action_name) {
             float new_volume = 0.0f;
             GetSystemVolume(&new_volume);
             LogInfo("InputRemapper::execute_action() - System volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
-                   current_volume, new_volume, percent_change);
+                    current_volume, new_volume, percent_change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to increase system volume");
         }
@@ -1336,7 +1286,7 @@ void InputRemapper::execute_action(const std::string &action_name) {
             float final_volume = 0.0f;
             GetSystemVolume(&final_volume);
             LogInfo("InputRemapper::execute_action() - System volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
-                   current_volume, final_volume, percent_change);
+                    current_volume, final_volume, percent_change);
         } else {
             LogError("InputRemapper::execute_action() - Failed to decrease system volume");
         }
@@ -1345,9 +1295,9 @@ void InputRemapper::execute_action(const std::string &action_name) {
         bool current_state = settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue();
         bool new_state = !current_state;
         settings::g_mainTabSettings.adhd_multi_monitor_enabled.SetValue(new_state);
-        adhd_multi_monitor::api::SetEnabled(new_state);
         trigger_action_notification("ADHD Multi-Monitor Mode " + std::string(new_state ? "On" : "Off"));
-        LogInfo("InputRemapper::execute_action() - ADHD Multi-Monitor Mode %s via action", new_state ? "enabled" : "disabled");
+        LogInfo("InputRemapper::execute_action() - ADHD Multi-Monitor Mode %s via action",
+                new_state ? "enabled" : "disabled");
     } else if (action_name == "stopwatch toggle" || action_name == "stopwatch start/pause") {
         // Toggle stopwatch (start/pause)
         ToggleStopwatch();
@@ -1361,19 +1311,18 @@ void InputRemapper::execute_action(const std::string &action_name) {
 
 std::string get_remap_type_name(RemapType type) {
     switch (type) {
-    case RemapType::Keyboard:
-        return "Keyboard";
-    case RemapType::Gamepad:
-        return "Gamepad";
-    case RemapType::Action:
-        return "Action";
-    case RemapType::Count:
-        return "Unknown";
+        case RemapType::Keyboard: return "Keyboard";
+        case RemapType::Gamepad:  return "Gamepad";
+        case RemapType::Action:   return "Action";
+        case RemapType::Count:    return "Unknown";
     }
     return "Unknown";
 }
 
 std::vector<std::string> get_available_actions() {
-    return {"screenshot", "time slowdown toggle", "performance overlay toggle", "mute/unmute audio", "increase volume", "decrease volume", "increase system volume", "decrease system volume", "increase game speed", "decrease game speed", "display commander ui toggle", "adhd toggle", "stopwatch toggle"};
+    return {"screenshot",          "time slowdown toggle", "performance overlay toggle",  "mute/unmute audio",
+            "increase volume",     "decrease volume",      "increase system volume",      "decrease system volume",
+            "increase game speed", "decrease game speed",  "display commander ui toggle", "adhd toggle",
+            "stopwatch toggle"};
 }
-} // namespace display_commander::input_remapping
+}  // namespace display_commander::input_remapping

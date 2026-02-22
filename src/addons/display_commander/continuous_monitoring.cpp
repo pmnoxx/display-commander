@@ -21,6 +21,7 @@
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
+#include "utils/srwlock_registry.hpp"
 #include "utils/overlay_window_detector.hpp"
 #include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
@@ -174,13 +175,6 @@ void check_is_background() {
         ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
     }
 
-    if (s_background_feature_enabled.load()) {
-        // Only create/update background window if main window has focus (game in foreground)
-        HWND current_foreground_hwnd = display_commanderhooks::GetForegroundWindow_Direct();
-        if (current_foreground_hwnd != nullptr) {
-            g_backgroundWindowManager.UpdateBackgroundWindow(current_foreground_hwnd);
-        }
-    }
 }
 
 void HandleDiscordOverlayAutoHide() {
@@ -669,17 +663,8 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         LogInfo("Rendering UI current section: %s (stuck here if overlay was open)", ui_section);
     }
 
-    // Report SRWLOCK status (HELD = lock is in use; helps diagnose deadlocks / stuck on logger etc.)
-    {
-        std::ostringstream oss;
-        oss << "SRWLOCK logger queue_lock: " << (display_commander::logger::IsWriteLockHeld() ? "HELD" : "free")
-            << " | reshade_runtimes: " << (IsReshadeRuntimesLockHeld() ? "HELD" : "free")
-            << " | swapchain_tracking: " << (IsSwapchainTrackingLockHeld() ? "HELD" : "free")
-            << " | loadlibrary module: " << (display_commanderhooks::IsModuleSrwlockHeld() ? "HELD" : "free")
-            << " | loadlibrary blocked_dlls: " << (display_commanderhooks::IsBlockedDllsSrwlockHeld() ? "HELD" : "free")
-            << " | nvapi: " << (IsNvapiLockHeld() ? "HELD" : "free");
-        LogInfo("%s", oss.str().c_str());
-    }
+    // Report every SRWLOCK (HELD = in use; helps identify which lock is hanging when diagnosing deadlocks)
+    utils::LogAllSrwlockStatus();
 
     // Recent detour calls (last 256) to see call trail when stuck
     {
@@ -855,7 +840,9 @@ void ContinuousMonitoringThread() {
                 check_is_background();
                 last_60fps_update_ns = now_ns;
                 adhd_multi_monitor::api::Initialize();
-                adhd_multi_monitor::api::SetEnabled(settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
+                adhd_multi_monitor::api::SetEnabled(
+                    settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue(),
+                    settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
 
                 // Update ADHD Multi-Monitor Mode at 60 FPS
                 adhd_multi_monitor::api::Update();

@@ -1,14 +1,15 @@
 #pragma once
 
-#include <atomic>
-#include <vector>
 #include <windows.h>
+#include <atomic>
+#include <optional>
+#include <vector>
 
 namespace adhd_multi_monitor {
 
 // Simple ADHD Multi-Monitor Manager - single class implementation
 class AdhdMultiMonitorManager {
-  public:
+   public:
     AdhdMultiMonitorManager();
     ~AdhdMultiMonitorManager();
 
@@ -21,9 +22,10 @@ class AdhdMultiMonitorManager {
     // Update the system (call from main loop)
     void Update();
 
-    // Enable/disable ADHD mode
-    void SetEnabled(bool enabled);
-    bool IsEnabled() const { return enabled_.load(); }
+    // Enable/disable ADHD mode: (enabled for game display, enabled for other displays)
+    void SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays);
+    bool IsEnabledForGameDisplay() const { return enabled_for_game_display_.load(); }
+    bool IsEnabledForOtherDisplays() const { return enabled_for_other_displays_.load(); }
 
     // Focus disengagement is always enabled (no UI control needed)
     bool IsFocusDisengage() const { return true; }
@@ -31,25 +33,24 @@ class AdhdMultiMonitorManager {
     // Check if multiple monitors are available
     bool HasMultipleMonitors() const;
 
-  private:
+   private:
     // Background window management
     bool CreateBackgroundWindow();
     void DestroyBackgroundWindow();
     void PositionBackgroundWindow();
-    void ShowBackgroundWindow(bool show);
 
     // Monitor enumeration
     void EnumerateMonitors();
-    void UpdateMonitorInfo();
 
     // Window procedure for the background window
     static LRESULT CALLBACK BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     // Member variables
-    std::atomic<bool> enabled_;
+    std::atomic<bool> enabled_for_other_displays_ = false;
+    std::atomic<bool> enabled_for_game_display_ = false;
 
-    HWND background_hwnd_;
-    bool last_game_in_foreground_;
+    // Single window stretching over all displays, inserted after game_hwnd
+    HWND background_hwnd_ = nullptr;
 
     std::vector<RECT> monitor_rects_;
     RECT game_monitor_rect_;
@@ -57,12 +58,11 @@ class AdhdMultiMonitorManager {
     bool initialized_;
     bool background_window_created_;
 
-    // Window class name for the background window
-    static constexpr const wchar_t *BACKGROUND_WINDOW_CLASS = L"AdhdMultiMonitorBackground";
-    static constexpr const wchar_t *BACKGROUND_WINDOW_TITLE = L"ADHD Multi-Monitor Background";
+    static constexpr const wchar_t* BACKGROUND_WINDOW_CLASS = L"AdhdMultiMonitorBackground";
+    static constexpr const wchar_t* BACKGROUND_WINDOW_TITLE = L"ADHD Multi-Monitor Background";
 };
 
 // Global instance
 extern AdhdMultiMonitorManager g_adhdManager;
 
-} // namespace adhd_multi_monitor
+}  // namespace adhd_multi_monitor

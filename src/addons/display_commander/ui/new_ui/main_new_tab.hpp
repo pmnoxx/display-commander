@@ -26,7 +26,7 @@ void DrawAudioSettings();
 void DrawWindowControls();
 
 // Draw ADHD Multi-Monitor Mode controls section
-void DrawAdhdMultiMonitorControls(bool hasBlackCurtainSetting);
+void DrawAdhdMultiMonitorControls();
 
 // Draw important information section (Flip State)
 void DrawImportantInfo();

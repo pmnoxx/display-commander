@@ -24,7 +24,6 @@ CreateFileW_pfn CreateFileW_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_hid_suppression_hooks_installed{false};
-static SRWLOCK g_hid_suppression_mutex = SRWLOCK_INIT;
 
 // DualSense device identifiers
 constexpr USHORT SONY_VENDOR_ID = 0x054c;
@@ -41,7 +40,7 @@ bool ShouldSuppressHIDInput() {
 }
 
 void SetHIDSuppressionEnabled(bool enabled) {
-    utils::SRWLockExclusive lock(g_hid_suppression_mutex);
+    utils::SRWLockExclusive lock(utils::g_hid_suppression_mutex);
     settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(enabled);
     LogInfo("HID suppression %s", enabled ? "enabled" : "disabled");
 }

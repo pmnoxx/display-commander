@@ -20,13 +20,12 @@
 namespace {
 
 // Track seen exception addresses to avoid duplicate logging
-SRWLOCK g_seen_exception_addresses_lock = SRWLOCK_INIT;
 std::unordered_set<uintptr_t> g_seen_exception_addresses;
 
 // Check if exception address was seen before, and record it if not
 // Returns true if address was already seen (should skip detailed logging)
 bool CheckAndRecordExceptionAddress(uintptr_t address) {
-    utils::SRWLockExclusive lock(g_seen_exception_addresses_lock);
+    utils::SRWLockExclusive lock(utils::g_seen_exception_addresses_lock);
     auto result = g_seen_exception_addresses.insert(address);
     return !result.second;  // true if already existed (insert failed)
 }
@@ -556,7 +555,7 @@ void Shutdown() {
 
     // Clear seen exception addresses
     {
-        utils::SRWLockExclusive lock(g_seen_exception_addresses_lock);
+        utils::SRWLockExclusive lock(utils::g_seen_exception_addresses_lock);
         g_seen_exception_addresses.clear();
     }
 }

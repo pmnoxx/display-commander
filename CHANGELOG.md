@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.36 (2026-02-21)
+
+- **SRWLOCK registry** - Added `g_wndproc_map_lock` (window proc HWND→WNDPROC map) so stuck-detection reports it; registry now has 16 global locks (18 total with logger + swapchain_tracking).
+
 ## v0.12.35 (2026-02-21)
 
 - **ADHD Multi-Monitor** - The background overlay's message pump (PeekMessage/DispatchMessage) now runs on a dedicated thread instead of inside the continuous-monitoring Update() loop. If continuous monitoring stops, the overlay window still processes messages so the game is less likely to hang or crash from a full message queue.

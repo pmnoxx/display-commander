@@ -6,7 +6,7 @@
 
 namespace utils {
 
-// --- Definitions (all 15 global/static SRWLOCKs) ---
+// --- Definitions (all 16 global/static SRWLOCKs) ---
 SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 SRWLOCK g_dlss_override_handles_srwlock = SRWLOCK_INIT;
 SRWLOCK g_module_srwlock = SRWLOCK_INIT;
@@ -22,6 +22,7 @@ SRWLOCK g_vulkan_extensions_lock = SRWLOCK_INIT;
 SRWLOCK g_game_reflex_sleep_mode_params_lock = SRWLOCK_INIT;
 SRWLOCK g_dinput_devices_mutex = SRWLOCK_INIT;
 SRWLOCK g_dinput_device_hooks_mutex = SRWLOCK_INIT;
+SRWLOCK g_wndproc_map_lock = SRWLOCK_INIT;
 
 namespace {
 
@@ -49,6 +50,7 @@ void LogAllSrwlockStatus() {
     LogOne("game_reflex_sleep_mode_params", TryIsSRWLockHeld(g_game_reflex_sleep_mode_params_lock));
     LogOne("dinput_devices", TryIsSRWLockHeld(g_dinput_devices_mutex));
     LogOne("dinput_device_hooks", TryIsSRWLockHeld(g_dinput_device_hooks_mutex));
+    LogOne("wndproc_map", TryIsSRWLockHeld(g_wndproc_map_lock));
 }
 
 }  // namespace utils

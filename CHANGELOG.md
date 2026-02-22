@@ -2,6 +2,7 @@
 
 ---
 
+
 ## v0.12.25 (2026-02-21)
 
 - **Changelog** - Deduplicate window restore/minimize entries (throttle, continue-rendering SIZE_RESTORED).

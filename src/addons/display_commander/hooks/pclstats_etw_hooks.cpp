@@ -92,6 +92,12 @@ ULONG WINAPI EventRegister_Detour(LPCGUID ProviderId,
                                   PVOID CallbackContext,
                                   PREGHANDLE RegHandle) {
     ULONG ret = EventRegister_Original(ProviderId, EnableCallback, CallbackContext, RegHandle);
+    // Don't record our own registration so we keep the game's PCL provider handle for counting.
+    HMODULE calling_module = GetCallingDLL();
+    HMODULE our_module = g_module.load(std::memory_order_relaxed);
+    if (calling_module != nullptr && our_module != nullptr && calling_module == our_module) {
+        return ret;
+    }
     if (ret == 0 && RegHandle != nullptr && ProviderId != nullptr && GuidEquals(ProviderId, &kPCLStatsProviderId)) {
         REGHANDLE prev = g_pclstats_provider_handle.exchange(*RegHandle, std::memory_order_relaxed);
         if (prev != REGHANDLE(0) && prev != *RegHandle) {
@@ -108,6 +114,14 @@ ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle,
                                         LPCGUID RelatedActivityId,
                                         ULONG UserDataCount,
                                         PEVENT_DATA_DESCRIPTOR UserData) {
+    // Ignore calls from our own module so we don't count or react to our own PCLStats events.
+    HMODULE calling_module = GetCallingDLL();
+    HMODULE our_module = g_module.load(std::memory_order_relaxed);
+    if (calling_module != nullptr && our_module != nullptr && calling_module == our_module) {
+        return EventWriteTransfer_Original(RegHandle, EventDescriptor, ActivityId, RelatedActivityId, UserDataCount,
+                                          UserData);
+    }
+
     REGHANDLE pcl_handle = g_pclstats_provider_handle.load(std::memory_order_relaxed);
     int event_kind = 0;
     int marker = -1;

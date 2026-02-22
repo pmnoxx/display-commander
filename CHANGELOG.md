@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.37 (2026-02-22)
+
+- **PCL stats (ETW)** - Disabled PCL Stats reporting for new, due to conflict with Native Frame Pacing code for Vulkan.
+
 ## v0.12.36 (2026-02-21)
 
 - **SRWLOCK registry** - Added `g_wndproc_map_lock` (window proc HWND→WNDPROC map) so stuck-detection reports it; registry now has 16 global locks (18 total with logger + swapchain_tracking).

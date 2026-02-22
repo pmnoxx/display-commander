@@ -50,6 +50,9 @@ void DetectWine() {
 // Module handle for pinning/unpinning
 HMODULE g_hmodule = nullptr;
 
+// Our addon DLL module handle (set in AddonInit; atomic for lock-free caller checks in hooks).
+std::atomic<HMODULE> g_module{nullptr};
+
 // Track whether module was pinned (for conditional unpinning)
 std::atomic<bool> g_module_pinned{false};
 

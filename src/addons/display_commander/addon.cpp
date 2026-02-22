@@ -462,6 +462,7 @@ extern "C" __declspec(dllexport) void CALLBACK CommandLine(HWND hwnd, HINSTANCE 
 // Export addon initialization function
 extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE reshade_module) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_module.store(addon_module, std::memory_order_release);
     // Store ReShade module handle for unload detection
     g_reshade_module = reshade_module;
     LogInfo("AddonInit: Stored ReShade module handle: 0x%p", reshade_module);

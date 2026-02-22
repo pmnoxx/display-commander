@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.41 (2026-02-22)
+
+- **Hotkeys tab** - Brightness Up/Down hotkey step is now configurable (slider at bottom of Hotkeys tab, 1–50%). Default 5%.
+
 ## v0.12.40 (2026-02-22)
 
 - **Main tab (Vulkan)** - When the graphics API is Vulkan, the DLSS subsection now shows NvLowLatencyVk.dll and vulkan-1.dll load and hook status (loaded / loaded (hooks active) / not loaded), matching the Vulkan tab.

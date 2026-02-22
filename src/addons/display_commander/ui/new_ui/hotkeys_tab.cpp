@@ -495,9 +495,9 @@ void InitializeHotkeyDefinitions() {
              LogInfo(oss.str().c_str());
          }},
         {"brightness_down", "Brightness Down", "",
-         "Decrease Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)",
+         "Decrease Display Commander brightness (0-200%%, step configurable below, 100%% = neutral)",
          []() {
-             constexpr float step = 10.0f;
+             float step = static_cast<float>(settings::g_hotkeysTabSettings.brightness_hotkey_step_percent.GetValue());
              constexpr float min_percent = 0.0f;
              float current = settings::g_mainTabSettings.brightness_percent.GetValue();
              float next = (std::max)(min_percent, current - step);
@@ -507,9 +507,9 @@ void InitializeHotkeyDefinitions() {
              LogInfo(oss.str().c_str());
          }},
         {"brightness_up", "Brightness Up", "",
-         "Increase Display Commander brightness (0-200%%, step 10%%, 100%% = neutral)",
+         "Increase Display Commander brightness (0-200%%, step configurable below, 100%% = neutral)",
          []() {
-             constexpr float step = 10.0f;
+             float step = static_cast<float>(settings::g_hotkeysTabSettings.brightness_hotkey_step_percent.GetValue());
              constexpr float max_percent = 200.0f;
              float current = settings::g_mainTabSettings.brightness_percent.GetValue();
              float next = (std::min)(max_percent, current + step);
@@ -1098,6 +1098,16 @@ void DrawHotkeysTab() {
             ImGui::Text(ICON_FK_OK " No blocking conditions - hotkeys should work");
             ui::colors::PopIconColor();
         }
+    }
+
+    // Brightness hotkey step (at bottom of tab)
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    SliderIntSetting(settings.brightness_hotkey_step_percent, "Brightness hotkey step (%)", "%d%%");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Step size for Brightness Up/Down hotkeys (0-200%%, 100%% = neutral). Default 5%%.");
     }
 }
 

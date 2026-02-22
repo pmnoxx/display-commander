@@ -31,7 +31,8 @@ HotkeysTabSettings::HotkeysTabSettings()
       exclusive_keys_ad_enabled("ExclusiveKeysADEnabled", false, "DisplayCommander"),
       exclusive_keys_ws_enabled("ExclusiveKeysWSEnabled", false, "DisplayCommander"),
       exclusive_keys_awsd_enabled("ExclusiveKeysAWSDEnabled", false, "DisplayCommander"),
-      exclusive_keys_custom_groups("ExclusiveKeysCustomGroups", "", "DisplayCommander") {}
+      exclusive_keys_custom_groups("ExclusiveKeysCustomGroups", "", "DisplayCommander"),
+      brightness_hotkey_step_percent("BrightnessHotkeyStepPercent", 5, 1, 50, "DisplayCommander") {}
 
 void HotkeysTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -74,6 +75,7 @@ void HotkeysTabSettings::SaveAll() {
     exclusive_keys_ws_enabled.Save();
     exclusive_keys_awsd_enabled.Save();
     exclusive_keys_custom_groups.Save();
+    brightness_hotkey_step_percent.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
@@ -84,7 +86,8 @@ std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
             &hotkey_brightness_down, &hotkey_win_down, &hotkey_win_up, &hotkey_win_left, &hotkey_win_right,
             &hotkey_move_to_primary,
             &exclusive_keys_ad_enabled,
-            &exclusive_keys_ws_enabled, &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups};
+            &exclusive_keys_ws_enabled, &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups,
+            &brightness_hotkey_step_percent};
 }
 
 }  // namespace settings

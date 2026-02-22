@@ -7,9 +7,10 @@
 namespace settings {
 
 // Bring setting types into scope
-using ui::new_ui::StringSetting;
 using ui::new_ui::BoolSetting;
+using ui::new_ui::IntSetting;
 using ui::new_ui::SettingBase;
+using ui::new_ui::StringSetting;
 
 // Hotkeys tab settings manager
 class HotkeysTabSettings {
@@ -59,6 +60,9 @@ class HotkeysTabSettings {
     // Custom exclusive key groups (stored as JSON array of groups, each group is comma-separated keys)
     // Format: "A,S|W,S|Q,E" where | separates groups and , separates keys within a group
     StringSetting exclusive_keys_custom_groups;
+
+    // Brightness hotkey step (percent per key press; 0-200% range, 100% = neutral)
+    IntSetting brightness_hotkey_step_percent;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

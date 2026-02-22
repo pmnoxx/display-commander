@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.38 (2026-02-22)
+
+- **Auto color space** - Madew "Auto Color Space" setting available only on dxgi, to prevent crashes.
+
 ## v0.12.37 (2026-02-22)
 
 - **PCL stats (ETW)** - Disabled PCL Stats reporting for new, due to conflict with Native Frame Pacing code for Vulkan.

@@ -35,7 +35,7 @@ namespace ui::new_ui {
 void DrawFeaturesEnabledByDefault();
 void DrawAdvancedTabSettingsSection();
 void DrawContinuousMonitoringSection();
-void DrawHdrDisplaySettings();
+void DrawHdrDisplaySettings(reshade::api::device_api api);
 void DrawMpoSection();
 void DrawNvapiSettings();
 void DrawNewExperimentalFeatures();
@@ -56,7 +56,7 @@ void InitAdvancedTab() {
     }
 }
 
-void DrawAdvancedTab(reshade::api::effect_runtime* /*runtime*/) {
+void DrawAdvancedTab(reshade::api::effect_runtime* runtime) {
     if (ImGui::CollapsingHeader("Features Enabled By Default", ImGuiTreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault();
     }
@@ -78,14 +78,19 @@ void DrawAdvancedTab(reshade::api::effect_runtime* /*runtime*/) {
 
     // HDR and Display Settings Section
     if (ImGui::CollapsingHeader("HDR and Display Settings", ImGuiTreeNodeFlags_None)) {
-        DrawHdrDisplaySettings();
+        reshade::api::device_api api = reshade::api::device_api::vulkan;  // fallback when no device (non-DXGI → no auto color space)
+        if (runtime != nullptr && runtime->get_device() != nullptr) {
+            api = runtime->get_device()->get_api();
+        }
+        DrawHdrDisplaySettings(api);
     }
 
     ImGui::Spacing();
 
     if (enabled_experimental_features) {
         // Disable MPO (fix black screen on multimonitor) Section
-        if (ImGui::CollapsingHeader("Disable MPO (fix black screen issues on multimonitor setup)", ImGuiTreeNodeFlags_None)) {
+        if (ImGui::CollapsingHeader("Disable MPO (fix black screen issues on multimonitor setup)",
+                                    ImGuiTreeNodeFlags_None)) {
             DrawMpoSection();
         }
 
@@ -277,7 +282,8 @@ void DrawAdvancedTabSettingsSection() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(
             "Suppress Windows.Gaming.Input.dll so the game uses XInput instead.\n"
-            "When enabled, continue rendering in background works with gamepad (WGI loses input when the window is inactive).\n"
+            "When enabled, continue rendering in background works with gamepad (WGI loses input when the window is "
+            "inactive).\n"
             "Default: on.");
     }
 
@@ -767,7 +773,8 @@ void DrawContinuousMonitoringSection() {
         }
         SliderIntSetting(settings::g_advancedTabSettings.monitor_high_freq_interval_ms, "Interval (ms)", "%d ms");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Loop interval: 8 = ~120 Hz, 16 = ~60 Hz, 33 = ~30 Hz. When disabled, loop sleeps 50 ms.");
+            ImGui::SetTooltip(
+                "Loop interval: 8 = ~120 Hz, 16 = ~60 Hz, 33 = ~30 Hz. When disabled, loop sleeps 50 ms.");
         }
         ImGui::Unindent();
         ImGui::TreePop();
@@ -777,10 +784,10 @@ void DrawContinuousMonitoringSection() {
         ImGui::Indent();
         CheckboxSetting(settings::g_advancedTabSettings.monitor_per_second_enabled, "Enable per-second tasks");
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Screensaver, FPS aggregate, volume, refresh rate, VRR status, and other periodic tasks.");
+            ImGui::SetTooltip(
+                "Screensaver, FPS aggregate, volume, refresh rate, VRR status, and other periodic tasks.");
         }
-        SliderIntSetting(settings::g_advancedTabSettings.monitor_per_second_interval_sec,
-                         "Interval (seconds)", "%d s");
+        SliderIntSetting(settings::g_advancedTabSettings.monitor_per_second_interval_sec, "Interval (seconds)", "%d s");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("How often the per-second block runs (1–60 seconds).");
         }
@@ -794,7 +801,8 @@ void DrawContinuousMonitoringSection() {
         CheckboxSetting(settings::g_advancedTabSettings.monitor_exclusive_key_groups, "Exclusive key groups cache");
         CheckboxSetting(settings::g_advancedTabSettings.monitor_discord_overlay, "Discord overlay auto-hide");
         CheckboxSetting(settings::g_advancedTabSettings.monitor_reflex_auto_configure, "Reflex auto-configure");
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_auto_apply_trigger, "Auto-apply (HDR/resolution) trigger");
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_auto_apply_trigger,
+                        "Auto-apply (HDR/resolution) trigger");
         ImGui::Unindent();
         ImGui::TreePop();
     }
@@ -805,8 +813,8 @@ void DrawContinuousMonitoringSection() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Refreshes display list off the UI thread. Disable to reduce overhead.");
         }
-        SliderIntSetting(settings::g_advancedTabSettings.monitor_display_cache_interval_sec,
-                         "Interval (seconds)", "%d s");
+        SliderIntSetting(settings::g_advancedTabSettings.monitor_display_cache_interval_sec, "Interval (seconds)",
+                         "%d s");
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("How often to refresh the display cache (1–60 seconds).");
         }
@@ -817,8 +825,11 @@ void DrawContinuousMonitoringSection() {
     ImGui::Unindent();
 }
 
-void DrawHdrDisplaySettings() {
+void DrawHdrDisplaySettings(reshade::api::device_api api) {
     ImGui::Indent();
+
+    const bool is_dxgi = (api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12
+                          || api == reshade::api::device_api::d3d10);
 
     // Hide HDR Capabilities
     if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities,
@@ -863,21 +874,23 @@ void DrawHdrDisplaySettings() {
             "Requires a game restart to take full effect.");
     }
 
-    ImGui::Spacing();
+    if (is_dxgi) {
+        ImGui::Spacing();
 
-    // Auto Color Space checkbox
-    bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
-    if (ImGui::Checkbox("Auto color space", &auto_colorspace)) {
-        settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Automatically sets the appropriate color space on the game's swap chain based on the current format.\n"
-            "- HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
-            "- FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
-            "- SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
-            "Only works with DirectX 11/12 games.\n"
-            "Applied automatically in presentBefore.");
+        // Auto Color Space checkbox
+        bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+        if (ImGui::Checkbox("Auto color space", &auto_colorspace)) {
+            settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Automatically sets the appropriate color space on the game's swap chain based on the current format.\n"
+                "- HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
+                "- FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
+                "- SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
+                "Only works with DirectX 11/12 games.\n"
+                "Applied automatically in presentBefore.");
+        }
     }
 
     // Show upgrade status
@@ -911,16 +924,14 @@ void DrawMpoSection() {
     display_commander::utils::MpoRegistryGetStatus(&status);
 
     ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                      "MPO registry options. Check to enable each. Restart required. Requires administrator.");
+                       "MPO registry options. Check to enable each. Restart required. Requires administrator.");
     ImGui::Spacing();
 
     // Status of the other two (Windows options)
     ImGui::TextColored(ui::colors::TEXT_LABEL, "Status:");
     ImGui::SameLine();
-    ImGui::Text("OverlayTestMode %s, DisableMPO %s, DisableOverlays %s",
-                status.overlay_test_mode_5 ? "= 5" : "not set",
-                status.disable_mpo ? "= 1" : "not set",
-                status.disable_overlays ? "= 1" : "not set");
+    ImGui::Text("OverlayTestMode %s, DisableMPO %s, DisableOverlays %s", status.overlay_test_mode_5 ? "= 5" : "not set",
+                status.disable_mpo ? "= 1" : "not set", status.disable_overlays ? "= 1" : "not set");
     ImGui::Spacing();
 
     bool overlay_test_mode = status.overlay_test_mode_5;
@@ -930,7 +941,8 @@ void DrawMpoSection() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("HKLM\\SOFTWARE\\Microsoft\\Windows\\Dwm -> OverlayTestMode. Classic Windows option to disable MPO.");
+        ImGui::SetTooltip(
+            "HKLM\\SOFTWARE\\Microsoft\\Windows\\Dwm -> OverlayTestMode. Classic Windows option to disable MPO.");
     }
 
     bool disable_mpo = status.disable_mpo;
@@ -950,7 +962,9 @@ void DrawMpoSection() {
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("HKLM\\...\\GraphicsDrivers -> DisableOverlays. Disables all overlays (Discord, GPU overlays); may affect VRR.");
+        ImGui::SetTooltip(
+            "HKLM\\...\\GraphicsDrivers -> DisableOverlays. Disables all overlays (Discord, GPU overlays); may affect "
+            "VRR.");
     }
 
     ImGui::Unindent();
@@ -1246,8 +1260,8 @@ void DrawNvapiSettings() {
                 if (last_applied.has_value) {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Last applied (via SetSleepMode_Original):");
                     ImGui::Text("  Low Latency: %s  Boost: %s  Min interval: %u us",
-                               last_applied.low_latency ? "Yes" : "No", last_applied.boost ? "Yes" : "No",
-                               last_applied.minimum_interval_us);
+                                last_applied.low_latency ? "Yes" : "No", last_applied.boost ? "Yes" : "No",
+                                last_applied.minimum_interval_us);
                     if (last_applied.minimum_interval_us > 0) {
                         float fps = 1000000.0f / last_applied.minimum_interval_us;
                         ImGui::Text("  Target FPS: %.1f", fps);
@@ -1260,8 +1274,8 @@ void DrawNvapiSettings() {
                 if (game_params.has_value) {
                     ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Game tried to set (NvLL_VK_SetSleepMode):");
                     ImGui::Text("  Low Latency: %s  Boost: %s  Min interval: %u us",
-                               game_params.low_latency ? "Yes" : "No", game_params.boost ? "Yes" : "No",
-                               game_params.minimum_interval_us);
+                                game_params.low_latency ? "Yes" : "No", game_params.boost ? "Yes" : "No",
+                                game_params.minimum_interval_us);
                     if (game_params.minimum_interval_us > 0) {
                         float fps = 1000000.0f / game_params.minimum_interval_us;
                         ImGui::Text("  Target FPS: %.1f", fps);

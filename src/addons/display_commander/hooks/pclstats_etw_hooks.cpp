@@ -21,9 +21,7 @@ namespace {
 static constexpr GUID kPCLStatsProviderId = {
     0x0d216f06, 0x82a6, 0x4d49, {0xbc, 0x4f, 0x8f, 0x38, 0xae, 0x56, 0xef, 0xab}};
 
-static bool GuidEquals(const GUID* a, const GUID* b) {
-    return std::memcmp(a, b, sizeof(GUID)) == 0;
-}
+static bool GuidEquals(const GUID* a, const GUID* b) { return std::memcmp(a, b, sizeof(GUID)) == 0; }
 
 using EventRegister_pfn = decltype(&EventRegister);
 using EventWriteTransfer_pfn = decltype(&EventWriteTransfer);
@@ -61,9 +59,7 @@ static int ClassifyPclStatsEvent(const void* ptr, ULONG size) {
 }
 
 // Return true if blob contains "PCLStatsEvent" (metadata descriptor).
-static bool DescriptorLooksLikeMetadata(const void* ptr, ULONG size) {
-    return ClassifyPclStatsEvent(ptr, size) != 0;
-}
+static bool DescriptorLooksLikeMetadata(const void* ptr, ULONG size) { return ClassifyPclStatsEvent(ptr, size) != 0; }
 
 // Parse Marker from TraceLogging payload. PCLStatsEvent has (Marker uint32, FrameID uint64).
 // Scan descriptors for a 4-byte LE value in 0..(kPCLStatsMarkerTypeCount-1) that is not in the metadata blob.
@@ -87,9 +83,7 @@ static int ParsePclStatsMarkerFromDescriptors(ULONG UserDataCount, PEVENT_DATA_D
     return -1;
 }
 
-ULONG WINAPI EventRegister_Detour(LPCGUID ProviderId,
-                                  PENABLECALLBACK EnableCallback,
-                                  PVOID CallbackContext,
+ULONG WINAPI EventRegister_Detour(LPCGUID ProviderId, PENABLECALLBACK EnableCallback, PVOID CallbackContext,
                                   PREGHANDLE RegHandle) {
     ULONG ret = EventRegister_Original(ProviderId, EnableCallback, CallbackContext, RegHandle);
     // Don't record our own registration so we keep the game's PCL provider handle for counting.
@@ -108,18 +102,15 @@ ULONG WINAPI EventRegister_Detour(LPCGUID ProviderId,
     return ret;
 }
 
-ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle,
-                                        PCEVENT_DESCRIPTOR EventDescriptor,
-                                        LPCGUID ActivityId,
-                                        LPCGUID RelatedActivityId,
-                                        ULONG UserDataCount,
-                                        PEVENT_DATA_DESCRIPTOR UserData) {
+ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle, PCEVENT_DESCRIPTOR EventDescriptor, LPCGUID ActivityId,
+                                       LPCGUID RelatedActivityId, ULONG UserDataCount,
+                                       PEVENT_DATA_DESCRIPTOR UserData) {
     // Ignore calls from our own module so we don't count or react to our own PCLStats events.
     HMODULE calling_module = GetCallingDLL();
     HMODULE our_module = g_module.load(std::memory_order_relaxed);
     if (calling_module != nullptr && our_module != nullptr && calling_module == our_module) {
         return EventWriteTransfer_Original(RegHandle, EventDescriptor, ActivityId, RelatedActivityId, UserDataCount,
-                                          UserData);
+                                           UserData);
     }
 
     REGHANDLE pcl_handle = g_pclstats_provider_handle.load(std::memory_order_relaxed);
@@ -165,8 +156,7 @@ ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle,
         const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
         ChooseFpsLimiter(now_ns, FpsLimiterCallSite::reflex_marker_pclstats_etw);
         const bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker_pclstats_etw);
-        const bool native_pacing_sim_start_only =
-            settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
+        const bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
         if (use_fps_limiter) {
             if (native_pacing_sim_start_only) {
                 if (marker == 0) {
@@ -189,7 +179,7 @@ ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle,
     }
 
     return EventWriteTransfer_Original(RegHandle, EventDescriptor, ActivityId, RelatedActivityId, UserDataCount,
-                                      UserData);
+                                       UserData);
 }
 
 }  // namespace
@@ -246,8 +236,7 @@ void UninstallPCLStatsEtwHooks() {
 
 bool ArePCLStatsEtwHooksInstalled() { return g_pclstats_etw_hooks_installed.load(std::memory_order_acquire); }
 
-void GetPCLStatsEtwCounts(uint64_t* out_pclstats_event,
-                          uint64_t* out_pclstats_event_v2,
+void GetPCLStatsEtwCounts(uint64_t* out_pclstats_event, uint64_t* out_pclstats_event_v2,
                           uint64_t* out_pclstats_event_v3) {
     if (out_pclstats_event) *out_pclstats_event = g_count_pclstats_event.load(std::memory_order_relaxed);
     if (out_pclstats_event_v2) *out_pclstats_event_v2 = g_count_pclstats_event_v2.load(std::memory_order_relaxed);
@@ -262,26 +251,26 @@ void GetPCLStatsEtwCountsByMarker(uint64_t* out_counts) {
 }
 
 static const char* const kPCLStatsMarkerNames[] = {
-    "SIMULATION_START",      // 0
-    "SIMULATION_END",        // 1
-    "RENDERSUBMIT_START",    // 2
-    "RENDERSUBMIT_END",      // 3
-    "PRESENT_START",         // 4
-    "PRESENT_END",           // 5
-    "INPUT_SAMPLE(depr)",    // 6
-    "TRIGGER_FLASH",         // 7
-    "PC_LATENCY_PING",       // 8
-    "OOB_RENDERSUBMIT_START",// 9
-    "OOB_RENDERSUBMIT_END",  // 10
-    "OOB_PRESENT_START",     // 11
-    "OOB_PRESENT_END",       // 12
-    "CONTROLLER_INPUT",      // 13
-    "DELTA_T_CALCULATION",   // 14
-    "LATE_WARP_PRESENT_START",// 15
-    "LATE_WARP_PRESENT_END", // 16
-    "CAMERA_CONSTRUCTED",    // 17
-    "LATE_WARP_SUBMIT_START",// 18
-    "LATE_WARP_SUBMIT_END",  // 19
+    "SIMULATION_START",         // 0
+    "SIMULATION_END",           // 1
+    "RENDERSUBMIT_START",       // 2
+    "RENDERSUBMIT_END",         // 3
+    "PRESENT_START",            // 4
+    "PRESENT_END",              // 5
+    "INPUT_SAMPLE(depr)",       // 6
+    "TRIGGER_FLASH",            // 7
+    "PC_LATENCY_PING",          // 8
+    "OOB_RENDERSUBMIT_START",   // 9
+    "OOB_RENDERSUBMIT_END",     // 10
+    "OOB_PRESENT_START",        // 11
+    "OOB_PRESENT_END",          // 12
+    "CONTROLLER_INPUT",         // 13
+    "DELTA_T_CALCULATION",      // 14
+    "LATE_WARP_PRESENT_START",  // 15
+    "LATE_WARP_PRESENT_END",    // 16
+    "CAMERA_CONSTRUCTED",       // 17
+    "LATE_WARP_SUBMIT_START",   // 18
+    "LATE_WARP_SUBMIT_END",     // 19
 };
 
 const char* GetPCLStatsMarkerTypeName(size_t index) {

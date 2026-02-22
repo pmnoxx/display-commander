@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.40 (2026-02-22)
+
+- **Main tab (Vulkan)** - When the graphics API is Vulkan, the DLSS subsection now shows NvLowLatencyVk.dll and vulkan-1.dll load and hook status (loaded / loaded (hooks active) / not loaded), matching the Vulkan tab.
+
 ## v0.12.39 (2026-02-22)
 
 - **Hotkeys tab** - Each shortcut row has a "..." (Capture) button: click it, then press the key combination you want (numpad and modifiers supported). Existing shortcuts in config still load.

@@ -10,6 +10,8 @@
 #include "../../hooks/ngx_hooks.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
+#include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
+#include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
 #include "../../latency/reflex_provider.hpp"
@@ -4143,6 +4145,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
     DrawDisplaySettings_FpsAndBackground();
     DrawDisplaySettings_VSyncAndTearing();
 
+    auto api = runtime->get_device()->get_api();
+    const bool is_dxgi = api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+                         || api == reshade::api::device_api::d3d12;
     {
         const DLSSGSummary dlss_summary = GetDLSSGSummary();
         // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded
@@ -4150,16 +4155,54 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
         if (show_dlss_section && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
             ImGui::Indent();
-            if (!AreNGXParameterVTableHooksInstalled()) {
-                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
-                                   ICON_FK_WARNING " NGX Parameter vtable hooks were never installed.");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "This is usually caused by ReShade loading Display Commander too late (e.g. _nvngx.dll was "
-                        "already loaded). "
-                        "Recommendation: use Display Commander as dxgi.dll/d3d12.dll/d3d11.dll/version.dll and ReShade "
-                        "as Reshade64.dll so our hooks are active before NGX loads. "
-                        "Parameter overrides and DLSS preset controls may not apply until then.");
+            if (is_dxgi) {
+                if (!AreNGXParameterVTableHooksInstalled()) {
+                    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                                       ICON_FK_WARNING " NGX Parameter vtable hooks were never installed.");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "This is usually caused by ReShade loading Display Commander too late (e.g. _nvngx.dll was "
+                            "already loaded). "
+                            "Recommendation: use Display Commander as dxgi.dll/d3d12.dll/d3d11.dll/version.dll and "
+                            "ReShade "
+                            "as Reshade64.dll so our hooks are active before NGX loads. "
+                            "Parameter overrides and DLSS preset controls may not apply until then.");
+                    }
+                }
+            } else if (api == reshade::api::device_api::vulkan) {
+                const bool nvll_loaded = (GetModuleHandleW(L"NvLowLatencyVk.dll") != nullptr);
+                if (nvll_loaded) {
+                    if (AreNvLowLatencyVkHooksInstalled()) {
+                        ImGui::TextColored(ui::colors::ICON_POSITIVE,
+                                           ICON_FK_OK " NvLowLatencyVk.dll loaded (hooks active)");
+                    } else {
+                        ImGui::TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " NvLowLatencyVk.dll loaded");
+                        ImGui::SameLine();
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "NvLowLatencyVk status. Enable NvLowLatencyVk hooks in Vulkan tab for frame pacing.");
+                    }
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "NvLowLatencyVk.dll not loaded");
+                }
+                const bool vk_loaded = (GetModuleHandleW(L"vulkan-1.dll") != nullptr);
+                if (vk_loaded) {
+                    if (AreVulkanLoaderHooksInstalled()) {
+                        ImGui::TextColored(ui::colors::ICON_POSITIVE,
+                                           ICON_FK_OK " vulkan-1.dll loaded (hooks active)");
+                    } else {
+                        ImGui::TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " vulkan-1.dll loaded");
+                        ImGui::SameLine();
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "Vulkan loader status. Enable vulkan-1 loader hooks in Vulkan tab for frame pacing.");
+                    }
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "vulkan-1.dll not loaded");
                 }
             }
             DrawDLSSInfo(dlss_summary);
@@ -5896,9 +5939,11 @@ void DrawAdhdMultiMonitorControls() {
         return;
     }
     // Use CheckboxSetting so the checkbox always reflects the current setting (e.g. when toggled via hotkey)
-    if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display, "ADHD on game display")) {
+    if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display,
+                        "ADHD on game display")) {
         LogInfo("ADHD on game display %s",
-                settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue() ? "enabled" : "disabled");
+                settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue() ? "enabled"
+                                                                                                   : "disabled");
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip(

@@ -227,9 +227,9 @@ std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
 namespace {
 // Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event.
 constexpr std::array<FpsLimiterCallSite, 7> kFpsLimiterPriorityOrder = {
-    FpsLimiterCallSite::reflex_marker,            FpsLimiterCallSite::reflex_marker_vk_nvll,
-    FpsLimiterCallSite::reflex_marker_vk_loader,  FpsLimiterCallSite::reflex_marker_pclstats_etw,
-    FpsLimiterCallSite::dxgi_swapchain,           FpsLimiterCallSite::dxgi_factory_wrapper,
+    FpsLimiterCallSite::reflex_marker,           FpsLimiterCallSite::reflex_marker_vk_nvll,
+    FpsLimiterCallSite::reflex_marker_vk_loader, FpsLimiterCallSite::reflex_marker_pclstats_etw,
+    FpsLimiterCallSite::dxgi_swapchain,          FpsLimiterCallSite::dxgi_factory_wrapper,
     FpsLimiterCallSite::reshade_addon_event,
 };
 
@@ -246,14 +246,14 @@ bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
 
 const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
     switch (site) {
-        case FpsLimiterCallSite::reflex_marker:            return "reflex_marker";
-        case FpsLimiterCallSite::reflex_marker_vk_nvll:    return "reflex_marker_vk_nvll";
-        case FpsLimiterCallSite::reflex_marker_vk_loader: return "reflex_marker_vk_loader";
+        case FpsLimiterCallSite::reflex_marker:              return "reflex_marker";
+        case FpsLimiterCallSite::reflex_marker_vk_nvll:      return "reflex_marker_vk_nvll";
+        case FpsLimiterCallSite::reflex_marker_vk_loader:    return "reflex_marker_vk_loader";
         case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
-        case FpsLimiterCallSite::dxgi_swapchain:         return "dxgi_swapchain";
-        case FpsLimiterCallSite::reshade_addon_event:     return "reshade_addon_event";
-        case FpsLimiterCallSite::dxgi_factory_wrapper:    return "dxgi_factory_wrapper";
-        default:                                          return "?";
+        case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
+        case FpsLimiterCallSite::reshade_addon_event:        return "reshade_addon_event";
+        case FpsLimiterCallSite::dxgi_factory_wrapper:       return "dxgi_factory_wrapper";
+        default:                                             return "?";
     }
 }
 
@@ -704,6 +704,71 @@ std::atomic<NVSDK_NGX_Parameter*> g_last_ngx_parameter{nullptr};
 // NGX Counters global instance
 NGXCounters g_ngx_counters;
 
+// Tracked DLSS modules/paths from OnModuleLoaded (shared_ptr only; null = not set)
+static std::shared_ptr<DlssTrackedInfo> g_dlss_tracked;
+static std::shared_ptr<DlssTrackedInfo> g_dlssg_tracked;
+static std::shared_ptr<DlssTrackedInfo> g_dlssd_tracked;
+
+std::optional<HMODULE> GetDlssTrackedModule(DlssTrackedKind kind) {
+    utils::SRWLockShared lock(utils::g_dlss_tracked_srwlock);
+    const std::shared_ptr<DlssTrackedInfo>* p = nullptr;
+    switch (kind) {
+        case DlssTrackedKind::DLSS:  p = &g_dlss_tracked; break;
+        case DlssTrackedKind::DLSSG: p = &g_dlssg_tracked; break;
+        case DlssTrackedKind::DLSSD: p = &g_dlssd_tracked; break;
+    }
+    if (p && *p && (*p)->module != nullptr) {
+        return (*p)->module;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> GetDlssTrackedPath(DlssTrackedKind kind) {
+    utils::SRWLockShared lock(utils::g_dlss_tracked_srwlock);
+    const std::shared_ptr<DlssTrackedInfo>* p = nullptr;
+    switch (kind) {
+        case DlssTrackedKind::DLSS:  p = &g_dlss_tracked; break;
+        case DlssTrackedKind::DLSSG: p = &g_dlssg_tracked; break;
+        case DlssTrackedKind::DLSSD: p = &g_dlssd_tracked; break;
+    }
+    if (p && *p) {
+        return (*p)->path;
+    }
+    return std::nullopt;
+}
+
+void SetDlssTracked(DlssTrackedKind kind, HMODULE hMod, bool force) {
+    if (!hMod) return;
+    wchar_t pathW[MAX_PATH];
+    if (GetModuleFileNameW(hMod, pathW, MAX_PATH) == 0) return;
+    int size = WideCharToMultiByte(CP_UTF8, 0, pathW, -1, nullptr, 0, nullptr, nullptr);
+    if (size <= 0) return;
+    std::string path(static_cast<size_t>(size - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, pathW, -1, path.data(), size, nullptr, nullptr);
+
+    utils::SRWLockExclusive lock(utils::g_dlss_tracked_srwlock);
+    auto info = std::make_shared<DlssTrackedInfo>();
+    info->module = hMod;
+    info->path = path;
+    switch (kind) {
+        case DlssTrackedKind::DLSS:
+            if (!g_dlss_tracked || force) {
+                g_dlss_tracked = std::move(info);
+            }
+            break;
+        case DlssTrackedKind::DLSSG:
+            if (!g_dlssg_tracked || force) {
+                g_dlssg_tracked = std::move(info);
+            }
+            break;
+        case DlssTrackedKind::DLSSD:
+            if (!g_dlssd_tracked || force) {
+                g_dlssd_tracked = std::move(info);
+            }
+            break;
+    }
+}
+
 // Get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;
@@ -867,45 +932,100 @@ DLSSGSummary GetDLSSGSummary() {
         summary.ofa_enabled = (ofa_enabled == 1) ? "Yes" : "No";
     }
 
-    // Get DLL versions from actually loaded modules (no static cache - always current)
+    // Get DLL versions from tracked modules (OnModuleLoaded) when available, else GetModuleHandleW (e.g.
+    // nvngx_dlss.dll)
     std::string loaded_dlss_path, loaded_dlssg_path, loaded_dlssd_path;
-    HMODULE dlss_handle = GetModuleHandleW(L"nvngx_dlss.dll");
+    HMODULE dlss_handle = nullptr;
+    {
+        auto tracked = GetDlssTrackedModule(DlssTrackedKind::DLSS);
+        if (tracked.has_value()) {
+            dlss_handle = *tracked;
+        }
+    }
     if (dlss_handle != nullptr) {
-        wchar_t dlss_path[MAX_PATH];
-        DWORD path_length = GetModuleFileNameW(dlss_handle, dlss_path, MAX_PATH);
-        if (path_length > 0) {
-            loaded_dlss_path = std::filesystem::path(dlss_path).string();
-            summary.dlss_dll_version = GetDLLVersionString(std::wstring(dlss_path));
+        auto path_opt = GetDlssTrackedPath(DlssTrackedKind::DLSS);
+        if (path_opt.has_value()) {
+            loaded_dlss_path = *path_opt;
+            std::wstring wpath;
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, loaded_dlss_path.c_str(), -1, nullptr, 0);
+            if (wlen > 0) {
+                wpath.resize(static_cast<size_t>(wlen - 1));
+                MultiByteToWideChar(CP_UTF8, 0, loaded_dlss_path.c_str(), -1, &wpath[0], wlen);
+            }
+            summary.dlss_dll_version = wpath.empty() ? "Loaded (path unknown)" : GetDLLVersionString(wpath);
         } else {
-            summary.dlss_dll_version = "Loaded (path unknown)";
+            wchar_t dlss_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameW(dlss_handle, dlss_path, MAX_PATH);
+            if (path_length > 0) {
+                loaded_dlss_path = std::filesystem::path(dlss_path).string();
+                summary.dlss_dll_version = GetDLLVersionString(std::wstring(dlss_path));
+            } else {
+                summary.dlss_dll_version = "Loaded (path unknown)";
+            }
         }
     } else {
         summary.dlss_dll_version = "Not loaded";
     }
 
-    HMODULE dlssg_handle = GetModuleHandleW(L"nvngx_dlssg.dll");
+    HMODULE dlssg_handle = nullptr;
+    {
+        auto tracked = GetDlssTrackedModule(DlssTrackedKind::DLSSG);
+        if (tracked.has_value()) {
+            dlssg_handle = *tracked;
+        }
+    }
     if (dlssg_handle != nullptr) {
-        wchar_t dlssg_path[MAX_PATH];
-        DWORD path_length = GetModuleFileNameW(dlssg_handle, dlssg_path, MAX_PATH);
-        if (path_length > 0) {
-            loaded_dlssg_path = std::filesystem::path(dlssg_path).string();
-            summary.dlssg_dll_version = GetDLLVersionString(std::wstring(dlssg_path));
+        auto path_opt = GetDlssTrackedPath(DlssTrackedKind::DLSSG);
+        if (path_opt.has_value()) {
+            loaded_dlssg_path = *path_opt;
+            std::wstring wpath;
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, loaded_dlssg_path.c_str(), -1, nullptr, 0);
+            if (wlen > 0) {
+                wpath.resize(static_cast<size_t>(wlen - 1));
+                MultiByteToWideChar(CP_UTF8, 0, loaded_dlssg_path.c_str(), -1, &wpath[0], wlen);
+            }
+            summary.dlssg_dll_version = wpath.empty() ? "Loaded (path unknown)" : GetDLLVersionString(wpath);
         } else {
-            summary.dlssg_dll_version = "Loaded (path unknown)";
+            wchar_t dlssg_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameW(dlssg_handle, dlssg_path, MAX_PATH);
+            if (path_length > 0) {
+                loaded_dlssg_path = std::filesystem::path(dlssg_path).string();
+                summary.dlssg_dll_version = GetDLLVersionString(std::wstring(dlssg_path));
+            } else {
+                summary.dlssg_dll_version = "Loaded (path unknown)";
+            }
         }
     } else {
         summary.dlssg_dll_version = "Not loaded";
     }
 
-    HMODULE dlssd_handle = GetModuleHandleW(L"nvngx_dlssd.dll");
+    HMODULE dlssd_handle = nullptr;
+    {
+        auto tracked = GetDlssTrackedModule(DlssTrackedKind::DLSSD);
+        if (tracked.has_value()) {
+            dlssd_handle = *tracked;
+        }
+    }
     if (dlssd_handle != nullptr) {
-        wchar_t dlssd_path[MAX_PATH];
-        DWORD path_length = GetModuleFileNameW(dlssd_handle, dlssd_path, MAX_PATH);
-        if (path_length > 0) {
-            loaded_dlssd_path = std::filesystem::path(dlssd_path).string();
-            summary.dlssd_dll_version = GetDLLVersionString(std::wstring(dlssd_path));
+        auto path_opt = GetDlssTrackedPath(DlssTrackedKind::DLSSD);
+        if (path_opt.has_value()) {
+            loaded_dlssd_path = *path_opt;
+            std::wstring wpath;
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, loaded_dlssd_path.c_str(), -1, nullptr, 0);
+            if (wlen > 0) {
+                wpath.resize(static_cast<size_t>(wlen - 1));
+                MultiByteToWideChar(CP_UTF8, 0, loaded_dlssd_path.c_str(), -1, &wpath[0], wlen);
+            }
+            summary.dlssd_dll_version = wpath.empty() ? "Loaded (path unknown)" : GetDLLVersionString(wpath);
         } else {
-            summary.dlssd_dll_version = "Loaded (path unknown)";
+            wchar_t dlssd_path[MAX_PATH];
+            DWORD path_length = GetModuleFileNameW(dlssd_handle, dlssd_path, MAX_PATH);
+            if (path_length > 0) {
+                loaded_dlssd_path = std::filesystem::path(dlssd_path).string();
+                summary.dlssd_dll_version = GetDLLVersionString(std::wstring(dlssd_path));
+            } else {
+                summary.dlssd_dll_version = "Loaded (path unknown)";
+            }
         }
     } else {
         summary.dlssd_dll_version = "Not loaded";

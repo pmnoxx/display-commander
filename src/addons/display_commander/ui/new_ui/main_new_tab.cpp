@@ -474,6 +474,36 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
+    // Tracked DLSS modules (from OnModuleLoaded: nvngx_dlss/dlssg/dlssd.dll or .bin identified as such)
+    {
+        auto path_dlss = GetDlssTrackedPath(DlssTrackedKind::DLSS);
+        auto path_dlssg = GetDlssTrackedPath(DlssTrackedKind::DLSSG);
+        auto path_dlssd = GetDlssTrackedPath(DlssTrackedKind::DLSSD);
+        if (path_dlss.has_value() || path_dlssg.has_value() || path_dlssd.has_value()) {
+            if (ImGui::TreeNodeEx("DLSS module paths (tracked)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
+                }
+                if (path_dlss.has_value()) {
+                    ImGui::Text("nvngx_dlss.dll: %s", path_dlss->c_str());
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlss.dll: (not tracked)");
+                }
+                if (path_dlssg.has_value()) {
+                    ImGui::Text("nvngx_dlssg.dll: %s", path_dlssg->c_str());
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlssg.dll: (not tracked)");
+                }
+                if (path_dlssd.has_value()) {
+                    ImGui::Text("nvngx_dlssd.dll: %s", path_dlssd->c_str());
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlssd.dll: (not tracked)");
+                }
+                ImGui::TreePop();
+            }
+        }
+    }
+
     // FG Mode
     if (any_dlss_active
         && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {

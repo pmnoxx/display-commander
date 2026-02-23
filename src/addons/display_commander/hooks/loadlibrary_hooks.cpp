@@ -1,11 +1,13 @@
 #include "loadlibrary_hooks.hpp"
 #include <MinHook.h>
+#include <psapi.h>
 #include <tlhelp32.h>
 #include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
 #include <iomanip>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <unordered_map>
@@ -1501,6 +1503,44 @@ static bool IsReshadeFromProgramData() {
     return (path == programdata_reshade64 || path == programdata_reshade32);
 }
 
+// Identify .bin module as DLSS / DLSS-G / DLSS-D by scanning for NGX DLL name strings (Special-K style).
+// Order: dlssg and dlssd first (more specific), then base dlss.
+static std::optional<DlssTrackedKind> IdentifyDlssBinKind(HMODULE hMod) {
+    MODULEINFO modInfo = {};
+    if (!GetModuleInformation(GetCurrentProcess(), hMod, &modInfo, sizeof(modInfo)) || modInfo.SizeOfImage == 0) {
+        return std::nullopt;
+    }
+    const char* base = static_cast<const char*>(modInfo.lpBaseOfDll);
+    const size_t size = modInfo.SizeOfImage;
+    // Cap scan at 64 MiB to avoid long scans on huge images
+    const size_t scan_size = (size > 64 * 1024 * 1024) ? (64 * 1024 * 1024) : size;
+
+    auto find_str = [base, scan_size](const char* needle) -> bool {
+        const size_t nlen = std::strlen(needle);
+        if (nlen == 0 || nlen > scan_size) return false;
+        for (size_t i = 0; i + nlen <= scan_size; ++i) {
+            if (std::memcmp(base + i, needle, nlen) == 0) return true;
+        }
+        return false;
+    };
+
+    if (find_str("nvngx_dlssg")) return DlssTrackedKind::DLSSG;
+    if (find_str("nvngx_dlssd")) return DlssTrackedKind::DLSSD;
+    if (find_str("nvngx_dlss")) return DlssTrackedKind::DLSS;
+    return std::nullopt;
+}
+
+// Helper: get module path as UTF-8 string for SetDlssTracked
+static std::string GetModulePathUtf8(HMODULE hMod) {
+    wchar_t path[MAX_PATH];
+    if (GetModuleFileNameW(hMod, path, MAX_PATH) == 0) return {};
+    int size = WideCharToMultiByte(CP_UTF8, 0, path, -1, nullptr, 0, nullptr, nullptr);
+    if (size <= 0) return {};
+    std::string result(static_cast<size_t>(size - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, path, -1, result.data(), size, nullptr, nullptr);
+    return result;
+}
+
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
@@ -1508,6 +1548,34 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // Convert to lowercase for case-insensitive comparison
     std::wstring lowerModuleName = moduleName;
     std::transform(lowerModuleName.begin(), lowerModuleName.end(), lowerModuleName.begin(), ::towlower);
+
+    // DLSS tracking: set global module/path for nvngx_dlss.dll, nvngx_dlssg.dll, nvngx_dlssd.dll, or .bin identified as
+    // such
+    {
+        std::wstring filename = std::filesystem::path(moduleName).filename().wstring();
+        std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+
+        if (filename == L"nvngx_dlss.dll") {
+            SetDlssTracked(DlssTrackedKind::DLSS, hModule);
+            LogInfo("DLSS tracked: nvngx_dlss.dll (0x%p) %s", hModule, GetModulePathUtf8(hModule).c_str());
+        } else if (filename == L"nvngx_dlssg.dll") {
+            SetDlssTracked(DlssTrackedKind::DLSSG, hModule);
+            LogInfo("DLSS tracked: nvngx_dlssg.dll (0x%p) %s", hModule, GetModulePathUtf8(hModule).c_str());
+        } else if (filename == L"nvngx_dlssd.dll") {
+            SetDlssTracked(DlssTrackedKind::DLSSD, hModule, false);
+            LogInfo("DLSS tracked: nvngx_dlssd.dll (0x%p) %s", hModule, GetModulePathUtf8(hModule).c_str());
+        } else if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, L".bin") == 0) {
+            std::optional<DlssTrackedKind> kind = IdentifyDlssBinKind(hModule);
+            if (kind.has_value()) {
+                SetDlssTracked(*kind, hModule, true);
+                const char* name = (*kind == DlssTrackedKind::DLSS)    ? "nvngx_dlss"
+                                   : (*kind == DlssTrackedKind::DLSSG) ? "nvngx_dlssg"
+                                                                       : "nvngx_dlssd";
+                LogInfo("DLSS tracked: .bin identified as %s (0x%p) %s", name, hModule,
+                        GetModulePathUtf8(hModule).c_str());
+            }
+        }
+    }
 
     // dxgi.dll
     if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {

@@ -11,6 +11,7 @@ namespace utils {
 // --- Registry locks (16 file-level globals) ---
 extern SRWLOCK g_reshade_runtimes_lock;
 extern SRWLOCK g_dlss_override_handles_srwlock;
+extern SRWLOCK g_dlss_tracked_srwlock;  // protects g_dlss_*_tracked_module/path (OnModuleLoaded + readers)
 extern SRWLOCK g_module_srwlock;
 extern SRWLOCK g_blocked_dlls_srwlock;
 extern SRWLOCK g_context_lock;

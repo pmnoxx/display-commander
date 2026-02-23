@@ -9,6 +9,7 @@ namespace utils {
 // --- Definitions (all 16 global/static SRWLOCKs) ---
 SRWLOCK g_reshade_runtimes_lock = SRWLOCK_INIT;
 SRWLOCK g_dlss_override_handles_srwlock = SRWLOCK_INIT;
+SRWLOCK g_dlss_tracked_srwlock = SRWLOCK_INIT;
 SRWLOCK g_module_srwlock = SRWLOCK_INIT;
 SRWLOCK g_blocked_dlls_srwlock = SRWLOCK_INIT;
 SRWLOCK g_context_lock = SRWLOCK_INIT;
@@ -39,6 +40,7 @@ void LogAllSrwlockStatus() {
     LogOne("loadlibrary module", TryIsSRWLockHeld(g_module_srwlock));
     LogOne("loadlibrary blocked_dlls", TryIsSRWLockHeld(g_blocked_dlls_srwlock));
     LogOne("dlss_override_handles", TryIsSRWLockHeld(g_dlss_override_handles_srwlock));
+    LogOne("dlss_tracked", TryIsSRWLockHeld(g_dlss_tracked_srwlock));
     LogOne("detour context_lock", TryIsSRWLockHeld(g_context_lock));
     LogOne("seen_exception_addresses", TryIsSRWLockHeld(g_seen_exception_addresses_lock));
     LogOne("hid_suppression", TryIsSRWLockHeld(g_hid_suppression_mutex));

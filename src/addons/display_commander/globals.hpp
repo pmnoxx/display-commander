@@ -18,6 +18,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -647,13 +648,13 @@ extern std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id;
 /** Entry points where use_fps_limiter is computed; last frame_id per site is tracked to know which paths are available.
  */
 enum class FpsLimiterCallSite {
-    reflex_marker,           // NVAPI SetLatencyMarker path (D3D)
-    reflex_marker_vk_nvll,   // NvLowLatencyVk.dll SetLatencyMarker path (Vulkan)
-    reflex_marker_vk_loader, // vulkan-1 / VK_NV_low_latency2 vkSetLatencyMarkerNV wrapper
-    reflex_marker_pclstats_etw, // PCLStats ETW (EventWriteTransfer) – first 6 markers only
-    dxgi_swapchain,         // DXGI Present/Present1 detour or wrapper
-    reshade_addon_event,    // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
-    dxgi_factory_wrapper,   // Currently unused in practice
+    reflex_marker,               // NVAPI SetLatencyMarker path (D3D)
+    reflex_marker_vk_nvll,       // NvLowLatencyVk.dll SetLatencyMarker path (Vulkan)
+    reflex_marker_vk_loader,     // vulkan-1 / VK_NV_low_latency2 vkSetLatencyMarkerNV wrapper
+    reflex_marker_pclstats_etw,  // PCLStats ETW (EventWriteTransfer) – first 6 markers only
+    dxgi_swapchain,              // DXGI Present/Present1 detour or wrapper
+    reshade_addon_event,         // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
+    dxgi_factory_wrapper,        // Currently unused in practice
 };
 
 constexpr size_t kFpsLimiterCallSiteCount = 7;
@@ -1406,6 +1407,22 @@ struct DLSSGSummary {
     bool dlssd_override_applied = true;  // nvngx_dlssd.dll (D = denoiser / RR)
     bool dlssg_override_applied = true;  // nvngx_dlssg.dll (G = generation / FG)
 };
+
+// Tracked DLSS module/path from OnModuleLoaded (DLL name or .bin identified as nvngx_dlss/dlssg/dlssd).
+// Used instead of GetModuleHandleW when we saw the load (works for .bin files that don't have DLL name).
+enum class DlssTrackedKind : int { DLSS = 0, DLSSG = 1, DLSSD = 2 };
+
+struct DlssTrackedInfo {
+    HMODULE module = nullptr;
+    std::string path;
+};
+
+// Thread-safe getters (read under g_dlss_tracked_srwlock). Returns nullopt if not yet set.
+std::optional<HMODULE> GetDlssTrackedModule(DlssTrackedKind kind);
+std::optional<std::string> GetDlssTrackedPath(DlssTrackedKind kind);
+
+// Set from OnModuleLoaded (write under g_dlss_tracked_srwlock). Path is obtained from hMod via GetModuleFileNameW.
+void SetDlssTracked(DlssTrackedKind kind, HMODULE hMod, bool force = false);
 
 // DLSS Model Profile structure
 struct DLSSModelProfile {

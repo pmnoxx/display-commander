@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.47 (2026-02-22)
+
+- **DLSS module tracking** - Display Commander detects DLSS version when using Nvidia App override (tracks .bin and DLL loads; shows paths in Main tab → DLSS Information).
 
 ## v0.12.46 (2026-02-22)
 

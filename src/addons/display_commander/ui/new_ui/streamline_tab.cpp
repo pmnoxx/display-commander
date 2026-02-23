@@ -198,6 +198,7 @@ void DrawStreamlineTab() {
     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "DLSS DLL Detection:");
     ImGui::Separator();
 
+    /*
     // Check for common DLSS DLLs
     const wchar_t* dlss_dlls[] = {L"nvngx_dlss.dll", L"nvngx_dlssg.dll", L"nvngx_dlssd.dll"};
 
@@ -220,7 +221,7 @@ void DrawStreamlineTab() {
         } else {
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%S: Not loaded", dll_name);
         }
-    }
+    }*/
 }
 
 }  // namespace ui::new_ui

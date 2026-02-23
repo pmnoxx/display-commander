@@ -838,14 +838,10 @@ void ContinuousMonitoringThread() {
                 check_is_background();
                 last_60fps_update_ns = now_ns;
                 // Delay ADHD init/SetEnabled until frame 500 to avoid early-present issues
-                if (g_reshade_present_frame_count.load(std::memory_order_acquire) >= 500) {
-                    adhd_multi_monitor::api::Initialize();
+                if (g_global_frame_id.load(std::memory_order_acquire) >= 500) {
                     adhd_multi_monitor::api::SetEnabled(
                         settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue(),
                         settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
-
-                    // Update ADHD Multi-Monitor Mode at 60 FPS
-                    adhd_multi_monitor::api::Update();
                 }
 
                 // Update keyboard tracking system

@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.53 (2026-02-23)
+
+- **ADHD Multi-Monitor** - Made ADHD multi-monitor feature more reliable (V2).
+
 ## v0.12.52 (2026-02-23)
 
 - **ADHD Multi-Monitor** - Background overlay window is now created hidden; shown only when ADHD is enabled and game is in foreground (PositionBackgroundWindow).

@@ -19,10 +19,6 @@ class AdhdMultiMonitorManager {
 
     // Cleanup resources
     void Shutdown();
-
-    // Update the system (call from main loop)
-    void Update();
-
     // Enable/disable ADHD mode: (enabled for game display, enabled for other displays)
     void SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays);
     bool IsEnabledForGameDisplay() const { return enabled_for_game_display_.load(); }
@@ -38,7 +34,7 @@ class AdhdMultiMonitorManager {
     // Background window management
     bool CreateBackgroundWindow();
     void DestroyBackgroundWindow();
-    void PositionBackgroundWindow();
+    void PositionBackgroundWindow(bool game_in_background);
 
     // Monitor enumeration
     void EnumerateMonitors();
@@ -46,12 +42,14 @@ class AdhdMultiMonitorManager {
     // Window procedure for the background window
     static LRESULT CALLBACK BackgroundWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-    // Dedicated thread that runs the message pump for the background window (so the game does not crash if continuous monitoring stops)
+    // Dedicated thread that runs the message pump for the background window (so the game does not crash if continuous
+    // monitoring stops)
     void MessagePumpThreadFunc();
 
     // Member variables
     std::atomic<bool> enabled_for_other_displays_ = false;
     std::atomic<bool> enabled_for_game_display_ = false;
+    std::atomic<bool> game_in_background_ = false;
 
     // Single window stretching over all displays, inserted after game_hwnd
     HWND background_hwnd_ = nullptr;

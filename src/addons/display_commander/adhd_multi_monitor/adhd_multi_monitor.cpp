@@ -67,36 +67,28 @@ void AdhdMultiMonitorManager::Shutdown() {
     initialized_ = false;
 }
 
-void AdhdMultiMonitorManager::Update() {
-    // Message pump for the background window runs on a dedicated thread (MessagePumpThreadFunc)
-    // so the game does not crash if continuous monitoring stops calling Update().
-
-    if ((!enabled_for_other_displays_.load() && !enabled_for_game_display_.load()) || !initialized_) return;
-
-    HWND current_hwnd = g_last_swapchain_hwnd.load();
-    if (!current_hwnd) return;
-
-    bool game_in_foreground = !IsAppInBackground();
-    static std::optional<bool> last_game_in_foreground_ = std::nullopt;
-    if (!last_game_in_foreground_.has_value() || game_in_foreground != last_game_in_foreground_.value_or(false)) {
-        last_game_in_foreground_ = game_in_foreground;
-        PositionBackgroundWindow();
-    }
-}
-
 void AdhdMultiMonitorManager::SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays) {
+    if (!initialized_) {
+        Initialize();
+    }
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (!game_hwnd) return;
 
+    bool game_in_background = IsAppInBackground();
+    static LONGLONG last_changed_ns = 0;
     if (enabled_for_game_display_.load() == enabled_for_game_display
-        && enabled_for_other_displays_.load() == enabled_for_other_displays) {
+        && enabled_for_other_displays_.load() == enabled_for_other_displays
+        && game_in_background == game_in_background_.load()
+        // Throttle updates to 250ms to fix race condition
+        && utils::get_now_ns() - last_changed_ns < 250 * utils::NS_TO_MS) {
         return;
     }
+    last_changed_ns = utils::get_now_ns();
 
+    game_in_background_.store(game_in_background);
     enabled_for_game_display_.store(enabled_for_game_display);
     enabled_for_other_displays_.store(enabled_for_other_displays);
-
-    PositionBackgroundWindow();
+    PositionBackgroundWindow(game_in_background);
 }
 
 bool AdhdMultiMonitorManager::HasMultipleMonitors() const { return monitor_rects_.size() > 1; }
@@ -121,7 +113,7 @@ bool AdhdMultiMonitorManager::CreateBackgroundWindow() {
     SetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE,
                       GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
 
-    ShowWindow_Direct(background_hwnd_, SW_HIDE);  // Create hidden; PositionBackgroundWindow() shows when enabled
+    // ShowWindow_Direct(background_hwnd_, SW_HIDE);  // Create hidden; PositionBackgroundWindow() shows when enabled
 
     pump_stop_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (pump_stop_event_) {
@@ -171,7 +163,7 @@ void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
     }
 }
 
-void AdhdMultiMonitorManager::PositionBackgroundWindow() {
+void AdhdMultiMonitorManager::PositionBackgroundWindow(bool game_in_background) {
     if (!background_window_created_ || !background_hwnd_) return;
 
     HWND game_hwnd = g_last_swapchain_hwnd.load();
@@ -180,23 +172,18 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow() {
     bool other = enabled_for_other_displays_.load();
     bool game_display = enabled_for_game_display_.load();
 
-    if (!other && !game_display) {
-        ShowWindow(background_hwnd_, SW_HIDE);
-        return;
-    }
-
-    RECT rect_to_cover = {};
-    if (other) {
+    RECT rect_to_cover = {LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN};
+    bool show = !game_in_background;
+    if (show && other) {
         // All displays: bounding rect of all monitors
         if (monitor_rects_.empty()) return;
-        rect_to_cover = {LONG_MAX, LONG_MAX, LONG_MIN, LONG_MIN};
         for (const RECT& r : monitor_rects_) {
             rect_to_cover.left = (std::min)(rect_to_cover.left, r.left);
             rect_to_cover.top = (std::min)(rect_to_cover.top, r.top);
             rect_to_cover.right = (std::max)(rect_to_cover.right, r.right);
             rect_to_cover.bottom = (std::max)(rect_to_cover.bottom, r.bottom);
         }
-    } else {
+    } else if (show && game_display) {
         // Game display only: rect of the monitor that contains the game window
         HMONITOR mon = MonitorFromWindow(game_hwnd, MONITOR_DEFAULTTONEAREST);
         if (!mon) return;
@@ -204,14 +191,16 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow() {
         mi.cbSize = sizeof(mi);
         if (!GetMonitorInfoW(mon, &mi)) return;
         rect_to_cover = mi.rcMonitor;
+    } else {
+        show = false;
     }
 
     int width = rect_to_cover.right - rect_to_cover.left;
     int height = rect_to_cover.bottom - rect_to_cover.top;
-    bool show = !IsAppInBackground();
-    ShowWindow_Direct(background_hwnd_, show ? SW_SHOW : SW_HIDE);
     display_commanderhooks::SetWindowPos_Direct(background_hwnd_, game_hwnd, rect_to_cover.left, rect_to_cover.top,
                                                 width, height, SWP_NOACTIVATE);
+
+    ShowWindow_Direct(background_hwnd_, show ? SW_SHOW : SW_HIDE);
 }
 
 void AdhdMultiMonitorManager::EnumerateMonitors() {

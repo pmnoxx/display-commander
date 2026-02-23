@@ -3,7 +3,6 @@
 #include <cctype>
 #include <filesystem>
 #include "../../../external/nvapi/nvapi.h"
-#include "background_window.hpp"
 #include "dxgi/custom_fps_limiter.hpp"
 #include "latency/latency_manager.hpp"
 #include "nvapi/vrr_status.hpp"
@@ -181,9 +180,6 @@ std::atomic<DWORD> g_render_thread_id{0};
 
 // Global window state instance
 std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state = std::make_shared<GlobalWindowState>();
-
-// Global background window manager instance
-BackgroundWindowManager g_backgroundWindowManager;
 
 // Global Custom FPS Limiter Manager instance
 namespace dxgi::fps_limiter {

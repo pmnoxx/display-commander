@@ -2,7 +2,6 @@
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
-#include "background_window.hpp"
 #include "display_cache.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
@@ -26,7 +25,6 @@
 #include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
 #include "widgets/resolution_widget/resolution_widget.hpp"
-
 
 #include <algorithm>
 #include <chrono>

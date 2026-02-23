@@ -860,7 +860,7 @@ void ContinuousMonitoringThread() {
                 // Delay ADHD init/SetEnabled until frame 500 to avoid early-present issues
                 if (g_global_frame_id.load(std::memory_order_acquire) >= 500) {
                     adhd_multi_monitor::api::SetEnabled(
-                        settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue(),
+                        settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue(),
                         settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
                 }
 

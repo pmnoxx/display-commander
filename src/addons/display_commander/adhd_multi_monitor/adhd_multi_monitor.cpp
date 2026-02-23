@@ -214,13 +214,33 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow(bool game_in_background) 
             rect_to_cover.bottom = (std::max)(rect_to_cover.bottom, r.bottom);
         }
     } else if (show && game_display) {
-        // Game display only: rect of the monitor that contains the game window
+        // Game display only: rect of the monitor that contains the game window.
+        // Do not show the background window if the game already covers the full screen (fullscreen game).
         HMONITOR mon = MonitorFromWindow(game_hwnd, MONITOR_DEFAULTTONEAREST);
         if (!mon) return;
         MONITORINFO mi = {};
         mi.cbSize = sizeof(mi);
         if (!GetMonitorInfoW(mon, &mi)) return;
-        rect_to_cover = mi.rcMonitor;
+        RECT game_rect = {};
+        if (GetWindowRect(game_hwnd, &game_rect)) {
+            RECT inter = {};
+            inter.left = (std::max)(game_rect.left, mi.rcMonitor.left);
+            inter.top = (std::max)(game_rect.top, mi.rcMonitor.top);
+            inter.right = (std::min)(game_rect.right, mi.rcMonitor.right);
+            inter.bottom = (std::min)(game_rect.bottom, mi.rcMonitor.bottom);
+            long mon_area = (mi.rcMonitor.right - mi.rcMonitor.left) * (mi.rcMonitor.bottom - mi.rcMonitor.top);
+            long inter_area = 0;
+            if (inter.right > inter.left && inter.bottom > inter.top) {
+                inter_area = (inter.right - inter.left) * (inter.bottom - inter.top);
+            }
+            // If game window covers 100% of the monitor, treat as fullscreen and don't show overlay
+            if (mon_area > 0 && inter_area >= mon_area) {
+                show = false;
+            }
+        }
+        if (show) {
+            rect_to_cover = mi.rcMonitor;
+        }
     } else {
         show = false;
     }

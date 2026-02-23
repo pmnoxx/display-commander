@@ -6206,26 +6206,24 @@ void DrawImportantInfo() {
 }
 
 void DrawAdhdMultiMonitorControls() {
-    // Check if multiple monitors are available
+    // ADHD on game display is shown even with one monitor; Multi-Monitor Mode only when multiple monitors
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 
-    if (!hasMultipleMonitors) {
-        return;
-    }
     ImGui::BeginGroup();
     // Use CheckboxSetting so the checkbox always reflects the current setting (e.g. when toggled via hotkey)
-    if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display,
+    if (CheckboxSetting(settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display,
                         "ADHD on game display")) {
         LogInfo("ADHD on game display %s",
-                settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue() ? "enabled"
+                settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue() ? "enabled"
                                                                                                    : "disabled");
     }
 
-    ImGui::SameLine();
-
-    if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode")) {
-        LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
-                settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
+    if (hasMultipleMonitors) {
+        ImGui::SameLine();
+        if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode")) {
+            LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
+                    settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
+        }
     }
     ImGui::EndGroup();
     if (ImGui::IsItemHovered()) {

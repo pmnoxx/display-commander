@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.58 (2026-02-23)
+
+- **ADHD on game display** - Fixed bug where the background window was still created/shown when the game was fullscreen and already covered the monitor. The overlay is now hidden when the game window covers 100% of its monitor (fullscreen); it is shown only when the game is windowed or does not cover the screen.
+
 ## v0.12.57 (2026-02-23)
 
 - **Stuck detection** - When no new frame is generated for 15s, the log now also prints the last time a Windows message was processed (game window WndProc). Helps distinguish a stuck message queue (no messages dispatched → old timestamp) from other causes of frame stall.

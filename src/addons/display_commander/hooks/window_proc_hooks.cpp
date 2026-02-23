@@ -32,6 +32,12 @@ static std::atomic<bool> g_wndproc_lock_initialized{false};
 
 // Trampoline (SK-style): 1) ProcessWindowMessage; 2) if not skipped, call original WNDPROC.
 static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    {
+        FILETIME ft = {};
+        GetSystemTimePreciseAsFileTime(&ft);
+        const uint64_t ft64 = (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+        g_last_window_message_processed_filetime.store(ft64, std::memory_order_release);
+    }
     if (ProcessWindowMessage(hwnd, uMsg, wParam, lParam)) {
         return 0;  // Message suppressed (skipped)
     }

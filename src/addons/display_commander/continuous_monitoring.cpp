@@ -628,6 +628,26 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
     LogInfo("=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu, %s) ===",
             static_cast<uint64_t>(current_frame_id), last_updated_buf);
 
+    // Last time a Windows message was processed (if message queue is stuck, this will be old)
+    char last_wndproc_buf[80] = "last Windows message processed: never";
+    const uint64_t last_wndproc_ft64 = g_last_window_message_processed_filetime.load(std::memory_order_acquire);
+    if (last_wndproc_ft64 != 0) {
+        FILETIME ftWnd = {};
+        ftWnd.dwLowDateTime = static_cast<DWORD>(last_wndproc_ft64 & 0xFFFFFFFFu);
+        ftWnd.dwHighDateTime = static_cast<DWORD>(last_wndproc_ft64 >> 32);
+        FILETIME ftWndLocal = {};
+        if (FileTimeToLocalFileTime(&ftWnd, &ftWndLocal)) {
+            SYSTEMTIME stWnd = {};
+            if (FileTimeToSystemTime(&ftWndLocal, &stWnd)) {
+                sprintf_s(last_wndproc_buf, sizeof(last_wndproc_buf),
+                          "last Windows message processed: %02u:%02u:%02u.%03u (queue may be stuck if this is old)",
+                          static_cast<unsigned>(stWnd.wHour), static_cast<unsigned>(stWnd.wMinute),
+                          static_cast<unsigned>(stWnd.wSecond), static_cast<unsigned>(stWnd.wMilliseconds));
+            }
+        }
+    }
+    LogInfo("%s", last_wndproc_buf);
+
     LONGLONG last_loop_ns = g_last_continuous_monitoring_loop_real_ns.load(std::memory_order_acquire);
     const uint64_t last_loop_ft64 = g_last_continuous_monitoring_loop_filetime.load(std::memory_order_acquire);
     const char* section = g_continuous_monitoring_section.load(std::memory_order_acquire);

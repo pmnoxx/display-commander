@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.57 (2026-02-23)
+
+- **Stuck detection** - When no new frame is generated for 15s, the log now also prints the last time a Windows message was processed (game window WndProc). Helps distinguish a stuck message queue (no messages dispatched → old timestamp) from other causes of frame stall.
+
 ## v0.12.56 (2026-02-23)
 
 - **ADHD Multi-Monitor** - Tooltip for "ADHD Multi-Monitor Mode" now shows background window debug info on hover: HWND (and null/not null), window position, size, and visibility. Added thread-safe `GetBackgroundWindowDebugInfo` API and made `background_hwnd_` atomic for safe reads from the UI thread.

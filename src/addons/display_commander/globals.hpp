@@ -633,6 +633,10 @@ extern std::atomic<uint64_t> g_global_frame_id;
 // g_global_frame_id was last incremented; 0 = never. Used for stuck-detection log timestamp.
 extern std::atomic<uint64_t> g_global_frame_id_last_updated_filetime;
 
+// FILETIME (as uint64_t) when a Windows message was last processed in the game window's WndProc;
+// 0 = never. Used in stuck-detection log to distinguish "message queue stuck" from other causes.
+extern std::atomic<uint64_t> g_last_window_message_processed_filetime;
+
 // Global frame ID for pclstats frame id
 extern std::atomic<uint64_t> g_pclstats_frame_id;
 

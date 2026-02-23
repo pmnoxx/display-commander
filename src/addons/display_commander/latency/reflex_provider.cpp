@@ -1,6 +1,7 @@
 #include "reflex_provider.hpp"
 #include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 #include "../globals.hpp"
+#include "../hooks/pclstats_etw_hooks.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/logging.hpp"
 
@@ -27,11 +28,13 @@ void ReflexProvider::Shutdown() {
 
 void ReflexProvider::EnsurePCLStatsInitialized() {
     // Only initialize if feature is enabled and not already initialized
-    if (!_is_pcl_initialized && settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+    if (!_is_pcl_initialized && PCLStatsReportingEnabled()) {
         PCLSTATS_INIT(0);
         _is_pcl_initialized = true;
     }
 }
+
+bool ReflexProvider::IsPCLStatsInitialized() { return _is_pcl_initialized; }
 
 bool ReflexProvider::IsInitialized() const { return reflex_manager_.IsInitialized(); }
 

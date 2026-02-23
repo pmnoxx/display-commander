@@ -205,7 +205,7 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
 
     // Store the current swapchain for UI access
-    g_last_reshade_device_api.store(static_cast<int>(swapchain->get_device()->get_api()));
+    g_last_reshade_device_api.store(swapchain->get_device()->get_api());
     // g_last_swapchain_ptr_unsafe.store removed - unsafe to use, VRR status now updated from OnPresentUpdateBefore
 
     // Query and store API version/feature level
@@ -1503,9 +1503,7 @@ bool ShouldReflexLowLatencyBeEnabled() { return GetReflexLowLatency(); }
 
 bool ShouldReflexBoostBeEnabled() { return GetReflexBoost(); }
 
-bool ShouldUseReflexAsFpsLimiter() {
-    return s_fps_limiter_mode.load() == FpsLimiterMode::kReflex;
-}
+bool ShouldUseReflexAsFpsLimiter() { return s_fps_limiter_mode.load() == FpsLimiterMode::kReflex; }
 
 // Helper function to convert low latency ratio index to delay_bias value
 // Ratio index: 0 = 100% Display/0% Input, 1 = 87.5%/12.5%, 2 = 75%/25%, 3 = 62.5%/37.5%,
@@ -1528,12 +1526,27 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     if (from_wrapper) {
         RECORD_DETOUR_CALL(start_time_ns);
         const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
-        if (lite.dlss_g_active) {
-            switch (lite.fg_mode) {
-                case DLSSGFgMode::k2x: target_fps /= 2.0f; break;
-                case DLSSGFgMode::k3x: target_fps /= 3.0f; break;
-                case DLSSGFgMode::k4x: target_fps /= 4.0f; break;
-                default:               break;
+
+        switch (lite.fg_mode) {
+            case DLSSGFgMode::k2x: target_fps /= 2.0f; break;
+            case DLSSGFgMode::k3x: target_fps /= 3.0f; break;
+            case DLSSGFgMode::k4x: target_fps /= 4.0f; break;
+            default:               break;
+        }
+        {
+            static bool logged = false;
+            if (!logged
+                && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
+                    || lite.fg_mode == DLSSGFgMode::k4x)) {
+                LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
+                // log DLSSGSummaryLite all fields
+                LogInfo(
+                    "DLSSGSummaryLite: any_dlss_active: %d, dlss_active: %d, dlss_g_active: %d, "
+                    "ray_reconstruction_active: %d, fg_mode: %d",
+                    lite.any_dlss_active, lite.dlss_active, lite.dlss_g_active, lite.ray_reconstruction_active,
+                    static_cast<int>(lite.fg_mode));
+
+                logged = true;
             }
         }
     }

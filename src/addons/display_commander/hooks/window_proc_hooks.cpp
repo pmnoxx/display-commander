@@ -18,6 +18,7 @@
 #include "../utils/srwlock_registry.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
+#include "pclstats_etw_hooks.hpp"
 
 #include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 
@@ -92,6 +93,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         g_pclstats_ping_signal.store(true, std::memory_order_release);
 
         // We assume frame id is equal to frame before simulation_end
+        RecordPCLStatsMarkerCall();
         PCLSTATS_MARKER(PC_LATENCY_PING, g_pclstats_frame_id.load());
     }
 
@@ -287,6 +289,10 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 // Install WNDPROC hook on target_hwnd (SK_InstallWindowHook style). Sets game window (atomic).
 bool InstallWindowProcHooks(HWND target_hwnd) {
+    static bool installed_hooks = false;
+    if (installed_hooks) {
+        return true;
+    }
     if (target_hwnd == nullptr || !IsWindow(target_hwnd)) {
         return false;
     }
@@ -313,6 +319,7 @@ bool InstallWindowProcHooks(HWND target_hwnd) {
     SetGameWindow(target_hwnd);  // game_window (atomic), like SK game_window.hWnd
     g_sent_activate.store(false);
     LogInfo("Window procedure hook installed for HWND: 0x%p", target_hwnd);
+    installed_hooks = true;
     return true;
     // Window proc hooks are now handled via message retrieval hooks
     // Just reset the activation flag

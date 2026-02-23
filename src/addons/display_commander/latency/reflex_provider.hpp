@@ -26,6 +26,8 @@ class ReflexProvider : public ILatencyProvider {
 
     // PCLStats initialization helper (lazy initialization)
     static void EnsurePCLStatsInitialized();
+    /** True if PCLSTATS_INIT was called and not yet shut down. */
+    static bool IsPCLStatsInitialized();
 
    private:
     ReflexManager reflex_manager_;

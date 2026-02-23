@@ -2,6 +2,7 @@
 #include "../globals.hpp"
 #include "../hooks/hook_suppression_manager.hpp"
 #include "../hooks/nvapi_hooks.hpp"
+#include "../hooks/pclstats_etw_hooks.hpp"
 #include "../latency/reflex_provider.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../swapchain_events.hpp"
@@ -131,9 +132,10 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
     // Reserved fields (rsvd0 and rsvd[56]) are zero-initialized by = {}
     // Explicitly zero rsvd0 for clarity (though = {} already handles it)
     mp.rsvd0 = 0;
-    if (settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
+    if (PCLStatsReportingEnabled()) {
         // Ensure PCLSTATS is initialized if setting is enabled (lazy initialization)
         ReflexProvider::EnsurePCLStatsInitialized();
+        RecordPCLStatsMarkerCall();
         PCLSTATS_MARKER(static_cast<PCLSTATS_LATENCY_MARKER_TYPE>(marker), static_cast<uint64_t>(mp.frameID));
     }
     if (marker == PC_LATENCY_PING) {

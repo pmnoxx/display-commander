@@ -108,9 +108,9 @@ void AutoApplyTrigger() {
     if (!auto_apply_hdr_metadata) {
         return;
     }
-    if (g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d12)
-        && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d11)
-        && g_last_reshade_device_api.load() != static_cast<int>(reshade::api::device_api::d3d10)) {
+    if (g_last_reshade_device_api.load() != reshade::api::device_api::d3d12
+        && g_last_reshade_device_api.load() != reshade::api::device_api::d3d11
+        && g_last_reshade_device_api.load() != reshade::api::device_api::d3d10) {
         return;
     }
     static bool first_apply = true;
@@ -1273,7 +1273,7 @@ void DrawDLSSGSummaryContent() {
 void DrawDxgiCompositionInfo() {
     if (ImGui::CollapsingHeader("DXGI Composition Information", ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* mode_str = "Unknown";
-        int current_api = g_last_reshade_device_api.load();
+        const reshade::api::device_api current_api = g_last_reshade_device_api.load();
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
         switch (flip_state) {
@@ -1633,9 +1633,9 @@ void DrawSwapchainInfo(reshade::api::effect_runtime* runtime) {
         ImGui::Text("  Keyboard Input Blocked: %s", keyboard_blocked ? "Yes" : "No");
     }
 
-    auto last_api = g_last_reshade_device_api.load();
-    auto is_dxgi = last_api == static_cast<int>(reshade::api::device_api::d3d11)
-                   || last_api == static_cast<int>(reshade::api::device_api::d3d12);
+    const reshade::api::device_api last_api = g_last_reshade_device_api.load();
+    const bool is_dxgi = (last_api == reshade::api::device_api::d3d11
+                         || last_api == reshade::api::device_api::d3d12);
     if (dxgi_swapchain == nullptr) {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No active swapchain detected");
         return;

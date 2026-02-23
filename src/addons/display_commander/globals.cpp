@@ -160,7 +160,7 @@ std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by def
 std::atomic<int> g_comp_query_counter{0};
 std::atomic<DxgiBypassMode> g_comp_last_logged{DxgiBypassMode::kUnset};
 std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr};  // TODO: unsafe remove later
-std::atomic<int> g_last_reshade_device_api{0};
+std::atomic<reshade::api::device_api> g_last_reshade_device_api{static_cast<reshade::api::device_api>(0)};
 std::atomic<uint32_t> g_last_api_version{0};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc{nullptr};
 std::atomic<uint64_t> g_init_apply_generation{0};
@@ -509,9 +509,9 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
 }
 
 // Helper function to get flip state based on API type
-DxgiBypassMode GetFlipStateForAPI(int api) {
+DxgiBypassMode GetFlipStateForAPI(reshade::api::device_api api) {
     // For D3D9, use FlipEx state instead of DXGI composition state
-    if (api == static_cast<int>(reshade::api::device_api::d3d9)) {
+    if (api == reshade::api::device_api::d3d9) {
         bool using_flipex = g_used_flipex.load();
         return using_flipex ? DxgiBypassMode::kIndependentFlip : DxgiBypassMode::kComposed;
     } else {

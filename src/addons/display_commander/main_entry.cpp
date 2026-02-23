@@ -955,9 +955,9 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
 
     if (show_flip_status) {
         // Get current API to determine flip state
-        int current_api = 0;  // Default to 0 if runtime/device not available
+        reshade::api::device_api current_api = static_cast<reshade::api::device_api>(0);
         if (runtime != nullptr && runtime->get_device() != nullptr) {
-            current_api = static_cast<int>(runtime->get_device()->get_api());
+            current_api = runtime->get_device()->get_api();
         }
 
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);

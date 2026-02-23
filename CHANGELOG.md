@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.60 (2026-02-23)
+
+- **FPS limiter** - Simplified FPS limiter logic for frame generation.
+
+## v0.12.59 (2026-02-23)
+
+- **PCLStats reporting** - Fixed and re-enabled PCL stats reporting for injected reflex.
+
 ## v0.12.58 (2026-02-23)
 
 - **ADHD on game display** - Fixed bug where the background window was still created/shown when the game was fullscreen and already covered the monitor. The overlay is now hidden when the game window covers 100% of its monitor (fullscreen); it is shown only when the game is windowed or does not cover the screen.

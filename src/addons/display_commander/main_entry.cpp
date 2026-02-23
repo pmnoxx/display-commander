@@ -2768,8 +2768,22 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     }
                 }
             }
+            // Returns the directory containing DisplayCommander.toml (game exe directory).
+            // Used to set RESHADE_BASE_PATH_OVERRIDE so ReShade uses the same folder for ReShade.ini etc.
+            auto GetDisplayCommanderConfigDirectoryW = []() -> std::wstring {
+                wchar_t exe_path[MAX_PATH];
+                if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) {
+                    return L"";
+                }
+                return std::filesystem::path(exe_path).parent_path().wstring();
+            };
 #ifdef _WIN64
             if (!g_reshade_loaded.load()) {
+                // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
+                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
+                if (!dc_config_dir.empty()) {
+                    SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
+                }
                 // Set environment variable to disable ReShade loading check
                 SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
                 if (LoadLibraryA("Reshade64.dll") != nullptr) {
@@ -2789,6 +2803,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
 #else
             if (!g_reshade_loaded.load()) {
+                // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
+                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
+                if (!dc_config_dir.empty()) {
+                    SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
+                }
                 // Set environment variable to disable ReShade loading check
                 SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
                 if (LoadLibraryA("Reshade32.dll") != nullptr) {
@@ -2953,6 +2972,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                          path_narrow);
                                 OutputDebugStringA(msg);
                             } else {
+                                // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
+                                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
+                                if (!dc_config_dir.empty()) {
+                                    SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
+                                }
                                 // Set environment variable to disable ReShade loading check
                                 SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
                                 // Try to load from Documents folder

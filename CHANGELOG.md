@@ -3,6 +3,10 @@
 ---
 
 
+## v0.12.46 (2026-02-22)
+
+- **ReShade base path** - Before loading Reshade64.dll/Reshade32.dll, Display Commander now sets `RESHADE_BASE_PATH_OVERRIDE` to the same folder used for DisplayCommander.toml (game exe directory). ReShade.ini and related files are therefore stored next to the game, alongside DisplayCommander.toml.
+
 ## v0.12.45 (2026-02-22)
 
 - **Main tab** - Config and log file buttons: "Config" opens DisplayCommander.toml, "Log" opens DisplayCommander.log, plus buttons for reshade.log and reshade.ini. All show full path in tooltip on hover.

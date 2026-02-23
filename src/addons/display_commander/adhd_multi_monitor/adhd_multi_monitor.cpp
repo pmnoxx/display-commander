@@ -119,9 +119,10 @@ void AdhdMultiMonitorManager::DestroyBackgroundWindow() {
         CloseHandle(pump_stop_event_);
         pump_stop_event_ = nullptr;
     }
-    if (background_hwnd_) {
-        DestroyWindow(background_hwnd_);
-        background_hwnd_ = nullptr;
+    HWND hwnd = background_hwnd_.load();
+    if (hwnd) {
+        DestroyWindow(hwnd);
+        background_hwnd_.store(nullptr);
     }
     background_window_created_ = false;
 }
@@ -146,37 +147,41 @@ void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
         }
 
         if (!show) {
-            if (background_hwnd_) {
-                DestroyWindow(background_hwnd_);
-                background_hwnd_ = nullptr;
+            HWND hwnd = background_hwnd_.load();
+            if (hwnd) {
+                DestroyWindow(hwnd);
+                background_hwnd_.store(nullptr);
             }
         } else if (owner && rect.right > rect.left && rect.bottom > rect.top) {
-            if (!background_hwnd_) {
+            HWND hwnd = background_hwnd_.load();
+            if (!hwnd) {
                 HINSTANCE hInstance = GetModuleHandle(nullptr);
-                background_hwnd_ = CreateWindowExW(
+                hwnd = CreateWindowExW(
                     WS_EX_TOOLWINDOW | WS_EX_LAYERED, BACKGROUND_WINDOW_CLASS, BACKGROUND_WINDOW_TITLE, WS_POPUP, 0, 0,
                     1, 1, nullptr, nullptr, hInstance, this);
-                if (background_hwnd_) {
-                    SetLayeredWindowAttributes(background_hwnd_, 0, 255, LWA_ALPHA);
-                    SetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE,
-                                     GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
+                background_hwnd_.store(hwnd);
+                if (hwnd) {
+                    SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+                    SetWindowLongPtrW(hwnd, GWL_EXSTYLE,
+                                     GetWindowLongPtrW(hwnd, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
                 } else {
                     LogError("Failed to create ADHD background window on pump thread");
                 }
             }
-            if (background_hwnd_) {
+            hwnd = background_hwnd_.load();
+            if (hwnd) {
                 int width = rect.right - rect.left;
                 int height = rect.bottom - rect.top;
-                display_commanderhooks::SetWindowPos_Direct(background_hwnd_, owner, rect.left, rect.top, width,
+                display_commanderhooks::SetWindowPos_Direct(hwnd, owner, rect.left, rect.top, width,
                                                              height, SWP_NOACTIVATE);
-                ShowWindow_Direct(background_hwnd_, SW_SHOW);
+                ShowWindow_Direct(hwnd, SW_SHOW);
             }
         }
 
         DWORD r = MsgWaitForMultipleObjects(1, &stop, FALSE, 50, QS_ALLINPUT);
         if (r == WAIT_OBJECT_0) break;
         if (r == WAIT_OBJECT_0 + 1) {
-            HWND hwnd = background_hwnd_;
+            HWND hwnd = background_hwnd_.load();
             if (hwnd && IsWindow(hwnd)) {
                 MSG msg = {};
                 while (PeekMessageW(&msg, hwnd, 0, 0, PM_REMOVE)) {
@@ -227,6 +232,20 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow(bool game_in_background) 
         position_request_rect_ = rect_to_cover;
         position_request_owner_ = game_hwnd;
     }
+}
+
+void AdhdMultiMonitorManager::GetBackgroundWindowDebugInfo(HWND* out_hwnd, RECT* out_rect, bool* out_is_visible) const {
+    HWND h = background_hwnd_.load();
+    if (out_hwnd) *out_hwnd = h;
+    if (!h) {
+        if (out_rect) *out_rect = {0, 0, 0, 0};
+        if (out_is_visible) *out_is_visible = false;
+        return;
+    }
+    if (out_rect) {
+        if (!GetWindowRect(h, out_rect)) *out_rect = {0, 0, 0, 0};
+    }
+    if (out_is_visible) *out_is_visible = (IsWindowVisible(h) != FALSE);
 }
 
 void AdhdMultiMonitorManager::EnumerateMonitors() {

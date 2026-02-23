@@ -1503,6 +1503,10 @@ bool ShouldReflexLowLatencyBeEnabled() { return GetReflexLowLatency(); }
 
 bool ShouldReflexBoostBeEnabled() { return GetReflexBoost(); }
 
+bool ShouldUseReflexAsFpsLimiter() {
+    return s_fps_limiter_mode.load() == FpsLimiterMode::kReflex;
+}
+
 // Helper function to convert low latency ratio index to delay_bias value
 // Ratio index: 0 = 100% Display/0% Input, 1 = 87.5%/12.5%, 2 = 75%/25%, 3 = 62.5%/37.5%,
 //              4 = 50%/50%, 5 = 37.5%/62.5%, 6 = 25%/75%, 7 = 12.5%/87.5%, 8 = 0%/100%

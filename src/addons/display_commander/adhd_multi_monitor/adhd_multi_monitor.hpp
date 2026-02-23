@@ -30,6 +30,9 @@ class AdhdMultiMonitorManager {
     // Check if multiple monitors are available
     bool HasMultipleMonitors() const;
 
+    // Debug: fill current background window info (hwnd, rect, is_visible). Safe to call from any thread.
+    void GetBackgroundWindowDebugInfo(HWND* out_hwnd, RECT* out_rect, bool* out_is_visible) const;
+
    private:
     // Background window management
     bool CreateBackgroundWindow();
@@ -53,7 +56,7 @@ class AdhdMultiMonitorManager {
 
     // Single window stretching over all displays, inserted after game_hwnd.
     // Created and destroyed only on message_pump_thread_ so that thread owns the window and receives its messages.
-    HWND background_hwnd_ = nullptr;
+    std::atomic<HWND> background_hwnd_{nullptr};
 
     // Request from PositionBackgroundWindow(); applied by MessagePumpThreadFunc() on the pump thread.
     SRWLOCK position_request_lock_ = SRWLOCK_INIT;

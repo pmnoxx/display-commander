@@ -21,6 +21,21 @@ bool IsFocusDisengage() { return g_adhdManager.IsFocusDisengage(); }
 
 bool HasMultipleMonitors() { return g_adhdManager.HasMultipleMonitors(); }
 
+void GetBackgroundWindowDebugInfo(BackgroundWindowDebugInfo* out) {
+    if (out == nullptr) return;
+    HWND hwnd = nullptr;
+    RECT rect = {0, 0, 0, 0};
+    bool is_visible = false;
+    g_adhdManager.GetBackgroundWindowDebugInfo(&hwnd, &rect, &is_visible);
+    out->hwnd = reinterpret_cast<void*>(hwnd);
+    out->not_null = (hwnd != nullptr);
+    out->left = rect.left;
+    out->top = rect.top;
+    out->width = rect.right - rect.left;
+    out->height = rect.bottom - rect.top;
+    out->is_visible = is_visible;
+}
+
 }  // namespace api
 
 }  // namespace adhd_multi_monitor

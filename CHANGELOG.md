@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.56 (2026-02-23)
+
+- **ADHD Multi-Monitor** - Tooltip for "ADHD Multi-Monitor Mode" now shows background window debug info on hover: HWND (and null/not null), window position, size, and visibility. Added thread-safe `GetBackgroundWindowDebugInfo` API and made `background_hwnd_` atomic for safe reads from the UI thread.
+
+## v0.12.55 (2026-02-23)
+
+- **Reflex FPS limiter** - Implemented `ShouldUseReflexAsFpsLimiter()`: Reflex `minimumIntervalUs` (frame-rate limit) is now applied only when FPS limiter mode is Reflex. Other modes (OnPresentSync, Disabled, LatentSync) keep Reflex low-latency/boost but do not use Reflex for FPS limiting. Used in NVAPI Reflex manager, NvLowLatencyVk SetSleepMode, and Vulkan loader SetSleepMode paths.
+
 ## v0.12.54 (2026-02-23)
 
 - **ADHD Multi-Monitor** - Fixed crashes caused by not processing messages for the ADHD overlay window. The background window is now created and destroyed on the message-pump thread so that thread owns the window and receives its messages; position/show requests are published from the monitoring thread and applied on the pump thread.

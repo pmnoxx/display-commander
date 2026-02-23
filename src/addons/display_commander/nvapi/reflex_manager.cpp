@@ -4,6 +4,7 @@
 #include "../hooks/nvapi_hooks.hpp"
 #include "../latency/reflex_provider.hpp"
 #include "../settings/main_tab_settings.hpp"
+#include "../swapchain_events.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "utils/timing.hpp"
@@ -99,7 +100,8 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
     params.bLowLatencyMode = low_latency ? NV_TRUE : NV_FALSE;
     params.bLowLatencyBoost = boost ? NV_TRUE : NV_FALSE;
     params.bUseMarkersToOptimize = NV_FALSE;
-    params.minimumIntervalUs = fps_limit > 0.0f ? (UINT)(round(1000000.0 / fps_limit)) : 0;
+    params.minimumIntervalUs =
+        fps_limit > 0.0f && ShouldUseReflexAsFpsLimiter() ? (UINT)(round(1000000.0 / fps_limit)) : 0;
 
     const auto st = NvAPI_D3D_SetSleepMode_Direct(d3d_device_, &params);
     if (st != NVAPI_OK) {

@@ -124,6 +124,8 @@ float GetTargetFps();
 bool ShouldReflexBeEnabled();
 bool ShouldReflexLowLatencyBeEnabled();
 bool ShouldReflexBoostBeEnabled();
+/** True only when FPS limiter mode is Reflex: use Reflex minimumIntervalUs for FPS limiting. */
+bool ShouldUseReflexAsFpsLimiter();
 
 // DXGI composition state utilities
 DxgiBypassMode GetIndependentFlipState(IDXGISwapChain* dxgi_swapchain);

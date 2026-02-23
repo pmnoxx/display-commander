@@ -6212,17 +6212,13 @@ void DrawAdhdMultiMonitorControls() {
     if (!hasMultipleMonitors) {
         return;
     }
+    ImGui::BeginGroup();
     // Use CheckboxSetting so the checkbox always reflects the current setting (e.g. when toggled via hotkey)
     if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display,
                         "ADHD on game display")) {
         LogInfo("ADHD on game display %s",
                 settings::g_mainTabSettings.adhd_multi_monitor_enabled_for_game_display.GetValue() ? "enabled"
                                                                                                    : "disabled");
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Show the black background window on the same monitor as the game (behind the game window).\n"
-            "Use with \"ADHD Multi-Monitor Mode\" to cover other displays, or alone to only cover the game display.");
     }
 
     ImGui::SameLine();
@@ -6231,10 +6227,27 @@ void DrawAdhdMultiMonitorControls() {
         LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
                 settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
     }
+    ImGui::EndGroup();
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Similar to Special-K's ADHD Multi-Monitor Mode.\nThe black background window will automatically position "
-            "itself to cover all monitors except the one where your game is running.");
+        adhd_multi_monitor::BackgroundWindowDebugInfo info = {};
+        adhd_multi_monitor::api::GetBackgroundWindowDebugInfo(&info);
+        char buf[384];
+        int n = std::snprintf(buf, sizeof(buf),
+                             "ADHD on game display: black window on game's monitor.\n"
+                             "ADHD Multi-Monitor Mode: cover all other monitors (like Special-K).\n\n"
+                             "Background window: HWND %p, %s\n"
+                             "Position: (%d, %d), Size: %d x %d\n"
+                             "Visible: %s",
+                             info.hwnd, info.not_null ? "not null" : "null",
+                             info.left, info.top, info.width, info.height,
+                             info.is_visible ? "yes" : "no");
+        if (n > 0 && n < static_cast<int>(sizeof(buf))) {
+            ImGui::SetTooltip("%s", buf);
+        } else {
+            ImGui::SetTooltip(
+                "ADHD on game display: black window on game's monitor.\n"
+                "ADHD Multi-Monitor Mode: cover all other monitors (like Special-K).");
+        }
     }
 }
 

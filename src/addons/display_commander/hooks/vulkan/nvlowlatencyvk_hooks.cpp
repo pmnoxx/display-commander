@@ -114,16 +114,16 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
 
     // Re-apply SleepMode on SIMULATION_START (same idea as D3D ApplySleepMode on present): either our
     // overridden params or the last params the game tried to set.
-    if (params != nullptr && params->markerType == VK_SIMULATION_START
-        && NvLL_VK_SetSleepMode_Original != nullptr) {
+    if (params != nullptr && params->markerType == VK_SIMULATION_START && NvLL_VK_SetSleepMode_Original != nullptr) {
         if (!settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
             if (ShouldReflexBeEnabled()) {
                 const float fps_limit = GetTargetFps();
                 NVLL_VK_SET_SLEEP_MODE_PARAMS overridden = {};
                 overridden.bLowLatencyMode = ShouldReflexLowLatencyBeEnabled();
                 overridden.bLowLatencyBoost = ShouldReflexBoostBeEnabled();
-                overridden.minimumIntervalUs =
-                    (fps_limit > 0.0f) ? static_cast<uint32_t>(1000000.0f / fps_limit) : 0u;
+                overridden.minimumIntervalUs = (fps_limit > 0.0f && ShouldUseReflexAsFpsLimiter())
+                                                   ? static_cast<uint32_t>(1000000.0f / fps_limit)
+                                                   : 0u;
                 {
                     utils::SRWLockExclusive lock(utils::g_nvll_sleep_mode_params_lock);
                     g_last_nvll_vk_applied_sleep_mode_params = overridden;
@@ -175,8 +175,7 @@ static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEE
         g_last_nvll_vk_game_sleep_mode_params = *params;
         g_last_nvll_vk_sleep_mode_device = device;
         g_nvll_vk_has_stored_game_params.store(true);
-        SetGameReflexSleepModeParams(params->bLowLatencyMode, params->bLowLatencyBoost,
-                                    params->minimumIntervalUs);
+        SetGameReflexSleepModeParams(params->bLowLatencyMode, params->bLowLatencyBoost, params->minimumIntervalUs);
     }
     // Override params from addon Reflex settings (same idea as D3D ApplySleepMode on present path).
     // For Vulkan there is no ReflexManager/ApplySleepMode on present, so we override in the detour.
@@ -189,7 +188,7 @@ static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEE
         overridden.bLowLatencyMode = ShouldReflexLowLatencyBeEnabled();
         overridden.bLowLatencyBoost = ShouldReflexBoostBeEnabled();
         overridden.minimumIntervalUs =
-            (fps_limit > 0.0f) ? static_cast<uint32_t>(1000000.0f / fps_limit) : 0u;
+            (fps_limit > 0.0f && ShouldUseReflexAsFpsLimiter()) ? static_cast<uint32_t>(1000000.0f / fps_limit) : 0u;
         {
             utils::SRWLockExclusive lock(utils::g_nvll_sleep_mode_params_lock);
             g_last_nvll_vk_applied_sleep_mode_params = overridden;

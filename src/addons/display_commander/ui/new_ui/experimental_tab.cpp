@@ -1765,10 +1765,10 @@ void DrawD3D9FlipExControls() {
     ImGui::Spacing();
 
     // Display current D3D9 state if applicable
-    int current_api = g_last_reshade_device_api.load();
+    const reshade::api::device_api current_api = g_last_reshade_device_api.load();
     uint32_t api_version = g_last_api_version.load();
 
-    if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
+    if (current_api == reshade::api::device_api::d3d9) {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Game API:");
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 9");
 

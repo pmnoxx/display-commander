@@ -12,6 +12,20 @@ void UninstallPCLStatsEtwHooks();
 /** Returns true if PCLStats ETW hooks are installed. */
 bool ArePCLStatsEtwHooksInstalled();
 
+/** Returns true if we are allowed to emit our own PCLStats markers.
+ *  Conditions: DXGI only (D3D10/11/12); no game PCLStats events (all three counts 0);
+ *  and g_global_frame_id >= 500. */
+bool PCLStatsReportingAllowed();
+
+/** Returns true if PCLStats reporting should be active: PCLStatsReportingAllowed() and pcl_stats_enabled setting. */
+bool PCLStatsReportingEnabled();
+
+/** Call from our code each time PCLSTATS_MARKER is invoked (injected reflex). */
+void RecordPCLStatsMarkerCall();
+
+/** Number of times PCLSTATS_MARKER was called from our code (for UI tooltip). */
+uint64_t GetPCLStatsMarkerCallCount();
+
 /** Get call counts for PCLStats marker events (EventWriteTransfer with PCLStats provider + event name).
  *  All params nullable. */
 void GetPCLStatsEtwCounts(uint64_t* out_pclstats_event,

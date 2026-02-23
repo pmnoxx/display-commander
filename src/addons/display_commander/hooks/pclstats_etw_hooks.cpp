@@ -40,6 +40,9 @@ static std::atomic<uint64_t> g_count_pclstats_event_v3{0};
 // Per-marker counts (index = PCLStats marker type 0..19)
 static std::atomic<uint64_t> g_count_pclstats_by_marker[kPCLStatsMarkerTypeCount] = {};
 
+// Number of times PCLSTATS_MARKER was called from our code (injected reflex)
+static std::atomic<uint64_t> g_count_pclstats_marker_calls{0};
+
 // First 6 PCLStats markers (same as Reflex): 0=SIMULATION_START .. 5=PRESENT_END
 constexpr int kPCLStatsMarkerFirstSixMax = 5;
 
@@ -236,6 +239,32 @@ void UninstallPCLStatsEtwHooks() {
 
 bool ArePCLStatsEtwHooksInstalled() { return g_pclstats_etw_hooks_installed.load(std::memory_order_acquire); }
 
+bool PCLStatsReportingAllowed() {
+    // Only allow PCLStats reporting for DXGI (D3D10/11/12); not D3D9, OpenGL, Vulkan
+    const reshade::api::device_api api = g_last_reshade_device_api.load(std::memory_order_acquire);
+    const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+                          || api == reshade::api::device_api::d3d12);
+
+    const bool no_game_pclstats =
+        g_count_pclstats_event.load(std::memory_order_relaxed) == 0
+        && g_count_pclstats_event_v2.load(std::memory_order_relaxed) == 0
+        && g_count_pclstats_event_v3.load(std::memory_order_relaxed) == 0;
+    const bool past_warmup = g_global_frame_id.load(std::memory_order_acquire) >= 500;
+    return is_dxgi && no_game_pclstats && past_warmup;
+}
+
+bool PCLStatsReportingEnabled() {
+    return PCLStatsReportingAllowed() && settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
+}
+
+void RecordPCLStatsMarkerCall() {
+    g_count_pclstats_marker_calls.fetch_add(1, std::memory_order_relaxed);
+}
+
+uint64_t GetPCLStatsMarkerCallCount() {
+    return g_count_pclstats_marker_calls.load(std::memory_order_relaxed);
+}
+
 void GetPCLStatsEtwCounts(uint64_t* out_pclstats_event, uint64_t* out_pclstats_event_v2,
                           uint64_t* out_pclstats_event_v3) {
     if (out_pclstats_event) *out_pclstats_event = g_count_pclstats_event.load(std::memory_order_relaxed);
@@ -282,6 +311,7 @@ void ResetPCLStatsEtwCounts() {
     g_count_pclstats_event.store(0, std::memory_order_relaxed);
     g_count_pclstats_event_v2.store(0, std::memory_order_relaxed);
     g_count_pclstats_event_v3.store(0, std::memory_order_relaxed);
+    g_count_pclstats_marker_calls.store(0, std::memory_order_relaxed);
     for (size_t i = 0; i < kPCLStatsMarkerTypeCount; ++i) {
         g_count_pclstats_by_marker[i].store(0, std::memory_order_relaxed);
     }

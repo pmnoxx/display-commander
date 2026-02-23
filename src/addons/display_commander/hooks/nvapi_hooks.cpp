@@ -231,13 +231,18 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
             float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
             if (effective_fps > 0.0f) {
                 const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
-                if (lite.dlss_g_active) {
-                    switch (lite.fg_mode) {
-                        case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
-                        case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
-                        case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
-                        default:               break;
-                    }
+                switch (lite.fg_mode) {
+                    case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
+                    case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
+                    case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
+                    default:               break;
+                }
+                static bool logged = false;
+                if (!logged
+                    && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
+                        || lite.fg_mode == DLSSGFgMode::k4x)) {
+                    LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
+                    logged = true;
                 }
             }
             LONGLONG frame_time_ns = (effective_fps > 0.0f)
@@ -296,8 +301,8 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
         g_last_nvapi_sleep_mode_params.store(params);
         g_last_nvapi_sleep_mode_dev_ptr.store(pDev);
         SetGameReflexSleepModeParams(pSetSleepModeParams->bLowLatencyMode != 0,
-                                    pSetSleepModeParams->bLowLatencyBoost != 0,
-                                    pSetSleepModeParams->minimumIntervalUs);
+                                     pSetSleepModeParams->bLowLatencyBoost != 0,
+                                     pSetSleepModeParams->minimumIntervalUs);
     }
     // Suppress detour if _Direct was called within the last 5 frames
     uint64_t current_frame_id = g_global_frame_id.load();

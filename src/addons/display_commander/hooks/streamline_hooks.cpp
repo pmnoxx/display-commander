@@ -217,6 +217,9 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGOptions& options) {
     }
     g_ngx_parameters.update_int("DLSSG.EnableInterp", fg_on ? 1 : 0);
     g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", options.numFramesToGenerate);
+
+    LogInfo("UpdateNGXParamsFromDLSSGOptions: mode=%d numFramesToGenerate=%d", static_cast<int>(options.mode),
+            options.numFramesToGenerate);
 }
 
 // Hook functions
@@ -451,6 +454,8 @@ static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl
         if (modified_options.numFramesToGenerate == 0) {
             modified_options.numFramesToGenerate = 1;
         }
+        LogInfo("slDLSSGSetOptions: force_fg_auto enabled -> mode=eAuto numFramesToGenerate=%d",
+                modified_options.numFramesToGenerate);
     }
     UpdateNGXParamsFromDLSSGOptions(modified_options);
     return slDLSSGSetOptions_Original(viewport, modified_options);

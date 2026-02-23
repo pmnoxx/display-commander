@@ -598,7 +598,7 @@ extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<DxgiBypassMode> g_comp_last_logged;
 extern std::atomic<void*>
     g_last_swapchain_ptr_unsafe;  // Using void* to avoid reshade dependency // TODO: unsafe remove later
-extern std::atomic<int> g_last_reshade_device_api;  // Store device API type
+extern std::atomic<reshade::api::device_api> g_last_reshade_device_api;
 extern std::atomic<uint32_t> g_last_api_version;    // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
 extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>>
     g_last_swapchain_desc;  // Store last swapchain description
@@ -844,7 +844,7 @@ void UpdateHdr10OverrideStatus(const std::string& status);
 void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 
 // Helper function to get flip state based on API type
-DxgiBypassMode GetFlipStateForAPI(int api);
+DxgiBypassMode GetFlipStateForAPI(reshade::api::device_api api);
 
 // Performance optimization settings
 extern std::atomic<LONGLONG> g_flush_before_present_time_ns;

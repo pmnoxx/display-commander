@@ -2,6 +2,7 @@
 #include "../../addon.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
+#include "../../config/display_commander_config.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
@@ -9,9 +10,10 @@
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/ngx_hooks.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
-#include "../../hooks/window_proc_hooks.hpp"
+#include "../../hooks/pclstats_etw_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
+#include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
 #include "../../latency/reflex_provider.hpp"
@@ -29,7 +31,6 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../settings/streamline_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
-#include "../../config/display_commander_config.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
@@ -609,11 +610,13 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         }
 
         if (g_dlss_from_nvidia_app_bin.load()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+            ImGui::TextColored(
+                ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                 "NVIDIA App DLSS override detected (.bin). Version and presets are controlled by the NVIDIA app.");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
-                    "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited effect.");
+                    "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited "
+                    "effect.");
             }
         }
 
@@ -1456,9 +1459,8 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         }
 
         // Display current graphics API with feature level/version
-        int api_value = g_last_reshade_device_api.load();
-        if (api_value != 0) {
-            reshade::api::device_api api = static_cast<reshade::api::device_api>(api_value);
+        const reshade::api::device_api api = g_last_reshade_device_api.load();
+        if (api != static_cast<reshade::api::device_api>(0)) {
             uint32_t api_version = g_last_api_version.load();
             ImGui::SameLine();
 
@@ -2747,10 +2749,28 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 "dxgi_factory_wrapper > reshade_addon_event. src: %s",
                 GetChosenFpsLimiterSiteName());
         }
+        auto DrawPclStatsCheckbox = []() {
+            bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
+            if (ImGui::Checkbox("PCL stats for injected reflex", &pcl_stats)) {
+                settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
+                HWND game_window = display_commanderhooks::GetGameWindow();
+                if (game_window != nullptr && pcl_stats) {
+                    display_commanderhooks::InstallWindowProcHooks(game_window);
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                const uint64_t count = GetPCLStatsMarkerCallCount();
+                const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
+                ImGui::SetTooltip(
+                    "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
+                    "initialized: %s",
+                    static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
+            }
+        };
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             // Check if we're running on D3D9 and show warning
-            int current_api = g_last_reshade_device_api.load();
-            if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
+            const reshade::api::device_api current_api = g_last_reshade_device_api.load();
+            if (current_api == reshade::api::device_api::d3d9) {
                 ImGui::TextColored(ui::colors::TEXT_WARNING,
                                    ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
@@ -2913,8 +2933,8 @@ void DrawDisplaySettings_FpsLimiterMode() {
 
         if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
             // Check if we're running on D3D9 and show warning
-            int current_api = g_last_reshade_device_api.load();
-            if (current_api == static_cast<int>(reshade::api::device_api::d3d9)) {
+            const reshade::api::device_api current_api = g_last_reshade_device_api.load();
+            if (current_api == reshade::api::device_api::d3d9) {
                 ImGui::TextColored(ui::colors::TEXT_WARNING,
                                    ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
@@ -2981,23 +3001,10 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "Off: Disables both Low Latency and Boost.\n"
                         "Game Defaults: Do not override; use the game's own Reflex settings.");
                 }
-#if 0
-                ImGui::SameLine();
-                bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
-                if (ImGui::Checkbox("PCL stats", &pcl_stats)) {
-                    settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
-                    // Reinstall window proc hooks if PCL stats is enabled
-                    HWND game_window = display_commanderhooks::GetGameWindow();
-                    if (game_window != nullptr && pcl_stats) {
-                        display_commanderhooks::InstallWindowProcHooks(game_window);
-                    }
+                if (PCLStatsReportingAllowed()) {
+                    ImGui::SameLine();
+                    DrawPclStatsCheckbox();
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
-                        "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be "
-                        "installed.\nWorks with Reflex and OnPresent sync modes.");
-                }
-#endif
             }
             if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
                 ImGui::SameLine();
@@ -3043,26 +3050,10 @@ void DrawDisplaySettings_FpsLimiterMode() {
             }
         }
 
-#if 0
-        // PCL stats checkbox for OnPresentSync mode (when Reflex is not enabled)
-        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+        if (PCLStatsReportingAllowed() && current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             ImGui::Spacing();
-            bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
-            if (ImGui::Checkbox("PCL stats", &pcl_stats)) {
-                settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
-                // Reinstall window proc hooks if PCL stats is enabled
-                HWND game_window = display_commanderhooks::GetGameWindow();
-                if (game_window != nullptr && pcl_stats) {
-                    display_commanderhooks::InstallWindowProcHooks(game_window);
-                }
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Enables PCLStats ETW reporting for latency measurement.\nRequires window proc hooks to be "
-                    "installed.\nNote: PCL stats markers are only emitted when Reflex is enabled.");
-            }
+            DrawPclStatsCheckbox();
         }
-#endif
 
         // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected and in sync)
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
@@ -3345,10 +3336,10 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders() {
 static const char* GetPresentModeNameNonDxgi(int device_api_value, uint32_t present_mode) {
     if (device_api_value == static_cast<int>(reshade::api::device_api::vulkan)) {
         switch (present_mode) {
-            case 0: return "IMMEDIATE (Vulkan)";
-            case 1: return "MAILBOX (Vulkan)";
-            case 2: return "FIFO (Vulkan)";
-            case 3: return "FIFO_RELAXED (Vulkan)";
+            case 0:  return "IMMEDIATE (Vulkan)";
+            case 1:  return "MAILBOX (Vulkan)";
+            case 2:  return "FIFO (Vulkan)";
+            case 3:  return "FIFO_RELAXED (Vulkan)";
             default: return "VkPresentMode (Vulkan)";
         }
     }
@@ -3387,16 +3378,17 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
         }
-        int current_api_pt = g_last_reshade_device_api.load();
-        bool is_dxgi_pt = (current_api_pt == static_cast<int>(reshade::api::device_api::d3d10)
-                          || current_api_pt == static_cast<int>(reshade::api::device_api::d3d11)
-                          || current_api_pt == static_cast<int>(reshade::api::device_api::d3d12));
+        const reshade::api::device_api current_api_pt = g_last_reshade_device_api.load();
+        const bool is_dxgi_pt =
+            (current_api_pt == reshade::api::device_api::d3d10 || current_api_pt == reshade::api::device_api::d3d11
+             || current_api_pt == reshade::api::device_api::d3d12);
         if (is_dxgi_pt) {
             ImGui::SameLine();
             bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
             if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
                 settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
+                LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
+                                  : "Prevent Tearing disabled");
             }
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
@@ -3404,7 +3396,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
         } else if (desc_ptr_cb) {
             ImGui::SameLine();
             ImGui::TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
-                              GetPresentModeNameNonDxgi(current_api_pt, desc_ptr_cb->present_mode));
+                               GetPresentModeNameNonDxgi(static_cast<int>(current_api_pt), desc_ptr_cb->present_mode));
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
             }
@@ -3434,11 +3426,11 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
         }
     }
 
-    int current_api = g_last_reshade_device_api.load();
-    bool is_d3d9 = current_api == static_cast<int>(reshade::api::device_api::d3d9);
-    bool is_dxgi = g_last_reshade_device_api.load() == static_cast<int>(reshade::api::device_api::d3d10)
-                   || current_api == static_cast<int>(reshade::api::device_api::d3d11)
-                   || current_api == static_cast<int>(reshade::api::device_api::d3d12);
+    const reshade::api::device_api current_api = g_last_reshade_device_api.load();
+    const bool is_d3d9 = current_api == reshade::api::device_api::d3d9;
+    const bool is_dxgi =
+        (current_api == reshade::api::device_api::d3d10 || current_api == reshade::api::device_api::d3d11
+         || current_api == reshade::api::device_api::d3d12);
     bool enable_flip = settings::g_advancedTabSettings.enable_flip_chain.GetValue();
     bool is_flip = g_last_swapchain_desc.load()
                    && (g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
@@ -3720,10 +3712,10 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
     const auto& desc = *ctx.desc;
     const DxgiBypassMode flip_state = ctx.flip_state;
     const char* flip_state_str = ctx.flip_state_str.c_str();
-    int api_val = g_last_reshade_device_api.load();
-    bool is_dxgi_tooltip = (api_val == static_cast<int>(reshade::api::device_api::d3d10)
-                            || api_val == static_cast<int>(reshade::api::device_api::d3d11)
-                            || api_val == static_cast<int>(reshade::api::device_api::d3d12));
+    const reshade::api::device_api api_val = g_last_reshade_device_api.load();
+    const bool is_dxgi_tooltip =
+        (api_val == reshade::api::device_api::d3d10 || api_val == reshade::api::device_api::d3d11
+         || api_val == reshade::api::device_api::d3d12);
 
     ImGui::TextColored(ui::colors::TEXT_LABEL, "Swapchain Information:");
     ImGui::Separator();
@@ -3731,9 +3723,9 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
     ImGui::Text("Present Mode ID: %u", desc.present_mode);
     if (is_dxgi_tooltip) {
         ImGui::Text("Status: %s", flip_state_str);
-    } else if (api_val == static_cast<int>(reshade::api::device_api::vulkan)) {
+    } else if (api_val == reshade::api::device_api::vulkan) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "Vulkan swapchain (VkPresentModeKHR, flags below)");
-    } else if (api_val == static_cast<int>(reshade::api::device_api::opengl)) {
+    } else if (api_val == reshade::api::device_api::opengl) {
         ImGui::TextColored(ui::colors::TEXT_DIMMED, "OpenGL swapchain");
     }
 
@@ -3845,10 +3837,10 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
 
     // ReShade: present_flags is DXGI_SWAP_CHAIN_FLAG (DXGI), VkSwapchainCreateFlagsKHR (Vulkan), or PFD_* (OpenGL).
     if (desc.present_flags != 0) {
-        int api_val = g_last_reshade_device_api.load();
-        bool is_dxgi_flags = (api_val == static_cast<int>(reshade::api::device_api::d3d10)
-                              || api_val == static_cast<int>(reshade::api::device_api::d3d11)
-                              || api_val == static_cast<int>(reshade::api::device_api::d3d12));
+        const reshade::api::device_api api_val = g_last_reshade_device_api.load();
+        const bool is_dxgi_flags =
+            (api_val == reshade::api::device_api::d3d10 || api_val == reshade::api::device_api::d3d11
+             || api_val == reshade::api::device_api::d3d12);
         if (is_dxgi_flags) {
             ImGui::Text("Swap chain creation flags (DXGI): 0x%X", desc.present_flags);
             ImGui::Text("Flags:");
@@ -3864,7 +3856,7 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
             if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
                 ImGui::Text("  • RESTRICTED_CONTENT");
             }
-        } else if (api_val == static_cast<int>(reshade::api::device_api::vulkan)) {
+        } else if (api_val == reshade::api::device_api::vulkan) {
             ImGui::Text("Swapchain creation flags (VkSwapchainCreateFlagsKHR): 0x%X", desc.present_flags);
         } else {
             ImGui::Text("Creation flags: 0x%X", desc.present_flags);
@@ -4027,11 +4019,11 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
         return false;
     }
     const auto& desc = *desc_ptr;
-    int current_api = g_last_reshade_device_api.load();
-    bool is_d3d9 = current_api == static_cast<int>(reshade::api::device_api::d3d9);
-    bool is_dxgi = current_api == static_cast<int>(reshade::api::device_api::d3d10)
-                   || current_api == static_cast<int>(reshade::api::device_api::d3d11)
-                   || current_api == static_cast<int>(reshade::api::device_api::d3d12);
+    const reshade::api::device_api current_api = g_last_reshade_device_api.load();
+    const bool is_d3d9 = current_api == reshade::api::device_api::d3d9;
+    const bool is_dxgi =
+        (current_api == reshade::api::device_api::d3d10 || current_api == reshade::api::device_api::d3d11
+         || current_api == reshade::api::device_api::d3d12);
 
     ImGui::TextColored(ui::colors::TEXT_LABEL, "Current Present Mode:");
     ImGui::SameLine();
@@ -4198,7 +4190,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
     }
 
     // Vulkan, OpenGL, etc.: show present mode (ReShade: VkPresentModeKHR or WGL)
-    present_mode_name = GetPresentModeNameNonDxgi(current_api, desc.present_mode);
+    present_mode_name = GetPresentModeNameNonDxgi(static_cast<int>(current_api), desc.present_mode);
     present_mode_color = ui::colors::TEXT_DIMMED;
     ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
     bool status_hovered = ImGui::IsItemHovered();
@@ -4292,8 +4284,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 const bool vk_loaded = (GetModuleHandleW(L"vulkan-1.dll") != nullptr);
                 if (vk_loaded) {
                     if (AreVulkanLoaderHooksInstalled()) {
-                        ImGui::TextColored(ui::colors::ICON_POSITIVE,
-                                           ICON_FK_OK " vulkan-1.dll loaded (hooks active)");
+                        ImGui::TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " vulkan-1.dll loaded (hooks active)");
                     } else {
                         ImGui::TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " vulkan-1.dll loaded");
                         ImGui::SameLine();
@@ -4315,37 +4306,40 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     display_commander::nvapi::GetDlssDriverPresetStatus();
                 if (!preset_status.profile_error.empty()) {
                     ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " NVIDIA profile: %s",
-                                      preset_status.profile_error.c_str());
+                                       preset_status.profile_error.c_str());
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Driver profile search failed (e.g. no NVIDIA GPU). DLSS driver overrides do not apply.");
+                        ImGui::SetTooltip(
+                            "Driver profile search failed (e.g. no NVIDIA GPU). DLSS driver overrides do not apply.");
                     }
                 } else if (!preset_status.has_profile) {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                                      "NVIDIA profile: No profile for this game.");
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: No profile for this game.");
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("No NVIDIA driver profile matches this executable. Driver DLSS preset overrides do not apply. Use the NVIDIA Profile tab to create or assign a profile.");
+                        ImGui::SetTooltip(
+                            "No NVIDIA driver profile matches this executable. Driver DLSS preset overrides do not "
+                            "apply. Use the NVIDIA Profile tab to create or assign a profile.");
                     }
                 } else {
                     ImGui::TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: %s",
-                                      preset_status.profile_names.c_str());
+                                       preset_status.profile_names.c_str());
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Matching driver profile(s). See below for DLSS preset overrides from the profile.");
+                        ImGui::SetTooltip(
+                            "Matching driver profile(s). See below for DLSS preset overrides from the profile.");
                     }
                     const char* sr_label = "DLSS-SR preset (driver):";
                     const char* rr_label = "DLSS-RR preset (driver):";
-                    const char* sr_val = preset_status.sr_preset_value.empty()
-                                            ? "—"
-                                            : preset_status.sr_preset_value.c_str();
-                    const char* rr_val = preset_status.rr_preset_value.empty()
-                                            ? "—"
-                                            : preset_status.rr_preset_value.c_str();
+                    const char* sr_val =
+                        preset_status.sr_preset_value.empty() ? "—" : preset_status.sr_preset_value.c_str();
+                    const char* rr_val =
+                        preset_status.rr_preset_value.empty() ? "—" : preset_status.rr_preset_value.c_str();
                     if (preset_status.sr_preset_is_override) {
                         ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", sr_label, sr_val);
                     } else {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  %s %s", sr_label, sr_val);
                     }
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Driver profile DLSS Super Resolution render preset. Override in NVIDIA Profile tab if needed.");
+                        ImGui::SetTooltip(
+                            "Driver profile DLSS Super Resolution render preset. Override in NVIDIA Profile tab if "
+                            "needed.");
                     }
                     if (preset_status.rr_preset_is_override) {
                         ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", rr_label, rr_val);
@@ -4353,7 +4347,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         ImGui::TextColored(ui::colors::TEXT_DIMMED, "  %s %s", rr_label, rr_val);
                     }
                     if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Driver profile DLSS Ray Reconstruction render preset. Override in NVIDIA Profile tab if needed.");
+                        ImGui::SetTooltip(
+                            "Driver profile DLSS Ray Reconstruction render preset. Override in NVIDIA Profile tab if "
+                            "needed.");
                     }
                     if (preset_status.sr_preset_is_override || preset_status.rr_preset_is_override) {
                         ui::colors::PushIconColor(ui::colors::ICON_ACTION);
@@ -4367,7 +4363,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         }
                         ui::colors::PopIconColor();
                         if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Set driver profile DLSS-SR and DLSS-RR preset to default (clears override).");
+                            ImGui::SetTooltip(
+                                "Set driver profile DLSS-SR and DLSS-RR preset to default (clears override).");
                         }
                     }
                 }
@@ -5194,7 +5191,8 @@ void DrawWindowControls() {
     // Open DisplayCommander.toml (config) Button
     ui::colors::PushIconColor(ui::colors::ICON_ACTION);
     if (ImGui::Button(ICON_FK_FILE " Config")) {
-        std::string config_path = display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
+        std::string config_path =
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
         if (!config_path.empty()) {
             std::thread([config_path]() {
                 LogDebug("Open DisplayCommander.toml button pressed (bg thread)");
@@ -5211,9 +5209,11 @@ void DrawWindowControls() {
     }
     ui::colors::PopIconColor();
     if (ImGui::IsItemHovered()) {
-        std::string config_path = display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
+        std::string config_path =
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
         if (!config_path.empty()) {
-            ImGui::SetTooltip("Open DisplayCommander config in the default text editor.\nFull path: %s", config_path.c_str());
+            ImGui::SetTooltip("Open DisplayCommander config in the default text editor.\nFull path: %s",
+                              config_path.c_str());
         } else {
             ImGui::SetTooltip("Open DisplayCommander.toml (config path not available).");
         }
@@ -5283,7 +5283,8 @@ void DrawWindowControls() {
             size_t last_slash = full_path.find_last_of("\\/");
             if (last_slash != std::string::npos) {
                 std::string log_path = full_path.substr(0, last_slash) + "\\DisplayCommander.log";
-                ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.\nFull path: %s", log_path.c_str());
+                ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.\nFull path: %s",
+                                  log_path.c_str());
             } else {
                 ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.");
             }
@@ -5394,7 +5395,8 @@ void DrawWindowControls() {
             size_t last_slash = full_path.find_last_of("\\/");
             if (last_slash != std::string::npos) {
                 std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
-                ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s", ini_path.c_str());
+                ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
+                                  ini_path.c_str());
             } else {
                 ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
             }
@@ -6055,7 +6057,7 @@ void DrawImportantInfo() {
 
         // Flip State Display (renamed from DXGI Composition)
         const char* flip_state_str = "Unknown";
-        int current_api = g_last_reshade_device_api.load();
+        const reshade::api::device_api current_api = g_last_reshade_device_api.load();
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
 
         switch (flip_state) {
@@ -6215,7 +6217,7 @@ void DrawAdhdMultiMonitorControls() {
                         "ADHD on game display")) {
         LogInfo("ADHD on game display %s",
                 settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue() ? "enabled"
-                                                                                                   : "disabled");
+                                                                                                    : "disabled");
     }
 
     if (hasMultipleMonitors) {
@@ -6231,14 +6233,13 @@ void DrawAdhdMultiMonitorControls() {
         adhd_multi_monitor::api::GetBackgroundWindowDebugInfo(&info);
         char buf[384];
         int n = std::snprintf(buf, sizeof(buf),
-                             "ADHD on game display: black window on game's monitor.\n"
-                             "ADHD Multi-Monitor Mode: cover all other monitors (like Special-K).\n\n"
-                             "Background window: HWND %p, %s\n"
-                             "Position: (%d, %d), Size: %d x %d\n"
-                             "Visible: %s",
-                             info.hwnd, info.not_null ? "not null" : "null",
-                             info.left, info.top, info.width, info.height,
-                             info.is_visible ? "yes" : "no");
+                              "ADHD on game display: black window on game's monitor.\n"
+                              "ADHD Multi-Monitor Mode: cover all other monitors (like Special-K).\n\n"
+                              "Background window: HWND %p, %s\n"
+                              "Position: (%d, %d), Size: %d x %d\n"
+                              "Visible: %s",
+                              info.hwnd, info.not_null ? "not null" : "null", info.left, info.top, info.width,
+                              info.height, info.is_visible ? "yes" : "no");
         if (n > 0 && n < static_cast<int>(sizeof(buf))) {
             ImGui::SetTooltip("%s", buf);
         } else {

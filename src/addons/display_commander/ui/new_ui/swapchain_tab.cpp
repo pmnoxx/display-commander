@@ -2289,6 +2289,16 @@ void DrawDLSSPresetOverrideContent() {
             }
         }
 
+        if (g_dlss_from_nvidia_app_bin.load()) {
+            ImGui::Spacing();
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                "NVIDIA App DLSS override detected (.bin). Version and presets are controlled by the NVIDIA app.");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited effect.");
+            }
+        }
+
         ImGui::Spacing();
 
         // Show current settings summary

@@ -60,6 +60,22 @@ bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& r);
 // Returns (true, "") on success, (false, error_message) on failure.
 std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe();
 
+// Status of DLSS render preset overrides in the NVIDIA driver profile for the current exe.
+// Uses the same cached result as GetCachedProfileSearchResult(); safe to call from UI each frame.
+struct DlssDriverPresetStatus {
+    bool has_profile = false;           // true if DRS succeeded and at least one profile matches
+    std::string profile_error;         // non-empty if DRS failed (e.g. no NVIDIA GPU)
+    std::string profile_names;         // comma-separated matching profile names when has_profile
+    std::string sr_preset_value;      // human-readable DLSS-SR preset (e.g. "Not set", "Preset C", "Off", "Latest")
+    bool sr_preset_is_override = false;  // true if profile sets a non-default DLSS-SR preset
+    std::string rr_preset_value;       // human-readable DLSS-RR preset
+    bool rr_preset_is_override = false;  // true if profile sets a non-default DLSS-RR preset
+};
+
+// Returns DLSS driver preset status for the current exe from the cached profile search result.
+// Use on the DLSS Information page to show whether the driver profile has DLSS-SR/RR preset overrides.
+DlssDriverPresetStatus GetDlssDriverPresetStatus();
+
 // Sets or deletes a DWORD setting for a profile that contains the given executable name.
 // Used by RunDLL_NvAPI_SetDWORD (rundll32). exeName is the executable name or path (e.g. "game.exe").
 // If deleteSetting is true, the setting is removed (reset to driver default); valueIfSet is ignored.

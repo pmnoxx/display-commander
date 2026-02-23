@@ -1565,8 +1565,10 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             SetDlssTracked(DlssTrackedKind::DLSSD, hModule, false);
             LogInfo("DLSS tracked: nvngx_dlssd.dll (0x%p) %s", hModule, GetModulePathUtf8(hModule).c_str());
         } else if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, L".bin") == 0) {
+            // NVIDIA App override: identify .bin as DLSS/DLSS-G/DLSS-D by scanning for NGX DLL name strings
             std::optional<DlssTrackedKind> kind = IdentifyDlssBinKind(hModule);
             if (kind.has_value()) {
+                g_dlss_from_nvidia_app_bin.store(true);
                 SetDlssTracked(*kind, hModule, true);
                 const char* name = (*kind == DlssTrackedKind::DLSS)    ? "nvngx_dlss"
                                    : (*kind == DlssTrackedKind::DLSSG) ? "nvngx_dlssg"

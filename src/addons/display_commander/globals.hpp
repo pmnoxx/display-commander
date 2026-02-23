@@ -1424,6 +1424,9 @@ std::optional<std::string> GetDlssTrackedPath(DlssTrackedKind kind);
 // Set from OnModuleLoaded (write under g_dlss_tracked_srwlock). Path is obtained from hMod via GetModuleFileNameW.
 void SetDlssTracked(DlssTrackedKind kind, HMODULE hMod, bool force = false);
 
+// True when a .bin was identified as DLSS/DLSS-G/DLSS-D (NVIDIA App override). Set from loadlibrary_hooks.
+extern std::atomic<bool> g_dlss_from_nvidia_app_bin;
+
 // DLSS Model Profile structure
 struct DLSSModelProfile {
     bool is_valid = false;

@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.49 (2026-02-23)
+
+- **DLSS Information (Main tab)** - Show override status for DLSS Render Profile: whether a driver profile exists for this game, profile name(s), and for DLSS-SR and DLSS-RR preset the current driver value (Not set, Preset A–O, Latest). A warning is shown when the profile overrides the default. Uses the same cached data as the NVIDIA Profile tab.
+
+## v0.12.48 (2026-02-22)
+
+- **DLSS** - Added warning when NVIDIA App override is used.
+
 ## v0.12.47 (2026-02-22)
 
 - **DLSS module tracking** - Display Commander detects DLSS version when using Nvidia App override (tracks .bin and DLL loads; shows paths in Main tab → DLSS Information).

@@ -18,6 +18,7 @@
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
+#include "../../nvapi/nvidia_profile_search.hpp"
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../performance_types.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
@@ -605,6 +606,15 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
             ImGui::SetTooltip(
                 "Override DLSS presets at runtime (Game Default / DLSS Default / Preset A, B, C, etc.). Same as "
                 "Swapchain tab.");
+        }
+
+        if (g_dlss_from_nvidia_app_bin.load()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                "NVIDIA App DLSS override detected (.bin). Version and presets are controlled by the NVIDIA app.");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited effect.");
+            }
         }
 
         if (settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue()) {
@@ -4298,6 +4308,55 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 }
             }
             DrawDLSSInfo(dlss_summary);
+
+            // NVIDIA driver profile DLSS preset override status (same cache as NVIDIA Profile tab)
+            {
+                display_commander::nvapi::DlssDriverPresetStatus preset_status =
+                    display_commander::nvapi::GetDlssDriverPresetStatus();
+                if (!preset_status.profile_error.empty()) {
+                    ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " NVIDIA profile: %s",
+                                      preset_status.profile_error.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Driver profile search failed (e.g. no NVIDIA GPU). DLSS driver overrides do not apply.");
+                    }
+                } else if (!preset_status.has_profile) {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED,
+                                      "NVIDIA profile: No profile for this game.");
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("No NVIDIA driver profile matches this executable. Driver DLSS preset overrides do not apply. Use the NVIDIA Profile tab to create or assign a profile.");
+                    }
+                } else {
+                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: %s",
+                                      preset_status.profile_names.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Matching driver profile(s). See below for DLSS preset overrides from the profile.");
+                    }
+                    const char* sr_label = "DLSS-SR preset (driver):";
+                    const char* rr_label = "DLSS-RR preset (driver):";
+                    const char* sr_val = preset_status.sr_preset_value.empty()
+                                            ? "—"
+                                            : preset_status.sr_preset_value.c_str();
+                    const char* rr_val = preset_status.rr_preset_value.empty()
+                                            ? "—"
+                                            : preset_status.rr_preset_value.c_str();
+                    if (preset_status.sr_preset_is_override) {
+                        ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", sr_label, sr_val);
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  %s %s", sr_label, sr_val);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Driver profile DLSS Super Resolution render preset. Override in NVIDIA Profile tab if needed.");
+                    }
+                    if (preset_status.rr_preset_is_override) {
+                        ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", rr_label, rr_val);
+                    } else {
+                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  %s %s", rr_label, rr_val);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Driver profile DLSS Ray Reconstruction render preset. Override in NVIDIA Profile tab if needed.");
+                    }
+                }
+            }
 
             // Button to simulate WM_SIZE to force game to resize and recreate DLSS feature
             {

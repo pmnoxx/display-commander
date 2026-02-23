@@ -516,6 +516,39 @@ NvidiaProfileSearchResult GetCachedProfileSearchResult() {
 
 void InvalidateProfileSearchCache() { s_cacheValid = false; }
 
+DlssDriverPresetStatus GetDlssDriverPresetStatus() {
+    DlssDriverPresetStatus out;
+    NvidiaProfileSearchResult r = GetCachedProfileSearchResult();
+    if (!r.success) {
+        out.profile_error = r.error;
+        return out;
+    }
+    if (r.matching_profile_names.empty()) {
+        out.has_profile = false;
+        return out;
+    }
+    out.has_profile = true;
+    for (size_t i = 0; i < r.matching_profile_names.size(); ++i) {
+        if (i != 0) {
+            out.profile_names += ", ";
+        }
+        out.profile_names += r.matching_profile_names[i];
+    }
+    for (const auto& s : r.important_settings) {
+        if (s.setting_id == NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID) {
+            out.sr_preset_value = s.value;
+            out.sr_preset_is_override = (s.value_id != static_cast<std::uint32_t>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
+            continue;
+        }
+        if (s.setting_id == NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID) {
+            out.rr_preset_value = s.value;
+            out.rr_preset_is_override = (s.value_id != static_cast<std::uint32_t>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
+            continue;
+        }
+    }
+    return out;
+}
+
 using ValueList = std::vector<std::pair<std::uint32_t, std::string>>;
 static std::map<std::uint32_t, ValueList> s_availableValuesCache;
 

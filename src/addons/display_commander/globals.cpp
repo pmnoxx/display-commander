@@ -769,6 +769,8 @@ void SetDlssTracked(DlssTrackedKind kind, HMODULE hMod, bool force) {
     }
 }
 
+std::atomic<bool> g_dlss_from_nvidia_app_bin{false};
+
 // Get DLSS/DLSS-G summary from NGX parameters
 DLSSGSummary GetDLSSGSummary() {
     DLSSGSummary summary;

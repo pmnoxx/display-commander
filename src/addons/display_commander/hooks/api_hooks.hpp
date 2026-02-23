@@ -130,6 +130,9 @@ int WINAPI ShowCursor_Direct(BOOL bShow);
 // GetForegroundWindow direct access function
 HWND WINAPI GetForegroundWindow_Direct();
 
+// SetWindowPos direct access (bypasses hook)
+BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
+
 // Restore cursor function
 void RestoreSetCursor();
 void RestoreShowCursor();

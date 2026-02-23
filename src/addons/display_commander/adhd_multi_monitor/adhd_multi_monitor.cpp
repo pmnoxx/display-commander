@@ -5,6 +5,8 @@
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
+#include "hooks/api_hooks.hpp"
+#include "hooks/display_settings_hooks.hpp"
 
 // Undefine Windows min/max macros to avoid conflicts with std::min/std::max
 #ifdef min
@@ -119,6 +121,8 @@ bool AdhdMultiMonitorManager::CreateBackgroundWindow() {
     SetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE,
                       GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
 
+    ShowWindow_Direct(background_hwnd_, SW_HIDE);  // Create hidden; PositionBackgroundWindow() shows when enabled
+
     pump_stop_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (pump_stop_event_) {
         message_pump_thread_ = std::thread(&AdhdMultiMonitorManager::MessagePumpThreadFunc, this);
@@ -149,6 +153,7 @@ void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
     if (!stop) return;
     RECORD_DETOUR_CALL(utils::get_now_ns());
 
+    // TODO only loop while not in shutdown
     while (true) {
         RECORD_DETOUR_CALL(utils::get_now_ns());
         DWORD r = MsgWaitForMultipleObjects(1, &stop, FALSE, 50, QS_ALLINPUT);
@@ -203,10 +208,10 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow() {
 
     int width = rect_to_cover.right - rect_to_cover.left;
     int height = rect_to_cover.bottom - rect_to_cover.top;
-    SetWindowPos(background_hwnd_, game_hwnd, rect_to_cover.left, rect_to_cover.top, width, height, SWP_NOACTIVATE);
-
     bool show = !IsAppInBackground();
-    ShowWindow(background_hwnd_, show ? SW_SHOW : SW_HIDE);
+    ShowWindow_Direct(background_hwnd_, show ? SW_SHOW : SW_HIDE);
+    display_commanderhooks::SetWindowPos_Direct(background_hwnd_, game_hwnd, rect_to_cover.left, rect_to_cover.top,
+                                                width, height, SWP_NOACTIVATE);
 }
 
 void AdhdMultiMonitorManager::EnumerateMonitors() {

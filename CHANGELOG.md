@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.52 (2026-02-23)
+
+- **ADHD Multi-Monitor** - Background overlay window is now created hidden; shown only when ADHD is enabled and game is in foreground (PositionBackgroundWindow).
+
+## v0.12.51 (2026-02-23)
+
+- **ADHD Multi-Monitor** - Initialize and SetEnabled are now delayed until frame 500 (ReShade present count). Avoids early-present issues by not running ADHD init during the first 500 frames.
+
 ## v0.12.50 (2026-02-23)
 
 - **DLSS Render Profile override (Main tab)** - When a driver profile has a DLSS Render Profile override (DLSS-SR or DLSS-RR preset not default), a "Clear" button is shown. Clicking it sets both DLSS-SR and DLSS-RR preset to default on the first matching NVIDIA profile and refreshes the status.

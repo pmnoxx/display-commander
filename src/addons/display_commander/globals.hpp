@@ -720,6 +720,10 @@ extern std::atomic<std::shared_ptr<const std::wstring>> g_dxgi_output_device_nam
 // Present duration tracking
 extern std::atomic<LONGLONG> g_present_duration_ns;
 
+// ReShade present frame count (incremented once per OnPresentUpdateBefore for the main swapchain).
+// Used to delay ADHD multi-monitor init until frame 500.
+extern std::atomic<uint64_t> g_reshade_present_frame_count;
+
 // Simulation duration tracking
 extern std::atomic<LONGLONG> g_simulation_duration_ns;
 

@@ -51,8 +51,15 @@ class AdhdMultiMonitorManager {
     std::atomic<bool> enabled_for_game_display_ = false;
     std::atomic<bool> game_in_background_ = false;
 
-    // Single window stretching over all displays, inserted after game_hwnd
+    // Single window stretching over all displays, inserted after game_hwnd.
+    // Created and destroyed only on message_pump_thread_ so that thread owns the window and receives its messages.
     HWND background_hwnd_ = nullptr;
+
+    // Request from PositionBackgroundWindow(); applied by MessagePumpThreadFunc() on the pump thread.
+    SRWLOCK position_request_lock_ = SRWLOCK_INIT;
+    bool position_request_show_ = false;
+    RECT position_request_rect_ = {};
+    HWND position_request_owner_ = nullptr;
 
     HANDLE pump_stop_event_ = nullptr;
     std::thread message_pump_thread_;

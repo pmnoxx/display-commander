@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.54 (2026-02-23)
+
+- **ADHD Multi-Monitor** - Fixed crashes caused by not processing messages for the ADHD overlay window. The background window is now created and destroyed on the message-pump thread so that thread owns the window and receives its messages; position/show requests are published from the monitoring thread and applied on the pump thread.
+
 ## v0.12.53 (2026-02-23)
 
 - **ADHD Multi-Monitor** - Made ADHD multi-monitor feature more reliable (V2).

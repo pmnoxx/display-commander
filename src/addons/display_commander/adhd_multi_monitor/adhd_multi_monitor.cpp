@@ -4,6 +4,7 @@
 #include "../globals.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/display_settings_hooks.hpp"
@@ -99,26 +100,11 @@ bool AdhdMultiMonitorManager::CreateBackgroundWindow() {
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (!game_hwnd) return false;
 
-    HINSTANCE hInstance = GetModuleHandle(nullptr);
-    background_hwnd_ =
-        CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_LAYERED, BACKGROUND_WINDOW_CLASS, BACKGROUND_WINDOW_TITLE, WS_POPUP, 0,
-                        0, 1, 1, nullptr, nullptr, hInstance, this);
-
-    if (!background_hwnd_) {
-        LogError("Failed to create ADHD background window");
-        return false;
-    }
-
-    SetLayeredWindowAttributes(background_hwnd_, 0, 255, LWA_ALPHA);
-    SetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE,
-                      GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
-
-    // ShowWindow_Direct(background_hwnd_, SW_HIDE);  // Create hidden; PositionBackgroundWindow() shows when enabled
-
+    // Start the message pump thread first. The window is created on that thread so it owns the window
+    // and receives its messages (PositionBackgroundWindow writes requests; pump thread applies them).
     pump_stop_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    if (pump_stop_event_) {
-        message_pump_thread_ = std::thread(&AdhdMultiMonitorManager::MessagePumpThreadFunc, this);
-    }
+    if (!pump_stop_event_) return false;
+    message_pump_thread_ = std::thread(&AdhdMultiMonitorManager::MessagePumpThreadFunc, this);
 
     background_window_created_ = true;
     return true;
@@ -145,9 +131,48 @@ void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
     if (!stop) return;
     RECORD_DETOUR_CALL(utils::get_now_ns());
 
-    // TODO only loop while not in shutdown
     while (true) {
         RECORD_DETOUR_CALL(utils::get_now_ns());
+
+        // Read position request and apply on this thread so the window is owned here and receives messages.
+        bool show = false;
+        RECT rect = {};
+        HWND owner = nullptr;
+        {
+            utils::SRWLockExclusive lock(position_request_lock_);
+            show = position_request_show_;
+            rect = position_request_rect_;
+            owner = position_request_owner_;
+        }
+
+        if (!show) {
+            if (background_hwnd_) {
+                DestroyWindow(background_hwnd_);
+                background_hwnd_ = nullptr;
+            }
+        } else if (owner && rect.right > rect.left && rect.bottom > rect.top) {
+            if (!background_hwnd_) {
+                HINSTANCE hInstance = GetModuleHandle(nullptr);
+                background_hwnd_ = CreateWindowExW(
+                    WS_EX_TOOLWINDOW | WS_EX_LAYERED, BACKGROUND_WINDOW_CLASS, BACKGROUND_WINDOW_TITLE, WS_POPUP, 0, 0,
+                    1, 1, nullptr, nullptr, hInstance, this);
+                if (background_hwnd_) {
+                    SetLayeredWindowAttributes(background_hwnd_, 0, 255, LWA_ALPHA);
+                    SetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE,
+                                     GetWindowLongPtrW(background_hwnd_, GWL_EXSTYLE) | WS_EX_TRANSPARENT);
+                } else {
+                    LogError("Failed to create ADHD background window on pump thread");
+                }
+            }
+            if (background_hwnd_) {
+                int width = rect.right - rect.left;
+                int height = rect.bottom - rect.top;
+                display_commanderhooks::SetWindowPos_Direct(background_hwnd_, owner, rect.left, rect.top, width,
+                                                             height, SWP_NOACTIVATE);
+                ShowWindow_Direct(background_hwnd_, SW_SHOW);
+            }
+        }
+
         DWORD r = MsgWaitForMultipleObjects(1, &stop, FALSE, 50, QS_ALLINPUT);
         if (r == WAIT_OBJECT_0) break;
         if (r == WAIT_OBJECT_0 + 1) {
@@ -164,7 +189,7 @@ void AdhdMultiMonitorManager::MessagePumpThreadFunc() {
 }
 
 void AdhdMultiMonitorManager::PositionBackgroundWindow(bool game_in_background) {
-    if (!background_window_created_ || !background_hwnd_) return;
+    if (!background_window_created_) return;
 
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (!game_hwnd) return;
@@ -195,12 +220,13 @@ void AdhdMultiMonitorManager::PositionBackgroundWindow(bool game_in_background) 
         show = false;
     }
 
-    int width = rect_to_cover.right - rect_to_cover.left;
-    int height = rect_to_cover.bottom - rect_to_cover.top;
-    display_commanderhooks::SetWindowPos_Direct(background_hwnd_, game_hwnd, rect_to_cover.left, rect_to_cover.top,
-                                                width, height, SWP_NOACTIVATE);
-
-    ShowWindow_Direct(background_hwnd_, show ? SW_SHOW : SW_HIDE);
+    // Publish request for the message pump thread; it will create/destroy/position the window on its thread.
+    {
+        utils::SRWLockExclusive lock(position_request_lock_);
+        position_request_show_ = show;
+        position_request_rect_ = rect_to_cover;
+        position_request_owner_ = game_hwnd;
+    }
 }
 
 void AdhdMultiMonitorManager::EnumerateMonitors() {

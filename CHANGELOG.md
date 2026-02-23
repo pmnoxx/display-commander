@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.50 (2026-02-23)
+
+- **DLSS Render Profile override (Main tab)** - When a driver profile has a DLSS Render Profile override (DLSS-SR or DLSS-RR preset not default), a "Clear" button is shown. Clicking it sets both DLSS-SR and DLSS-RR preset to default on the first matching NVIDIA profile and refreshes the status.
+
 ## v0.12.49 (2026-02-23)
 
 - **DLSS Information (Main tab)** - Show override status for DLSS Render Profile: whether a driver profile exists for this game, profile name(s), and for DLSS-SR and DLSS-RR preset the current driver value (Not set, Preset A–O, Latest). A warning is shown when the profile overrides the default. Uses the same cached data as the NVIDIA Profile tab.

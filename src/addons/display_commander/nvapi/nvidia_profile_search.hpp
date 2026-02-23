@@ -76,6 +76,11 @@ struct DlssDriverPresetStatus {
 // Use on the DLSS Information page to show whether the driver profile has DLSS-SR/RR preset overrides.
 DlssDriverPresetStatus GetDlssDriverPresetStatus();
 
+// Clears the driver profile DLSS Render Profile override for the current exe: sets both DLSS-SR and DLSS-RR
+// preset settings to default on the first matching profile. Invalidates cache on success.
+// Returns (true, "") on success; (false, error_message) on failure.
+std::pair<bool, std::string> ClearDriverDlssPresetOverride();
+
 // Sets or deletes a DWORD setting for a profile that contains the given executable name.
 // Used by RunDLL_NvAPI_SetDWORD (rundll32). exeName is the executable name or path (e.g. "game.exe").
 // If deleteSetting is true, the setting is removed (reset to driver default); valueIfSet is ignored.

@@ -647,6 +647,17 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
     return {true, ""};
 }
 
+std::pair<bool, std::string> ClearDriverDlssPresetOverride() {
+    auto sr = SetProfileSetting(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID,
+                                static_cast<std::uint32_t>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
+    if (!sr.first) {
+        return sr;
+    }
+    auto rr = SetProfileSetting(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID,
+                                static_cast<std::uint32_t>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
+    return rr;
+}
+
 std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exeName, std::uint32_t settingId,
                                                             bool deleteSetting, std::uint32_t valueIfSet) {
     if (exeName.empty()) {

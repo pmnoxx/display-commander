@@ -4355,6 +4355,21 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Driver profile DLSS Ray Reconstruction render preset. Override in NVIDIA Profile tab if needed.");
                     }
+                    if (preset_status.sr_preset_is_override || preset_status.rr_preset_is_override) {
+                        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
+                        if (ImGui::Button("Clear##DriverDlssPresetOverride")) {
+                            auto result = display_commander::nvapi::ClearDriverDlssPresetOverride();
+                            if (result.first) {
+                                LogInfo("DLSS Render Profile override cleared (driver profile preset set to default).");
+                            } else {
+                                LogInfo("Clear DLSS Render Profile override failed: %s", result.second.c_str());
+                            }
+                        }
+                        ui::colors::PopIconColor();
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Set driver profile DLSS-SR and DLSS-RR preset to default (clears override).");
+                        }
+                    }
                 }
             }
 

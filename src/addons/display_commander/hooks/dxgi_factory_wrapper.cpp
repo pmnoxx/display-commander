@@ -520,6 +520,13 @@ STDMETHODIMP DXGIFactoryWrapper::GetWindowAssociation(HWND* pWindowHandle) {
 // so this method may never be called; check logs for "CreateSwapChainForHwnd" in that case. ReShade intercepts
 // by vtable-hooking whatever factory we return; it then calls the trampoline (this method or CreateSwapChainForHwnd),
 // so our log should appear when the game actually calls the matching API.
+//
+// If DXGIFactoryWrapper is created but CreateSwapChain/CreateSwapChainForHwnd are never called on it, the swap chain
+// is likely created via D3D11CreateDeviceAndSwapChain. ReShade hooks that API and does not call the original in one go:
+// it creates only the device (trampoline with ppSwapChain=nullptr), then gets the factory via
+// device->GetAdapter()->GetParent(IID_PPV_ARGS(&factory)). That factory is the D3D runtime's *internal* factory (created
+// when the device was created), not the one we return from CreateDXGIFactory2. ReShade then calls CreateSwapChain on
+// that internal factory (or its own proxy around it), so our wrapper is never used for the actual swap chain creation.
 STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc,
                                                  IDXGISwapChain** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChain called");

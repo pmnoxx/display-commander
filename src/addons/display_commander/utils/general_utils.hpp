@@ -152,6 +152,10 @@ inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_t
     }
 }
 
+// Current process path (fully qualified path of the main executable)
+// Returns path from GetModuleFileNameW(nullptr, ...); empty on failure.
+std::wstring GetCurrentProcessPathW();
+
 // Game detection utilities
 std::string GetCurrentProcessName();
 bool IsGameInNvapiAutoEnableList(const std::string& processName);

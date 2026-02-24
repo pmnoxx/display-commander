@@ -1726,6 +1726,9 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
     display_commanderhooks::InstallApiHooks();
 
+    // When used as dxgi proxy: hook real dxgi.dll CreateDXGIFactory2 with MinHook (not in DllMain)
+    InstallRealDXGIMinHookHooks();
+
     g_dll_initialization_complete.store(true);
     // Override ReShade settings early to set tutorial as viewed and disable auto updates
     OverrideReShadeSettings();

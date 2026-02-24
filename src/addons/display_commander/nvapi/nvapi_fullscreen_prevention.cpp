@@ -4,8 +4,11 @@
 #include "globals.hpp"
 #include "settings/advanced_tab_settings.hpp"
 #include <NvApiDriverSettings.h>
+#include <nvapi.h>
+#include <windows.h>
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <sstream>
 #include <vector>
 
@@ -104,27 +107,47 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
     }
     LogInfo("DRS settings loaded successfully");
 
-    // Get current executable name
-    char exePath[MAX_PATH];
-    GetModuleFileNameA(nullptr, exePath, MAX_PATH);
-    char *exeName = strrchr(exePath, '\\');
-    if (exeName)
-        exeName++;
-    else
-        exeName = exePath;
+    // Get current executable fully qualified path (wide for NvAPI)
+    std::wstring exePathW = GetCurrentProcessPathW();
+    if (exePathW.empty()) {
+        last_error = "GetModuleFileName failed";
+        return false;
+    }
+    // Normalize: forward slashes (NVIDIA recommends c:/Folder/App.exe)
+    for (wchar_t& c : exePathW) {
+        if (c == L'\\') {
+            c = L'/';
+        }
+    }
+    const wchar_t* baseNameW = wcsrchr(exePathW.c_str(), L'/');
+    if (baseNameW) {
+        baseNameW++;
+    } else {
+        baseNameW = exePathW.c_str();
+    }
 
-    std::ostringstream oss_exe;
-    oss_exe << "Target executable: " << exeName;
-    LogInfo(oss_exe.str().c_str());
+    char baseNameUtf8[MAX_PATH] = {};
+    if (::WideCharToMultiByte(CP_UTF8, 0, baseNameW, -1, baseNameUtf8, sizeof(baseNameUtf8), nullptr, nullptr) > 0) {
+        std::ostringstream oss_exe;
+        oss_exe << "Target executable: " << baseNameUtf8 << " (full path used for DRS lookup)";
+        LogInfo(oss_exe.str().c_str());
+    }
 
-    // Find or create application profile
+    // Copy full path to NvAPI_UnicodeString for FindApplicationByName
+    NvAPI_UnicodeString fullPathBuf = {};
+    const size_t toCopy = (std::min)(exePathW.size(), static_cast<size_t>(NVAPI_UNICODE_STRING_MAX - 1));
+    if (toCopy > 0) {
+        memcpy(fullPathBuf, exePathW.c_str(), toCopy * sizeof(NvU16));
+    }
+
+    // Find or create application profile (pass fully qualified path for unambiguous match)
     NvDRSProfileHandle hProfile = {0};
     NVDRS_APPLICATION app = {0};
     app.version = NVDRS_APPLICATION_VER;
-    strcpy_s((char *)app.appName, sizeof(app.appName), exeName);
+    memcpy(app.appName, fullPathBuf, sizeof(fullPathBuf));
 
     LogInfo("Searching for existing application profile...");
-    status = NvAPI_DRS_FindApplicationByName(hSession, (NvU16 *)exeName, &hProfile, &app);
+    status = NvAPI_DRS_FindApplicationByName(hSession, fullPathBuf, &hProfile, &app);
 
     if (status == NVAPI_EXECUTABLE_NOT_FOUND) {
         LogInfo("Application profile not found, creating new one...");
@@ -144,12 +167,17 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
         }
         LogInfo("DRS profile created successfully");
 
-        // Add the application to the profile
+        // Add the application to the profile (full path in appName, base name in userFriendlyName)
         app.version = NVDRS_APPLICATION_VER;
         app.isPredefined = FALSE;
         app.isMetro = FALSE;
-        strcpy_s((char *)app.appName, sizeof(app.appName), exeName);
-        strcpy_s((char *)app.userFriendlyName, sizeof(app.userFriendlyName), exeName);
+        memcpy(app.appName, fullPathBuf, sizeof(fullPathBuf));
+        memset(app.userFriendlyName, 0, sizeof(app.userFriendlyName));
+        size_t baseLen = wcsnlen_s(baseNameW, NVAPI_UNICODE_STRING_MAX - 1);
+        if (baseLen > 0) {
+            size_t n = (std::min)(baseLen, static_cast<size_t>(NVAPI_UNICODE_STRING_MAX - 1));
+            memcpy(app.userFriendlyName, baseNameW, n * sizeof(NvU16));
+        }
 
         LogInfo("Adding application to profile...");
         status = NvAPI_DRS_CreateApplication(hSession, hProfile, &app);

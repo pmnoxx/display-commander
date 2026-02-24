@@ -915,6 +915,15 @@ std::string D3DPresentFlagsToString(uint32_t presentFlags) {
     return result;
 }
 
+// Current process path (fully qualified path of the main executable)
+std::wstring GetCurrentProcessPathW() {
+    wchar_t pathBuf[MAX_PATH] = {};
+    if (::GetModuleFileNameW(nullptr, pathBuf, MAX_PATH) == 0) {
+        return {};
+    }
+    return pathBuf;
+}
+
 // Game detection utilities
 std::string GetCurrentProcessName() {
     char processPath[MAX_PATH];

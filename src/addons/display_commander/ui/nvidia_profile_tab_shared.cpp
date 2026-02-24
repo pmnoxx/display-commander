@@ -4,6 +4,7 @@
 #include "nvapi/nvpi_reference.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
 #include "../res/ui_colors.hpp"
+#include "../utils.hpp"
 
 #include <windows.h>
 
@@ -64,8 +65,26 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
 
     nvapi::NvidiaProfileSearchResult r = nvapi::GetCachedProfileSearchResult();
 
+    // Show result of GetCurrentProcessPathW() (fully qualified path used for DRS lookup)
+    std::wstring pathW = GetCurrentProcessPathW();
+    std::string pathUtf8;
+    if (!pathW.empty()) {
+        int n = ::WideCharToMultiByte(CP_UTF8, 0, pathW.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (n > 0) {
+            pathUtf8.resize(static_cast<size_t>(n), '\0');
+            ::WideCharToMultiByte(CP_UTF8, 0, pathW.c_str(), -1, pathUtf8.data(), n, nullptr, nullptr);
+            if (!pathUtf8.empty() && pathUtf8.back() == '\0') {
+                pathUtf8.pop_back();
+            }
+        }
+    }
+    const char* pathDisplay = pathUtf8.empty() ? "(GetCurrentProcessPathW failed)" : pathUtf8.c_str();
+
     imgui.Text("Current executable:");
-    imgui.TextColored(TEXT_DIMMED, "  Path: %s", r.current_exe_path.c_str());
+    imgui.TextColored(TEXT_DIMMED, "  Fully qualified path: %s", pathDisplay);
+    if (imgui.IsItemHovered() && !pathUtf8.empty()) {
+        imgui.SetTooltip("%s", pathUtf8.c_str());
+    }
     imgui.TextColored(TEXT_DIMMED, "  Name: %s", r.current_exe_name.c_str());
     imgui.Spacing();
 

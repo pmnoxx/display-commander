@@ -110,6 +110,9 @@ void HandleSafemode();
 // Forward declaration for loading addons from Plugins directory
 void LoadAddonsFromPluginsDirectory();
 
+// Standalone settings UI when .NO_RESHADE (no ReShade loaded); implemented in ui/cli_standalone_ui.cpp
+void RunStandaloneSettingsUI(HINSTANCE hInst);
+
 // TryGetDxgiOutputDeviceNameFromLastSwapchain removed - VRR status is now updated
 // from OnPresentUpdateBefore with direct swapchain access to avoid unsafe global pointer usage
 
@@ -1592,6 +1595,9 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
 
 // Override ReShade settings to set tutorial as viewed and disable auto updates
 void OverrideReShadeSettings() {
+    if (!g_reshade_loaded.load()) {
+        return;  // No-ReShade mode or ReShade not loaded; skip ReShade config override
+    }
     LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
 
     //
@@ -1812,6 +1818,23 @@ void OverrideReShadeSettings() {
 // ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
 std::atomic<bool> g_reshade_loaded(false);
 std::atomic<bool> g_wait_and_inject_stop(false);
+
+// No-ReShade mode and standalone UI (see globals.hpp)
+std::atomic<bool> g_no_reshade_mode(false);
+std::atomic<bool> g_standalone_ui_pending(false);
+
+void TryStartStandaloneUIFromSafeContext() {
+    if (!g_no_reshade_mode.load() || !g_standalone_ui_pending.load()) {
+        return;
+    }
+    g_standalone_ui_pending.store(false);
+    HMODULE hmod = g_hmodule;
+    if (!hmod) {
+        return;
+    }
+    std::thread t([hmod]() { RunStandaloneSettingsUI(static_cast<HINSTANCE>(hmod)); });
+    t.detach();
+}
 
 // Helper function to check if an addon is enabled (whitelist approach)
 static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::string& addon_file) {
@@ -2812,8 +2835,20 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
                 return std::filesystem::path(exe_path).parent_path().wstring();
             };
+            // Check for .NO_RESHADE or .NORESHADE in game exe directory: skip loading ReShade and use standalone settings UI
+            {
+                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
+                if (!dc_config_dir.empty()) {
+                    std::filesystem::path no_reshade(dc_config_dir + L"\\.NO_RESHADE");
+                    std::filesystem::path noreshade(dc_config_dir + L"\\.NORESHADE");
+                    if (std::filesystem::exists(no_reshade) || std::filesystem::exists(noreshade)) {
+                        g_no_reshade_mode.store(true);
+                        OutputDebugStringA("[DisplayCommander] .NO_RESHADE/.NORESHADE found - ReShade will not be loaded; standalone settings UI will start.\n");
+                    }
+                }
+            }
 #ifdef _WIN64
-            if (!g_reshade_loaded.load()) {
+            if (!g_reshade_loaded.load() && !g_no_reshade_mode.load()) {
                 // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
                 const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
                 if (!dc_config_dir.empty()) {
@@ -2837,7 +2872,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
             }
 #else
-            if (!g_reshade_loaded.load()) {
+            if (!g_reshade_loaded.load() && !g_no_reshade_mode.load()) {
                 // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
                 const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
                 if (!dc_config_dir.empty()) {
@@ -2934,8 +2969,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
             }
 
-            // don't call register_addon if reshade is not loaded to prevent crash
-            if (!g_reshade_loaded.load()) {
+            // don't call register_addon if reshade is not loaded to prevent crash (skip platform/LocalAppData path when no-Reshade mode)
+            if (!g_reshade_loaded.load() && !g_no_reshade_mode.load()) {
                 OutputDebugStringA("ReShade not loaded");
                 // Detect and log platform APIs (Steam, Epic, GOG, etc.)
                 display_commander::utils::DetectAndLogPlatformAPIs();
@@ -3118,6 +3153,18 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     g_process_attached.store(true);
                     return FALSE;
                 }
+            }
+
+            // No-ReShade mode: init config and minimal addon, then start standalone settings UI from safe context (LoadLibrary detour)
+            if (g_no_reshade_mode.load()) {
+                g_hmodule = h_module;
+                display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+                display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+                utils::initialize_qpc_timing_constants();
+                DoInitializationWithoutHwndSafe(h_module);
+                g_standalone_ui_pending.store(true);
+                g_process_attached.store(true);
+                break;
             }
 
             if (!reshade::register_addon(h_module)) {

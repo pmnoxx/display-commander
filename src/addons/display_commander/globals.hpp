@@ -261,6 +261,15 @@ extern std::atomic<bool> g_dll_initialization_complete;
 // Process attach state - tracks when DLL_PROCESS_ATTACH has completed
 extern std::atomic<bool> g_process_attached;
 
+// ReShade load state (defined in main_entry.cpp)
+extern std::atomic<bool> g_reshade_loaded;
+
+// No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded, standalone settings UI used
+extern std::atomic<bool> g_no_reshade_mode;
+// When true, TryStartStandaloneUIFromSafeContext() will start the standalone settings UI (e.g. from LoadLibrary detour)
+extern std::atomic<bool> g_standalone_ui_pending;
+void TryStartStandaloneUIFromSafeContext();
+
 // Wine/Proton detection - set at DLL load via DetectWine() (ntdll wine_get_version present)
 extern std::atomic<bool> g_using_wine;
 void DetectWine();
@@ -604,6 +613,8 @@ extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>>
     g_last_swapchain_desc;  // Store last swapchain description
 extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
+/** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game window from foreground. */
+extern std::atomic<HWND> g_standalone_ui_hwnd;
 extern std::atomic<IDXGISwapChain*> global_dxgi_swapchain;  // Global reference to DXGI swapchain (experimental)
 extern std::atomic<bool> global_dxgi_swapchain_inuse;
 extern std::atomic<bool> g_shutdown;

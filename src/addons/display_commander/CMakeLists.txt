@@ -33,7 +33,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 61)
+set(DISPLAY_COMMANDER_VERSION_PATCH 62)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -268,7 +268,7 @@ set(IMGUI_STANDALONE_SOURCES
   ${IMGUI_DIR}/imgui_tables.cpp
   ${IMGUI_DIR}/imgui_widgets.cpp
   ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
-  ${IMGUI_DIR}/backends/imgui_impl_dx11.cpp
+  ${IMGUI_DIR}/backends/imgui_impl_dx9.cpp
 )
 add_library(imgui_standalone_obj OBJECT ${IMGUI_STANDALONE_SOURCES})
 target_compile_definitions(imgui_standalone_obj PRIVATE ImGui=ImGuiStandalone ImDrawList=ImDrawListStandalone)

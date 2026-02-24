@@ -28,6 +28,7 @@ using SetWindowLongA_pfn = LONG(WINAPI*)(HWND, int, LONG);
 using SetWindowLongW_pfn = LONG(WINAPI*)(HWND, int, LONG);
 using SetWindowLongPtrA_pfn = LONG_PTR(WINAPI*)(HWND, int, LONG_PTR);
 using SetWindowPos_pfn = BOOL(WINAPI*)(HWND, HWND, int, int, int, int, UINT);
+using CreateWindowExW_pfn = HWND(WINAPI*)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
 using SetCursor_pfn = HCURSOR(WINAPI*)(HCURSOR);
 using ShowCursor_pfn = int(WINAPI*)(BOOL);
 using AddVectoredExceptionHandler_pfn = PVOID(WINAPI*)(ULONG, PVECTORED_EXCEPTION_HANDLER);
@@ -61,6 +62,7 @@ extern SetWindowLongA_pfn SetWindowLongA_Original;
 extern SetWindowLongW_pfn SetWindowLongW_Original;
 extern SetWindowLongPtrA_pfn SetWindowLongPtrA_Original;
 extern SetWindowPos_pfn SetWindowPos_Original;
+extern CreateWindowExW_pfn CreateWindowExW_Original;
 extern SetCursor_pfn SetCursor_Original;
 extern ShowCursor_pfn ShowCursor_Original;
 extern AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original;
@@ -89,6 +91,9 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong);
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong);
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
+HWND WINAPI CreateWindowExW_Detour(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X,
+                                    int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
+                                    LPVOID lpParam);
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor);
 int WINAPI ShowCursor_Detour(BOOL bShow);
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
@@ -132,6 +137,10 @@ HWND WINAPI GetForegroundWindow_Direct();
 
 // SetWindowPos direct access (bypasses hook)
 BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
+
+// CreateWindowW direct access (bypasses hook; use from standalone UI or when real window creation is needed)
+HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
+                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
 
 // Restore cursor function
 void RestoreSetCursor();

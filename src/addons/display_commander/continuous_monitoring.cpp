@@ -115,6 +115,28 @@ bool IsAppInBackground() {
     return foreground_pid != current_pid;
 }
 
+// When g_last_swapchain_hwnd is null (e.g. no-ReShade mode, no Present yet), try to set it from the current
+// foreground window if that window belongs to this process and is not the standalone settings UI window.
+void TrySetGameWindowFromForeground() {
+    if (g_last_swapchain_hwnd.load(std::memory_order_acquire) != nullptr) {
+        return;
+    }
+    HWND fg = display_commanderhooks::GetForegroundWindow_Direct();
+    if (fg == nullptr || IsWindow(fg) == FALSE) {
+        return;
+    }
+    HWND standalone_hwnd = g_standalone_ui_hwnd.load(std::memory_order_acquire);
+    if (standalone_hwnd != nullptr && fg == standalone_hwnd) {
+        return;
+    }
+    DWORD fg_pid = 0;
+    GetWindowThreadProcessId(fg, &fg_pid);
+    if (fg_pid != GetCurrentProcessId()) {
+        return;
+    }
+    g_last_swapchain_hwnd.store(fg, std::memory_order_release);
+}
+
 void check_is_background() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get the current swapchain window
@@ -603,6 +625,10 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         return;
     }
 
+    if (!g_reshade_loaded.load()) {
+        return;
+    }
+
     if (s_stuck_logged_this_period) {
         return;  // Already printed guards for this stuck period; avoid spam
     }
@@ -768,6 +794,9 @@ void ContinuousMonitoringThread() {
             g_last_continuous_monitoring_loop_filetime.store(
                 (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime, std::memory_order_release);
             g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
+
+            // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground
+            TrySetGameWindowFromForeground();
 
             // Periodic display cache refresh off the UI thread
             {

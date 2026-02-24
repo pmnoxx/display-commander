@@ -1663,66 +1663,26 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     }
 }
 
-// Helper function to automatically set color space based on format
-void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
-    if (!settings::g_advancedTabSettings.auto_colorspace.GetValue()) {
-        return;
-    }
-
-    // Get current swapchain description
-    auto desc_ptr = g_last_swapchain_desc.load();
-    if (!desc_ptr) {
-        return;
-    }
-
-    const auto& desc = *desc_ptr;
-    auto format = desc.back_buffer.texture.format;
-
-    // Determine appropriate color space based on format
-    DXGI_COLOR_SPACE_TYPE color_space;
-    reshade::api::color_space reshade_color_space;
-    std::string color_space_name;
-
-    if (format == reshade::api::format::r10g10b10a2_unorm) {
-        color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;  // HDR10
-        reshade_color_space = reshade::api::color_space::hdr10_st2084;
-        color_space_name = "HDR10 (ST2084)";
-    } else if (format == reshade::api::format::r16g16b16a16_float) {
-        color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;  // scRGB
-        reshade_color_space = reshade::api::color_space::extended_srgb_linear;
-        color_space_name = "scRGB (Linear)";
-    } else if (format == reshade::api::format::r8g8b8a8_unorm) {
-        color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;  // sRGB
-        reshade_color_space = reshade::api::color_space::srgb_nonlinear;
-        color_space_name = "sRGB (Non-linear)";
-    } else {
-        LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
-        return;  // Unsupported format
-    }
-
+// Helper to set swap chain and ReShade runtime color space (DXGI path)
+static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLOR_SPACE_TYPE color_space,
+                                   reshade::api::color_space reshade_color_space) {
     auto* unknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
     if (unknown == nullptr) {
         return;
     }
-
     Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
     HRESULT hr = unknown->QueryInterface(IID_PPV_ARGS(&swapchain3));
     if (FAILED(hr)) {
         return;
     }
-
-    // Check if the color space is supported before trying to set it
     UINT color_space_support = 0;
     hr = swapchain3->CheckColorSpaceSupport(color_space, &color_space_support);
     if (FAILED(hr) || color_space_support == 0) {
-        // Try fallback to basic sRGB color space
-        DXGI_COLOR_SPACE_TYPE fallback_color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+        // Fallback to sRGB if chosen space not supported
+        DXGI_COLOR_SPACE_TYPE fallback = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
         UINT fallback_support = 0;
-        hr = swapchain3->CheckColorSpaceSupport(fallback_color_space, &fallback_support);
-        if (SUCCEEDED(hr) && fallback_support > 0) {
-            swapchain3->SetColorSpace1(fallback_color_space);
-
-            // Set ReShade runtime color space to sRGB fallback
+        if (SUCCEEDED(swapchain3->CheckColorSpaceSupport(fallback, &fallback_support)) && fallback_support > 0) {
+            swapchain3->SetColorSpace1(fallback);
             reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
             if (runtime != nullptr) {
                 runtime->set_color_space(reshade::api::color_space::srgb_nonlinear);
@@ -1730,15 +1690,78 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
         }
         return;
     }
-
-    // Set the appropriate color space
     swapchain3->SetColorSpace1(color_space);
-
-    // Set ReShade runtime color space
     reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
     if (runtime != nullptr) {
         runtime->set_color_space(reshade_color_space);
     }
+}
+
+// Manual color space index to DXGI + ReShade (manual_colorspace setting: 0=unknown, 1=sRGB, 2=scRGB, 3=HDR10 ST2084, 4=HDR10 HLG)
+static bool GetManualColorSpace(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi, reshade::api::color_space* out_reshade) {
+    switch (index) {
+        case 0:
+            return false;  // unknown = don't set
+        case 1:
+            *out_dxgi = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+            *out_reshade = reshade::api::color_space::srgb_nonlinear;
+            return true;
+        case 2:
+            *out_dxgi = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+            *out_reshade = reshade::api::color_space::extended_srgb_linear;
+            return true;
+        case 3:
+            *out_dxgi = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+            *out_reshade = reshade::api::color_space::hdr10_st2084;
+            return true;
+        case 4:
+            *out_dxgi = DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020;
+            *out_reshade = reshade::api::color_space::hdr10_hlg;
+            return true;
+        default:
+            return false;
+    }
+}
+
+// Helper function to set color space: auto (format-based) or manual (selector)
+void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
+    const bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+
+    DXGI_COLOR_SPACE_TYPE color_space;
+    reshade::api::color_space reshade_color_space;
+
+    if (auto_colorspace) {
+        auto desc_ptr = g_last_swapchain_desc.load();
+        if (!desc_ptr) {
+            return;
+        }
+        const auto& desc = *desc_ptr;
+        auto format = desc.back_buffer.texture.format;
+
+        if (format == reshade::api::format::r10g10b10a2_unorm) {
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+            reshade_color_space = reshade::api::color_space::hdr10_st2084;
+        } else if (format == reshade::api::format::r16g16b16a16_float) {
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+            reshade_color_space = reshade::api::color_space::extended_srgb_linear;
+        } else if (format == reshade::api::format::r8g8b8a8_unorm) {
+            color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+            reshade_color_space = reshade::api::color_space::srgb_nonlinear;
+        } else {
+            LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
+            return;
+        }
+    } else {
+        int manual = settings::g_advancedTabSettings.manual_colorspace.GetValue();
+        if (manual < 0 || manual > 4) {
+            manual = 1;
+        }
+        if (!GetManualColorSpace(manual, &color_space, &reshade_color_space)) {
+            return;  // unknown
+        }
+    }
+
+    SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);
 }
 // Update composition state after presents (required for valid stats)
 void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::api::swapchain* swapchain,

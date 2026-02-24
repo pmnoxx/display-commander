@@ -36,6 +36,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", false, "DisplayCommander"),
+      manual_colorspace("ManualColorspace", 1, 0, 4, "DisplayCommander"),  // 0=unknown, 1=sRGB, 2=scRGB, 3=HDR10 ST2084, 4=HDR10 HLG
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 
@@ -118,6 +119,7 @@ void AdvancedTabSettings::SaveAll() {
     hide_hdr_capabilities.Save();
     enable_flip_chain.Save();
     auto_colorspace.Save();
+    manual_colorspace.Save();
     nvapi_auto_enable_enabled.Save();
     enable_hotkeys.Save();
     safemode.Save();
@@ -152,7 +154,7 @@ void AdvancedTabSettings::SaveAll() {
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
     return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities,
-            &enable_flip_chain, &auto_colorspace,
+            &enable_flip_chain, &auto_colorspace, &manual_colorspace,
             //&enable_d3d9e_upgrade,
             &nvapi_auto_enable_enabled,
 

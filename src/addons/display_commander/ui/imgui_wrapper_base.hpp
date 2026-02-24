@@ -4,9 +4,10 @@
  * Base types and interface for ImGui abstraction.
  * Shared UI code (e.g. Nvidia Profile tab) uses IImGuiWrapper so it can run
  * with either ReShade's ImGui or the standalone ImGui (ImGuiStandalone).
- * No imgui.h dependency here.
+ * Uses ImGui's ImVec2/ImVec4 for layout and colors.
  */
 
+#include <imgui.h>
 #include <cstddef>
 #include <cstdint>
 
@@ -24,27 +25,10 @@ enum class GraphicsApi : std::uint32_t {
     Vulkan  = 0x20000
 };
 
-/** 2D vector for layout (avoids including imgui.h in base). */
-struct ImGuiWrapperVec2 {
-    float x = 0.f;
-    float y = 0.f;
-};
-
-/** RGBA color (avoids including imgui.h in base). */
-struct ImGuiWrapperColor {
-    float r = 0.f, g = 0.f, b = 0.f, a = 1.f;
-};
-
-/** Common UI colors used by shared tabs. Match res/ui_colors.hpp semantics. */
-namespace wrapper_colors {
-constexpr ImGuiWrapperColor TEXT_DIMMED   = {0.7f, 0.7f, 0.7f, 1.0f};
-constexpr ImGuiWrapperColor TEXT_LABEL    = {0.8f, 0.8f, 1.0f, 1.0f};
-constexpr ImGuiWrapperColor TEXT_ERROR    = {1.0f, 0.4f, 0.4f, 1.0f};
-constexpr ImGuiWrapperColor TEXT_WARNING  = {1.0f, 0.7f, 0.0f, 1.0f};
-constexpr ImGuiWrapperColor ICON_ERROR   = {1.0f, 0.2f, 0.2f, 1.0f};
-constexpr ImGuiWrapperColor ICON_WARNING = {1.0f, 0.7f, 0.0f, 1.0f};
-constexpr ImGuiWrapperColor ICON_SUCCESS = {0.2f, 0.8f, 0.2f, 1.0f};
-} // namespace wrapper_colors
+/**
+ * For colors in shared/wrapper UI code, use res/ui_colors.hpp and ui::colors::* (e.g. ui::colors::TEXT_WARNING).
+ * The wrapper API uses ImVec4/ImVec2 directly.
+ */
 
 /** ImGui table/tree flags as int (same numeric values as imgui.h for compatibility). */
 namespace wrapper_flags {
@@ -67,7 +51,7 @@ struct IImGuiWrapper {
 
     virtual void SameLine(float offset_from_start_x = 0.f) = 0;
     virtual void Text(const char* fmt, ...) = 0;
-    virtual void TextColored(ImGuiWrapperColor col, const char* fmt, ...) = 0;
+    virtual void TextColored(const ImVec4& col, const char* fmt, ...) = 0;
     virtual void TextUnformatted(const char* text) = 0;
     virtual bool Button(const char* label) = 0;
     virtual bool SmallButton(const char* label) = 0;
@@ -76,10 +60,10 @@ struct IImGuiWrapper {
     virtual void SetTooltip(const char* fmt, ...) = 0;
     virtual void Spacing() = 0;
     virtual void Separator() = 0;
-    virtual bool BeginChild(const char* str_id, ImGuiWrapperVec2 size, bool border) = 0;
+    virtual bool BeginChild(const char* str_id, const ImVec2& size, bool border) = 0;
     virtual void EndChild() = 0;
     virtual bool CollapsingHeader(const char* label, int flags = 0) = 0;
-    virtual bool BeginTable(const char* str_id, int columns, int flags, ImGuiWrapperVec2 outer_size = {0.f, 0.f}) = 0;
+    virtual bool BeginTable(const char* str_id, int columns, int flags, const ImVec2& outer_size = ImVec2(0.f, 0.f)) = 0;
     virtual void EndTable() = 0;
     virtual void TableSetupColumn(const char* label, int flags = 0, float width_weight = 0.f) = 0;
     virtual void TableSetupScrollFreeze(int cols, int rows) = 0;
@@ -98,14 +82,14 @@ struct IImGuiWrapper {
     virtual bool InputText(const char* label, char* buf, size_t buf_size) = 0;
     virtual bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") = 0;
     virtual void TextWrapped(const char* fmt, ...) = 0;
-    virtual void PushStyleColor(int col_enum, ImGuiWrapperColor color) = 0;
+    virtual void PushStyleColor(int col_enum, const ImVec4& color) = 0;
     virtual void PopStyleColor(int count = 1) = 0;
     virtual bool TreeNodeEx(const char* label, int flags) = 0;
     virtual void TreePop() = 0;
-    virtual ImGuiWrapperVec2 GetContentRegionAvail() = 0;
+    virtual ImVec2 GetContentRegionAvail() = 0;
     virtual float GetStyleItemSpacingX() = 0;
     virtual float GetStyleFramePaddingX() = 0;
-    virtual ImGuiWrapperVec2 CalcTextSize(const char* text) = 0;
+    virtual ImVec2 CalcTextSize(const char* text) = 0;
     virtual void SetNextItemWidth(float width) = 0;
     virtual void BeginDisabled() = 0;
     virtual void EndDisabled() = 0;

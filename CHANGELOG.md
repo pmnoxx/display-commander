@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.66 (2026-02-24)
+
+- **ImGui wrapper / UI colors** - Switched wrapper to use `ImVec4`/`ImVec2` only; removed `wrapper_colors` and custom wrapper color/vec types. Shared UI (Advanced tab, Nvidia Profile tab) now uses `ui::colors::*` from `res/ui_colors.hpp` directly (e.g. `ui::colors::TEXT_WARNING`, `ICON_SUCCESS`). Standalone wrapper matches the same interface.
+
 ## v0.12.65 (2026-02-24)
 
 - **Advanced tab / standalone UI** - Migrated Advanced tab to standalone UI. The Advanced tab is now available in both the No-ReShade settings window and the installer (SetupDC) window as an "Advanced" tab alongside Settings, Profile, Setup, and Games.

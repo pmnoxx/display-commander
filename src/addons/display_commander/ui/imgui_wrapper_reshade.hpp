@@ -10,10 +10,6 @@ namespace ui {
 
 /** ImGui wrapper that forwards to ReShade's ImGui (used in addon overlay). Header-only so ImGui symbols stay in the same TU as overlay code. */
 struct ImGuiWrapperReshade : IImGuiWrapper {
-    static inline ImVec2 to_ImVec2(ImGuiWrapperVec2 v) { return ImVec2(v.x, v.y); }
-    static inline ImVec4 to_ImVec4(ImGuiWrapperColor c) { return ImVec4(c.r, c.g, c.b, c.a); }
-    static inline ImGuiWrapperVec2 from_ImVec2(const ImVec2& v) { return {v.x, v.y}; }
-
     void SameLine(float offset_from_start_x = 0.f) override { ImGui::SameLine(offset_from_start_x); }
     void Text(const char* fmt, ...) override {
         va_list args;
@@ -21,10 +17,10 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         ImGui::TextV(fmt, args);
         va_end(args);
     }
-    void TextColored(ImGuiWrapperColor col, const char* fmt, ...) override {
+    void TextColored(const ImVec4& col, const char* fmt, ...) override {
         va_list args;
         va_start(args, fmt);
-        ImGui::TextColoredV(to_ImVec4(col), fmt, args);
+        ImGui::TextColoredV(col, fmt, args);
         va_end(args);
     }
     void TextUnformatted(const char* text) override { ImGui::TextUnformatted(text); }
@@ -40,15 +36,15 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     }
     void Spacing() override { ImGui::Spacing(); }
     void Separator() override { ImGui::Separator(); }
-    bool BeginChild(const char* str_id, ImGuiWrapperVec2 size, bool border) override {
-        return ImGui::BeginChild(str_id, to_ImVec2(size), border);
+    bool BeginChild(const char* str_id, const ImVec2& size, bool border) override {
+        return ImGui::BeginChild(str_id, size, border);
     }
     void EndChild() override { ImGui::EndChild(); }
     bool CollapsingHeader(const char* label, int flags = 0) override {
         return ImGui::CollapsingHeader(label, static_cast<ImGuiTreeNodeFlags>(flags));
     }
-    bool BeginTable(const char* str_id, int columns, int flags, ImGuiWrapperVec2 outer_size = {0.f, 0.f}) override {
-        return ImGui::BeginTable(str_id, columns, static_cast<ImGuiTableFlags>(flags), to_ImVec2(outer_size));
+    bool BeginTable(const char* str_id, int columns, int flags, const ImVec2& outer_size = ImVec2(0.f, 0.f)) override {
+        return ImGui::BeginTable(str_id, columns, static_cast<ImGuiTableFlags>(flags), outer_size);
     }
     void EndTable() override { ImGui::EndTable(); }
     void TableSetupColumn(const char* label, int flags = 0, float width_weight = 0.f) override {
@@ -81,18 +77,18 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         ImGui::TextWrappedV(fmt, args);
         va_end(args);
     }
-    void PushStyleColor(int col_enum, ImGuiWrapperColor color) override {
-        ImGui::PushStyleColor(static_cast<ImGuiCol>(col_enum), to_ImVec4(color));
+    void PushStyleColor(int col_enum, const ImVec4& color) override {
+        ImGui::PushStyleColor(static_cast<ImGuiCol>(col_enum), color);
     }
     void PopStyleColor(int count = 1) override { ImGui::PopStyleColor(count); }
     bool TreeNodeEx(const char* label, int flags) override {
         return ImGui::TreeNodeEx(label, static_cast<ImGuiTreeNodeFlags>(flags));
     }
     void TreePop() override { ImGui::TreePop(); }
-    ImGuiWrapperVec2 GetContentRegionAvail() override { return from_ImVec2(ImGui::GetContentRegionAvail()); }
+    ImVec2 GetContentRegionAvail() override { return ImGui::GetContentRegionAvail(); }
     float GetStyleItemSpacingX() override { return ImGui::GetStyle().ItemSpacing.x; }
     float GetStyleFramePaddingX() override { return ImGui::GetStyle().FramePadding.x; }
-    ImGuiWrapperVec2 CalcTextSize(const char* text) override { return from_ImVec2(ImGui::CalcTextSize(text)); }
+    ImVec2 CalcTextSize(const char* text) override { return ImGui::CalcTextSize(text); }
     void SetNextItemWidth(float width) override { ImGui::SetNextItemWidth(width); }
     void BeginDisabled() override { ImGui::BeginDisabled(); }
     void EndDisabled() override { ImGui::EndDisabled(); }

@@ -7,10 +7,6 @@
 namespace display_commander {
 namespace ui {
 
-static ImVec2 to_ImVec2(ImGuiWrapperVec2 v) { return ImVec2(v.x, v.y); }
-static ImVec4 to_ImVec4(ImGuiWrapperColor c) { return ImVec4(c.r, c.g, c.b, c.a); }
-static ImGuiWrapperVec2 from_ImVec2(const ImVec2& v) { return {v.x, v.y}; }
-
 void ImGuiWrapperStandalone::SameLine(float offset_from_start_x) {
     ImGui::SameLine(offset_from_start_x);
 }
@@ -20,10 +16,10 @@ void ImGuiWrapperStandalone::Text(const char* fmt, ...) {
     ImGui::TextV(fmt, args);
     va_end(args);
 }
-void ImGuiWrapperStandalone::TextColored(ImGuiWrapperColor col, const char* fmt, ...) {
+void ImGuiWrapperStandalone::TextColored(const ImVec4& col, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    ImGui::TextColoredV(to_ImVec4(col), fmt, args);
+    ImGui::TextColoredV(col, fmt, args);
     va_end(args);
 }
 void ImGuiWrapperStandalone::TextUnformatted(const char* text) {
@@ -53,8 +49,8 @@ void ImGuiWrapperStandalone::Spacing() {
 void ImGuiWrapperStandalone::Separator() {
     ImGui::Separator();
 }
-bool ImGuiWrapperStandalone::BeginChild(const char* str_id, ImGuiWrapperVec2 size, bool border) {
-    return ImGui::BeginChild(str_id, to_ImVec2(size), border);
+bool ImGuiWrapperStandalone::BeginChild(const char* str_id, const ImVec2& size, bool border) {
+    return ImGui::BeginChild(str_id, size, border);
 }
 void ImGuiWrapperStandalone::EndChild() {
     ImGui::EndChild();
@@ -63,8 +59,8 @@ bool ImGuiWrapperStandalone::CollapsingHeader(const char* label, int flags) {
     return ImGui::CollapsingHeader(label, static_cast<ImGuiTreeNodeFlags>(flags));
 }
 bool ImGuiWrapperStandalone::BeginTable(const char* str_id, int columns, int flags,
-                                        ImGuiWrapperVec2 outer_size) {
-    return ImGui::BeginTable(str_id, columns, static_cast<ImGuiTableFlags>(flags), to_ImVec2(outer_size));
+                                        const ImVec2& outer_size) {
+    return ImGui::BeginTable(str_id, columns, static_cast<ImGuiTableFlags>(flags), outer_size);
 }
 void ImGuiWrapperStandalone::EndTable() {
     ImGui::EndTable();
@@ -123,8 +119,8 @@ void ImGuiWrapperStandalone::TextWrapped(const char* fmt, ...) {
     ImGui::TextWrappedV(fmt, args);
     va_end(args);
 }
-void ImGuiWrapperStandalone::PushStyleColor(int col_enum, ImGuiWrapperColor color) {
-    ImGui::PushStyleColor(static_cast<ImGuiCol>(col_enum), to_ImVec4(color));
+void ImGuiWrapperStandalone::PushStyleColor(int col_enum, const ImVec4& color) {
+    ImGui::PushStyleColor(static_cast<ImGuiCol>(col_enum), color);
 }
 void ImGuiWrapperStandalone::PopStyleColor(int count) {
     ImGui::PopStyleColor(count);
@@ -135,8 +131,8 @@ bool ImGuiWrapperStandalone::TreeNodeEx(const char* label, int flags) {
 void ImGuiWrapperStandalone::TreePop() {
     ImGui::TreePop();
 }
-ImGuiWrapperVec2 ImGuiWrapperStandalone::GetContentRegionAvail() {
-    return from_ImVec2(ImGui::GetContentRegionAvail());
+ImVec2 ImGuiWrapperStandalone::GetContentRegionAvail() {
+    return ImGui::GetContentRegionAvail();
 }
 float ImGuiWrapperStandalone::GetStyleItemSpacingX() {
     return ImGui::GetStyle().ItemSpacing.x;
@@ -144,8 +140,8 @@ float ImGuiWrapperStandalone::GetStyleItemSpacingX() {
 float ImGuiWrapperStandalone::GetStyleFramePaddingX() {
     return ImGui::GetStyle().FramePadding.x;
 }
-ImGuiWrapperVec2 ImGuiWrapperStandalone::CalcTextSize(const char* text) {
-    return from_ImVec2(ImGui::CalcTextSize(text));
+ImVec2 ImGuiWrapperStandalone::CalcTextSize(const char* text) {
+    return ImGui::CalcTextSize(text);
 }
 void ImGuiWrapperStandalone::SetNextItemWidth(float width) {
     ImGui::SetNextItemWidth(width);

@@ -3,6 +3,7 @@
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/nvpi_reference.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
+#include "../res/ui_colors.hpp"
 
 #include <windows.h>
 
@@ -16,7 +17,7 @@
 namespace display_commander {
 namespace ui {
 
-using namespace wrapper_colors;
+using namespace ::ui::colors;
 using namespace wrapper_flags;
 
 static std::string s_nvidiaProfileCreateError;
@@ -124,7 +125,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         imgui.TextColored(ICON_ERROR, "Remove failed: %s", s_nvidiaProfileDeleteError.c_str());
     }
     imgui.Spacing();
-    if (imgui.BeginChild("NvidiaProfileSearchList", ImGuiWrapperVec2{-1.f, 180.f}, true)) {
+    if (imgui.BeginChild("NvidiaProfileSearchList", ImVec2(-1.f, 180.f), true)) {
         for (const std::string& name : r.matching_profile_names) {
             imgui.Text("  %s", name.c_str());
         }
@@ -276,8 +277,8 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                 imgui.SetTooltip("Reset to NVIDIA default value.");
                             }
                         } else {
-                            ImGuiWrapperVec2 avail = imgui.GetContentRegionAvail();
-                            ImGuiWrapperVec2 textSize = imgui.CalcTextSize("Default");
+                            ImVec2 avail = imgui.GetContentRegionAvail();
+                            ImVec2 textSize = imgui.CalcTextSize("Default");
                             float comboWidth = avail.x
                                 - (imgui.GetStyleItemSpacingX() + textSize.x + imgui.GetStyleFramePaddingX() * 2.f);
                             if (comboWidth < 80.f) comboWidth = 80.f;
@@ -359,7 +360,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
             imgui.TextColored(TEXT_DIMMED,
                               "Every setting present in the first matching profile (%zu total).",
                               r.all_settings.size());
-            if (imgui.BeginChild("NvidiaProfileAllSettingsTable", ImGuiWrapperVec2{-1.f, 320.f}, true)) {
+            if (imgui.BeginChild("NvidiaProfileAllSettingsTable", ImVec2(-1.f, 320.f), true)) {
                 const int tableFlags2 = TableFlags_BordersOuter | TableFlags_BordersH | TableFlags_SizingStretchProp
                     | TableFlags_ScrollY;
                 if (imgui.BeginTable("NvidiaProfileAllSettings", 2, tableFlags2)) {

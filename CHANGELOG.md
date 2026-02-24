@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.64 (2026-02-24)
+
+- **Main tab / standalone UI** - Migrated CPU Control from the main tab to a shared implementation using the ImGui wrapper (same pattern as the Nvidia Profile tab). CPU Control now works in both the ReShade overlay and the standalone UI. Added a **Settings** tab to the standalone installer UI and to the No-ReShade settings window; the tab shows the shared CPU Control (core affinity slider and status). Wrapper gained `Indent`, `Unindent`, and `SliderInt`; standalone settings bridge gained `GetCpuCoreCount`, `GetCpuCores`, and `SetCpuCores`.
+
 ## v0.12.63 (2026-02-24)
 
 - **Nvidia Profile tab / ImGui wrapper** - Migrated the Nvidia Profile (Inspector) tab to use an ImGui abstraction so it can run in both the ReShade overlay and the standalone UI. Introduced a common base (`IImGuiWrapper`), a ReShade-backed wrapper (header-only), and a standalone-backed wrapper; the shared tab takes API version (dx11, dx12, etc.) and the wrapper. Added a **Profile** tab to the standalone installer UI (SetupDC) and to the No-ReShade settings window as the second tab.

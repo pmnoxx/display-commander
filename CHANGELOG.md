@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.62 (2026-02-24)
+
+- **Standalone UI without ReShade** - Added support for running the standalone settings UI without ReShade. Activate by creating a `.NO_RESHADE` file in the game directory.
+
 ## v0.12.61 (2026-02-24)
 
 - **Run without ReShade** - Code refactor to allow running Display Commander without ReShade in the future.

@@ -6,6 +6,7 @@
 #include <cstring>
 #include <reshade_imgui.hpp>
 #include <vector>
+#include "../../config/display_commander_config.hpp"
 #include "../../hooks/dualsense_hooks.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
@@ -631,70 +632,55 @@ bool DualSenseWidget::IsDeviceTypeEnabled(USHORT product_id) const {
     return display_commander::dualsense::g_dualsense_hid_wrapper->IsDeviceTypeEnabled(0x054c, product_id, hid_type);
 }
 
+static const char* k_ds_section = "DisplayCommander.DualSenseWidget";
+
 void DualSenseWidget::LoadSettings() {
-    // Load enable detection setting
+    // Use Display Commander config so the widget works with and without ReShade (e.g. .NO_RESHADE mode)
     bool enable_detection;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "EnableDetection", enable_detection)) {
+    if (display_commander::config::get_config_value(k_ds_section, "EnableDetection", enable_detection)) {
         g_shared_state_ds->enable_dualsense_detection.store(enable_detection);
     }
 
-    // Load show device IDs setting
     bool show_device_ids;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowDeviceIds", show_device_ids)) {
+    if (display_commander::config::get_config_value(k_ds_section, "ShowDeviceIds", show_device_ids)) {
         g_shared_state_ds->show_device_ids.store(show_device_ids);
     }
 
-    // Load show connection type setting
     bool show_connection_type;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType",
-                                  show_connection_type)) {
+    if (display_commander::config::get_config_value(k_ds_section, "ShowConnectionType", show_connection_type)) {
         g_shared_state_ds->show_connection_type.store(show_connection_type);
     }
 
-    // Load show battery info setting
     bool show_battery_info;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowBatteryInfo", show_battery_info)) {
+    if (display_commander::config::get_config_value(k_ds_section, "ShowBatteryInfo", show_battery_info)) {
         g_shared_state_ds->show_battery_info.store(show_battery_info);
     }
 
-    // Load show advanced features setting
     bool show_advanced_features;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures",
-                                  show_advanced_features)) {
+    if (display_commander::config::get_config_value(k_ds_section, "ShowAdvancedFeatures", show_advanced_features)) {
         g_shared_state_ds->show_advanced_features.store(show_advanced_features);
     }
 
-    // Load HID type filter setting
     int hid_type;
-    if (reshade::get_config_value(nullptr, "DisplayCommander.DualSenseWidget", "HIDTypeFilter", hid_type)) {
+    if (display_commander::config::get_config_value(k_ds_section, "HIDTypeFilter", hid_type)) {
         g_shared_state_ds->selected_hid_type.store(hid_type);
     }
 }
 
 void DualSenseWidget::SaveSettings() {
-    // Save enable detection setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "EnableDetection",
-                              g_shared_state_ds->enable_dualsense_detection.load());
-
-    // Save show device IDs setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowDeviceIds",
-                              g_shared_state_ds->show_device_ids.load());
-
-    // Save show connection type setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowConnectionType",
-                              g_shared_state_ds->show_connection_type.load());
-
-    // Save show battery info setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowBatteryInfo",
-                              g_shared_state_ds->show_battery_info.load());
-
-    // Save show advanced features setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "ShowAdvancedFeatures",
-                              g_shared_state_ds->show_advanced_features.load());
-
-    // Save HID type filter setting
-    reshade::set_config_value(nullptr, "DisplayCommander.DualSenseWidget", "HIDTypeFilter",
-                              g_shared_state_ds->selected_hid_type.load());
+    display_commander::config::set_config_value(k_ds_section, "EnableDetection",
+                                                g_shared_state_ds->enable_dualsense_detection.load());
+    display_commander::config::set_config_value(k_ds_section, "ShowDeviceIds",
+                                                g_shared_state_ds->show_device_ids.load());
+    display_commander::config::set_config_value(k_ds_section, "ShowConnectionType",
+                                                g_shared_state_ds->show_connection_type.load());
+    display_commander::config::set_config_value(k_ds_section, "ShowBatteryInfo",
+                                                g_shared_state_ds->show_battery_info.load());
+    display_commander::config::set_config_value(k_ds_section, "ShowAdvancedFeatures",
+                                                g_shared_state_ds->show_advanced_features.load());
+    display_commander::config::set_config_value(k_ds_section, "HIDTypeFilter",
+                                                g_shared_state_ds->selected_hid_type.load());
+    display_commander::config::save_config("DualSense widget");
 }
 
 void DualSenseWidget::UpdateDeviceStates() {

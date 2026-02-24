@@ -4,12 +4,12 @@
 
 #define ImGui      ImGuiStandalone
 #define ImDrawList ImDrawListStandalone
-#include <d3d11.h>
-#include <dxgi.h>
+#include <d3d9.h>
 #include <shellapi.h>
 #include <windows.h>
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <ctime>
@@ -20,10 +20,13 @@
 #include <thread>
 #include <vector>
 
-#include "backends/imgui_impl_dx11.h"
+#include "backends/imgui_impl_dx9.h"
 #include "backends/imgui_impl_win32.h"
 #include "imgui.h"
 
+#include "config/display_commander_config.hpp"
+#include "display_cache.hpp"
+#include "standalone_ui_settings_bridge.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
@@ -38,14 +41,12 @@
 #define IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
 #endif
 
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3d9.lib")
 
-static ID3D11Device* g_pd3dDevice = nullptr;
-static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain* g_pSwapChain = nullptr;
+static IDirect3D9* g_pD3D = nullptr;
+static IDirect3DDevice9* g_pd3dDevice = nullptr;
+static IDirect3DSurface9* g_mainRenderTarget = nullptr;
 static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
-static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
 
 static bool CreateDeviceD3D(HWND hWnd);
 static void CleanupDeviceD3D();
@@ -678,6 +679,255 @@ static void ShowReshadeCoreVersionsForDir(const std::wstring& dir, bool onlyCurr
     }
 }
 
+void RunStandaloneSettingsUI(HINSTANCE hInst) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    ImGui_ImplWin32_EnableDpiAwareness();
+
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_CLASSDC;
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = (HINSTANCE)hInst;
+    wc.lpszClassName = L"DisplayCommanderSettingsUI";
+    if (!RegisterClassExW(&wc)) return;
+
+    std::string titleUtf8 = "Display Commander - Settings (No ReShade) v";
+    titleUtf8 += DISPLAY_COMMANDER_VERSION_STRING;
+    int titleLen = MultiByteToWideChar(CP_UTF8, 0, titleUtf8.c_str(), (int)titleUtf8.size() + 1, nullptr, 0);
+    std::wstring titleW(titleLen > 0 ? (size_t)titleLen : 0, 0);
+    if (titleLen > 0)
+        MultiByteToWideChar(CP_UTF8, 0, titleUtf8.c_str(), (int)titleUtf8.size() + 1, &titleW[0], titleLen);
+
+    HWND hwnd = standalone_ui_settings::CreateWindowW_Direct(
+        wc.lpszClassName, titleW.empty() ? L"Display Commander - Settings" : titleW.c_str(), WS_OVERLAPPEDWINDOW, 100,
+        100, 480, 420, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
+    if (!hwnd) {
+        UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        return;
+    }
+    standalone_ui_settings::SetStandaloneUiHwnd(reinterpret_cast<uintptr_t>(hwnd));
+
+    if (!CreateDeviceD3D(hwnd)) {
+        standalone_ui_settings::SetStandaloneUiHwnd(0);
+        CleanupDeviceD3D();
+        DestroyWindow(hwnd);
+        UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        return;
+    }
+
+    ShowWindow(hwnd, SW_SHOWDEFAULT);
+    UpdateWindow(hwnd);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    ImGui::StyleColorsDark();
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplDX9_Init(g_pd3dDevice);
+
+    static const char* fps_limiter_items[] = {"Default", "NVIDIA Reflex (low latency)", "Disabled",
+                                              "Sync to Display Refresh Rate (fraction of monitor refresh rate)"};
+    static const int fps_limiter_num = 4;
+
+    bool done = false;
+    while (!done) {
+        MSG msg;
+        while (PeekMessageW(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+            if (msg.message == WM_QUIT) done = true;
+        }
+        if (done) break;
+
+        if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
+            ImGui_ImplDX9_InvalidateDeviceObjects();
+            CleanupRenderTarget();
+            D3DPRESENT_PARAMETERS pp = {};
+            pp.Windowed = TRUE;
+            pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+            pp.BackBufferFormat = D3DFMT_UNKNOWN;
+            pp.BackBufferWidth = g_ResizeWidth;
+            pp.BackBufferHeight = g_ResizeHeight;
+            pp.EnableAutoDepthStencil = FALSE;
+            pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+            HRESULT hr = g_pd3dDevice->Reset(&pp);
+            g_ResizeWidth = g_ResizeHeight = 0;
+            if (hr == D3D_OK) {
+                CreateRenderTarget();
+                ImGui_ImplDX9_CreateDeviceObjects();
+            }
+        }
+
+        ImGui_ImplDX9_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(440, 0), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Display Commander - Settings (No ReShade)", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            // FPS Limiter
+            ImGui::Text("FPS Limiter");
+            ImGui::Separator();
+            int fps_mode = standalone_ui_settings::GetFpsLimiterMode();
+            if (fps_mode < 0 || fps_mode >= fps_limiter_num) fps_mode = 0;
+            if (ImGui::Combo("Mode", &fps_mode, fps_limiter_items, fps_limiter_num)) {
+                standalone_ui_settings::SetFpsLimiterMode(fps_mode);
+            }
+
+            float fps_limit_val = standalone_ui_settings::GetFpsLimit();
+            if (fps_limit_val < 0.f || fps_limit_val > 240.f) fps_limit_val = 0.f;
+            if (ImGui::SliderFloat("FPS limit", &fps_limit_val, 0.f, 240.f, "%.0f", ImGuiSliderFlags_AlwaysClamp)) {
+                standalone_ui_settings::SetFpsLimit(fps_limit_val);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Target FPS when a limiter is active. 0 = no cap (unlimited).");
+            }
+
+            ImGui::Spacing();
+            ImGui::Text("Audio");
+            ImGui::Separator();
+            bool mute = standalone_ui_settings::GetAudioMute();
+            if (ImGui::Checkbox("Mute game audio", &mute)) {
+                standalone_ui_settings::SetAudioMute(mute);
+            }
+            float volume = standalone_ui_settings::GetAudioVolumePercent();
+            if (ImGui::SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
+                standalone_ui_settings::SetAudioVolumePercent(volume);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume "
+                    "instead.");
+            }
+            bool mute_in_bg = standalone_ui_settings::GetMuteInBackground();
+            if (ImGui::Checkbox("Auto mute in background", &mute_in_bg)) {
+                standalone_ui_settings::SetMuteInBackground(mute_in_bg);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Mute game audio when the game window is in the background.");
+            }
+
+            ImGui::Spacing();
+            ImGui::Text("Window Mode");
+            ImGui::Separator();
+            static const char* window_mode_items[] = {"No changes mode", "Borderless Fullscreen (resize to fullscreen)",
+                                                      "Borderless Windowed (Aspect Ratio)"};
+            static const int window_mode_num = 3;
+            int window_mode_val = standalone_ui_settings::GetWindowMode();
+            if (window_mode_val < 0 || window_mode_val >= window_mode_num) window_mode_val = 0;
+            if (ImGui::Combo("Window Mode", &window_mode_val, window_mode_items, window_mode_num)) {
+                standalone_ui_settings::SetWindowMode(window_mode_val);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Must not be \"No changes\" for target display to take effect.");
+            }
+
+            ImGui::Spacing();
+            ImGui::Text("Target display");
+            ImGui::Separator();
+            std::string current_id = standalone_ui_settings::GetTargetDisplayDeviceId();
+            std::vector<display_cache::DisplayInfoForUI> displays;
+            try {
+                displays = display_cache::g_displayCache.GetDisplayInfoForUI();
+            } catch (...) {
+                displays.clear();
+            }
+            int current_index = -1;
+            std::vector<std::string> labels;
+            labels.push_back("(Default / primary)");
+            for (size_t i = 0; i < displays.size(); ++i) {
+                labels.push_back(displays[i].display_label);
+                if (displays[i].extended_device_id == current_id) current_index = static_cast<int>(i + 1);
+            }
+            if (current_index < 0) current_index = 0;
+            std::vector<const char*> label_ptrs;
+            for (const auto& L : labels) label_ptrs.push_back(L.c_str());
+            int sel = current_index;
+            if (ImGui::Combo("Preferred display", &sel, label_ptrs.data(), static_cast<int>(label_ptrs.size()))) {
+                std::string new_id;
+                if (sel > 0 && sel <= static_cast<int>(displays.size())) {
+                    new_id = displays[static_cast<size_t>(sel - 1)].extended_device_id;
+                }
+                standalone_ui_settings::SetTargetDisplayDeviceId(new_id);
+            }
+
+            // Status: resolution, refresh rate (target display), and current FPS (from game when running)
+            ImGui::Spacing();
+            ImGui::Text("Status");
+            ImGui::Separator();
+            const display_cache::DisplayInfoForUI* info_display = nullptr;
+            if (sel > 0 && sel <= static_cast<int>(displays.size())) {
+                info_display = &displays[static_cast<size_t>(sel - 1)];
+            } else if (!displays.empty()) {
+                for (const auto& d : displays) {
+                    if (d.is_primary) {
+                        info_display = &d;
+                        break;
+                    }
+                }
+                if (!info_display) info_display = &displays[0];
+            }
+            if (info_display) {
+                ImGui::Text("Resolution:");
+                ImGui::SameLine();
+                ImGui::TextUnformatted(
+                    info_display->current_resolution.empty() ? "—" : info_display->current_resolution.c_str());
+                ImGui::Text("Refresh rate:");
+                ImGui::SameLine();
+                ImGui::TextUnformatted(
+                    info_display->current_refresh_rate.empty() ? "—" : info_display->current_refresh_rate.c_str());
+            } else {
+                ImGui::Text("Resolution:");
+                ImGui::SameLine();
+                ImGui::TextUnformatted("—");
+                ImGui::Text("Refresh rate:");
+                ImGui::SameLine();
+                ImGui::TextUnformatted("—");
+            }
+            double current_fps = standalone_ui_settings::GetCurrentFps();
+            ImGui::Text("Current FPS:");
+            ImGui::SameLine();
+            if (current_fps > 0.0)
+                ImGui::Text("%.1f", current_fps);
+            else
+                ImGui::TextUnformatted("—");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Game FPS when running (from present). Shows — when no game or no data.");
+            }
+            uintptr_t game_hwnd = standalone_ui_settings::GetLastSwapchainHwnd();
+            ImGui::Text("Game window (HWND):");
+            ImGui::SameLine();
+            if (game_hwnd != 0)
+                ImGui::Text("0x%llX", static_cast<unsigned long long>(game_hwnd));
+            else
+                ImGui::TextUnformatted("—");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Last swapchain/game window. Set from Present or from foreground when no swapchain.");
+            }
+        }
+        ImGui::End();
+
+        ImGui::Render();
+        if (g_pd3dDevice->BeginScene() == D3D_OK) {
+            g_pd3dDevice->SetRenderTarget(0, g_mainRenderTarget);
+            g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 255), 1.0f, 0);
+            ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+            g_pd3dDevice->EndScene();
+        }
+        g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
+    }
+
+    ImGui_ImplDX9_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+    CleanupDeviceD3D();
+    standalone_ui_settings::SetStandaloneUiHwnd(0);
+    DestroyWindow(hwnd);
+    UnregisterClassW(wc.lpszClassName, wc.hInstance);
+}
+
 void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
     ImGui_ImplWin32_EnableDpiAwareness();
 
@@ -699,9 +949,9 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
         MultiByteToWideChar(CP_UTF8, 0, installerTitleUtf8.c_str(), (int)installerTitleUtf8.size() + 1,
                             &installerTitleW[0], titleLen);
 
-    HWND hwnd = CreateWindowW(wc.lpszClassName,
-                              installerTitleW.empty() ? L"Display Commander - Installer" : installerTitleW.c_str(),
-                              WS_OVERLAPPEDWINDOW, 100, 100, 1920, 1080, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
+    HWND hwnd = standalone_ui_settings::CreateWindowW_Direct(
+        wc.lpszClassName, installerTitleW.empty() ? L"Display Commander - Installer" : installerTitleW.c_str(),
+        WS_OVERLAPPEDWINDOW, 100, 100, 1920, 1080, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
     if (!hwnd) {
         UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return;
@@ -724,7 +974,7 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
 
     ImGui::StyleColorsDark();
     ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+    ImGui_ImplDX9_Init(g_pd3dDevice);
 
     std::wstring addonDir;
     if (script_dir_utf8 && script_dir_utf8[0] != '\0') {
@@ -783,13 +1033,25 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
         if (done) break;
 
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
+            ImGui_ImplDX9_InvalidateDeviceObjects();
             CleanupRenderTarget();
-            g_pSwapChain->ResizeBuffers(0, g_ResizeWidth, g_ResizeHeight, DXGI_FORMAT_UNKNOWN, 0);
+            D3DPRESENT_PARAMETERS pp = {};
+            pp.Windowed = TRUE;
+            pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+            pp.BackBufferFormat = D3DFMT_UNKNOWN;
+            pp.BackBufferWidth = g_ResizeWidth;
+            pp.BackBufferHeight = g_ResizeHeight;
+            pp.EnableAutoDepthStencil = FALSE;
+            pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+            HRESULT hr = g_pd3dDevice->Reset(&pp);
             g_ResizeWidth = g_ResizeHeight = 0;
-            CreateRenderTarget();
+            if (hr == D3D_OK) {
+                CreateRenderTarget();
+                ImGui_ImplDX9_CreateDeviceObjects();
+            }
         }
 
-        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplDX9_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
@@ -1726,15 +1988,16 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
         }
 
         ImGui::Render();
-        const float clear[4] = {0.15f, 0.15f, 0.18f, 1.0f};
-        g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
-        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear);
-        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-
-        g_pSwapChain->Present(1, 0);
+        if (g_pd3dDevice->BeginScene() == D3D_OK) {
+            g_pd3dDevice->SetRenderTarget(0, g_mainRenderTarget);
+            g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_RGBA(38, 38, 46, 255), 1.0f, 0);
+            ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+            g_pd3dDevice->EndScene();
+        }
+        g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
     }
 
-    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplDX9_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
@@ -1744,59 +2007,49 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
 }
 
 static bool CreateDeviceD3D(HWND hWnd) {
-    DXGI_SWAP_CHAIN_DESC sd = {};
-    sd.BufferCount = 2;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 60;
-    sd.BufferDesc.RefreshRate.Denominator = 1;
-    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hWnd;
-    sd.SampleDesc.Count = 1;
-    sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-    D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL levels[] = {D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0};
-    HRESULT hr =
-        D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, levels, 2, D3D11_SDK_VERSION, &sd,
-                                      &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    if (hr == DXGI_ERROR_UNSUPPORTED)
-        hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0, levels, 2, D3D11_SDK_VERSION, &sd,
-                                           &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    if (hr != S_OK) return false;
+    g_pD3D = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!g_pD3D) return false;
+    D3DPRESENT_PARAMETERS pp = {};
+    pp.Windowed = TRUE;
+    pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    pp.BackBufferFormat = D3DFMT_UNKNOWN;
+    pp.EnableAutoDepthStencil = FALSE;
+    pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+    pp.hDeviceWindow = hWnd;
+    HRESULT hr = g_pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd, D3DCREATE_HARDWARE_VERTEXPROCESSING,
+                                      &pp, &g_pd3dDevice);
+    if (hr != D3D_OK)
+        hr = g_pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &pp,
+                                  &g_pd3dDevice);
+    if (hr != D3D_OK) {
+        g_pD3D->Release();
+        g_pD3D = nullptr;
+        return false;
+    }
     CreateRenderTarget();
     return true;
 }
 
 static void CleanupDeviceD3D() {
     CleanupRenderTarget();
-    if (g_pSwapChain) {
-        g_pSwapChain->Release();
-        g_pSwapChain = nullptr;
-    }
-    if (g_pd3dDeviceContext) {
-        g_pd3dDeviceContext->Release();
-        g_pd3dDeviceContext = nullptr;
-    }
     if (g_pd3dDevice) {
         g_pd3dDevice->Release();
         g_pd3dDevice = nullptr;
     }
-}
-
-static void CreateRenderTarget() {
-    ID3D11Texture2D* pBackBuffer = nullptr;
-    g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-    if (pBackBuffer) {
-        g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
-        pBackBuffer->Release();
+    if (g_pD3D) {
+        g_pD3D->Release();
+        g_pD3D = nullptr;
     }
 }
 
+static void CreateRenderTarget() {
+    if (g_pd3dDevice) g_pd3dDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &g_mainRenderTarget);
+}
+
 static void CleanupRenderTarget() {
-    if (g_mainRenderTargetView) {
-        g_mainRenderTargetView->Release();
-        g_mainRenderTargetView = nullptr;
+    if (g_mainRenderTarget) {
+        g_mainRenderTarget->Release();
+        g_mainRenderTarget = nullptr;
     }
 }
 

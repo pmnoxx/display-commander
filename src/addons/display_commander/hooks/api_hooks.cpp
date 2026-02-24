@@ -45,6 +45,7 @@ SetWindowLongA_pfn SetWindowLongA_Original = nullptr;
 SetWindowLongW_pfn SetWindowLongW_Original = nullptr;
 SetWindowLongPtrA_pfn SetWindowLongPtrA_Original = nullptr;
 SetWindowPos_pfn SetWindowPos_Original = nullptr;
+CreateWindowExW_pfn CreateWindowExW_Original = nullptr;
 SetCursor_pfn SetCursor_Original = nullptr;
 ShowCursor_pfn ShowCursor_Original = nullptr;
 AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original = nullptr;
@@ -384,6 +385,25 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
                                  : SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
+}
+
+HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
+                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
+    return CreateWindowExW_Original
+               ? CreateWindowExW_Original(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent,
+                                          hMenu, hInstance, lpParam)
+               : CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu,
+                                 hInstance, lpParam);
+}
+
+HWND WINAPI CreateWindowExW_Detour(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X,
+                                    int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
+                                    LPVOID lpParam) {
+    return CreateWindowExW_Original
+               ? CreateWindowExW_Original(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
+                                          hWndParent, hMenu, hInstance, lpParam)
+               : CreateWindowExW(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent,
+                                 hMenu, hInstance, lpParam);
 }
 
 HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
@@ -1124,6 +1144,12 @@ bool InstallWindowsApiHooks() {
         LogError("Failed to create and enable SetWindowPos hook");
     }
 
+    // Hook CreateWindowExW (CreateWindowW is a macro that calls CreateWindowExW(0, ...)); bypass via CreateWindowW_Direct
+    if (!CreateAndEnableHook(CreateWindowExW, CreateWindowExW_Detour,
+                             reinterpret_cast<LPVOID*>(&CreateWindowExW_Original), "CreateWindowExW")) {
+        LogError("Failed to create and enable CreateWindowExW hook");
+    }
+
     // Hook AddVectoredExceptionHandler
     if (!CreateAndEnableHook(AddVectoredExceptionHandler, AddVectoredExceptionHandler_Detour,
                              reinterpret_cast<LPVOID*>(&AddVectoredExceptionHandler_Original),
@@ -1273,6 +1299,7 @@ void UninstallApiHooks() {
     MH_RemoveHook(SetWindowLongW);
     MH_RemoveHook(SetWindowLongPtrA);
     MH_RemoveHook(SetWindowPos);
+    MH_RemoveHook(CreateWindowExW);
     MH_RemoveHook(SetCursor);
     MH_RemoveHook(ShowCursor);
     MH_RemoveHook(AddVectoredExceptionHandler);
@@ -1318,6 +1345,7 @@ void UninstallApiHooks() {
     SetWindowLongW_Original = nullptr;
     SetWindowLongPtrA_Original = nullptr;
     SetWindowPos_Original = nullptr;
+    CreateWindowExW_Original = nullptr;
     SetCursor_Original = nullptr;
     ShowCursor_Original = nullptr;
     AddVectoredExceptionHandler_Original = nullptr;

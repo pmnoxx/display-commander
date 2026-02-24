@@ -267,6 +267,7 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
+    TryStartStandaloneUIFromSafeContext();
     RECORD_DETOUR_CALL(utils::get_now_ns());
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";

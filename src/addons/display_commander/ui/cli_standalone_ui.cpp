@@ -29,6 +29,7 @@
 #include "standalone_ui_settings_bridge.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "ui/imgui_wrapper_standalone.hpp"
+#include "ui/new_ui/advanced_tab.hpp"
 #include "ui/nvidia_profile_tab_shared.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
@@ -919,6 +920,12 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                         display_commander::ui::GraphicsApi::Unknown, wrapper, &s_noreshadeShowAdvancedProfile);
                     ImGui::EndTabItem();
                 }
+                if (ImGui::BeginTabItem("Advanced")) {
+                    ui::new_ui::InitAdvancedTab();
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawAdvancedTab(display_commander::ui::GraphicsApi::Unknown, wrapper);
+                    ImGui::EndTabItem();
+                }
                 ImGui::EndTabBar();
             }
         }
@@ -1659,6 +1666,12 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
                     display_commander::ui::DrawNvidiaProfileTab(
                         display_commander::ui::GraphicsApi::Unknown, wrapper, &s_standaloneShowAdvancedProfile);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Advanced")) {
+                    ui::new_ui::InitAdvancedTab();
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawAdvancedTab(display_commander::ui::GraphicsApi::Unknown, wrapper);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();

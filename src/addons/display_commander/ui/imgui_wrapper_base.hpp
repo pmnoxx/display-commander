@@ -38,6 +38,9 @@ struct ImGuiWrapperColor {
 /** Common UI colors used by shared tabs. Match res/ui_colors.hpp semantics. */
 namespace wrapper_colors {
 constexpr ImGuiWrapperColor TEXT_DIMMED   = {0.7f, 0.7f, 0.7f, 1.0f};
+constexpr ImGuiWrapperColor TEXT_LABEL    = {0.8f, 0.8f, 1.0f, 1.0f};
+constexpr ImGuiWrapperColor TEXT_ERROR    = {1.0f, 0.4f, 0.4f, 1.0f};
+constexpr ImGuiWrapperColor TEXT_WARNING  = {1.0f, 0.7f, 0.0f, 1.0f};
 constexpr ImGuiWrapperColor ICON_ERROR   = {1.0f, 0.2f, 0.2f, 1.0f};
 constexpr ImGuiWrapperColor ICON_WARNING = {1.0f, 0.7f, 0.0f, 1.0f};
 constexpr ImGuiWrapperColor ICON_SUCCESS = {0.2f, 0.8f, 0.2f, 1.0f};
@@ -45,12 +48,17 @@ constexpr ImGuiWrapperColor ICON_SUCCESS = {0.2f, 0.8f, 0.2f, 1.0f};
 
 /** ImGui table/tree flags as int (same numeric values as imgui.h for compatibility). */
 namespace wrapper_flags {
+constexpr int TreeNodeFlags_None        = 0;
 constexpr int TreeNodeFlags_DefaultOpen = 1 << 5;
 constexpr int TableFlags_BordersOuter   = (1 << 8) | (1 << 10);
 constexpr int TableFlags_BordersH      = (1 << 7) | (1 << 8);
 constexpr int TableFlags_SizingStretchProp = 3 << 13;
 constexpr int TableFlags_ScrollY       = 1 << 25;
+constexpr int TableFlags_RowBg         = 1 << 4;
+constexpr int TableFlags_Borders       = (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10);
+constexpr int TableFlags_SizingFixedFit = 2 << 13;
 constexpr int TableColumnFlags_WidthStretch = 1 << 3;
+constexpr int TableColumnFlags_WidthFixed   = 1 << 4;
 } // namespace wrapper_flags
 
 /** Abstract ImGui backend for shared UI code. */
@@ -67,10 +75,11 @@ struct IImGuiWrapper {
     virtual bool IsItemHovered() = 0;
     virtual void SetTooltip(const char* fmt, ...) = 0;
     virtual void Spacing() = 0;
+    virtual void Separator() = 0;
     virtual bool BeginChild(const char* str_id, ImGuiWrapperVec2 size, bool border) = 0;
     virtual void EndChild() = 0;
     virtual bool CollapsingHeader(const char* label, int flags = 0) = 0;
-    virtual bool BeginTable(const char* str_id, int columns, int flags) = 0;
+    virtual bool BeginTable(const char* str_id, int columns, int flags, ImGuiWrapperVec2 outer_size = {0.f, 0.f}) = 0;
     virtual void EndTable() = 0;
     virtual void TableSetupColumn(const char* label, int flags = 0, float width_weight = 0.f) = 0;
     virtual void TableSetupScrollFreeze(int cols, int rows) = 0;
@@ -82,7 +91,17 @@ struct IImGuiWrapper {
     virtual bool Selectable(const char* label, bool selected = false) = 0;
     virtual void SetItemDefaultFocus() = 0;
     virtual void PushID(int id) = 0;
+    virtual void PushID(const char* str_id) = 0;
     virtual void PopID() = 0;
+    virtual void Indent() = 0;
+    virtual void Unindent() = 0;
+    virtual bool InputText(const char* label, char* buf, size_t buf_size) = 0;
+    virtual bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") = 0;
+    virtual void TextWrapped(const char* fmt, ...) = 0;
+    virtual void PushStyleColor(int col_enum, ImGuiWrapperColor color) = 0;
+    virtual void PopStyleColor(int count = 1) = 0;
+    virtual bool TreeNodeEx(const char* label, int flags) = 0;
+    virtual void TreePop() = 0;
     virtual ImGuiWrapperVec2 GetContentRegionAvail() = 0;
     virtual float GetStyleItemSpacingX() = 0;
     virtual float GetStyleFramePaddingX() = 0;

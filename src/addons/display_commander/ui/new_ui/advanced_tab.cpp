@@ -786,7 +786,7 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
         imgui.Indent();
         CheckboxSetting(settings::g_advancedTabSettings.monitor_per_second_enabled, "Enable per-second tasks", &imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Screensaver, FPS aggregate, volume, refresh rate, VRR status, and other periodic tasks.");
+            imgui.SetTooltip("Prevent display sleep & screensaver, FPS aggregate, volume, refresh rate, VRR status, and other periodic tasks.");
         }
         SliderIntSetting(settings::g_advancedTabSettings.monitor_per_second_interval_sec, "Interval (seconds)", "%d s",
                          &imgui);
@@ -795,7 +795,7 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
         }
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_LABEL, "Triggers:");
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Screensaver / display required", &imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Prevent display sleep & screensaver", &imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_fps_aggregate, "FPS aggregate (overlay stats)", &imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_volume, "Volume (game & system)", &imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_refresh_rate, "Refresh rate stats", &imgui);

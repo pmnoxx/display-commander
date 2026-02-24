@@ -163,7 +163,7 @@ class MainTabSettings {
     ui::new_ui::StringSetting game_window_extended_display_device_id;
     ui::new_ui::StringSetting selected_extended_display_device_id;
 
-    // Screensaver Control
+    // Prevent display sleep & screensaver
     ui::new_ui::ComboSettingEnumRef<ScreensaverMode> screensaver_mode;
 
     // Advanced Settings

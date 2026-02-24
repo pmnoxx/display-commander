@@ -2187,17 +2187,17 @@ if (enabled_experimental_features) {
 
         imgui.Spacing();
 
-        // Screensaver Mode
-        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode", &imgui)) {
-            LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
+        // Prevent display sleep & screensaver mode
+        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver", &imgui)) {
+            LogInfo("Prevent display sleep & screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Controls screensaver behavior while the game is running:\n\n"
+                "Controls display sleep and screensaver while the game is running:\n\n"
                 "- Default (no change): Preserves original game behavior\n"
-                "- Disable when Focused: Disables screensaver when game window is focused\n"
-                "- Disable: Always disables screensaver while game is running\n\n"
-                "Note: This feature requires the screensaver implementation to be active.");
+                "- Disable when Focused: Prevents display sleep & screensaver when game window is focused\n"
+                "- Disable: Always prevents display sleep & screensaver while game is running\n\n"
+                "Note: Enable \"Prevent display sleep & screensaver\" in the Advanced tab for this to take effect.");
         }
 
         imgui.Unindent();

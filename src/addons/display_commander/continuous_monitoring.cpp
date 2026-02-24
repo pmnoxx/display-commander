@@ -39,7 +39,7 @@
 
 // #define TRY_CATCH_BLOCKS
 
-// External reference to screensaver mode setting
+// External reference to prevent display sleep & screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
 // Stuck detection: last time the continuous monitoring loop started an iteration (real time ns)
@@ -265,7 +265,7 @@ static void Every1sScreensaver() {
         if (display_commanderhooks::SetThreadExecutionState_Original) {
             EXECUTION_STATE result = display_commanderhooks::SetThreadExecutionState_Original(desired_state);
             if (result != 0) {
-                LogDebug("Screensaver management: SetThreadExecutionState(0x%x) = 0x%x", desired_state, result);
+                LogDebug("Prevent display sleep & screensaver: SetThreadExecutionState(0x%x) = 0x%x", desired_state, result);
             }
         }
     }

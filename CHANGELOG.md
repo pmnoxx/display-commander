@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.83 (2026-02-24)
+
+- **Prevent display sleep & screensaver** - Renamed screensaver-related UI and tooltips to "Prevent display sleep & screensaver". Main tab combo label, Advanced tab checkbox, and tooltips now use this label; note in tooltip points users to enable the option in the Advanced tab for the mode to take effect.
+
 ## v0.12.82 (2026-02-24)
 
 - **Manual color space combo** - Advanced tab manual color space dropdown now lists all DXGI color space types (23 options) with bracket labels (sRGB, scRGB, HDR10, etc.). Dropdown is taller (~14 visible rows) and tooltip notes that the list is scrollable.

@@ -26,7 +26,7 @@
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 
-// External reference to screensaver mode setting
+// External reference to prevent display sleep & screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
 namespace display_commanderhooks {
@@ -282,10 +282,10 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
     // Track total calls
     g_hook_stats[HOOK_SetThreadExecutionState].increment_total();
 
-    // Check screensaver mode setting
+    // Check prevent display sleep & screensaver mode setting
     ScreensaverMode screensaver_mode = s_screensaver_mode.load();
 
-    // If screensaver mode is DisableWhenFocused or Disable, ignore all calls
+    // If mode is DisableWhenFocused or Disable, ignore all calls
     if (screensaver_mode == ScreensaverMode::kDisableWhenFocused || screensaver_mode == ScreensaverMode::kDisable) {
         return 0x0;  // Block game's attempt to control execution state
     }

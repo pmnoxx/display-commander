@@ -1,5 +1,11 @@
 #pragma once
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}
+
 #include <atomic>
 #include <functional>
 #include <reshade_imgui.hpp>
@@ -413,14 +419,26 @@ bool SliderFloatSettingRef(FloatSettingRef &setting, const char *label, const ch
 // SliderInt wrapper
 bool SliderIntSetting(IntSetting &setting, const char *label, const char *format = "%d");
 
+// SliderInt wrapper with optional ImGui wrapper (for shared UI e.g. advanced tab)
+bool SliderIntSetting(IntSetting &setting, const char *label, const char *format,
+                     display_commander::ui::IImGuiWrapper *imgui);
+
 // SliderInt wrapper for IntSettingRef
 bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *format = "%d");
 
 // Checkbox wrapper
 bool CheckboxSetting(BoolSetting &setting, const char *label);
 
+// Checkbox wrapper with optional ImGui wrapper (for shared UI e.g. advanced tab in standalone)
+bool CheckboxSetting(BoolSetting &setting, const char *label,
+                    display_commander::ui::IImGuiWrapper *imgui);
+
 // Checkbox wrapper for BoolSettingRef
 bool CheckboxSetting(BoolSettingRef &setting, const char *label);
+
+// Checkbox wrapper for BoolSettingRef with optional ImGui wrapper
+bool CheckboxSetting(BoolSettingRef &setting, const char *label,
+                    display_commander::ui::IImGuiWrapper *imgui);
 
 // Combo wrapper
 bool ComboSettingWrapper(ComboSetting &setting, const char *label);

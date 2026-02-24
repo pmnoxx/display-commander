@@ -1,10 +1,10 @@
 #pragma once
 
-#include <reshade_imgui.hpp>
+#include "../../ui/imgui_wrapper_base.hpp"
 
 namespace ui::new_ui {
 
 void InitAdvancedTab();
-void DrawAdvancedTab(reshade::api::effect_runtime* runtime);
+void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 
 }  // namespace ui::new_ui

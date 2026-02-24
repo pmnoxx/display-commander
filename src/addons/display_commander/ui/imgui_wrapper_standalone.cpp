@@ -50,6 +50,9 @@ void ImGuiWrapperStandalone::SetTooltip(const char* fmt, ...) {
 void ImGuiWrapperStandalone::Spacing() {
     ImGui::Spacing();
 }
+void ImGuiWrapperStandalone::Separator() {
+    ImGui::Separator();
+}
 bool ImGuiWrapperStandalone::BeginChild(const char* str_id, ImGuiWrapperVec2 size, bool border) {
     return ImGui::BeginChild(str_id, to_ImVec2(size), border);
 }
@@ -59,8 +62,9 @@ void ImGuiWrapperStandalone::EndChild() {
 bool ImGuiWrapperStandalone::CollapsingHeader(const char* label, int flags) {
     return ImGui::CollapsingHeader(label, static_cast<ImGuiTreeNodeFlags>(flags));
 }
-bool ImGuiWrapperStandalone::BeginTable(const char* str_id, int columns, int flags) {
-    return ImGui::BeginTable(str_id, columns, static_cast<ImGuiTableFlags>(flags));
+bool ImGuiWrapperStandalone::BeginTable(const char* str_id, int columns, int flags,
+                                        ImGuiWrapperVec2 outer_size) {
+    return ImGui::BeginTable(str_id, columns, static_cast<ImGuiTableFlags>(flags), to_ImVec2(outer_size));
 }
 void ImGuiWrapperStandalone::EndTable() {
     ImGui::EndTable();
@@ -95,8 +99,41 @@ void ImGuiWrapperStandalone::SetItemDefaultFocus() {
 void ImGuiWrapperStandalone::PushID(int id) {
     ImGui::PushID(id);
 }
+void ImGuiWrapperStandalone::PushID(const char* str_id) {
+    ImGui::PushID(str_id);
+}
 void ImGuiWrapperStandalone::PopID() {
     ImGui::PopID();
+}
+void ImGuiWrapperStandalone::Indent() {
+    ImGui::Indent();
+}
+void ImGuiWrapperStandalone::Unindent() {
+    ImGui::Unindent();
+}
+bool ImGuiWrapperStandalone::InputText(const char* label, char* buf, size_t buf_size) {
+    return ImGui::InputText(label, buf, buf_size);
+}
+bool ImGuiWrapperStandalone::SliderInt(const char* label, int* v, int v_min, int v_max, const char* format) {
+    return ImGui::SliderInt(label, v, v_min, v_max, format);
+}
+void ImGuiWrapperStandalone::TextWrapped(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    ImGui::TextWrappedV(fmt, args);
+    va_end(args);
+}
+void ImGuiWrapperStandalone::PushStyleColor(int col_enum, ImGuiWrapperColor color) {
+    ImGui::PushStyleColor(static_cast<ImGuiCol>(col_enum), to_ImVec4(color));
+}
+void ImGuiWrapperStandalone::PopStyleColor(int count) {
+    ImGui::PopStyleColor(count);
+}
+bool ImGuiWrapperStandalone::TreeNodeEx(const char* label, int flags) {
+    return ImGui::TreeNodeEx(label, static_cast<ImGuiTreeNodeFlags>(flags));
+}
+void ImGuiWrapperStandalone::TreePop() {
+    ImGui::TreePop();
 }
 ImGuiWrapperVec2 ImGuiWrapperStandalone::GetContentRegionAvail() {
     return from_ImVec2(ImGui::GetContentRegionAvail());

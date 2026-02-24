@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.65 (2026-02-24)
+
+- **Advanced tab / standalone UI** - Migrated Advanced tab to standalone UI. The Advanced tab is now available in both the No-ReShade settings window and the installer (SetupDC) window as an "Advanced" tab alongside Settings, Profile, Setup, and Games.
+
 ## v0.12.64 (2026-02-24)
 
 - **Main tab / standalone UI** - Migrated CPU Control from the main tab to a shared implementation using the ImGui wrapper (same pattern as the Nvidia Profile tab). CPU Control now works in both the ReShade overlay and the standalone UI. Added a **Settings** tab to the standalone installer UI and to the No-ReShade settings window; the tab shows the shared CPU Control (core affinity slider and status). Wrapper gained `Indent`, `Unindent`, and `SliderInt`; standalone settings bridge gained `GetCpuCoreCount`, `GetCpuCores`, and `SetCpuCores`.

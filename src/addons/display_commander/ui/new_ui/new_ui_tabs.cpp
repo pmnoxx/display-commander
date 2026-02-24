@@ -7,6 +7,7 @@
 #include "../../utils/logging.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
+#include "../../ui/imgui_wrapper_reshade.hpp"
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
 #include "experimental_tab.hpp"
@@ -217,7 +218,13 @@ void InitializeNewUI() {
         "Advanced", "advanced",
         [](reshade::api::effect_runtime* runtime) {
             try {
-                ui::new_ui::DrawAdvancedTab(runtime);
+                display_commander::ui::GraphicsApi api = display_commander::ui::GraphicsApi::Unknown;
+                if (runtime != nullptr && runtime->get_device() != nullptr) {
+                    api = static_cast<display_commander::ui::GraphicsApi>(
+                        static_cast<std::uint32_t>(runtime->get_device()->get_api()));
+                }
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::DrawAdvancedTab(api, wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing advanced tab: %s", e.what());
             } catch (...) {

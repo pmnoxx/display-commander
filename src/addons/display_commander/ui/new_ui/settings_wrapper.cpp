@@ -1,4 +1,5 @@
 #include "settings_wrapper.hpp"
+#include "../imgui_wrapper_base.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../performance_types.hpp"
@@ -652,13 +653,31 @@ bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const ch
     return changed;
 }
 
-bool SliderIntSetting(IntSetting& setting, const char* label, const char* format) {
+bool SliderIntSetting(IntSetting& setting, const char* label, const char* format,
+                     display_commander::ui::IImGuiWrapper* imgui) {
     int value = setting.GetValue();
-    bool changed = ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
+    bool changed = imgui ? imgui->SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format)
+                         : ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
         setting.SetValue(value);
     }
-    // Show reset-to-default button if value differs from default
+    if (imgui) {
+        int current = setting.GetValue();
+        int def = setting.GetDefaultValue();
+        if (current != def) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%d)", def);
+            }
+            imgui->PopID();
+        }
+        return changed;
+    }
     {
         int current = setting.GetValue();
         int def = setting.GetDefaultValue();
@@ -676,6 +695,10 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
         }
     }
     return changed;
+}
+
+bool SliderIntSetting(IntSetting& setting, const char* label, const char* format) {
+    return SliderIntSetting(setting, label, format, nullptr);
 }
 
 bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format) {
@@ -722,13 +745,78 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
     return changed;
 }
 
-bool CheckboxSetting(BoolSetting& setting, const char* label) {
+bool CheckboxSetting(BoolSetting& setting, const char* label,
+                    display_commander::ui::IImGuiWrapper* imgui) {
     bool value = setting.GetValue();
-    bool changed = ImGui::Checkbox(label, &value);
+    bool changed = imgui ? imgui->Checkbox(label, &value) : ImGui::Checkbox(label, &value);
     if (changed) {
         setting.SetValue(value);
     }
-    // Show reset-to-default button if value differs from default
+    if (imgui) {
+        bool current = setting.GetValue();
+        bool def = setting.GetDefaultValue();
+        if (current != def) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%s)", def ? "On" : "Off");
+            }
+            imgui->PopID();
+        }
+        return changed;
+    }
+    // Show reset-to-default button if value differs from default (ReShade ImGui path)
+    {
+        bool current = setting.GetValue();
+        bool def = setting.GetDefaultValue();
+        if (current != def) {
+            ImGui::SameLine();
+            ImGui::PushID(&setting);
+            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Reset to default (%s)", def ? "On" : "Off");
+            }
+            ImGui::PopID();
+        }
+    }
+    return changed;
+}
+
+bool CheckboxSetting(BoolSetting& setting, const char* label) {
+    return CheckboxSetting(setting, label, nullptr);
+}
+
+bool CheckboxSetting(BoolSettingRef& setting, const char* label,
+                    display_commander::ui::IImGuiWrapper* imgui) {
+    bool value = setting.GetValue();
+    bool changed = imgui ? imgui->Checkbox(label, &value) : ImGui::Checkbox(label, &value);
+    if (changed) {
+        setting.SetValue(value);
+    }
+    if (imgui) {
+        bool current = setting.GetValue();
+        bool def = setting.GetDefaultValue();
+        if (current != def) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%s)", def ? "On" : "Off");
+            }
+            imgui->PopID();
+        }
+        return changed;
+    }
     {
         bool current = setting.GetValue();
         bool def = setting.GetDefaultValue();
@@ -749,29 +837,7 @@ bool CheckboxSetting(BoolSetting& setting, const char* label) {
 }
 
 bool CheckboxSetting(BoolSettingRef& setting, const char* label) {
-    bool value = setting.GetValue();
-    bool changed = ImGui::Checkbox(label, &value);
-    if (changed) {
-        setting.SetValue(value);
-    }
-    // Show reset-to-default button if value differs from default
-    {
-        bool current = setting.GetValue();
-        bool def = setting.GetDefaultValue();
-        if (current != def) {
-            ImGui::SameLine();
-            ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
-                setting.SetValue(def);
-                changed = true;
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Reset to default (%s)", def ? "On" : "Off");
-            }
-            ImGui::PopID();
-        }
-    }
-    return changed;
+    return CheckboxSetting(setting, label, nullptr);
 }
 
 bool ComboSettingWrapper(ComboSetting& setting, const char* label) {

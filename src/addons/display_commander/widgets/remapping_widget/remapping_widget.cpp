@@ -123,7 +123,7 @@ void RemappingWidget::DrawRemappingSettings() {
         ImGui::Spacing();
 
         // Enable Default Chords checkbox
-        if (ui::new_ui::CheckboxSetting(settings::g_mainTabSettings.enable_default_chords,
+        if (::ui::new_ui::CheckboxSetting(settings::g_mainTabSettings.enable_default_chords,
                                         "Enable Default Gamepad Chords")) {
             // Re-initialize default chords if enabled, or remove them if disabled
             if (settings::g_mainTabSettings.enable_default_chords.GetValue()) {

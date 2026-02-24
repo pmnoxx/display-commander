@@ -45,6 +45,24 @@ constexpr int TableColumnFlags_WidthStretch = 1 << 3;
 constexpr int TableColumnFlags_WidthFixed   = 1 << 4;
 } // namespace wrapper_flags
 
+/**
+ * Proxy interface for ImGui draw list. Use this instead of raw ImDrawList* from the wrapper
+ * so that all draw calls go through the same module that owns the ImGui context (avoids
+ * linker/ABI issues and crashes when the addon's ImDrawList layout differs from runtime's).
+ */
+struct IImDrawList {
+    virtual ~IImDrawList() = default;
+    virtual void AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f) = 0;
+    virtual void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
+                         int flags = 0, float thickness = 1.0f) = 0;
+    virtual void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col,
+                               float rounding = 0.0f, int flags = 0) = 0;
+    virtual void AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments = 0,
+                           float thickness = 1.0f) = 0;
+    virtual void AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments = 0) = 0;
+    virtual void AddTriangleFilled(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col) = 0;
+};
+
 /** Abstract ImGui backend for shared UI code. */
 struct IImGuiWrapper {
     virtual ~IImGuiWrapper() = default;
@@ -54,6 +72,7 @@ struct IImGuiWrapper {
     virtual void TextColored(const ImVec4& col, const char* fmt, ...) = 0;
     virtual void TextUnformatted(const char* text) = 0;
     virtual bool Button(const char* label) = 0;
+    virtual bool Button(const char* label, const ImVec2& size) = 0;
     virtual bool SmallButton(const char* label) = 0;
     virtual bool Checkbox(const char* label, bool* v) = 0;
     virtual bool IsItemHovered() = 0;
@@ -83,6 +102,7 @@ struct IImGuiWrapper {
     virtual void Indent() = 0;
     virtual void Unindent() = 0;
     virtual bool InputText(const char* label, char* buf, size_t buf_size) = 0;
+    virtual bool InputInt(const char* label, int* v, int step = 1, int step_fast = 0, int flags = 0) = 0;
     virtual bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") = 0;
     virtual void TextWrapped(const char* fmt, ...) = 0;
     virtual void TextDisabled(const char* fmt, ...) = 0;
@@ -105,8 +125,8 @@ struct IImGuiWrapper {
     // Combo (int selection, array of item strings)
     virtual bool Combo(const char* label, int* current_item, const char* const items[], int items_count) = 0;
 
-    // Layout / cursor
-    virtual ImDrawList* GetWindowDrawList() = 0;
+    // Layout / cursor (returns proxy to avoid using wrong ImDrawList ABI/layout across modules)
+    virtual IImDrawList* GetWindowDrawList() = 0;
     virtual ImVec2 GetCursorScreenPos() = 0;
     virtual void SetCursorScreenPos(const ImVec2& pos) = 0;
     virtual float GetCursorPosX() = 0;
@@ -146,6 +166,10 @@ struct IImGuiWrapper {
     // Window (Begin/End for e.g. debug windows)
     virtual bool Begin(const char* name, bool* p_open, int flags = 0) = 0;
     virtual void End() = 0;
+    virtual void SetNextWindowPos(const ImVec2& pos, int cond = 0, const ImVec2& pivot = ImVec2(0.f, 0.f)) = 0;
+    virtual void SetNextWindowSize(const ImVec2& size, int cond = 0) = 0;
+    virtual ImVec2 GetDisplaySize() = 0;
+    virtual const ImGuiIO& GetIO() = 0;
 };
 
 } // namespace ui

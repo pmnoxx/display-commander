@@ -6,11 +6,7 @@
  * (e.g. cli_standalone_ui.cpp) to avoid pulling in reshade_imgui.hpp and duplicate ImGui symbols.
  */
 
-namespace reshade {
-namespace api {
-struct effect_runtime;
-}
-}  // namespace reshade
+#include "../imgui_wrapper_base.hpp"
 
 namespace display_commander {
 namespace ui {
@@ -21,6 +17,6 @@ struct IImGuiWrapper;
 namespace ui::new_ui {
 
 void InitMainNewTab();
-void DrawMainNewTab(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& imgui);
+void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 
 }  // namespace ui::new_ui

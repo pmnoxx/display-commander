@@ -1,17 +1,21 @@
 #pragma once
 
-#include "../imgui_wrapper_base.hpp"
 #include <reshade_imgui.hpp>
+#include "../imgui_wrapper_base.hpp"
+
 
 namespace ui::new_ui {
 
 void InitMainNewTab();
 
-// Draw the main new tab content (imgui unused in phase 1; for future standalone migration)
-void DrawMainNewTab(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& imgui);
+// Convert ReShade runtime to device API enum (for callers that have effect_runtime*).
+display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effect_runtime* runtime);
 
-// Draw display settings section
-void DrawDisplaySettings(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& imgui);
+// Draw the main new tab content (api = device API in ReShade; GraphicsApi::Unknown in standalone).
+void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
+
+// Draw display settings section (api = device API when in ReShade; Unknown in standalone)
+void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 
 // Display settings section helpers (split from DrawDisplaySettings)
 void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui);
@@ -31,7 +35,7 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw important information section (Flip State)
 // When has_effect_runtime is false (e.g. standalone UI), frame timing/graphs are skipped to avoid crashes.
-void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui, bool has_effect_runtime = true);
+void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw frame time graph section
 void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui);

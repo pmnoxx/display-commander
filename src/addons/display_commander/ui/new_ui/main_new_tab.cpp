@@ -340,7 +340,7 @@ void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
     imgui.TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
 
-    ImDrawList* draw_list = imgui.GetWindowDrawList();
+    auto draw_list = imgui.GetWindowDrawList();
     if (draw_list == nullptr) {
         imgui.EndTable();
         return;
@@ -423,7 +423,7 @@ void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bo
     }
     imgui.TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
     imgui.TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
-    ImDrawList* draw_list = imgui.GetWindowDrawList();
+    auto draw_list = imgui.GetWindowDrawList();
     if (draw_list == nullptr) {
         imgui.EndTable();
         return;
@@ -1319,8 +1319,22 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
 }
 
-void DrawMainNewTab(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
+display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effect_runtime* runtime) {
+    if (!runtime) return display_commander::ui::GraphicsApi::Unknown;
+    auto rapi = runtime->get_device()->get_api();
+    switch (rapi) {
+        case reshade::api::device_api::d3d9:   return display_commander::ui::GraphicsApi::D3D9;
+        case reshade::api::device_api::d3d10:  return display_commander::ui::GraphicsApi::D3D10;
+        case reshade::api::device_api::d3d11:  return display_commander::ui::GraphicsApi::D3D11;
+        case reshade::api::device_api::d3d12:  return display_commander::ui::GraphicsApi::D3D12;
+        case reshade::api::device_api::opengl: return display_commander::ui::GraphicsApi::OpenGL;
+        case reshade::api::device_api::vulkan: return display_commander::ui::GraphicsApi::Vulkan;
+        default:                               return display_commander::ui::GraphicsApi::Unknown;
+    }
+}
+
+void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
+    (void)api;
     // Load saved settings once and sync legacy globals
     g_rendering_ui_section.store("ui:tab:main_new:entry", std::memory_order_release);
 
@@ -1677,7 +1691,7 @@ if (enabled_experimental_features) {
     g_rendering_ui_section.store("ui:tab:main_new:display_settings", std::memory_order_release);
     if (imgui.CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
-        DrawDisplaySettings(runtime, imgui);
+        DrawDisplaySettings(api, imgui);
         if (enabled_experimental_features) {
             // Misc (Streamline DLSS-G)
             g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
@@ -1700,85 +1714,91 @@ if (enabled_experimental_features) {
         imgui.Unindent();
     }
 
-    imgui.Spacing();
+    if (g_reshade_loaded.load()) {
+        imgui.Spacing();
 
-    // Brightness and AutoHDR (Display Commander ReShade effects)
-    g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
-    if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f", &imgui)) {
-            // Value is applied in OnReShadePresent each frame
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Adjust brightness via Display Commander's ReShade effect (0-200%%, 100%% = neutral).\n"
-                "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
-                "Ctrl+Shift+F5) or game restart.");
-        }
-        if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", &imgui)) {
-            // Value is applied in OnReShadePresent each frame
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, multiply.");
-        }
-        if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR", &imgui)) {
-            // Value is applied in OnReShadePresent each frame
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Run DisplayCommander Perceptual Boost effect for HDR-style enhancement. Requires Generic RenoDX to "
-                "upgrade buffers from SDR to HDR.");
-        }
-        if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
+        // Brightness and AutoHDR (Display Commander ReShade effects)
+        g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
+        if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
+            imgui.Indent();
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f",
                                       &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
+                imgui.SetTooltip(
+                    "Adjust brightness via Display Commander's ReShade effect (0-200%%, 100%% = neutral).\n"
+                    "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
+                    "Ctrl+Shift+F5) or game restart.");
             }
-        }
-        // Misc subsection: Gamma, Contrast, Saturation (less prominent)
-        ui::colors::PushNestedHeaderColors(&imgui);
-        if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
-            imgui.Indent();
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", &imgui)) {
+            if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
-                    "Brightness.");
+                    "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, "
+                    "multiply.");
             }
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", &imgui)) {
+            if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR", &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
+                    "Run DisplayCommander Perceptual Boost effect for HDR-style enhancement. Requires Generic RenoDX "
+                    "to "
+                    "upgrade buffers from SDR to HDR.");
             }
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", &imgui)) {
-                // Value is applied in OnReShadePresent each frame
+            if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
+                                          &imgui)) {
+                    // Value is applied in OnReShadePresent each frame
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
+                }
             }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in DisplayCommander_Control.fx "
-                    "with "
-                    "Brightness.");
+            // Misc subsection: Gamma, Contrast, Saturation (less prominent)
+            ui::colors::PushNestedHeaderColors(&imgui);
+            if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+                imgui.Indent();
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", &imgui)) {
+                    // Value is applied in OnReShadePresent each frame
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
+                        "Brightness.");
+                }
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", &imgui)) {
+                    // Value is applied in OnReShadePresent each frame
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
+                }
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", &imgui)) {
+                    // Value is applied in OnReShadePresent each frame
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in "
+                        "DisplayCommander_Control.fx "
+                        "with "
+                        "Brightness.");
+                }
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", &imgui)) {
+                    // Value is applied in OnReShadePresent each frame
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
+                        "Brightness.");
+                }
+                imgui.Unindent();
             }
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", &imgui)) {
-                // Value is applied in OnReShadePresent each frame
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
-                    "Brightness.");
-            }
+            ui::colors::PopNestedHeaderColors(&imgui);
             imgui.Unindent();
         }
-        ui::colors::PopNestedHeaderColors(&imgui);
-        imgui.Unindent();
     }
 
     imgui.Spacing();
@@ -1787,7 +1807,7 @@ if (enabled_experimental_features) {
     g_rendering_ui_section.store("ui:tab:main_new:resolution", std::memory_order_release);
     if (imgui.CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
-        display_commander::widgets::resolution_widget::DrawResolutionWidget();
+        display_commander::widgets::resolution_widget::DrawResolutionWidget(imgui);
         imgui.Unindent();
     }
 
@@ -2354,7 +2374,7 @@ if (enabled_experimental_features) {
     g_rendering_ui_section.store("ui:tab:main_new:important_info", std::memory_order_release);
     if (imgui.CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
-        DrawImportantInfo(imgui, runtime != nullptr);
+        DrawImportantInfo(imgui);
         imgui.Unindent();
     }
     g_rendering_ui_section.store("ui:tab:main_new:advanced_settings", std::memory_order_release);
@@ -3255,7 +3275,7 @@ void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& 
 
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt)) {
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, &imgui)) {
         }
 
         auto cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
@@ -3326,7 +3346,8 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
+                                  &imgui)) {
         }
         if (!fps_limit_enabled) {
             imgui.EndDisabled();
@@ -4248,24 +4269,20 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
     }
 }
 
-void DrawDisplaySettings(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
-    if (runtime == nullptr) {
-        imgui.TextUnformatted("Display settings require a running game with ReShade.");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Run a game with Display Commander loaded to configure display and FPS limiter.");
-        }
-        return;
-    }
+void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     DrawDisplaySettings_DisplayAndTarget(imgui);
     DrawDisplaySettings_WindowModeAndApply(imgui);
     DrawDisplaySettings_FpsLimiterMode(imgui);
     DrawDisplaySettings_FpsAndBackground(imgui);
     DrawDisplaySettings_VSyncAndTearing(imgui);
 
-    auto api = runtime->get_device()->get_api();
-    const bool is_dxgi = api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
-                         || api == reshade::api::device_api::d3d12;
+    // Unknown in standalone UI; skip API-dependent sections
+    if (api == display_commander::ui::GraphicsApi::Unknown) {
+        return;
+    }
+    const bool is_dxgi = api == display_commander::ui::GraphicsApi::D3D10
+                         || api == display_commander::ui::GraphicsApi::D3D11
+                         || api == display_commander::ui::GraphicsApi::D3D12;
     {
         const DLSSGSummary dlss_summary = GetDLSSGSummary();
         // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded
@@ -4287,7 +4304,7 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime, display_commande
                             "Parameter overrides and DLSS preset controls may not apply until then.");
                     }
                 }
-            } else if (api == reshade::api::device_api::vulkan) {
+            } else if (api == display_commander::ui::GraphicsApi::Vulkan) {
                 const bool nvll_loaded = (GetModuleHandleW(L"NvLowLatencyVk.dll") != nullptr);
                 if (nvll_loaded) {
                     if (AreNvLowLatencyVkHooksInstalled()) {
@@ -4686,7 +4703,7 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
     const float bar_height = 48.0f;
     const float bar_width = 10.0f;
     const float gap = 3.0f;
-    ImDrawList* draw_list = imgui.GetWindowDrawList();
+    auto draw_list = imgui.GetWindowDrawList();
     const ImVec2 cursor = imgui.GetCursorScreenPos();
     const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
     if (draw_list != nullptr) {
@@ -4897,7 +4914,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
                         // Per-channel VU bar (graphical) + raw value next to the slider when we have meter data
                         if (ch < effective_meter_count && ch < s_vu_smoothed.size()) {
                             const float level = (std::min)(1.0f, s_vu_smoothed[ch]);
-                            ImDrawList* draw_list = imgui.GetWindowDrawList();
+                            auto draw_list = imgui.GetWindowDrawList();
                             const ImVec2 pos = imgui.GetCursorScreenPos();
                             const ImVec2 bg_min(pos.x, pos.y);
                             const ImVec2 bg_max(pos.x + row_vu_width, pos.y + row_vu_height);
@@ -4950,7 +4967,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Per-channel peak level (default output device, mixed).");
         }
-        ImDrawList* draw_list = imgui.GetWindowDrawList();
+        auto draw_list = imgui.GetWindowDrawList();
         const ImVec2 cursor = imgui.GetCursorScreenPos();
         const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
         if (draw_list != nullptr) {
@@ -5324,122 +5341,124 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    imgui.SameLine();
+    if (g_reshade_loaded.load()) {
+        imgui.SameLine();
 
-    // Open reshade.log Button
-    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
-    if (imgui.Button(ICON_FK_FILE " reshade.log")) {
-        std::thread([]() {
-            LogDebug("Open reshade.log button pressed (bg thread)");
+        // Open reshade.log Button
+        imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+        if (imgui.Button(ICON_FK_FILE " reshade.log")) {
+            std::thread([]() {
+                LogDebug("Open reshade.log button pressed (bg thread)");
 
-            // Get current process executable path
-            char process_path[MAX_PATH];
-            DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
+                // Get current process executable path
+                char process_path[MAX_PATH];
+                DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
 
-            if (path_length == 0) {
-                LogError("Failed to get current process path for log file opening");
-                return;
-            }
+                if (path_length == 0) {
+                    LogError("Failed to get current process path for log file opening");
+                    return;
+                }
 
-            // Get the parent directory of the executable
-            std::string full_path(process_path);
-            size_t last_slash = full_path.find_last_of("\\/");
+                // Get the parent directory of the executable
+                std::string full_path(process_path);
+                size_t last_slash = full_path.find_last_of("\\/");
 
-            if (last_slash == std::string::npos) {
-                LogError("Invalid process path format: %s", full_path.c_str());
-                return;
-            }
+                if (last_slash == std::string::npos) {
+                    LogError("Invalid process path format: %s", full_path.c_str());
+                    return;
+                }
 
-            std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
-            LogInfo("Opening reshade.log: %s", log_path.c_str());
-
-            // Open the log file with default text editor
-            HINSTANCE result = ShellExecuteA(nullptr, "open", log_path.c_str(), nullptr, nullptr, SW_SHOW);
-
-            if (reinterpret_cast<intptr_t>(result) <= 32) {
-                LogError("Failed to open reshade.log: %s (Error: %ld)", log_path.c_str(),
-                         reinterpret_cast<intptr_t>(result));
-            } else {
-                LogInfo("Successfully opened reshade.log: %s", log_path.c_str());
-            }
-        }).detach();
-    }
-    imgui.PopStyleColor();
-    if (imgui.IsItemHovered()) {
-        char process_path[MAX_PATH];
-        if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
-            std::string full_path(process_path);
-            size_t last_slash = full_path.find_last_of("\\/");
-            if (last_slash != std::string::npos) {
                 std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
-                imgui.SetTooltip("Open reshade.log in the default text editor.\nFull path: %s", log_path.c_str());
+                LogInfo("Opening reshade.log: %s", log_path.c_str());
+
+                // Open the log file with default text editor
+                HINSTANCE result = ShellExecuteA(nullptr, "open", log_path.c_str(), nullptr, nullptr, SW_SHOW);
+
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open reshade.log: %s (Error: %ld)", log_path.c_str(),
+                             reinterpret_cast<intptr_t>(result));
+                } else {
+                    LogInfo("Successfully opened reshade.log: %s", log_path.c_str());
+                }
+            }).detach();
+        }
+        imgui.PopStyleColor();
+        if (imgui.IsItemHovered()) {
+            char process_path[MAX_PATH];
+            if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
+                std::string full_path(process_path);
+                size_t last_slash = full_path.find_last_of("\\/");
+                if (last_slash != std::string::npos) {
+                    std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
+                    imgui.SetTooltip("Open reshade.log in the default text editor.\nFull path: %s", log_path.c_str());
+                } else {
+                    imgui.SetTooltip("Open reshade.log in the default text editor.");
+                }
             } else {
                 imgui.SetTooltip("Open reshade.log in the default text editor.");
             }
-        } else {
-            imgui.SetTooltip("Open reshade.log in the default text editor.");
         }
-    }
 
-    imgui.SameLine();
+        imgui.SameLine();
 
-    // Open reshade.ini Button
-    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
-    if (imgui.Button(ICON_FK_FILE " reshade.ini")) {
-        std::thread([]() {
-            LogDebug("Open reshade.ini button pressed (bg thread)");
+        // Open reshade.ini Button
+        imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+        if (imgui.Button(ICON_FK_FILE " reshade.ini")) {
+            std::thread([]() {
+                LogDebug("Open reshade.ini button pressed (bg thread)");
 
-            char process_path[MAX_PATH];
-            DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
+                char process_path[MAX_PATH];
+                DWORD path_length = GetModuleFileNameA(nullptr, process_path, MAX_PATH);
 
-            if (path_length == 0) {
-                LogError("Failed to get current process path for reshade.ini opening");
-                return;
-            }
+                if (path_length == 0) {
+                    LogError("Failed to get current process path for reshade.ini opening");
+                    return;
+                }
 
-            std::string full_path(process_path);
-            size_t last_slash = full_path.find_last_of("\\/");
+                std::string full_path(process_path);
+                size_t last_slash = full_path.find_last_of("\\/");
 
-            if (last_slash == std::string::npos) {
-                LogError("Invalid process path format: %s", full_path.c_str());
-                return;
-            }
+                if (last_slash == std::string::npos) {
+                    LogError("Invalid process path format: %s", full_path.c_str());
+                    return;
+                }
 
-            std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
-            LogInfo("Opening reshade.ini: %s", ini_path.c_str());
-
-            HINSTANCE result = ShellExecuteA(nullptr, "open", ini_path.c_str(), nullptr, nullptr, SW_SHOW);
-
-            if (reinterpret_cast<intptr_t>(result) <= 32) {
-                LogError("Failed to open reshade.ini: %s (Error: %ld)", ini_path.c_str(),
-                         reinterpret_cast<intptr_t>(result));
-            } else {
-                LogInfo("Successfully opened reshade.ini: %s", ini_path.c_str());
-            }
-        }).detach();
-    }
-    imgui.PopStyleColor();
-    if (imgui.IsItemHovered()) {
-        char process_path[MAX_PATH];
-        if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
-            std::string full_path(process_path);
-            size_t last_slash = full_path.find_last_of("\\/");
-            if (last_slash != std::string::npos) {
                 std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
-                imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
-                                 ini_path.c_str());
+                LogInfo("Opening reshade.ini: %s", ini_path.c_str());
+
+                HINSTANCE result = ShellExecuteA(nullptr, "open", ini_path.c_str(), nullptr, nullptr, SW_SHOW);
+
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open reshade.ini: %s (Error: %ld)", ini_path.c_str(),
+                             reinterpret_cast<intptr_t>(result));
+                } else {
+                    LogInfo("Successfully opened reshade.ini: %s", ini_path.c_str());
+                }
+            }).detach();
+        }
+        imgui.PopStyleColor();
+        if (imgui.IsItemHovered()) {
+            char process_path[MAX_PATH];
+            if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
+                std::string full_path(process_path);
+                size_t last_slash = full_path.find_last_of("\\/");
+                if (last_slash != std::string::npos) {
+                    std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
+                    imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
+                                     ini_path.c_str());
+                } else {
+                    imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
+                }
             } else {
                 imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
             }
-        } else {
-            imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
         }
     }
 
     imgui.EndGroup();
 }
 
-void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui, bool has_effect_runtime) {
+void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     // Test Overlay Control
     {
@@ -5882,339 +5901,338 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui, bool has_eff
     ui::colors::PushNestedHeaderColors(&imgui);
     if (imgui.CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();  // Indent content inside subsection
-        if (!has_effect_runtime) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED,
-                              "Frame timing and graphs are only available when running in-game.");
-        } else {
-        // Display GPU fence status/failure reason
-        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
-            const char* failure_reason = ::g_gpu_fence_failure_reason.load();
-            if (failure_reason != nullptr) {
-                imgui.Indent();
-                imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ERROR);
-                imgui.TextUnformatted(ICON_FK_WARNING);
-                imgui.PopStyleColor();
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_ERROR, "GPU Fence Failed: %s", failure_reason);
-                imgui.Unindent();
-            } else {
-                imgui.Indent();
-                imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
-                imgui.TextUnformatted(ICON_FK_OK);
-                imgui.PopStyleColor();
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, "GPU Fence Active");
-                imgui.Unindent();
+        {
+            // Display GPU fence status/failure reason
+            if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
+                const char* failure_reason = ::g_gpu_fence_failure_reason.load();
+                if (failure_reason != nullptr) {
+                    imgui.Indent();
+                    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ERROR);
+                    imgui.TextUnformatted(ICON_FK_WARNING);
+                    imgui.PopStyleColor();
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_ERROR, "GPU Fence Failed: %s", failure_reason);
+                    imgui.Unindent();
+                } else {
+                    imgui.Indent();
+                    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
+                    imgui.TextUnformatted(ICON_FK_OK);
+                    imgui.PopStyleColor();
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "GPU Fence Active");
+                    imgui.Unindent();
+                }
             }
-        }
 
-        imgui.Spacing();
+            imgui.Spacing();
 
-        DrawFrameTimeGraph(imgui);
+            DrawFrameTimeGraph(imgui);
 
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
+            imgui.Spacing();
+            imgui.Separator();
+            imgui.Spacing();
 
-        // Frame timeline bar (Simulation | Render Submit | ReShade | Present | Sleep | GPU)
-        DrawFrameTimelineBar(imgui);
+            // Frame timeline bar (Simulation | Render Submit | ReShade | Present | Sleep | GPU)
+            DrawFrameTimelineBar(imgui);
 
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
+            imgui.Spacing();
+            imgui.Separator();
+            imgui.Spacing();
 
-        // Native Frame Time Graph
-        imgui.Text("Native Frame Time Graph");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Shows frame times for frames actually displayed via native swapchain Present when limit real frames "
-                "is enabled.");
-        }
-        imgui.Spacing();
+            // Native Frame Time Graph
+            imgui.Text("Native Frame Time Graph");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Shows frame times for frames actually displayed via native swapchain Present when limit real "
+                    "frames "
+                    "is enabled.");
+            }
+            imgui.Spacing();
 
-        DrawNativeFrameTimeGraph(imgui);
+            DrawNativeFrameTimeGraph(imgui);
 
-        imgui.Spacing();
+            imgui.Spacing();
 
-        std::ostringstream oss;
+            std::ostringstream oss;
 
-        // Present Duration Display
-        oss.str("");
-        oss.clear();
-        oss << "Present Duration: " << std::fixed << std::setprecision(3)
-            << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-        // Frame Duration Display
-        oss.str("");
-        oss.clear();
-        oss << "Frame Duration: " << std::fixed << std::setprecision(3)
-            << (1.0 * ::g_frame_time_ns.load() / utils::NS_TO_MS) << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-        // GPU Duration Display (only show if measurement is enabled and has data)
-        if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0) {
+            // Present Duration Display
             oss.str("");
             oss.clear();
-            oss << "GPU Duration: " << std::fixed << std::setprecision(3)
-                << (1.0 * ::g_gpu_duration_ns.load() / utils::NS_TO_MS) << " ms";
+            oss << "Present Duration: " << std::fixed << std::setprecision(3)
+                << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
             imgui.TextUnformatted(oss.str().c_str());
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
-            }
 
-            // Sim-to-Display Latency (only show if we have valid measurement)
-            if (::g_sim_to_display_latency_ns.load() > 0) {
-                oss.str("");
-                oss.clear();
-                oss << "Sim-to-Display Latency: " << std::fixed << std::setprecision(3)
-                    << (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS) << " ms";
-                imgui.TextUnformatted(oss.str().c_str());
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Time from simulation start to frame displayed (includes GPU work and present)");
-                }
-
-                // GPU Late Time (how much later GPU finishes compared to Present)
-                oss.str("");
-                oss.clear();
-                oss << "GPU Late Time: " << std::fixed << std::setprecision(3)
-                    << (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS) << " ms";
-                imgui.TextUnformatted(oss.str().c_str());
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
-                        "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
-                        "Present\n>0 ms = GPU finished after Present (GPU is late)");
-                }
-            }
-        }
-
-        oss.str("");
-        oss.clear();
-        oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
-            << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-        // Reshade Overhead Display
-        oss.str("");
-        oss.clear();
-        oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
-            << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-        // Reshade Overhead Display
-        oss.str("");
-        oss.clear();
-        oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
-            << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
-                 - ::fps_sleep_after_on_present_ns.load())
-                / utils::NS_TO_MS)
-            << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-        oss.str("");
-        oss.clear();
-        oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
-            << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-        // FPS Limiter Start Duration Display
-        oss.str("");
-        oss.clear();
-        oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
-            << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-        imgui.TextUnformatted(oss.str().c_str());
-        imgui.SameLine();
-        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-        // Simulation Start to Present Latency Display
-        oss.str("");
-        oss.clear();
-        // Calculate latency: frame_time - sleep duration after onPresent
-        float current_fps = 0.0f;
-        const uint32_t count = ::g_perf_ring.GetCount();
-        if (count > 0) {
-            const ::PerfSample& last_sample = ::g_perf_ring.GetSample(0);
-            current_fps = 1.0f / last_sample.dt;
-        }
-
-        if (current_fps > 0.0f) {
-            float frame_time_ms = 1000.0f / current_fps;
-            float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
-            float latency_ms = frame_time_ms - sleep_duration_ms;
-
-            static double sim_start_to_present_latency_ms = 0.0;
-            sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
-            oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3)
-                << sim_start_to_present_latency_ms << " ms";
+            // Frame Duration Display
+            oss.str("");
+            oss.clear();
+            oss << "Frame Duration: " << std::fixed << std::setprecision(3)
+                << (1.0 * ::g_frame_time_ns.load() / utils::NS_TO_MS) << " ms";
             imgui.TextUnformatted(oss.str().c_str());
             imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
-        }
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-        // Flip State Display (renamed from DXGI Composition)
-        const char* flip_state_str = "Unknown";
-        const reshade::api::device_api current_api = g_last_reshade_device_api.load();
-        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
-
-        switch (flip_state) {
-            case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
-            case DxgiBypassMode::kComposed:                 flip_state_str = "Composed Flip"; break;
-            case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO Independent Flip"; break;
-            case DxgiBypassMode::kIndependentFlip:          flip_state_str = "Legacy Independent Flip"; break;
-            case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Swapchain Null"; break;
-            case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media Interface"; break;
-            case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
-            case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Statistics"; break;
-            case DxgiBypassMode::kUnknown:
-            default:                                        flip_state_str = "Unknown"; break;
-        }
-
-        oss.str("");
-        oss.clear();
-        oss << "Status: " << flip_state_str;
-
-        // Color code based on flip state
-        if (flip_state == DxgiBypassMode::kComposed) {
-            // Composed Flip - Red
-            imgui.TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());
-        } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
-            // Independent Flip modes - Green
-            imgui.TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
-        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                   || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-            // Query Failed - Red
-            imgui.TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
-        } else {
-            // Unknown/Unset - Yellow
-            imgui.TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
-        }
-    }
-
-    imgui.Spacing();
-
-    g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
-    // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
-    if (imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
-        bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
-
-        if (imgui.Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
-            if (is_monitoring) {
-                display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
-            } else {
-                display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
-            }
-        }
-
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
-                "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
-                "from the configured rate due to VRR, power management, or other factors.");
-        }
-
-        imgui.SameLine();
-
-        // Status display
-        const char* status_str = is_monitoring ? "Active" : "Inactive";
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
-
-        if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-            imgui.Spacing();
-            imgui.TextColored(
-                ui::colors::TEXT_WARNING,
-                "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
-        }
-
-        // Display DXGI output device name
-        if (g_got_device_name.load()) {
-            auto device_name_ptr = g_dxgi_output_device_name.load();
-            if (device_name_ptr != nullptr) {
-                imgui.Spacing();
-                imgui.Text("DXGI Output Device:");
+            // GPU Duration Display (only show if measurement is enabled and has data)
+            if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0) {
+                oss.str("");
+                oss.clear();
+                oss << "GPU Duration: " << std::fixed << std::setprecision(3)
+                    << (1.0 * ::g_gpu_duration_ns.load() / utils::NS_TO_MS) << " ms";
+                imgui.TextUnformatted(oss.str().c_str());
                 imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
-            } else {
-                imgui.Spacing();
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
-            }
-        } else {
-            imgui.Spacing();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
-        }
-
-        // Refresh rate data from NVAPI actual refresh rate monitor (recent samples)
-        double current_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
-        size_t sample_count = 0;
-        double min_hz = 0.0;
-        double max_hz = 0.0;
-        double sum_hz = 0.0;
-        display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate_hz) {
-            if (rate_hz > 0.0) {
-                if (sample_count == 0) {
-                    min_hz = max_hz = rate_hz;
-                } else {
-                    min_hz = (std::min)(min_hz, rate_hz);
-                    max_hz = (std::max)(max_hz, rate_hz);
+                imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
                 }
-                sum_hz += rate_hz;
-                ++sample_count;
+
+                // Sim-to-Display Latency (only show if we have valid measurement)
+                if (::g_sim_to_display_latency_ns.load() > 0) {
+                    oss.str("");
+                    oss.clear();
+                    oss << "Sim-to-Display Latency: " << std::fixed << std::setprecision(3)
+                        << (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS) << " ms";
+                    imgui.TextUnformatted(oss.str().c_str());
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
+                            "Time from simulation start to frame displayed (includes GPU work and present)");
+                    }
+
+                    // GPU Late Time (how much later GPU finishes compared to Present)
+                    oss.str("");
+                    oss.clear();
+                    oss << "GPU Late Time: " << std::fixed << std::setprecision(3)
+                        << (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS) << " ms";
+                    imgui.TextUnformatted(oss.str().c_str());
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
+                            "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
+                            "Present\n>0 ms = GPU finished after Present (GPU is late)");
+                    }
+                }
             }
-        });
-        double avg_hz = (sample_count > 0) ? (sum_hz / static_cast<double>(sample_count)) : 0.0;
 
-        if (sample_count > 0) {
-            imgui.Spacing();
-
-            // Current refresh rate (large, prominent display)
-            imgui.Text("Measured Refresh Rate:");
+            oss.str("");
+            oss.clear();
+            oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
+                << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
+            imgui.TextUnformatted(oss.str().c_str());
             imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-            // Detailed statistics
-            imgui.Indent();
-            imgui.Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
-            imgui.Text("Min: %.1f Hz", min_hz);
-            imgui.Text("Max: %.1f Hz", max_hz);
-            imgui.Text("Samples: %zu", sample_count);
-            imgui.Unindent();
+            // Reshade Overhead Display
+            oss.str("");
+            oss.clear();
+            oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
+                << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-            // VRR detection hint
-            if (max_hz > min_hz + 1.0) {
-                imgui.Spacing();
-                imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
-                imgui.TextUnformatted(ICON_FK_OK);
-                imgui.PopStyleColor();
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, "Variable Refresh Rate (VRR) detected");
+            // Reshade Overhead Display
+            oss.str("");
+            oss.clear();
+            oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
+                << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
+                     - ::fps_sleep_after_on_present_ns.load())
+                    / utils::NS_TO_MS)
+                << " ms";
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+
+            oss.str("");
+            oss.clear();
+            oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
+                << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+
+            // FPS Limiter Start Duration Display
+            oss.str("");
+            oss.clear();
+            oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
+                << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+
+            // Simulation Start to Present Latency Display
+            oss.str("");
+            oss.clear();
+            // Calculate latency: frame_time - sleep duration after onPresent
+            float current_fps = 0.0f;
+            const uint32_t count = ::g_perf_ring.GetCount();
+            if (count > 0) {
+                const ::PerfSample& last_sample = ::g_perf_ring.GetSample(0);
+                current_fps = 1.0f / last_sample.dt;
             }
-        } else if (is_monitoring) {
-            imgui.Spacing();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
-        } else {
-            imgui.Spacing();
-            imgui.TextColored(ui::colors::TEXT_DIMMED,
-                              "No refresh rate data (start monitoring or enable overlay refresh rate).");
+
+            if (current_fps > 0.0f) {
+                float frame_time_ms = 1000.0f / current_fps;
+                float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
+                float latency_ms = frame_time_ms - sleep_duration_ms;
+
+                static double sim_start_to_present_latency_ms = 0.0;
+                sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
+                oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3)
+                    << sim_start_to_present_latency_ms << " ms";
+                imgui.TextUnformatted(oss.str().c_str());
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
+            }
+
+            // Flip State Display (renamed from DXGI Composition)
+            const char* flip_state_str = "Unknown";
+            const reshade::api::device_api current_api = g_last_reshade_device_api.load();
+            DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+
+            switch (flip_state) {
+                case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
+                case DxgiBypassMode::kComposed:                 flip_state_str = "Composed Flip"; break;
+                case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO Independent Flip"; break;
+                case DxgiBypassMode::kIndependentFlip:          flip_state_str = "Legacy Independent Flip"; break;
+                case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Swapchain Null"; break;
+                case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media Interface"; break;
+                case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
+                case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Statistics"; break;
+                case DxgiBypassMode::kUnknown:
+                default:                                        flip_state_str = "Unknown"; break;
+            }
+
+            oss.str("");
+            oss.clear();
+            oss << "Status: " << flip_state_str;
+
+            // Color code based on flip state
+            if (flip_state == DxgiBypassMode::kComposed) {
+                // Composed Flip - Red
+                imgui.TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());
+            } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
+                // Independent Flip modes - Green
+                imgui.TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
+            } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                       || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                       || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                       || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+                // Query Failed - Red
+                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
+            } else {
+                // Unknown/Unset - Yellow
+                imgui.TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
+            }
         }
+
+        imgui.Spacing();
+
+        g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
+        // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
+        if (imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
+            bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
+
+            if (imgui.Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
+                if (is_monitoring) {
+                    display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
+                } else {
+                    display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
+                }
+            }
+
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
+                    "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
+                    "from the configured rate due to VRR, power management, or other factors.");
+            }
+
+            imgui.SameLine();
+
+            // Status display
+            const char* status_str = is_monitoring ? "Active" : "Inactive";
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
+
+            if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+                imgui.Spacing();
+                imgui.TextColored(
+                    ui::colors::TEXT_WARNING,
+                    "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
+            }
+
+            // Display DXGI output device name
+            if (g_got_device_name.load()) {
+                auto device_name_ptr = g_dxgi_output_device_name.load();
+                if (device_name_ptr != nullptr) {
+                    imgui.Spacing();
+                    imgui.Text("DXGI Output Device:");
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
+                } else {
+                    imgui.Spacing();
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
+                }
+            } else {
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
+            }
+
+            // Refresh rate data from NVAPI actual refresh rate monitor (recent samples)
+            double current_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+            size_t sample_count = 0;
+            double min_hz = 0.0;
+            double max_hz = 0.0;
+            double sum_hz = 0.0;
+            display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate_hz) {
+                if (rate_hz > 0.0) {
+                    if (sample_count == 0) {
+                        min_hz = max_hz = rate_hz;
+                    } else {
+                        min_hz = (std::min)(min_hz, rate_hz);
+                        max_hz = (std::max)(max_hz, rate_hz);
+                    }
+                    sum_hz += rate_hz;
+                    ++sample_count;
+                }
+            });
+            double avg_hz = (sample_count > 0) ? (sum_hz / static_cast<double>(sample_count)) : 0.0;
+
+            if (sample_count > 0) {
+                imgui.Spacing();
+
+                // Current refresh rate (large, prominent display)
+                imgui.Text("Measured Refresh Rate:");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+
+                // Detailed statistics
+                imgui.Indent();
+                imgui.Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+                imgui.Text("Min: %.1f Hz", min_hz);
+                imgui.Text("Max: %.1f Hz", max_hz);
+                imgui.Text("Samples: %zu", sample_count);
+                imgui.Unindent();
+
+                // VRR detection hint
+                if (max_hz > min_hz + 1.0) {
+                    imgui.Spacing();
+                    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
+                    imgui.TextUnformatted(ICON_FK_OK);
+                    imgui.PopStyleColor();
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "Variable Refresh Rate (VRR) detected");
+                }
+            } else if (is_monitoring) {
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
+            } else {
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_DIMMED,
+                                  "No refresh rate data (start monitoring or enable overlay refresh rate).");
+            }
         }
         imgui.Unindent();  // Unindent content
     }

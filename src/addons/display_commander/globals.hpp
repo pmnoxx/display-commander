@@ -315,7 +315,8 @@ enum class AspectRatioType : std::uint8_t {
     k19_9 = 4,    // 19:9
     k19_5_9 = 5,  // 19.5:9
     k21_9 = 6,    // 21:9
-    k32_9 = 7     // 32:9
+    k21_5_9 = 7,  // 21.5:9
+    k32_9 = 8     // 32:9
 };
 
 enum class WindowAlignment : std::uint8_t {

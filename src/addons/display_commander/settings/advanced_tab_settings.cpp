@@ -36,7 +36,8 @@ AdvancedTabSettings::AdvancedTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", false, "DisplayCommander"),
-      manual_colorspace("ManualColorspace", 1, 0, 4, "DisplayCommander"),  // 0=unknown, 1=sRGB, 2=scRGB, 3=HDR10 ST2084, 4=HDR10 HLG
+      manual_colorspace("ManualColorspace", 0, 0, 4,
+                        "DisplayCommander"),  // ManualColorSpace enum (0=NoChanges .. 4=HDR10_HLG)
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 
@@ -112,6 +113,18 @@ void AdvancedTabSettings::LoadAll() {
     // All Ref classes automatically sync with global variables
 }
 
+ManualColorSpace AdvancedTabSettings::GetManualColorSpace() const {
+    int v = manual_colorspace.GetValue();
+    if (v < static_cast<int>(ManualColorSpace::NoChanges) || v > static_cast<int>(ManualColorSpace::HDR10_HLG)) {
+        return ManualColorSpace::NoChanges;
+    }
+    return static_cast<ManualColorSpace>(v);
+}
+
+void AdvancedTabSettings::SetManualColorSpace(ManualColorSpace value) {
+    manual_colorspace.SetValue(static_cast<int>(value));
+}
+
 void AdvancedTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();
@@ -153,28 +166,27 @@ void AdvancedTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
-    return {&prevent_fullscreen, &continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities,
-            &enable_flip_chain, &auto_colorspace, &manual_colorspace,
-            //&enable_d3d9e_upgrade,
-            &nvapi_auto_enable_enabled,
+    return {
+        &prevent_fullscreen, &continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities,
+        &enable_flip_chain, &auto_colorspace, &manual_colorspace,
+        //&enable_d3d9e_upgrade,
+        &nvapi_auto_enable_enabled,
 
-            &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
-            &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging,
-            &reflex_supress_native,
+        &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
+        &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
 
-            &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
-            &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
-            &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
-            &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
-            &fake_nvapi_enabled, &suppress_minhook, &suppress_windows_gaming_input, &debug_layer_enabled, &debug_break_on_severity,
-            &auto_hide_discord_overlay, &suppress_window_changes, &win_up_grace_seconds, &enable_presentmon_tracing,
-            &disable_dpi_scaling,
+        &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
+        &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
+        &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
+        &safemode, &dll_loading_delay_ms, &dlls_to_load_before, &fake_nvapi_enabled, &suppress_minhook,
+        &suppress_windows_gaming_input, &debug_layer_enabled, &debug_break_on_severity, &auto_hide_discord_overlay,
+        &suppress_window_changes, &win_up_grace_seconds, &enable_presentmon_tracing, &disable_dpi_scaling,
 
-            &monitor_high_freq_enabled, &monitor_high_freq_interval_ms, &monitor_per_second_enabled,
-            &monitor_per_second_interval_sec, &monitor_screensaver, &monitor_fps_aggregate, &monitor_volume,
-            &monitor_refresh_rate, &monitor_vrr_status, &monitor_exclusive_key_groups, &monitor_discord_overlay,
-            &monitor_reflex_auto_configure, &monitor_auto_apply_trigger, &monitor_display_cache,
-            &monitor_display_cache_interval_sec};
+        &monitor_high_freq_enabled, &monitor_high_freq_interval_ms, &monitor_per_second_enabled,
+        &monitor_per_second_interval_sec, &monitor_screensaver, &monitor_fps_aggregate, &monitor_volume,
+        &monitor_refresh_rate, &monitor_vrr_status, &monitor_exclusive_key_groups, &monitor_discord_overlay,
+        &monitor_reflex_auto_configure, &monitor_auto_apply_trigger, &monitor_display_cache,
+        &monitor_display_cache_interval_sec};
 }
 
 }  // namespace settings

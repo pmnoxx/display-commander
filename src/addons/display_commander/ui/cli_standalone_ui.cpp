@@ -4,9 +4,9 @@
 
 #define ImGui      ImGuiStandalone
 #define ImDrawList ImDrawListStandalone
-#include <d3d9.h>
-#include <shellapi.h>
 #include <windows.h>
+#include <shellapi.h>
+#include <GL/gl.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -20,7 +20,7 @@
 #include <thread>
 #include <vector>
 
-#include "backends/imgui_impl_dx9.h"
+#include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_win32.h"
 #include "imgui.h"
 
@@ -45,17 +45,14 @@
 #define IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
 #endif
 
-#pragma comment(lib, "d3d9.lib")
+#pragma comment(lib, "opengl32.lib")
 
-static IDirect3D9* g_pD3D = nullptr;
-static IDirect3DDevice9* g_pd3dDevice = nullptr;
-static IDirect3DSurface9* g_mainRenderTarget = nullptr;
+static HDC g_hDC = nullptr;
+static HGLRC g_hGLRC = nullptr;
 static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 
-static bool CreateDeviceD3D(HWND hWnd);
-static void CleanupDeviceD3D();
-static void CreateRenderTarget();
-static void CleanupRenderTarget();
+static bool CreateContextOpenGL(HWND hWnd);
+static void CleanupContextOpenGL(HWND hWnd);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -712,9 +709,9 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     }
     standalone_ui_settings::SetStandaloneUiHwnd(reinterpret_cast<uintptr_t>(hwnd));
 
-    if (!CreateDeviceD3D(hwnd)) {
+    if (!CreateContextOpenGL(hwnd)) {
         standalone_ui_settings::SetStandaloneUiHwnd(0);
-        CleanupDeviceD3D();
+        CleanupContextOpenGL(hwnd);
         DestroyWindow(hwnd);
         UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return;
@@ -729,7 +726,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
     ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX9_Init(g_pd3dDevice);
+    ImGui_ImplOpenGL3_Init();
 
     static const char* fps_limiter_items[] = {"Default", "NVIDIA Reflex (low latency)", "Disabled",
                                               "Sync to Display Refresh Rate (fraction of monitor refresh rate)"};
@@ -746,25 +743,11 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
         if (done) break;
 
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
-            ImGui_ImplDX9_InvalidateDeviceObjects();
-            CleanupRenderTarget();
-            D3DPRESENT_PARAMETERS pp = {};
-            pp.Windowed = TRUE;
-            pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-            pp.BackBufferFormat = D3DFMT_UNKNOWN;
-            pp.BackBufferWidth = g_ResizeWidth;
-            pp.BackBufferHeight = g_ResizeHeight;
-            pp.EnableAutoDepthStencil = FALSE;
-            pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-            HRESULT hr = g_pd3dDevice->Reset(&pp);
+            glViewport(0, 0, (GLsizei)g_ResizeWidth, (GLsizei)g_ResizeHeight);
             g_ResizeWidth = g_ResizeHeight = 0;
-            if (hr == D3D_OK) {
-                CreateRenderTarget();
-                ImGui_ImplDX9_CreateDeviceObjects();
-            }
         }
 
-        ImGui_ImplDX9_NewFrame();
+        ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
@@ -797,19 +780,16 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
         ImGui::End();
 
         ImGui::Render();
-        if (g_pd3dDevice->BeginScene() == D3D_OK) {
-            g_pd3dDevice->SetRenderTarget(0, g_mainRenderTarget);
-            g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_RGBA(0, 0, 0, 255), 1.0f, 0);
-            ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
-            g_pd3dDevice->EndScene();
-        }
-        g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        SwapBuffers(g_hDC);
     }
 
-    ImGui_ImplDX9_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
-    CleanupDeviceD3D();
+    CleanupContextOpenGL(hwnd);
     standalone_ui_settings::SetStandaloneUiHwnd(0);
     DestroyWindow(hwnd);
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
@@ -844,8 +824,8 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
         return;
     }
 
-    if (!CreateDeviceD3D(hwnd)) {
-        CleanupDeviceD3D();
+    if (!CreateContextOpenGL(hwnd)) {
+        CleanupContextOpenGL(hwnd);
         DestroyWindow(hwnd);
         UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return;
@@ -861,7 +841,7 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
 
     ImGui::StyleColorsDark();
     ImGui_ImplWin32_Init(hwnd);
-    ImGui_ImplDX9_Init(g_pd3dDevice);
+    ImGui_ImplOpenGL3_Init();
 
     std::wstring addonDir;
     if (script_dir_utf8 && script_dir_utf8[0] != '\0') {
@@ -920,25 +900,11 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
         if (done) break;
 
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
-            ImGui_ImplDX9_InvalidateDeviceObjects();
-            CleanupRenderTarget();
-            D3DPRESENT_PARAMETERS pp = {};
-            pp.Windowed = TRUE;
-            pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-            pp.BackBufferFormat = D3DFMT_UNKNOWN;
-            pp.BackBufferWidth = g_ResizeWidth;
-            pp.BackBufferHeight = g_ResizeHeight;
-            pp.EnableAutoDepthStencil = FALSE;
-            pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-            HRESULT hr = g_pd3dDevice->Reset(&pp);
+            glViewport(0, 0, (GLsizei)g_ResizeWidth, (GLsizei)g_ResizeHeight);
             g_ResizeWidth = g_ResizeHeight = 0;
-            if (hr == D3D_OK) {
-                CreateRenderTarget();
-                ImGui_ImplDX9_CreateDeviceObjects();
-            }
         }
 
-        ImGui_ImplDX9_NewFrame();
+        ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
@@ -1875,68 +1841,109 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
         }
 
         ImGui::Render();
-        if (g_pd3dDevice->BeginScene() == D3D_OK) {
-            g_pd3dDevice->SetRenderTarget(0, g_mainRenderTarget);
-            g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_RGBA(38, 38, 46, 255), 1.0f, 0);
-            ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
-            g_pd3dDevice->EndScene();
-        }
-        g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
+        glClearColor(38.f / 255.f, 38.f / 255.f, 46.f / 255.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        SwapBuffers(g_hDC);
     }
 
-    ImGui_ImplDX9_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
-    CleanupDeviceD3D();
+    CleanupContextOpenGL(hwnd);
     DestroyWindow(hwnd);
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
 }
 
-static bool CreateDeviceD3D(HWND hWnd) {
-    g_pD3D = Direct3DCreate9(D3D_SDK_VERSION);
-    if (!g_pD3D) return false;
-    D3DPRESENT_PARAMETERS pp = {};
-    pp.Windowed = TRUE;
-    pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-    pp.BackBufferFormat = D3DFMT_UNKNOWN;
-    pp.EnableAutoDepthStencil = FALSE;
-    pp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-    pp.hDeviceWindow = hWnd;
-    HRESULT hr = g_pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd, D3DCREATE_HARDWARE_VERTEXPROCESSING,
-                                      &pp, &g_pd3dDevice);
-    if (hr != D3D_OK)
-        hr = g_pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &pp,
-                                  &g_pd3dDevice);
-    if (hr != D3D_OK) {
-        g_pD3D->Release();
-        g_pD3D = nullptr;
+// WGL 3.0 context for ImGui OpenGL3 backend (Win32-only, no DX9)
+static bool CreateContextOpenGL(HWND hWnd) {
+    g_hDC = GetDC(hWnd);
+    if (!g_hDC) return false;
+
+    PIXELFORMATDESCRIPTOR pfd = {};
+    pfd.nSize = sizeof(pfd);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cDepthBits = 0;
+    pfd.cStencilBits = 0;
+    pfd.iLayerType = PFD_MAIN_PLANE;
+
+    int pixelFormat = ChoosePixelFormat(g_hDC, &pfd);
+    if (pixelFormat == 0) {
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
         return false;
     }
-    CreateRenderTarget();
+    if (!SetPixelFormat(g_hDC, pixelFormat, &pfd)) {
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
+        return false;
+    }
+
+    HGLRC tempCtx = wglCreateContext(g_hDC);
+    if (!tempCtx) {
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
+        return false;
+    }
+    if (!wglMakeCurrent(g_hDC, tempCtx)) {
+        wglDeleteContext(tempCtx);
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
+        return false;
+    }
+
+    typedef HGLRC(WINAPI* PFN_wglCreateContextAttribsARB)(HDC, HGLRC, const int*);
+    PFN_wglCreateContextAttribsARB wglCreateContextAttribsARB =
+        (PFN_wglCreateContextAttribsARB)wglGetProcAddress("wglCreateContextAttribsARB");
+
+    if (wglCreateContextAttribsARB) {
+        int attribs[] = {
+            0x2091, 3,  // WGL_CONTEXT_MAJOR_VERSION_ARB = 3
+            0x2092, 0,  // WGL_CONTEXT_MINOR_VERSION_ARB = 0
+            0x2094, 0x0002,  // WGL_CONTEXT_PROFILE_MASK_ARB = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB
+            0
+        };
+        g_hGLRC = wglCreateContextAttribsARB(g_hDC, nullptr, attribs);
+    }
+    wglMakeCurrent(nullptr, nullptr);
+    wglDeleteContext(tempCtx);
+
+    if (!g_hGLRC && wglCreateContextAttribsARB) {
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
+        return false;
+    }
+    if (!g_hGLRC) {
+        g_hGLRC = wglCreateContext(g_hDC);
+    }
+    if (!g_hGLRC) {
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
+        return false;
+    }
+    if (!wglMakeCurrent(g_hDC, g_hGLRC)) {
+        wglDeleteContext(g_hGLRC);
+        g_hGLRC = nullptr;
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
+        return false;
+    }
     return true;
 }
 
-static void CleanupDeviceD3D() {
-    CleanupRenderTarget();
-    if (g_pd3dDevice) {
-        g_pd3dDevice->Release();
-        g_pd3dDevice = nullptr;
+static void CleanupContextOpenGL(HWND hWnd) {
+    if (g_hGLRC && g_hDC) {
+        wglMakeCurrent(nullptr, nullptr);
+        wglDeleteContext(g_hGLRC);
+        g_hGLRC = nullptr;
     }
-    if (g_pD3D) {
-        g_pD3D->Release();
-        g_pD3D = nullptr;
-    }
-}
-
-static void CreateRenderTarget() {
-    if (g_pd3dDevice) g_pd3dDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &g_mainRenderTarget);
-}
-
-static void CleanupRenderTarget() {
-    if (g_mainRenderTarget) {
-        g_mainRenderTarget->Release();
-        g_mainRenderTarget = nullptr;
+    if (g_hDC && hWnd) {
+        ReleaseDC(hWnd, g_hDC);
+        g_hDC = nullptr;
     }
 }
 

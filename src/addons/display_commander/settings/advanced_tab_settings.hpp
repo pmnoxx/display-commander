@@ -15,6 +15,15 @@ using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
 using ui::new_ui::StringSetting;
 
+/** Manual color space when auto_colorspace is off. Stored as int in config; use getter/setter for type safety. */
+enum class ManualColorSpace : int {
+    NoChanges = 0,
+    sRGB = 1,
+    scRGB = 2,
+    HDR10_ST2084 = 3,
+    HDR10_HLG = 4,
+};
+
 // Advanced tab settings manager
 class AdvancedTabSettings {
    public:
@@ -37,8 +46,10 @@ class AdvancedTabSettings {
     BoolSetting hide_hdr_capabilities;
     BoolSetting enable_flip_chain;
     BoolSetting auto_colorspace;
-    /** Manual color space when auto_colorspace is off. Values match reshade::api::color_space (0=unknown, 1=srgb, 2=scRGB, 3=HDR10 ST2084, 4=HDR10 HLG). */
-    IntSetting manual_colorspace;
+    IntSetting manual_colorspace;  // persisted as int; use GetManualColorSpace/SetManualColorSpace for enum
+
+    ManualColorSpace GetManualColorSpace() const;
+    void SetManualColorSpace(ManualColorSpace value);
 
     // D3D9 to D3D9Ex Upgrade
     // BoolSettingRef enable_d3d9e_upgrade;

@@ -898,23 +898,26 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
 
         // Color space selector (used when Auto color space is off)
         static const char* const s_colorspace_names[] = {
-            "Unknown",
+            "No changes",
             "sRGB (Non-linear)",
             "Extended sRGB Linear (scRGB)",
             "HDR10 ST2084",
             "HDR10 HLG",
         };
-        const int num_colorspaces = static_cast<int>(sizeof(s_colorspace_names) / sizeof(s_colorspace_names[0]));
-        int manual_colorspace = settings::g_advancedTabSettings.manual_colorspace.GetValue();
-        if (manual_colorspace < 0 || manual_colorspace >= num_colorspaces) {
-            manual_colorspace = 1;
+        constexpr int num_colorspaces =
+            static_cast<int>(sizeof(s_colorspace_names) / sizeof(s_colorspace_names[0]));
+        settings::ManualColorSpace current = settings::g_advancedTabSettings.GetManualColorSpace();
+        int current_idx = static_cast<int>(current);
+        if (current_idx < 0 || current_idx >= num_colorspaces) {
+            current_idx = 0;
         }
-        const char* preview = s_colorspace_names[manual_colorspace];
+        const char* preview = s_colorspace_names[current_idx];
         if (imgui.BeginCombo("Color space", preview, 0)) {
             for (int i = 0; i < num_colorspaces; ++i) {
-                const bool selected = (i == manual_colorspace);
+                settings::ManualColorSpace cs = static_cast<settings::ManualColorSpace>(i);
+                const bool selected = (i == current_idx);
                 if (imgui.Selectable(s_colorspace_names[i], selected)) {
-                    settings::g_advancedTabSettings.manual_colorspace.SetValue(i);
+                    settings::g_advancedTabSettings.SetManualColorSpace(cs);
                 }
                 if (selected) {
                     imgui.SetItemDefaultFocus();

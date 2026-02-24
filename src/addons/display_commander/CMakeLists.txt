@@ -35,7 +35,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 72)
+set(DISPLAY_COMMANDER_VERSION_PATCH 74)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -124,7 +124,7 @@ target_include_directories(zzz_display_commander
 # WinInet library is needed for HTTP downloads (shader packages list)
 # Note: Some toolchains (e.g. clang-cl without full Windows SDK lib path) may not have evntrace.lib on the link path.
 # bcrypt for SHA256 (ReShade installer signature verification)
-target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt)
+target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt opengl32)
 
 # NVAPI static linking (official NVIDIA NVAPI layout: x86/ and amd64/)
 # NVIDIA recommends static linking - these are static libraries that act as shims
@@ -270,7 +270,7 @@ set(IMGUI_STANDALONE_SOURCES
   ${IMGUI_DIR}/imgui_tables.cpp
   ${IMGUI_DIR}/imgui_widgets.cpp
   ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
-  ${IMGUI_DIR}/backends/imgui_impl_dx9.cpp
+  ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 add_library(imgui_standalone_obj OBJECT ${IMGUI_STANDALONE_SOURCES})
 target_compile_definitions(imgui_standalone_obj PRIVATE ImGui=ImGuiStandalone ImDrawList=ImDrawListStandalone)

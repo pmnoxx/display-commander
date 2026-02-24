@@ -895,6 +895,38 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
                 "Only works with DirectX 11/12 games.\n"
                 "Applied automatically in presentBefore.");
         }
+
+        // Color space selector (used when Auto color space is off)
+        static const char* const s_colorspace_names[] = {
+            "Unknown",
+            "sRGB (Non-linear)",
+            "Extended sRGB Linear (scRGB)",
+            "HDR10 ST2084",
+            "HDR10 HLG",
+        };
+        const int num_colorspaces = static_cast<int>(sizeof(s_colorspace_names) / sizeof(s_colorspace_names[0]));
+        int manual_colorspace = settings::g_advancedTabSettings.manual_colorspace.GetValue();
+        if (manual_colorspace < 0 || manual_colorspace >= num_colorspaces) {
+            manual_colorspace = 1;
+        }
+        const char* preview = s_colorspace_names[manual_colorspace];
+        if (imgui.BeginCombo("Color space", preview, 0)) {
+            for (int i = 0; i < num_colorspaces; ++i) {
+                const bool selected = (i == manual_colorspace);
+                if (imgui.Selectable(s_colorspace_names[i], selected)) {
+                    settings::g_advancedTabSettings.manual_colorspace.SetValue(i);
+                }
+                if (selected) {
+                    imgui.SetItemDefaultFocus();
+                }
+            }
+            imgui.EndCombo();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Manual color space applied to the swap chain when \"Auto color space\" is off.\n"
+                "Only applies to DirectX 11/12 games. Takes effect on next present.");
+        }
     }
 
     // Show upgrade status

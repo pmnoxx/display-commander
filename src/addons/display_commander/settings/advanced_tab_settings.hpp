@@ -37,6 +37,8 @@ class AdvancedTabSettings {
     BoolSetting hide_hdr_capabilities;
     BoolSetting enable_flip_chain;
     BoolSetting auto_colorspace;
+    /** Manual color space when auto_colorspace is off. Values match reshade::api::color_space (0=unknown, 1=srgb, 2=scRGB, 3=HDR10 ST2084, 4=HDR10 HLG). */
+    IntSetting manual_colorspace;
 
     // D3D9 to D3D9Ex Upgrade
     // BoolSettingRef enable_d3d9e_upgrade;

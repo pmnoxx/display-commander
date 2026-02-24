@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.67 (2026-02-24)
+
+- **Color space selector** - Added a color space dropdown below "Auto color space" in Advanced → HDR and Display Settings. When Auto color space is off, the selected space (Unknown, sRGB, scRGB, HDR10 ST2084, HDR10 HLG) is applied to the swap chain on present. When Auto is on, format-based behavior is unchanged.
+
 ## v0.12.66 (2026-02-24)
 
 - **ImGui wrapper / UI colors** - Switched wrapper to use `ImVec4`/`ImVec2` only; removed `wrapper_colors` and custom wrapper color/vec types. Shared UI (Advanced tab, Nvidia Profile tab) now uses `ui::colors::*` from `res/ui_colors.hpp` directly (e.g. `ui::colors::TEXT_WARNING`, `ICON_SUCCESS`). Standalone wrapper matches the same interface.

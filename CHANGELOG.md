@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.61 (2026-02-24)
+
+- **Run without ReShade** - Code refactor to allow running Display Commander without ReShade in the future.
+
 ## v0.12.60 (2026-02-23)
 
 - **FPS limiter** - Simplified FPS limiter logic for frame generation.

@@ -26,7 +26,7 @@ void WriteToDebugLog(const std::string& message) {
         display_commander::logger::LogInfo(message.c_str());
 
         // Also write to ReShade log for comprehensive coverage
-        reshade::log::message(reshade::log::level::info, message.c_str());
+        // reshade::log::message(reshade::log::level::info, message.c_str());
     } catch (...) {
         // Ignore any errors during logging to prevent crashes
     }

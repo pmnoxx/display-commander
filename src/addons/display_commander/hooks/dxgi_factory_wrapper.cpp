@@ -450,6 +450,8 @@ DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChain
       m_slGetNativeInterface(nullptr),
       m_slUpgradeInterface(nullptr),
       m_commandQueueMap(nullptr) {
+    if (m_originalFactory != nullptr)
+        m_originalFactory->AddRef();
     const char* hookTypeName = (hookType == SwapChainHook::Proxy)       ? "Proxy"
                                : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw"
                                                                         : "Native";

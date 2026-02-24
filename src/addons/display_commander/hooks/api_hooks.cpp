@@ -388,22 +388,20 @@ BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 }
 
 HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
-                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
-    return CreateWindowExW_Original
-               ? CreateWindowExW_Original(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent,
-                                          hMenu, hInstance, lpParam)
-               : CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu,
-                                 hInstance, lpParam);
+                                 int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
+    return CreateWindowExW_Original ? CreateWindowExW_Original(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
+                                                               nHeight, hWndParent, hMenu, hInstance, lpParam)
+                                    : CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
+                                                      hWndParent, hMenu, hInstance, lpParam);
 }
 
 HWND WINAPI CreateWindowExW_Detour(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X,
-                                    int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
-                                    LPVOID lpParam) {
-    return CreateWindowExW_Original
-               ? CreateWindowExW_Original(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,
-                                          hWndParent, hMenu, hInstance, lpParam)
-               : CreateWindowExW(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent,
-                                 hMenu, hInstance, lpParam);
+                                   int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
+                                   LPVOID lpParam) {
+    return CreateWindowExW_Original ? CreateWindowExW_Original(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y,
+                                                               nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam)
+                                    : CreateWindowExW(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth,
+                                                      nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 
 HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
@@ -1144,7 +1142,8 @@ bool InstallWindowsApiHooks() {
         LogError("Failed to create and enable SetWindowPos hook");
     }
 
-    // Hook CreateWindowExW (CreateWindowW is a macro that calls CreateWindowExW(0, ...)); bypass via CreateWindowW_Direct
+    // Hook CreateWindowExW (CreateWindowW is a macro that calls CreateWindowExW(0, ...)); bypass via
+    // CreateWindowW_Direct
     if (!CreateAndEnableHook(CreateWindowExW, CreateWindowExW_Detour,
                              reinterpret_cast<LPVOID*>(&CreateWindowExW_Original), "CreateWindowExW")) {
         LogError("Failed to create and enable CreateWindowExW hook");

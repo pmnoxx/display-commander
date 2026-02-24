@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.79 (2026-02-24)
+
+- **DXGI swapchain wrapper** - When Display Commander is loaded as a DXGI proxy DLL, swap chains created via the wrapped factory are now wrapped in `DXGISwapChain4Wrapper`. The wrapper forwards all IDXGISwapChain4 methods to the real swap chain and fixes a use-after-free by having `DXGIFactoryWrapper` AddRef the original factory in its constructor so the real factory stays alive after the proxy releases its reference.
+
 ## v0.12.78 (2026-02-24)
 
 - **Manual color space / DXGI wrapper** - When Display Commander is loaded as dxgi.dll or as a proxy DLL, the DXGI swap chain wrapper now overrides `SetColorSpace1` so that the Advanced-tab manual color space selection (No changes, sRGB, scRGB, HDR10 ST2084, HDR10 HLG) is applied. The selected option is mapped to the corresponding `DXGI_COLOR_SPACE_TYPE` (e.g. sRGB → G22_P709, scRGB → G10_P709, HDR10 ST2084 → G2084_P2020, HDR10 HLG → YCBCR_STUDIO_G2084_P2020). Only active when DC is in the DXGI load path; ReShade overlay color space logic is unchanged.

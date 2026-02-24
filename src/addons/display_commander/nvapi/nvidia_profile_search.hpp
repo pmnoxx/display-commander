@@ -16,11 +16,24 @@ struct ImportantProfileSetting {
     bool is_bit_field = false;      // If true, value_id is a bitmask; UI shows checkboxes per flag.
 };
 
+// Per-profile application entry data (one row in "Matching profile(s)" list).
+struct MatchedProfileEntry {
+    std::string profile_name;
+    std::string app_name;            // Executable path/name in profile
+    std::string user_friendly_name;
+    std::string launcher;
+    std::string file_in_folder;      // "File in folder" requirement (':' separated if multiple)
+    bool is_metro = false;
+    bool is_command_line = false;
+    std::string command_line;
+};
+
 struct NvidiaProfileSearchResult {
     bool success = false;           // DRS query succeeded (even if no match)
     std::string current_exe_path;   // Full path of current process exe
     std::string current_exe_name;   // Base name (e.g. game.exe)
-    std::vector<std::string> matching_profile_names;  // Profiles that list this exe
+    std::vector<MatchedProfileEntry> matching_profiles;  // Matching profiles with full app entry data
+    std::vector<std::string> matching_profile_names;   // Profile names only (derived; for backward compat)
     std::vector<ImportantProfileSetting> important_settings;  // Key settings from first matching profile (fixed list, "Not set" if missing)
     std::vector<ImportantProfileSetting> advanced_settings;   // Extra useful settings (Ansel, FXAA, etc.) when "show advanced" is enabled
     std::vector<ImportantProfileSetting> all_settings;        // All settings actually present in first matching profile (from EnumSettings)

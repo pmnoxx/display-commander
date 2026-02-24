@@ -2,6 +2,15 @@
 
 ---
 
+## v0.12.81 (2026-02-24)
+
+- **Color space** - Manual color space (Advanced tab) and auto format-based color space are applied in the present path; when manual is not "No changes", it overrides auto.
+
+## v0.12.80 (2026-02-24)
+
+- **NVIDIA profile matching** - Profile matching is now path-aware and uses the "File in folder" rule. When a profile stores a full application path (e.g. `...\KingdomComeDeliverance\Bin\Win64\KingdomCome.exe`), only that path or paths under it match, so games with the same exe name in different folders (e.g. KCD1 vs KCD2) no longer share the wrong profile. When a profile has "File in folder" set, the match requires at least one of those files to exist in the current process directory.
+- **NVIDIA Profile tab tooltip** - Hovering a row in the "Matching profile(s)" list shows a tooltip with the full profile application entry: App (exe), User-friendly name, Launcher, File in folder, Metro/UWP, and Command line when set.
+
 ## v0.12.79 (2026-02-24)
 
 - **DXGI swapchain wrapper** - When Display Commander is loaded as a DXGI proxy DLL, swap chains created via the wrapped factory are now wrapped in `DXGISwapChain4Wrapper`. The wrapper forwards all IDXGISwapChain4 methods to the real swap chain and fixes a use-after-free by having `DXGIFactoryWrapper` AddRef the original factory in its constructor so the real factory stays alive after the proxy releases its reference.

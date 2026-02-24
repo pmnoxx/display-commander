@@ -324,26 +324,76 @@ static std::wstring NormalizePath(const std::wstring& s) {
     return r;
 }
 
-// True if profile app name matches current exe (path or base name).
+// Returns true if fileInFolder requirement is satisfied: when non-empty, at least one of the
+// ':'-separated files must exist in exeDir (as exeDir\\file). When empty, returns true.
+static bool FileInFolderSatisfied(const std::wstring& exeDir, const std::wstring& fileInFolderW) {
+    if (fileInFolderW.empty()) {
+        return true;
+    }
+    std::wstring rest = fileInFolderW;
+    while (!rest.empty()) {
+        size_t pos = rest.find(L':');
+        std::wstring one = (pos == std::wstring::npos) ? rest : rest.substr(0, pos);
+        rest = (pos == std::wstring::npos) ? std::wstring() : rest.substr(pos + 1);
+        while (!one.empty() && (one.front() == L' ' || one.front() == L'\t')) {
+            one.erase(0, 1);
+        }
+        if (one.empty()) continue;
+        std::wstring path = exeDir;
+        if (!path.empty() && path.back() != L'\\' && path.back() != L'/') {
+            path += L'\\';
+        }
+        path += one;
+        if (::GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// True if profile app name matches current exe, with path-aware and fileInFolder checks.
+// When profile stores a path (contains \ or /), only matches if current path equals or is under that path
+// (so KCD1 path does not match KCD2). When profile stores only exe name, matches if path ends with it;
+// if profile has fileInFolder set, at least one of those files must exist in current process directory.
 static bool AppMatchesExe(const std::wstring& profileAppName, const std::wstring& currentPathNorm,
-                          const std::wstring& currentNameNorm) {
+                          const std::wstring& currentNameNorm, const std::wstring& currentDirNorm,
+                          const std::wstring& fileInFolderW) {
     if (profileAppName.empty()) {
         return false;
     }
     std::wstring appNorm = NormalizePath(profileAppName);
+    const bool profileHasPath = (appNorm.find(L'/') != std::wstring::npos);
+
     if (appNorm == currentPathNorm) {
-        return true;
+        return FileInFolderSatisfied(currentDirNorm, fileInFolderW);
     }
-    // Profile might store only "game.exe".
+    if (profileHasPath) {
+        // Profile has path: match only if current path is exact or is under profile path (path prefix).
+        // E.g. profile ".../kingdomcomedeliverance/bin/win64/kingdomcome.exe" must not match
+        // current ".../kingdomcomedeliverance2/bin/.../kingdomcome.exe".
+        if (currentPathNorm.size() >= appNorm.size()) {
+            if (currentPathNorm.compare(0, appNorm.size(), appNorm) == 0) {
+                if (currentPathNorm.size() == appNorm.size()) {
+                    return FileInFolderSatisfied(currentDirNorm, fileInFolderW);
+                }
+                if (currentPathNorm[appNorm.size()] == L'/') {
+                    return FileInFolderSatisfied(currentDirNorm, fileInFolderW);
+                }
+            }
+        }
+        return false;
+    }
+    // Profile stores only exe name (e.g. "KingdomCome.exe").
     if (appNorm == currentNameNorm) {
-        return true;
+        if (FileInFolderSatisfied(currentDirNorm, fileInFolderW)) {
+            return true;
+        }
     }
-    // Current path ends with profile app (e.g. profile has "game.exe", path ends with "\\game.exe").
     if (currentPathNorm.size() >= appNorm.size()) {
         size_t off = currentPathNorm.size() - appNorm.size();
         if (currentPathNorm.compare(off, appNorm.size(), appNorm) == 0) {
             if (off == 0 || currentPathNorm[off - 1] == L'/') {
-                return true;
+                return FileInFolderSatisfied(currentDirNorm, fileInFolderW);
             }
         }
     }
@@ -359,6 +409,7 @@ static NvDRSProfileHandle FindFirstMatchingProfile(NvDRSSessionHandle hSession) 
     const wchar_t* base = wcsrchr(exePath, L'\\');
     std::wstring currentPathNorm = NormalizePath(exePath);
     std::wstring currentNameNorm = NormalizePath(base ? base + 1 : exePath);
+    std::wstring currentDirW(base ? std::wstring(exePath, base - exePath) : exePath);
 
     NvU32 numProfiles = 0;
     if (NvAPI_DRS_GetNumProfiles(hSession, &numProfiles) != NVAPI_OK) {
@@ -388,7 +439,8 @@ static NvDRSProfileHandle FindFirstMatchingProfile(NvDRSSessionHandle hSession) 
             continue;
         }
         for (NvU32 a = 0; a < returned; ++a) {
-            if (AppMatchesExe(AppNameToWide(apps[a].appName), currentPathNorm, currentNameNorm)) {
+            if (AppMatchesExe(AppNameToWide(apps[a].appName), currentPathNorm, currentNameNorm,
+                              currentDirW, AppNameToWide(apps[a].fileInFolder))) {
                 return hProfile;
             }
         }
@@ -412,6 +464,7 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
 
     std::wstring currentPathNorm = NormalizePath(exePath);
     std::wstring currentNameNorm = NormalizePath(base ? base + 1 : exePath);
+    std::wstring currentDirW(base ? std::wstring(exePath, base - exePath) : exePath);
 
     NvDRSSessionHandle hSession = nullptr;
     NvAPI_Status status = NvAPI_DRS_CreateSession(&hSession);
@@ -474,10 +527,21 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
             continue;
         }
         for (NvU32 a = 0; a < returned; ++a) {
-            std::wstring appNameW = AppNameToWide(apps[a].appName);
-                if (AppMatchesExe(appNameW, currentPathNorm, currentNameNorm)) {
-                result.matching_profile_names.push_back(profileNameUtf8);
-                if (result.matching_profile_names.size() == 1) {
+            const NVDRS_APPLICATION& appEnt = apps[a];
+            std::wstring appNameW = AppNameToWide(appEnt.appName);
+            if (AppMatchesExe(appNameW, currentPathNorm, currentNameNorm, currentDirW,
+                              AppNameToWide(appEnt.fileInFolder))) {
+                MatchedProfileEntry entry;
+                entry.profile_name = profileNameUtf8;
+                entry.app_name = WideToUtf8(reinterpret_cast<const wchar_t*>(appEnt.appName));
+                entry.user_friendly_name = WideToUtf8(reinterpret_cast<const wchar_t*>(appEnt.userFriendlyName));
+                entry.launcher = WideToUtf8(reinterpret_cast<const wchar_t*>(appEnt.launcher));
+                entry.file_in_folder = WideToUtf8(reinterpret_cast<const wchar_t*>(appEnt.fileInFolder));
+                entry.is_metro = (appEnt.isMetro != 0);
+                entry.is_command_line = (appEnt.isCommandLine != 0);
+                entry.command_line = WideToUtf8(reinterpret_cast<const wchar_t*>(appEnt.commandLine));
+                result.matching_profiles.push_back(std::move(entry));
+                if (result.matching_profiles.size() == 1) {
                     ReadImportantSettings(hSession, hProfile, result.important_settings);
                     ReadAdvancedSettings(hSession, hProfile, result.advanced_settings);
                     ReadAllSettings(hSession, hProfile, result.all_settings);
@@ -487,6 +551,9 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
         }
     }
 
+    for (const auto& mp : result.matching_profiles) {
+        result.matching_profile_names.push_back(mp.profile_name);
+    }
     NvAPI_DRS_DestroySession(hSession);
     result.success = true;
     return result;

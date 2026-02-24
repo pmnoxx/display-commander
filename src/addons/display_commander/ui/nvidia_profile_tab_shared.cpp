@@ -126,8 +126,34 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
     }
     imgui.Spacing();
     if (imgui.BeginChild("NvidiaProfileSearchList", ImVec2(-1.f, 180.f), true)) {
-        for (const std::string& name : r.matching_profile_names) {
-            imgui.Text("  %s", name.c_str());
+        if (!r.matching_profiles.empty()) {
+            for (const nvapi::MatchedProfileEntry& entry : r.matching_profiles) {
+                imgui.Text("  %s", entry.profile_name.c_str());
+                if (imgui.IsItemHovered()) {
+                    std::string tip = "Profile: " + entry.profile_name + "\n";
+                    tip += "App (exe): " + (entry.app_name.empty() ? "(empty)" : entry.app_name) + "\n";
+                    if (!entry.user_friendly_name.empty()) {
+                        tip += "User-friendly name: " + entry.user_friendly_name + "\n";
+                    }
+                    if (!entry.launcher.empty()) {
+                        tip += "Launcher: " + entry.launcher + "\n";
+                    }
+                    if (!entry.file_in_folder.empty()) {
+                        tip += "File in folder: " + entry.file_in_folder + "\n";
+                    }
+                    if (entry.is_metro) {
+                        tip += "Metro/UWP app: Yes\n";
+                    }
+                    if (entry.is_command_line && !entry.command_line.empty()) {
+                        tip += "Command line: " + entry.command_line + "\n";
+                    }
+                    imgui.SetTooltip("%s", tip.c_str());
+                }
+            }
+        } else {
+            for (const std::string& name : r.matching_profile_names) {
+                imgui.Text("  %s", name.c_str());
+            }
         }
     }
     imgui.EndChild();

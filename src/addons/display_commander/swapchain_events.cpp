@@ -1702,9 +1702,7 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
 static bool GetManualColorSpace(settings::ManualColorSpace index, DXGI_COLOR_SPACE_TYPE* out_dxgi,
                                 reshade::api::color_space* out_reshade) {
     switch (index) {
-        case settings::ManualColorSpace::NoChanges:
-            LogInfo("GetManualColorSpace: NoChanges (don't set)");
-            return false;
+        case settings::ManualColorSpace::NoChanges: LogInfo("GetManualColorSpace: NoChanges (don't set)"); return false;
         case settings::ManualColorSpace::sRGB:
             *out_dxgi = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
             *out_reshade = reshade::api::color_space::srgb_nonlinear;
@@ -1725,9 +1723,7 @@ static bool GetManualColorSpace(settings::ManualColorSpace index, DXGI_COLOR_SPA
             *out_reshade = reshade::api::color_space::hdr10_hlg;
             LogInfo("GetManualColorSpace: HDR10 HLG (DXGI 0x%x, ReShade hdr10_hlg)", *out_dxgi);
             return true;
-        default:
-            LogInfo("GetManualColorSpace: invalid (don't set)");
-            return false;
+        default: LogInfo("GetManualColorSpace: invalid (don't set)"); return false;
     }
 }
 
@@ -1738,7 +1734,13 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
     DXGI_COLOR_SPACE_TYPE color_space;
     reshade::api::color_space reshade_color_space;
 
-    if (auto_colorspace) {
+    settings::ManualColorSpace manual = settings::g_advancedTabSettings.GetManualColorSpace();
+    if (manual != settings::ManualColorSpace::NoChanges) {
+        if (!GetManualColorSpace(manual, &color_space, &reshade_color_space)) {
+            return;  // NoChanges or invalid
+        }
+        LogInfo("AutoSetColorSpace: manual=%d", static_cast<int>(manual));
+    } else if (auto_colorspace) {
         auto desc_ptr = g_last_swapchain_desc.load();
         if (!desc_ptr) {
             return;
@@ -1759,12 +1761,6 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
             LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
             return;
         }
-    } else {
-        settings::ManualColorSpace manual = settings::g_advancedTabSettings.GetManualColorSpace();
-        if (!GetManualColorSpace(manual, &color_space, &reshade_color_space)) {
-            return;  // NoChanges or invalid
-        }
-        LogInfo("AutoSetColorSpace: manual=%d", static_cast<int>(manual));
     }
 
     SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);

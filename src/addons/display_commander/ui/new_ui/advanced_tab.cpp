@@ -6,6 +6,7 @@
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
+#include "../../res/ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
@@ -371,7 +372,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     // Show PresentMon status
     if (presentmon::g_presentMonManager.IsRunning()) {
         imgui.SameLine();
-        imgui.TextColored(wrapper_colors::ICON_SUCCESS, ICON_FK_OK " ACTIVE");
+        imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " ACTIVE");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("PresentMon worker thread is currently running.");
         }
@@ -383,7 +384,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
         bool has_pm_flip_state = presentmon::g_presentMonManager.GetFlipState(pm_flip_state);
         presentmon::g_presentMonManager.GetDebugInfo(pm_debug_info);
 
-        imgui.TextColored(wrapper_colors::TEXT_LABEL, "ETW Status:");
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "ETW Status:");
         imgui.SameLine();
         if (!pm_debug_info.etw_session_name.empty()) {
             imgui.Text("%s [%s]", pm_debug_info.etw_session_status.c_str(), pm_debug_info.etw_session_name.c_str());
@@ -393,7 +394,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
 
         // Display list of DC_ ETW sessions
         if (!pm_debug_info.dc_etw_sessions.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL,
+            imgui.TextColored(::ui::colors::TEXT_LABEL,
                               "DC_ ETW Sessions (%zu):", pm_debug_info.dc_etw_sessions.size());
             imgui.Indent();
             for (const auto& session_name : pm_debug_info.dc_etw_sessions) {
@@ -412,9 +413,9 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                 }
 
                 // Small button with X icon
-                imgui.PushStyleColor(4, ImGuiWrapperColor{0.7f, 0.2f, 0.2f, 0.6f});
-                imgui.PushStyleColor(5, ImGuiWrapperColor{0.9f, 0.3f, 0.3f, 0.8f});
-                imgui.PushStyleColor(6, wrapper_colors::TEXT_ERROR);
+                imgui.PushStyleColor(4, ImVec4{0.7f, 0.2f, 0.2f, 0.6f});
+                imgui.PushStyleColor(5, ImVec4{0.9f, 0.3f, 0.3f, 0.8f});
+                imgui.PushStyleColor(6, ::ui::colors::TEXT_ERROR);
 
                 if (imgui.SmallButton(ICON_FK_CANCEL)) {
                     // Convert narrow string to wide string for StopEtwSessionByName
@@ -446,33 +447,33 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
         }
 
         if (!pm_debug_info.last_error.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_ERROR, "Last Error: %s", pm_debug_info.last_error.c_str());
+            imgui.TextColored(::ui::colors::TEXT_ERROR, "Last Error: %s", pm_debug_info.last_error.c_str());
         }
 
-        imgui.TextColored(wrapper_colors::TEXT_LABEL, "Events:");
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "Events:");
         imgui.SameLine();
         imgui.Text("%llu (pid=%llu)", static_cast<unsigned long long>(pm_debug_info.events_processed),
                    static_cast<unsigned long long>(pm_debug_info.events_processed_for_current_pid));
 
-        imgui.TextColored(wrapper_colors::TEXT_LABEL, "Last Event PID:");
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "Last Event PID:");
         imgui.SameLine();
         imgui.Text("%u", static_cast<unsigned int>(pm_debug_info.last_event_pid));
 
-        imgui.TextColored(wrapper_colors::TEXT_LABEL, "Providers:");
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "Providers:");
         imgui.SameLine();
         imgui.Text("DxgKrnl=%llu, DXGI=%llu, DWM=%llu", static_cast<unsigned long long>(pm_debug_info.events_dxgkrnl),
                    static_cast<unsigned long long>(pm_debug_info.events_dxgi),
                    static_cast<unsigned long long>(pm_debug_info.events_dwm));
 
         if (!pm_debug_info.last_graphics_provider.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL, "Last Graphics Event:");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Last Graphics Event:");
             imgui.SameLine();
             imgui.Text("%s | id=%u | pid=%u", pm_debug_info.last_graphics_provider.c_str(),
                        static_cast<unsigned int>(pm_debug_info.last_graphics_event_id),
                        static_cast<unsigned int>(pm_debug_info.last_graphics_event_pid));
         }
         if (!pm_debug_info.last_graphics_provider_name.empty() || !pm_debug_info.last_graphics_event_name.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL, "Graphics Schema:");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Graphics Schema:");
             imgui.SameLine();
             imgui.Text("%s :: %s",
                        pm_debug_info.last_graphics_provider_name.empty()
@@ -481,22 +482,22 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                        pm_debug_info.last_graphics_event_name.empty() ? "(unknown event)"
                                                                       : pm_debug_info.last_graphics_event_name.c_str());
         }
-        imgui.TextColored(wrapper_colors::TEXT_LABEL, "Graphics Props:");
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "Graphics Props:");
         imgui.SameLine();
         if (!pm_debug_info.last_graphics_props.empty()) {
             imgui.TextWrapped("%s", pm_debug_info.last_graphics_props.c_str());
         } else {
-            imgui.TextColored(wrapper_colors::TEXT_DIMMED, "(none)");
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "(none)");
         }
 
         if (!pm_debug_info.last_provider.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL, "Last Event:");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Last Event:");
             imgui.SameLine();
             imgui.Text("%s | id=%u", pm_debug_info.last_provider.c_str(),
                        static_cast<unsigned int>(pm_debug_info.last_event_id));
         }
         if (!pm_debug_info.last_provider_name.empty() || !pm_debug_info.last_event_name.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL, "Schema:");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Schema:");
             imgui.SameLine();
             imgui.Text(
                 "%s :: %s",
@@ -505,22 +506,22 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                 pm_debug_info.last_event_name.empty() ? "(unknown event)" : pm_debug_info.last_event_name.c_str());
         }
         if (!pm_debug_info.last_interesting_props.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL, "Props:");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Props:");
             imgui.SameLine();
             imgui.TextWrapped("%s", pm_debug_info.last_interesting_props.c_str());
         }
         if (!pm_debug_info.last_present_mode_value.empty()) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL, "Last PresentMode:");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Last PresentMode:");
             imgui.SameLine();
             imgui.Text("%s", pm_debug_info.last_present_mode_value.c_str());
         }
 
         if (has_pm_flip_state) {
-            imgui.TextColored(wrapper_colors::TEXT_LABEL, "Flip Mode:");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Flip Mode:");
             imgui.SameLine();
             imgui.Text("%s", pm_flip_state.present_mode_str.c_str());
         } else {
-            imgui.TextColored(wrapper_colors::TEXT_DIMMED, "Flip Mode: (No data yet)");
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "Flip Mode: (No data yet)");
         }
 
         // DWM Flip Compatibility (separate from flip-state)
@@ -534,7 +535,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                 LONGLONG now_ns = utils::get_now_ns();
                 double age_ms =
                     static_cast<double>(now_ns - static_cast<LONGLONG>(pm_flip_compat.last_update_time_ns)) / 1000000.0;
-                imgui.TextColored(wrapper_colors::TEXT_DIMMED, "Last update: %.1f ms ago", age_ms);
+                imgui.TextColored(::ui::colors::TEXT_DIMMED, "Last update: %.1f ms ago", age_ms);
 
                 imgui.Text("surfaceLuid: 0x%llx", static_cast<unsigned long long>(pm_flip_compat.surface_luid));
                 imgui.Text("Surface: %ux%u  PixelFormat=%u  ColorSpace=%u  Flags=0x%x", pm_flip_compat.surface_width,
@@ -553,13 +554,13 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                     std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
                     presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 3600000);
 
-                    imgui.TextColored(wrapper_colors::TEXT_DIMMED, "Surfaces: %d", static_cast<int>(surfaces.size()));
+                    imgui.TextColored(::ui::colors::TEXT_DIMMED, "Surfaces: %d", static_cast<int>(surfaces.size()));
 
                     if (imgui.BeginTable("##pm_surfaces", 10,
                                          wrapper_flags::TableFlags_RowBg | wrapper_flags::TableFlags_Borders
                                              | wrapper_flags::TableFlags_SizingFixedFit
                                              | wrapper_flags::TableFlags_ScrollY,
-                                         ImGuiWrapperVec2{0.f, 260.f})) {
+                                         ImVec2{0.f, 260.f})) {
                         imgui.TableSetupColumn("Age(ms)");
                         imgui.TableSetupColumn("surfaceLuid");
                         imgui.TableSetupColumn("hwnd");
@@ -588,7 +589,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                             if (s.hwnd != 0) {
                                 imgui.Text("0x%llx", static_cast<unsigned long long>(s.hwnd));
                             } else {
-                                imgui.TextColored(wrapper_colors::TEXT_DIMMED, "(unknown)");
+                                imgui.TextColored(::ui::colors::TEXT_DIMMED, "(unknown)");
                             }
 
                             imgui.TableSetColumnIndex(3);
@@ -631,12 +632,12 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             std::vector<presentmon::PresentMonEventTypeSummary> types;
             presentmon::g_presentMonManager.GetEventTypeSummaries(types, s_graphics_only);
 
-            imgui.TextColored(wrapper_colors::TEXT_DIMMED, "Cached event types: %d", static_cast<int>(types.size()));
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "Cached event types: %d", static_cast<int>(types.size()));
 
             if (imgui.BeginTable("##pm_event_types", 7,
                                  wrapper_flags::TableFlags_RowBg | wrapper_flags::TableFlags_Borders
                                      | wrapper_flags::TableFlags_SizingFixedFit | wrapper_flags::TableFlags_ScrollY,
-                                 ImGuiWrapperVec2{0.f, 2220.f})) {
+                                 ImVec2{0.f, 2220.f})) {
                 imgui.TableSetupColumn("Count");
                 imgui.TableSetupColumn("Provider");
                 imgui.TableSetupColumn("EventId");
@@ -691,9 +692,9 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     imgui.Spacing();
 
     // Debug Layer checkbox with warning
-    imgui.TextColored(wrapper_colors::ICON_WARNING, ICON_FK_WARNING);
+    imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING);
     imgui.SameLine();
-    imgui.TextColored(wrapper_colors::ICON_WARNING, "REQUIRES SETUP:");
+    imgui.TextColored(::ui::colors::ICON_WARNING, "REQUIRES SETUP:");
     imgui.SameLine();
     if (CheckboxSetting(settings::g_advancedTabSettings.debug_layer_enabled, "Enable DX11/DX12 Debug Layer", &imgui)) {
         LogInfo("Debug layer setting changed to: %s",
@@ -723,7 +724,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     // Show status when debug layer is enabled
     if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         imgui.SameLine();
-        imgui.TextColored(wrapper_colors::ICON_SUCCESS, ICON_FK_OK " ACTIVE");
+        imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " ACTIVE");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Debug layer is currently ENABLED.\n"
@@ -793,7 +794,7 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
             imgui.SetTooltip("How often the per-second block runs (1–60 seconds).");
         }
         imgui.Spacing();
-        imgui.TextColored(wrapper_colors::TEXT_LABEL, "Triggers:");
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "Triggers:");
         CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Screensaver / display required", &imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_fps_aggregate, "FPS aggregate (overlay stats)", &imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_volume, "Volume (game & system)", &imgui);
@@ -899,7 +900,7 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
     // Show upgrade status
     if (s_d3d9e_upgrade_successful.load()) {
         imgui.Indent();
-        imgui.TextColored(wrapper_colors::ICON_SUCCESS, ICON_FK_OK " D3D9 upgraded to D3D9Ex successfully");
+        imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " D3D9 upgraded to D3D9Ex successfully");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Direct3D 9 was successfully upgraded to Direct3D 9Ex.\n"
@@ -908,7 +909,7 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
         imgui.Unindent();
     } else if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
         imgui.Indent();
-        imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f}, "Waiting for D3D9 device creation...");
+        imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Waiting for D3D9 device creation...");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "The upgrade will occur when the game creates a Direct3D 9 device.\n"
@@ -926,12 +927,12 @@ void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui) {
     display_commander::utils::MpoRegistryStatus status = {};
     display_commander::utils::MpoRegistryGetStatus(&status);
 
-    imgui.TextColored(wrapper_colors::TEXT_DIMMED,
+    imgui.TextColored(::ui::colors::TEXT_DIMMED,
                       "MPO registry options. Check to enable each. Restart required. Requires administrator.");
     imgui.Spacing();
 
     // Status of the other two (Windows options)
-    imgui.TextColored(wrapper_colors::TEXT_LABEL, "Status:");
+    imgui.TextColored(::ui::colors::TEXT_LABEL, "Status:");
     imgui.SameLine();
     imgui.Text("OverlayTestMode %s, DisableMPO %s, DisableOverlays %s", status.overlay_test_mode_5 ? "= 5" : "not set",
                status.disable_mpo ? "= 1" : "not set", status.disable_overlays ? "= 1" : "not set");
@@ -995,13 +996,13 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             bool isGameSupported = IsGameInNvapiAutoEnableList(GetCurrentProcessName());
 
             if (isGameSupported) {
-                imgui.TextColored(wrapper_colors::ICON_SUCCESS, ICON_FK_OK " Current Game: %s", gameStatus.c_str());
+                imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " Current Game: %s", gameStatus.c_str());
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip("This game is supported for NVAPI auto-enable features.");
                 }
                 // Warning about Alt+Enter requirement
                 imgui.Spacing();
-                imgui.TextColored(ImGuiWrapperColor{1.0f, 0.8f, 0.0f, 1.0f},
+                imgui.TextColored(ImVec4{1.0f, 0.8f, 0.0f, 1.0f},
                                   ICON_FK_WARNING " Warning: Requires pressing Alt+Enter once");
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
@@ -1010,13 +1011,13 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 }
 
             } else {
-                imgui.TextColored(wrapper_colors::TEXT_DIMMED, ICON_FK_CANCEL " Current Game: %s", gameStatus.c_str());
+                imgui.TextColored(::ui::colors::TEXT_DIMMED, ICON_FK_CANCEL " Current Game: %s", gameStatus.c_str());
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip("This game is not in the NVAPI auto-enable supported games list.");
                 }
             }
 
-            imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f}, "NVAPI Auto-enable for Games");
+            imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "NVAPI Auto-enable for Games");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
                     "Automatically enable NVAPI features for specific games.\n\n"
@@ -1036,14 +1037,14 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             // Display restart warning if needed
             if (s_restart_needed_nvapi.load()) {
                 imgui.Spacing();
-                imgui.TextColored(wrapper_colors::TEXT_ERROR, "Game restart required to apply NVAPI changes.");
+                imgui.TextColored(::ui::colors::TEXT_ERROR, "Game restart required to apply NVAPI changes.");
             }
             if (::g_nvapiFullscreenPrevention.IsAvailable()) {
                 // Library loaded successfully
-                imgui.TextColored(wrapper_colors::ICON_SUCCESS, ICON_FK_OK " NVAPI Library: Loaded");
+                imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " NVAPI Library: Loaded");
             } else {
                 // Library not loaded
-                imgui.TextColored(wrapper_colors::ICON_ERROR, ICON_FK_CANCEL " NVAPI Library: Not Loaded");
+                imgui.TextColored(::ui::colors::ICON_ERROR, ICON_FK_CANCEL " NVAPI Library: Not Loaded");
             }
         }
         imgui.Unindent();
@@ -1055,12 +1056,12 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
         // Native Reflex Status Indicator
         bool is_native_reflex_active = IsNativeReflexActive(now_ns);
         if (is_native_reflex_active) {
-            imgui.TextColored(wrapper_colors::ICON_SUCCESS, ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
+            imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip("The game has native Reflex support and is actively using it. ");
             }
         } else {
-            imgui.TextColored(wrapper_colors::TEXT_DIMMED,
+            imgui.TextColored(::ui::colors::TEXT_DIMMED,
                               ICON_FK_MINUS " Native Reflex: INACTIVE Limit Real Frames: OFF");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip("No native Reflex activity detected. ");
@@ -1136,7 +1137,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             // Warning about enabling Reflex when game already has it
             if (is_native_reflex_active && settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
                 imgui.SameLine();
-                imgui.TextColored(wrapper_colors::ICON_WARNING, ICON_FK_WARNING
+                imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING
                                   " Warning: Do not enable 'Generate Reflex Markers' if the game already has built-in "
                                   "Reflex support!");
             }
@@ -1146,7 +1147,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (is_native_reflex_active && settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()) {
                 imgui.SameLine();
-                imgui.TextColored(wrapper_colors::ICON_WARNING, ICON_FK_WARNING
+                imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING
                                   " Warning: Do not enable 'Enable Reflex Sleep Mode' if the game already has "
                                   "built-in Reflex support!");
             }
@@ -1188,12 +1189,12 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             }
 
             if (status_available) {
-                imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f}, "Current Reflex Status:");
+                imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Current Reflex Status:");
                 imgui.Indent();
 
                 // Low Latency Mode status
                 bool low_latency_enabled = (sleep_status.bLowLatencyMode == NV_TRUE);
-                imgui.TextColored(low_latency_enabled ? wrapper_colors::ICON_SUCCESS : wrapper_colors::TEXT_DIMMED,
+                imgui.TextColored(low_latency_enabled ? ::ui::colors::ICON_SUCCESS : ::ui::colors::TEXT_DIMMED,
                                   "Low Latency Mode: %s", low_latency_enabled ? "ENABLED" : "DISABLED");
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
@@ -1236,7 +1237,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
                 imgui.Unindent();
             } else {
-                imgui.TextColored(wrapper_colors::TEXT_DIMMED, "Sleep status not available: %s",
+                imgui.TextColored(::ui::colors::TEXT_DIMMED, "Sleep status not available: %s",
                                   SleepStatusUnavailableReasonToString(unavailable_reason));
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
@@ -1248,7 +1249,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             // NvLL VK (Vulkan Reflex) params when NvLowLatencyVk hooks are active
             if (AreNvLowLatencyVkHooksInstalled()) {
                 imgui.Spacing();
-                imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f}, "NvLL VK (Vulkan Reflex) SetSleepMode:");
+                imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "NvLL VK (Vulkan Reflex) SetSleepMode:");
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
                         "When NvLowLatencyVk hooks are installed, we re-apply SleepMode on SIMULATION_START.\n"
@@ -1258,7 +1259,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 NvLLVkSleepModeParamsView last_applied = {};
                 GetNvLowLatencyVkLastAppliedSleepModeParams(&last_applied);
                 if (last_applied.has_value) {
-                    imgui.TextColored(wrapper_colors::ICON_SUCCESS, "Last applied (via SetSleepMode_Original):");
+                    imgui.TextColored(::ui::colors::ICON_SUCCESS, "Last applied (via SetSleepMode_Original):");
                     imgui.Text("  Low Latency: %s  Boost: %s  Min interval: %u us",
                                last_applied.low_latency ? "Yes" : "No", last_applied.boost ? "Yes" : "No",
                                last_applied.minimum_interval_us);
@@ -1267,12 +1268,12 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                         imgui.Text("  Target FPS: %.1f", fps);
                     }
                 } else {
-                    imgui.TextColored(ImGuiWrapperColor{0.6f, 0.6f, 0.6f, 1.0f}, "Last applied: (none yet)");
+                    imgui.TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.0f}, "Last applied: (none yet)");
                 }
                 NvLLVkSleepModeParamsView game_params = {};
                 GetNvLowLatencyVkGameSleepModeParams(&game_params);
                 if (game_params.has_value) {
-                    imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f},
+                    imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f},
                                       "Game tried to set (NvLL_VK_SetSleepMode):");
                     imgui.Text("  Low Latency: %s  Boost: %s  Min interval: %u us",
                                game_params.low_latency ? "Yes" : "No", game_params.boost ? "Yes" : "No",
@@ -1282,7 +1283,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                         imgui.Text("  Target FPS: %.1f", fps);
                     }
                 } else {
-                    imgui.TextColored(ImGuiWrapperColor{0.6f, 0.6f, 0.6f, 1.0f}, "Game tried to set: (none yet)");
+                    imgui.TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.0f}, "Game tried to set: (none yet)");
                 }
                 imgui.Unindent();
             }
@@ -1319,7 +1320,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             uint32_t total_marker_count = sim_start_count + sim_end_count + render_start_count + render_end_count
                                           + present_start_count + present_end_count + input_sample_count;
 
-            imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f}, "Reflex API Call Counters:");
+            imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Reflex API Call Counters:");
             imgui.Indent();
             imgui.Text("Sleep calls: %u", sleep_count);
             if (sleep_count > 0) {
@@ -1331,7 +1332,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Unindent();
 
             imgui.Spacing();
-            imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f}, "Individual Marker Type Counts:");
+            imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Individual Marker Type Counts:");
             imgui.Indent();
             imgui.Text("SIMULATION_START: %u", sim_start_count);
             imgui.Text("SIMULATION_END: %u", sim_end_count);
@@ -1343,7 +1344,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Unindent();
 
             imgui.Spacing();
-            imgui.TextColored(ImGuiWrapperColor{0.6f, 0.6f, 0.6f, 1.0f},
+            imgui.TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.0f},
                               "These counters help debug Reflex FPS limiter issues.");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -1371,7 +1372,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             LONGLONG native_sleep_ns = ::g_sleep_reflex_native_ns.load();
             LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
 
-            imgui.TextColored(ImGuiWrapperColor{0.8f, 0.8f, 0.8f, 1.0f}, "Native Reflex API Call Counters:");
+            imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Native Reflex API Call Counters:");
             imgui.Indent();
             imgui.Text("NvAPI_D3D_Sleep calls: %u", native_sleep_count);
             if (native_sleep_count > 0 && native_sleep_ns_smooth > 0) {
@@ -1390,7 +1391,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Unindent();
 
             imgui.Spacing();
-            imgui.TextColored(ImGuiWrapperColor{0.6f, 0.6f, 0.6f, 1.0f},
+            imgui.TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.0f},
                               "These counters track native Reflex API calls from the game.");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -1438,7 +1439,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.CollapsingHeader("AntiLag 2 / XeLL support (fakenvapi / custom nvapi64.dll)",
                                wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
-        imgui.TextColored(wrapper_colors::TEXT_WARNING, "Load AL2/AL+/XeLL through nvapi64.dll");
+        imgui.TextColored(::ui::colors::TEXT_WARNING, "Load AL2/AL+/XeLL through nvapi64.dll");
 
         bool fake_nvapi_enabled = settings::g_advancedTabSettings.fake_nvapi_enabled.GetValue();
         if (imgui.Checkbox("Enable (requires restart)", &fake_nvapi_enabled)) {
@@ -1457,7 +1458,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
         // Warning about experimental nature
         imgui.Spacing();
-        imgui.TextColored(wrapper_colors::TEXT_WARNING, ICON_FK_WARNING " Experimental Feature");
+        imgui.TextColored(::ui::colors::TEXT_WARNING, ICON_FK_WARNING " Experimental Feature");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Fake NVAPI is experimental and may cause:\n"
@@ -1474,7 +1475,7 @@ void DrawNewExperimentalFeatures(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
     // Warning tip
-    imgui.TextColored(wrapper_colors::TEXT_WARNING, ICON_FK_WARNING " Tip: Turn off if this causes crashes");
+    imgui.TextColored(::ui::colors::TEXT_WARNING, ICON_FK_WARNING " Tip: Turn off if this causes crashes");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "These experimental features are under active development.\n"

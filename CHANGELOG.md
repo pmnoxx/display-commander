@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.69 (2026-02-24)
+
+- **Loading** - Add loading libraries through .dc64/.dc32/.dc/.asi (in addition to .dc64/.dc32, now also load .dc and .asi from the addon directory).
+
 ## v0.12.68 (2026-02-24)
 
 - **Standalone UI (Main tab)** - Fixed crashes (0xC0000005) when opening the Main tab in the standalone/installer UI. All UI color helpers (nested headers, selected button, icon) now use the ImGui wrapper when available: added `ui::colors::*` overloads taking `IImGuiWrapper*` in `res/ui_colors.hpp`. When runtime is null (standalone), the Frame Time Graph section in Important Info is skipped and shows "Frame timing and graphs are only available when running in-game." instead of calling table/draw-list code. Audio VU bars (per-channel, overlay, and main strip) now null-check `GetWindowDrawList()` before calling `AddRectFilled`/`AddRect` so standalone does not crash when the draw list is unavailable.

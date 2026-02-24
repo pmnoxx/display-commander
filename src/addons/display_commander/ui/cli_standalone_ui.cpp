@@ -758,20 +758,26 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                 if (ImGui::BeginTabItem("Main")) {
                     ui::new_ui::InitMainNewTab();
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawMainNewTab(display_commander::ui::GraphicsApi::Unknown, wrapper);
+                    ui::new_ui::DrawMainNewTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("NVIDIA Profile")) {
                     static bool s_noreshadeShowAdvancedProfile = false;
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    display_commander::ui::DrawNvidiaProfileTab(display_commander::ui::GraphicsApi::Unknown, wrapper,
+                    display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper,
                                                                 &s_noreshadeShowAdvancedProfile);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Advanced")) {
                     ui::new_ui::InitAdvancedTab();
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawAdvancedTab(display_commander::ui::GraphicsApi::Unknown, wrapper);
+                    ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Performance Overlay")) {
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawPerformanceOverlayContent(wrapper, ui::new_ui::GetGraphicsApiFromLastDeviceApi(),
+                                                             true);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();

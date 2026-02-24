@@ -11,6 +11,9 @@ void InitMainNewTab();
 // Convert ReShade runtime to device API enum (for callers that have effect_runtime*).
 display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effect_runtime* runtime);
 
+// Return current device API from g_last_reshade_device_api when ReShade is loaded; otherwise GraphicsApi::Unknown.
+display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi();
+
 // Draw the main new tab content (api = device API in ReShade; GraphicsApi::Unknown in standalone).
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 
@@ -52,5 +55,11 @@ void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui,
 
 // Draw per-channel VU meter bars in the performance overlay (compact)
 void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
+
+// Draw performance overlay content (clock, FPS, VRR, VRAM, flip, DLSS, volume, graphs, etc.).
+// Use with IImGuiWrapper (ReShade or standalone). device_api used for flip status; pass GraphicsApi::Unknown when no device.
+void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
+                                   display_commander::ui::GraphicsApi device_api,
+                                   bool show_tooltips = true);
 
 }  // namespace ui::new_ui

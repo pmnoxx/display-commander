@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.76 (2026-02-24)
+
+- **Performance Overlay / independent UI** - Added a **Performance Overlay** tab to the independent (standalone) settings window.
+
 ## v0.12.75 (2026-02-24)
 
 - **Main tab** - Added "Show independent window" checkbox (when running in ReShade). Check to open the standalone settings window (Main, Profile, Advanced) in a separate window; uncheck to close it. Only visible in the ReShade overlay, not in the standalone UI.

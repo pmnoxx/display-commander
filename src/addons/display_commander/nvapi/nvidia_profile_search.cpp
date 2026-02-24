@@ -301,6 +301,25 @@ static std::wstring AppNameToWide(const NvAPI_UnicodeString& appName) {
     return reinterpret_cast<const wchar_t*>(appName);
 }
 
+// Returns true if the NvAPI Unicode string is non-empty (has at least one non-zero character).
+static bool NvApiUnicodeNonEmpty(const NvAPI_UnicodeString& s) {
+    return s[0] != 0;
+}
+
+// Count of non-empty fields in a profile application entry (app name, file-in-folder, user-friendly name,
+// launcher, command line, and is_metro / is_command_line). Used as match score; higher = more specific.
+static int ScoreAppEntry(const NVDRS_APPLICATION& appEnt) {
+    int n = 0;
+    if (NvApiUnicodeNonEmpty(appEnt.appName)) ++n;
+    if (NvApiUnicodeNonEmpty(appEnt.fileInFolder)) ++n;
+    if (NvApiUnicodeNonEmpty(appEnt.userFriendlyName)) ++n;
+    if (NvApiUnicodeNonEmpty(appEnt.launcher)) ++n;
+    if (NvApiUnicodeNonEmpty(appEnt.commandLine)) ++n;
+    if (appEnt.isMetro != 0) ++n;
+    if (appEnt.isCommandLine != 0) ++n;
+    return n;
+}
+
 // Copy wide string into NvAPI_UnicodeString (NvU16). Null-terminated, max NVAPI_UNICODE_STRING_MAX elements.
 static void WideToNvApiUnicode(const std::wstring& src, NvAPI_UnicodeString& dest) {
     memset(&dest, 0, sizeof(dest));
@@ -492,6 +511,38 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
         return result;
     }
 
+    // Try full exe path first; if DRS finds exactly one profile, use it before enumerating by profile.
+    std::string fullPathFoundProfileName;
+    {
+        NvAPI_UnicodeString fullPathBuf;
+        WideToNvApiUnicode(currentPathNorm, fullPathBuf);
+        NvDRSProfileHandle hProfileByPath = nullptr;
+        NVDRS_APPLICATION appByPath = {0};
+        appByPath.version = NVDRS_APPLICATION_VER;
+        NvAPI_Status stPath = NvAPI_DRS_FindApplicationByName(hSession, fullPathBuf, &hProfileByPath, &appByPath);
+        if (stPath == NVAPI_OK && hProfileByPath != nullptr) {
+            NVDRS_PROFILE profileInfoByPath = {0};
+            profileInfoByPath.version = NVDRS_PROFILE_VER;
+            if (NvAPI_DRS_GetProfileInfo(hSession, hProfileByPath, &profileInfoByPath) == NVAPI_OK) {
+                fullPathFoundProfileName = WideToUtf8(reinterpret_cast<const wchar_t*>(profileInfoByPath.profileName));
+                MatchedProfileEntry entry;
+                entry.profile_name = fullPathFoundProfileName;
+                entry.app_name = WideToUtf8(reinterpret_cast<const wchar_t*>(appByPath.appName));
+                entry.user_friendly_name = WideToUtf8(reinterpret_cast<const wchar_t*>(appByPath.userFriendlyName));
+                entry.launcher = WideToUtf8(reinterpret_cast<const wchar_t*>(appByPath.launcher));
+                entry.file_in_folder = WideToUtf8(reinterpret_cast<const wchar_t*>(appByPath.fileInFolder));
+                entry.is_metro = (appByPath.isMetro != 0);
+                entry.is_command_line = (appByPath.isCommandLine != 0);
+                entry.command_line = WideToUtf8(reinterpret_cast<const wchar_t*>(appByPath.commandLine));
+                entry.score = ScoreAppEntry(appByPath);
+                result.matching_profiles.push_back(std::move(entry));
+                ReadImportantSettings(hSession, hProfileByPath, result.important_settings);
+                ReadAdvancedSettings(hSession, hProfileByPath, result.advanced_settings);
+                ReadAllSettings(hSession, hProfileByPath, result.all_settings);
+            }
+        }
+    }
+
     for (NvU32 i = 0; i < numProfiles; ++i) {
         NvDRSProfileHandle hProfile = nullptr;
         status = NvAPI_DRS_EnumProfiles(hSession, i, &hProfile);
@@ -531,6 +582,10 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
             std::wstring appNameW = AppNameToWide(appEnt.appName);
             if (AppMatchesExe(appNameW, currentPathNorm, currentNameNorm, currentDirW,
                               AppNameToWide(appEnt.fileInFolder))) {
+                // Skip if we already added this profile from the full-path FindApplicationByName above.
+                if (!fullPathFoundProfileName.empty() && profileNameUtf8 == fullPathFoundProfileName) {
+                    break;
+                }
                 MatchedProfileEntry entry;
                 entry.profile_name = profileNameUtf8;
                 entry.app_name = WideToUtf8(reinterpret_cast<const wchar_t*>(appEnt.appName));
@@ -540,6 +595,7 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
                 entry.is_metro = (appEnt.isMetro != 0);
                 entry.is_command_line = (appEnt.isCommandLine != 0);
                 entry.command_line = WideToUtf8(reinterpret_cast<const wchar_t*>(appEnt.commandLine));
+                entry.score = ScoreAppEntry(appEnt);
                 result.matching_profiles.push_back(std::move(entry));
                 if (result.matching_profiles.size() == 1) {
                     ReadImportantSettings(hSession, hProfile, result.important_settings);

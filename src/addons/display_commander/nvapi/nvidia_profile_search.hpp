@@ -26,6 +26,7 @@ struct MatchedProfileEntry {
     bool is_metro = false;
     bool is_command_line = false;
     std::string command_line;
+    int score = 0;   // Number of non-empty app-entry fields; higher = more specific match. Used for sorting.
 };
 
 struct NvidiaProfileSearchResult {

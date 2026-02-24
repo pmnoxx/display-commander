@@ -62,10 +62,10 @@
 #include <dxgi1_6.h>
 #include <psapi.h>
 #include <shellapi.h>
-#include <windows.h>
 #include <shlobj.h>
 #include <sysinfoapi.h>
 #include <tlhelp32.h>
+#include <windows.h>
 #include <winver.h>
 #include <wrl/client.h>
 #include <algorithm>
@@ -76,6 +76,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
 
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
@@ -702,7 +703,6 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                                               show_tooltips);
 
     ImGui::End();
-
 }
 }  // namespace
 
@@ -2412,6 +2412,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             break;
         }
         case DLL_THREAD_ATTACH: {
+            bool done_initialization = false;
+            if (done_initialization) {
+                break;
+            }
             break;
         }
         case DLL_THREAD_DETACH: {

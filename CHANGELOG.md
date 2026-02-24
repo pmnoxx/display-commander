@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.74 (2026-02-24)
+
+- **Manual color space** - Default set to "No changes" (0); first option label renamed from "Unknown" to "No changes". Manual color space is now a `ManualColorSpace` enum (NoChanges, sRGB, scRGB, HDR10_ST2084, HDR10_HLG) with `GetManualColorSpace()`/`SetManualColorSpace()`; Advanced tab combo and swapchain color-space logic use the enum. Config still stores 0–4.
+
+## v0.12.73 (2026-02-24)
+
+- **Standalone UI (independent window)** - Switched the installer and "Settings (No ReShade)" window from DirectX 9 to Win32 + OpenGL (WGL).
+
 ## v0.12.72 (2026-02-24)
 
 - **Standalone UI (Main tab)** - Further fixes for crashes (0xC0000005) in standalone/installer UI: Resolution widget now takes `IImGuiWrapper&` and uses it for all ImGui calls (no direct `ImGui::*`). Settings wrapper uses `imgui->GetIO()` when the wrapper is passed so slider logic never touches the wrong ImGui context. `DrawDisplaySettings` now takes `GraphicsApi` instead of `effect_runtime*`; when API is `Unknown` (standalone) it skips API-dependent sections without dereferencing a runtime. Wrapper gained `InputInt`, `Button(label, size)`, `GetDisplaySize`, `GetIO`, `SetNextWindowPos`, `SetNextWindowSize`.

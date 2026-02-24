@@ -4,8 +4,8 @@
 #include <array>
 #include <sstream>
 #include "../../globals.hpp"
+#include "../../process_exit_hooks.hpp"  // For UnhandledExceptionHandler
 #include "../../settings/advanced_tab_settings.hpp"
-#include "../../process_exit_hooks.hpp"                  // For UnhandledExceptionHandler
 #include "../../settings/experimental_tab_settings.hpp"  // For g_experimentalTabSettings
 #include "../../settings/hotkeys_tab_settings.hpp"       // For exclusive key groups
 #include "../../settings/main_tab_settings.hpp"
@@ -307,12 +307,11 @@ bool ShouldSuppressMessage(HWND hWnd, UINT uMsg) {
     return false;
 }
 
-// Debug: when true, all GetMessage/PeekMessage are treated as suppressed (game receives no messages). Not saved to config.
+// Debug: when true, all GetMessage/PeekMessage are treated as suppressed (game receives no messages). Not saved to
+// config.
 static std::atomic<bool> s_debug_suppress_all_getmessage{false};
 
-bool GetDebugSuppressAllGetMessage() {
-    return s_debug_suppress_all_getmessage.load(std::memory_order_relaxed);
-}
+bool GetDebugSuppressAllGetMessage() { return s_debug_suppress_all_getmessage.load(std::memory_order_relaxed); }
 
 void SetDebugSuppressAllGetMessage(bool enable) {
     s_debug_suppress_all_getmessage.store(enable, std::memory_order_relaxed);
@@ -604,8 +603,9 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
     g_hook_stats[HOOK_PeekMessageA].increment_total();
 
     for (;;) {
-        BOOL result = PeekMessageA_Original ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
-                                            : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+        BOOL result = PeekMessageA_Original
+                          ? PeekMessageA_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
+                          : PeekMessageA(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         if (!result || lpMsg == nullptr) {
             return result;
         }
@@ -659,8 +659,9 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
     g_hook_stats[HOOK_PeekMessageW].increment_total();
 
     for (;;) {
-        BOOL result = PeekMessageW_Original ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
-                                             : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+        BOOL result = PeekMessageW_Original
+                          ? PeekMessageW_Original(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg)
+                          : PeekMessageW(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         if (!result || lpMsg == nullptr) {
             return result;
         }
@@ -862,6 +863,11 @@ BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
 BOOL ClipCursor_Direct(const RECT* lpRect) {
     // Call the original Windows API directly, bypassing our hook
     return ClipCursor_Original ? ClipCursor_Original(lpRect) : ClipCursor(lpRect);
+}
+
+// Function to call GetAsyncKeyState directly without going through the hook
+SHORT GetAsyncKeyState_Direct(int vKey) {
+    return GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
 }
 
 // Function to restore cursor clipping when input blocking is disabled
@@ -1079,7 +1085,7 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
     g_hook_stats[HOOK_GetAsyncKeyState].increment_unsuppressed();
 
     // Call original function
-    SHORT result = GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
+    SHORT result = GetAsyncKeyState_Direct(vKey);
 
     // If key is down, mark it in exclusive groups
     if ((result & 0x8000) != 0) {
@@ -1170,7 +1176,8 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
             // This size is needed to correctly advance to the next RAWINPUT block
             const UINT original_size = current->header.dwSize;
 
-            // When Continue Rendering is on, rewrite RIM_INPUTSINK -> RIM_INPUT so gamepad/HID raw input is not seen as background
+            // When Continue Rendering is on, rewrite RIM_INPUTSINK -> RIM_INPUT so gamepad/HID raw input is not seen as
+            // background
             if (settings::g_advancedTabSettings.continue_rendering.GetValue()
                 && current->header.wParam == RIM_INPUTSINK) {
                 current->header.wParam = RIM_INPUT;
@@ -1920,7 +1927,8 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER* 
 
     bool supressed_hdr = false;
     // Hide HDR capabilities if enabled and this is an advanced color info request
-    if (SUCCEEDED(result) && requestPacket != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
+    if (SUCCEEDED(result) && requestPacket != nullptr
+        && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
         if (requestPacket->type == DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO) {
             auto* colorInfo = reinterpret_cast<DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO*>(requestPacket);
 
@@ -2420,6 +2428,9 @@ void Initialize() {
 }
 
 void Update() {
+    if (g_last_swapchain_hwnd.load() == nullptr) {
+        return;
+    }
     auto first_reshade_runtime = GetFirstReShadeRuntime();
     // Update keyboard state using GetAsyncKeyState
     for (int vKey = 0; vKey < 256; ++vKey) {
@@ -2428,7 +2439,7 @@ void Update() {
         }
         // Use the original GetAsyncKeyState to get real keyboard state
         SHORT state = GetAsyncKeyState_Original ? GetAsyncKeyState_Original(vKey) : GetAsyncKeyState(vKey);
-        if (first_reshade_runtime != nullptr) {
+        if (g_global_frame_id.load() > 500 && first_reshade_runtime != nullptr) {
             state |= first_reshade_runtime->is_key_down(vKey) ? 0x8000 : 0;
         }
 

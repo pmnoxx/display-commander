@@ -2,9 +2,14 @@
 
 ---
 
+## v0.12.77 (2026-02-24)
+
+- **Loading** - Fixed Doom Dark Ages not loading.
+
 ## v0.12.76 (2026-02-24)
 
 - **Performance Overlay / independent UI** - Added a **Performance Overlay** tab to the independent (standalone) settings window.
+- **Independent window** - Fixed interacting with the independent window when clip_cursor is enabled.
 
 ## v0.12.75 (2026-02-24)
 

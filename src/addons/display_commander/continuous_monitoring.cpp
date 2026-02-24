@@ -112,6 +112,10 @@ bool IsAppInBackground() {
     DWORD current_pid = GetCurrentProcessId();
     DWORD foreground_pid = 0;
     GetWindowThreadProcessId(current_foreground_hwnd, &foreground_pid);
+
+    if (current_foreground_hwnd == g_standalone_ui_hwnd.load(std::memory_order_acquire)) {
+        return true;
+    }
     return foreground_pid != current_pid;
 }
 

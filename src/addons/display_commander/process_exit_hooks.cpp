@@ -15,6 +15,7 @@
 #include "utils/srwlock_wrapper.hpp"
 #include "utils/stack_trace.hpp"
 #include "utils/timing.hpp"
+#include "utils/display_commander_logger.hpp"
 #include "version.hpp"
 
 namespace {
@@ -377,6 +378,8 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
     // Print list of loaded modules
     PrintLoadedModules();
 
+    display_commander::logger::FlushLogs();
+
     // Do not chain to ReShade (or other) crash handler - our log is sufficient
     return EXCEPTION_EXECUTE_HANDLER;
     // assert(IsDebuggerPresent());
@@ -425,7 +428,8 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
     const char* rendering_section = g_rendering_ui_section.load(std::memory_order_acquire);
     {
         std::ostringstream section_msg;
-        section_msg << "g_continuous_monitoring_section: " << (monitoring_section != nullptr ? monitoring_section : "(null)");
+        section_msg << "g_continuous_monitoring_section: "
+                    << (monitoring_section != nullptr ? monitoring_section : "(null)");
         exit_handler::WriteToDebugLog(section_msg.str());
     }
     {

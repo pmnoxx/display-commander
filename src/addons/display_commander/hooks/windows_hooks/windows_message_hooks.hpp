@@ -243,6 +243,7 @@ void ApplyTranslateMousePositionToCursorPos(LPPOINT lpPoint);
 BOOL WINAPI SetCursorPos_Detour(int X, int Y);
 SHORT WINAPI GetKeyState_Detour(int vKey);
 SHORT WINAPI GetAsyncKeyState_Detour(int vKey);
+SHORT GetAsyncKeyState_Direct(int vKey);
 HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
 HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
 BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk);

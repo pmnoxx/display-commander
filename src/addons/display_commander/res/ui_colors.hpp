@@ -14,6 +14,9 @@
 
 #include <imgui.h>
 
+// For wrapper-based overloads (standalone UI); path from res/ to ui/
+#include "../ui/imgui_wrapper_base.hpp"
+
 namespace ui::colors {
 
 // ============================================================================
@@ -119,6 +122,39 @@ inline void PushSelectedButtonColors() {
 // Pop button colors (3 colors)
 inline void PopSelectedButtonColors() {
     ImGui::PopStyleColor(3);
+}
+
+// Wrapper-based overloads (use when drawing via IImGuiWrapper, e.g. standalone UI)
+inline void PushSelectedButtonColors(display_commander::ui::IImGuiWrapper* w) {
+    if (w == nullptr) return;
+    w->PushStyleColor(ImGuiCol_Button, BUTTON_SELECTED);
+    w->PushStyleColor(ImGuiCol_ButtonHovered, BUTTON_SELECTED_HOVERED);
+    w->PushStyleColor(ImGuiCol_ButtonActive, BUTTON_SELECTED_ACTIVE);
+}
+inline void PopSelectedButtonColors(display_commander::ui::IImGuiWrapper* w) {
+    if (w == nullptr) return;
+    w->PopStyleColor(3);
+}
+
+inline void PushIconColor(display_commander::ui::IImGuiWrapper* w, const ImVec4& color) {
+    if (w == nullptr) return;
+    w->PushStyleColor(ImGuiCol_Text, color);
+}
+inline void PopIconColor(display_commander::ui::IImGuiWrapper* w) {
+    if (w == nullptr) return;
+    w->PopStyleColor(1);
+}
+
+inline void PushNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
+    if (w == nullptr) return;
+    w->PushStyleColor(ImGuiCol_Header, HEADER_NESTED_BG);
+    w->PushStyleColor(ImGuiCol_HeaderHovered, HEADER_NESTED_BG_HOVERED);
+    w->PushStyleColor(ImGuiCol_HeaderActive, HEADER_NESTED_BG_ACTIVE);
+    w->PushStyleColor(ImGuiCol_Text, HEADER_NESTED_TEXT);
+}
+inline void PopNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
+    if (w == nullptr) return;
+    w->PopStyleColor(4);
 }
 
 // Apply icon color for text

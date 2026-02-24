@@ -30,6 +30,7 @@
 #include "ui/cli_detect_exe.hpp"
 #include "ui/imgui_wrapper_standalone.hpp"
 #include "ui/new_ui/advanced_tab.hpp"
+#include "ui/new_ui/main_new_tab_standalone.hpp"
 #include "ui/nvidia_profile_tab_shared.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
@@ -913,6 +914,12 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
             }
                     ImGui::EndTabItem();
                 }
+                if (ImGui::BeginTabItem("Main")) {
+                    ui::new_ui::InitMainNewTab();
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawMainNewTab(nullptr, wrapper);
+                    ImGui::EndTabItem();
+                }
                 if (ImGui::BeginTabItem("Profile")) {
                     static bool s_noreshadeShowAdvancedProfile = false;
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
@@ -1659,6 +1666,12 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                     }
                     ImGui::Spacing();
 
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Main")) {
+                    ui::new_ui::InitMainNewTab();
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawMainNewTab(nullptr, wrapper);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Profile")) {

@@ -17,11 +17,11 @@
 #include "hooks/hid_additional_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
+#include "hooks/streamline_hooks.hpp"
 #include "hooks/timeslowdown_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
-#include "hooks/streamline_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
@@ -42,6 +42,7 @@
 #include "settings/reshade_tab_settings.hpp"
 #include "swapchain_events.hpp"
 #include "swapchain_events_power_saving.hpp"
+#include "ui/imgui_wrapper_reshade.hpp"
 #include "ui/monitor_settings/monitor_settings.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
@@ -695,6 +696,8 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
                  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
                      | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
 
+    display_commander::ui::ImGuiWrapperReshade overlay_imgui;
+
     // Get current FPS from performance ring buffer
 
     if (settings::g_mainTabSettings.show_clock.GetValue()) {
@@ -1230,7 +1233,7 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     }
 
     if (show_overlay_vu_bars) {
-        ui::new_ui::DrawOverlayVUBars(show_tooltips);
+        ui::new_ui::DrawOverlayVUBars(overlay_imgui, show_tooltips);
     }
 
     if (show_gpu_measurement) {
@@ -1572,19 +1575,19 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     }
 
     if (show_frame_time_graph) {
-        ui::new_ui::DrawFrameTimeGraphOverlay(show_tooltips);
+        ui::new_ui::DrawFrameTimeGraphOverlay(overlay_imgui, show_tooltips);
     }
 
     if (show_native_frame_time_graph) {
-        ui::new_ui::DrawNativeFrameTimeGraphOverlay(show_tooltips);
+        ui::new_ui::DrawNativeFrameTimeGraphOverlay(overlay_imgui, show_tooltips);
     }
 
     if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
-        ui::new_ui::DrawFrameTimelineBarOverlay(show_tooltips);
+        ui::new_ui::DrawFrameTimelineBarOverlay(overlay_imgui, show_tooltips);
     }
 
     if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-        ui::new_ui::DrawRefreshRateFrameTimesGraph(show_tooltips);
+        ui::new_ui::DrawRefreshRateFrameTimesGraph(overlay_imgui, show_tooltips);
     }
 
     ImGui::End();
@@ -1609,10 +1612,11 @@ void OverrideReShadeSettings() {
         size_t value_size = 0;
 
         // First call to get the required buffer size
-        if (reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
+        if (g_reshade_loaded.load() && reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
             // Allocate buffer and read the value
             window_config.resize(value_size);
-            if (reshade::get_config_value(nullptr, "OVERLAY", "Window", window_config.data(), &value_size)) {
+            if (g_reshade_loaded.load()
+                && reshade::get_config_value(nullptr, "OVERLAY", "Window", window_config.data(), &value_size)) {
                 // Remove null terminator if present (ReShade includes it in size)
                 if (!window_config.empty() && window_config.back() == '\0') {
                     window_config.pop_back();
@@ -1741,7 +1745,7 @@ void OverrideReShadeSettings() {
 
                 // Read current paths
                 std::vector<std::string> existing_paths;
-                if (reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
+                if (g_reshade_loaded.load() && reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
                     // Parse null-terminated string array
                     const char* ptr = buffer;
                     while (*ptr != '\0' && ptr < buffer + buffer_size) {
@@ -1838,6 +1842,9 @@ void TryStartStandaloneUIFromSafeContext() {
 
 // Helper function to check if an addon is enabled (whitelist approach)
 static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::string& addon_file) {
+    if (!g_reshade_loaded.load()) {
+        return false;
+    }
     std::vector<std::string> enabled_addons;
     display_commander::config::get_config_value("ADDONS", "EnabledAddons", enabled_addons);
 
@@ -2835,7 +2842,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
                 return std::filesystem::path(exe_path).parent_path().wstring();
             };
-            // Check for .NO_RESHADE or .NORESHADE in game exe directory: skip loading ReShade and use standalone settings UI
+            // Check for .NO_RESHADE or .NORESHADE in game exe directory: skip loading ReShade and use standalone
+            // settings UI
             {
                 const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
                 if (!dc_config_dir.empty()) {
@@ -2843,7 +2851,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     std::filesystem::path noreshade(dc_config_dir + L"\\.NORESHADE");
                     if (std::filesystem::exists(no_reshade) || std::filesystem::exists(noreshade)) {
                         g_no_reshade_mode.store(true);
-                        OutputDebugStringA("[DisplayCommander] .NO_RESHADE/.NORESHADE found - ReShade will not be loaded; standalone settings UI will start.\n");
+                        OutputDebugStringA(
+                            "[DisplayCommander] .NO_RESHADE/.NORESHADE found - ReShade will not be loaded; standalone "
+                            "settings UI will start.\n");
                     }
                 }
             }
@@ -2969,7 +2979,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
             }
 
-            // don't call register_addon if reshade is not loaded to prevent crash (skip platform/LocalAppData path when no-Reshade mode)
+            // don't call register_addon if reshade is not loaded to prevent crash (skip platform/LocalAppData path when
+            // no-Reshade mode)
             if (!g_reshade_loaded.load() && !g_no_reshade_mode.load()) {
                 OutputDebugStringA("ReShade not loaded");
                 // Detect and log platform APIs (Steam, Epic, GOG, etc.)
@@ -3155,7 +3166,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 }
             }
 
-            // No-ReShade mode: init config and minimal addon, then start standalone settings UI from safe context (LoadLibrary detour)
+            // No-ReShade mode: init config and minimal addon, then start standalone settings UI from safe context
+            // (LoadLibrary detour)
             if (g_no_reshade_mode.load()) {
                 g_hmodule = h_module;
                 display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();

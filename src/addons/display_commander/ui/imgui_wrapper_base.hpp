@@ -49,7 +49,7 @@ constexpr int TableColumnFlags_WidthFixed   = 1 << 4;
 struct IImGuiWrapper {
     virtual ~IImGuiWrapper() = default;
 
-    virtual void SameLine(float offset_from_start_x = 0.f) = 0;
+    virtual void SameLine(float offset_from_start_x = 0.f, float spacing_w = -1.f) = 0;
     virtual void Text(const char* fmt, ...) = 0;
     virtual void TextColored(const ImVec4& col, const char* fmt, ...) = 0;
     virtual void TextUnformatted(const char* text) = 0;
@@ -57,6 +57,8 @@ struct IImGuiWrapper {
     virtual bool SmallButton(const char* label) = 0;
     virtual bool Checkbox(const char* label, bool* v) = 0;
     virtual bool IsItemHovered() = 0;
+    virtual bool IsItemActive() = 0;
+    virtual bool IsItemDeactivatedAfterEdit() = 0;
     virtual void SetTooltip(const char* fmt, ...) = 0;
     virtual void Spacing() = 0;
     virtual void Separator() = 0;
@@ -69,6 +71,7 @@ struct IImGuiWrapper {
     virtual void TableSetupScrollFreeze(int cols, int rows) = 0;
     virtual void TableHeadersRow() = 0;
     virtual void TableNextRow() = 0;
+    virtual void TableNextColumn() = 0;
     virtual void TableSetColumnIndex(int column_n) = 0;
     virtual bool BeginCombo(const char* label, const char* preview_value, int flags = 0) = 0;
     virtual void EndCombo() = 0;
@@ -82,6 +85,7 @@ struct IImGuiWrapper {
     virtual bool InputText(const char* label, char* buf, size_t buf_size) = 0;
     virtual bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") = 0;
     virtual void TextWrapped(const char* fmt, ...) = 0;
+    virtual void TextDisabled(const char* fmt, ...) = 0;
     virtual void PushStyleColor(int col_enum, const ImVec4& color) = 0;
     virtual void PopStyleColor(int count = 1) = 0;
     virtual bool TreeNodeEx(const char* label, int flags) = 0;
@@ -93,6 +97,55 @@ struct IImGuiWrapper {
     virtual void SetNextItemWidth(float width) = 0;
     virtual void BeginDisabled() = 0;
     virtual void EndDisabled() = 0;
+
+    // Plot / graphs
+    virtual void PlotLines(const char* label, const float* values, int values_count, int values_offset,
+                          const char* overlay_text, float scale_min, float scale_max, const ImVec2& graph_size) = 0;
+
+    // Combo (int selection, array of item strings)
+    virtual bool Combo(const char* label, int* current_item, const char* const items[], int items_count) = 0;
+
+    // Layout / cursor
+    virtual ImDrawList* GetWindowDrawList() = 0;
+    virtual ImVec2 GetCursorScreenPos() = 0;
+    virtual void SetCursorScreenPos(const ImVec2& pos) = 0;
+    virtual float GetCursorPosX() = 0;
+    virtual void Dummy(const ImVec2& size) = 0;
+
+    // Colors (for draw lists)
+    virtual ImU32 GetColorU32(int col_enum) = 0;
+    virtual ImU32 ColorConvertFloat4ToU32(const ImVec4& col) = 0;
+
+    // Slider float
+    virtual bool SliderFloat(const char* label, float* v, float v_min, float v_max,
+                             const char* format = "%.3f") = 0;
+
+    // Columns (legacy layout)
+    virtual void Columns(int count = 1, const char* id = nullptr, bool border = true) = 0;
+    virtual void NextColumn() = 0;
+
+    // Tooltip (explicit begin/end for multi-line content)
+    virtual void BeginTooltip() = 0;
+    virtual void EndTooltip() = 0;
+
+    // Text helpers
+    virtual void BulletText(const char* fmt, ...) = 0;
+    virtual float GetTextLineHeight() = 0;
+    virtual float GetTextLineHeightWithSpacing() = 0;
+
+    // Input
+    virtual bool InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size) = 0;
+
+    // Groups
+    virtual void BeginGroup() = 0;
+    virtual void EndGroup() = 0;
+
+    // Style (read-only access for colors and layout)
+    virtual const ImGuiStyle& GetStyle() = 0;
+
+    // Window (Begin/End for e.g. debug windows)
+    virtual bool Begin(const char* name, bool* p_open, int flags = 0) = 0;
+    virtual void End() = 0;
 };
 
 } // namespace ui

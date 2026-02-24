@@ -1690,6 +1690,7 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
         }
         return;
     }
+    LogInfo("SetSwapChainColorSpace: color_space=%d, reshade_color_space=%d", color_space, reshade_color_space);
     swapchain3->SetColorSpace1(color_space);
     reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
     if (runtime != nullptr) {
@@ -1697,29 +1698,36 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
     }
 }
 
-// Manual color space index to DXGI + ReShade (manual_colorspace setting: 0=unknown, 1=sRGB, 2=scRGB, 3=HDR10 ST2084, 4=HDR10 HLG)
+// Manual color space index to DXGI + ReShade (manual_colorspace setting: 0=unknown, 1=sRGB, 2=scRGB, 3=HDR10 ST2084,
+// 4=HDR10 HLG)
 static bool GetManualColorSpace(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi, reshade::api::color_space* out_reshade) {
     switch (index) {
         case 0:
+            LogInfo("GetManualColorSpace: index=%d -> Unknown (don't set)", index);
             return false;  // unknown = don't set
         case 1:
             *out_dxgi = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
             *out_reshade = reshade::api::color_space::srgb_nonlinear;
+            LogInfo("GetManualColorSpace: index=%d -> sRGB (DXGI 0x%x, ReShade srgb_nonlinear)", index, *out_dxgi);
             return true;
         case 2:
             *out_dxgi = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
             *out_reshade = reshade::api::color_space::extended_srgb_linear;
+            LogInfo("GetManualColorSpace: index=%d -> scRGB (DXGI 0x%x, ReShade extended_srgb_linear)", index,
+                    *out_dxgi);
             return true;
         case 3:
             *out_dxgi = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
             *out_reshade = reshade::api::color_space::hdr10_st2084;
+            LogInfo("GetManualColorSpace: index=%d -> HDR10 ST2084 (DXGI 0x%x, ReShade hdr10_st2084)", index,
+                    *out_dxgi);
             return true;
         case 4:
             *out_dxgi = DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020;
             *out_reshade = reshade::api::color_space::hdr10_hlg;
+            LogInfo("GetManualColorSpace: index=%d -> HDR10 HLG (DXGI 0x%x, ReShade hdr10_hlg)", index, *out_dxgi);
             return true;
-        default:
-            return false;
+        default: LogInfo("GetManualColorSpace: index=%d -> invalid (don't set)", index); return false;
     }
 }
 
@@ -1754,11 +1762,12 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
     } else {
         int manual = settings::g_advancedTabSettings.manual_colorspace.GetValue();
         if (manual < 0 || manual > 4) {
-            manual = 1;
+            manual = 0;  // no changes
         }
         if (!GetManualColorSpace(manual, &color_space, &reshade_color_space)) {
             return;  // unknown
         }
+        LogInfo("AutoSetColorSpace: manual=%d", manual);
     }
 
     SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);

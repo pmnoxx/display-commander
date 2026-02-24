@@ -412,9 +412,13 @@ class StringSetting : public SettingBase {
 
 // SliderFloat wrapper
 bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *format = "%.3f");
+bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *format,
+                       display_commander::ui::IImGuiWrapper *imgui);
 
 // SliderFloat wrapper for FloatSettingRef
 bool SliderFloatSettingRef(FloatSettingRef &setting, const char *label, const char *format = "%.3f");
+bool SliderFloatSettingRef(FloatSettingRef &setting, const char *label, const char *format,
+                          display_commander::ui::IImGuiWrapper *imgui);
 
 // SliderInt wrapper
 bool SliderIntSetting(IntSetting &setting, const char *label, const char *format = "%d");
@@ -425,6 +429,8 @@ bool SliderIntSetting(IntSetting &setting, const char *label, const char *format
 
 // SliderInt wrapper for IntSettingRef
 bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *format = "%d");
+bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *format,
+                     display_commander::ui::IImGuiWrapper *imgui);
 
 // Checkbox wrapper
 bool CheckboxSetting(BoolSetting &setting, const char *label);
@@ -442,8 +448,14 @@ bool CheckboxSetting(BoolSettingRef &setting, const char *label,
 
 // Combo wrapper
 bool ComboSettingWrapper(ComboSetting &setting, const char *label);
+bool ComboSettingWrapper(ComboSetting &setting, const char *label,
+                        display_commander::ui::IImGuiWrapper *imgui);
 bool ComboSettingRefWrapper(ComboSettingRef &setting, const char *label);
+bool ComboSettingRefWrapper(ComboSettingRef &setting, const char *label,
+                           display_commander::ui::IImGuiWrapper *imgui);
 template <typename EnumType> bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType> &setting, const char *label);
+template <typename EnumType> bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType> &setting, const char *label,
+                                                             display_commander::ui::IImGuiWrapper *imgui);
 
 // Button wrapper (for settings that don't store values)
 bool ButtonSetting(const char *label, const ImVec2 &size = ImVec2(0, 0));

@@ -7,8 +7,8 @@
 namespace display_commander {
 namespace ui {
 
-void ImGuiWrapperStandalone::SameLine(float offset_from_start_x) {
-    ImGui::SameLine(offset_from_start_x);
+void ImGuiWrapperStandalone::SameLine(float offset_from_start_x, float spacing_w) {
+    ImGui::SameLine(offset_from_start_x, spacing_w);
 }
 void ImGuiWrapperStandalone::Text(const char* fmt, ...) {
     va_list args;
@@ -36,6 +36,12 @@ bool ImGuiWrapperStandalone::Checkbox(const char* label, bool* v) {
 }
 bool ImGuiWrapperStandalone::IsItemHovered() {
     return ImGui::IsItemHovered();
+}
+bool ImGuiWrapperStandalone::IsItemActive() {
+    return ImGui::IsItemActive();
+}
+bool ImGuiWrapperStandalone::IsItemDeactivatedAfterEdit() {
+    return ImGui::IsItemDeactivatedAfterEdit();
 }
 void ImGuiWrapperStandalone::SetTooltip(const char* fmt, ...) {
     va_list args;
@@ -76,6 +82,9 @@ void ImGuiWrapperStandalone::TableHeadersRow() {
 }
 void ImGuiWrapperStandalone::TableNextRow() {
     ImGui::TableNextRow();
+}
+void ImGuiWrapperStandalone::TableNextColumn() {
+    ImGui::TableNextColumn();
 }
 void ImGuiWrapperStandalone::TableSetColumnIndex(int column_n) {
     ImGui::TableSetColumnIndex(column_n);
@@ -119,6 +128,12 @@ void ImGuiWrapperStandalone::TextWrapped(const char* fmt, ...) {
     ImGui::TextWrappedV(fmt, args);
     va_end(args);
 }
+void ImGuiWrapperStandalone::TextDisabled(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    ImGui::TextDisabledV(fmt, args);
+    va_end(args);
+}
 void ImGuiWrapperStandalone::PushStyleColor(int col_enum, const ImVec4& color) {
     ImGui::PushStyleColor(static_cast<ImGuiCol>(col_enum), color);
 }
@@ -151,6 +166,83 @@ void ImGuiWrapperStandalone::BeginDisabled() {
 }
 void ImGuiWrapperStandalone::EndDisabled() {
     ImGui::EndDisabled();
+}
+
+void ImGuiWrapperStandalone::PlotLines(const char* label, const float* values, int values_count, int values_offset,
+                                       const char* overlay_text, float scale_min, float scale_max,
+                                       const ImVec2& graph_size) {
+    ImGui::PlotLines(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
+}
+bool ImGuiWrapperStandalone::Combo(const char* label, int* current_item, const char* const items[],
+                                   int items_count) {
+    return ImGui::Combo(label, current_item, items, items_count);
+}
+ImDrawList* ImGuiWrapperStandalone::GetWindowDrawList() {
+    return ImGui::GetWindowDrawList();
+}
+ImVec2 ImGuiWrapperStandalone::GetCursorScreenPos() {
+    return ImGui::GetCursorScreenPos();
+}
+void ImGuiWrapperStandalone::SetCursorScreenPos(const ImVec2& pos) {
+    ImGui::SetCursorScreenPos(pos);
+}
+float ImGuiWrapperStandalone::GetCursorPosX() {
+    return ImGui::GetCursorPosX();
+}
+void ImGuiWrapperStandalone::Dummy(const ImVec2& size) {
+    ImGui::Dummy(size);
+}
+ImU32 ImGuiWrapperStandalone::GetColorU32(int col_enum) {
+    return ImGui::GetColorU32(static_cast<ImGuiCol>(col_enum));
+}
+ImU32 ImGuiWrapperStandalone::ColorConvertFloat4ToU32(const ImVec4& col) {
+    return ImGui::ColorConvertFloat4ToU32(col);
+}
+bool ImGuiWrapperStandalone::SliderFloat(const char* label, float* v, float v_min, float v_max,
+                                         const char* format) {
+    return ImGui::SliderFloat(label, v, v_min, v_max, format);
+}
+void ImGuiWrapperStandalone::Columns(int count, const char* id, bool border) {
+    ImGui::Columns(count, id, border);
+}
+void ImGuiWrapperStandalone::NextColumn() {
+    ImGui::NextColumn();
+}
+void ImGuiWrapperStandalone::BeginTooltip() {
+    ImGui::BeginTooltip();
+}
+void ImGuiWrapperStandalone::EndTooltip() {
+    ImGui::EndTooltip();
+}
+void ImGuiWrapperStandalone::BulletText(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    ImGui::BulletTextV(fmt, args);
+    va_end(args);
+}
+float ImGuiWrapperStandalone::GetTextLineHeight() {
+    return ImGui::GetTextLineHeight();
+}
+float ImGuiWrapperStandalone::GetTextLineHeightWithSpacing() {
+    return ImGui::GetTextLineHeightWithSpacing();
+}
+bool ImGuiWrapperStandalone::InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size) {
+    return ImGui::InputTextWithHint(label, hint, buf, buf_size);
+}
+void ImGuiWrapperStandalone::BeginGroup() {
+    ImGui::BeginGroup();
+}
+void ImGuiWrapperStandalone::EndGroup() {
+    ImGui::EndGroup();
+}
+const ImGuiStyle& ImGuiWrapperStandalone::GetStyle() {
+    return ImGui::GetStyle();
+}
+bool ImGuiWrapperStandalone::Begin(const char* name, bool* p_open, int flags) {
+    return ImGui::Begin(name, p_open, static_cast<ImGuiWindowFlags>(flags));
+}
+void ImGuiWrapperStandalone::End() {
+    ImGui::End();
 }
 
 } // namespace ui

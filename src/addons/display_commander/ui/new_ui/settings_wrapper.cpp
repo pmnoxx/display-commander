@@ -584,17 +584,87 @@ double RefreshRatePairSetting::GetHz() const {
 
 // Wrapper function implementations
 
-bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format) {
+static bool SliderFloatSettingImpl(FloatSetting& setting, const char* label, const char* format,
+                                   display_commander::ui::IImGuiWrapper* imgui) {
     float value = setting.GetValue();
-    bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
+    bool changed = imgui ? imgui->SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format)
+                         : ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
         setting.SetValue(value);
     }
-    // Show reset-to-default button if value differs from default
-    {
-        float current = setting.GetValue();
-        float def = setting.GetDefaultValue();
-        if (fabsf(current - def) > 1e-6f) {
+    float current = setting.GetValue();
+    float def = setting.GetDefaultValue();
+    if (fabsf(current - def) > 1e-6f) {
+        if (imgui) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%.3f)", def);
+            }
+            imgui->PopID();
+        } else {
+            ImGui::SameLine();
+            ImGui::PushID(&setting);
+            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Reset to default (%.3f)", def);
+            }
+            ImGui::PopID();
+        }
+    }
+    return changed;
+}
+
+bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format) {
+    return SliderFloatSettingImpl(setting, label, format, nullptr);
+}
+
+bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format,
+                        display_commander::ui::IImGuiWrapper* imgui) {
+    return SliderFloatSettingImpl(setting, label, format, imgui);
+}
+
+static bool SliderFloatSettingRefImpl(FloatSettingRef& setting, const char* label, const char* format,
+                                      display_commander::ui::IImGuiWrapper* imgui) {
+    float value = setting.GetValue();
+    bool changed = imgui ? imgui->SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format)
+                         : ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
+    if (changed) {
+        ImGuiIO& io = ImGui::GetIO();
+        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];
+        if (is_mouse_input) {
+            setting.ClearDirtyValue();
+            setting.SetValue(value);
+        } else {
+            setting.SetDirtyValue(value);
+        }
+    }
+    if ((imgui ? imgui->IsItemDeactivatedAfterEdit() : ImGui::IsItemDeactivatedAfterEdit()) && setting.HasDirtyValue()) {
+        setting.SetValue(setting.GetDirtyValue());
+        setting.ClearDirtyValue();
+    }
+    float current = setting.GetValue();
+    float def = setting.GetDefaultValue();
+    if (fabsf(current - def) > 1e-6f) {
+        if (imgui) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%.3f)", def);
+            }
+            imgui->PopID();
+        } else {
             ImGui::SameLine();
             ImGui::PushID(&setting);
             if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -611,46 +681,12 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
 }
 
 bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const char* format) {
-    float value = setting.GetValue();
-    bool changed = ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
-    if (changed) {
-        // Check if this is keyboard input or mouse input
-        ImGuiIO& io = ImGui::GetIO();
-        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];  // Any mouse button held
+    return SliderFloatSettingRefImpl(setting, label, format, nullptr);
+}
 
-        if (is_mouse_input) {
-            // Mouse input (slider dragging) - apply immediately
-            setting.ClearDirtyValue();
-            setting.SetValue(value);
-        } else {
-            // Keyboard input - store as dirty value for later application
-            setting.SetDirtyValue(value);
-        }
-    }
-
-    // Apply dirty value when keyboard editing is finished
-    if (ImGui::IsItemDeactivatedAfterEdit() && setting.HasDirtyValue()) {
-        setting.SetValue(setting.GetDirtyValue());
-        setting.ClearDirtyValue();
-    }
-    // Show reset-to-default button if value differs from default
-    {
-        float current = setting.GetValue();
-        float def = setting.GetDefaultValue();
-        if (fabsf(current - def) > 1e-6f) {
-            ImGui::SameLine();
-            ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
-                setting.SetValue(def);
-                changed = true;
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Reset to default (%.3f)", def);
-            }
-            ImGui::PopID();
-        }
-    }
-    return changed;
+bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const char* format,
+                           display_commander::ui::IImGuiWrapper* imgui) {
+    return SliderFloatSettingRefImpl(setting, label, format, imgui);
 }
 
 bool SliderIntSetting(IntSetting& setting, const char* label, const char* format,
@@ -701,35 +737,40 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
     return SliderIntSetting(setting, label, format, nullptr);
 }
 
-bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format) {
+static bool SliderIntSettingRefImpl(IntSettingRef& setting, const char* label, const char* format,
+                                   display_commander::ui::IImGuiWrapper* imgui) {
     int value = setting.GetValue();
-    bool changed = ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
+    bool changed = imgui ? imgui->SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format)
+                         : ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        // TODO: consider doing it for other slider settings as well
-        // Check if this is keyboard input or mouse input
         ImGuiIO& io = ImGui::GetIO();
-        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];  // Any mouse button held
-
+        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];
         if (is_mouse_input) {
-            // Mouse input (slider dragging) - apply immediately
             setting.ClearDirtyValue();
             setting.SetValue(value);
         } else {
-            // Keyboard input - store as dirty value for later application
             setting.SetDirtyValue(value);
         }
     }
-
-    // Apply dirty value when keyboard editing is finished
-    if (ImGui::IsItemDeactivatedAfterEdit() && setting.HasDirtyValue()) {
+    if ((imgui ? imgui->IsItemDeactivatedAfterEdit() : ImGui::IsItemDeactivatedAfterEdit()) && setting.HasDirtyValue()) {
         setting.SetValue(setting.GetDirtyValue());
         setting.ClearDirtyValue();
     }
-    // Show reset-to-default button if value differs from default
-    {
-        int current = setting.GetValue();
-        int def = setting.GetDefaultValue();
-        if (current != def) {
+    int current = setting.GetValue();
+    int def = setting.GetDefaultValue();
+    if (current != def) {
+        if (imgui) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%d)", def);
+            }
+            imgui->PopID();
+        } else {
             ImGui::SameLine();
             ImGui::PushID(&setting);
             if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -743,6 +784,15 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
         }
     }
     return changed;
+}
+
+bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format) {
+    return SliderIntSettingRefImpl(setting, label, format, nullptr);
+}
+
+bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format,
+                      display_commander::ui::IImGuiWrapper* imgui) {
+    return SliderIntSettingRefImpl(setting, label, format, imgui);
 }
 
 bool CheckboxSetting(BoolSetting& setting, const char* label,
@@ -840,18 +890,32 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label) {
     return CheckboxSetting(setting, label, nullptr);
 }
 
-bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
+static bool ComboSettingWrapperImpl(ComboSetting& setting, const char* label,
+                                   display_commander::ui::IImGuiWrapper* imgui) {
     int value = setting.GetValue();
-    bool changed =
-        ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
+    const auto& labels = setting.GetLabels();
+    int count = static_cast<int>(labels.size());
+    bool changed = imgui ? imgui->Combo(label, &value, labels.data(), count)
+                         : ImGui::Combo(label, &value, labels.data(), count);
     if (changed) {
         setting.SetValue(value);
     }
-    // Show reset-to-default button if value differs from default
-    {
-        int current = setting.GetValue();
-        int def = setting.GetDefaultValue();
-        if (current != def) {
+    int current = setting.GetValue();
+    int def = setting.GetDefaultValue();
+    if (current != def) {
+        const char* def_label = (def >= 0 && def < count) ? labels[def] : "Default";
+        if (imgui) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%s)", def_label);
+            }
+            imgui->PopID();
+        } else {
             ImGui::SameLine();
             ImGui::PushID(&setting);
             if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -859,8 +923,56 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
                 changed = true;
             }
             if (ImGui::IsItemHovered()) {
-                const auto& labels = setting.GetLabels();
-                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
+                ImGui::SetTooltip("Reset to default (%s)", def_label);
+            }
+            ImGui::PopID();
+        }
+    }
+    return changed;
+}
+
+bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
+    return ComboSettingWrapperImpl(setting, label, nullptr);
+}
+
+bool ComboSettingWrapper(ComboSetting& setting, const char* label,
+                         display_commander::ui::IImGuiWrapper* imgui) {
+    return ComboSettingWrapperImpl(setting, label, imgui);
+}
+
+static bool ComboSettingRefWrapperImpl(ComboSettingRef& setting, const char* label,
+                                      display_commander::ui::IImGuiWrapper* imgui) {
+    int value = setting.GetValue();
+    const auto& labels = setting.GetLabels();
+    int count = static_cast<int>(labels.size());
+    bool changed = imgui ? imgui->Combo(label, &value, labels.data(), count)
+                         : ImGui::Combo(label, &value, labels.data(), count);
+    if (changed) {
+        setting.SetValue(value);
+    }
+    int current = setting.GetValue();
+    int def = setting.GetDefaultValue();
+    if (current != def) {
+        const char* def_label = (def >= 0 && def < count) ? labels[def] : "Default";
+        if (imgui) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%s)", def_label);
+            }
+            imgui->PopID();
+        } else {
+            ImGui::SameLine();
+            ImGui::PushID(&setting);
+            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Reset to default (%s)", def_label);
             }
             ImGui::PopID();
@@ -870,17 +982,41 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label) {
 }
 
 bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label) {
+    return ComboSettingRefWrapperImpl(setting, label, nullptr);
+}
+
+bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label,
+                            display_commander::ui::IImGuiWrapper* imgui) {
+    return ComboSettingRefWrapperImpl(setting, label, imgui);
+}
+
+template <typename EnumType>
+static bool ComboSettingEnumRefWrapperImpl(ComboSettingEnumRef<EnumType>& setting, const char* label,
+                                           display_commander::ui::IImGuiWrapper* imgui) {
     int value = setting.GetValue();
-    bool changed =
-        ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
+    const auto& labels = setting.GetLabels();
+    int count = static_cast<int>(labels.size());
+    bool changed = imgui ? imgui->Combo(label, &value, labels.data(), count)
+                         : ImGui::Combo(label, &value, labels.data(), count);
     if (changed) {
         setting.SetValue(value);
     }
-    // Show reset-to-default button if value differs from default
-    {
-        int current = setting.GetValue();
-        int def = setting.GetDefaultValue();
-        if (current != def) {
+    int current = setting.GetValue();
+    int def = setting.GetDefaultValue();
+    if (current != def) {
+        const char* def_label = (def >= 0 && def < count) ? labels[def] : "Default";
+        if (imgui) {
+            imgui->SameLine();
+            imgui->PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
+            if (imgui->SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
+                setting.SetValue(def);
+                changed = true;
+            }
+            if (imgui->IsItemHovered()) {
+                imgui->SetTooltip("Reset to default (%s)", def_label);
+            }
+            imgui->PopID();
+        } else {
             ImGui::SameLine();
             ImGui::PushID(&setting);
             if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -888,8 +1024,6 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label) {
                 changed = true;
             }
             if (ImGui::IsItemHovered()) {
-                const auto& labels = setting.GetLabels();
-                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
                 ImGui::SetTooltip("Reset to default (%s)", def_label);
             }
             ImGui::PopID();
@@ -900,32 +1034,13 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label) {
 
 template <typename EnumType>
 bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label) {
-    int value = setting.GetValue();
-    bool changed =
-        ImGui::Combo(label, &value, setting.GetLabels().data(), static_cast<int>(setting.GetLabels().size()));
-    if (changed) {
-        setting.SetValue(value);
-    }
-    // Show reset-to-default button if value differs from default
-    {
-        int current = setting.GetValue();
-        int def = setting.GetDefaultValue();
-        if (current != def) {
-            ImGui::SameLine();
-            ImGui::PushID(&setting);
-            if (ImGui::SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
-                setting.SetValue(def);
-                changed = true;
-            }
-            if (ImGui::IsItemHovered()) {
-                const auto& labels = setting.GetLabels();
-                const char* def_label = (def >= 0 && def < static_cast<int>(labels.size())) ? labels[def] : "Default";
-                ImGui::SetTooltip("Reset to default (%s)", def_label);
-            }
-            ImGui::PopID();
-        }
-    }
-    return changed;
+    return ComboSettingEnumRefWrapperImpl(setting, label, nullptr);
+}
+
+template <typename EnumType>
+bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label,
+                               display_commander::ui::IImGuiWrapper* imgui) {
+    return ComboSettingEnumRefWrapperImpl(setting, label, imgui);
 }
 
 bool ButtonSetting(const char* label, const ImVec2& size) { return ImGui::Button(label, size); }
@@ -936,11 +1051,17 @@ void TextSetting(const char* text) { ImGui::Text("%s", text); }
 template class ComboSettingEnumRef<ScreensaverMode>;
 template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>& setting,
                                                           const char* label);
+template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>& setting,
+                                                          const char* label,
+                                                          display_commander::ui::IImGuiWrapper* imgui);
 
 // Explicit template instantiations for OnPresentReflexMode
 template class ComboSettingEnumRef<OnPresentReflexMode>;
 template bool ComboSettingEnumRefWrapper<OnPresentReflexMode>(ComboSettingEnumRef<OnPresentReflexMode>& setting,
                                                              const char* label);
+template bool ComboSettingEnumRefWrapper<OnPresentReflexMode>(ComboSettingEnumRef<OnPresentReflexMode>& setting,
+                                                             const char* label,
+                                                             display_commander::ui::IImGuiWrapper* imgui);
 
 // Explicit template instantiations for FrameTimeMode
 template class ComboSettingEnumRef<FrameTimeMode>;
@@ -949,16 +1070,23 @@ template bool ComboSettingEnumRefWrapper<FrameTimeMode>(ComboSettingEnumRef<Fram
 // Explicit template instantiations for ComboSettingEnumRef
 template class ComboSettingEnumRef<WindowMode>;
 template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowMode>& setting, const char* label);
+template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowMode>& setting, const char* label,
+                                                    display_commander::ui::IImGuiWrapper* imgui);
 
 // Explicit template instantiations for InputBlockingMode
 template class ComboSettingEnumRef<InputBlockingMode>;
 template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode>& setting,
                                                             const char* label);
+template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode>& setting,
+                                                            const char* label,
+                                                            display_commander::ui::IImGuiWrapper* imgui);
 
 // Note: LogLevel uses explicit specializations for methods, but we still need to instantiate
 // the class template itself (for constructor and other non-specialized members)
 template class ComboSettingEnumRef<LogLevel>;
 template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel>& setting, const char* label);
+template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel>& setting, const char* label,
+                                                  display_commander::ui::IImGuiWrapper* imgui);
 
 void SeparatorSetting() { ImGui::Separator(); }
 

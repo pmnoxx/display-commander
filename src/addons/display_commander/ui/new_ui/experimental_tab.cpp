@@ -23,6 +23,7 @@
 #include "../../utils/timing.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "hook_stats_tab.hpp"
+#include "../imgui_wrapper_reshade.hpp"
 #include "main_new_tab.hpp"
 #include "settings_wrapper.hpp"
 #include "streamline_tab.hpp"
@@ -321,7 +322,8 @@ void DrawExperimentalTab(reshade::api::effect_runtime* runtime) {
     }
 
     if (ImGui::BeginTabItem("Important Info")) {
-        DrawImportantInfo();
+        display_commander::ui::ImGuiWrapperReshade wrapper;
+        DrawImportantInfo(wrapper);
         ImGui::EndTabItem();
     }
 

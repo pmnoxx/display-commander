@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.68 (2026-02-24)
+
+- **Standalone UI (Main tab)** - Fixed crashes (0xC0000005) when opening the Main tab in the standalone/installer UI. All UI color helpers (nested headers, selected button, icon) now use the ImGui wrapper when available: added `ui::colors::*` overloads taking `IImGuiWrapper*` in `res/ui_colors.hpp`. When runtime is null (standalone), the Frame Time Graph section in Important Info is skipped and shows "Frame timing and graphs are only available when running in-game." instead of calling table/draw-list code. Audio VU bars (per-channel, overlay, and main strip) now null-check `GetWindowDrawList()` before calling `AddRectFilled`/`AddRect` so standalone does not crash when the draw list is unavailable.
+
 ## v0.12.67 (2026-02-24)
 
 - **Color space selector** - Added a color space dropdown below "Auto color space" in Advanced → HDR and Display Settings. When Auto color space is off, the selected space (Unknown, sRGB, scRGB, HDR10 ST2084, HDR10 HLG) is applied to the swap chain on present. When Auto is on, format-based behavior is unchanged.

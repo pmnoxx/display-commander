@@ -1,4 +1,5 @@
 #include "reshade_global_config.hpp"
+#include "../globals.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 
@@ -120,7 +121,8 @@ bool ReadCurrentReShadeSettings(ReShadeGlobalSettings& settings) {
             buffer_size = sizeof(buffer);
             memset(buffer, 0, sizeof(buffer));
 
-            if (reshade::get_config_value(nullptr, section.c_str(), key.c_str(), buffer, &buffer_size)) {
+            if (g_reshade_loaded.load()
+                && reshade::get_config_value(nullptr, section.c_str(), key.c_str(), buffer, &buffer_size)) {
                 // Special handling for EffectSearchPaths and TextureSearchPaths
                 // These are stored as null-terminated string arrays in ReShade
                 if (key == "EffectSearchPaths" || key == "TextureSearchPaths") {

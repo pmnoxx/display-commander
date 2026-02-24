@@ -4,13 +4,16 @@
 
 #include <imgui.h>
 #include <cstdarg>
+#include <cstddef>
 
 namespace display_commander {
 namespace ui {
 
 /** ImGui wrapper that forwards to ReShade's ImGui (used in addon overlay). Header-only so ImGui symbols stay in the same TU as overlay code. */
 struct ImGuiWrapperReshade : IImGuiWrapper {
-    void SameLine(float offset_from_start_x = 0.f) override { ImGui::SameLine(offset_from_start_x); }
+    void SameLine(float offset_from_start_x = 0.f, float spacing_w = -1.f) override {
+        ImGui::SameLine(offset_from_start_x, spacing_w);
+    }
     void Text(const char* fmt, ...) override {
         va_list args;
         va_start(args, fmt);
@@ -28,6 +31,8 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     bool SmallButton(const char* label) override { return ImGui::SmallButton(label); }
     bool Checkbox(const char* label, bool* v) override { return ImGui::Checkbox(label, v); }
     bool IsItemHovered() override { return ImGui::IsItemHovered(); }
+    bool IsItemActive() override { return ImGui::IsItemActive(); }
+    bool IsItemDeactivatedAfterEdit() override { return ImGui::IsItemDeactivatedAfterEdit(); }
     void SetTooltip(const char* fmt, ...) override {
         va_list args;
         va_start(args, fmt);
@@ -53,6 +58,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void TableSetupScrollFreeze(int cols, int rows) override { ImGui::TableSetupScrollFreeze(cols, rows); }
     void TableHeadersRow() override { ImGui::TableHeadersRow(); }
     void TableNextRow() override { ImGui::TableNextRow(); }
+    void TableNextColumn() override { ImGui::TableNextColumn(); }
     void TableSetColumnIndex(int column_n) override { ImGui::TableSetColumnIndex(column_n); }
     bool BeginCombo(const char* label, const char* preview_value, int flags = 0) override {
         return ImGui::BeginCombo(label, preview_value, flags);
@@ -77,6 +83,12 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         ImGui::TextWrappedV(fmt, args);
         va_end(args);
     }
+    void TextDisabled(const char* fmt, ...) override {
+        va_list args;
+        va_start(args, fmt);
+        ImGui::TextDisabledV(fmt, args);
+        va_end(args);
+    }
     void PushStyleColor(int col_enum, const ImVec4& color) override {
         ImGui::PushStyleColor(static_cast<ImGuiCol>(col_enum), color);
     }
@@ -92,6 +104,47 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void SetNextItemWidth(float width) override { ImGui::SetNextItemWidth(width); }
     void BeginDisabled() override { ImGui::BeginDisabled(); }
     void EndDisabled() override { ImGui::EndDisabled(); }
+
+    void PlotLines(const char* label, const float* values, int values_count, int values_offset,
+                   const char* overlay_text, float scale_min, float scale_max,
+                   const ImVec2& graph_size) override {
+        ImGui::PlotLines(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
+    }
+    bool Combo(const char* label, int* current_item, const char* const items[], int items_count) override {
+        return ImGui::Combo(label, current_item, items, items_count);
+    }
+    ImDrawList* GetWindowDrawList() override { return ImGui::GetWindowDrawList(); }
+    ImVec2 GetCursorScreenPos() override { return ImGui::GetCursorScreenPos(); }
+    void SetCursorScreenPos(const ImVec2& pos) override { ImGui::SetCursorScreenPos(pos); }
+    float GetCursorPosX() override { return ImGui::GetCursorPosX(); }
+    void Dummy(const ImVec2& size) override { ImGui::Dummy(size); }
+    ImU32 GetColorU32(int col_enum) override { return ImGui::GetColorU32(static_cast<ImGuiCol>(col_enum)); }
+    ImU32 ColorConvertFloat4ToU32(const ImVec4& col) override { return ImGui::ColorConvertFloat4ToU32(col); }
+    bool SliderFloat(const char* label, float* v, float v_min, float v_max, const char* format) override {
+        return ImGui::SliderFloat(label, v, v_min, v_max, format);
+    }
+    void Columns(int count, const char* id, bool border) override { ImGui::Columns(count, id, border); }
+    void NextColumn() override { ImGui::NextColumn(); }
+    void BeginTooltip() override { ImGui::BeginTooltip(); }
+    void EndTooltip() override { ImGui::EndTooltip(); }
+    void BulletText(const char* fmt, ...) override {
+        va_list args;
+        va_start(args, fmt);
+        ImGui::BulletTextV(fmt, args);
+        va_end(args);
+    }
+    float GetTextLineHeight() override { return ImGui::GetTextLineHeight(); }
+    float GetTextLineHeightWithSpacing() override { return ImGui::GetTextLineHeightWithSpacing(); }
+    bool InputTextWithHint(const char* label, const char* hint, char* buf, size_t buf_size) override {
+        return ImGui::InputTextWithHint(label, hint, buf, buf_size);
+    }
+    void BeginGroup() override { ImGui::BeginGroup(); }
+    void EndGroup() override { ImGui::EndGroup(); }
+    const ImGuiStyle& GetStyle() override { return ImGui::GetStyle(); }
+    bool Begin(const char* name, bool* p_open, int flags) override {
+        return ImGui::Begin(name, p_open, static_cast<ImGuiWindowFlags>(flags));
+    }
+    void End() override { ImGui::End(); }
 };
 
 } // namespace ui

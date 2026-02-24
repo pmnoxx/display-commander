@@ -85,12 +85,13 @@ bool DidNativeReflexSleepRecently(uint64_t now_ns) {
 }
 }  // anonymous namespace
 
-void DrawFrameTimeGraph() {
+void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;  // Phase 1: unused; for future standalone migration
     // Get frame time data from the performance ring buffer
     const uint32_t count = ::g_perf_ring.GetCount();
 
     if (count == 0) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No frame time data available yet...");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "No frame time data available yet...");
         return;
     }
 
@@ -108,7 +109,7 @@ void DrawFrameTimeGraph() {
     }
 
     if (frame_times.empty()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No valid frame time data available...");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "No valid frame time data available...");
         return;
     }
 
@@ -125,8 +126,8 @@ void DrawFrameTimeGraph() {
     float avg_fps = (avg_frame_time > 0.0f) ? (1.0f / avg_frame_time) : 0.0f;
 
     // Display statistics
-    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
-                avg_frame_time, avg_fps);
+    imgui.Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
+               avg_frame_time, avg_fps);
 
     // Create overlay text with current frame time
     std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
@@ -148,32 +149,32 @@ void DrawFrameTimeGraph() {
     float scale_max = avg_frame_time * 4.f;     // Add some padding
 
     // Draw the frame time graph
-    ImGui::PlotLines("Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
-                     0,  // values_offset
-                     overlay_text.c_str(), scale_min, scale_max, graph_size);
+    imgui.PlotLines("Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
+                    0,  // values_offset
+                    overlay_text.c_str(), scale_min, scale_max, graph_size);
 
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Frame time graph showing recent frame times in milliseconds.\n"
             "Lower values = higher FPS, smoother gameplay.\n"
             "Spikes indicate frame drops or stuttering.");
     }
 
     // Frame Time Mode Selector
-    ImGui::Spacing();
-    ImGui::Text("Frame Time Mode:");
-    ImGui::SameLine();
+    imgui.Spacing();
+    imgui.Text("Frame Time Mode:");
+    imgui.SameLine();
 
     int current_mode = static_cast<int>(settings::g_mainTabSettings.frame_time_mode.GetValue());
     const char* mode_items[] = {"Present-to-Present", "Frame Begin-to-Frame Begin", "Display Timing (GPU Completion)"};
 
-    if (ImGui::Combo("##frame_time_mode", &current_mode, mode_items, 3)) {
+    if (imgui.Combo("##frame_time_mode", &current_mode, mode_items, 3)) {
         settings::g_mainTabSettings.frame_time_mode.SetValue(current_mode);
         LogInfo("Frame time mode changed to: %s", mode_items[current_mode]);
     }
 
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Select which timing events to record for the frame time graph:\n"
             "- Present-to-Present: Records time between Present calls\n"
             "- Frame Begin-to-Frame Begin: Records time between frame begin events\n"
@@ -308,10 +309,11 @@ static void UpdateFrameTimelineCache() {
 // Draw a single-frame timeline: one horizontal bar per phase, each on its own row.
 // Uses start/end times (relative to frame start) so bars show when each phase began and ended.
 // Data is cached and refreshed at most once per second to avoid flicker.
-void DrawFrameTimelineBar() {
+void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     UpdateFrameTimelineCache();
     if (s_timeline_phases.empty()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: no frame time data yet.");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: no frame time data yet.");
         return;
     }
 
@@ -320,27 +322,27 @@ void DrawFrameTimelineBar() {
     const double t_max = s_timeline_t_max;
     const double time_range = s_timeline_time_range;
 
-    ImGui::Text("Frame timeline (start to end, relative to sim start, updates every 1 s)");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    imgui.Text("Frame timeline (start to end, relative to sim start, updates every 1 s)");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Each row = one phase. Bar shows when it started and ended (0 = sim start). "
             "Times from last completed frame (g_frame_data).");
     }
-    ImGui::Spacing();
+    imgui.Spacing();
 
     const float row_height = 18.0f;
     const float bar_rounding = 2.0f;
     const float label_width = 150.0f;
 
-    if (!ImGui::BeginTable("##FrameTimeline", 2, ImGuiTableFlags_None, ImVec2(-1.0f, 0.0f))) {
+    if (!imgui.BeginTable("##FrameTimeline", 2, ImGuiTableFlags_None, ImVec2(-1.0f, 0.0f))) {
         return;
     }
-    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
-    ImGui::TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
+    imgui.TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
+    imgui.TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
 
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImDrawList* draw_list = imgui.GetWindowDrawList();
     if (draw_list == nullptr) {
-        ImGui::EndTable();
+        imgui.EndTable();
         return;
     }
 
@@ -350,12 +352,12 @@ void DrawFrameTimelineBar() {
             continue;
         }
 
-        ImGui::TableNextColumn();
-        ImGui::TextUnformatted(p.label);
+        imgui.TableNextColumn();
+        imgui.TextUnformatted(p.label);
 
-        ImGui::TableNextColumn();
-        const ImVec2 bar_pos = ImGui::GetCursorScreenPos();
-        const float bar_width = ImGui::GetContentRegionAvail().x;
+        imgui.TableNextColumn();
+        const ImVec2 bar_pos = imgui.GetCursorScreenPos();
+        const float bar_width = imgui.GetContentRegionAvail().x;
         const ImVec2 bar_size(bar_width, row_height);
 
         // Bar in time range: start_ms -> end_ms maps to bar_pos.x -> bar_pos.x + bar_width
@@ -374,32 +376,33 @@ void DrawFrameTimelineBar() {
         }
 
         draw_list->AddRectFilled(ImVec2(bar_pos.x, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_size.y),
-                                 ImGui::GetColorU32(ImGuiCol_FrameBg), bar_rounding);
+                                 imgui.GetColorU32(ImGuiCol_FrameBg), bar_rounding);
         draw_list->AddRectFilled(ImVec2(x0, bar_pos.y), ImVec2(x1, bar_pos.y + bar_size.y),
-                                 ImGui::ColorConvertFloat4ToU32(p.color), bar_rounding);
+                                 imgui.ColorConvertFloat4ToU32(p.color), bar_rounding);
 
-        ImGui::Dummy(bar_size);
+        imgui.Dummy(bar_size);
 
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("%s: %.2f ms - %.2f ms (%.2f ms)", p.label, p.start_ms, p.end_ms, duration);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("%s: %.2f ms - %.2f ms (%.2f ms)", p.label, p.start_ms, p.end_ms, duration);
         }
     }
 
     // Time axis row: empty label column, then "0 ms" and "t_max ms" in bar column
-    ImGui::TableNextColumn();
-    ImGui::TextUnformatted("");
-    ImGui::TableNextColumn();
-    const float axis_bar_width = ImGui::GetContentRegionAvail().x;
-    const float axis_cell_x = ImGui::GetCursorPosX();
-    ImGui::TextColored(ui::colors::TEXT_DIMMED, "0 ms");
-    ImGui::SameLine(axis_cell_x + axis_bar_width - 50.0f);
-    ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.1f ms", t_max);
+    imgui.TableNextColumn();
+    imgui.TextUnformatted("");
+    imgui.TableNextColumn();
+    const float axis_bar_width = imgui.GetContentRegionAvail().x;
+    const float axis_cell_x = imgui.GetCursorPosX();
+    imgui.TextColored(ui::colors::TEXT_DIMMED, "0 ms");
+    imgui.SameLine(axis_cell_x + axis_bar_width - 50.0f);
+    imgui.TextColored(ui::colors::TEXT_DIMMED, "%.1f ms", t_max);
 
-    ImGui::EndTable();
+    imgui.EndTable();
 }
 
 // Compact frame timeline bar for performance overlay (smaller rows, fixed width).
-void DrawFrameTimelineBarOverlay(bool show_tooltips) {
+void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
+    (void)imgui;
     UpdateFrameTimelineCache();
     if (s_timeline_phases.empty()) {
         return;
@@ -415,14 +418,14 @@ void DrawFrameTimelineBarOverlay(bool show_tooltips) {
     const float graph_scale = settings::g_mainTabSettings.overlay_graph_scale.GetValue();
     const float total_width = 280.0f * graph_scale;
 
-    if (!ImGui::BeginTable("##FrameTimelineOverlay", 2, ImGuiTableFlags_None, ImVec2(total_width, 0.0f))) {
+    if (!imgui.BeginTable("##FrameTimelineOverlay", 2, ImGuiTableFlags_None, ImVec2(total_width, 0.0f))) {
         return;
     }
-    ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
-    ImGui::TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    imgui.TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, label_width);
+    imgui.TableSetupColumn("Bar", ImGuiTableColumnFlags_WidthStretch);
+    ImDrawList* draw_list = imgui.GetWindowDrawList();
     if (draw_list == nullptr) {
-        ImGui::EndTable();
+        imgui.EndTable();
         return;
     }
 
@@ -431,11 +434,11 @@ void DrawFrameTimelineBarOverlay(bool show_tooltips) {
         if (duration <= 0.0) {
             continue;
         }
-        ImGui::TableNextColumn();
-        ImGui::TextUnformatted(p.label);
-        ImGui::TableNextColumn();
-        const ImVec2 bar_pos = ImGui::GetCursorScreenPos();
-        const float bar_width = ImGui::GetContentRegionAvail().x;
+        imgui.TableNextColumn();
+        imgui.TextUnformatted(p.label);
+        imgui.TableNextColumn();
+        const ImVec2 bar_pos = imgui.GetCursorScreenPos();
+        const float bar_width = imgui.GetContentRegionAvail().x;
         const ImVec2 bar_size(bar_width, row_height);
 
         const double frac_start = (p.start_ms - t_min) / time_range;
@@ -452,27 +455,28 @@ void DrawFrameTimelineBarOverlay(bool show_tooltips) {
             x0 = bar_pos.x;
         }
         draw_list->AddRectFilled(ImVec2(bar_pos.x, bar_pos.y), ImVec2(bar_pos.x + bar_width, bar_pos.y + bar_size.y),
-                                 ImGui::GetColorU32(ImGuiCol_FrameBg), bar_rounding);
+                                 imgui.GetColorU32(ImGuiCol_FrameBg), bar_rounding);
         draw_list->AddRectFilled(ImVec2(x0, bar_pos.y), ImVec2(x1, bar_pos.y + bar_size.y),
-                                 ImGui::ColorConvertFloat4ToU32(p.color), bar_rounding);
-        ImGui::Dummy(bar_size);
-        if (show_tooltips && ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("%s: %.2f - %.2f ms", p.label, p.start_ms, p.end_ms);
+                                 imgui.ColorConvertFloat4ToU32(p.color), bar_rounding);
+        imgui.Dummy(bar_size);
+        if (show_tooltips && imgui.IsItemHovered()) {
+            imgui.SetTooltip("%s: %.2f - %.2f ms", p.label, p.start_ms, p.end_ms);
         }
     }
-    ImGui::TableNextColumn();
-    ImGui::TextUnformatted("");
-    ImGui::TableNextColumn();
-    const float axis_bar_width = ImGui::GetContentRegionAvail().x;
-    const float axis_cell_x = ImGui::GetCursorPosX();
-    ImGui::TextColored(ui::colors::TEXT_DIMMED, "0");
-    ImGui::SameLine(axis_cell_x + axis_bar_width - 28.0f);
-    ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.0f ms", t_max);
-    ImGui::EndTable();
+    imgui.TableNextColumn();
+    imgui.TextUnformatted("");
+    imgui.TableNextColumn();
+    const float axis_bar_width = imgui.GetContentRegionAvail().x;
+    const float axis_cell_x = imgui.GetCursorPosX();
+    imgui.TextColored(ui::colors::TEXT_DIMMED, "0");
+    imgui.SameLine(axis_cell_x + axis_bar_width - 28.0f);
+    imgui.TextColored(ui::colors::TEXT_DIMMED, "%.0f ms", t_max);
+    imgui.EndTable();
 }
 
 // Draw DLSS information (same format as performance overlay). Caller must pass pre-fetched summary.
-void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
+void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary) {
+    (void)imgui;
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
@@ -482,26 +486,26 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         auto path_dlssg = GetDlssTrackedPath(DlssTrackedKind::DLSSG);
         auto path_dlssd = GetDlssTrackedPath(DlssTrackedKind::DLSSD);
         if (path_dlss.has_value() || path_dlssg.has_value() || path_dlssd.has_value()) {
-            if (ImGui::TreeNodeEx("DLSS module paths (tracked)", ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
+            if (imgui.TreeNodeEx("DLSS module paths (tracked)", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
                 }
                 if (path_dlss.has_value()) {
-                    ImGui::Text("nvngx_dlss.dll: %s", path_dlss->c_str());
+                    imgui.Text("nvngx_dlss.dll: %s", path_dlss->c_str());
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlss.dll: (not tracked)");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlss.dll: (not tracked)");
                 }
                 if (path_dlssg.has_value()) {
-                    ImGui::Text("nvngx_dlssg.dll: %s", path_dlssg->c_str());
+                    imgui.Text("nvngx_dlssg.dll: %s", path_dlssg->c_str());
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlssg.dll: (not tracked)");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlssg.dll: (not tracked)");
                 }
                 if (path_dlssd.has_value()) {
-                    ImGui::Text("nvngx_dlssd.dll: %s", path_dlssd->c_str());
+                    imgui.Text("nvngx_dlssd.dll: %s", path_dlssd->c_str());
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlssd.dll: (not tracked)");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "nvngx_dlssd.dll: (not tracked)");
                 }
-                ImGui::TreePop();
+                imgui.TreePop();
             }
         }
     }
@@ -509,9 +513,9 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
     // FG Mode
     if (any_dlss_active
         && (dlssg_summary.fg_mode == "2x" || dlssg_summary.fg_mode == "3x" || dlssg_summary.fg_mode == "4x")) {
-        ImGui::Text("FG: %s", dlssg_summary.fg_mode.c_str());
+        imgui.Text("FG: %s", dlssg_summary.fg_mode.c_str());
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
     }
 
     // DLSS Internal Resolution (same format as performance overlay: internal -> output -> backbuffer)
@@ -522,9 +526,9 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         if (bb_w > 0 && bb_h > 0) {
             res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
         }
-        ImGui::Text("DLSS Res: %s", res_text.c_str());
+        imgui.Text("DLSS Res: %s", res_text.c_str());
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Res: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Res: N/A");
     }
 
     // DLSS Status
@@ -535,16 +539,16 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         } else if (dlssg_summary.dlss_g_active) {
             status_text += " (DLSS-G)";
         }
-        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "%s", status_text.c_str());
+        imgui.TextColored(ui::colors::TEXT_SUCCESS, "%s", status_text.c_str());
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS: Off");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS: Off");
     }
 
     // DLSS Quality Preset
     if (any_dlss_active && dlssg_summary.quality_preset != "N/A") {
-        ImGui::Text("DLSS Quality: %s", dlssg_summary.quality_preset.c_str());
+        imgui.Text("DLSS Quality: %s", dlssg_summary.quality_preset.c_str());
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
     }
 
     // DLSS Render Preset
@@ -588,33 +592,33 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
             }
 
             std::string render_preset_letter = ConvertRenderPresetToLetter(render_preset_value);
-            ImGui::Text("DLSS Render: %s", render_preset_letter.c_str());
+            imgui.Text("DLSS Render: %s", render_preset_letter.c_str());
         } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
     }
 
     // DLSS Render Preset override (same settings as Swapchain tab)
     if (any_dlss_active) {
         bool preset_override_enabled = settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue();
-        if (ImGui::Checkbox("Enable DLSS Preset Override##MainTab", &preset_override_enabled)) {
+        if (imgui.Checkbox("Enable DLSS Preset Override##MainTab", &preset_override_enabled)) {
             settings::g_swapchainTabSettings.dlss_preset_override_enabled.SetValue(preset_override_enabled);
             ResetNGXPresetInitialization();
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Override DLSS presets at runtime (Game Default / DLSS Default / Preset A, B, C, etc.). Same as "
                 "Swapchain tab.");
         }
 
         if (g_dlss_from_nvidia_app_bin.load()) {
-            ImGui::TextColored(
+            imgui.TextColored(
                 ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                 "NVIDIA App DLSS override detected (.bin). Version and presets are controlled by the NVIDIA app.");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited "
                     "effect.");
             }
@@ -643,8 +647,8 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
 
             const char* combo_label =
                 dlssg_summary.ray_reconstruction_active ? "RR Preset##MainTab" : "SR Preset##MainTab";
-            if (ImGui::Combo(combo_label, &current_selection, preset_cstrs.data(),
-                             static_cast<int>(preset_cstrs.size()))) {
+            if (imgui.Combo(combo_label, &current_selection, preset_cstrs.data(),
+                            static_cast<int>(preset_cstrs.size()))) {
                 const std::string& new_value = preset_options[current_selection];
                 if (dlssg_summary.ray_reconstruction_active) {
                     settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(new_value);
@@ -653,8 +657,8 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
                 }
                 ResetNGXPresetInitialization();
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
             }
         }
     }
@@ -662,16 +666,16 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
     // DLSS indicator (registry: NVIDIA NGXCore ShowDlssIndicator — same as Special-K / .reg toggle)
     if (any_dlss_active) {
         bool reg_enabled = dlss::DlssIndicatorManager::IsDlssIndicatorEnabled();
-        ImGui::TextColored(reg_enabled ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_DIMMED, "DLSS indicator: %s",
-                           reg_enabled ? "On" : "Off");
-        if (ImGui::Checkbox("Enable DLSS indicator through Registry##MainTab", &reg_enabled)) {
+        imgui.TextColored(reg_enabled ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_DIMMED, "DLSS indicator: %s",
+                          reg_enabled ? "On" : "Off");
+        if (imgui.Checkbox("Enable DLSS indicator through Registry##MainTab", &reg_enabled)) {
             LogInfo("DLSS Indicator: %s", reg_enabled ? "enabled" : "disabled");
             if (!dlss::DlssIndicatorManager::SetDlssIndicatorEnabled(reg_enabled)) {
                 LogInfo("DLSS Indicator: Apply to registry failed (run as admin or use .reg in Experimental tab).");
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Show DLSS on-screen indicator (resolution/version) in games. Writes NVIDIA registry; may require "
                 "restart. Admin needed if apply fails.");
         }
@@ -682,15 +686,15 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         if (dlssg_indicator_current < 0 || dlssg_indicator_current > 2) {
             dlssg_indicator_current = 0;
         }
-        if (ImGui::Combo("DLSS-FG indicator text##MainTab", &dlssg_indicator_current, dlssg_indicator_items,
-                         static_cast<int>(sizeof(dlssg_indicator_items) / sizeof(dlssg_indicator_items[0])))) {
+        if (imgui.Combo("DLSS-FG indicator text##MainTab", &dlssg_indicator_current, dlssg_indicator_items,
+                        static_cast<int>(sizeof(dlssg_indicator_items) / sizeof(dlssg_indicator_items[0])))) {
             DWORD level = static_cast<DWORD>(dlssg_indicator_current);
             if (!dlss::DlssIndicatorManager::SetDlssgIndicatorTextLevel(level)) {
                 LogInfo("DLSSG_IndicatorText: Apply to registry failed (run as admin).");
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "DLSS-FG on-screen indicator text level (registry DLSSG_IndicatorText). Off / Minimal / Detailed. "
                 "May require restart. Admin needed if apply fails.");
         }
@@ -731,12 +735,12 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
             if (create_flags_list.empty()) create_flags_list = "None";
         }
         if (has_create_flags) {
-            ImGui::Text("Create.Flags: %d (%s)", create_flags_val, create_flags_list.c_str());
+            imgui.Text("Create.Flags: %d (%s)", create_flags_val, create_flags_list.c_str());
         } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Create.Flags: N/A");
     }
     std::string ae_current = settings::g_swapchainTabSettings.dlss_forced_auto_exposure.GetValue();
 
@@ -759,7 +763,7 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         show_auto_exposure = (ae_idx != 0 || original_auto_exposure_setting != ae_current) && flags_have_auto_exposure;
     }
     if (show_auto_exposure) {
-        ImGui::Text("Auto Exposure: %s", dlssg_summary.auto_exposure.c_str());
+        imgui.Text("Auto Exposure: %s", dlssg_summary.auto_exposure.c_str());
         const char* ae_items[] = {"Game Default", "Force Off", "Force On"};
         int ae_idx = 0;
         if (ae_current == "Force Off") {
@@ -767,44 +771,44 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
         } else if (ae_current == "Force On") {
             ae_idx = 2;
         }
-        ImGui::SetNextItemWidth(ImGui::CalcTextSize("Force On").x + (ImGui::GetStyle().FramePadding.x * 2.0f) + 20.0f);
-        if (ImGui::Combo("Auto Exposure Override##DLSS", &ae_idx, ae_items, 3)) {
+        imgui.SetNextItemWidth(imgui.CalcTextSize("Force On").x + (imgui.GetStyle().FramePadding.x * 2.0f) + 20.0f);
+        if (imgui.Combo("Auto Exposure Override##DLSS", &ae_idx, ae_items, 3)) {
             settings::g_swapchainTabSettings.dlss_forced_auto_exposure.SetValue(ae_items[ae_idx]);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Override DLSS auto-exposure. Takes effect when DLSS feature is (re)created.\n"
                 "See Create.Flags field for current DLSS.Feature.Create.Flags value and decoded bits.");
         }
         if (original_auto_exposure_setting != ae_current) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING, "Restart required for change to take effect.");
+            imgui.TextColored(ui::colors::TEXT_WARNING, "Restart required for change to take effect.");
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Auto Exposure: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Auto Exposure: N/A");
     }
 
     // DLSS DLL Versions
-    ImGui::Spacing();
+    imgui.Spacing();
     if (dlssg_summary.dlss_dll_version != "N/A") {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS DLL: %s", dlssg_summary.dlss_dll_version.c_str());
+        imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS DLL: %s", dlssg_summary.dlss_dll_version.c_str());
         if (dlssg_summary.supported_dlss_presets != "N/A") {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", dlssg_summary.supported_dlss_presets.c_str());
+            imgui.SameLine();
+            imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), " [%s]", dlssg_summary.supported_dlss_presets.c_str());
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS DLL: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS DLL: N/A");
     }
 
     if (dlssg_summary.dlssg_dll_version != "N/A") {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-G DLL: %s", dlssg_summary.dlssg_dll_version.c_str());
+        imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-G DLL: %s", dlssg_summary.dlssg_dll_version.c_str());
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS-G DLL: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS-G DLL: N/A");
     }
 
     if (dlssg_summary.dlssd_dll_version != "N/A" && dlssg_summary.dlssd_dll_version != "Not loaded") {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-D DLL: %s", dlssg_summary.dlssd_dll_version.c_str());
+        imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS-D DLL: %s", dlssg_summary.dlssd_dll_version.c_str());
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "DLSS-D DLL: N/A");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS-D DLL: N/A");
     }
     if (settings::g_streamlineTabSettings.dlss_override_enabled.GetValue()) {
         std::string not_applied;
@@ -823,12 +827,12 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
             not_applied += "nvngx_dlssg.dll";
         }
         if (!not_applied.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
-                               ICON_FK_WARNING
-                               " Override not applied for: %s. Restart game with override enabled before launch.",
-                               not_applied.c_str());
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                              ICON_FK_WARNING
+                              " Override not applied for: %s. Restart game with override enabled before launch.",
+                              not_applied.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "The game loaded these DLLs before our hooks were active. Enable override and restart the game to "
                     "use override versions.");
             }
@@ -837,11 +841,11 @@ void DrawDLSSInfo(const DLSSGSummary& dlssg_summary) {
 }
 
 // Draw native frame time graph (for frames shown to display via native swapchain Present)
-void DrawNativeFrameTimeGraph() {
+void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     // Check if limit real frames is enabled
     if (!settings::g_mainTabSettings.limit_real_frames.GetValue()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                           "Native frame time graph requires limit real frames to be enabled.");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires limit real frames to be enabled.");
         return;
     }
 
@@ -849,7 +853,7 @@ void DrawNativeFrameTimeGraph() {
     const uint32_t count = ::g_native_frame_time_ring.GetCount();
 
     if (count == 0) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No native frame time data available yet...");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "No native frame time data available yet...");
         return;
     }
 
@@ -867,7 +871,7 @@ void DrawNativeFrameTimeGraph() {
     }
 
     if (frame_times.empty()) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "No valid native frame time data available...");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "No valid native frame time data available...");
         return;
     }
 
@@ -884,8 +888,8 @@ void DrawNativeFrameTimeGraph() {
     float avg_fps = (avg_frame_time > 0.0f) ? (1000.0f / avg_frame_time) : 0.0f;
 
     // Display statistics
-    ImGui::Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
-                avg_frame_time, avg_fps);
+    imgui.Text("Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS(avg): %.1f", min_frame_time, max_frame_time,
+               avg_frame_time, avg_fps);
 
     // Create overlay text with current frame time
     std::string overlay_text = "Native Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
@@ -896,12 +900,12 @@ void DrawNativeFrameTimeGraph() {
     float scale_max = avg_frame_time * 4.f;     // Add some padding
 
     // Draw the native frame time graph
-    ImGui::PlotLines("Native Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
-                     0,  // values_offset
-                     overlay_text.c_str(), scale_min, scale_max, graph_size);
+    imgui.PlotLines("Native Frame Time (ms)", frame_times.data(), static_cast<int>(frame_times.size()),
+                    0,  // values_offset
+                    overlay_text.c_str(), scale_min, scale_max, graph_size);
 
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Native frame time graph showing frames actually shown to display via native swapchain Present.\n"
             "This tracks frames when limit real frames is enabled.\n"
             "Lower values = higher FPS, smoother gameplay.\n"
@@ -910,7 +914,8 @@ void DrawNativeFrameTimeGraph() {
 }
 
 // Draw refresh rate frame times graph (actual refresh rate from NVAPI Adaptive Sync)
-void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
+void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
+    (void)imgui;
     // Use actual refresh rate samples (NVAPI) - lock-free iteration
     static std::vector<float> frame_times;
     frame_times.clear();
@@ -926,8 +931,8 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
     if (frame_times.empty()) {
         if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
             && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING,
-                               "NvAPI_DISP_GetAdaptiveSyncData failing repeatedly — no refresh rate data.");
+            imgui.TextColored(ui::colors::TEXT_WARNING,
+                              "NvAPI_DISP_GetAdaptiveSyncData failing repeatedly — no refresh rate data.");
         }
         return;  // Don't show anything if no valid data (monitor not active or no samples yet)
     }
@@ -966,30 +971,30 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
-    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
+    ImVec4 bg_color = imgui.GetStyle().Colors[ImGuiCol_FrameBg];
     bg_color.w *= chart_alpha;  // Apply transparency to background
 
     // Push style color so PlotLines uses the transparent background
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+    imgui.PushStyleColor(ImGuiCol_FrameBg, bg_color);
 
     // Draw compact refresh rate frame time graph (line stays fully opaque)
-    ImGui::PlotLines("##RefreshRateFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
-                     0,        // values_offset
-                     nullptr,  // overlay_text - no text for compact version
-                     scale_min, scale_max, graph_size);
+    imgui.PlotLines("##RefreshRateFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
+                    0,        // values_offset
+                    nullptr,  // overlay_text - no text for compact version
+                    scale_min, scale_max, graph_size);
 
     // Restore original style color
-    ImGui::PopStyleColor();
+    imgui.PopStyleColor();
 
     // Display refresh rate time statistics if enabled
     bool show_refresh_rate_frame_time_stats = settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
     if (show_refresh_rate_frame_time_stats) {
-        ImGui::Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
-                    min_frame_time, max_frame_time);
+        imgui.Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
+                   min_frame_time, max_frame_time);
     }
 
-    if (ImGui::IsItemHovered() && show_tooltips) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered() && show_tooltips) {
+        imgui.SetTooltip(
             "Actual refresh rate frame time graph (NvAPI_DISP_GetAdaptiveSyncData) in milliseconds.\n"
             "Lower values = higher refresh rate.\n"
             "Spikes indicate refresh rate variations (VRR, power management, etc.).");
@@ -997,7 +1002,8 @@ void DrawRefreshRateFrameTimesGraph(bool show_tooltips) {
 }
 
 // Compact overlay version with fixed width
-void DrawFrameTimeGraphOverlay(bool show_tooltips) {
+void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
+    (void)imgui;
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
         return;
@@ -1054,36 +1060,37 @@ void DrawFrameTimeGraphOverlay(bool show_tooltips) {
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
-    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
+    ImVec4 bg_color = imgui.GetStyle().Colors[ImGuiCol_FrameBg];
     bg_color.w *= chart_alpha;  // Apply transparency to background
 
     // Push style color so PlotLines uses the transparent background
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+    imgui.PushStyleColor(ImGuiCol_FrameBg, bg_color);
 
     // Draw compact frame time graph (line stays fully opaque)
-    ImGui::PlotLines("##FrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
-                     0,        // values_offset
-                     nullptr,  // overlay_text - no text for compact version
-                     scale_min, scale_max, graph_size);
+    imgui.PlotLines("##FrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
+                    0,        // values_offset
+                    nullptr,  // overlay_text - no text for compact version
+                    scale_min, scale_max, graph_size);
 
     // Restore original style color
-    ImGui::PopStyleColor();
+    imgui.PopStyleColor();
 
     // Display frame time statistics if enabled
     bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
     if (show_frame_time_stats) {
-        ImGui::Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
-                    min_frame_time, max_frame_time);
+        imgui.Text("Avg: %.2f ms | Dev: %.2f ms | Min: %.2f ms | Max: %.2f ms", avg_frame_time, std_deviation,
+                   min_frame_time, max_frame_time);
     }
 
-    if (ImGui::IsItemHovered() && show_tooltips) {
-        ImGui::SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
-                          max_frame_time);
+    if (imgui.IsItemHovered() && show_tooltips) {
+        imgui.SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
+                         max_frame_time);
     }
 }
 
 // Compact overlay version for native frame times (frames shown to display via native swapchain Present)
-void DrawNativeFrameTimeGraphOverlay(bool show_tooltips) {
+void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
+    (void)imgui;
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
         return;
@@ -1132,24 +1139,24 @@ void DrawNativeFrameTimeGraphOverlay(bool show_tooltips) {
 
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
-    ImVec4 bg_color = ImGui::GetStyle().Colors[ImGuiCol_FrameBg];
+    ImVec4 bg_color = imgui.GetStyle().Colors[ImGuiCol_FrameBg];
     bg_color.w *= chart_alpha;  // Apply transparency to background
 
     // Push style color so PlotLines uses the transparent background
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, bg_color);
+    imgui.PushStyleColor(ImGuiCol_FrameBg, bg_color);
 
     // Draw compact native frame time graph (line stays fully opaque)
-    ImGui::PlotLines("##NativeFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
-                     0,        // values_offset
-                     nullptr,  // overlay_text - no text for compact version
-                     scale_min, scale_max, graph_size);
+    imgui.PlotLines("##NativeFrameTime", frame_times.data(), static_cast<int>(frame_times.size()),
+                    0,        // values_offset
+                    nullptr,  // overlay_text - no text for compact version
+                    scale_min, scale_max, graph_size);
 
     // Restore original style color
-    ImGui::PopStyleColor();
+    imgui.PopStyleColor();
 
-    if (ImGui::IsItemHovered() && show_tooltips) {
-        ImGui::SetTooltip("Native frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
-                          max_frame_time);
+    if (imgui.IsItemHovered() && show_tooltips) {
+        imgui.SetTooltip("Native frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
+                         max_frame_time);
     }
 }
 
@@ -1196,32 +1203,33 @@ void InitMainNewTab() {
     }
 }
 
-void DrawAdvancedSettings() {
+void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     // Advanced Settings Control
     {
         bool advanced_settings = settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
-        if (ImGui::Checkbox(ICON_FK_FILE_CODE " Show All Tabs", &advanced_settings)) {
+        if (imgui.Checkbox(ICON_FK_FILE_CODE " Show All Tabs", &advanced_settings)) {
             settings::g_mainTabSettings.advanced_settings_enabled.SetValue(advanced_settings);
             LogInfo("Advanced settings %s", advanced_settings ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Enable advanced settings to show advanced tabs (Advanced, Debug, HID Input, etc.).\n"
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Logging Level Control
     // Note: ComboSettingEnumRefWrapper already updates g_min_log_level via SetValue(),
     // so we don't need to manually update it here. Just log the change.
-    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level")) {
+    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level", &imgui)) {
         // Always log the level change (using LogCurrentLogLevel which uses LogError)
         LogCurrentLogLevel();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Controls the minimum log level to display:\n\n"
             "- Error Only: Only error messages\n"
             "- Warning: Errors and warnings\n"
@@ -1229,89 +1237,90 @@ void DrawAdvancedSettings() {
             "- Debug (Everything): All log messages (default)");
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Individual Tab Visibility Settings
-    ImGui::Text("Show Individual Tabs:");
-    ImGui::Indent();
+    imgui.Text("Show Individual Tabs:");
+    imgui.Indent();
 
     if (ui::new_ui::g_tab_manager.HasTab("advanced")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_advanced_tab, "Show Advanced Tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_advanced_tab, "Show Advanced Tab", &imgui)) {
             LogInfo("Show Advanced tab %s",
                     settings::g_mainTabSettings.show_advanced_tab.GetValue() ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
         }
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("window_info")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab", &imgui)) {
             LogInfo("Show Window Info tab %s",
                     settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
         }
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("swapchain")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab", &imgui)) {
             LogInfo("Show Swapchain tab %s",
                     settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
         }
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("controller")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab", &imgui)) {
             LogInfo("Show Controller tab %s",
                     settings::g_mainTabSettings.show_controller_tab.GetValue() ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows the Controller tab (XInput monitoring and remapping) even when 'Show All Tabs' is disabled.");
         }
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("streamline")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab", &imgui)) {
             LogInfo("Show Streamline tab %s",
                     settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
         }
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("experimental")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Debug Tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Debug Tab", &imgui)) {
             LogInfo("Show Debug tab %s",
                     settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Debug tab even when 'Show All Tabs' is disabled.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the Debug tab even when 'Show All Tabs' is disabled.");
         }
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("vulkan")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_vulkan_tab, "Show Vulkan (Experimental) tab")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_vulkan_tab, "Show Vulkan (Experimental) tab", &imgui)) {
             LogInfo("Show Vulkan (Experimental) tab %s",
                     settings::g_mainTabSettings.show_vulkan_tab.GetValue() ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
         }
     }
 
-    ImGui::Unindent();
+    imgui.Unindent();
 
-    ImGui::Spacing();
+    imgui.Spacing();
 }
 
-void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
+void DrawMainNewTab(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     // Load saved settings once and sync legacy globals
     g_rendering_ui_section.store("ui:tab:main_new:entry", std::memory_order_release);
 
@@ -1319,71 +1328,72 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
     g_rendering_ui_section.store("ui:tab:main_new:warnings:config", std::memory_order_release);
     auto config_save_failure_path = g_config_save_failure_path.load();
     if (config_save_failure_path != nullptr && !config_save_failure_path->empty()) {
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s",
-                           config_save_failure_path->c_str());
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("The configuration file could not be saved. Check file permissions and disk space.");
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s",
+                          config_save_failure_path->c_str());
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("The configuration file could not be saved. Check file permissions and disk space.");
         }
-        ImGui::Spacing();
+        imgui.Spacing();
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:warnings:load_from_dll", std::memory_order_release);
     // LoadFromDllMain warning
     int32_t load_from_dll_main_value = 0;
-    if (reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value)
+    if (g_reshade_loaded.load()
+        && reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value)
         && load_from_dll_main_value == 1) {
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_WARNING,
-                           ICON_FK_WARNING " WARNING: LoadFromDllMain is set to 1 in ReShade configuration");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING " WARNING: LoadFromDllMain is set to 1 in ReShade configuration");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "LoadFromDllMain=1 can cause compatibility issues with some games and addons. "
                 "Consider disabling it in the Advanced tab or ReShade.ini if you experience problems.");
         }
-        ImGui::Spacing();
+        imgui.Spacing();
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:warnings:multi_version", std::memory_order_release);
     // Multiple Display Commander versions warning
     auto other_dc_version = g_other_dc_version_detected.load();
     if (other_dc_version != nullptr && !other_dc_version->empty()) {
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_ERROR,
-                           ICON_FK_WARNING " ERROR: Multiple Display Commander versions detected!");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_ERROR,
+                          ICON_FK_WARNING " ERROR: Multiple Display Commander versions detected!");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Another Display Commander instance (v%s) is loaded in this process. "
                 "This may cause conflicts and unexpected behavior. Please ensure only one version is loaded.",
                 other_dc_version->c_str());
         }
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_ERROR, "Other version: v%s", other_dc_version->c_str());
-        ImGui::Spacing();
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_ERROR, "Other version: v%s", other_dc_version->c_str());
+        imgui.Spacing();
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:warnings:multi_swapchain", std::memory_order_release);
     // Multiple swapchains (ReShade runtimes) warning
     const size_t runtime_count = GetReShadeRuntimeCount();
     if (runtime_count > 1) {
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_WARNING,
-                           ICON_FK_WARNING " WARNING: Multiple swapchains detected (%zu ReShade runtimes)",
-                           runtime_count);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING " WARNING: Multiple swapchains detected (%zu ReShade runtimes)",
+                          runtime_count);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "More than one swapchain/runtime is active. Some features may target only the first runtime. "
                 "This can happen with multi-window or multi-context games.");
         }
-        ImGui::Spacing();
+        imgui.Spacing();
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:version_build", std::memory_order_release);
     // Version and build information at the top
-    // if (ImGui::CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
+    // if (imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING,
-                           DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
+        imgui.TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING,
+                          DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
 
         // Version check and update UI
         {
@@ -1397,20 +1407,20 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                 initial_check_done = true;
             }
 
-            ImGui::SameLine();
-            ImGui::Spacing();
-            ImGui::SameLine();
+            imgui.SameLine();
+            imgui.Spacing();
+            imgui.SameLine();
 
             VersionComparison status = state.status.load();
             std::string* latest_version_ptr = state.latest_version.load();
             std::string* error_ptr = state.error_message.load();
 
             if (status == VersionComparison::Checking) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_REFRESH " Checking for updates...");
+                imgui.TextColored(ui::colors::TEXT_DIMMED, ICON_FK_REFRESH " Checking for updates...");
             } else if (status == VersionComparison::UpdateAvailable && latest_version_ptr != nullptr) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s",
-                                   latest_version_ptr->c_str());
-                ImGui::SameLine();
+                imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s",
+                                  latest_version_ptr->c_str());
+                imgui.SameLine();
 
 // Determine if we're 64-bit or 32-bit (simplified check - you may want to improve this)
 #ifdef _WIN64
@@ -1421,7 +1431,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 
                 std::string* download_url = is_64bit ? state.download_url_64.load() : state.download_url_32.load();
                 if (download_url != nullptr && !download_url->empty()) {
-                    if (ImGui::Button("Download")) {
+                    if (imgui.Button("Download")) {
                         // Run download in background thread
                         std::thread download_thread([is_64bit]() {
                             if (DownloadUpdate(is_64bit)) {
@@ -1432,29 +1442,29 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
                         });
                         download_thread.detach();
                     }
-                    if (ImGui::IsItemHovered()) {
+                    if (imgui.IsItemHovered()) {
                         auto download_dir = GetDownloadDirectory();
                         std::string download_path_str = download_dir.string();
-                        ImGui::SetTooltip(
+                        imgui.SetTooltip(
                             "Download will be saved to:\n%s\nFilename: zzz_display_commander_BUILD.addon%s",
                             download_path_str.c_str(), is_64bit ? "64" : "32");
                     }
                 }
             } else if (status == VersionComparison::UpToDate) {
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
             } else if (status == VersionComparison::CheckFailed && error_ptr != nullptr) {
-                ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Check failed: %s", error_ptr->c_str());
+                imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Check failed: %s", error_ptr->c_str());
             }
 
             // Manual check button
-            ImGui::SameLine();
-            if (ImGui::SmallButton(ICON_FK_REFRESH)) {
+            imgui.SameLine();
+            if (imgui.SmallButton(ICON_FK_REFRESH)) {
                 if (!state.checking.load()) {
                     CheckForUpdates();
                 }
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Check for updates");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Check for updates");
             }
         }
 
@@ -1462,7 +1472,7 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
         const reshade::api::device_api api = g_last_reshade_device_api.load();
         if (api != static_cast<reshade::api::device_api>(0)) {
             uint32_t api_version = g_last_api_version.load();
-            ImGui::SameLine();
+            imgui.SameLine();
 
             if (api == reshade::api::device_api::d3d9 && s_d3d9e_upgrade_successful.load()) {
                 api_version = 0x9100;  // due to reshade's bug.
@@ -1476,9 +1486,9 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
 #endif
             if (api_version != 0) {
                 std::string api_string = GetDeviceApiVersionString(api, api_version);
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, api_string.c_str());
+                imgui.TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, api_string.c_str());
             } else {
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, GetDeviceApiString(api));
+                imgui.TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, GetDeviceApiString(api));
             }
         }
 
@@ -1496,33 +1506,33 @@ void DrawMainNewTab(reshade::api::effect_runtime* runtime) {
             }
 
             if (!cached_detected_apis.empty()) {
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "| Platform: ");
-                ImGui::SameLine();
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "| Platform: ");
+                imgui.SameLine();
 
                 // Display all detected platforms, comma-separated
                 for (size_t i = 0; i < cached_detected_apis.size(); ++i) {
                     const char* api_name = GetPlatformAPIName(cached_detected_apis[i]);
-                    ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%s", api_name);
+                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%s", api_name);
                     if (i < cached_detected_apis.size() - 1) {
-                        ImGui::SameLine();
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, ", ");
-                        ImGui::SameLine();
+                        imgui.SameLine();
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, ", ");
+                        imgui.SameLine();
                     }
                 }
             }
         }
 
         // Ko-fi support button
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_LABEL, "Support the project:");
-        ui::colors::PushIconColor(ui::colors::ICON_SPECIAL);
-        if (ImGui::Button(ICON_FK_PLUS " Buy me a coffee on Ko-fi")) {
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_LABEL, "Support the project:");
+        imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SPECIAL);
+        if (imgui.Button(ICON_FK_PLUS " Buy me a coffee on Ko-fi")) {
             ShellExecuteA(nullptr, "open", "https://ko-fi.com/pmnox", nullptr, nullptr, SW_SHOW);
         }
-        ui::colors::PopIconColor();
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Support Display Commander development with a coffee!");
+        imgui.PopStyleColor();
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Support Display Commander development with a coffee!");
         }
     }
 
@@ -1531,18 +1541,18 @@ if (enabled_experimental_features) {
     // Gamma Control Warning
     uint32_t gamma_control_calls = g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].load();
     if (gamma_control_calls > 0) {
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_WARNING,
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_WARNING,
                            ICON_FK_WARNING
                            " WARNING: Game is using gamma control (SetGammaControl called %u times)",
                            gamma_control_calls);
         LogInfo("TODO: Implement supressing SetGammaControl calls feature.");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "The game is actively modifying display gamma settings. This may affect color accuracy and HDR "
                 "functionality. Check the Swapchain tab for more details.");
         }
-        ImGui::Spacing();
+        imgui.Spacing();
     }
 
     // NVIDIA Ansel/Camera SDK Warning (check for all possible DLL names)
@@ -1613,208 +1623,208 @@ if (enabled_experimental_features) {
     }
 
     if (ansel_loaded) {
-        ImGui::Spacing();
+        imgui.Spacing();
         bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
         if (skip_ansel) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+            imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
                                " WARNING: NVIDIA Ansel/Camera SDK is loaded (Skip enabled but already loaded)");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "NVIDIA Ansel/Camera SDK was already loaded before the skip setting could take effect. Restart "
                     "the game to apply the skip setting.");
             }
         } else {
-            ImGui::TextColored(ui::colors::TEXT_WARNING,
+            imgui.TextColored(ui::colors::TEXT_WARNING,
                                ICON_FK_WARNING " WARNING: NVIDIA Ansel/Camera SDK is loaded");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "NVIDIA Ansel/Camera SDK is loaded (NvAnselSDK.dll, AnselSDK64.dll, NvCameraSDK64.dll, "
                     "NvCameraAPI64.dll, or GFExperienceCore.dll). This may interfere with display settings and HDR "
                     "functionality. Enable 'Skip Loading Ansel Libraries' to prevent this.");
             }
         }
-        ImGui::Spacing();
+        imgui.Spacing();
     }
 
     // Ansel Control Section
     if (ansel_loaded || settings::g_mainTabSettings.skip_ansel_loading.GetValue()) {
         bool skip_ansel = settings::g_mainTabSettings.skip_ansel_loading.GetValue();
-        if (ImGui::Checkbox("Skip Loading Ansel Libraries", &skip_ansel)) {
+        if (imgui.Checkbox("Skip Loading Ansel Libraries", &skip_ansel)) {
             settings::g_mainTabSettings.skip_ansel_loading.SetValue(skip_ansel);
             LogInfo("Skip Ansel loading %s", skip_ansel ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Prevents Ansel-related DLLs from being loaded by the game. This can help avoid conflicts with "
                 "display settings and HDR functionality. Requires restart to take effect.");
         }
 
         if (skip_ansel) {
-            ImGui::SameLine();
+            imgui.SameLine();
             if (ansel_loaded) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Already Loaded");
+                imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Already Loaded");
             } else {
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Active");
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Active");
             }
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 }*/
     // Display Settings Section
     g_rendering_ui_section.store("ui:tab:main_new:display_settings", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Indent();
-        DrawDisplaySettings(runtime);
+    if (imgui.CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        imgui.Indent();
+        DrawDisplaySettings(runtime, imgui);
         if (enabled_experimental_features) {
             // Misc (Streamline DLSS-G)
             g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
-            if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
-                ImGui::Indent();
-                if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)")) {
+            if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+                imgui.Indent();
+                if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)", &imgui)) {
                     LogInfo("Force FG Auto %s",
                             settings::g_mainTabSettings.force_fg_auto.GetValue() ? "enabled" : "disabled");
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "Override slDLSSGSetOptions to force DLSS-G mode to Auto. Applies to Streamline (sl.dlss_g) "
                         "integrations only. When enabled, games that set Off or On will have their choice overridden "
                         "to "
                         "Auto.");
                 }
-                ImGui::Unindent();
+                imgui.Unindent();
             }
         }
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Brightness and AutoHDR (Display Commander ReShade effects)
     g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f")) {
+    if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f", &imgui)) {
             // Value is applied in OnReShadePresent each frame
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Adjust brightness via Display Commander's ReShade effect (0-200%%, 100%% = neutral).\n"
                 "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                 "Ctrl+Shift+F5) or game restart.");
         }
-        if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space")) {
+        if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", &imgui)) {
             // Value is applied in OnReShadePresent each frame
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, multiply.");
         }
-        if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR")) {
+        if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR", &imgui)) {
             // Value is applied in OnReShadePresent each frame
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Run DisplayCommander Perceptual Boost effect for HDR-style enhancement. Requires Generic RenoDX to "
                 "upgrade buffers from SDR to HDR.");
         }
         if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f")) {
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
+                                      &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
             }
         }
         // Misc subsection: Gamma, Contrast, Saturation (less prominent)
-        ui::colors::PushNestedHeaderColors();
-        if (ImGui::CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
-            ImGui::Indent();
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f")) {
+        ui::colors::PushNestedHeaderColors(&imgui);
+        if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
+            imgui.Indent();
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
                     "Brightness.");
             }
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f")) {
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
             }
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f")) {
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in DisplayCommander_Control.fx "
                     "with "
                     "Brightness.");
             }
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f")) {
+            if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", &imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
                     "Brightness.");
             }
-            ImGui::Unindent();
+            imgui.Unindent();
         }
-        ui::colors::PopNestedHeaderColors();
-        ImGui::Unindent();
+        ui::colors::PopNestedHeaderColors(&imgui);
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Monitor/Display Resolution Settings Section
     g_rendering_ui_section.store("ui:tab:main_new:resolution", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+    if (imgui.CollapsingHeader("Resolution Control", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
         display_commander::widgets::resolution_widget::DrawResolutionWidget();
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Texture Filtering / Sampler State Section
     g_rendering_ui_section.store("ui:tab:main_new:texture_filtering", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+    if (imgui.CollapsingHeader("Texture Filtering", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
 
         // Display call count
         uint32_t d3d11_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_STATE_D3D11].load();
         uint32_t d3d12_count = g_d3d_sampler_event_counters[D3D_SAMPLER_EVENT_CREATE_SAMPLER_D3D12].load();
         uint32_t total_count = d3d11_count + d3d12_count;
 
-        ImGui::Text("CreateSampler Calls: %u", total_count);
+        imgui.Text("CreateSampler Calls: %u", total_count);
         if (d3d11_count > 0) {
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "(D3D11: %u)", d3d11_count);
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D11: %u)", d3d11_count);
         }
         if (d3d12_count > 0) {
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
         }
 
         // Show statistics if we have any calls
         if (total_count > 0) {
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::Spacing();
+            imgui.Spacing();
+            imgui.Separator();
+            imgui.Spacing();
 
             // Filter Mode Statistics
-            ImGui::TextColored(ui::colors::TEXT_LABEL, "Filter Modes (Original Game Requests):");
-            ImGui::Indent();
+            imgui.TextColored(ui::colors::TEXT_LABEL, "Filter Modes (Original Game Requests):");
+            imgui.Indent();
 
             uint32_t point_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_POINT].load();
             uint32_t linear_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_LINEAR].load();
@@ -1825,33 +1835,33 @@ if (enabled_experimental_features) {
             uint32_t other_count = g_sampler_filter_mode_counters[SAMPLER_FILTER_OTHER].load();
 
             if (point_count > 0) {
-                ImGui::Text("  Point: %u", point_count);
+                imgui.Text("  Point: %u", point_count);
             }
             if (linear_count > 0) {
-                ImGui::Text("  Linear: %u", linear_count);
+                imgui.Text("  Linear: %u", linear_count);
             }
             if (aniso_count > 0) {
-                ImGui::Text("  Anisotropic: %u", aniso_count);
+                imgui.Text("  Anisotropic: %u", aniso_count);
             }
             if (comp_point_count > 0) {
-                ImGui::Text("  Comparison Point: %u", comp_point_count);
+                imgui.Text("  Comparison Point: %u", comp_point_count);
             }
             if (comp_linear_count > 0) {
-                ImGui::Text("  Comparison Linear: %u", comp_linear_count);
+                imgui.Text("  Comparison Linear: %u", comp_linear_count);
             }
             if (comp_aniso_count > 0) {
-                ImGui::Text("  Comparison Anisotropic: %u", comp_aniso_count);
+                imgui.Text("  Comparison Anisotropic: %u", comp_aniso_count);
             }
             if (other_count > 0) {
-                ImGui::Text("  Other: %u", other_count);
+                imgui.Text("  Other: %u", other_count);
             }
 
-            ImGui::Unindent();
-            ImGui::Spacing();
+            imgui.Unindent();
+            imgui.Spacing();
 
             // Address Mode Statistics
-            ImGui::TextColored(ui::colors::TEXT_LABEL, "Address Modes (U Coordinate):");
-            ImGui::Indent();
+            imgui.TextColored(ui::colors::TEXT_LABEL, "Address Modes (U Coordinate):");
+            imgui.Indent();
 
             uint32_t wrap_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_WRAP].load();
             uint32_t mirror_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR].load();
@@ -1860,23 +1870,23 @@ if (enabled_experimental_features) {
             uint32_t mirror_once_count = g_sampler_address_mode_counters[SAMPLER_ADDRESS_MIRROR_ONCE].load();
 
             if (wrap_count > 0) {
-                ImGui::Text("  Wrap: %u", wrap_count);
+                imgui.Text("  Wrap: %u", wrap_count);
             }
             if (mirror_count > 0) {
-                ImGui::Text("  Mirror: %u", mirror_count);
+                imgui.Text("  Mirror: %u", mirror_count);
             }
             if (clamp_count > 0) {
-                ImGui::Text("  Clamp: %u", clamp_count);
+                imgui.Text("  Clamp: %u", clamp_count);
             }
             if (border_count > 0) {
-                ImGui::Text("  Border: %u", border_count);
+                imgui.Text("  Border: %u", border_count);
             }
             if (mirror_once_count > 0) {
-                ImGui::Text("  Mirror Once: %u", mirror_once_count);
+                imgui.Text("  Mirror Once: %u", mirror_once_count);
             }
 
-            ImGui::Unindent();
-            ImGui::Spacing();
+            imgui.Unindent();
+            imgui.Spacing();
 
             // Anisotropy Level Statistics (only for anisotropic filters)
             uint32_t total_aniso_samplers = 0;
@@ -1885,36 +1895,36 @@ if (enabled_experimental_features) {
             }
 
             if (total_aniso_samplers > 0) {
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "Anisotropic Filtering Levels (Original Game Requests):");
-                ImGui::Indent();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Anisotropic Filtering Levels (Original Game Requests):");
+                imgui.Indent();
 
                 // Show only levels that have been used
                 for (int i = 0; i < MAX_ANISOTROPY_LEVELS; ++i) {
                     uint32_t count = g_sampler_anisotropy_level_counters[i].load();
                     if (count > 0) {
                         int level = i + 1;  // Convert from 0-based index to 1-based level
-                        ImGui::Text("  %dx: %u", level, count);
+                        imgui.Text("  %dx: %u", level, count);
                     }
                 }
 
-                ImGui::Unindent();
-                ImGui::Spacing();
+                imgui.Unindent();
+                imgui.Spacing();
             }
 
-            ImGui::Separator();
+            imgui.Separator();
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Max Anisotropy Override
         // Only affects existing anisotropic filters
         int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
-        if (ImGui::SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Game Default" : "%dx")) {
+        if (imgui.SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Game Default" : "%dx")) {
             settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);
             LogInfo("Max anisotropy set to %d", max_aniso);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
                 "Set to 0 (Game default) to preserve the game's original AF settings.\n"
                 "Only affects samplers that already use anisotropic filtering.");
@@ -1922,108 +1932,110 @@ if (enabled_experimental_features) {
 
         // Reset button for Anisotropic Level
         if (max_aniso != 0) {
-            ImGui::SameLine();
-            if (ImGui::Button("Game Default##Anisotropic Level")) {
+            imgui.SameLine();
+            if (imgui.Button("Game Default##Anisotropic Level")) {
                 settings::g_mainTabSettings.max_anisotropy.SetValue(0);
                 LogInfo("Max anisotropy reset to game default");
             }
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Mipmap LOD Bias
         float lod_bias = settings::g_mainTabSettings.force_mipmap_lod_bias.GetValue();
-        if (ImGui::SliderFloat("Mipmap LOD Bias", &lod_bias, -5.0f, 5.0f, lod_bias == 0.0f ? "Game Default" : "%.2f")) {
+        if (imgui.SliderFloat("Mipmap LOD Bias", &lod_bias, -5.0f, 5.0f, lod_bias == 0.0f ? "Game Default" : "%.2f")) {
             settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(lod_bias);
             LogInfo("Mipmap LOD bias set to %.2f", lod_bias);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Use a small (i.e. -0.6'ish) negative LOD bias to sharpen DLSS and FSR games");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Use a small (i.e. -0.6'ish) negative LOD bias to sharpen DLSS and FSR games");
         }
 
         // Reset button for LOD bias
         if (lod_bias != 0.0f) {
-            ImGui::SameLine();
-            if (ImGui::Button("Game Default##Mipmap LOD Bias")) {
+            imgui.SameLine();
+            if (imgui.Button("Game Default##Mipmap LOD Bias")) {
                 settings::g_mainTabSettings.force_mipmap_lod_bias.SetValue(0.0f);
                 LogInfo("Mipmap LOD bias reset to game default");
             }
         }
 
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_WARNING,
-                           ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
 
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Audio Settings Section
     g_rendering_ui_section.store("ui:tab:main_new:audio", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
-        DrawAudioSettings();
-        ImGui::Unindent();
+    if (imgui.CollapsingHeader("Audio Control", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+        DrawAudioSettings(imgui);
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:input", std::memory_order_release);
     // Input Blocking Section
-    if (ImGui::CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+    if (imgui.CollapsingHeader("Input Control", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
 
         // Create 3 columns with fixed width
-        ImGui::Columns(3, "InputBlockingColumns", true);
+        imgui.Columns(3, "InputBlockingColumns", true);
 
         // First line: Headers
-        ImGui::Text("Suppress Keyboard");
-        ImGui::NextColumn();
-        ImGui::Text("Suppress Mouse");
-        ImGui::NextColumn();
-        ImGui::Text("Suppress Gamepad");
-        ImGui::NextColumn();
+        imgui.Text("Suppress Keyboard");
+        imgui.NextColumn();
+        imgui.Text("Suppress Mouse");
+        imgui.NextColumn();
+        imgui.Text("Suppress Gamepad");
+        imgui.NextColumn();
 
         // Second line: Selectors
-        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard")) {
+        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
+                                                   &imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
                 // display_commanderhooks::RestoreClipCursor();
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Controls keyboard input blocking behavior.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Controls keyboard input blocking behavior.");
         }
 
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
-        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse")) {
+        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse",
+                                                   &imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
                 // display_commanderhooks::RestoreClipCursor();
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Controls mouse input blocking behavior.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Controls mouse input blocking behavior.");
         }
 
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
-        ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Controls gamepad input blocking behavior.");
+        ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad", &imgui);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Controls gamepad input blocking behavior.");
         }
 
-        ImGui::Columns(1);  // Reset to single column
+        imgui.Columns(1);  // Reset to single column
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Clip Cursor checkbox
         bool clip_cursor = settings::g_mainTabSettings.clip_cursor_enabled.GetValue();
-        if (ImGui::Checkbox("Clip Cursor", &clip_cursor)) {
+        if (imgui.Checkbox("Clip Cursor", &clip_cursor)) {
             settings::g_mainTabSettings.clip_cursor_enabled.SetValue(clip_cursor);
             // If disabling, unlock cursor immediately
             if (!clip_cursor) {
@@ -2035,25 +2047,25 @@ if (enabled_experimental_features) {
                 }
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Limits mouse movement to the game window when the game is in foreground.\n"
                 "Unlocks cursor when game is in background.\n\n"
                 "This fixes games which don't lock the mouse cursor, preventing focus switches\n"
                 "on multimonitor setups when moving the mouse and clicking.");
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Enable Gamepad Remapping (same value as Controller tab)
         {
             auto& remapper = display_commander::input_remapping::InputRemapper::get_instance();
             bool remapping_enabled = remapper.is_remapping_enabled();
-            if (ImGui::Checkbox("Enable XBOX-style Gamepad Remapping", &remapping_enabled)) {
+            if (imgui.Checkbox("Enable XBOX-style Gamepad Remapping", &remapping_enabled)) {
                 remapper.set_remapping_enabled(remapping_enabled);
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "When enabled, XINPUT gamepad buttons can be remapped to keyboard keys, other gamepad buttons, "
                     "or actions (e.g. volume, screenshot). Supports chords (e.g. Home + D-Pad for volume) and hold "
                     "mode.\n\n"
@@ -2062,14 +2074,14 @@ if (enabled_experimental_features) {
                     "tab.");
             }
             if (remapping_enabled) {
-                ImGui::Spacing();
+                imgui.Spacing();
                 // Home button behavior for Display Commander UI
                 bool require_solo_press = settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.GetValue();
-                if (ImGui::Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {
+                if (imgui.Checkbox("Require Home-only press to toggle Display Commander UI", &require_solo_press)) {
                     settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.SetValue(require_solo_press);
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "When enabled, tapping the Home button will open/close Display Commander UI only if no other\n"
                         "gamepad buttons were pressed between Home down and Home up.\n\n"
                         "Example:\n"
@@ -2079,17 +2091,18 @@ if (enabled_experimental_features) {
             }
         }
 
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:window_control", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Window Control", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+    if (imgui.CollapsingHeader("Window Control", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
 
         // Continue Rendering in Background
-        if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background")) {
+        if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background",
+                            &imgui)) {
             bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
             LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
 
@@ -2112,20 +2125,20 @@ if (enabled_experimental_features) {
                 LogInfo("Window procedure hooks uninstalled after disabling continue rendering");
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
                 "messages to keep games running in background.");
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Screensaver Mode
-        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode")) {
+        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Screensaver Mode", &imgui)) {
             LogInfo("Screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Controls screensaver behavior while the game is running:\n\n"
                 "- Default (no change): Preserves original game behavior\n"
                 "- Disable when Focused: Disables screensaver when game window is focused\n"
@@ -2133,15 +2146,15 @@ if (enabled_experimental_features) {
                 "Note: This feature requires the screensaver implementation to be active.");
         }
 
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // CPU Control Section
     g_rendering_ui_section.store("ui:tab:main_new:cpu", std::memory_order_release);
-    if (ImGui::CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+    if (imgui.CollapsingHeader("CPU Control", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
 
         // Get CPU core count for display
         SYSTEM_INFO sys_info = {};
@@ -2182,7 +2195,7 @@ if (enabled_experimental_features) {
         // Use a temporary variable for the slider to handle invalid values
         int slider_temp_value = cpu_cores_value;
 
-        if (ImGui::SliderInt(slider_label.c_str(), &slider_temp_value, slider_min, slider_max, format_str)) {
+        if (imgui.SliderInt(slider_label.c_str(), &slider_temp_value, slider_min, slider_max, format_str)) {
             // Clamp invalid values (1 to MIN_CPU_CORES_SELECTABLE-1) to MIN_CPU_CORES_SELECTABLE
             int new_cpu_cores_value = slider_temp_value;
             if (new_cpu_cores_value > 0 && new_cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
@@ -2196,8 +2209,8 @@ if (enabled_experimental_features) {
         }
 
         // Show tooltip for slider
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Controls CPU core affinity for the game process:\n\n"
                 "- 0 (Default): No change to process affinity\n"
                 "- %d-%d: Limit game to use specified number of CPU cores\n\n"
@@ -2207,33 +2220,33 @@ if (enabled_experimental_features) {
 
         // Show actual CPU cores value next to slider for clarity
         if (cpu_cores_value > 0) {
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "= %d core%s", cpu_cores_value, cpu_cores_value > 1 ? "s" : "");
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "= %d core%s", cpu_cores_value, cpu_cores_value > 1 ? "s" : "");
         }
 
         // Display current status
-        ImGui::Spacing();
+        imgui.Spacing();
         if (cpu_cores_value == 0) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, ICON_FK_FILE " No CPU affinity change (using default)");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, ICON_FK_FILE " No CPU affinity change (using default)");
         } else {
-            ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " CPU affinity set to %d core%s", cpu_cores_value,
-                               cpu_cores_value > 1 ? "s" : "");
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " CPU affinity set to %d core%s", cpu_cores_value,
+                              cpu_cores_value > 1 ? "s" : "");
         }
 
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Window Controls Section
-    DrawWindowControls();
+    DrawWindowControls(imgui);
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Overlay Windows Detection Section
     g_rendering_ui_section.store("ui:tab:main_new:overlay_windows", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+    if (imgui.CollapsingHeader("Overlay Windows", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
 
         HWND game_window = display_commanderhooks::GetGameWindow();
         if (game_window != nullptr && IsWindow(game_window) != FALSE) {
@@ -2248,118 +2261,119 @@ if (enabled_experimental_features) {
             }
 
             if (overlay_list.empty()) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "No overlay windows detected");
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "No overlay windows detected");
             } else {
-                ImGui::Text("Detected %zu overlay window(s):", overlay_list.size());
-                ImGui::Spacing();
+                imgui.Text("Detected %zu overlay window(s):", overlay_list.size());
+                imgui.Spacing();
 
                 // Create a table-like display
-                if (ImGui::BeginTable("OverlayWindows", 6,
-                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-                    ImGui::TableSetupColumn("Window Title", ImGuiTableColumnFlags_WidthStretch);
-                    ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
-                    ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                    ImGui::TableSetupColumn("Z-Order", ImGuiTableColumnFlags_WidthFixed, 100.0f);
-                    ImGui::TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 170.0f);
-                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 200.0f);
-                    ImGui::TableHeadersRow();
+                if (imgui.BeginTable("OverlayWindows", 6,
+                                     ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+                    imgui.TableSetupColumn("Window Title", ImGuiTableColumnFlags_WidthStretch);
+                    imgui.TableSetupColumn("Process", ImGuiTableColumnFlags_WidthStretch);
+                    imgui.TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                    imgui.TableSetupColumn("Z-Order", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                    imgui.TableSetupColumn("Overlap Area", ImGuiTableColumnFlags_WidthFixed, 170.0f);
+                    imgui.TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                    imgui.TableHeadersRow();
 
                     for (const auto& overlay : overlay_list) {
-                        ImGui::TableNextRow();
+                        imgui.TableNextRow();
 
                         // Window Title
-                        ImGui::TableSetColumnIndex(0);
+                        imgui.TableSetColumnIndex(0);
                         std::string title_utf8 =
                             overlay.window_title.empty()
                                 ? "(No Title)"
                                 : std::string(overlay.window_title.begin(), overlay.window_title.end());
-                        ImGui::TextUnformatted(title_utf8.c_str());
+                        imgui.TextUnformatted(title_utf8.c_str());
 
                         // Process Name
-                        ImGui::TableSetColumnIndex(1);
+                        imgui.TableSetColumnIndex(1);
                         std::string process_utf8 =
                             overlay.process_name.empty()
                                 ? "(Unknown)"
                                 : std::string(overlay.process_name.begin(), overlay.process_name.end());
-                        ImGui::TextUnformatted(process_utf8.c_str());
+                        imgui.TextUnformatted(process_utf8.c_str());
 
                         // PID
-                        ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("%lu", overlay.process_id);
+                        imgui.TableSetColumnIndex(2);
+                        imgui.Text("%lu", overlay.process_id);
 
                         // Z-Order (Above/Below)
-                        ImGui::TableSetColumnIndex(3);
+                        imgui.TableSetColumnIndex(3);
                         if (overlay.is_above_game) {
-                            ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-                            ImGui::Text(ICON_FK_WARNING " Above");
-                            ui::colors::PopIconColor();
+                            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
+                            imgui.Text(ICON_FK_WARNING " Above");
+                            imgui.PopStyleColor();
                         } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Below");
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Below");
                         }
 
                         // Overlapping Area
-                        ImGui::TableSetColumnIndex(4);
+                        imgui.TableSetColumnIndex(4);
                         if (overlay.overlaps_game) {
-                            ImGui::Text("%ld px (%.1f%%)", overlay.overlapping_area_pixels,
-                                        overlay.overlapping_area_percent);
+                            imgui.Text("%ld px (%.1f%%)", overlay.overlapping_area_pixels,
+                                       overlay.overlapping_area_percent);
                         } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No overlap");
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "No overlap");
                         }
 
                         // Status
-                        ImGui::TableSetColumnIndex(5);
+                        imgui.TableSetColumnIndex(5);
                         if (overlay.overlaps_game) {
-                            ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-                            ImGui::Text(ICON_FK_WARNING " Overlapping");
-                            ui::colors::PopIconColor();
+                            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
+                            imgui.Text(ICON_FK_WARNING " Overlapping");
+                            imgui.PopStyleColor();
                         } else if (overlay.is_visible) {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Visible");
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Visible");
                         } else {
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Hidden");
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Hidden");
                         }
                     }
 
-                    ImGui::EndTable();
+                    imgui.EndTable();
                 }
             }
         } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Game window not detected");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Game window not detected");
         }
 
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows all visible windows that overlap with the game window.\n"
                 "Windows can be above or below the game in Z-order.\n"
                 "Overlapping windows may cause performance issues.");
         }
 
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:important_info", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Indent();
-        DrawImportantInfo();
-        ImGui::Unindent();
+    if (imgui.CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        imgui.Indent();
+        DrawImportantInfo(imgui, runtime != nullptr);
+        imgui.Unindent();
     }
     g_rendering_ui_section.store("ui:tab:main_new:advanced_settings", std::memory_order_release);
-    if (ImGui::CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
-        DrawAdvancedSettings();
-        ImGui::Unindent();
+    if (imgui.CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+        DrawAdvancedSettings(imgui);
+        imgui.Unindent();
     }
 }
 
-void DrawQuickFpsLimitChanger() {
+void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     // Quick-set buttons based on current monitor refresh rate
     {
         auto window_state = ::g_window_state.load();
         double refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
         int y = static_cast<int>(std::round(refresh_hz));
         if (y <= 0) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Quick fps limit changer not working: TODO FIXME");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Quick fps limit changer not working: TODO FIXME");
             return;
         }
         bool first = true;
@@ -2367,15 +2381,11 @@ void DrawQuickFpsLimitChanger() {
         // Add No Limit button at the beginning
         {
             bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
-            if (selected) {
-                ui::colors::PushSelectedButtonColors();
-            }
-            if (ImGui::Button("No Limit")) {
+            if (selected) ui::colors::PushSelectedButtonColors(&imgui);
+            if (imgui.Button("No Limit")) {
                 settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
             }
-            if (selected) {
-                ui::colors::PopSelectedButtonColors();
-            }
+            if (selected) ui::colors::PopSelectedButtonColors(&imgui);
         }
         first = false;
         for (int x = 1; x <= 15; ++x) {
@@ -2383,24 +2393,20 @@ void DrawQuickFpsLimitChanger() {
                 int candidate_rounded = y / x;
                 float candidate_precise = refresh_hz / x;
                 if (candidate_rounded >= 30) {
-                    if (!first) ImGui::SameLine();
+                    if (!first) imgui.SameLine();
                     first = false;
                     std::string label = std::to_string(candidate_rounded);
                     {
                         bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise)
                                          <= selected_epsilon);
-                        if (selected) {
-                            ui::colors::PushSelectedButtonColors();
-                        }
-                        if (ImGui::Button(label.c_str())) {
+                        if (selected) ui::colors::PushSelectedButtonColors(&imgui);
+                        if (imgui.Button(label.c_str())) {
                             float target_fps = candidate_precise;
                             settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
                         }
-                        if (selected) {
-                            ui::colors::PopSelectedButtonColors();
-                        }
+                        if (selected) ui::colors::PopSelectedButtonColors(&imgui);
                         // Add tooltip showing the precise calculation
-                        if (ImGui::IsItemHovered()) {
+                        if (imgui.IsItemHovered()) {
                             std::ostringstream tooltip_oss;
                             tooltip_oss.setf(std::ios::fixed);
                             tooltip_oss << std::setprecision(3);
@@ -2408,7 +2414,7 @@ void DrawQuickFpsLimitChanger() {
                                         << " FPS\n\n";
                             tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
                             tooltip_oss << "into the monitor's refresh rate.";
-                            ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
+                            imgui.SetTooltip("%s", tooltip_oss.str().c_str());
                         }
                     }
                 }
@@ -2416,7 +2422,7 @@ void DrawQuickFpsLimitChanger() {
         }
         // Add Gsync Cap button at the end
         if (!first) {
-            ImGui::SameLine();
+            imgui.SameLine();
         }
 
         {
@@ -2427,19 +2433,15 @@ void DrawQuickFpsLimitChanger() {
             bool selected =
                 (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - precise_target) <= selected_epsilon);
 
-            if (selected) {
-                ui::colors::PushSelectedButtonColors();
-            }
-            if (ImGui::Button("VRR Cap")) {
+            if (selected) ui::colors::PushSelectedButtonColors(&imgui);
+            if (imgui.Button("VRR Cap")) {
                 double precise_target = gsync_target;  // do not round on apply
                 float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
                 settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
             }
-            if (selected) {
-                ui::colors::PopSelectedButtonColors();
-            }
+            if (selected) ui::colors::PopSelectedButtonColors(&imgui);
             // Add tooltip explaining the Gsync formula
-            if (ImGui::IsItemHovered()) {
+            if (imgui.IsItemHovered()) {
                 std::ostringstream tooltip_oss;
                 tooltip_oss.setf(std::ios::fixed);
                 tooltip_oss << std::setprecision(3);
@@ -2448,13 +2450,14 @@ void DrawQuickFpsLimitChanger() {
                             << gsync_target << " FPS\n\n";
                 tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
                 tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
-                ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
+                imgui.SetTooltip("%s", tooltip_oss.str().c_str());
             }
         }
     }
 }
 
-void DrawDisplaySettings_DisplayAndTarget() {
+void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     {
         // Refresh target display from config so hotkey changes (Win+Left/Win+Right) are visible on the UI thread
         settings::g_mainTabSettings.selected_extended_display_device_id.Load();
@@ -2475,9 +2478,9 @@ void DrawDisplaySettings_DisplayAndTarget() {
         int game_render_w = g_game_render_width.load();
         int game_render_h = g_game_render_height.load();
         if (game_render_w > 0 && game_render_h > 0) {
-            ImGui::TextColored(ui::colors::TEXT_LABEL, "Render resolution:");
-            ImGui::SameLine();
-            ImGui::Text("%dx%d", game_render_w, game_render_h);
+            imgui.TextColored(ui::colors::TEXT_LABEL, "Render resolution:");
+            imgui.SameLine();
+            imgui.Text("%dx%d", game_render_w, game_render_h);
 
             // Get bit depth from swapchain format (optional, in parens)
             auto desc_ptr = g_last_swapchain_desc.load();
@@ -2492,8 +2495,8 @@ void DrawDisplaySettings_DisplayAndTarget() {
                 }
 
                 if (bit_depth_str != nullptr) {
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, " (%s)", bit_depth_str);
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, " (%s)", bit_depth_str);
                 }
             }
 
@@ -2516,18 +2519,18 @@ void DrawDisplaySettings_DisplayAndTarget() {
                 } catch (...) {
                 }
             }
-            ImGui::SameLine();
+            imgui.SameLine();
             if (refresh_hz > 0.0) {
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
-                ImGui::SameLine();
-                ImGui::Text("%.1f Hz", refresh_hz);
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
+                imgui.SameLine();
+                imgui.Text("%.1f Hz", refresh_hz);
             } else {
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "—");
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Refresh rate:");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "—");
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Render resolution: the resolution the game requested (before any modifications). "
                     "Matches Special K's render_x/render_y.\n"
                     "Refresh rate: actual (NVAPI) when available, else selected display's configured rate.");
@@ -2539,47 +2542,47 @@ void DrawDisplaySettings_DisplayAndTarget() {
             if (display_commander::dxgi::GetVramInfo(&vram_used, &vram_total) && vram_total > 0) {
                 const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
                 const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "VRAM:");
-                ImGui::SameLine();
-                ImGui::Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
-                            static_cast<unsigned long long>(total_mib));
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
+                imgui.TextColored(ui::colors::TEXT_LABEL, "VRAM:");
+                imgui.SameLine();
+                imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
+                           static_cast<unsigned long long>(total_mib));
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
                 }
             } else {
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "VRAM:");
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("VRAM unavailable (DXGI adapter or budget query failed).");
+                imgui.TextColored(ui::colors::TEXT_LABEL, "VRAM:");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "N/A");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("VRAM unavailable (DXGI adapter or budget query failed).");
                 }
             }
 
             // RAM (system memory) on the same line
-            ImGui::SameLine();
+            imgui.SameLine();
             MEMORYSTATUSEX mem_status = {};
             mem_status.dwLength = sizeof(mem_status);
             if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {
                 const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
                 const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
                 const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "RAM:");
-                ImGui::SameLine();
-                ImGui::Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                            static_cast<unsigned long long>(ram_total_mib));
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
+                imgui.TextColored(ui::colors::TEXT_LABEL, "RAM:");
+                imgui.SameLine();
+                imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                           static_cast<unsigned long long>(ram_total_mib));
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
                 }
             } else {
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "RAM:");
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "N/A");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("System memory info unavailable.");
+                imgui.TextColored(ui::colors::TEXT_LABEL, "RAM:");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "N/A");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("System memory info unavailable.");
                 }
             }
 
-            ImGui::Spacing();
+            imgui.Spacing();
         }
 
         // Target Display dropdown
@@ -2590,8 +2593,8 @@ void DrawDisplaySettings_DisplayAndTarget() {
         }
 
         static bool s_target_display_changed = false;
-        if (ImGui::Combo("Target Display", &selected_index, monitor_c_labels.data(),
-                         static_cast<int>(monitor_c_labels.size()))) {
+        if (imgui.Combo("Target Display", &selected_index, monitor_c_labels.data(),
+                        static_cast<int>(monitor_c_labels.size()))) {
             if (selected_index >= 0 && selected_index < static_cast<int>(display_info.size())) {
                 s_target_display_changed = true;
                 // Store extended device ID so Win+Left/Right and window management use the same value.
@@ -2602,7 +2605,7 @@ void DrawDisplaySettings_DisplayAndTarget() {
                 LogInfo("Target monitor changed to device ID: %s", new_device_id.c_str());
             }
         }
-        if (ImGui::IsItemHovered()) {
+        if (imgui.IsItemHovered()) {
             // Get the saved game window display device ID for tooltip
             std::string saved_device_id = settings::g_mainTabSettings.game_window_extended_display_device_id.GetValue();
             std::string tooltip_text =
@@ -2612,19 +2615,20 @@ void DrawDisplaySettings_DisplayAndTarget() {
                 && saved_device_id != "Monitor Info Failed") {
                 tooltip_text += "\n\nGame window is on: " + saved_device_id;
             }
-            ImGui::SetTooltip("%s", tooltip_text.c_str());
+            imgui.SetTooltip("%s", tooltip_text.c_str());
         }
         // warn if "no changes mode", moving to another display isn't implemented in that mode
         if (s_target_display_changed && s_window_mode.load() == WindowMode::kNoChanges) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
-                               "Warning: Moving to another display isn't implemented in 'No Changes' mode.");
+            imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
+                              "Warning: Moving to another display isn't implemented in 'No Changes' mode.");
         }
     }
 }
 
-void DrawDisplaySettings_WindowModeAndApply() {
+void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     // Window Mode dropdown (with persistent setting)
-    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode")) {
+    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode", &imgui)) {
         WindowMode old_mode = s_window_mode.load();
         s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
 
@@ -2639,44 +2643,44 @@ void DrawDisplaySettings_WindowModeAndApply() {
 
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio")) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio", &imgui)) {
             s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
             LogInfo("Aspect ratio changed");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Choose the aspect ratio for window resizing.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Choose the aspect ratio for window resizing.");
         }
     }
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         // Width dropdown for aspect ratio mode
-        if (ComboSettingRefWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width")) {
+        if (ComboSettingRefWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width", &imgui)) {
             s_aspect_width.store(settings::g_mainTabSettings.window_aspect_width.GetValue());
             LogInfo("Window width for aspect mode setting changed to: %d", s_aspect_width.load());
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Choose the width for the aspect ratio window. 'Display Width' uses the current monitor width.");
         }
     }
 
     // Window Alignment dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.alignment, "Alignment")) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.alignment, "Alignment", &imgui)) {
             s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
             LogInfo("Window alignment changed");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Choose how to align the window when repositioning is needed. 0=Center, 1=Top Left, "
                 "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
     }
     // ADHD Multi-Monitor Mode controls
-    DrawAdhdMultiMonitorControls();
+    DrawAdhdMultiMonitorControls(imgui);
 
     // Apply Changes button
-    ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-    if (ImGui::Button(ICON_FK_OK " Apply Changes")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
+    if (imgui.Button(ICON_FK_OK " Apply Changes")) {
         // Force immediate application of window changes
         ::g_init_apply_generation.fetch_add(1);
         LogInfo("Apply Changes button clicked - forcing immediate window update");
@@ -2685,14 +2689,15 @@ void DrawDisplaySettings_WindowModeAndApply() {
         oss << "Apply Changes button clicked - forcing immediate window update";
         LogInfo(oss.str().c_str());
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Apply the current window size and position settings immediately.");
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Apply the current window size and position settings immediately.");
     }
 }
 
-void DrawDisplaySettings_FpsLimiterMode() {
-    ImGui::Spacing();
+void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
+    imgui.Spacing();
 
     // FPS Limiter Mode
     {
@@ -2701,7 +2706,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
         int prev_item = current_item;
-        if (ImGui::Combo("FPS Limiter Mode", &current_item, items, 4)) {
+        if (imgui.Combo("FPS Limiter Mode", &current_item, items, 4)) {
             settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
             s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
             FpsLimiterMode mode = s_fps_limiter_mode.load();
@@ -2727,8 +2732,8 @@ void DrawDisplaySettings_FpsLimiterMode() {
         }
 
         // Custom rendering for grayed out option
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Choose limiter:\n"
                 "Default - recommend.\n"
                 "Reflex Mode - uses reflex library to limit FPS\n"
@@ -2739,29 +2744,29 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 " src: %s",
                 GetChosenFpsLimiterSiteName());
         }
-        ImGui::SameLine();
-        ImGui::TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        imgui.SameLine();
+        imgui.TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Which path is currently applying the FPS limiter this frame.\n"
                 "Priority: reflex_marker > reflex_marker_vk_nvll > reflex_marker_vk_loader > "
                 "reflex_marker_pclstats_etw > dxgi_swapchain > "
                 "dxgi_factory_wrapper > reshade_addon_event. src: %s",
                 GetChosenFpsLimiterSiteName());
         }
-        auto DrawPclStatsCheckbox = []() {
+        auto DrawPclStatsCheckbox = [&imgui]() {
             bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
-            if (ImGui::Checkbox("PCL stats for injected reflex", &pcl_stats)) {
+            if (imgui.Checkbox("PCL stats for injected reflex", &pcl_stats)) {
                 settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
                 HWND game_window = display_commanderhooks::GetGameWindow();
                 if (game_window != nullptr && pcl_stats) {
                     display_commanderhooks::InstallWindowProcHooks(game_window);
                 }
             }
-            if (ImGui::IsItemHovered()) {
+            if (imgui.IsItemHovered()) {
                 const uint64_t count = GetPCLStatsMarkerCallCount();
                 const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
-                ImGui::SetTooltip(
+                imgui.SetTooltip(
                     "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
                     "initialized: %s",
                     static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
@@ -2771,10 +2776,10 @@ void DrawDisplaySettings_FpsLimiterMode() {
             // Check if we're running on D3D9 and show warning
             const reshade::api::device_api current_api = g_last_reshade_device_api.load();
             if (current_api == reshade::api::device_api::d3d9) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING,
-                                   ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
+                imgui.TextColored(ui::colors::TEXT_WARNING,
+                                  ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
-                if (ImGui::IsItemHovered()) {
+                if (imgui.IsItemHovered()) {
                     std::string tooltip = "Reflex is enabled by default when supported.";
                     auto last_params = ::g_last_reflex_params_set_by_addon.load();
                     if (last_params) {
@@ -2797,16 +2802,16 @@ void DrawDisplaySettings_FpsLimiterMode() {
                             tooltip += "none";
                         }
                     }
-                    ImGui::SetTooltip("%s", tooltip.c_str());
+                    imgui.SetTooltip("%s", tooltip.c_str());
                 }
 
                 // Reflex mode selector for OnPresent: Low latency (default), Low+boost, Off, Game Defaults
-                ImGui::Spacing();
-                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex")) {
+                imgui.Spacing();
+                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", &imgui)) {
                     // Setting is automatically saved via ComboSettingEnumRefWrapper
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "NVIDIA Reflex setting when using OnPresent FPS limiter.\n\n"
                         "Low latency: Enables Reflex Low Latency Mode (default).\n"
                         "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
@@ -2815,19 +2820,19 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 }
 
                 // Low Latency Ratio Selector (Experimental WIP placeholder)
-                ImGui::Spacing();
-                // ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Low Latency Ratio:");
-                // ImGui::SameLine();
+                imgui.Spacing();
+                // imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Low Latency Ratio:");
+                // imgui.SameLine();
                 auto display_input_ratio = !(::IsNativeFramePacingInSync()
                                              && settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue());
 
                 if (display_input_ratio) {
                     if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
-                                            "Display / Input Ratio")) {
+                                            "Display / Input Ratio", &imgui)) {
                         // Setting is automatically saved via ComboSettingWrapper
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "Controls the balance between display latency and input latency.\n\n"
                             "Available in 12.5%% steps:\n"
                             "100%% Display / 0%% Input: Prioritizes consistent frame timing (better frame timing at "
@@ -2845,19 +2850,18 @@ void DrawDisplaySettings_FpsLimiterMode() {
                     }
 
                     // Debug Info Button
-                    ImGui::SameLine();
+                    imgui.SameLine();
                     static bool show_delay_bias_debug = false;
-                    if (ImGui::SmallButton("[Debug]")) {
+                    if (imgui.SmallButton("[Debug]")) {
                         show_delay_bias_debug = !show_delay_bias_debug;
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Show delay_bias debug information");
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip("Show delay_bias debug information");
                     }
 
                     // Debug Info Window
                     if (show_delay_bias_debug) {
-                        ImGui::Begin("Delay Bias Debug Info", &show_delay_bias_debug,
-                                     ImGuiWindowFlags_AlwaysAutoResize);
+                        imgui.Begin("Delay Bias Debug Info", &show_delay_bias_debug, ImGuiWindowFlags_AlwaysAutoResize);
 
                         // Get current values
                         int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
@@ -2870,62 +2874,61 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         LONGLONG late_ns = late_amount_ns.load();
 
                         // Display ratio index and delay_bias
-                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Ratio Settings:");
-                        ImGui::Text("Ratio Index: %d", ratio_index);
+                        imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Ratio Settings:");
+                        imgui.Text("Ratio Index: %d", ratio_index);
                         float display_pct = (1.0f - delay_bias) * 100.0f;
                         float input_pct = delay_bias * 100.0f;
-                        ImGui::Text("Delay Bias: %.3f (%.1f%% Display / %.1f%% Input)", delay_bias, display_pct,
-                                    input_pct);
+                        imgui.Text("Delay Bias: %.3f (%.1f%% Display / %.1f%% Input)", delay_bias, display_pct,
+                                   input_pct);
 
-                        ImGui::Spacing();
-                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing:");
+                        imgui.Spacing();
+                        imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing:");
                         if (frame_time_ns > 0) {
                             float frame_time_ms = frame_time_ns / 1'000'000.0f;
                             float target_fps = 1000.0f / frame_time_ms;
-                            ImGui::Text("Frame Time: %.3f ms (%.1f FPS)", frame_time_ms, target_fps);
+                            imgui.Text("Frame Time: %.3f ms (%.1f FPS)", frame_time_ms, target_fps);
                         } else {
-                            ImGui::TextColored(ui::colors::TEXT_WARNING, "Frame Time: Not set (FPS limiter disabled?)");
+                            imgui.TextColored(ui::colors::TEXT_WARNING, "Frame Time: Not set (FPS limiter disabled?)");
                         }
 
-                        ImGui::Spacing();
-                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Sleep Times:");
+                        imgui.Spacing();
+                        imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Sleep Times:");
                         if (pre_sleep_ns > 0) {
-                            ImGui::Text("Pre-Sleep: %.3f ms", pre_sleep_ns / 1'000'000.0f);
+                            imgui.Text("Pre-Sleep: %.3f ms", pre_sleep_ns / 1'000'000.0f);
                         } else {
-                            ImGui::Text("Pre-Sleep: 0 ms");
+                            imgui.Text("Pre-Sleep: 0 ms");
                         }
                         if (post_sleep_ns > 0) {
-                            ImGui::Text("Post-Sleep: %.3f ms", post_sleep_ns / 1'000'000.0f);
+                            imgui.Text("Post-Sleep: %.3f ms", post_sleep_ns / 1'000'000.0f);
                         } else {
-                            ImGui::Text("Post-Sleep: 0 ms");
+                            imgui.Text("Post-Sleep: 0 ms");
                         }
                         if (late_ns != 0) {
-                            ImGui::TextColored(ui::colors::TEXT_WARNING, "Late Amount: %.3f ms",
-                                               late_ns / 1'000'000.0f);
+                            imgui.TextColored(ui::colors::TEXT_WARNING, "Late Amount: %.3f ms", late_ns / 1'000'000.0f);
                         } else {
-                            ImGui::Text("Late Amount: 0 ms");
+                            imgui.Text("Late Amount: 0 ms");
                         }
 
-                        ImGui::Spacing();
-                        ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing (Raw):");
+                        imgui.Spacing();
+                        imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing (Raw):");
                         if (last_frame_end_ns > 0) {
                             LONGLONG now_ns = utils::get_now_ns();
                             LONGLONG time_since_last_frame_ns = now_ns - last_frame_end_ns;
-                            ImGui::Text("Last Frame End: %lld ns (%.3f ms ago)", last_frame_end_ns,
-                                        time_since_last_frame_ns / 1'000'000.0f);
+                            imgui.Text("Last Frame End: %lld ns (%.3f ms ago)", last_frame_end_ns,
+                                       time_since_last_frame_ns / 1'000'000.0f);
                         } else {
-                            ImGui::Text("Last Frame End: Not set (first frame?)");
+                            imgui.Text("Last Frame End: Not set (first frame?)");
                         }
                         if (frame_start_ns > 0) {
                             LONGLONG now_ns = utils::get_now_ns();
                             LONGLONG time_since_start_ns = now_ns - frame_start_ns;
-                            ImGui::Text("Frame Start: %lld ns (%.3f ms ago)", frame_start_ns,
-                                        time_since_start_ns / 1'000'000.0f);
+                            imgui.Text("Frame Start: %lld ns (%.3f ms ago)", frame_start_ns,
+                                       time_since_start_ns / 1'000'000.0f);
                         } else {
-                            ImGui::Text("Frame Start: Not set");
+                            imgui.Text("Frame Start: Not set");
                         }
 
-                        ImGui::End();
+                        imgui.End();
                     }
                 }
             }
@@ -2935,66 +2938,67 @@ void DrawDisplaySettings_FpsLimiterMode() {
             // Check if we're running on D3D9 and show warning
             const reshade::api::device_api current_api = g_last_reshade_device_api.load();
             if (current_api == reshade::api::device_api::d3d9) {
-                ImGui::TextColored(ui::colors::TEXT_WARNING,
-                                   ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
+                imgui.TextColored(ui::colors::TEXT_WARNING,
+                                  ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
             } else {
                 uint64_t now_ns = utils::get_now_ns();
 
                 // Show Native Reflex status only when streamline is used
                 if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
                     if (IsNativeReflexActive(now_ns)) {
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("The game has native Reflex support and is actively using it. ");
+                        imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                          ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("The game has native Reflex support and is actively using it. ");
                         }
                         double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
                         double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
-                                           native_ns / 1000000.0);
-                        if (ImGui::IsItemHovered()) {
+                        imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                          "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
+                                          native_ns / 1000000.0);
+                        if (imgui.IsItemHovered()) {
                             double raw_ns = static_cast<double>(g_sleep_reflex_native_ns.load());
-                            ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
-                                              raw_ns / 1000000.0);
+                            imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
+                                             raw_ns / 1000000.0);
                         }
                         //   if (!DidNativeReflexSleepRecently(now_ns)) {
-                        //     ImGui::TextColored(
+                        //     imgui.TextColored(
                         //         ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
                         //      " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
                         // }
                     } else {
                         bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           ICON_FK_OK " Injected Reflex: ACTIVE Limit Real Frames: %s",
-                                           limit_real ? "ON" : "OFF");
+                        imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                          ICON_FK_OK " Injected Reflex: ACTIVE Limit Real Frames: %s",
+                                          limit_real ? "ON" : "OFF");
                         double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
                         double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
-                        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                           "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
-                                           injected_ns / 1000000.0);
-                        if (ImGui::IsItemHovered()) {
+                        imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                          "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
+                                          injected_ns / 1000000.0);
+                        if (imgui.IsItemHovered()) {
                             double raw_ns = static_cast<double>(g_sleep_reflex_injected_ns.load());
-                            ImGui::SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
-                                              raw_ns / 1000000.0);
+                            imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms",
+                                             raw_ns / 1000000.0);
                         }
 
                         // Warn if both native and injected reflex are running simultaneously
                         if (DidNativeReflexSleepRecently(now_ns)) {
-                            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                                               " Warning: Both native and injected Reflex are active - this may cause "
-                                               "conflicts! (FIXME)");
+                            imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                                              " Warning: Both native and injected Reflex are active - this may cause "
+                                              "conflicts! (FIXME)");
                         }
                     }
                 }
 
                 // Reflex mode selector for Reflex FPS limiter (same options as OnPresent)
-                ImGui::Spacing();
-                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex")) {
+                imgui.Spacing();
+                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex",
+                                               &imgui)) {
                     g_reflex_settings_outdated.store(true);
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "NVIDIA Reflex setting when using Reflex FPS limiter.\n\n"
                         "Low latency: Enables Reflex Low Latency Mode (default).\n"
                         "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
@@ -3002,20 +3006,20 @@ void DrawDisplaySettings_FpsLimiterMode() {
                         "Game Defaults: Do not override; use the game's own Reflex settings.");
                 }
                 if (PCLStatsReportingAllowed()) {
-                    ImGui::SameLine();
+                    imgui.SameLine();
                     DrawPclStatsCheckbox();
                 }
             }
             if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-                ImGui::SameLine();
+                imgui.SameLine();
                 if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
-                                    ICON_FK_WARNING " Suppress Native Reflex")) {
+                                    ICON_FK_WARNING " Suppress Native Reflex", &imgui)) {
                     g_reflex_settings_outdated.store(true);
                     LogInfo("Suppress Native Reflex %s",
                             settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "Override the game's native Reflex implementation with the addon's injected version.");
                 }
             }
@@ -3023,14 +3027,14 @@ void DrawDisplaySettings_FpsLimiterMode() {
 
         if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
             // Suppress Reflex Sleep checkbox
-            ImGui::Spacing();
-            if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep")) {
+            imgui.Spacing();
+            if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", &imgui)) {
                 g_reflex_settings_outdated.store(true);
                 LogInfo("Suppress Reflex Sleep %s",
                         settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
                     "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
             }
@@ -3039,19 +3043,20 @@ void DrawDisplaySettings_FpsLimiterMode() {
         // Reflex config when FPS limiter is Disabled or LatentSync (used when no FPS limiter is active)
         if (current_item == static_cast<int>(FpsLimiterMode::kDisabled)
             || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
-            ImGui::Spacing();
-            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex")) {
+            imgui.Spacing();
+            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex",
+                                           &imgui)) {
                 g_reflex_settings_outdated.store(true);
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Reflex setting when FPS limiter is Disabled or LatentSync.\n"
                     "Used for Vulkan NvLL and other paths when no FPS limiter mode is active.");
             }
         }
 
         if (PCLStatsReportingAllowed() && current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            ImGui::Spacing();
+            imgui.Spacing();
             DrawPclStatsCheckbox();
         }
 
@@ -3059,47 +3064,48 @@ void DrawDisplaySettings_FpsLimiterMode() {
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (::IsNativeFramePacingInSync()) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
-                                    "Use Reflex Latency Markers as fps limiter")) {
+                                    "Use Reflex Latency Markers as fps limiter", &imgui)) {
                     LogInfo("Experimental FG native fps limiter %s",
                             settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() ? "enabled"
                                                                                                       : "disabled");
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
                         "Experimental; may improve frame pacing with FG.");
                 }
-                if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing")) {
+                if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
+                                    &imgui)) {
                     LogInfo(
                         "Native pacing sim start only %s",
                         settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
                         "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
                 }
                 // Schedule present start N frame times after simulation start (default on, improves native frame
                 // pacing)
                 if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
-                                    "Schedule present start N frame times after simulation start")) {
+                                    "Schedule present start N frame times after simulation start", &imgui)) {
                     LogInfo("Schedule present start after Sim Start %s",
                             settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
                                                                                                          : "disabled");
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
                         "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, "
                         "1 = one frame, 0.5 = half frame, etc.).");
                 }
-                ImGui::SameLine();
-                if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)",
-                                       "%.2f")) {
+                imgui.SameLine();
+                if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)", "%.2f",
+                                       &imgui)) {
                     // Setting is automatically saved by SliderFloatSetting
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
                 }
             }
         }
@@ -3108,13 +3114,13 @@ void DrawDisplaySettings_FpsLimiterMode() {
         if (enabled_experimental_features) {
             if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter,
-                                    "Experimental Safe Mode fps limiter")) {
+                                    "Experimental Safe Mode fps limiter", &imgui)) {
                     LogInfo("Experimental Safe Mode fps limiter %s",
                             settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue() ? "enabled"
                                                                                                       : "disabled");
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "Uses a safer FPS limiting path with reduced risk of stutter or instability.\n"
                         "Experimental; may have slightly higher latency than the default limiter.");
                 }
@@ -3125,7 +3131,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
                 bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
             }
         }
     }
@@ -3135,12 +3141,12 @@ void DrawDisplaySettings_FpsLimiterMode() {
         // Scanline Offset (only visible if scanline mode is selected)
         int current_offset = settings::g_mainTabSettings.scanline_offset.GetValue();
         int temp_offset = current_offset;
-        if (ImGui::SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
+        if (imgui.SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
             settings::g_mainTabSettings.scanline_offset.SetValue(temp_offset);
             s_scanline_offset.store(temp_offset);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
                 "threshold where frame pacing is active.");
         }
@@ -3148,12 +3154,12 @@ void DrawDisplaySettings_FpsLimiterMode() {
         // VBlank Sync Divisor (only visible if latent sync mode is selected)
         int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
         int temp_divisor = current_divisor;
-        if (ImGui::SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)",
-                             &temp_divisor, 0, 8, "%d")) {
+        if (imgui.SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)",
+                            &temp_divisor, 0, 8, "%d")) {
             settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
             s_vblank_sync_divisor.store(temp_divisor);
         }
-        if (ImGui::IsItemHovered()) {
+        if (imgui.IsItemHovered()) {
             // Calculate effective refresh rate based on monitor info
             auto window_state = ::g_window_state.load();
             double refresh_hz = 60.0;  // default fallback
@@ -3176,7 +3182,7 @@ void DrawDisplaySettings_FpsLimiterMode() {
                 tooltip_oss << "\n";
             }
             tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
-            ImGui::SetTooltip("%s", tooltip_oss.str().c_str());
+            imgui.SetTooltip("%s", tooltip_oss.str().c_str());
         }
 
         // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
@@ -3184,26 +3190,26 @@ void DrawDisplaySettings_FpsLimiterMode() {
             if (dxgi::latent_sync::g_latentSyncManager) {
                 auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
                 if (latent.IsVBlankMonitoringActive()) {
-                    ImGui::Spacing();
-                    ImGui::TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    imgui.Spacing();
+                    imgui.TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "VBlank monitoring thread is running and collecting scanline data for frame pacing.");
                     }
 
-                    ImGui::TextColored(ui::colors::STATUS_INACTIVE, "  refresh time: %.3fms",
-                                       1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::STATUS_INACTIVE, "  total_height: %llu",
-                                       dxgi::fps_limiter::g_latent_sync_total_height.load());
-                    ImGui::SameLine();
-                    ImGui::TextColored(ui::colors::STATUS_INACTIVE, "  active_height: %llu",
-                                       dxgi::fps_limiter::g_latent_sync_active_height.load());
+                    imgui.TextColored(ui::colors::STATUS_INACTIVE, "  refresh time: %.3fms",
+                                      1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::STATUS_INACTIVE, "  total_height: %llu",
+                                      dxgi::fps_limiter::g_latent_sync_total_height.load());
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::STATUS_INACTIVE, "  active_height: %llu",
+                                      dxgi::fps_limiter::g_latent_sync_active_height.load());
                 } else {
-                    ImGui::Spacing();
-                    ImGui::TextColored(ui::colors::STATUS_STARTING, ICON_FK_WARNING " VBlank Monitor: STARTING...");
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    imgui.Spacing();
+                    imgui.TextColored(ui::colors::STATUS_STARTING, ICON_FK_WARNING " VBlank Monitor: STARTING...");
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "VBlank monitoring is enabled but the monitoring thread is still starting up.");
                     }
                 }
@@ -3212,17 +3218,18 @@ void DrawDisplaySettings_FpsLimiterMode() {
     }
 }
 
-void DrawDisplaySettings_FpsAndBackground() {
+void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     if (enabled_experimental_features) {
         if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-            ImGui::Spacing();
+            imgui.Spacing();
             bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-            if (ImGui::Checkbox("Limit Real Frames", &limit_real)) {
+            if (imgui.Checkbox("Limit Real Frames", &limit_real)) {
                 settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
                 LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Limit real frames when using DLSS Frame Generation.\n"
                     "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
                     "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
@@ -3233,7 +3240,7 @@ void DrawDisplaySettings_FpsAndBackground() {
             settings::g_mainTabSettings.limit_real_frames.SetValue(false);
         }
     }
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // FPS Limit slider (persisted)
 
@@ -3243,7 +3250,7 @@ void DrawDisplaySettings_FpsAndBackground() {
 
     {
         if (!fps_limit_enabled) {
-            ImGui::BeginDisabled();
+            imgui.BeginDisabled();
         }
 
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
@@ -3255,35 +3262,35 @@ void DrawDisplaySettings_FpsAndBackground() {
         if (cur_limit > 0.0f && cur_limit < 10.0f) {
             settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
         }
 
         if (!fps_limit_enabled) {
-            ImGui::EndDisabled();
+            imgui.EndDisabled();
         }
     }
 
     // No Render in Background checkbox
     {
         bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
-        if (ImGui::Checkbox("No Render in Background", &no_render_in_bg)) {
+        if (imgui.Checkbox("No Render in Background", &no_render_in_bg)) {
             settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);
             // The setting is automatically synced via BoolSettingRef
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Skip rendering draw calls when the game window is not in the foreground. This can save "
                 "GPU power and reduce background processing.");
         }
-        ImGui::SameLine();
+        imgui.SameLine();
         bool no_present_in_bg = settings::g_mainTabSettings.no_present_in_background.GetValue();
-        if (ImGui::Checkbox("No Present in Background", &no_present_in_bg)) {
+        if (imgui.Checkbox("No Present in Background", &no_present_in_bg)) {
             settings::g_mainTabSettings.no_present_in_background.SetValue(no_present_in_bg);
             // The setting is automatically synced via BoolSettingRef
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Skip ReShade's on_present processing when the game window is not in the foreground. "
                 "This can save GPU power and reduce background processing.");
         }
@@ -3298,33 +3305,34 @@ struct VSyncTearingTooltipContext {
     std::string present_mode_name;
 };
 
-static void DrawDisplaySettings_VSyncAndTearing_FpsSliders() {
+static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
                                  && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
                              || ShouldReflexBeEnabled();
     {
         if (!fps_limit_enabled) {
-            ImGui::BeginDisabled();
+            imgui.BeginDisabled();
         }
-        DrawQuickFpsLimitChanger();
+        DrawQuickFpsLimitChanger(imgui);
         if (!fps_limit_enabled) {
-            ImGui::EndDisabled();
+            imgui.EndDisabled();
         }
     }
-    ImGui::Spacing();
+    imgui.Spacing();
     {
         if (!fps_limit_enabled) {
-            ImGui::BeginDisabled();
+            imgui.BeginDisabled();
         }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
         if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg)) {
         }
         if (!fps_limit_enabled) {
-            ImGui::EndDisabled();
+            imgui.EndDisabled();
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter "
                 "system.");
         }
@@ -3349,11 +3357,12 @@ static const char* GetPresentModeNameNonDxgi(int device_api_value, uint32_t pres
     return "Other";
 }
 
-static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
+static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc.load();
         bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
-        if (ImGui::Checkbox("Force VSync ON", &vs_on)) {
+        if (imgui.Checkbox("Force VSync ON", &vs_on)) {
             s_restart_needed_vsync_tearing.store(true);
             if (vs_on) {
                 settings::g_mainTabSettings.force_vsync_off.SetValue(false);
@@ -3361,13 +3370,13 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
             settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
             LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces sync interval = 1 (requires restart).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Forces sync interval = 1 (requires restart).");
         }
-        ImGui::SameLine();
+        imgui.SameLine();
 
         bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
-        if (ImGui::Checkbox("Force VSync OFF", &vs_off)) {
+        if (imgui.Checkbox("Force VSync OFF", &vs_off)) {
             s_restart_needed_vsync_tearing.store(true);
             if (vs_off) {
                 settings::g_mainTabSettings.force_vsync_on.SetValue(false);
@@ -3375,54 +3384,54 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
             settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
             LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Forces sync interval = 0 (requires restart).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Forces sync interval = 0 (requires restart).");
         }
         const reshade::api::device_api current_api_pt = g_last_reshade_device_api.load();
         const bool is_dxgi_pt =
             (current_api_pt == reshade::api::device_api::d3d10 || current_api_pt == reshade::api::device_api::d3d11
              || current_api_pt == reshade::api::device_api::d3d12);
         if (is_dxgi_pt) {
-            ImGui::SameLine();
+            imgui.SameLine();
             bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
-            if (ImGui::Checkbox("Prevent Tearing", &prevent_t)) {
+            if (imgui.Checkbox("Prevent Tearing", &prevent_t)) {
                 settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
                 LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
                                   : "Prevent Tearing disabled");
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
         } else if (desc_ptr_cb) {
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
-                               GetPresentModeNameNonDxgi(static_cast<int>(current_api_pt), desc_ptr_cb->present_mode));
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
+                              GetPresentModeNameNonDxgi(static_cast<int>(current_api_pt), desc_ptr_cb->present_mode));
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
             }
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_WARNING,
-                           "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
     }
 
     auto desc_ptr = g_last_swapchain_desc.load();
     if (desc_ptr && desc_ptr->back_buffer_count < 3
         || settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue()) {
-        ImGui::SameLine();
+        imgui.SameLine();
         bool increase_backbuffer = settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue();
-        if (ImGui::Checkbox("Increase Backbuffer Count to 3", &increase_backbuffer)) {
+        if (imgui.Checkbox("Increase Backbuffer Count to 3", &increase_backbuffer)) {
             settings::g_mainTabSettings.increase_backbuffer_count_to_3.SetValue(increase_backbuffer);
             s_restart_needed_vsync_tearing.store(true);
             LogInfo(increase_backbuffer ? "Increase Backbuffer Count to 3 enabled"
                                         : "Increase Backbuffer Count to 3 disabled");
         }
-        if (ImGui::IsItemHovered()) {
+        if (imgui.IsItemHovered()) {
             std::ostringstream tooltip;
             tooltip << "Increases backbuffer count from " << desc_ptr->back_buffer_count
                     << " to 3 (requires restart).\n"
                     << "Current backbuffer count: " << desc_ptr->back_buffer_count;
-            ImGui::SetTooltip("%s", tooltip.str().c_str());
+            imgui.SetTooltip("%s", tooltip.str().c_str());
         }
     }
 
@@ -3439,14 +3448,14 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
     has_been_enabled |= is_dxgi && (enable_flip || !is_flip);
 
     if (has_been_enabled) {
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
+        imgui.SameLine();
+        if (imgui.Checkbox("Enable Flip Chain (requires restart)", &enable_flip)) {
             settings::g_advancedTabSettings.enable_flip_chain.SetValue(enable_flip);
             s_restart_needed_vsync_tearing.store(true);
             LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
                 "This setting requires a game restart to take effect.\n"
                 "Only works with DirectX 10/11/12 (DXGI) games.");
@@ -3454,9 +3463,9 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
     }
 
     if (is_d3d9) {
-        ImGui::SameLine();
+        imgui.SameLine();
         bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue();
-        if (ImGui::Checkbox("Enable Flip State (requires restart)", &enable_d9ex_with_flip)) {
+        if (imgui.Checkbox("Enable Flip State (requires restart)", &enable_d9ex_with_flip)) {
             settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(enable_d9ex_with_flip);
             LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled"
                                           : "Enable D9EX with Flip Model disabled");
@@ -3464,22 +3473,23 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes() {
     }
 
     if (s_restart_needed_vsync_tearing.load()) {
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_ERROR, "Game restart required to apply VSync/tearing changes.");
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_ERROR, "Game restart required to apply VSync/tearing changes.");
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 }
 
-static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection() {
+static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     presentmon::PresentMonFlipState pm_flip_state;
     presentmon::PresentMonDebugInfo pm_debug_info;
     bool has_pm_flip_state = presentmon::g_presentMonManager.GetFlipState(pm_flip_state);
     presentmon::g_presentMonManager.GetDebugInfo(pm_debug_info);
 
-    ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Flip State:");
+    imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon Flip State:");
     if (has_pm_flip_state) {
         const char* pm_flip_str = DxgiBypassModeToString(pm_flip_state.flip_mode);
         ImVec4 pm_flip_color;
@@ -3491,224 +3501,228 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection() {
         } else {
             pm_flip_color = ui::colors::FLIP_UNKNOWN;
         }
-        ImGui::TextColored(pm_flip_color, "  %s", pm_flip_str);
+        imgui.TextColored(pm_flip_color, "  %s", pm_flip_str);
         if (!pm_flip_state.present_mode_str.empty()) {
-            ImGui::Text("  Mode: %s", pm_flip_state.present_mode_str.c_str());
+            imgui.Text("  Mode: %s", pm_flip_state.present_mode_str.c_str());
         }
         if (!pm_flip_state.debug_info.empty()) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Info: %s", pm_flip_state.debug_info.c_str());
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Info: %s", pm_flip_state.debug_info.c_str());
         }
         LONGLONG now_ns = utils::get_now_ns();
         LONGLONG age_ns = now_ns - static_cast<LONGLONG>(pm_flip_state.last_update_time);
         double age_ms = static_cast<double>(age_ns) / 1000000.0;
         if (age_ms < 1000.0) {
-            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Age: %.1f ms", age_ms);
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, "  Age: %.1f ms", age_ms);
         } else {
-            ImGui::TextColored(ui::colors::TEXT_WARNING, "  Age: %.1f s (stale)", age_ms / 1000.0);
+            imgui.TextColored(ui::colors::TEXT_WARNING, "  Age: %.1f s (stale)", age_ms / 1000.0);
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  No flip state data available");
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Waiting for a PresentMode-like ETW property/event");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "  No flip state data available");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "  Waiting for a PresentMode-like ETW property/event");
         if (!pm_debug_info.last_present_mode_value.empty()) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Last PresentMode-like: %s",
-                               pm_debug_info.last_present_mode_value.c_str());
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Last PresentMode-like: %s",
+                              pm_debug_info.last_present_mode_value.c_str());
         }
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (game_hwnd != nullptr && IsWindow(game_hwnd)) {
-        ImGui::Separator();
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_LABEL, "Layer Information (Game HWND: 0x%p):", game_hwnd);
+        imgui.Separator();
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_LABEL, "Layer Information (Game HWND: 0x%p):", game_hwnd);
         std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
         presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 3600000);
         bool found_layer = false;
         for (const auto& surface : surfaces) {
             if (surface.hwnd == reinterpret_cast<uint64_t>(game_hwnd)) {
                 found_layer = true;
-                ImGui::Indent();
-                ImGui::Text("Surface LUID: 0x%llX", surface.surface_luid);
-                ImGui::Text("Surface Size: %ux%u", surface.surface_width, surface.surface_height);
+                imgui.Indent();
+                imgui.Text("Surface LUID: 0x%llX", surface.surface_luid);
+                imgui.Text("Surface Size: %ux%u", surface.surface_width, surface.surface_height);
                 if (surface.pixel_format != 0) {
-                    ImGui::Text("Pixel Format: 0x%X", surface.pixel_format);
+                    imgui.Text("Pixel Format: 0x%X", surface.pixel_format);
                 }
                 if (surface.color_space != 0) {
-                    ImGui::Text("Color Space: 0x%X", surface.color_space);
+                    imgui.Text("Color Space: 0x%X", surface.color_space);
                 }
-                ImGui::Spacing();
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
                 if (surface.is_direct_flip_compatible) {
-                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
                 }
                 if (surface.is_advanced_direct_flip_compatible) {
-                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Advanced Direct Flip Compatible");
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Advanced Direct Flip Compatible");
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
                 }
                 if (surface.is_overlay_compatible) {
-                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
                 }
                 if (surface.is_overlay_required) {
-                    ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
                 }
                 if (surface.no_overlapping_content) {
-                    ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
                 }
                 if (surface.last_update_time_ns > 0) {
                     LONGLONG now_ns = utils::get_now_ns();
                     LONGLONG age_ns = now_ns - static_cast<LONGLONG>(surface.last_update_time_ns);
                     double age_ms = static_cast<double>(age_ns) / 1000000.0;
-                    ImGui::Spacing();
+                    imgui.Spacing();
                     if (age_ms < 1000.0) {
-                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
+                        imgui.TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
                     }
                 }
                 if (surface.count > 0) {
-                    ImGui::Text("Event Count: %llu", surface.count);
+                    imgui.Text("Event Count: %llu", surface.count);
                 }
-                ImGui::Unindent();
+                imgui.Unindent();
                 break;
             }
         }
         if (!found_layer) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  No layer information found for this HWND");
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Waiting for PresentMon events...");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  No layer information found for this HWND");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "  Waiting for PresentMon events...");
             if (!surfaces.empty()) {
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "  (%zu surfaces tracked, none match)", surfaces.size());
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  (%zu surfaces tracked, none match)", surfaces.size());
             }
         }
     } else {
-        ImGui::Separator();
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Layer Information: Game window not available");
+        imgui.Separator();
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Layer Information: Game window not available");
     }
 
-    ImGui::Spacing();
-    ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Debug Info:");
-    ImGui::Text("  Thread Status: %s", pm_debug_info.thread_status.c_str());
+    imgui.Spacing();
+    imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon Debug Info:");
+    imgui.Text("  Thread Status: %s", pm_debug_info.thread_status.c_str());
     if (pm_debug_info.is_running) {
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK);
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK);
     } else {
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_ERROR, ICON_FK_CANCEL);
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_CANCEL);
     }
     if (!pm_debug_info.etw_session_name.empty()) {
-        ImGui::Text("  ETW Session: %s [%s]", pm_debug_info.etw_session_status.c_str(),
-                    pm_debug_info.etw_session_name.c_str());
+        imgui.Text("  ETW Session: %s [%s]", pm_debug_info.etw_session_status.c_str(),
+                   pm_debug_info.etw_session_name.c_str());
     } else {
-        ImGui::Text("  ETW Session: %s", pm_debug_info.etw_session_status.c_str());
+        imgui.Text("  ETW Session: %s", pm_debug_info.etw_session_status.c_str());
     }
     if (pm_debug_info.etw_session_active) {
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK);
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK);
     } else {
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING);
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING);
     }
     if (pm_debug_info.events_processed > 0) {
-        ImGui::Text("  Events Processed: %llu", pm_debug_info.events_processed);
+        imgui.Text("  Events Processed: %llu", pm_debug_info.events_processed);
         if (pm_debug_info.events_lost > 0) {
-            ImGui::TextColored(ui::colors::TEXT_WARNING, "  Events Lost: %llu", pm_debug_info.events_lost);
+            imgui.TextColored(ui::colors::TEXT_WARNING, "  Events Lost: %llu", pm_debug_info.events_lost);
         }
         if (pm_debug_info.last_event_time > 0) {
             LONGLONG now_ns = utils::get_now_ns();
             LONGLONG age_ns = now_ns - static_cast<LONGLONG>(pm_debug_info.last_event_time);
             double age_ms = static_cast<double>(age_ns) / 1000000.0;
             if (age_ms < 1000.0) {
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Last Event: %.1f ms ago", age_ms);
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "  Last Event: %.1f ms ago", age_ms);
             } else {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, "  Last Event: %.1f s ago", age_ms / 1000.0);
+                imgui.TextColored(ui::colors::TEXT_WARNING, "  Last Event: %.1f s ago", age_ms / 1000.0);
             }
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  Events Processed: 0 (ETW not active)");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "  Events Processed: 0 (ETW not active)");
     }
     if (!pm_debug_info.last_error.empty()) {
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_ERROR, "  Error: %s", pm_debug_info.last_error.c_str());
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_ERROR, "  Error: %s", pm_debug_info.last_error.c_str());
     }
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::TextColored(ui::colors::TEXT_LABEL, "Troubleshooting:");
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.TextColored(ui::colors::TEXT_LABEL, "Troubleshooting:");
     if (!pm_debug_info.is_running) {
-        ImGui::BulletText("PresentMon thread is not running");
-        ImGui::BulletText("Check Advanced tab -> Enable PresentMon ETW Tracing");
+        imgui.BulletText("PresentMon thread is not running");
+        imgui.BulletText("Check Advanced tab -> Enable PresentMon ETW Tracing");
     } else if (!pm_debug_info.etw_session_active) {
-        ImGui::BulletText("ETW session is not active");
-        ImGui::BulletText("You may need admin or Performance Log Users group membership");
+        imgui.BulletText("ETW session is not active");
+        imgui.BulletText("You may need admin or Performance Log Users group membership");
     } else if (pm_debug_info.events_processed == 0) {
-        ImGui::BulletText("No events processed yet");
-        ImGui::BulletText("ETW session may need time to initialize");
+        imgui.BulletText("No events processed yet");
+        imgui.BulletText("ETW session may need time to initialize");
     } else if (pm_debug_info.events_lost > 0) {
-        ImGui::BulletText("Events are being lost - ETW buffer may be too small");
-        ImGui::BulletText("Check Windows Event Viewer for ETW errors");
+        imgui.BulletText("Events are being lost - ETW buffer may be too small");
+        imgui.BulletText("Check Windows Event Viewer for ETW errors");
     } else {
-        ImGui::BulletText("PresentMon appears to be working correctly");
+        imgui.BulletText("PresentMon appears to be working correctly");
     }
 }
 
 /// DXGI-only: draws flip state explanation (Composed / Independent / query failed, etc.) in the swapchain tooltip.
-static void DrawDisplaySettings_VSyncAndTearing_DxgiFlipStateTooltip(DxgiBypassMode flip_state) {
+static void DrawDisplaySettings_VSyncAndTearing_DxgiFlipStateTooltip(display_commander::ui::IImGuiWrapper& imgui,
+                                                                     DxgiBypassMode flip_state) {
+    (void)imgui;
     if (flip_state == DxgiBypassMode::kComposed) {
-        ImGui::Separator();
-        ImGui::TextColored(ui::colors::FLIP_COMPOSED,
-                           "  - Composed Flip (Red): Desktop Window Manager composition mode");
-        ImGui::Text("    Higher latency, not ideal for gaming");
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_LABEL, "Why Composed Flip?");
-        ImGui::BulletText("Fullscreen: No (Borderless windowed mode)");
-        ImGui::BulletText("DWM composition required for windowed mode");
-        ImGui::BulletText("Independent Flip requires True Fullscreen Exclusive (FSE)");
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "To achieve Independent Flip:");
-        ImGui::BulletText("Enable True Fullscreen Exclusive in game settings");
-        ImGui::BulletText("Or use borderless fullscreen with exact resolution match");
-        ImGui::BulletText("Ensure no overlays or DWM effects are active");
+        imgui.Separator();
+        imgui.TextColored(ui::colors::FLIP_COMPOSED,
+                          "  - Composed Flip (Red): Desktop Window Manager composition mode");
+        imgui.Text("    Higher latency, not ideal for gaming");
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_LABEL, "Why Composed Flip?");
+        imgui.BulletText("Fullscreen: No (Borderless windowed mode)");
+        imgui.BulletText("DWM composition required for windowed mode");
+        imgui.BulletText("Independent Flip requires True Fullscreen Exclusive (FSE)");
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "To achieve Independent Flip:");
+        imgui.BulletText("Enable True Fullscreen Exclusive in game settings");
+        imgui.BulletText("Or use borderless fullscreen with exact resolution match");
+        imgui.BulletText("Ensure no overlays or DWM effects are active");
     } else if (flip_state == DxgiBypassMode::kOverlay) {
-        ImGui::TextColored(ui::colors::FLIP_INDEPENDENT,
-                           "  - MPO Independent Flip (Green): Modern hardware overlay plane");
-        ImGui::Text("    Best performance and lowest latency");
+        imgui.TextColored(ui::colors::FLIP_INDEPENDENT,
+                          "  - MPO Independent Flip (Green): Modern hardware overlay plane");
+        imgui.Text("    Best performance and lowest latency");
     } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
-        ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "  - Independent Flip (Green): Legacy direct flip mode");
-        ImGui::Text("    Good performance and low latency");
+        imgui.TextColored(ui::colors::FLIP_INDEPENDENT, "  - Independent Flip (Green): Legacy direct flip mode");
+        imgui.Text("    Good performance and low latency");
     } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull) {
-        ImGui::TextColored(ui::colors::TEXT_ERROR, "  - Query Failed: Swapchain is null");
-        ImGui::Text("    Cannot determine flip state - swapchain not available");
+        imgui.TextColored(ui::colors::TEXT_ERROR, "  - Query Failed: Swapchain is null");
+        imgui.Text("    Cannot determine flip state - swapchain not available");
     } else if (flip_state == DxgiBypassMode::kQueryFailedNoMedia) {
         if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
-            ImGui::TextColored(ui::colors::TEXT_ERROR,
-                               ICON_FK_WARNING "  - Streamline Interposer detected - Flip State Query not supported");
-            ImGui::Text("    Cannot determine flip state - call after at least one Present");
+            imgui.TextColored(ui::colors::TEXT_ERROR,
+                              ICON_FK_WARNING "  - Streamline Interposer detected - Flip State Query not supported");
+            imgui.Text("    Cannot determine flip state - call after at least one Present");
         } else {
-            ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
-            ImGui::Text("    Cannot determine flip state - call after at least one Present");
+            imgui.TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
+            imgui.Text("    Cannot determine flip state - call after at least one Present");
         }
     } else if (flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-        ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
-        ImGui::Text("    Cannot determine flip state - call after at least one Present");
+        imgui.TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
+        imgui.Text("    Cannot determine flip state - call after at least one Present");
     } else if (flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1) {
-        ImGui::TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: IDXGISwapChain1 not available");
-        ImGui::Text("    Cannot determine flip state - SwapChain1 interface not supported");
+        imgui.TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: IDXGISwapChain1 not available");
+        imgui.Text("    Cannot determine flip state - SwapChain1 interface not supported");
     } else if (flip_state == DxgiBypassMode::kUnset) {
-        ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet queried");
-        ImGui::Text("    Initial state - will be determined on first query");
+        imgui.TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet queried");
+        imgui.Text("    Initial state - will be determined on first query");
     } else {
-        ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet determined");
-        ImGui::Text("    Wait for a few frames to render");
+        imgui.TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet determined");
+        imgui.Text("    Wait for a few frames to render");
     }
 }
 
-static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTearingTooltipContext& ctx) {
+static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_commander::ui::IImGuiWrapper& imgui,
+                                                                 const VSyncTearingTooltipContext& ctx) {
+    (void)imgui;
     const auto& desc = *ctx.desc;
     const DxgiBypassMode flip_state = ctx.flip_state;
     const char* flip_state_str = ctx.flip_state_str.c_str();
@@ -3717,38 +3731,38 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
         (api_val == reshade::api::device_api::d3d10 || api_val == reshade::api::device_api::d3d11
          || api_val == reshade::api::device_api::d3d12);
 
-    ImGui::TextColored(ui::colors::TEXT_LABEL, "Swapchain Information:");
-    ImGui::Separator();
-    ImGui::Text("Present Mode: %s", ctx.present_mode_name.c_str());
-    ImGui::Text("Present Mode ID: %u", desc.present_mode);
+    imgui.TextColored(ui::colors::TEXT_LABEL, "Swapchain Information:");
+    imgui.Separator();
+    imgui.Text("Present Mode: %s", ctx.present_mode_name.c_str());
+    imgui.Text("Present Mode ID: %u", desc.present_mode);
     if (is_dxgi_tooltip) {
-        ImGui::Text("Status: %s", flip_state_str);
+        imgui.Text("Status: %s", flip_state_str);
     } else if (api_val == reshade::api::device_api::vulkan) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Vulkan swapchain (VkPresentModeKHR, flags below)");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Vulkan swapchain (VkPresentModeKHR, flags below)");
     } else if (api_val == reshade::api::device_api::opengl) {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "OpenGL swapchain");
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "OpenGL swapchain");
     }
 
     HWND game_window = display_commanderhooks::GetGameWindow();
     if (game_window != nullptr && IsWindow(game_window)) {
-        ImGui::Separator();
-        ImGui::TextColored(ui::colors::TEXT_LABEL, "Window Information (Debug):");
+        imgui.Separator();
+        imgui.TextColored(ui::colors::TEXT_LABEL, "Window Information (Debug):");
         RECT window_rect = {};
         RECT client_rect = {};
         if (GetWindowRect(game_window, &window_rect) && GetClientRect(game_window, &client_rect)) {
-            ImGui::Text("Window Rect: (%ld, %ld) to (%ld, %ld)", window_rect.left, window_rect.top, window_rect.right,
-                        window_rect.bottom);
-            ImGui::Text("Window Size: %ld x %ld", window_rect.right - window_rect.left,
-                        window_rect.bottom - window_rect.top);
-            ImGui::Text("Client Rect: (%ld, %ld) to (%ld, %ld)", client_rect.left, client_rect.top, client_rect.right,
-                        client_rect.bottom);
-            ImGui::Text("Client Size: %ld x %ld", client_rect.right - client_rect.left,
-                        client_rect.bottom - client_rect.top);
+            imgui.Text("Window Rect: (%ld, %ld) to (%ld, %ld)", window_rect.left, window_rect.top, window_rect.right,
+                       window_rect.bottom);
+            imgui.Text("Window Size: %ld x %ld", window_rect.right - window_rect.left,
+                       window_rect.bottom - window_rect.top);
+            imgui.Text("Client Rect: (%ld, %ld) to (%ld, %ld)", client_rect.left, client_rect.top, client_rect.right,
+                       client_rect.bottom);
+            imgui.Text("Client Size: %ld x %ld", client_rect.right - client_rect.left,
+                       client_rect.bottom - client_rect.top);
         }
         LONG_PTR style = GetWindowLongPtrW(game_window, GWL_STYLE);
         LONG_PTR ex_style = GetWindowLongPtrW(game_window, GWL_EXSTYLE);
-        ImGui::Text("Window Style: 0x%08lX", static_cast<unsigned long>(style));
-        ImGui::Text("Window ExStyle: 0x%08lX", static_cast<unsigned long>(ex_style));
+        imgui.Text("Window Style: 0x%08lX", static_cast<unsigned long>(style));
+        imgui.Text("Window ExStyle: 0x%08lX", static_cast<unsigned long>(ex_style));
         bool is_popup = (style & WS_POPUP) != 0;
         bool is_child = (style & WS_CHILD) != 0;
         bool has_caption = (style & WS_CAPTION) != 0;
@@ -3756,49 +3770,49 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
         bool is_layered = (ex_style & WS_EX_LAYERED) != 0;
         bool is_topmost = (ex_style & WS_EX_TOPMOST) != 0;
         bool is_transparent = (ex_style & WS_EX_TRANSPARENT) != 0;
-        ImGui::Text("  WS_POPUP: %s", is_popup ? "Yes" : "No");
-        ImGui::Text("  WS_CHILD: %s", is_child ? "Yes" : "No");
-        ImGui::Text("  WS_CAPTION: %s", has_caption ? "Yes" : "No");
-        ImGui::Text("  WS_BORDER: %s", has_border ? "Yes" : "No");
-        ImGui::Text("  WS_EX_LAYERED: %s", is_layered ? "Yes" : "No");
-        ImGui::Text("  WS_EX_TOPMOST: %s", is_topmost ? "Yes" : "No");
-        ImGui::Text("  WS_EX_TRANSPARENT: %s", is_transparent ? "Yes" : "No");
-        ImGui::Separator();
-        ImGui::TextColored(ui::colors::TEXT_LABEL, "Size Comparison:");
-        ImGui::Text("Backbuffer: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+        imgui.Text("  WS_POPUP: %s", is_popup ? "Yes" : "No");
+        imgui.Text("  WS_CHILD: %s", is_child ? "Yes" : "No");
+        imgui.Text("  WS_CAPTION: %s", has_caption ? "Yes" : "No");
+        imgui.Text("  WS_BORDER: %s", has_border ? "Yes" : "No");
+        imgui.Text("  WS_EX_LAYERED: %s", is_layered ? "Yes" : "No");
+        imgui.Text("  WS_EX_TOPMOST: %s", is_topmost ? "Yes" : "No");
+        imgui.Text("  WS_EX_TRANSPARENT: %s", is_transparent ? "Yes" : "No");
+        imgui.Separator();
+        imgui.TextColored(ui::colors::TEXT_LABEL, "Size Comparison:");
+        imgui.Text("Backbuffer: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
         if (GetWindowRect(game_window, &window_rect)) {
             long window_width = window_rect.right - window_rect.left;
             long window_height = window_rect.bottom - window_rect.top;
-            ImGui::Text("Window: %ldx%ld", window_width, window_height);
+            imgui.Text("Window: %ldx%ld", window_width, window_height);
             bool size_matches = (static_cast<long>(desc.back_buffer.texture.width) == window_width
                                  && static_cast<long>(desc.back_buffer.texture.height) == window_height);
             if (size_matches) {
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Sizes match");
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "  Sizes match");
             } else {
-                ImGui::TextColored(ui::colors::TEXT_WARNING, "  Sizes differ (may cause Composed Flip)");
+                imgui.TextColored(ui::colors::TEXT_WARNING, "  Sizes differ (may cause Composed Flip)");
             }
         }
-        ImGui::Separator();
-        ImGui::TextColored(ui::colors::TEXT_LABEL, "Display Information:");
+        imgui.Separator();
+        imgui.TextColored(ui::colors::TEXT_LABEL, "Display Information:");
         HMONITOR monitor = MonitorFromWindow(game_window, MONITOR_DEFAULTTONEAREST);
         if (monitor != nullptr) {
             MONITORINFOEXW monitor_info = {};
             monitor_info.cbSize = sizeof(MONITORINFOEXW);
             if (GetMonitorInfoW(monitor, &monitor_info)) {
-                ImGui::Text("Monitor Rect: (%ld, %ld) to (%ld, %ld)", monitor_info.rcMonitor.left,
-                            monitor_info.rcMonitor.top, monitor_info.rcMonitor.right, monitor_info.rcMonitor.bottom);
+                imgui.Text("Monitor Rect: (%ld, %ld) to (%ld, %ld)", monitor_info.rcMonitor.left,
+                           monitor_info.rcMonitor.top, monitor_info.rcMonitor.right, monitor_info.rcMonitor.bottom);
                 long monitor_width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
                 long monitor_height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
-                ImGui::Text("Monitor Size: %ld x %ld", monitor_width, monitor_height);
+                imgui.Text("Monitor Size: %ld x %ld", monitor_width, monitor_height);
                 if (GetWindowRect(game_window, &window_rect)) {
                     bool covers_monitor = (window_rect.left == monitor_info.rcMonitor.left
                                            && window_rect.top == monitor_info.rcMonitor.top
                                            && window_rect.right == monitor_info.rcMonitor.right
                                            && window_rect.bottom == monitor_info.rcMonitor.bottom);
                     if (covers_monitor) {
-                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  Window covers entire monitor");
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  Window covers entire monitor");
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  Window does not cover entire monitor");
+                        imgui.TextColored(ui::colors::TEXT_WARNING, "  Window does not cover entire monitor");
                     }
                 }
             }
@@ -3806,11 +3820,11 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
     }
 
     if (is_dxgi_tooltip) {
-        DrawDisplaySettings_VSyncAndTearing_DxgiFlipStateTooltip(flip_state);
+        DrawDisplaySettings_VSyncAndTearing_DxgiFlipStateTooltip(imgui, flip_state);
     }
 
-    ImGui::Text("Back Buffer Count: %u", desc.back_buffer_count);
-    ImGui::Text("Back Buffer Size: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
+    imgui.Text("Back Buffer Count: %u", desc.back_buffer_count);
+    imgui.Text("Back Buffer Size: %ux%u", desc.back_buffer.texture.width, desc.back_buffer.texture.height);
     const char* format_name = "Unknown";
     switch (desc.back_buffer.texture.format) {
         case reshade::api::format::r10g10b10a2_unorm:  format_name = "R10G10B10A2_UNORM (HDR 10-bit)"; break;
@@ -3819,20 +3833,20 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
         case reshade::api::format::b8g8r8a8_unorm:     format_name = "B8G8R8A8_UNORM (SDR 8-bit)"; break;
         default:                                       format_name = "Unknown Format"; break;
     }
-    ImGui::Text("Back Buffer Format: %s", format_name);
-    ImGui::Text("Sync Interval: %u", desc.sync_interval);
-    ImGui::Text("Fullscreen: %s", desc.fullscreen_state ? "Yes" : "No");
+    imgui.Text("Back Buffer Format: %s", format_name);
+    imgui.Text("Sync Interval: %u", desc.sync_interval);
+    imgui.Text("Fullscreen: %s", desc.fullscreen_state ? "Yes" : "No");
     if (desc.fullscreen_state && desc.fullscreen_refresh_rate > 0) {
-        ImGui::Text("Refresh Rate: %.2f Hz", desc.fullscreen_refresh_rate);
+        imgui.Text("Refresh Rate: %.2f Hz", desc.fullscreen_refresh_rate);
     }
 
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Separator();
+    imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:presentmon", std::memory_order_release);
-    if (ImGui::CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Indent();
-        DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection();
-        ImGui::Unindent();
+    if (imgui.CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+        imgui.Indent();
+        DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(imgui);
+        imgui.Unindent();
     }
 
     // ReShade: present_flags is DXGI_SWAP_CHAIN_FLAG (DXGI), VkSwapchainCreateFlagsKHR (Vulkan), or PFD_* (OpenGL).
@@ -3842,36 +3856,37 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(const VSyncTear
             (api_val == reshade::api::device_api::d3d10 || api_val == reshade::api::device_api::d3d11
              || api_val == reshade::api::device_api::d3d12);
         if (is_dxgi_flags) {
-            ImGui::Text("Swap chain creation flags (DXGI): 0x%X", desc.present_flags);
-            ImGui::Text("Flags:");
+            imgui.Text("Swap chain creation flags (DXGI): 0x%X", desc.present_flags);
+            imgui.Text("Flags:");
             if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) {
-                ImGui::Text("  • ALLOW_TEARING (VRR/G-Sync)");
+                imgui.Text("  • ALLOW_TEARING (VRR/G-Sync)");
             }
             if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
-                ImGui::Text("  • FRAME_LATENCY_WAITABLE_OBJECT");
+                imgui.Text("  • FRAME_LATENCY_WAITABLE_OBJECT");
             }
             if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY) {
-                ImGui::Text("  • DISPLAY_ONLY");
+                imgui.Text("  • DISPLAY_ONLY");
             }
             if (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_RESTRICTED_CONTENT) {
-                ImGui::Text("  • RESTRICTED_CONTENT");
+                imgui.Text("  • RESTRICTED_CONTENT");
             }
         } else if (api_val == reshade::api::device_api::vulkan) {
-            ImGui::Text("Swapchain creation flags (VkSwapchainCreateFlagsKHR): 0x%X", desc.present_flags);
+            imgui.Text("Swapchain creation flags (VkSwapchainCreateFlagsKHR): 0x%X", desc.present_flags);
         } else {
-            ImGui::Text("Creation flags: 0x%X", desc.present_flags);
+            imgui.Text("Creation flags: 0x%X", desc.present_flags);
         }
     }
 }
 
 /// Draws PresentMon ON/OFF status line. When PresentMon is ON, also draws surface LUID,
 /// flip-from-surface, and surface tooltip when available (all APIs: DX9, DXGI, Vulkan, OpenGL).
-static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine() {
+static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
         && presentmon::g_presentMonManager.IsRunning()) {
-        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "PresentMon: ON");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("PresentMon ETW tracing is active and monitoring presentation events.");
+        imgui.TextColored(ui::colors::TEXT_SUCCESS, "PresentMon: ON");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("PresentMon ETW tracing is active and monitoring presentation events.");
         }
         HWND game_hwnd = g_last_swapchain_hwnd.load();
         if (game_hwnd != nullptr && IsWindow(game_hwnd)) {
@@ -3906,114 +3921,115 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine() {
                 } else {
                     flip_color = ui::colors::FLIP_UNKNOWN;
                 }
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface: 0x%llX", found_surface->surface_luid);
-                if (ImGui::IsItemHovered()) {
-                    ImGui::BeginTooltip();
-                    ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon Surface Information:");
-                    ImGui::Separator();
-                    ImGui::Text("Surface LUID: 0x%llX", found_surface->surface_luid);
-                    ImGui::Text("Surface Size: %ux%u", found_surface->surface_width, found_surface->surface_height);
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Surface: 0x%llX", found_surface->surface_luid);
+                if (imgui.IsItemHovered()) {
+                    imgui.BeginTooltip();
+                    imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon Surface Information:");
+                    imgui.Separator();
+                    imgui.Text("Surface LUID: 0x%llX", found_surface->surface_luid);
+                    imgui.Text("Surface Size: %ux%u", found_surface->surface_width, found_surface->surface_height);
                     if (found_surface->pixel_format != 0) {
-                        ImGui::Text("Pixel Format: 0x%X", found_surface->pixel_format);
+                        imgui.Text("Pixel Format: 0x%X", found_surface->pixel_format);
                     }
                     if (found_surface->flags != 0) {
-                        ImGui::Text("Flags: 0x%X", found_surface->flags);
+                        imgui.Text("Flags: 0x%X", found_surface->flags);
                     }
                     if (found_surface->color_space != 0) {
-                        ImGui::Text("Color Space: 0x%X", found_surface->color_space);
+                        imgui.Text("Color Space: 0x%X", found_surface->color_space);
                     }
-                    ImGui::Separator();
-                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Surface Delays:");
+                    imgui.Separator();
+                    imgui.TextColored(ui::colors::TEXT_LABEL, "Surface Delays:");
                     if (found_surface->last_update_time_ns > 0) {
                         LONGLONG now_ns = utils::get_now_ns();
                         LONGLONG age_ns = now_ns - static_cast<LONGLONG>(found_surface->last_update_time_ns);
                         double age_ms = static_cast<double>(age_ns) / 1000000.0;
                         if (age_ms < 1000.0) {
-                            ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
+                            imgui.TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
                         } else {
-                            ImGui::TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
+                            imgui.TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
                         }
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Last Update: Unknown");
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "Last Update: Unknown");
                     }
                     if (found_surface->count > 0) {
-                        ImGui::Text("Event Count: %llu", found_surface->count);
+                        imgui.Text("Event Count: %llu", found_surface->count);
                         if (found_surface->count > 1 && found_surface->last_update_time_ns > 0) {
                             double avg_delay_ms = static_cast<double>(found_surface->last_update_time_ns) / 1000000.0
                                                   / static_cast<double>(found_surface->count);
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Avg Delay: ~%.2f ms", avg_delay_ms);
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Avg Delay: ~%.2f ms", avg_delay_ms);
                         }
                     }
-                    ImGui::Separator();
-                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
+                    imgui.Separator();
+                    imgui.TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
                     if (found_surface->is_direct_flip_compatible) {
-                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
                     }
                     if (found_surface->is_advanced_direct_flip_compatible) {
-                        ImGui::TextColored(ui::colors::TEXT_SUCCESS,
-                                           "  " ICON_FK_OK " Advanced Direct Flip Compatible");
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Advanced Direct Flip Compatible");
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                                           "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
+                        imgui.TextColored(ui::colors::TEXT_DIMMED,
+                                          "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
                     }
                     if (found_surface->is_overlay_compatible) {
-                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
                     }
                     if (found_surface->is_overlay_required) {
-                        ImGui::TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
+                        imgui.TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
                     }
                     if (found_surface->no_overlapping_content) {
-                        ImGui::TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
                     }
-                    ImGui::Separator();
-                    ImGui::TextColored(ui::colors::TEXT_LABEL, "Flip State (from surface):");
-                    ImGui::TextColored(flip_color, "Mode: %s", flip_str);
-                    ImGui::EndTooltip();
+                    imgui.Separator();
+                    imgui.TextColored(ui::colors::TEXT_LABEL, "Flip State (from surface):");
+                    imgui.TextColored(flip_color, "Mode: %s", flip_str);
+                    imgui.EndTooltip();
                 }
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                ImGui::SameLine();
-                ImGui::TextColored(flip_color, "Flip: %s", flip_str);
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
+                imgui.SameLine();
+                imgui.TextColored(flip_color, "Flip: %s", flip_str);
             } else {
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "Surface: nullptr");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "Surface: nullptr");
             }
         } else {
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "HWND: nullptr");
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "HWND: nullptr");
         }
     } else {
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF (not enabled by default)");
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::TextColored(ui::colors::TEXT_LABEL, "PresentMon: OFF");
-            ImGui::Separator();
-            ImGui::Text("To enable PresentMon ETW tracing:");
-            ImGui::BulletText("Go to the Advanced tab");
-            ImGui::BulletText("Enable 'Enable PresentMon ETW Tracing'");
-            ImGui::BulletText("PresentMon will start automatically");
-            ImGui::Separator();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "PresentMon provides detailed flip mode");
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "and surface compatibility information.");
-            ImGui::EndTooltip();
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF (not enabled by default)");
+        if (imgui.IsItemHovered()) {
+            imgui.BeginTooltip();
+            imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon: OFF");
+            imgui.Separator();
+            imgui.Text("To enable PresentMon ETW tracing:");
+            imgui.BulletText("Go to the Advanced tab");
+            imgui.BulletText("Enable 'Enable PresentMon ETW Tracing'");
+            imgui.BulletText("PresentMon will start automatically");
+            imgui.Separator();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon provides detailed flip mode");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "and surface compatibility information.");
+            imgui.EndTooltip();
         }
     }
 }
 
-static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTooltipContext* out_ctx) {
+static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commander::ui::IImGuiWrapper& imgui,
+                                                                VSyncTearingTooltipContext* out_ctx) {
+    (void)imgui;
     auto desc_ptr = g_last_swapchain_desc.load();
     if (!desc_ptr) {
         return false;
@@ -4025,8 +4041,8 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
         (current_api == reshade::api::device_api::d3d10 || current_api == reshade::api::device_api::d3d11
          || current_api == reshade::api::device_api::d3d12);
 
-    ImGui::TextColored(ui::colors::TEXT_LABEL, "Current Present Mode:");
-    ImGui::SameLine();
+    imgui.TextColored(ui::colors::TEXT_LABEL, "Current Present Mode:");
+    imgui.SameLine();
     ImVec4 present_mode_color = ui::colors::TEXT_DIMMED;
     std::string present_mode_name = "Unknown";
 
@@ -4072,12 +4088,12 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
                                      : "Unavailable";
                 break;
         }
-        ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
+        imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
         if (flip_state != DxgiBypassMode::kQueryFailedNoMedia) {
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-            ImGui::SameLine();
-            ImGui::TextColored(
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
+            imgui.SameLine();
+            imgui.TextColored(
                 flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
                 : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
                     ? ui::colors::FLIP_INDEPENDENT
@@ -4089,7 +4105,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
                     : ui::colors::FLIP_UNKNOWN,
                 "Status: %s", flip_state_str);
         }
-        bool status_hovered = ImGui::IsItemHovered();
+        bool status_hovered = imgui.IsItemHovered();
         static DWORD last_discord_check = 0;
         DWORD current_time = GetTickCount();
         static bool discord_overlay_visible = false;
@@ -4098,18 +4114,18 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
             last_discord_check = current_time;
         }
         if (discord_overlay_visible) {
-            ImGui::SameLine();
-            ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-            ImGui::Text(ICON_FK_WARNING " Discord Overlay");
-            ui::colors::PopIconColor();
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            imgui.SameLine();
+            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
+            imgui.Text(ICON_FK_WARNING " Discord Overlay");
+            imgui.PopStyleColor();
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Discord Overlay is visible and may prevent MPO iFlip.\n"
                     "It can prevent Independent Flip mode and increase latency.\n"
                     "Consider disabling it or setting AllowWindowedMode=true in Special-K.");
             }
         }
-        DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
+        DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
         if (out_ctx) {
             out_ctx->desc = desc_ptr.get();
             out_ctx->flip_state = flip_state;
@@ -4136,7 +4152,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
             present_mode_name = "Unknown";
             present_mode_color = ui::colors::TEXT_ERROR;
         }
-        ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
+        imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
         DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
         const char* flip_state_str = "Unknown";
         switch (flip_state) {
@@ -4161,10 +4177,10 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
         }
         bool status_hovered = false;
         if (flip_state != DxgiBypassMode::kQueryFailedNoMedia) {
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, " | ");
-            ImGui::SameLine();
-            ImGui::TextColored(
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
+            imgui.SameLine();
+            imgui.TextColored(
                 flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
                 : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
                     ? ui::colors::FLIP_INDEPENDENT
@@ -4175,10 +4191,10 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
                     ? ui::colors::TEXT_ERROR
                     : ui::colors::FLIP_UNKNOWN,
                 "Status: %s", flip_state_str);
-            status_hovered = ImGui::IsItemHovered();
+            status_hovered = imgui.IsItemHovered();
         }
 
-        DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
+        DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
 
         if (out_ctx) {
             out_ctx->desc = desc_ptr.get();
@@ -4192,9 +4208,9 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
     // Vulkan, OpenGL, etc.: show present mode (ReShade: VkPresentModeKHR or WGL)
     present_mode_name = GetPresentModeNameNonDxgi(static_cast<int>(current_api), desc.present_mode);
     present_mode_color = ui::colors::TEXT_DIMMED;
-    ImGui::TextColored(present_mode_color, "%s", present_mode_name.c_str());
-    bool status_hovered = ImGui::IsItemHovered();
-    DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine();
+    imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
+    bool status_hovered = imgui.IsItemHovered();
+    DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
     if (out_ctx) {
         out_ctx->desc = desc_ptr.get();
         out_ctx->flip_state = DxgiBypassMode::kUnset;
@@ -4204,26 +4220,27 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(VSyncTearingTool
     return status_hovered;
 }
 
-void DrawDisplaySettings_VSyncAndTearing() {
-    DrawDisplaySettings_VSyncAndTearing_FpsSliders();
-    ImGui::Spacing();
+void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
+    DrawDisplaySettings_VSyncAndTearing_FpsSliders(imgui);
+    imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
-    if (ImGui::CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
-        DrawDisplaySettings_VSyncAndTearing_Checkboxes();
+    if (imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
+        DrawDisplaySettings_VSyncAndTearing_Checkboxes(imgui);
 
         VSyncTearingTooltipContext tooltip_ctx;
-        bool status_hovered = DrawDisplaySettings_VSyncAndTearing_PresentModeLine(&tooltip_ctx);
+        bool status_hovered = DrawDisplaySettings_VSyncAndTearing_PresentModeLine(imgui, &tooltip_ctx);
         if (status_hovered && tooltip_ctx.desc != nullptr) {
-            ImGui::BeginTooltip();
-            DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(tooltip_ctx);
-            ImGui::EndTooltip();
+            imgui.BeginTooltip();
+            DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(imgui, tooltip_ctx);
+            imgui.EndTooltip();
         }
 
         if (!g_last_swapchain_desc.load()) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "No swapchain information available");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "No swapchain information available");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "No game detected or swapchain not yet created.\nThis information will appear once a game is "
                     "running.");
             }
@@ -4231,13 +4248,20 @@ void DrawDisplaySettings_VSyncAndTearing() {
     }
 }
 
-void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
-    assert(runtime != nullptr);
-    DrawDisplaySettings_DisplayAndTarget();
-    DrawDisplaySettings_WindowModeAndApply();
-    DrawDisplaySettings_FpsLimiterMode();
-    DrawDisplaySettings_FpsAndBackground();
-    DrawDisplaySettings_VSyncAndTearing();
+void DrawDisplaySettings(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
+    if (runtime == nullptr) {
+        imgui.TextUnformatted("Display settings require a running game with ReShade.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Run a game with Display Commander loaded to configure display and FPS limiter.");
+        }
+        return;
+    }
+    DrawDisplaySettings_DisplayAndTarget(imgui);
+    DrawDisplaySettings_WindowModeAndApply(imgui);
+    DrawDisplaySettings_FpsLimiterMode(imgui);
+    DrawDisplaySettings_FpsAndBackground(imgui);
+    DrawDisplaySettings_VSyncAndTearing(imgui);
 
     auto api = runtime->get_device()->get_api();
     const bool is_dxgi = api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
@@ -4247,14 +4271,14 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
         // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded
         const bool show_dlss_section = dlss_summary.any_dlss_was_active_once || dlss_summary.any_dlss_dll_loaded;
         g_rendering_ui_section.store("ui:tab:main_new:dlss_info", std::memory_order_release);
-        if (show_dlss_section && ImGui::CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
-            ImGui::Indent();
+        if (show_dlss_section && imgui.CollapsingHeader("DLSS Information", ImGuiTreeNodeFlags_None)) {
+            imgui.Indent();
             if (is_dxgi) {
                 if (!AreNGXParameterVTableHooksInstalled()) {
-                    ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
-                                       ICON_FK_WARNING " NGX Parameter vtable hooks were never installed.");
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+                                      ICON_FK_WARNING " NGX Parameter vtable hooks were never installed.");
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "This is usually caused by ReShade loading Display Commander too late (e.g. _nvngx.dll was "
                             "already loaded). "
                             "Recommendation: use Display Commander as dxgi.dll/d3d12.dll/d3d11.dll/version.dll and "
@@ -4267,62 +4291,62 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 const bool nvll_loaded = (GetModuleHandleW(L"NvLowLatencyVk.dll") != nullptr);
                 if (nvll_loaded) {
                     if (AreNvLowLatencyVkHooksInstalled()) {
-                        ImGui::TextColored(ui::colors::ICON_POSITIVE,
-                                           ICON_FK_OK " NvLowLatencyVk.dll loaded (hooks active)");
+                        imgui.TextColored(ui::colors::ICON_POSITIVE,
+                                          ICON_FK_OK " NvLowLatencyVk.dll loaded (hooks active)");
                     } else {
-                        ImGui::TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " NvLowLatencyVk.dll loaded");
-                        ImGui::SameLine();
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
+                        imgui.TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " NvLowLatencyVk.dll loaded");
+                        imgui.SameLine();
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "NvLowLatencyVk status. Enable NvLowLatencyVk hooks in Vulkan tab for frame pacing.");
                     }
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "NvLowLatencyVk.dll not loaded");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "NvLowLatencyVk.dll not loaded");
                 }
                 const bool vk_loaded = (GetModuleHandleW(L"vulkan-1.dll") != nullptr);
                 if (vk_loaded) {
                     if (AreVulkanLoaderHooksInstalled()) {
-                        ImGui::TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " vulkan-1.dll loaded (hooks active)");
+                        imgui.TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " vulkan-1.dll loaded (hooks active)");
                     } else {
-                        ImGui::TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " vulkan-1.dll loaded");
-                        ImGui::SameLine();
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
+                        imgui.TextColored(ui::colors::ICON_POSITIVE, ICON_FK_OK " vulkan-1.dll loaded");
+                        imgui.SameLine();
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "Vulkan loader status. Enable vulkan-1 loader hooks in Vulkan tab for frame pacing.");
                     }
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "vulkan-1.dll not loaded");
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "vulkan-1.dll not loaded");
                 }
             }
-            DrawDLSSInfo(dlss_summary);
+            DrawDLSSInfo(imgui, dlss_summary);
 
             // NVIDIA driver profile DLSS preset override status (same cache as NVIDIA Profile tab)
             {
                 display_commander::nvapi::DlssDriverPresetStatus preset_status =
                     display_commander::nvapi::GetDlssDriverPresetStatus();
                 if (!preset_status.profile_error.empty()) {
-                    ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " NVIDIA profile: %s",
-                                       preset_status.profile_error.c_str());
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    imgui.TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " NVIDIA profile: %s",
+                                      preset_status.profile_error.c_str());
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "Driver profile search failed (e.g. no NVIDIA GPU). DLSS driver overrides do not apply.");
                     }
                 } else if (!preset_status.has_profile) {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: No profile for this game.");
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: No profile for this game.");
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "No NVIDIA driver profile matches this executable. Driver DLSS preset overrides do not "
                             "apply. Use the NVIDIA Profile tab to create or assign a profile.");
                     }
                 } else {
-                    ImGui::TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: %s",
-                                       preset_status.profile_names.c_str());
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: %s",
+                                      preset_status.profile_names.c_str());
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "Matching driver profile(s). See below for DLSS preset overrides from the profile.");
                     }
                     const char* sr_label = "DLSS-SR preset (driver):";
@@ -4332,28 +4356,28 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     const char* rr_val =
                         preset_status.rr_preset_value.empty() ? "—" : preset_status.rr_preset_value.c_str();
                     if (preset_status.sr_preset_is_override) {
-                        ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", sr_label, sr_val);
+                        imgui.TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", sr_label, sr_val);
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  %s %s", sr_label, sr_val);
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  %s %s", sr_label, sr_val);
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "Driver profile DLSS Super Resolution render preset. Override in NVIDIA Profile tab if "
                             "needed.");
                     }
                     if (preset_status.rr_preset_is_override) {
-                        ImGui::TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", rr_label, rr_val);
+                        imgui.TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " %s %s", rr_label, rr_val);
                     } else {
-                        ImGui::TextColored(ui::colors::TEXT_DIMMED, "  %s %s", rr_label, rr_val);
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  %s %s", rr_label, rr_val);
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip(
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
                             "Driver profile DLSS Ray Reconstruction render preset. Override in NVIDIA Profile tab if "
                             "needed.");
                     }
                     if (preset_status.sr_preset_is_override || preset_status.rr_preset_is_override) {
-                        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-                        if (ImGui::Button("Clear##DriverDlssPresetOverride")) {
+                        imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+                        if (imgui.Button("Clear##DriverDlssPresetOverride")) {
                             auto result = display_commander::nvapi::ClearDriverDlssPresetOverride();
                             if (result.first) {
                                 LogInfo("DLSS Render Profile override cleared (driver profile preset set to default).");
@@ -4361,9 +4385,9 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                 LogInfo("Clear DLSS Render Profile override failed: %s", result.second.c_str());
                             }
                         }
-                        ui::colors::PopIconColor();
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip(
+                        imgui.PopStyleColor();
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip(
                                 "Set driver profile DLSS-SR and DLSS-RR preset to default (clears override).");
                         }
                     }
@@ -4375,10 +4399,10 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 HWND hwnd = g_last_swapchain_hwnd.load();
                 const bool can_send = (hwnd != nullptr && IsWindow(hwnd));
                 if (!can_send) {
-                    ImGui::BeginDisabled();
+                    imgui.BeginDisabled();
                 }
-                ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-                if (ImGui::Button("Send WM_SIZE (force resize / recreate DLSS)")) {
+                imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+                if (imgui.Button("Send WM_SIZE (force resize / recreate DLSS)")) {
                     RECT client_rect = {};
                     if (GetClientRect(hwnd, &client_rect)) {
                         const int w = client_rect.right - client_rect.left;
@@ -4399,18 +4423,18 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         }
                     }
                 }
-                ui::colors::PopIconColor();
+                imgui.PopStyleColor();
                 if (!can_send) {
-                    ImGui::EndDisabled();
+                    imgui.EndDisabled();
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "Sends two WM_SIZE messages: first with -1,-1, then after a short delay with the current "
                         "client size. Use this to force the game to process a resize and recreate the DLSS feature.");
                 }
 
                 // Second button: actually resize window to quarter then back (triggers real WM_SIZE from system)
-                if (ImGui::Button("Resize window to quarter then restore")) {
+                if (imgui.Button("Resize window to quarter then restore")) {
                     RECT window_rect = {};
                     if (GetWindowRect(hwnd, &window_rect)) {
                         const int x = window_rect.left;
@@ -4432,8 +4456,8 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         }
                     }
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "Actually resizes the game window to quarter size (half width, half height), waits 150 ms, "
                         "then restores the previous size. The system sends real WM_SIZE messages, which can force "
                         "the game to recreate the swap chain and DLSS feature.");
@@ -4449,17 +4473,16 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 if (s_dlss_scale_ui < 0.f) {
                     s_dlss_scale_ui = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
                 }
-                ImGui::SetNextItemWidth(120.0f);
-                ImGui::SliderFloat("Internal resolution scale (WIP Experimental)", &s_dlss_scale_ui, 0.0f, 1.0f,
-                                   "%.2f");
-                if (!ImGui::IsItemActive() && !ImGui::IsItemDeactivatedAfterEdit()) {
+                imgui.SetNextItemWidth(120.0f);
+                imgui.SliderFloat("Internal resolution scale (WIP Experimental)", &s_dlss_scale_ui, 0.0f, 1.0f, "%.2f");
+                if (!imgui.IsItemActive() && !imgui.IsItemDeactivatedAfterEdit()) {
                     s_dlss_scale_ui = settings::g_swapchainTabSettings.dlss_internal_resolution_scale.GetValue();
                 }
-                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                if (imgui.IsItemDeactivatedAfterEdit()) {
                     settings::g_swapchainTabSettings.dlss_internal_resolution_scale.SetValue(s_dlss_scale_ui);
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "Scale DLSS internal render resolution. 0 = no override. e.g. 0.5 = half width/height "
                         "(OutWidth = "
                         "Width * 0.5, OutHeight = Height * 0.5).");
@@ -4479,15 +4502,14 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         break;
                     }
                 }
-                ImGui::SetNextItemWidth(160.0f);
-                if (ImGui::Combo("DLSS Quality Preset Override", &current_quality_index, dlss_quality_preset_items,
-                                 7)) {
+                imgui.SetNextItemWidth(160.0f);
+                if (imgui.Combo("DLSS Quality Preset Override", &current_quality_index, dlss_quality_preset_items, 7)) {
                     settings::g_swapchainTabSettings.dlss_quality_preset_override.SetValue(
                         dlss_quality_preset_items[current_quality_index]);
                     ResetNGXPresetInitialization();
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "Override DLSS quality preset (Performance, Balanced, Quality, etc.). Game Default = no "
                         "override. This is the quality mode, not the render preset (A, B, C).");
                 }
@@ -4495,19 +4517,19 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
 
             // DLSS override: per-DLL checkbox + subfolder selector (Display Commander\dlss_override\<subfolder>)
             bool dlss_override_enabled = settings::g_streamlineTabSettings.dlss_override_enabled.GetValue();
-            if (ImGui::Checkbox("Use DLSS override", &dlss_override_enabled)) {
+            if (imgui.Checkbox("Use DLSS override", &dlss_override_enabled)) {
                 settings::g_streamlineTabSettings.dlss_override_enabled.SetValue(dlss_override_enabled);
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Load DLSS DLLs from Display Commander\\dlss_override subfolders. Each DLL has its own checkbox "
                     "and subfolder.");
             }
             if (dlss_override_enabled) {
                 std::vector<std::string> subfolders = GetDlssOverrideSubfolderNames();
-                auto draw_dll_row = [&subfolders](const char* label, bool* p_check,
-                                                  ui::new_ui::StringSetting& subfolder_setting, int dll_index) {
-                    ImGui::Checkbox(label, p_check);
+                auto draw_dll_row = [&subfolders, &imgui](const char* label, bool* p_check,
+                                                          ui::new_ui::StringSetting& subfolder_setting, int dll_index) {
+                    imgui.Checkbox(label, p_check);
                     std::string current_sub = subfolder_setting.GetValue();
                     int current_index = -1;
                     if (!current_sub.empty()) {
@@ -4522,20 +4544,20 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                                   ? subfolders[static_cast<size_t>(current_index)].c_str()
                                               : current_sub.empty() ? "(root folder)"
                                                                     : current_sub.c_str();
-                    ImGui::SameLine();
-                    ImGui::SetNextItemWidth(140.0f);
-                    if (ImGui::BeginCombo((std::string("##dlss_sub_") + std::to_string(dll_index)).c_str(),
-                                          combo_label)) {
-                        if (ImGui::Selectable("(root folder)", current_sub.empty())) {
+                    imgui.SameLine();
+                    imgui.SetNextItemWidth(140.0f);
+                    if (imgui.BeginCombo((std::string("##dlss_sub_") + std::to_string(dll_index)).c_str(),
+                                         combo_label)) {
+                        if (imgui.Selectable("(root folder)", current_sub.empty())) {
                             subfolder_setting.SetValue("");
                         }
                         for (size_t i = 0; i < subfolders.size(); ++i) {
                             bool selected = (current_index == static_cast<int>(i));
-                            if (ImGui::Selectable(subfolders[i].c_str(), selected)) {
+                            if (imgui.Selectable(subfolders[i].c_str(), selected)) {
                                 subfolder_setting.SetValue(subfolders[i]);
                             }
                         }
-                        ImGui::EndCombo();
+                        imgui.EndCombo();
                     }
                     {
                         std::string effective_folder = GetEffectiveDefaultDlssOverrideFolder(current_sub).string();
@@ -4543,11 +4565,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                                                                                   (dll_index == 1), (dll_index == 2));
                         if (st.dlls.size() > static_cast<size_t>(dll_index)) {
                             const DlssOverrideDllEntry& e = st.dlls[dll_index];
-                            ImGui::SameLine();
+                            imgui.SameLine();
                             if (e.present) {
-                                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", e.version.c_str());
+                                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%s", e.version.c_str());
                             } else {
-                                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.0f, 1.0f), "Missing");
+                                imgui.TextColored(ImVec4(1.0f, 0.75f, 0.0f, 1.0f), "Missing");
                             }
                         }
                     }
@@ -4572,11 +4594,11 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                 }
                 // Add Folder
                 static char dlss_add_folder_buf[128] = "";
-                ImGui::SetNextItemWidth(120.0f);
-                ImGui::InputTextWithHint("##dlss_add_folder", "e.g. 310.5.2", dlss_add_folder_buf,
-                                         sizeof(dlss_add_folder_buf));
-                ImGui::SameLine();
-                if (ImGui::Button("Add Folder")) {
+                imgui.SetNextItemWidth(120.0f);
+                imgui.InputTextWithHint("##dlss_add_folder", "e.g. 310.5.2", dlss_add_folder_buf,
+                                        sizeof(dlss_add_folder_buf));
+                imgui.SameLine();
+                if (imgui.Button("Add Folder")) {
                     std::string name(dlss_add_folder_buf);
                     std::string err;
                     if (CreateDlssOverrideSubfolder(name, &err)) {
@@ -4585,13 +4607,13 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                         LogError("DLSS override Add Folder: %s", err.c_str());
                     }
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Create subfolder under Display Commander\\dlss_override.");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Create subfolder under Display Commander\\dlss_override.");
                 }
             }
-            ImGui::SameLine();
-            ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-            if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open DLSS override folder")) {
+            imgui.SameLine();
+            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+            if (imgui.Button(ICON_FK_FOLDER_OPEN " Open DLSS override folder")) {
                 std::string folder_to_open = GetDefaultDlssOverrideFolder().string();
                 std::thread([folder_to_open]() {
                     std::error_code ec;
@@ -4609,12 +4631,12 @@ void DrawDisplaySettings(reshade::api::effect_runtime* runtime) {
                     }
                 }).detach();
             }
-            ui::colors::PopIconColor();
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Open the folder where you can place custom DLSS DLLs (created if missing).");
+            imgui.PopStyleColor();
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Open the folder where you can place custom DLSS DLLs (created if missing).");
             }
 
-            ImGui::Unindent();
+            imgui.Unindent();
         }
     }
 }
@@ -4633,7 +4655,8 @@ static const char* GetAudioChannelLabel(unsigned int channel_index, unsigned int
     return generic_buf;
 }
 
-void DrawOverlayVUBars(bool show_tooltips) {
+void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
+    (void)imgui;
     unsigned int meter_count = 0;
     if (!::GetAudioMeterChannelCount(&meter_count) || meter_count == 0) {
         return;
@@ -4663,42 +4686,45 @@ void DrawOverlayVUBars(bool show_tooltips) {
     const float bar_height = 48.0f;
     const float bar_width = 10.0f;
     const float gap = 3.0f;
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    const ImVec2 cursor = ImGui::GetCursorScreenPos();
+    ImDrawList* draw_list = imgui.GetWindowDrawList();
+    const ImVec2 cursor = imgui.GetCursorScreenPos();
     const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
-    for (unsigned int i = 0; i < effective_meter_count; ++i) {
-        const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
-        const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
-        const ImVec2 bg_min(x, cursor.y);
-        const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
-        const float fill_h = level * bar_height;
-        const ImVec2 fill_min(x, cursor.y + bar_height - fill_h);
-        const ImVec2 fill_max(x + bar_width, cursor.y + bar_height);
-        draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(35, 35, 35, 255));
-        draw_list->AddRect(bg_min, bg_max, IM_COL32(60, 60, 60, 255), 0.0f, 0, 1.0f);
-        draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
+    if (draw_list != nullptr) {
+        for (unsigned int i = 0; i < effective_meter_count; ++i) {
+            const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
+            const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
+            const ImVec2 bg_min(x, cursor.y);
+            const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
+            const float fill_h = level * bar_height;
+            const ImVec2 fill_min(x, cursor.y + bar_height - fill_h);
+            const ImVec2 fill_max(x + bar_width, cursor.y + bar_height);
+            draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(35, 35, 35, 255));
+            draw_list->AddRect(bg_min, bg_max, IM_COL32(60, 60, 60, 255), 0.0f, 0, 1.0f);
+            draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
+        }
     }
-    ImGui::Dummy(ImVec2(total_width, bar_height));
+    imgui.Dummy(ImVec2(total_width, bar_height));
     const float label_y = cursor.y + bar_height + 2.0f;
-    const float line_height = ImGui::GetTextLineHeightWithSpacing();
+    const float line_height = imgui.GetTextLineHeightWithSpacing();
     for (unsigned int i = 0; i < effective_meter_count; ++i) {
         const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
         const float level = (std::min)(1.0f, s_overlay_vu_smoothed[i]);
         char raw_buf[32];
         (void)std::snprintf(raw_buf, sizeof(raw_buf), "%s %.1f%%", ch_label, level * 100.0f);
         const float bar_center_x = cursor.x + (static_cast<float>(i) * (bar_width + gap)) + (bar_width * 0.5f);
-        const float text_w = ImGui::CalcTextSize(raw_buf).x;
-        ImGui::SetCursorScreenPos(ImVec2(bar_center_x - (text_w * 0.5f), label_y));
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "%s", raw_buf);
+        const float text_w = imgui.CalcTextSize(raw_buf).x;
+        imgui.SetCursorScreenPos(ImVec2(bar_center_x - (text_w * 0.5f), label_y));
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", raw_buf);
     }
-    if (show_tooltips && ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Per-channel peak level (default output device).");
+    if (show_tooltips && imgui.IsItemHovered()) {
+        imgui.SetTooltip("Per-channel peak level (default output device).");
     }
-    ImGui::SetCursorScreenPos(ImVec2(cursor.x, label_y + line_height));
-    ImGui::Dummy(ImVec2(total_width, line_height));
+    imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + line_height));
+    imgui.Dummy(ImVec2(total_width, line_height));
 }
 
-void DrawAudioSettings() {
+void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     g_rendering_ui_section.store("ui:tab:main_new:audio:entry", std::memory_order_release);
     // Default output device format info (channel config, Hz, bits, format, extension, device name)
     g_rendering_ui_section.store("ui:tab:main_new:audio:device_info", std::memory_order_release);
@@ -4710,35 +4736,35 @@ void DrawAudioSettings() {
         const char* name_str =
             device_info.device_friendly_name_utf8.empty() ? nullptr : device_info.device_friendly_name_utf8.c_str();
         if (name_str && *name_str) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Device: %s", name_str);
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Device: %s", name_str);
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Default render endpoint. Extension/codec (Dolby, DTS, PCM, etc.) shown on next line.\n\nRaw: %s",
                     device_info.raw_format_utf8.empty() ? "(none)" : device_info.raw_format_utf8.c_str());
             }
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Format: %s, %u Hz, %u-bit, extension: %s",
-                               device_info.channel_config_utf8.empty() ? "—" : device_info.channel_config_utf8.c_str(),
-                               device_info.sample_rate_hz, device_info.bits_per_sample, ext_str);
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Format: %s, %u Hz, %u-bit, extension: %s",
+                              device_info.channel_config_utf8.empty() ? "—" : device_info.channel_config_utf8.c_str(),
+                              device_info.sample_rate_hz, device_info.bits_per_sample, ext_str);
         } else {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Device: %s, %u Hz, %u-bit, extension: %s",
-                               device_info.channel_config_utf8.empty() ? "—" : device_info.channel_config_utf8.c_str(),
-                               device_info.sample_rate_hz, device_info.bits_per_sample, ext_str);
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Device: %s, %u Hz, %u-bit, extension: %s",
+                              device_info.channel_config_utf8.empty() ? "—" : device_info.channel_config_utf8.c_str(),
+                              device_info.sample_rate_hz, device_info.bits_per_sample, ext_str);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Source: Default output device mix format from WASAPI (IAudioClient::GetMixFormat).\n"
                 "Extension: stream/codec type (e.g. PCM, Float, Dolby AC3, DTS). Device name shows endpoint (e.g. "
                 "Dolby Atmos).\n\n"
                 "Raw: %s",
                 device_info.raw_format_utf8.empty() ? "(none)" : device_info.raw_format_utf8.c_str());
         }
-        ImGui::Spacing();
+        imgui.Spacing();
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:game_volume", std::memory_order_release);
     // Audio Volume slider
     float volume = s_audio_volume_percent.load();
-    if (ImGui::SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
+    if (imgui.SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
         s_audio_volume_percent.store(volume);
 
         // Apply immediately only if Auto-apply is enabled
@@ -4754,18 +4780,18 @@ void DrawAudioSettings() {
             }
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume "
             "instead.");
     }
     // Auto-apply checkbox next to Audio Volume
-    ImGui::SameLine();
-    if (CheckboxSetting(settings::g_mainTabSettings.audio_volume_auto_apply, "Auto-apply##audio_volume")) {
+    imgui.SameLine();
+    if (CheckboxSetting(settings::g_mainTabSettings.audio_volume_auto_apply, "Auto-apply##audio_volume", &imgui)) {
         // No immediate action required; stored for consistency with other UI
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Auto-apply volume changes when adjusting the slider.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Auto-apply volume changes when adjusting the slider.");
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:system_volume", std::memory_order_release);
@@ -4776,7 +4802,7 @@ void DrawAudioSettings() {
     } else {
         system_volume = s_system_volume_percent.load();
     }
-    if (ImGui::SliderFloat("System Volume (%)", &system_volume, 0.0f, 100.0f, "%.0f%%")) {
+    if (imgui.SliderFloat("System Volume (%)", &system_volume, 0.0f, 100.0f, "%.0f%%")) {
         s_system_volume_percent.store(system_volume);
         if (!::SetSystemVolume(system_volume)) {
             std::ostringstream oss;
@@ -4784,8 +4810,8 @@ void DrawAudioSettings() {
             LogWarn(oss.str().c_str());
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "System master volume control (0-100%%). This adjusts the Windows system volume for the default output "
             "device.\n"
             "Note: System volume may also be adjusted automatically when game volume is at 100%% and you increase it.");
@@ -4794,7 +4820,7 @@ void DrawAudioSettings() {
     g_rendering_ui_section.store("ui:tab:main_new:audio:mute", std::memory_order_release);
     // Audio Mute checkbox
     bool audio_mute = s_audio_mute.load();
-    if (ImGui::Checkbox("Mute", &audio_mute)) {
+    if (imgui.Checkbox("Mute", &audio_mute)) {
         settings::g_mainTabSettings.audio_mute.SetValue(audio_mute);
 
         // Apply mute/unmute immediately
@@ -4809,8 +4835,8 @@ void DrawAudioSettings() {
             LogWarn(oss.str().c_str());
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Manually mute/unmute audio.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Manually mute/unmute audio.");
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:vu_peaks", std::memory_order_release);
@@ -4862,7 +4888,7 @@ void DrawAudioSettings() {
         if (have_channel_volume) {
             std::vector<float> channel_vols;
             if (::GetAllChannelVolumesForCurrentProcess(&channel_vols) && channel_vols.size() == channel_count) {
-                if (ImGui::TreeNodeEx("Per-channel volume", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (imgui.TreeNodeEx("Per-channel volume", ImGuiTreeNodeFlags_DefaultOpen)) {
                     const float row_vu_width = 14.0f;
                     const float row_vu_height = 32.0f;
                     for (unsigned int ch = 0; ch < channel_count; ++ch) {
@@ -4871,40 +4897,42 @@ void DrawAudioSettings() {
                         // Per-channel VU bar (graphical) + raw value next to the slider when we have meter data
                         if (ch < effective_meter_count && ch < s_vu_smoothed.size()) {
                             const float level = (std::min)(1.0f, s_vu_smoothed[ch]);
-                            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                            const ImVec2 pos = ImGui::GetCursorScreenPos();
+                            ImDrawList* draw_list = imgui.GetWindowDrawList();
+                            const ImVec2 pos = imgui.GetCursorScreenPos();
                             const ImVec2 bg_min(pos.x, pos.y);
                             const ImVec2 bg_max(pos.x + row_vu_width, pos.y + row_vu_height);
                             const float fill_h = level * row_vu_height;
                             const ImVec2 fill_min(pos.x, pos.y + row_vu_height - fill_h);
                             const ImVec2 fill_max(pos.x + row_vu_width, pos.y + row_vu_height);
-                            draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(40, 40, 40, 255));
-                            draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
-                            ImGui::Dummy(ImVec2(row_vu_width + 4.0f, row_vu_height));
-                            ImGui::SameLine(0.0f, 0.0f);
-                            ImGui::TextColored(ui::colors::TEXT_DIMMED, "%.1f%%", level * 100.0f);
-                            ImGui::SameLine(0.0f, 6.0f);
+                            if (draw_list != nullptr) {
+                                draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(40, 40, 40, 255));
+                                draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
+                            }
+                            imgui.Dummy(ImVec2(row_vu_width + 4.0f, row_vu_height));
+                            imgui.SameLine(0.0f, 0.0f);
+                            imgui.TextColored(ui::colors::TEXT_DIMMED, "%.1f%%", level * 100.0f);
+                            imgui.SameLine(0.0f, 6.0f);
                         }
                         char slider_id[32];
                         (void)std::snprintf(slider_id, sizeof(slider_id), "%s (%%)##ch%u", label, ch);
-                        if (ImGui::SliderFloat(slider_id, &pct, 0.0f, 100.0f, "%.0f%%")) {
+                        if (imgui.SliderFloat(slider_id, &pct, 0.0f, 100.0f, "%.0f%%")) {
                             if (::SetChannelVolumeForCurrentProcess(ch, pct / 100.0f)) {
                                 LogInfo("Channel %u volume set", ch);
                             }
                         }
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("Volume for channel %u (%s), game audio session.", ch, label);
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("Volume for channel %u (%s), game audio session.", ch, label);
                         }
                     }
-                    ImGui::TreePop();
+                    imgui.TreePop();
                 }
             }
         } else if (device_info.channel_count >= 6) {
-            ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                               "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
-                               "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            imgui.TextColored(ui::colors::TEXT_DIMMED,
+                              "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
+                              "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "IChannelAudioVolume is not exposed by the game audio session on some outputs (e.g. Dolby Atmos).");
             }
         }
@@ -4916,54 +4944,56 @@ void DrawAudioSettings() {
         const float bar_height = 288.0f;
         const float bar_width = 72.0f;
         const float gap = 24.0f;
-        const float label_height = ImGui::GetTextLineHeight();
-        ImGui::Spacing();
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Level (output)");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Per-channel peak level (default output device, mixed).");
+        const float label_height = imgui.GetTextLineHeight();
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Level (output)");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Per-channel peak level (default output device, mixed).");
         }
-        ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        const ImVec2 cursor = ImGui::GetCursorScreenPos();
+        ImDrawList* draw_list = imgui.GetWindowDrawList();
+        const ImVec2 cursor = imgui.GetCursorScreenPos();
         const float total_width = (static_cast<float>(effective_meter_count) * (bar_width + gap)) - gap;
-        for (unsigned int i = 0; i < effective_meter_count; ++i) {
-            const float level = (std::min)(1.0f, s_vu_smoothed[i]);
-            const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
-            const ImVec2 bg_min(x, cursor.y);
-            const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
-            const float fill_h = level * bar_height;
-            const ImVec2 fill_min(x, cursor.y + bar_height - fill_h);
-            const ImVec2 fill_max(x + bar_width, cursor.y + bar_height);
-            draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(35, 35, 35, 255));
-            draw_list->AddRect(bg_min, bg_max, IM_COL32(60, 60, 60, 255), 0.0f, 0, 1.0f);
-            draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
+        if (draw_list != nullptr) {
+            for (unsigned int i = 0; i < effective_meter_count; ++i) {
+                const float level = (std::min)(1.0f, s_vu_smoothed[i]);
+                const float x = cursor.x + (static_cast<float>(i) * (bar_width + gap));
+                const ImVec2 bg_min(x, cursor.y);
+                const ImVec2 bg_max(x + bar_width, cursor.y + bar_height);
+                const float fill_h = level * bar_height;
+                const ImVec2 fill_min(x, cursor.y + bar_height - fill_h);
+                const ImVec2 fill_max(x + bar_width, cursor.y + bar_height);
+                draw_list->AddRectFilled(bg_min, bg_max, IM_COL32(35, 35, 35, 255));
+                draw_list->AddRect(bg_min, bg_max, IM_COL32(60, 60, 60, 255), 0.0f, 0, 1.0f);
+                draw_list->AddRectFilled(fill_min, fill_max, IM_COL32(80, 180, 80, 255));
+            }
         }
-        ImGui::Dummy(ImVec2(total_width, bar_height));
+        imgui.Dummy(ImVec2(total_width, bar_height));
         // Channel labels and raw values centered under each bar
         const float label_y = cursor.y + bar_height + 2.0f;
-        const float line_height = ImGui::GetTextLineHeightWithSpacing();
+        const float line_height = imgui.GetTextLineHeightWithSpacing();
         for (unsigned int i = 0; i < effective_meter_count; ++i) {
             const char* ch_label = GetAudioChannelLabel(i, effective_meter_count);
             const float bar_center_x = cursor.x + (static_cast<float>(i) * (bar_width + gap)) + (bar_width * 0.5f);
-            const float label_w = ImGui::CalcTextSize(ch_label).x;
-            ImGui::SetCursorScreenPos(ImVec2(bar_center_x - (label_w * 0.5f), label_y));
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "%s", ch_label);
+            const float label_w = imgui.CalcTextSize(ch_label).x;
+            imgui.SetCursorScreenPos(ImVec2(bar_center_x - (label_w * 0.5f), label_y));
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", ch_label);
             const float level = (std::min)(1.0f, s_vu_smoothed[i]);
             char raw_buf[32];
             (void)std::snprintf(raw_buf, sizeof(raw_buf), "%.1f%%", level * 100.0f);
-            const float raw_w = ImGui::CalcTextSize(raw_buf).x;
-            ImGui::SetCursorScreenPos(ImVec2(bar_center_x - (raw_w * 0.5f), label_y + label_height + 2.0f));
-            ImGui::TextColored(ui::colors::TEXT_SUBTLE, "%s", raw_buf);
+            const float raw_w = imgui.CalcTextSize(raw_buf).x;
+            imgui.SetCursorScreenPos(ImVec2(bar_center_x - (raw_w * 0.5f), label_y + label_height + 2.0f));
+            imgui.TextColored(ui::colors::TEXT_SUBTLE, "%s", raw_buf);
         }
-        ImGui::SetCursorScreenPos(ImVec2(cursor.x, label_y + label_height + 2.0f + line_height));
-        ImGui::Dummy(ImVec2(total_width, label_height + 2.0f + line_height));
+        imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + label_height + 2.0f + line_height));
+        imgui.Dummy(ImVec2(total_width, label_height + 2.0f + line_height));
     }
     g_rendering_ui_section.store("ui:tab:main_new:audio:mute_in_bg", std::memory_order_release);
     // Mute in Background checkbox (disabled if Mute is ON)
     bool mute_in_bg = s_mute_in_background.load();
     if (s_audio_mute.load()) {
-        ImGui::BeginDisabled();
+        imgui.BeginDisabled();
     }
-    if (ImGui::Checkbox("Mute In Background", &mute_in_bg)) {
+    if (imgui.Checkbox("Mute In Background", &mute_in_bg)) {
         settings::g_mainTabSettings.mute_in_background.SetValue(mute_in_bg);
         settings::g_mainTabSettings.mute_in_background_if_other_audio.SetValue(false);
 
@@ -4983,19 +5013,19 @@ void DrawAudioSettings() {
             }
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Mute the game's audio when it is not the foreground window.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Mute the game's audio when it is not the foreground window.");
     }
     if (s_audio_mute.load()) {
-        ImGui::EndDisabled();
+        imgui.EndDisabled();
     }
     g_rendering_ui_section.store("ui:tab:main_new:audio:mute_in_bg_if_other", std::memory_order_release);
     // Mute in Background only if other app plays audio
     bool mute_in_bg_if_other = s_mute_in_background_if_other_audio.load();
     if (s_audio_mute.load()) {
-        ImGui::BeginDisabled();
+        imgui.BeginDisabled();
     }
-    if (ImGui::Checkbox("Mute In Background (only if other app has audio)", &mute_in_bg_if_other)) {
+    if (imgui.Checkbox("Mute In Background (only if other app has audio)", &mute_in_bg_if_other)) {
         settings::g_mainTabSettings.mute_in_background_if_other_audio.SetValue(mute_in_bg_if_other);
         settings::g_mainTabSettings.mute_in_background.SetValue(false);
         ::g_muted_applied.store(false);
@@ -5011,18 +5041,18 @@ void DrawAudioSettings() {
             }
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Mute only if app is background AND another app outputs audio.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Mute only if app is background AND another app outputs audio.");
     }
     if (s_audio_mute.load()) {
-        ImGui::EndDisabled();
+        imgui.EndDisabled();
     }
 
-    ImGui::Separator();
+    imgui.Separator();
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:output_device", std::memory_order_release);
     // Audio output device selector (per-application routing)
-    ImGui::Text("Output Device");
+    imgui.Text("Output Device");
 
     static std::vector<std::string> s_audio_device_names;
     static std::vector<std::wstring> s_audio_device_ids;
@@ -5065,25 +5095,25 @@ void DrawAudioSettings() {
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:output_device_combo", std::memory_order_release);
-    if (ImGui::BeginCombo("##AudioOutputDevice", current_label)) {
+    if (imgui.BeginCombo("##AudioOutputDevice", current_label)) {
         bool selection_changed = false;
 
         // Option 0: System Default (no per-app override)
         bool selected_default = (s_selected_audio_device_index == 0);
-        if (ImGui::Selectable("System Default (use Windows setting)", selected_default)) {
+        if (imgui.Selectable("System Default (use Windows setting)", selected_default)) {
             if (SetAudioOutputDeviceForCurrentProcess(L"")) {
                 s_selected_audio_device_index = 0;
                 selection_changed = true;
             }
         }
         if (selected_default) {
-            ImGui::SetItemDefaultFocus();
+            imgui.SetItemDefaultFocus();
         }
 
         // Actual devices
         for (int i = 0; i < static_cast<int>(s_audio_device_names.size()); ++i) {
             bool selected = (s_selected_audio_device_index == i + 1);
-            if (ImGui::Selectable(s_audio_device_names[i].c_str(), selected)) {
+            if (imgui.Selectable(s_audio_device_names[i].c_str(), selected)) {
                 if (i >= 0 && static_cast<size_t>(i) < s_audio_device_ids.size()) {
                     if (SetAudioOutputDeviceForCurrentProcess(s_audio_device_ids[i])) {
                         s_selected_audio_device_index = i + 1;
@@ -5092,60 +5122,61 @@ void DrawAudioSettings() {
                 }
             }
             if (selected) {
-                ImGui::SetItemDefaultFocus();
+                imgui.SetItemDefaultFocus();
             }
         }
 
-        ImGui::EndCombo();
+        imgui.EndCombo();
 
         if (selection_changed) {
             // No additional state to sync; Windows persists per-process routing itself.
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Select which audio output device this game should use.\n"
             "Uses Windows per-application audio routing (similar to 'App volume and device preferences').");
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:refresh_devices", std::memory_order_release);
-    ImGui::SameLine();
-    if (ImGui::Button("Refresh Devices")) {
+    imgui.SameLine();
+    if (imgui.Button("Refresh Devices")) {
         refresh_audio_devices();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Re-scan active audio output devices (use after plugging/unplugging audio hardware).");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Re-scan active audio output devices (use after plugging/unplugging audio hardware).");
     }
 }
 
-void DrawWindowControls() {
+void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd == nullptr) {
         LogWarn("Maximize Window: no window handle available");
         return;
     }
     // Window Control Buttons (Minimize, Restore, and Maximize side by side)
-    ImGui::BeginGroup();
+    imgui.BeginGroup();
 
     // Minimize Window Button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_MINUS " Minimize Window")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_MINUS " Minimize Window")) {
         HWND hwnd = g_last_swapchain_hwnd.load();
         std::thread([hwnd]() {
             LogDebug("Minimize Window button pressed (bg thread)");
             ShowWindow(hwnd, SW_MINIMIZE);
         }).detach();
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Minimize the current game window.");
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Minimize the current game window.");
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Open Game Folder Button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_FOLDER_OPEN " Open Game Folder")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Open Game Folder")) {
         std::thread([]() {
             LogDebug("Open Game Folder button pressed (bg thread)");
 
@@ -5181,16 +5212,16 @@ void DrawWindowControls() {
             }
         }).detach();
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Open the game's installation folder in Windows Explorer.");
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Open the game's installation folder in Windows Explorer.");
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Open DisplayCommander.toml (config) Button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_FILE " Config")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FILE " Config")) {
         std::string config_path =
             display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
         if (!config_path.empty()) {
@@ -5207,39 +5238,39 @@ void DrawWindowControls() {
             }).detach();
         }
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
         std::string config_path =
             display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
         if (!config_path.empty()) {
-            ImGui::SetTooltip("Open DisplayCommander config in the default text editor.\nFull path: %s",
-                              config_path.c_str());
+            imgui.SetTooltip("Open DisplayCommander config in the default text editor.\nFull path: %s",
+                             config_path.c_str());
         } else {
-            ImGui::SetTooltip("Open DisplayCommander.toml (config path not available).");
+            imgui.SetTooltip("Open DisplayCommander.toml (config path not available).");
         }
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Restore Window Button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_UNDO " Restore Window")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_UNDO " Restore Window")) {
         std::thread([hwnd]() {
             LogDebug("Restore Window button pressed (bg thread)");
             ShowWindow(hwnd, SW_RESTORE);
             display_commanderhooks::SendFakeActivationMessages(hwnd);
         }).detach();
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Restore the minimized game window.");
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Restore the minimized game window.");
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Open DisplayCommander.log Button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_FILE " Log")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FILE " Log")) {
         std::thread([]() {
             LogDebug("Open DisplayCommander.log button pressed (bg thread)");
 
@@ -5275,29 +5306,29 @@ void DrawWindowControls() {
             }
         }).detach();
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
         char process_path[MAX_PATH];
         if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
             std::string full_path(process_path);
             size_t last_slash = full_path.find_last_of("\\/");
             if (last_slash != std::string::npos) {
                 std::string log_path = full_path.substr(0, last_slash) + "\\DisplayCommander.log";
-                ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.\nFull path: %s",
-                                  log_path.c_str());
+                imgui.SetTooltip("Open DisplayCommander.log in the default text editor.\nFull path: %s",
+                                 log_path.c_str());
             } else {
-                ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.");
+                imgui.SetTooltip("Open DisplayCommander.log in the default text editor.");
             }
         } else {
-            ImGui::SetTooltip("Open DisplayCommander.log in the default text editor.");
+            imgui.SetTooltip("Open DisplayCommander.log in the default text editor.");
         }
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Open reshade.log Button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_FILE " reshade.log")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FILE " reshade.log")) {
         std::thread([]() {
             LogDebug("Open reshade.log button pressed (bg thread)");
 
@@ -5333,28 +5364,28 @@ void DrawWindowControls() {
             }
         }).detach();
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
         char process_path[MAX_PATH];
         if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
             std::string full_path(process_path);
             size_t last_slash = full_path.find_last_of("\\/");
             if (last_slash != std::string::npos) {
                 std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
-                ImGui::SetTooltip("Open reshade.log in the default text editor.\nFull path: %s", log_path.c_str());
+                imgui.SetTooltip("Open reshade.log in the default text editor.\nFull path: %s", log_path.c_str());
             } else {
-                ImGui::SetTooltip("Open reshade.log in the default text editor.");
+                imgui.SetTooltip("Open reshade.log in the default text editor.");
             }
         } else {
-            ImGui::SetTooltip("Open reshade.log in the default text editor.");
+            imgui.SetTooltip("Open reshade.log in the default text editor.");
         }
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Open reshade.ini Button
-    ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-    if (ImGui::Button(ICON_FK_FILE " reshade.ini")) {
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_FILE " reshade.ini")) {
         std::thread([]() {
             LogDebug("Open reshade.ini button pressed (bg thread)");
 
@@ -5387,433 +5418,412 @@ void DrawWindowControls() {
             }
         }).detach();
     }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
         char process_path[MAX_PATH];
         if (GetModuleFileNameA(nullptr, process_path, MAX_PATH) != 0) {
             std::string full_path(process_path);
             size_t last_slash = full_path.find_last_of("\\/");
             if (last_slash != std::string::npos) {
                 std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
-                ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
-                                  ini_path.c_str());
+                imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
+                                 ini_path.c_str());
             } else {
-                ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
+                imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
             }
         } else {
-            ImGui::SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
+            imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
         }
     }
 
-#if 0
-
-    ImGui::SameLine();
-    // Maximize Window Button
-    ui::colors::PushIconColor(ui::colors::ICON_POSITIVE);
-    if (ImGui::Button(ICON_FK_PLUS " Maximize Window")) {
-        std::thread([hwnd]() {
-            LogDebug("Maximize Window button pressed (bg thread)");
-
-            // Switch to fullscreen mode to maximize the window
-            s_window_mode.store(WindowMode::kFullscreen);
-            settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
-
-            // Apply the window changes using the existing UI system
-            ApplyWindowChange(hwnd, "maximize_button");
-
-            LogInfo("Window maximized to current monitor size");
-        }).detach();
-    }
-    ui::colors::PopIconColor();
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Maximize the window to fill the current monitor.");
-    }
-#endif
-    ImGui::EndGroup();
+    imgui.EndGroup();
 }
 
-void DrawImportantInfo() {
+void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui, bool has_effect_runtime) {
+    (void)imgui;
     // Test Overlay Control
     {
         bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
-        if (ImGui::Checkbox(ICON_FK_SEARCH " Show Overlay", &show_test_overlay)) {
+        if (imgui.Checkbox(ICON_FK_SEARCH " Show Overlay", &show_test_overlay)) {
             settings::g_mainTabSettings.show_test_overlay.SetValue(show_test_overlay);
             LogInfo("Performance overlay %s", show_test_overlay ? "enabled" : "disabled");
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows a performance monitoring widget in the main ReShade overlay with frame time graph, "
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
         }
-        ImGui::SameLine();
+        imgui.SameLine();
 
         // Show Labels Control
         bool show_labels = settings::g_mainTabSettings.show_labels.GetValue();
-        if (ImGui::Checkbox("Show labels", &show_labels)) {
+        if (imgui.Checkbox("Show labels", &show_labels)) {
             settings::g_mainTabSettings.show_labels.SetValue(show_labels);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
         }
 
         // Separator
-        ImGui::Separator();
+        imgui.Separator();
 
         // Grid layout for overlay display checkboxes (4 columns)
-        ImGui::Columns(4, "overlay_checkboxes", false);
+        imgui.Columns(4, "overlay_checkboxes", false);
 
         // Show Playtime Control
         bool show_playtime = settings::g_mainTabSettings.show_playtime.GetValue();
-        if (ImGui::Checkbox("Playtime", &show_playtime)) {
+        if (imgui.Checkbox("Playtime", &show_playtime)) {
             settings::g_mainTabSettings.show_playtime.SetValue(show_playtime);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows total playtime (time from game start) in the performance overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows total playtime (time from game start) in the performance overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show FPS Counter
         bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
-        if (ImGui::Checkbox("FPS Counter", &show_fps_counter)) {
+        if (imgui.Checkbox("FPS Counter", &show_fps_counter)) {
             settings::g_mainTabSettings.show_fps_counter.SetValue(show_fps_counter);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the current FPS counter in the main ReShade overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the current FPS counter in the main ReShade overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Native FPS
         bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
-        if (ImGui::Checkbox("Native FPS", &show_native_fps)) {
+        if (imgui.Checkbox("Native FPS", &show_native_fps)) {
             settings::g_mainTabSettings.show_native_fps.SetValue(show_native_fps);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / "
                 "YY.Y fps");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Flip Status
         bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
-        if (ImGui::Checkbox("Flip Status", &show_flip_status)) {
+        if (imgui.Checkbox("Flip Status", &show_flip_status)) {
             settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance "
                 "overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         {
             // Show VRR Status
             bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-            if (ImGui::Checkbox("VRR Status", &show_vrr_status)) {
+            if (imgui.Checkbox("VRR Status", &show_vrr_status)) {
                 settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
             }
-            ImGui::NextColumn();
+            imgui.NextColumn();
 
             // Actual refresh rate (NVAPI Adaptive Sync) - replaces old "Refresh rate" in overlay
             bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-            if (ImGui::Checkbox("Refresh rate", &show_actual_refresh_rate)) {
+            if (imgui.Checkbox("Refresh rate", &show_actual_refresh_rate)) {
                 settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
                     "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on.");
             }
-            ImGui::NextColumn();
+            imgui.NextColumn();
 
             // VRR Debug Mode
             bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-            if (ImGui::Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
+            if (imgui.Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
                 settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Shows detailed VRR debugging parameters (Fixed Hz, Threshold, Samples, etc.) in the performance "
                     "overlay.");
             }
-            ImGui::NextColumn();
+            imgui.NextColumn();
         }
 
         if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
             && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-            ImGui::Columns(1);
-            ImGui::TextColored(
+            imgui.Columns(1);
+            imgui.TextColored(
                 ui::colors::TEXT_WARNING,
                 "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
                 "Refresh rate and refresh rate time graph may show no data.");
-            ImGui::Columns(4, "overlay_checkboxes", false);
+            imgui.Columns(4, "overlay_checkboxes", false);
         }
 
         // Show Cpu busy
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
-        if (ImGui::Checkbox("Cpu busy", &show_cpu_usage)) {
+        if (imgui.Checkbox("Cpu busy", &show_cpu_usage)) {
             settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "100%% minus the %% of frame time the FPS limiter spends sleeping. "
                 "Not actual CPU usage: measures how much headroom the game has. 100%% = CPU limited.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Cpu FPS (current FPS / cpu busy %)
         bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
-        if (ImGui::Checkbox("Cpu FPS", &show_cpu_fps)) {
+        if (imgui.Checkbox("Cpu FPS", &show_cpu_fps)) {
             settings::g_mainTabSettings.show_cpu_fps.SetValue(show_cpu_fps);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Current FPS / (cpu busy %%). Theoretical FPS if CPU were 100%% busy. "
                 "E.g. 100 fps at 50%% busy = 200 cpu fps.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show DLSS-FG Mode
         bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
-        if (ImGui::Checkbox("FG Mode", &show_fg_mode)) {
+        if (imgui.Checkbox("FG Mode", &show_fg_mode)) {
             settings::g_mainTabSettings.show_fg_mode.SetValue(show_fg_mode);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show DLSS Internal Resolution
         bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
-        if (ImGui::Checkbox("DLSS Res", &show_dlss_internal_resolution)) {
+        if (imgui.Checkbox("DLSS Res", &show_dlss_internal_resolution)) {
             settings::g_mainTabSettings.show_dlss_internal_resolution.SetValue(show_dlss_internal_resolution);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows DLSS internal resolution (e.g., 1920x1080) in the performance overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows DLSS internal resolution (e.g., 1920x1080) in the performance overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show VRAM (used / budget) in overlay - DXGI adapter memory budget
         bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
-        if (ImGui::Checkbox("VRAM", &show_overlay_vram)) {
+        if (imgui.Checkbox("VRAM", &show_overlay_vram)) {
             settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show DLSS Status
         bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
-        if (ImGui::Checkbox("DLSS Status", &show_dlss_status)) {
+        if (imgui.Checkbox("DLSS Status", &show_dlss_status)) {
             settings::g_mainTabSettings.show_dlss_status.SetValue(show_dlss_status);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows DLSS on/off status in the performance overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows DLSS on/off status in the performance overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show DLSS Quality Preset
         bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
-        if (ImGui::Checkbox("DLSS Quality Preset", &show_dlss_quality_preset)) {
+        if (imgui.Checkbox("DLSS Quality Preset", &show_dlss_quality_preset)) {
             settings::g_mainTabSettings.show_dlss_quality_preset.SetValue(show_dlss_quality_preset);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows DLSS quality preset (Performance, Balanced, Quality, Ultra Performance, Ultra Quality, DLAA) in "
                 "the performance overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show DLSS Render Preset
         bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
-        if (ImGui::Checkbox("DLSS Render Preset", &show_dlss_render_preset)) {
+        if (imgui.Checkbox("DLSS Render Preset", &show_dlss_render_preset)) {
             settings::g_mainTabSettings.show_dlss_render_preset.SetValue(show_dlss_render_preset);
             ResetNGXPresetInitialization();
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows DLSS render preset (A, B, C, D, E, etc.) for the current quality mode in the performance "
                 "overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Stopwatch Control
         bool show_stopwatch = settings::g_mainTabSettings.show_stopwatch.GetValue();
-        if (ImGui::Checkbox("Stopwatch", &show_stopwatch)) {
+        if (imgui.Checkbox("Stopwatch", &show_stopwatch)) {
             settings::g_mainTabSettings.show_stopwatch.SetValue(show_stopwatch);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show VU bars (per-channel level) in overlay
         bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
-        if (ImGui::Checkbox("VU bars", &show_overlay_vu_bars)) {
+        if (imgui.Checkbox("VU bars", &show_overlay_vu_bars)) {
             settings::g_mainTabSettings.show_overlay_vu_bars.SetValue(show_overlay_vu_bars);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows per-channel audio level (VU) bars in the performance overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows per-channel audio level (VU) bars in the performance overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // GPU Measurement Enable/Disable Control
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
-        if (ImGui::Checkbox("Show latency", &gpu_measurement)) {
+        if (imgui.Checkbox("Show latency", &gpu_measurement)) {
             settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Measures time from Present call to GPU completion using fences.\n"
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Clock Control
         bool show_clock = settings::g_mainTabSettings.show_clock.GetValue();
-        if (ImGui::Checkbox("Show clock", &show_clock)) {
+        if (imgui.Checkbox("Show clock", &show_clock)) {
             settings::g_mainTabSettings.show_clock.SetValue(show_clock);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows the current time (HH:MM:SS) in the overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows the current time (HH:MM:SS) in the overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Frame Time Graph Control
         bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
-        if (ImGui::Checkbox("Show frame time graph", &show_frame_time_graph)) {
+        if (imgui.Checkbox("Show frame time graph", &show_frame_time_graph)) {
             settings::g_mainTabSettings.show_frame_time_graph.SetValue(show_frame_time_graph);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows a graph of frame times in the overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows a graph of frame times in the overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Frame Time Stats Control
         bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
-        if (ImGui::Checkbox("Show frame time stats", &show_frame_time_stats)) {
+        if (imgui.Checkbox("Show frame time stats", &show_frame_time_stats)) {
             settings::g_mainTabSettings.show_frame_time_stats.SetValue(show_frame_time_stats);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Native Frame Time Graph Control
         bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
-        if (ImGui::Checkbox("Show native frame time graph", &show_native_frame_time_graph)) {
+        if (imgui.Checkbox("Show native frame time graph", &show_native_frame_time_graph)) {
             settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
                 "overlay.\nOnly available when limit real frames is enabled.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Frame Timeline Bar Control
         bool show_frame_timeline_bar = settings::g_mainTabSettings.show_frame_timeline_bar.GetValue();
-        if (ImGui::Checkbox("Show frame timeline bar", &show_frame_timeline_bar)) {
+        if (imgui.Checkbox("Show frame timeline bar", &show_frame_timeline_bar)) {
             settings::g_mainTabSettings.show_frame_timeline_bar.SetValue(show_frame_timeline_bar);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows a compact frame timeline in the overlay (Simulation, Render Submit, Present, etc. as bars). "
                 "Updates every 1 s.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Refresh Rate Time Graph Control
         bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
         // Warning: about this introducing heartbeat issue
-        if (ImGui::Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
+        if (imgui.Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
             settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
                 "Requires NVAPI and a resolved display.\n"
                 "WARNING: This may introduces a heartbeat issue, with frame time spike once a second.");
         }
-        ImGui::NextColumn();
+        imgui.NextColumn();
 
         // Show Refresh Rate Time Stats Control
         bool show_refresh_rate_frame_time_stats =
             settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
-        if (ImGui::Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
+        if (imgui.Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
             settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Shows refresh rate time statistics (avg, deviation, min, max) in the overlay.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows refresh rate time statistics (avg, deviation, min, max) in the overlay.");
         }
         {
-            ImGui::NextColumn();
+            imgui.NextColumn();
 
             // Show Volume Control (experimental feature)
             {
                 bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
-                if (ImGui::Checkbox("Show volume", &show_volume)) {
+                if (imgui.Checkbox("Show volume", &show_volume)) {
                     settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);
                 }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Shows the current audio volume percentage in the overlay.");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Shows the current audio volume percentage in the overlay.");
                 }
             }
         }
 
-        ImGui::Columns(1);  // Reset to single column
+        imgui.Columns(1);  // Reset to single column
         if (show_refresh_rate_frame_times || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
-            if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)",
-                                 "%d ms")) {
+            if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)", "%d ms",
+                                 &imgui)) {
                 // Setting is automatically saved by SliderIntSetting
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
                     "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
                     "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
                     "polling defaults to 1 s and this setting is not used.");
             }
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
         // Overlay background transparency slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Transparency",
-                               "%.2f")) {
+                               "%.2f", &imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Controls the transparency of the overlay background. 0.0 = fully transparent, 1.0 = fully opaque.");
         }
         // Overlay chart transparency slider
-        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_chart_alpha, "Frame Chart Transparency", "%.2f")) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_chart_alpha, "Frame Chart Transparency", "%.2f",
+                               &imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Controls the transparency of the frame time and refresh rate chart backgrounds. 0.0 = fully "
                 "transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
         }
         // Overlay graph scale slider
-        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_scale, "Graph Size Scale", "%.1fx")) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_scale, "Graph Size Scale", "%.1fx", &imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Controls the size of the frame time and refresh rate graphs in the overlay. "
                 "1.0x = default size (300x60px), 4.0x = maximum size (1200x240px).");
         }
         // Overlay graph max scale slider
-        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_max_scale, "Graph Max Value Scale", "%.1fx")) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_max_scale, "Graph Max Value Scale", "%.1fx",
+                               &imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Controls the maximum Y-axis value for the frame time and refresh rate graphs. "
                 "The graph will scale from 0ms to (average frame time × this multiplier). "
                 "Lower values (2x-4x) show more detail for normal frame times. "
@@ -5821,29 +5831,29 @@ void DrawImportantInfo() {
         }
         // Overlay vertical spacing slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_vertical_spacing, "Overlay Vertical Spacing",
-                               "%.0f px")) {
+                               "%.0f px", &imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Adds vertical spacing to the performance overlay position. "
                 "Useful to prevent overlap with stream overlay text. "
                 "Positive values move the overlay down, negative values move it up.");
         }
         // Overlay horizontal spacing slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_horizontal_spacing, "Overlay Horizontal Spacing",
-                               "%.0f px")) {
+                               "%.0f px", &imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Adds horizontal spacing to the performance overlay position. "
                 "Useful to prevent overlap with stream overlay text. "
                 "Positive values move the overlay to the right, negative values move it to the left.");
         }
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // FPS Counter with 1% Low and 0.1% Low over past 60s (computed in background)
     {
@@ -5852,75 +5862,79 @@ void DrawImportantInfo() {
         if (shared_text) {
             local_text = *shared_text;
         }
-        ImGui::TextUnformatted(local_text.c_str());
-        ui::colors::PushIconColor(ui::colors::ICON_ACTION);
-        if (ImGui::Button(ICON_FK_REFRESH " Reset Stats")) {
+        imgui.TextUnformatted(local_text.c_str());
+        imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+        if (imgui.Button(ICON_FK_REFRESH " Reset Stats")) {
             ::g_perf_reset_requested.store(true, std::memory_order_release);
         }
-        ui::colors::PopIconColor();
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
+        imgui.PopStyleColor();
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
         }
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Frame Time Graph Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 1: Nested subsection with indentation and distinct colors
-    ImGui::Indent();  // Indent nested header
+    imgui.Indent();  // Indent nested header
     g_rendering_ui_section.store("ui:tab:main_new:frame_time_graph", std::memory_order_release);
-    ui::colors::PushNestedHeaderColors();  // Apply distinct colors for nested header
-    if (ImGui::CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Indent();  // Indent content inside subsection
+    ui::colors::PushNestedHeaderColors(&imgui);
+    if (imgui.CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();  // Indent content inside subsection
+        if (!has_effect_runtime) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED,
+                              "Frame timing and graphs are only available when running in-game.");
+        } else {
         // Display GPU fence status/failure reason
         if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
             const char* failure_reason = ::g_gpu_fence_failure_reason.load();
             if (failure_reason != nullptr) {
-                ImGui::Indent();
-                ui::colors::PushIconColor(ui::colors::ICON_ERROR);
-                ImGui::TextUnformatted(ICON_FK_WARNING);
-                ImGui::PopStyleColor();
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_ERROR, "GPU Fence Failed: %s", failure_reason);
-                ImGui::Unindent();
+                imgui.Indent();
+                imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ERROR);
+                imgui.TextUnformatted(ICON_FK_WARNING);
+                imgui.PopStyleColor();
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_ERROR, "GPU Fence Failed: %s", failure_reason);
+                imgui.Unindent();
             } else {
-                ImGui::Indent();
-                ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-                ImGui::TextUnformatted(ICON_FK_OK);
-                ImGui::PopStyleColor();
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "GPU Fence Active");
-                ImGui::Unindent();
+                imgui.Indent();
+                imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
+                imgui.TextUnformatted(ICON_FK_OK);
+                imgui.PopStyleColor();
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "GPU Fence Active");
+                imgui.Unindent();
             }
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
-        DrawFrameTimeGraph();
+        DrawFrameTimeGraph(imgui);
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Spacing();
 
         // Frame timeline bar (Simulation | Render Submit | ReShade | Present | Sleep | GPU)
-        DrawFrameTimelineBar();
+        DrawFrameTimelineBar(imgui);
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Spacing();
 
         // Native Frame Time Graph
-        ImGui::Text("Native Frame Time Graph");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        imgui.Text("Native Frame Time Graph");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Shows frame times for frames actually displayed via native swapchain Present when limit real frames "
                 "is enabled.");
         }
-        ImGui::Spacing();
+        imgui.Spacing();
 
-        DrawNativeFrameTimeGraph();
+        DrawNativeFrameTimeGraph(imgui);
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         std::ostringstream oss;
 
@@ -5929,18 +5943,18 @@ void DrawImportantInfo() {
         oss.clear();
         oss << "Present Duration: " << std::fixed << std::setprecision(3)
             << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
-        ImGui::TextUnformatted(oss.str().c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // Frame Duration Display
         oss.str("");
         oss.clear();
         oss << "Frame Duration: " << std::fixed << std::setprecision(3)
             << (1.0 * ::g_frame_time_ns.load() / utils::NS_TO_MS) << " ms";
-        ImGui::TextUnformatted(oss.str().c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // GPU Duration Display (only show if measurement is enabled and has data)
         if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0) {
@@ -5948,11 +5962,11 @@ void DrawImportantInfo() {
             oss.clear();
             oss << "GPU Duration: " << std::fixed << std::setprecision(3)
                 << (1.0 * ::g_gpu_duration_ns.load() / utils::NS_TO_MS) << " ms";
-            ImGui::TextUnformatted(oss.str().c_str());
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
             }
 
             // Sim-to-Display Latency (only show if we have valid measurement)
@@ -5961,11 +5975,11 @@ void DrawImportantInfo() {
                 oss.clear();
                 oss << "Sim-to-Display Latency: " << std::fixed << std::setprecision(3)
                     << (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS) << " ms";
-                ImGui::TextUnformatted(oss.str().c_str());
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Time from simulation start to frame displayed (includes GPU work and present)");
+                imgui.TextUnformatted(oss.str().c_str());
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Time from simulation start to frame displayed (includes GPU work and present)");
                 }
 
                 // GPU Late Time (how much later GPU finishes compared to Present)
@@ -5973,11 +5987,11 @@ void DrawImportantInfo() {
                 oss.clear();
                 oss << "GPU Late Time: " << std::fixed << std::setprecision(3)
                     << (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS) << " ms";
-                ImGui::TextUnformatted(oss.str().c_str());
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                imgui.TextUnformatted(oss.str().c_str());
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
                         "Present\n>0 ms = GPU finished after Present (GPU is late)");
                 }
@@ -5988,18 +6002,18 @@ void DrawImportantInfo() {
         oss.clear();
         oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
             << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
-        ImGui::TextUnformatted(oss.str().c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // Reshade Overhead Display
         oss.str("");
         oss.clear();
         oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
             << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
-        ImGui::TextUnformatted(oss.str().c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // Reshade Overhead Display
         oss.str("");
@@ -6009,26 +6023,26 @@ void DrawImportantInfo() {
                  - ::fps_sleep_after_on_present_ns.load())
                 / utils::NS_TO_MS)
             << " ms";
-        ImGui::TextUnformatted(oss.str().c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         oss.str("");
         oss.clear();
         oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
             << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-        ImGui::TextUnformatted(oss.str().c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // FPS Limiter Start Duration Display
         oss.str("");
         oss.clear();
         oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
             << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-        ImGui::TextUnformatted(oss.str().c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
         // Simulation Start to Present Latency Display
         oss.str("");
@@ -6050,9 +6064,9 @@ void DrawImportantInfo() {
             sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
             oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3)
                 << sim_start_to_present_latency_ms << " ms";
-            ImGui::TextUnformatted(oss.str().c_str());
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
         }
 
         // Flip State Display (renamed from DXGI Composition)
@@ -6080,30 +6094,30 @@ void DrawImportantInfo() {
         // Color code based on flip state
         if (flip_state == DxgiBypassMode::kComposed) {
             // Composed Flip - Red
-            ImGui::TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());
+            imgui.TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());
         } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
             // Independent Flip modes - Green
-            ImGui::TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
+            imgui.TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
         } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
                    || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
                    || flip_state == DxgiBypassMode::kQueryFailedNoMedia
                    || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
             // Query Failed - Red
-            ImGui::TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
+            imgui.TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
         } else {
             // Unknown/Unset - Yellow
-            ImGui::TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
+            imgui.TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
         }
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
     // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
-    if (ImGui::CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
+    if (imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
         bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
 
-        if (ImGui::Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
+        if (imgui.Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
             if (is_monitoring) {
                 display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
             } else {
@@ -6111,22 +6125,22 @@ void DrawImportantInfo() {
             }
         }
 
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
                 "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
                 "from the configured rate due to VRR, power management, or other factors.");
         }
 
-        ImGui::SameLine();
+        imgui.SameLine();
 
         // Status display
         const char* status_str = is_monitoring ? "Active" : "Inactive";
-        ImGui::TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
 
         if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-            ImGui::Spacing();
-            ImGui::TextColored(
+            imgui.Spacing();
+            imgui.TextColored(
                 ui::colors::TEXT_WARNING,
                 "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
         }
@@ -6135,17 +6149,17 @@ void DrawImportantInfo() {
         if (g_got_device_name.load()) {
             auto device_name_ptr = g_dxgi_output_device_name.load();
             if (device_name_ptr != nullptr) {
-                ImGui::Spacing();
-                ImGui::Text("DXGI Output Device:");
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
+                imgui.Spacing();
+                imgui.Text("DXGI Output Device:");
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
             } else {
-                ImGui::Spacing();
-                ImGui::TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
             }
         } else {
-            ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
+            imgui.Spacing();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
         }
 
         // Refresh rate data from NVAPI actual refresh rate monitor (recent samples)
@@ -6169,66 +6183,68 @@ void DrawImportantInfo() {
         double avg_hz = (sample_count > 0) ? (sum_hz / static_cast<double>(sample_count)) : 0.0;
 
         if (sample_count > 0) {
-            ImGui::Spacing();
+            imgui.Spacing();
 
             // Current refresh rate (large, prominent display)
-            ImGui::Text("Measured Refresh Rate:");
-            ImGui::SameLine();
-            ImGui::TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+            imgui.Text("Measured Refresh Rate:");
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
 
             // Detailed statistics
-            ImGui::Indent();
-            ImGui::Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
-            ImGui::Text("Min: %.1f Hz", min_hz);
-            ImGui::Text("Max: %.1f Hz", max_hz);
-            ImGui::Text("Samples: %zu", sample_count);
-            ImGui::Unindent();
+            imgui.Indent();
+            imgui.Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+            imgui.Text("Min: %.1f Hz", min_hz);
+            imgui.Text("Max: %.1f Hz", max_hz);
+            imgui.Text("Samples: %zu", sample_count);
+            imgui.Unindent();
 
             // VRR detection hint
             if (max_hz > min_hz + 1.0) {
-                ImGui::Spacing();
-                ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-                ImGui::TextUnformatted(ICON_FK_OK);
-                ui::colors::PopIconColor();
-                ImGui::SameLine();
-                ImGui::TextColored(ui::colors::TEXT_SUCCESS, "Variable Refresh Rate (VRR) detected");
+                imgui.Spacing();
+                imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
+                imgui.TextUnformatted(ICON_FK_OK);
+                imgui.PopStyleColor();
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "Variable Refresh Rate (VRR) detected");
             }
         } else if (is_monitoring) {
-            ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
+            imgui.Spacing();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
         } else {
-            ImGui::Spacing();
-            ImGui::TextColored(ui::colors::TEXT_DIMMED,
-                               "No refresh rate data (start monitoring or enable overlay refresh rate).");
+            imgui.Spacing();
+            imgui.TextColored(ui::colors::TEXT_DIMMED,
+                              "No refresh rate data (start monitoring or enable overlay refresh rate).");
         }
-        ImGui::Unindent();  // Unindent content
+        }
+        imgui.Unindent();  // Unindent content
     }
-    ui::colors::PopNestedHeaderColors();  // Restore default header colors
-    ImGui::Unindent();                    // Unindent nested header section
+    ui::colors::PopNestedHeaderColors(&imgui);
+    imgui.Unindent();  // Unindent nested header section
 }
 
-void DrawAdhdMultiMonitorControls() {
+void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
     // ADHD on game display is shown even with one monitor; Multi-Monitor Mode only when multiple monitors
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 
-    ImGui::BeginGroup();
+    imgui.BeginGroup();
     // Use CheckboxSetting so the checkbox always reflects the current setting (e.g. when toggled via hotkey)
     if (CheckboxSetting(settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display,
-                        "ADHD on game display")) {
+                        "ADHD on game display", &imgui)) {
         LogInfo("ADHD on game display %s",
                 settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue() ? "enabled"
                                                                                                     : "disabled");
     }
 
     if (hasMultipleMonitors) {
-        ImGui::SameLine();
-        if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode")) {
+        imgui.SameLine();
+        if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode",
+                            &imgui)) {
             LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
                     settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
         }
     }
-    ImGui::EndGroup();
-    if (ImGui::IsItemHovered()) {
+    imgui.EndGroup();
+    if (imgui.IsItemHovered()) {
         adhd_multi_monitor::BackgroundWindowDebugInfo info = {};
         adhd_multi_monitor::api::GetBackgroundWindowDebugInfo(&info);
         char buf[384];
@@ -6241,9 +6257,9 @@ void DrawAdhdMultiMonitorControls() {
                               info.hwnd, info.not_null ? "not null" : "null", info.left, info.top, info.width,
                               info.height, info.is_visible ? "yes" : "no");
         if (n > 0 && n < static_cast<int>(sizeof(buf))) {
-            ImGui::SetTooltip("%s", buf);
+            imgui.SetTooltip("%s", buf);
         } else {
-            ImGui::SetTooltip(
+            imgui.SetTooltip(
                 "ADHD on game display: black window on game's monitor.\n"
                 "ADHD Multi-Monitor Mode: cover all other monitors (like Special-K).");
         }

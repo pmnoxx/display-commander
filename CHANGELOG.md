@@ -2,6 +2,11 @@
 
 ---
 
+## v0.12.84 (2026-02-24)
+
+- **NVIDIA profile search** - Before enumerating all profiles, the addon now tries `NvAPI_DRS_FindApplicationByName` with the full exe path. If the driver returns one profile, that profile is used first and its settings are loaded; enumeration then adds any other matching profiles without duplicating the one already found by path.
+- **NVIDIA profile match score and sorting** - Each matching profile now has a score (number of non-empty app-entry fields: app name, file-in-folder, user-friendly name, launcher, command line, is_metro, is_command_line). Profiles are sorted by score descending (more specific matches first). The "Matching profile(s)" list tooltip shows the match score.
+
 ## v0.12.83 (2026-02-24)
 
 - **Prevent display sleep & screensaver** - Renamed screensaver-related UI and tooltips to "Prevent display sleep & screensaver". Main tab combo label, Advanced tab checkbox, and tooltips now use this label; note in tooltip points users to enable the option in the Advanced tab for the mode to take effect.

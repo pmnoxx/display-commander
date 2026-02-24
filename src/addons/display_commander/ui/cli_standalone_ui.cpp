@@ -28,6 +28,8 @@
 #include "display_cache.hpp"
 #include "standalone_ui_settings_bridge.hpp"
 #include "ui/cli_detect_exe.hpp"
+#include "ui/imgui_wrapper_standalone.hpp"
+#include "ui/nvidia_profile_tab_shared.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
 #include "utils/reshade_sha256_database.hpp"
@@ -767,8 +769,10 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
         ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(440, 0), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Display Commander - Settings (No ReShade)", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            // FPS Limiter
-            ImGui::Text("FPS Limiter");
+            if (ImGui::BeginTabBar("NoReshadeSettingsTabs")) {
+                if (ImGui::BeginTabItem("Settings")) {
+                    // FPS Limiter
+                    ImGui::Text("FPS Limiter");
             ImGui::Separator();
             int fps_mode = standalone_ui_settings::GetFpsLimiterMode();
             if (fps_mode < 0 || fps_mode >= fps_limiter_num) fps_mode = 0;
@@ -905,6 +909,17 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                 ImGui::TextUnformatted("—");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Last swapchain/game window. Set from Present or from foreground when no swapchain.");
+            }
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Profile")) {
+                    static bool s_noreshadeShowAdvancedProfile = false;
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    display_commander::ui::DrawNvidiaProfileTab(
+                        display_commander::ui::GraphicsApi::Unknown, wrapper, &s_noreshadeShowAdvancedProfile);
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
             }
         }
         ImGui::End();
@@ -1637,6 +1652,13 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                     }
                     ImGui::Spacing();
 
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Profile")) {
+                    static bool s_standaloneShowAdvancedProfile = false;
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    display_commander::ui::DrawNvidiaProfileTab(
+                        display_commander::ui::GraphicsApi::Unknown, wrapper, &s_standaloneShowAdvancedProfile);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();

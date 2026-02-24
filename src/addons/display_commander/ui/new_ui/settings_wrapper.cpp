@@ -637,7 +637,7 @@ static bool SliderFloatSettingRefImpl(FloatSettingRef& setting, const char* labe
     bool changed = imgui ? imgui->SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format)
                          : ImGui::SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        ImGuiIO& io = ImGui::GetIO();
+        const ImGuiIO& io = imgui ? imgui->GetIO() : ImGui::GetIO();
         bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];
         if (is_mouse_input) {
             setting.ClearDirtyValue();
@@ -743,7 +743,7 @@ static bool SliderIntSettingRefImpl(IntSettingRef& setting, const char* label, c
     bool changed = imgui ? imgui->SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format)
                          : ImGui::SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
-        ImGuiIO& io = ImGui::GetIO();
+        const ImGuiIO& io = imgui ? imgui->GetIO() : ImGui::GetIO();
         bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];
         if (is_mouse_input) {
             setting.ClearDirtyValue();

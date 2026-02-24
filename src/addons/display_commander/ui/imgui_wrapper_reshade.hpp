@@ -9,8 +9,36 @@
 namespace display_commander {
 namespace ui {
 
+/** Draw list proxy: forwards to ReShade's ImDrawList so callers never touch raw ImDrawList* (same TU = same ABI). */
+struct ImDrawListProxyReshade : IImDrawList {
+    ImDrawList* list_ = nullptr;
+    void set(ImDrawList* L) { list_ = L; }
+    void AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f) override {
+        if (list_) list_->AddLine(p1, p2, col, thickness);
+    }
+    void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
+                 int flags = 0, float thickness = 1.0f) override {
+        if (list_) list_->AddRect(p_min, p_max, col, rounding, static_cast<ImDrawFlags>(flags), thickness);
+    }
+    void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col,
+                       float rounding = 0.0f, int flags = 0) override {
+        if (list_) list_->AddRectFilled(p_min, p_max, col, rounding, static_cast<ImDrawFlags>(flags));
+    }
+    void AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments = 0,
+                   float thickness = 1.0f) override {
+        if (list_) list_->AddCircle(center, radius, col, num_segments, thickness);
+    }
+    void AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments = 0) override {
+        if (list_) list_->AddCircleFilled(center, radius, col, num_segments);
+    }
+    void AddTriangleFilled(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col) override {
+        if (list_) list_->AddTriangleFilled(p1, p2, p3, col);
+    }
+};
+
 /** ImGui wrapper that forwards to ReShade's ImGui (used in addon overlay). Header-only so ImGui symbols stay in the same TU as overlay code. */
 struct ImGuiWrapperReshade : IImGuiWrapper {
+    ImDrawListProxyReshade draw_list_proxy_;
     void SameLine(float offset_from_start_x = 0.f, float spacing_w = -1.f) override {
         ImGui::SameLine(offset_from_start_x, spacing_w);
     }
@@ -28,6 +56,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     }
     void TextUnformatted(const char* text) override { ImGui::TextUnformatted(text); }
     bool Button(const char* label) override { return ImGui::Button(label); }
+    bool Button(const char* label, const ImVec2& size) override { return ImGui::Button(label, size); }
     bool SmallButton(const char* label) override { return ImGui::SmallButton(label); }
     bool Checkbox(const char* label, bool* v) override { return ImGui::Checkbox(label, v); }
     bool IsItemHovered() override { return ImGui::IsItemHovered(); }
@@ -74,7 +103,10 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     bool InputText(const char* label, char* buf, size_t buf_size) override {
         return ImGui::InputText(label, buf, buf_size);
     }
-    bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") override {
+    bool InputInt(const char* label, int* v, int step, int step_fast, int flags) override {
+        return ImGui::InputInt(label, v, step, step_fast, static_cast<ImGuiInputTextFlags>(flags));
+    }
+    bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format) override {
         return ImGui::SliderInt(label, v, v_min, v_max, format);
     }
     void TextWrapped(const char* fmt, ...) override {
@@ -113,7 +145,11 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     bool Combo(const char* label, int* current_item, const char* const items[], int items_count) override {
         return ImGui::Combo(label, current_item, items, items_count);
     }
-    ImDrawList* GetWindowDrawList() override { return ImGui::GetWindowDrawList(); }
+    IImDrawList* GetWindowDrawList() override {
+        ImDrawList* L = ImGui::GetWindowDrawList();
+        draw_list_proxy_.set(L);
+        return L ? &draw_list_proxy_ : nullptr;
+    }
     ImVec2 GetCursorScreenPos() override { return ImGui::GetCursorScreenPos(); }
     void SetCursorScreenPos(const ImVec2& pos) override { ImGui::SetCursorScreenPos(pos); }
     float GetCursorPosX() override { return ImGui::GetCursorPosX(); }
@@ -145,6 +181,17 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         return ImGui::Begin(name, p_open, static_cast<ImGuiWindowFlags>(flags));
     }
     void End() override { ImGui::End(); }
+    void SetNextWindowPos(const ImVec2& pos, int cond, const ImVec2& pivot) override {
+        ImGui::SetNextWindowPos(pos, static_cast<ImGuiCond>(cond), pivot);
+    }
+    void SetNextWindowSize(const ImVec2& size, int cond) override {
+        ImGui::SetNextWindowSize(size, static_cast<ImGuiCond>(cond));
+    }
+    ImVec2 GetDisplaySize() override {
+        const ImGuiIO& io = ImGui::GetIO();
+        return ImVec2(io.DisplaySize.x, io.DisplaySize.y);
+    }
+    const ImGuiIO& GetIO() override { return ImGui::GetIO(); }
 };
 
 } // namespace ui

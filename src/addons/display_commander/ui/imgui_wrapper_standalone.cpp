@@ -28,6 +28,9 @@ void ImGuiWrapperStandalone::TextUnformatted(const char* text) {
 bool ImGuiWrapperStandalone::Button(const char* label) {
     return ImGui::Button(label);
 }
+bool ImGuiWrapperStandalone::Button(const char* label, const ImVec2& size) {
+    return ImGui::Button(label, size);
+}
 bool ImGuiWrapperStandalone::SmallButton(const char* label) {
     return ImGui::SmallButton(label);
 }
@@ -119,6 +122,9 @@ void ImGuiWrapperStandalone::Unindent() {
 bool ImGuiWrapperStandalone::InputText(const char* label, char* buf, size_t buf_size) {
     return ImGui::InputText(label, buf, buf_size);
 }
+bool ImGuiWrapperStandalone::InputInt(const char* label, int* v, int step, int step_fast, int flags) {
+    return ImGui::InputInt(label, v, step, step_fast, static_cast<ImGuiInputTextFlags>(flags));
+}
 bool ImGuiWrapperStandalone::SliderInt(const char* label, int* v, int v_min, int v_max, const char* format) {
     return ImGui::SliderInt(label, v, v_min, v_max, format);
 }
@@ -177,8 +183,32 @@ bool ImGuiWrapperStandalone::Combo(const char* label, int* current_item, const c
                                    int items_count) {
     return ImGui::Combo(label, current_item, items, items_count);
 }
-ImDrawList* ImGuiWrapperStandalone::GetWindowDrawList() {
-    return ImGui::GetWindowDrawList();
+void ImDrawListProxyStandalone::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness) {
+    if (list_) list_->AddLine(p1, p2, col, thickness);
+}
+void ImDrawListProxyStandalone::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding,
+                                       int flags, float thickness) {
+    if (list_) list_->AddRect(p_min, p_max, col, rounding, static_cast<ImDrawFlags>(flags), thickness);
+}
+void ImDrawListProxyStandalone::AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col,
+                                             float rounding, int flags) {
+    if (list_) list_->AddRectFilled(p_min, p_max, col, rounding, static_cast<ImDrawFlags>(flags));
+}
+void ImDrawListProxyStandalone::AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments,
+                                          float thickness) {
+    if (list_) list_->AddCircle(center, radius, col, num_segments, thickness);
+}
+void ImDrawListProxyStandalone::AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments) {
+    if (list_) list_->AddCircleFilled(center, radius, col, num_segments);
+}
+void ImDrawListProxyStandalone::AddTriangleFilled(const ImVec2& p1, const ImVec2& p2, const ImVec2& p3, ImU32 col) {
+    if (list_) list_->AddTriangleFilled(p1, p2, p3, col);
+}
+
+IImDrawList* ImGuiWrapperStandalone::GetWindowDrawList() {
+    ImDrawList* L = ImGui::GetWindowDrawList();
+    draw_list_proxy_.set(L);
+    return L ? &draw_list_proxy_ : nullptr;
 }
 ImVec2 ImGuiWrapperStandalone::GetCursorScreenPos() {
     return ImGui::GetCursorScreenPos();
@@ -243,6 +273,19 @@ bool ImGuiWrapperStandalone::Begin(const char* name, bool* p_open, int flags) {
 }
 void ImGuiWrapperStandalone::End() {
     ImGui::End();
+}
+void ImGuiWrapperStandalone::SetNextWindowPos(const ImVec2& pos, int cond, const ImVec2& pivot) {
+    ImGui::SetNextWindowPos(pos, static_cast<ImGuiCond>(cond), pivot);
+}
+void ImGuiWrapperStandalone::SetNextWindowSize(const ImVec2& size, int cond) {
+    ImGui::SetNextWindowSize(size, static_cast<ImGuiCond>(cond));
+}
+ImVec2 ImGuiWrapperStandalone::GetDisplaySize() {
+    const ImGuiIO& io = ImGui::GetIO();
+    return ImVec2(io.DisplaySize.x, io.DisplaySize.y);
+}
+const ImGuiIO& ImGuiWrapperStandalone::GetIO() {
+    return ImGui::GetIO();
 }
 
 } // namespace ui

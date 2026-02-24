@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.72 (2026-02-24)
+
+- **Standalone UI (Main tab)** - Further fixes for crashes (0xC0000005) in standalone/installer UI: Resolution widget now takes `IImGuiWrapper&` and uses it for all ImGui calls (no direct `ImGui::*`). Settings wrapper uses `imgui->GetIO()` when the wrapper is passed so slider logic never touches the wrong ImGui context. `DrawDisplaySettings` now takes `GraphicsApi` instead of `effect_runtime*`; when API is `Unknown` (standalone) it skips API-dependent sections without dereferencing a runtime. Wrapper gained `InputInt`, `Button(label, size)`, `GetDisplaySize`, `GetIO`, `SetNextWindowPos`, `SetNextWindowSize`.
+
+## v0.12.71 (2026-02-24)
+
+- **ImGui wrapper** - `GetWindowDrawList()` now returns a proxy object (`IImDrawList*`) instead of raw `ImDrawList*`. Avoids crashes when the addon and runtime use different ImGui/ImDrawList layouts (linker using wrong object). Main tab draw-list call sites (audio VU bars, etc.) use the proxy; ReShade and standalone wrappers each provide an implementation that forwards to their ImGui draw list.
+
 ## v0.12.70 (2026-02-24)
 
 - **Window management** - Added 21.5:9 aspect ratio option to the Borderless Windowed (Aspect Ratio) dropdown (between 21:9 and 32:9).

@@ -206,7 +206,7 @@ void InitializeNewUI() {
         [](reshade::api::effect_runtime* runtime) {
             try {
                 display_commander::ui::ImGuiWrapperReshade wrapper;
-                ui::new_ui::DrawMainNewTab(runtime, wrapper);
+                ui::new_ui::DrawMainNewTab(ui::new_ui::GetGraphicsApiFromRuntime(runtime), wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing main new tab: %s", e.what());
             } catch (...) {

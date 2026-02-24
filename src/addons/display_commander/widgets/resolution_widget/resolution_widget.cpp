@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
-#include <reshade_imgui.hpp>
 #include <sstream>
 #include <string>
 #include "../../display/hdr_control.hpp"
@@ -77,13 +76,13 @@ void ResolutionWidget::Cleanup() {
     is_initialized_ = false;
 }
 
-void ResolutionWidget::OnDraw() {
+void ResolutionWidget::OnDraw(display_commander::ui::IImGuiWrapper& imgui) {
     if (!is_initialized_) {
         Initialize();
     }
 
     if (!g_resolution_settings) {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Resolution settings not initialized");
+        imgui.TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Resolution settings not initialized");
         return;
     }
 
@@ -100,97 +99,93 @@ void ResolutionWidget::OnDraw() {
 
     // Apply loaded settings to UI selection (only once)
     if (!settings_applied_to_ui_) {
-        //  LogInfo("ResolutionWidget::OnDraw() - First draw, applying loaded settings to UI");
         UpdateCurrentSelectionFromSettings();
         settings_applied_to_ui_ = true;
-        //     LogInfo("ResolutionWidget::OnDraw() - Applied settings to UI indices: display=%d, resolution=%d,
-        //     refresh=%d",
-        //             selected_display_index_, selected_resolution_index_, selected_refresh_index_);
     }
     // Auto-apply checkbox
-    DrawAutoApplyCheckbox();
-    ImGui::Spacing();
+    DrawAutoApplyCheckbox(imgui);
+    imgui.Spacing();
 
     // Auto-apply on start
-    DrawAutoApplyOnStart();
-    ImGui::Spacing();
+    DrawAutoApplyOnStart(imgui);
+    imgui.Spacing();
 
     // Auto-restore checkbox
-    DrawAutoRestoreCheckbox();
-    ImGui::SameLine();
+    DrawAutoRestoreCheckbox(imgui);
+    imgui.SameLine();
 
     // Debug menu
-    DrawDebugMenu();
-    ImGui::Spacing();
+    DrawDebugMenu(imgui);
+    imgui.Spacing();
 
     // HDR auto enable/disable and display HDR capable
-    DrawHdrSection();
-    ImGui::Spacing();
+    DrawHdrSection(imgui);
+    imgui.Spacing();
 
     // Original settings info
-    DrawOriginalSettingsInfo();
-    ImGui::Spacing();
+    DrawOriginalSettingsInfo(imgui);
+    imgui.Spacing();
 
     // Display selector
-    DrawDisplaySelector();
-    ImGui::Spacing();
+    DrawDisplaySelector(imgui);
+    imgui.Spacing();
 
     // Resolution selector
-    DrawResolutionSelector();
-    ImGui::Spacing();
+    DrawResolutionSelector(imgui);
+    imgui.Spacing();
 
     // Refresh rate selector
-    DrawRefreshRateSelector();
-    ImGui::Spacing();
+    DrawRefreshRateSelector(imgui);
+    imgui.Spacing();
 
     // Action buttons
-    DrawActionButtons();
+    DrawActionButtons(imgui);
 
     // Confirmation dialog
     if (show_confirmation_) {
-        DrawConfirmationDialog();
+        DrawConfirmationDialog(imgui);
     }
 }
 
-void ResolutionWidget::DrawAutoApplyCheckbox() {
+void ResolutionWidget::DrawAutoApplyCheckbox(display_commander::ui::IImGuiWrapper& imgui) {
     bool auto_apply = g_resolution_settings->GetAutoApply();
-    if (ImGui::Checkbox("Auto-apply changes", &auto_apply)) {
+    if (imgui.Checkbox("Auto-apply changes", &auto_apply)) {
         g_resolution_settings->SetAutoApply(auto_apply);
         LogInfo("ResolutionWidget::DrawAutoApplyCheckbox() - Auto-apply changes set to: %s",
                 auto_apply ? "true" : "false");
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically apply resolution changes when selections are made");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Automatically apply resolution changes when selections are made");
     }
 }
 
-void ResolutionWidget::DrawAutoApplyOnStart() {
+void ResolutionWidget::DrawAutoApplyOnStart(display_commander::ui::IImGuiWrapper& imgui) {
     bool auto_apply_on_start = g_resolution_settings->GetAutoApplyOnStart();
-    if (ImGui::Checkbox("Auto-apply on game start", &auto_apply_on_start)) {
+    if (imgui.Checkbox("Auto-apply on game start", &auto_apply_on_start)) {
         g_resolution_settings->SetAutoApplyOnStart(auto_apply_on_start);
         LogInfo("ResolutionWidget::DrawAutoApplyOnStart() - Auto-apply on start set to: %s",
                 auto_apply_on_start ? "true" : "false");
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically apply resolution changes after a delay when the game starts");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Automatically apply resolution changes after a delay when the game starts");
     }
 
     if (auto_apply_on_start) {
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(120.0f);
+        imgui.SameLine();
+        imgui.SetNextItemWidth(120.0f);
         int delay = g_resolution_settings->GetAutoApplyOnStartDelay();
-        if (ImGui::InputInt("##delay_seconds", &delay, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        if (imgui.InputInt("##delay_seconds", &delay, 1, 5, 0x04)) {  // ImGuiInputTextFlags_EnterReturnsTrue
             g_resolution_settings->SetAutoApplyOnStartDelay(delay);
         }
-        ImGui::SameLine();
-        ImGui::Text("s delay");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Delay in seconds before applying resolution on game start (1-300 seconds)");
+        imgui.SameLine();
+        imgui.Text("s delay");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Delay in seconds before applying resolution on game start (1-300 seconds)");
         }
     }
 }
 
-void ResolutionWidget::DrawDisplaySelector() {
+void ResolutionWidget::DrawDisplaySelector(display_commander::ui::IImGuiWrapper& imgui) {
     // Get available displays
     std::vector<std::string> display_names;
 
@@ -263,37 +258,37 @@ void ResolutionWidget::DrawDisplaySelector() {
         }
     }
 
-    ImGui::PushID("display_selector");
-    if (ImGui::BeginCombo("##display", display_names[selected_display_index_].c_str())) {
+    imgui.PushID("display_selector");
+    if (imgui.BeginCombo("##display", display_names[selected_display_index_].c_str())) {
         for (int i = 0; i < static_cast<int>(display_names.size()); ++i) {
             const bool is_selected = (i == selected_display_index_);
-            if (ImGui::Selectable(display_names[i].c_str(), is_selected)) {
+            if (imgui.Selectable(display_names[i].c_str(), is_selected)) {
                 selected_display_index_ = i;
                 needs_refresh_ = true;
                 UpdateCurrentSelectionFromSettings();
             }
             if (is_selected) {
-                ImGui::SetItemDefaultFocus();
+                imgui.SetItemDefaultFocus();
             }
         }
-        ImGui::EndCombo();
+        imgui.EndCombo();
     }
-    ImGui::PopID();
-    ImGui::SameLine();
-    ImGui::Text("Display");
+    imgui.PopID();
+    imgui.SameLine();
+    imgui.Text("Display");
 }
 
-void ResolutionWidget::DrawResolutionSelector() {
+void ResolutionWidget::DrawResolutionSelector(display_commander::ui::IImGuiWrapper& imgui) {
     if (resolution_labels_.empty()) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No resolutions available");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No resolutions available");
         return;
     }
 
-    ImGui::PushID("resolution_selector");
-    if (ImGui::BeginCombo("##resolution", resolution_labels_[selected_resolution_index_].c_str())) {
+    imgui.PushID("resolution_selector");
+    if (imgui.BeginCombo("##resolution", resolution_labels_[selected_resolution_index_].c_str())) {
         for (int i = 0; i < static_cast<int>(resolution_labels_.size()); ++i) {
             const bool is_selected = (i == selected_resolution_index_);
-            if (ImGui::Selectable(resolution_labels_[i].c_str(), is_selected)) {
+            if (imgui.Selectable(resolution_labels_[i].c_str(), is_selected)) {
                 selected_resolution_index_ = i;
                 selected_refresh_index_ = 0;  // Reset refresh rate selection
                 UpdateSettingsFromCurrentSelection();
@@ -304,27 +299,27 @@ void ResolutionWidget::DrawResolutionSelector() {
                 }
             }
             if (is_selected) {
-                ImGui::SetItemDefaultFocus();
+                imgui.SetItemDefaultFocus();
             }
         }
-        ImGui::EndCombo();
+        imgui.EndCombo();
     }
-    ImGui::PopID();
-    ImGui::SameLine();
-    ImGui::Text("Resolution");
+    imgui.PopID();
+    imgui.SameLine();
+    imgui.Text("Resolution");
 }
 
-void ResolutionWidget::DrawRefreshRateSelector() {
+void ResolutionWidget::DrawRefreshRateSelector(display_commander::ui::IImGuiWrapper& imgui) {
     if (refresh_labels_.empty()) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No refresh rates available");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No refresh rates available");
         return;
     }
 
-    ImGui::PushID("refresh_selector");
-    if (ImGui::BeginCombo("##refresh", refresh_labels_[selected_refresh_index_].c_str())) {
+    imgui.PushID("refresh_selector");
+    if (imgui.BeginCombo("##refresh", refresh_labels_[selected_refresh_index_].c_str())) {
         for (int i = 0; i < static_cast<int>(refresh_labels_.size()); ++i) {
             const bool is_selected = (i == selected_refresh_index_);
-            if (ImGui::Selectable(refresh_labels_[i].c_str(), is_selected)) {
+            if (imgui.Selectable(refresh_labels_[i].c_str(), is_selected)) {
                 selected_refresh_index_ = i;
                 UpdateSettingsFromCurrentSelection();
 
@@ -334,17 +329,17 @@ void ResolutionWidget::DrawRefreshRateSelector() {
                 }
             }
             if (is_selected) {
-                ImGui::SetItemDefaultFocus();
+                imgui.SetItemDefaultFocus();
             }
         }
-        ImGui::EndCombo();
+        imgui.EndCombo();
     }
-    ImGui::PopID();
-    ImGui::SameLine();
-    ImGui::Text("Refresh Rate");
+    imgui.PopID();
+    imgui.SameLine();
+    imgui.Text("Refresh Rate");
 }
 
-void ResolutionWidget::DrawActionButtons() {
+void ResolutionWidget::DrawActionButtons(display_commander::ui::IImGuiWrapper& imgui) {
     int actual_display = GetActualDisplayIndex();
     auto& display_settings = g_resolution_settings->GetDisplaySettings(actual_display);
 
@@ -403,15 +398,15 @@ void ResolutionWidget::DrawActionButtons() {
         std::string current_str = formatResolution(current);
         std::string saved_str = formatResolution(last_saved);
 
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "● %s -> %s", saved_str.c_str(), current_str.c_str());
+        imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "● %s -> %s", saved_str.c_str(), current_str.c_str());
     } else {
-        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "● Settings saved");
+        imgui.TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "● Settings saved");
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     // Apply button
-    if (ImGui::Button("Apply Resolution")) {
+    if (imgui.Button("Apply Resolution")) {
         // Store pending resolution for confirmation
         if (!resolution_data_.empty() && !refresh_data_.empty()) {
             // Store the current resolution before changing
@@ -447,42 +442,42 @@ void ResolutionWidget::DrawActionButtons() {
             }
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Apply the selected resolution and refresh rate");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Apply the selected resolution and refresh rate");
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Save button
     if (display_settings.IsDirty()) {
-        if (ImGui::Button("Save Settings")) {
+        if (imgui.Button("Save Settings")) {
             display_settings.SaveCurrentState();
             display_settings.Save();
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Save current settings to configuration");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Save current settings to configuration");
         }
     } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        ImGui::Button("Save Settings");
-        ImGui::PopStyleColor();
+        imgui.PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        imgui.Button("Save Settings");
+        imgui.PopStyleColor();
     }
 
-    ImGui::SameLine();
+    imgui.SameLine();
 
     // Reset button
     if (display_settings.IsDirty()) {
-        if (ImGui::Button("Reset")) {
+        if (imgui.Button("Reset")) {
             display_settings.ResetToLastSaved();
             UpdateCurrentSelectionFromSettings();
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Reset to last saved settings");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Reset to last saved settings");
         }
     } else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        ImGui::Button("Reset");
-        ImGui::PopStyleColor();
+        imgui.PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        imgui.Button("Reset");
+        imgui.PopStyleColor();
     }
 }
 
@@ -720,7 +715,7 @@ bool ResolutionWidget::TryApplyResolution(int display_index, const ResolutionDat
     return result == DISP_CHANGE_SUCCESSFUL;
 }
 
-void ResolutionWidget::DrawConfirmationDialog() {
+void ResolutionWidget::DrawConfirmationDialog(display_commander::ui::IImGuiWrapper& imgui) {
     // Calculate remaining time using high-precision timing
     LONGLONG now_ns = utils::get_now_ns();
     LONGLONG elapsed_ns = now_ns - confirmation_start_time_ns_;
@@ -735,14 +730,14 @@ void ResolutionWidget::DrawConfirmationDialog() {
     }
 
     // Center the dialog
-    ImGuiIO& io = ImGui::GetIO();
-    ImVec2 center = ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f);
-    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImVec2 display_size = imgui.GetDisplaySize();
+    ImVec2 center = ImVec2(display_size.x * 0.5f, display_size.y * 0.5f);
+    imgui.SetNextWindowPos(center, 16, ImVec2(0.5f, 0.5f));   // 16 = ImGuiCond_Always
 
     // Create modal dialog
-    ImGui::SetNextWindowSize(ImVec2(400, 200), ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Resolution Change Confirmation", &show_confirmation_,
-                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)) {
+    imgui.SetNextWindowSize(ImVec2(400, 200), 1);  // 1 = ImGuiCond_FirstUseEver
+    if (imgui.Begin("Resolution Change Confirmation", &show_confirmation_,
+                    8 | 16 | 32)) {  // NoResize | NoMove | NoCollapse
         // Format the resolution change
         auto formatResolution = [this](const ResolutionData& data) -> std::string {
             if (data.is_current) {
@@ -794,18 +789,18 @@ void ResolutionWidget::DrawConfirmationDialog() {
         std::string resolution_str = formatResolution(pending_resolution_);
 
         // Display the change
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Resolution changed to:");
-        ImGui::Text("Resolution: %s", resolution_str.c_str());
+        imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Resolution changed to:");
+        imgui.Text("Resolution: %s", resolution_str.c_str());
 
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Auto Revert: %ds", remaining_seconds);
+        imgui.Spacing();
+        imgui.TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Auto Revert: %ds", remaining_seconds);
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Buttons
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-        if (ImGui::Button("Confirm", ImVec2(100, 30))) {
+        imgui.PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
+        imgui.PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+        if (imgui.Button("Confirm", ImVec2(100, 30))) {
             // User confirmed, save the settings
             auto& display_settings = g_resolution_settings->GetDisplaySettings(pending_display_index_);
             display_settings.SetCurrentState(pending_resolution_);
@@ -813,20 +808,20 @@ void ResolutionWidget::DrawConfirmationDialog() {
             display_settings.Save();
             show_confirmation_ = false;
         }
-        ImGui::PopStyleColor(2);
+        imgui.PopStyleColor(2);
 
-        ImGui::SameLine();
+        imgui.SameLine();
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.0f, 0.0f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-        if (ImGui::Button("Revert", ImVec2(100, 30))) {
+        imgui.PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.0f, 0.0f, 1.0f));
+        imgui.PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+        if (imgui.Button("Revert", ImVec2(100, 30))) {
             // User reverted, restore previous resolution
             RevertResolution();
             show_confirmation_ = false;
         }
-        ImGui::PopStyleColor(2);
+        imgui.PopStyleColor(2);
     }
-    ImGui::End();
+    imgui.End();
 }
 
 void ResolutionWidget::RevertResolution() {
@@ -1142,16 +1137,16 @@ std::string ResolutionWidget::FormatOriginalSettingsString() const {
            + std::to_string(original_settings_.height) + refresh_str + primary_text;
 }
 
-void ResolutionWidget::DrawOriginalSettingsInfo() {
-    ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Original Settings:");
-    ImGui::SameLine();
+void ResolutionWidget::DrawOriginalSettingsInfo(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "Original Settings:");
+    imgui.SameLine();
 
     // Get the currently selected display
     int actual_display = GetActualDisplayIndex();
     const auto* display = display_cache::g_displayCache.GetDisplay(actual_display);
 
     if (!display) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No display selected");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No display selected");
         return;
     }
 
@@ -1160,7 +1155,7 @@ void ResolutionWidget::DrawOriginalSettingsInfo() {
         display_initial_state::g_initialDisplayState.GetInitialStateForDevice(display->simple_device_id);
 
     if (!initial_state) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not recorded");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not recorded");
         return;
     }
 
@@ -1187,26 +1182,26 @@ void ResolutionWidget::DrawOriginalSettingsInfo() {
     std::string original_settings_str = "[" + device_id + "] " + std::to_string(initial_state->width) + "x"
                                         + std::to_string(initial_state->height) + refresh_str + primary_text;
 
-    ImGui::Text("%s", original_settings_str.c_str());
+    imgui.Text("%s", original_settings_str.c_str());
 }
 
-void ResolutionWidget::DrawAutoRestoreCheckbox() {
+void ResolutionWidget::DrawAutoRestoreCheckbox(display_commander::ui::IImGuiWrapper& imgui) {
     bool auto_restore = s_auto_restore_resolution_on_close.load();
-    if (ImGui::Checkbox("Auto-restore on exit", &auto_restore)) {
+    if (imgui.Checkbox("Auto-restore on exit", &auto_restore)) {
         s_auto_restore_resolution_on_close.store(auto_restore);
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically restore original display settings when the game closes");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Automatically restore original display settings when the game closes");
     }
 }
 
-void ResolutionWidget::DrawHdrSection() {
+void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgui) {
     bool auto_hdr = settings::g_mainTabSettings.auto_enable_disable_hdr.GetValue();
-    if (ImGui::Checkbox("Auto enable/disable HDR", &auto_hdr)) {
+    if (imgui.Checkbox("Auto enable/disable HDR", &auto_hdr)) {
         settings::g_mainTabSettings.auto_enable_disable_hdr.SetValue(auto_hdr);
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "When enabled, automatically turn Windows HDR on for the game display when the game starts, "
             "and turn it off when the game exits.");
     }
@@ -1218,66 +1213,66 @@ void ResolutionWidget::DrawHdrSection() {
                                                                                          &hdr_enabled);
 
     if (got_state) {
-        ImGui::SameLine();
-        ImGui::TextColored(hdr_supported ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                           "Display HDR capable: %s", hdr_supported ? "Yes" : "No");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Whether the selected display supports Windows HDR (advanced color).");
+        imgui.SameLine();
+        imgui.TextColored(hdr_supported ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                          "Display HDR capable: %s", hdr_supported ? "Yes" : "No");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Whether the selected display supports Windows HDR (advanced color).");
         }
         if (hdr_supported) {
-            ImGui::SameLine();
-            ImGui::TextColored(hdr_enabled ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.8f, 0.8f, 0.5f, 1.0f), "HDR: %s",
-                               hdr_enabled ? "On" : "Off");
-            ImGui::SameLine();
-            if (ImGui::Button(hdr_enabled ? "Disable HDR" : "Enable HDR")) {
+            imgui.SameLine();
+            imgui.TextColored(hdr_enabled ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.8f, 0.8f, 0.5f, 1.0f), "HDR: %s",
+                              hdr_enabled ? "On" : "Off");
+            imgui.SameLine();
+            if (imgui.Button(hdr_enabled ? "Disable HDR" : "Enable HDR")) {
                 if (display_commander::display::hdr_control::SetHdrForDisplayIndex(actual_display, !hdr_enabled)) {
                     display_cache::g_displayCache.Refresh();
                     needs_refresh_ = true;
                 }
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Turn Windows HDR (advanced color) on or off for the selected display.");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Turn Windows HDR (advanced color) on or off for the selected display.");
             }
         }
     } else {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Display HDR: N/A");
+        imgui.SameLine();
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Display HDR: N/A");
     }
 
     // Details/Advanced: Override HDR static metadata (ignore source MaxCLL/MaxFALL) - Sony/display fix
-    if (ImGui::CollapsingHeader("Miscellaneous", ImGuiTreeNodeFlags_None)) {
-        ImGui::Indent();
+    if (imgui.CollapsingHeader("Miscellaneous", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
         bool auto_maxmdl = settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue();
-        if (ImGui::Checkbox("Override HDR metadata (ignore source MaxCLL/MaxFALL)", &auto_maxmdl)) {
+        if (imgui.Checkbox("Override HDR metadata (ignore source MaxCLL/MaxFALL)", &auto_maxmdl)) {
             settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.SetValue(auto_maxmdl);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
                 "Inject HDR10 static metadata instead of using source values. \n"
                 "Use when HDR looks dim or washed out on PC. TVs that often need this: Samsung, Sony, Panasonic "
                 "(they handle MaxCLL/MaxFALL differently or ignore source metadata).\n\n"
                 "Exact override values: MaxCLL = 1000, MaxFALL = 100, MaxMasteringLuminance = 1000 nits, \n"
                 "MinMasteringLuminance = 0 nits; color primaries Rec. 2020, white point D65.");
         }
-        ImGui::Unindent();
+        imgui.Unindent();
     }
 }
 
-void ResolutionWidget::DrawDebugMenu() {
+void ResolutionWidget::DrawDebugMenu(display_commander::ui::IImGuiWrapper& imgui) {
     static bool show_debug_menu = false;
 
-    if (ImGui::Button("Debug menu")) {
+    if (imgui.Button("Debug menu")) {
         show_debug_menu = !show_debug_menu;
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Show debug information about display resolution tracking");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Show debug information about display resolution tracking");
     }
 
     if (!show_debug_menu) {
         return;
     }
 
-    ImGui::Begin("Display Debug Menu", &show_debug_menu, ImGuiWindowFlags_AlwaysAutoResize);
+    imgui.Begin("Display Debug Menu", &show_debug_menu, ImGuiWindowFlags_AlwaysAutoResize);
 
     // Get initial display states
     auto initial_states = display_initial_state::g_initialDisplayState.GetInitialStates();
@@ -1286,8 +1281,8 @@ void ResolutionWidget::DrawDebugMenu() {
     // Get current displays from cache
     auto displays = display_cache::g_displayCache.GetDisplays();
     if (!displays || displays->empty()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "No displays found in cache");
-        ImGui::End();
+        imgui.TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "No displays found in cache");
+        imgui.End();
         return;
     }
 
@@ -1298,13 +1293,13 @@ void ResolutionWidget::DrawDebugMenu() {
     }
 
     // Create table header
-    if (ImGui::BeginTable("DisplayDebugTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-        ImGui::TableSetupColumn("Display", ImGuiTableColumnFlags_WidthFixed, 200.0f);
-        ImGui::TableSetupColumn("Initial Resolution/Refresh", ImGuiTableColumnFlags_WidthFixed, 250.0f);
-        ImGui::TableSetupColumn("Applied Change", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-        ImGui::TableSetupColumn("Auto-Apply Target", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-        ImGui::TableSetupColumn("Current Resolution/Refresh", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableHeadersRow();
+    if (imgui.BeginTable("DisplayDebugTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        imgui.TableSetupColumn("Display", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+        imgui.TableSetupColumn("Initial Resolution/Refresh", ImGuiTableColumnFlags_WidthFixed, 250.0f);
+        imgui.TableSetupColumn("Applied Change", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+        imgui.TableSetupColumn("Auto-Apply Target", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+        imgui.TableSetupColumn("Current Resolution/Refresh", ImGuiTableColumnFlags_WidthStretch);
+        imgui.TableHeadersRow();
 
         // Iterate through all displays
         for (size_t i = 0; i < displays->size(); ++i) {
@@ -1313,20 +1308,20 @@ void ResolutionWidget::DrawDebugMenu() {
                 continue;
             }
 
-            ImGui::TableNextRow();
+            imgui.TableNextRow();
 
             // Display name/ID
-            ImGui::TableSetColumnIndex(0);
+            imgui.TableSetColumnIndex(0);
             std::string display_name = WideCharToUTF8(display->friendly_name);
             std::string device_id = WideCharToUTF8(display->simple_device_id);
             std::string display_label = "[" + device_id + "] " + display_name;
             if (display->is_primary) {
                 display_label += " (Primary)";
             }
-            ImGui::Text("%s", display_label.c_str());
+            imgui.Text("%s", display_label.c_str());
 
             // Initial resolution/refresh rate
-            ImGui::TableSetColumnIndex(1);
+            imgui.TableSetColumnIndex(1);
             if (has_initial_states) {
                 const auto* initial_state =
                     display_initial_state::g_initialDisplayState.GetInitialStateForDevice(display->simple_device_id);
@@ -1345,33 +1340,33 @@ void ResolutionWidget::DrawDebugMenu() {
                             refresh_str = refresh_str.substr(0, pos + 1);
                         }
                     }
-                    ImGui::TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "%s", refresh_str.c_str());
+                    imgui.TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "%s", refresh_str.c_str());
                 } else {
-                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not recorded");
+                    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not recorded");
                 }
             } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not captured");
+                imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Not captured");
             }
 
             // Applied change status
-            ImGui::TableSetColumnIndex(2);
+            imgui.TableSetColumnIndex(2);
             bool was_changed = display_restore::WasDeviceChangedByDeviceName(display->simple_device_id);
             if (was_changed) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "True");
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "True");
             } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "False");
+                imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "False");
             }
 
             // Auto-apply target status
-            ImGui::TableSetColumnIndex(3);
+            imgui.TableSetColumnIndex(3);
             if (target_display_index >= 0 && static_cast<size_t>(target_display_index) == i) {
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Yes (On Start)");
+                imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Yes (On Start)");
             } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No");
+                imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No");
             }
 
             // Current resolution/refresh rate
-            ImGui::TableSetColumnIndex(4);
+            imgui.TableSetColumnIndex(4);
             double current_refresh_hz = display->current_refresh_rate.ToHz();
             std::ostringstream current_oss;
             current_oss << display->width << "x" << display->height;
@@ -1386,41 +1381,41 @@ void ResolutionWidget::DrawDebugMenu() {
                     current_refresh_str = current_refresh_str.substr(0, current_pos + 1);
                 }
             }
-            ImGui::Text("%s", current_refresh_str.c_str());
+            imgui.Text("%s", current_refresh_str.c_str());
         }
 
-        ImGui::EndTable();
+        imgui.EndTable();
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
     // Test restore button
-    if (ImGui::Button("Test Restore on Exit", ImVec2(-1, 0))) {
+    if (imgui.Button("Test Restore on Exit", ImVec2(-1, 0))) {
         LogInfo("ResolutionWidget::DrawDebugMenu() - Test restore button clicked, calling RestoreAllIfEnabled()");
         display_restore::RestoreAllIfEnabled();
         // Refresh display cache to show updated resolutions
         display_cache::g_displayCache.Refresh();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Test the restore functionality that runs on game exit. "
             "This will restore all displays that had resolution changes applied.");
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
-    ImGui::TextWrapped("Initial Resolution/Refresh: Resolution and refresh rate recorded on startup");
-    ImGui::TextWrapped("Applied Change: True if a resolution change was applied to this display");
-    ImGui::TextWrapped(
+    imgui.TextWrapped("Initial Resolution/Refresh: Resolution and refresh rate recorded on startup");
+    imgui.TextWrapped("Applied Change: True if a resolution change was applied to this display");
+    imgui.TextWrapped(
         "Auto-Apply Target: Shows which display will have resolution change applied on game start (if auto-apply on "
         "start is enabled)");
-    ImGui::TextWrapped("Current Resolution/Refresh: Current display resolution and refresh rate");
+    imgui.TextWrapped("Current Resolution/Refresh: Current display resolution and refresh rate");
 
-    ImGui::End();
+    imgui.End();
 }
 
 // Global functions
@@ -1438,9 +1433,9 @@ void CleanupResolutionWidget() {
     }
 }
 
-void DrawResolutionWidget() {
+void DrawResolutionWidget(display_commander::ui::IImGuiWrapper& imgui) {
     if (g_resolution_widget) {
-        g_resolution_widget->OnDraw();
+        g_resolution_widget->OnDraw(imgui);
     }
 }
 

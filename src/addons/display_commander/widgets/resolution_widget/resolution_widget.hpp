@@ -1,6 +1,6 @@
 #pragma once
 
-#include <imgui.h>
+#include "../../ui/imgui_wrapper_base.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,8 +17,8 @@ class ResolutionWidget {
     ResolutionWidget();
     ~ResolutionWidget() = default;
 
-    // Main draw function - call this from the main tab
-    void OnDraw();
+    // Main draw function - call this from the main tab (imgui = wrapper for ReShade or standalone)
+    void OnDraw(display_commander::ui::IImGuiWrapper& imgui);
 
     // Initialize the widget (call once at startup)
     void Initialize();
@@ -48,17 +48,17 @@ class ResolutionWidget {
     std::vector<std::string> refresh_labels_;
     std::vector<ResolutionData> refresh_data_;
 
-    // UI helper functions
-    void DrawDisplaySelector();
-    void DrawResolutionSelector();
-    void DrawRefreshRateSelector();
-    void DrawActionButtons();
-    void DrawAutoApplyCheckbox();
-    void DrawAutoApplyOnStart();
-    void DrawOriginalSettingsInfo();
-    void DrawAutoRestoreCheckbox();
-    void DrawHdrSection();
-    void DrawDebugMenu();
+    // UI helper functions (all take imgui wrapper)
+    void DrawDisplaySelector(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawResolutionSelector(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawRefreshRateSelector(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawActionButtons(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawAutoApplyCheckbox(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawAutoApplyOnStart(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawOriginalSettingsInfo(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawAutoRestoreCheckbox(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawHdrSection(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawDebugMenu(display_commander::ui::IImGuiWrapper& imgui);
 
     // Data management
     void RefreshDisplayData();
@@ -90,7 +90,7 @@ class ResolutionWidget {
     int pending_display_index_ = 0;
 
     // Confirmation dialog methods
-    void DrawConfirmationDialog();
+    void DrawConfirmationDialog(display_commander::ui::IImGuiWrapper& imgui);
     void RevertResolution();
 
     // Original settings storage
@@ -117,6 +117,6 @@ extern std::unique_ptr<ResolutionWidget> g_resolution_widget;
 // Global functions for integration
 void InitializeResolutionWidget();
 void CleanupResolutionWidget();
-void DrawResolutionWidget();
+void DrawResolutionWidget(display_commander::ui::IImGuiWrapper& imgui);
 
 }  // namespace display_commander::widgets::resolution_widget

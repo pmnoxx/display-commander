@@ -772,159 +772,17 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
         ImGui::SetNextWindowSize(ImVec2(440, 0), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Display Commander - Settings (No ReShade)", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             if (ImGui::BeginTabBar("NoReshadeSettingsTabs")) {
-                if (ImGui::BeginTabItem("Settings")) {
-                    // FPS Limiter
-                    ImGui::Text("FPS Limiter");
-            ImGui::Separator();
-            int fps_mode = standalone_ui_settings::GetFpsLimiterMode();
-            if (fps_mode < 0 || fps_mode >= fps_limiter_num) fps_mode = 0;
-            if (ImGui::Combo("Mode", &fps_mode, fps_limiter_items, fps_limiter_num)) {
-                standalone_ui_settings::SetFpsLimiterMode(fps_mode);
-            }
-
-            float fps_limit_val = standalone_ui_settings::GetFpsLimit();
-            if (fps_limit_val < 0.f || fps_limit_val > 240.f) fps_limit_val = 0.f;
-            if (ImGui::SliderFloat("FPS limit", &fps_limit_val, 0.f, 240.f, "%.0f", ImGuiSliderFlags_AlwaysClamp)) {
-                standalone_ui_settings::SetFpsLimit(fps_limit_val);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Target FPS when a limiter is active. 0 = no cap (unlimited).");
-            }
-
-            ImGui::Spacing();
-            ImGui::Text("Audio");
-            ImGui::Separator();
-            bool mute = standalone_ui_settings::GetAudioMute();
-            if (ImGui::Checkbox("Mute game audio", &mute)) {
-                standalone_ui_settings::SetAudioMute(mute);
-            }
-            float volume = standalone_ui_settings::GetAudioVolumePercent();
-            if (ImGui::SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
-                standalone_ui_settings::SetAudioVolumePercent(volume);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume "
-                    "instead.");
-            }
-            bool mute_in_bg = standalone_ui_settings::GetMuteInBackground();
-            if (ImGui::Checkbox("Auto mute in background", &mute_in_bg)) {
-                standalone_ui_settings::SetMuteInBackground(mute_in_bg);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Mute game audio when the game window is in the background.");
-            }
-
-            ImGui::Spacing();
-            ImGui::Text("Window Mode");
-            ImGui::Separator();
-            static const char* window_mode_items[] = {"No changes mode", "Borderless Fullscreen (resize to fullscreen)",
-                                                      "Borderless Windowed (Aspect Ratio)"};
-            static const int window_mode_num = 3;
-            int window_mode_val = standalone_ui_settings::GetWindowMode();
-            if (window_mode_val < 0 || window_mode_val >= window_mode_num) window_mode_val = 0;
-            if (ImGui::Combo("Window Mode", &window_mode_val, window_mode_items, window_mode_num)) {
-                standalone_ui_settings::SetWindowMode(window_mode_val);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Must not be \"No changes\" for target display to take effect.");
-            }
-
-            ImGui::Spacing();
-            ImGui::Text("Target display");
-            ImGui::Separator();
-            std::string current_id = standalone_ui_settings::GetTargetDisplayDeviceId();
-            std::vector<display_cache::DisplayInfoForUI> displays;
-            try {
-                displays = display_cache::g_displayCache.GetDisplayInfoForUI();
-            } catch (...) {
-                displays.clear();
-            }
-            int current_index = -1;
-            std::vector<std::string> labels;
-            labels.push_back("(Default / primary)");
-            for (size_t i = 0; i < displays.size(); ++i) {
-                labels.push_back(displays[i].display_label);
-                if (displays[i].extended_device_id == current_id) current_index = static_cast<int>(i + 1);
-            }
-            if (current_index < 0) current_index = 0;
-            std::vector<const char*> label_ptrs;
-            for (const auto& L : labels) label_ptrs.push_back(L.c_str());
-            int sel = current_index;
-            if (ImGui::Combo("Preferred display", &sel, label_ptrs.data(), static_cast<int>(label_ptrs.size()))) {
-                std::string new_id;
-                if (sel > 0 && sel <= static_cast<int>(displays.size())) {
-                    new_id = displays[static_cast<size_t>(sel - 1)].extended_device_id;
-                }
-                standalone_ui_settings::SetTargetDisplayDeviceId(new_id);
-            }
-
-            // Status: resolution, refresh rate (target display), and current FPS (from game when running)
-            ImGui::Spacing();
-            ImGui::Text("Status");
-            ImGui::Separator();
-            const display_cache::DisplayInfoForUI* info_display = nullptr;
-            if (sel > 0 && sel <= static_cast<int>(displays.size())) {
-                info_display = &displays[static_cast<size_t>(sel - 1)];
-            } else if (!displays.empty()) {
-                for (const auto& d : displays) {
-                    if (d.is_primary) {
-                        info_display = &d;
-                        break;
-                    }
-                }
-                if (!info_display) info_display = &displays[0];
-            }
-            if (info_display) {
-                ImGui::Text("Resolution:");
-                ImGui::SameLine();
-                ImGui::TextUnformatted(
-                    info_display->current_resolution.empty() ? "—" : info_display->current_resolution.c_str());
-                ImGui::Text("Refresh rate:");
-                ImGui::SameLine();
-                ImGui::TextUnformatted(
-                    info_display->current_refresh_rate.empty() ? "—" : info_display->current_refresh_rate.c_str());
-            } else {
-                ImGui::Text("Resolution:");
-                ImGui::SameLine();
-                ImGui::TextUnformatted("—");
-                ImGui::Text("Refresh rate:");
-                ImGui::SameLine();
-                ImGui::TextUnformatted("—");
-            }
-            double current_fps = standalone_ui_settings::GetCurrentFps();
-            ImGui::Text("Current FPS:");
-            ImGui::SameLine();
-            if (current_fps > 0.0)
-                ImGui::Text("%.1f", current_fps);
-            else
-                ImGui::TextUnformatted("—");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Game FPS when running (from present). Shows — when no game or no data.");
-            }
-            uintptr_t game_hwnd = standalone_ui_settings::GetLastSwapchainHwnd();
-            ImGui::Text("Game window (HWND):");
-            ImGui::SameLine();
-            if (game_hwnd != 0)
-                ImGui::Text("0x%llX", static_cast<unsigned long long>(game_hwnd));
-            else
-                ImGui::TextUnformatted("—");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Last swapchain/game window. Set from Present or from foreground when no swapchain.");
-            }
-                    ImGui::EndTabItem();
-                }
                 if (ImGui::BeginTabItem("Main")) {
                     ui::new_ui::InitMainNewTab();
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawMainNewTab(nullptr, wrapper);
+                    ui::new_ui::DrawMainNewTab(display_commander::ui::GraphicsApi::Unknown, wrapper);
                     ImGui::EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Profile")) {
+                if (ImGui::BeginTabItem("NVIDIA Profile")) {
                     static bool s_noreshadeShowAdvancedProfile = false;
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    display_commander::ui::DrawNvidiaProfileTab(
-                        display_commander::ui::GraphicsApi::Unknown, wrapper, &s_noreshadeShowAdvancedProfile);
+                    display_commander::ui::DrawNvidiaProfileTab(display_commander::ui::GraphicsApi::Unknown, wrapper,
+                                                                &s_noreshadeShowAdvancedProfile);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Advanced")) {
@@ -1666,25 +1524,6 @@ void RunStandaloneUI(HINSTANCE hInst, const char* script_dir_utf8) {
                     }
                     ImGui::Spacing();
 
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Main")) {
-                    ui::new_ui::InitMainNewTab();
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawMainNewTab(nullptr, wrapper);
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Profile")) {
-                    static bool s_standaloneShowAdvancedProfile = false;
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    display_commander::ui::DrawNvidiaProfileTab(
-                        display_commander::ui::GraphicsApi::Unknown, wrapper, &s_standaloneShowAdvancedProfile);
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Advanced")) {
-                    ui::new_ui::InitAdvancedTab();
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawAdvancedTab(display_commander::ui::GraphicsApi::Unknown, wrapper);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();

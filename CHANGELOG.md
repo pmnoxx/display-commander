@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.85 (2026-02-24)
+
+- **NVIDIA profile match score** - Match score is now +1000 per non-empty app-entry field (app name, file-in-folder, user-friendly name, launcher, command line, is_metro, is_command_line) and +1 per character in string fields. More specific and longer identifiers rank higher when sorting matching profiles.
+
 ## v0.12.84 (2026-02-24)
 
 - **NVIDIA profile search** - Before enumerating all profiles, the addon now tries `NvAPI_DRS_FindApplicationByName` with the full exe path. If the driver returns one profile, that profile is used first and its settings are loaded; enumeration then adds any other matching profiles without duplicating the one already found by path.

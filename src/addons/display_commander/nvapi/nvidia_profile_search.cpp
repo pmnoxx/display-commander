@@ -4,9 +4,11 @@
 #include <windows.h>
 #include <algorithm>
 #include <cstring>
+#include <cwchar>
 #include <map>
 #include <sstream>
 #include <string>
+#include "../utils.hpp"
 #include "nvpi_reference.hpp"
 
 namespace display_commander::nvapi {
@@ -153,13 +155,10 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
             if (value == 4) return "Prefer min";
             if (value == 5) return "Optimal power";
             break;
-        case ANSEL_ALLOW_ID:
-            return (value == ANSEL_ALLOW_ALLOWED) ? "Allowed" : "Disallowed";
-        case ANSEL_ALLOWLISTED_ID:
-            return (value == ANSEL_ALLOWLISTED_ALLOWED) ? "Allowed" : "Disallowed";
-        case ANSEL_ENABLE_ID:
-            return (value == ANSEL_ENABLE_ON) ? "On" : "Off";
-        default: break;
+        case ANSEL_ALLOW_ID:       return (value == ANSEL_ALLOW_ALLOWED) ? "Allowed" : "Disallowed";
+        case ANSEL_ALLOWLISTED_ID: return (value == ANSEL_ALLOWLISTED_ALLOWED) ? "Allowed" : "Disallowed";
+        case ANSEL_ENABLE_ID:      return (value == ANSEL_ENABLE_ON) ? "On" : "Off";
+        default:                   break;
     }
     std::ostringstream oss;
     oss << "0x" << std::hex << value << " (" << std::dec << value << ")";
@@ -302,22 +301,27 @@ static std::wstring AppNameToWide(const NvAPI_UnicodeString& appName) {
 }
 
 // Returns true if the NvAPI Unicode string is non-empty (has at least one non-zero character).
-static bool NvApiUnicodeNonEmpty(const NvAPI_UnicodeString& s) {
-    return s[0] != 0;
+static bool NvApiUnicodeNonEmpty(const NvAPI_UnicodeString& s) { return s[0] != 0; }
+
+// Character length of NvAPI_UnicodeString (number of code units until null).
+static size_t NvApiUnicodeLen(const NvAPI_UnicodeString& s) {
+    const wchar_t* p = reinterpret_cast<const wchar_t*>(s);
+    return wcsnlen(p, NVAPI_UNICODE_STRING_MAX);
 }
 
-// Count of non-empty fields in a profile application entry (app name, file-in-folder, user-friendly name,
-// launcher, command line, and is_metro / is_command_line). Used as match score; higher = more specific.
+// Score: +1000 per non-empty field, +1 per character in string fields. Higher = more specific.
 static int ScoreAppEntry(const NVDRS_APPLICATION& appEnt) {
-    int n = 0;
-    if (NvApiUnicodeNonEmpty(appEnt.appName)) ++n;
-    if (NvApiUnicodeNonEmpty(appEnt.fileInFolder)) ++n;
-    if (NvApiUnicodeNonEmpty(appEnt.userFriendlyName)) ++n;
-    if (NvApiUnicodeNonEmpty(appEnt.launcher)) ++n;
-    if (NvApiUnicodeNonEmpty(appEnt.commandLine)) ++n;
-    if (appEnt.isMetro != 0) ++n;
-    if (appEnt.isCommandLine != 0) ++n;
-    return n;
+    int score = 0;
+    if (NvApiUnicodeNonEmpty(appEnt.appName)) score += 1000 + static_cast<int>(NvApiUnicodeLen(appEnt.appName));
+    if (NvApiUnicodeNonEmpty(appEnt.fileInFolder))
+        score += 1000 + static_cast<int>(NvApiUnicodeLen(appEnt.fileInFolder));
+    if (NvApiUnicodeNonEmpty(appEnt.userFriendlyName))
+        score += 1000 + static_cast<int>(NvApiUnicodeLen(appEnt.userFriendlyName));
+    if (NvApiUnicodeNonEmpty(appEnt.launcher)) score += 1000 + static_cast<int>(NvApiUnicodeLen(appEnt.launcher));
+    if (NvApiUnicodeNonEmpty(appEnt.commandLine)) score += 1000 + static_cast<int>(NvApiUnicodeLen(appEnt.commandLine));
+    if (appEnt.isMetro != 0) score += 1000;
+    if (appEnt.isCommandLine != 0) score += 1000;
+    return score;
 }
 
 // Copy wide string into NvAPI_UnicodeString (NvU16). Null-terminated, max NVAPI_UNICODE_STRING_MAX elements.
@@ -421,14 +425,14 @@ static bool AppMatchesExe(const std::wstring& profileAppName, const std::wstring
 
 // Returns the first profile handle that contains the current process exe, or nullptr.
 static NvDRSProfileHandle FindFirstMatchingProfile(NvDRSSessionHandle hSession) {
-    wchar_t exePath[MAX_PATH] = {};
-    if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+    std::wstring exePath = GetCurrentProcessPathW();
+    if (exePath.empty()) {
         return nullptr;
     }
-    const wchar_t* base = wcsrchr(exePath, L'\\');
+    const wchar_t* base = wcsrchr(exePath.c_str(), L'\\');
     std::wstring currentPathNorm = NormalizePath(exePath);
-    std::wstring currentNameNorm = NormalizePath(base ? base + 1 : exePath);
-    std::wstring currentDirW(base ? std::wstring(exePath, base - exePath) : exePath);
+    std::wstring currentNameNorm = NormalizePath(base ? base + 1 : exePath.c_str());
+    std::wstring currentDirW(base ? std::wstring(exePath.c_str(), base - exePath.c_str()) : exePath);
 
     NvU32 numProfiles = 0;
     if (NvAPI_DRS_GetNumProfiles(hSession, &numProfiles) != NVAPI_OK) {
@@ -458,8 +462,8 @@ static NvDRSProfileHandle FindFirstMatchingProfile(NvDRSSessionHandle hSession) 
             continue;
         }
         for (NvU32 a = 0; a < returned; ++a) {
-            if (AppMatchesExe(AppNameToWide(apps[a].appName), currentPathNorm, currentNameNorm,
-                              currentDirW, AppNameToWide(apps[a].fileInFolder))) {
+            if (AppMatchesExe(AppNameToWide(apps[a].appName), currentPathNorm, currentNameNorm, currentDirW,
+                              AppNameToWide(apps[a].fileInFolder))) {
                 return hProfile;
             }
         }
@@ -472,18 +476,18 @@ static NvDRSProfileHandle FindFirstMatchingProfile(NvDRSSessionHandle hSession) 
 NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
     NvidiaProfileSearchResult result;
 
-    wchar_t exePath[MAX_PATH] = {};
-    if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+    std::wstring exePath = GetCurrentProcessPathW();
+    if (exePath.empty()) {
         result.error = "GetModuleFileName failed";
         return result;
     }
-    result.current_exe_path = WideToUtf8(exePath);
-    const wchar_t* base = wcsrchr(exePath, L'\\');
-    result.current_exe_name = WideToUtf8(base ? base + 1 : exePath);
+    result.current_exe_path = WideToUtf8(exePath.c_str());
+    const wchar_t* base = wcsrchr(exePath.c_str(), L'\\');
+    result.current_exe_name = WideToUtf8(base ? base + 1 : exePath.c_str());
 
     std::wstring currentPathNorm = NormalizePath(exePath);
-    std::wstring currentNameNorm = NormalizePath(base ? base + 1 : exePath);
-    std::wstring currentDirW(base ? std::wstring(exePath, base - exePath) : exePath);
+    std::wstring currentNameNorm = NormalizePath(base ? base + 1 : exePath.c_str());
+    std::wstring currentDirW(base ? std::wstring(exePath.c_str(), base - exePath.c_str()) : exePath);
 
     NvDRSSessionHandle hSession = nullptr;
     NvAPI_Status status = NvAPI_DRS_CreateSession(&hSession);
@@ -534,15 +538,21 @@ NvidiaProfileSearchResult SearchAllProfilesForCurrentExe() {
                 entry.is_metro = (appByPath.isMetro != 0);
                 entry.is_command_line = (appByPath.isCommandLine != 0);
                 entry.command_line = WideToUtf8(reinterpret_cast<const wchar_t*>(appByPath.commandLine));
-                entry.score = ScoreAppEntry(appByPath);
+                entry.score = 1000000 + ScoreAppEntry(appByPath);
                 result.matching_profiles.push_back(std::move(entry));
                 ReadImportantSettings(hSession, hProfileByPath, result.important_settings);
                 ReadAdvancedSettings(hSession, hProfileByPath, result.advanced_settings);
                 ReadAllSettings(hSession, hProfileByPath, result.all_settings);
+
+                result.success = true;
+                result.matching_profile_names.push_back(entry.profile_name);
+                NvAPI_DRS_DestroySession(hSession);
+                return result;
             }
         }
     }
-
+    // TODO auto create profile when missing
+    // and don't search other profiles
     for (NvU32 i = 0; i < numProfiles; ++i) {
         NvDRSProfileHandle hProfile = nullptr;
         status = NvAPI_DRS_EnumProfiles(hSession, i, &hProfile);
@@ -620,14 +630,14 @@ static std::string s_cachedExePath;
 static bool s_cacheValid = false;
 
 NvidiaProfileSearchResult GetCachedProfileSearchResult() {
-    wchar_t exePath[MAX_PATH] = {};
-    if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+    std::wstring exePath = GetCurrentProcessPathW();
+    if (exePath.empty()) {
         s_cacheValid = false;
         NvidiaProfileSearchResult r;
         r.error = "GetModuleFileName failed";
         return r;
     }
-    std::string currentPath = WideToUtf8(exePath);
+    std::string currentPath = WideToUtf8(exePath.c_str());
     if (s_cacheValid && s_cachedExePath == currentPath) {
         return s_cachedResult;
     }
@@ -660,12 +670,14 @@ DlssDriverPresetStatus GetDlssDriverPresetStatus() {
     for (const auto& s : r.important_settings) {
         if (s.setting_id == NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID) {
             out.sr_preset_value = s.value;
-            out.sr_preset_is_override = (s.value_id != static_cast<std::uint32_t>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
+            out.sr_preset_is_override =
+                (s.value_id != static_cast<std::uint32_t>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
             continue;
         }
         if (s.setting_id == NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID) {
             out.rr_preset_value = s.value;
-            out.rr_preset_is_override = (s.value_id != static_cast<std::uint32_t>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
+            out.rr_preset_is_override =
+                (s.value_id != static_cast<std::uint32_t>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT));
             continue;
         }
     }
@@ -782,13 +794,29 @@ std::pair<bool, std::string> ClearDriverDlssPresetOverride() {
 }
 
 std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exeName, std::uint32_t settingId,
-                                                            bool deleteSetting, std::uint32_t valueIfSet) {
+                                                             bool deleteSetting, std::uint32_t valueIfSet) {
     if (exeName.empty()) {
         return {false, "Executable name is empty."};
     }
-    // NVIDIA docs: use forward slashes in application name.
-    std::wstring appName = exeName;
-    std::replace(appName.begin(), appName.end(), L'\\', L'/');
+    // Use GetCurrentProcessPathW() for lookup when exeName matches current process (unambiguous DRS match).
+    std::wstring pathForLookup;
+    std::wstring currentPath = GetCurrentProcessPathW();
+    if (!currentPath.empty()) {
+        const wchar_t* base = wcsrchr(currentPath.c_str(), L'\\');
+        const wchar_t* baseName = base ? base + 1 : currentPath.c_str();
+        std::wstring currentBase(baseName);
+        std::wstring exeNorm = exeName;
+        std::replace(exeNorm.begin(), exeNorm.end(), L'\\', L'/');
+        const wchar_t* exeBase = wcsrchr(exeNorm.c_str(), L'/');
+        std::wstring exeNameOnly(exeBase ? exeBase + 1 : exeNorm.c_str());
+        if (_wcsicmp(currentBase.c_str(), exeNameOnly.c_str()) == 0) {
+            pathForLookup = NormalizePath(currentPath);
+        }
+    }
+    if (pathForLookup.empty()) {
+        pathForLookup = exeName;
+        std::replace(pathForLookup.begin(), pathForLookup.end(), L'\\', L'/');
+    }
 
     NvDRSSessionHandle hSession = nullptr;
     NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
@@ -802,7 +830,7 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
     }
 
     NvAPI_UnicodeString appNameBuf;
-    WideToNvApiUnicode(appName, appNameBuf);
+    WideToNvApiUnicode(pathForLookup, appNameBuf);
 
     NvDRSProfileHandle hProfile = nullptr;
     NVDRS_APPLICATION app = {0};
@@ -858,13 +886,14 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
 }
 
 std::pair<bool, std::string> CreateProfileForCurrentExe() {
-    wchar_t exePath[MAX_PATH] = {};
-    if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+    std::wstring exePath = GetCurrentProcessPathW();
+    if (exePath.empty()) {
         return {false, "GetModuleFileName failed"};
     }
-    const wchar_t* base = wcsrchr(exePath, L'\\');
-    const wchar_t* exeName = base ? base + 1 : exePath;
+    const wchar_t* base = wcsrchr(exePath.c_str(), L'\\');
+    const wchar_t* exeName = base ? base + 1 : exePath.c_str();
     std::wstring exeNameW(exeName);
+    std::wstring fullPathNorm = NormalizePath(exePath);
 
     NvDRSSessionHandle hSession = nullptr;
     NvAPI_Status status = NvAPI_DRS_CreateSession(&hSession);
@@ -880,11 +909,11 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
     }
 
     NvAPI_UnicodeString appNameBuf;
-    WideToNvApiUnicode(exeNameW, appNameBuf);
+    WideToNvApiUnicode(fullPathNorm, appNameBuf);
 
     NVDRS_APPLICATION app = {0};
     app.version = NVDRS_APPLICATION_VER;
-    WideToNvApiUnicode(exeNameW, app.appName);
+    WideToNvApiUnicode(fullPathNorm, app.appName);
 
     NvDRSProfileHandle hProfile = nullptr;
     status = NvAPI_DRS_FindApplicationByName(hSession, appNameBuf, &hProfile, &app);
@@ -918,7 +947,7 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
     app.version = NVDRS_APPLICATION_VER;
     app.isPredefined = 0;
     app.isMetro = 0;
-    WideToNvApiUnicode(exeNameW, app.appName);
+    WideToNvApiUnicode(fullPathNorm, app.appName);
     WideToNvApiUnicode(exeNameW, app.userFriendlyName);
 
     status = NvAPI_DRS_CreateApplication(hSession, hProfile, &app);
@@ -949,12 +978,12 @@ bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& r) {
 }
 
 std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
-    wchar_t exePath[MAX_PATH] = {};
-    if (::GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) {
+    std::wstring exePath = GetCurrentProcessPathW();
+    if (exePath.empty()) {
         return {false, "GetModuleFileName failed"};
     }
-    const wchar_t* base = wcsrchr(exePath, L'\\');
-    const wchar_t* exeName = base ? base + 1 : exePath;
+    const wchar_t* base = wcsrchr(exePath.c_str(), L'\\');
+    const wchar_t* exeName = base ? base + 1 : exePath.c_str();
     std::wstring profileNameW = L"Display Commander - ";
     profileNameW += exeName;
 

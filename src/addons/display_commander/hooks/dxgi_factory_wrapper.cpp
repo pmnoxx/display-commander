@@ -516,6 +516,10 @@ STDMETHODIMP DXGIFactoryWrapper::GetWindowAssociation(HWND* pWindowHandle) {
     return m_originalFactory->GetWindowAssociation(pWindowHandle);
 }
 
+// Legacy CreateSwapChain (IDXGIFactory vtable slot 10). Many games use CreateSwapChainForHwnd (slot 15) instead,
+// so this method may never be called; check logs for "CreateSwapChainForHwnd" in that case. ReShade intercepts
+// by vtable-hooking whatever factory we return; it then calls the trampoline (this method or CreateSwapChainForHwnd),
+// so our log should appear when the game actually calls the matching API.
 STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc,
                                                  IDXGISwapChain** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChain called");

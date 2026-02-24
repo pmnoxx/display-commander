@@ -616,6 +616,11 @@ extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 /** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game window from foreground. */
 extern std::atomic<HWND> g_standalone_ui_hwnd;
+
+/** Show the independent settings window from ReShade overlay (no-op when not in ReShade or window already open). */
+void RequestShowIndependentWindow();
+/** Request close of the independent settings window (posts WM_CLOSE). */
+void CloseIndependentWindow();
 extern std::atomic<IDXGISwapChain*> global_dxgi_swapchain;  // Global reference to DXGI swapchain (experimental)
 extern std::atomic<bool> global_dxgi_swapchain_inuse;
 extern std::atomic<bool> g_shutdown;

@@ -62,6 +62,7 @@
 #include <dxgi1_6.h>
 #include <psapi.h>
 #include <shellapi.h>
+#include <windows.h>
 #include <shlobj.h>
 #include <sysinfoapi.h>
 #include <tlhelp32.h>
@@ -1838,6 +1839,30 @@ void TryStartStandaloneUIFromSafeContext() {
     }
     std::thread t([hmod]() { RunStandaloneSettingsUI(static_cast<HINSTANCE>(hmod)); });
     t.detach();
+}
+
+// Show the independent (standalone) settings window from ReShade overlay. Only when running in ReShade.
+void RequestShowIndependentWindow() {
+    if (g_no_reshade_mode.load()) {
+        return;
+    }
+    if (g_standalone_ui_hwnd.load(std::memory_order_acquire) != nullptr) {
+        return;  // already open
+    }
+    HMODULE hmod = g_hmodule;
+    if (!hmod) {
+        return;
+    }
+    std::thread t([hmod]() { RunStandaloneSettingsUI(static_cast<HINSTANCE>(hmod)); });
+    t.detach();
+}
+
+// Request close of the independent settings window (posts WM_CLOSE).
+void CloseIndependentWindow() {
+    HWND h = g_standalone_ui_hwnd.load(std::memory_order_acquire);
+    if (h != nullptr) {
+        PostMessageW(h, WM_CLOSE, 0, 0);
+    }
 }
 
 // Helper function to check if an addon is enabled (whitelist approach)

@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.75 (2026-02-24)
+
+- **Main tab** - Added "Show independent window" checkbox (when running in ReShade). Check to open the standalone settings window (Main, Profile, Advanced) in a separate window; uncheck to close it. Only visible in the ReShade overlay, not in the standalone UI.
+
 ## v0.12.74 (2026-02-24)
 
 - **Manual color space** - Default set to "No changes" (0); first option label renamed from "Unknown" to "No changes". Manual color space is now a `ManualColorSpace` enum (NoChanges, sRGB, scRGB, HDR10_ST2084, HDR10_HLG) with `GetManualColorSpace()`/`SetManualColorSpace()`; Advanced tab combo and swapchain color-space logic use the enum. Config still stores 0–4.

@@ -1317,6 +1317,25 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Unindent();
 
     imgui.Spacing();
+
+    // Show independent window (ReShade only): open standalone settings in a separate window
+    if (!g_no_reshade_mode.load(std::memory_order_acquire)) {
+        bool show_independent = (g_standalone_ui_hwnd.load(std::memory_order_acquire) != nullptr);
+        if (imgui.Checkbox("Show independent window", &show_independent)) {
+            if (show_independent) {
+                RequestShowIndependentWindow();
+            } else {
+                CloseIndependentWindow();
+            }
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Open the standalone settings window (Main, Profile, Advanced) in a separate window.\n"
+                "Same content as when running without ReShade. Uncheck to close the window.");
+        }
+    }
+
+    imgui.Spacing();
 }
 
 display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effect_runtime* runtime) {
@@ -3292,7 +3311,7 @@ void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& 
     }
 
     // No Render in Background checkbox
-    {
+    if (g_reshade_loaded.load()) {
         bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
         if (imgui.Checkbox("No Render in Background", &no_render_in_bg)) {
             settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);

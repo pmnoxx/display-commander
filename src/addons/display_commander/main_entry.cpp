@@ -8,15 +8,21 @@
 #include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
 #include "display/dpi_management.hpp"
+#include "display_initial_state.hpp"
 #include "dxgi/vram_info.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/hid_additional_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/timeslowdown_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
+#include "hooks/windows_hooks/windows_message_hooks.hpp"
+#include "hooks/xinput_hooks.hpp"
+#include "hooks/streamline_hooks.hpp"
+#include "input_remapping/input_remapping.hpp"
 #include "latency/latency_manager.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
@@ -302,9 +308,8 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
         runtime->set_uniform_value_float(var_hue, hue_val);
     }
     // Enable technique when any display tweak is non-neutral
-    runtime->set_technique_state(tech,
-                                multiplier != 1.0f || gamma_val != 1.0f || contrast_val != 1.0f ||
-                                    saturation_val != 1.0f || hue_val != 0.0f);
+    runtime->set_technique_state(tech, multiplier != 1.0f || gamma_val != 1.0f || contrast_val != 1.0f
+                                           || saturation_val != 1.0f || hue_val != 0.0f);
 }
 
 // Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same
@@ -2243,17 +2248,6 @@ bool DetectMultipleDisplayCommanderVersions() {
                                  "only one version is loaded.",
                                  other_version, narrow_path, current_version);
                     }
-
-                    // Use reshade::log::message with error level (exception to the rule)
-                    // This might not be available yet, but try anyway
-                    try {
-                        reshade::log::message(reshade::log::level::error, error_msg);
-                    } catch (...) {
-                        // If ReShade logging isn't available yet, just use debug output
-                        OutputDebugStringA(error_msg);
-                        OutputDebugStringA("\n");
-                    }
-
                     // Also log to debug output
                     OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
                     snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
@@ -2570,6 +2564,55 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     g_dll_initialization_complete.store(true);
     // Override ReShade settings early to set tutorial as viewed and disable auto updates
     OverrideReShadeSettings();
+
+    // Install XInput hooks
+    display_commanderhooks::InstallXInputHooks(nullptr);
+
+    // Initialize display cache
+    display_cache::g_displayCache.Initialize();
+
+    // Capture initial display state for restoration
+    display_initial_state::g_initialDisplayState.CaptureInitialState();
+
+    // Initialize input remapping system
+    display_commander::input_remapping::initialize_input_remapping();
+
+    // Initialize UI system
+    ui::new_ui::InitializeNewUISystem();
+    StartContinuousMonitoring();
+    StartGPUCompletionMonitoring();
+
+    // Initialize refresh rate monitoring
+    dxgi::fps_limiter::StartRefreshRateMonitoring();
+
+    // Initialize experimental tab
+    std::thread(RunBackgroundAudioMonitor).detach();
+
+    // Check for auto-enable NVAPI features for specific games
+    g_nvapiFullscreenPrevention.CheckAndAutoEnable();
+
+    ui::new_ui::InitExperimentalTab();
+
+    // Initialize DualSense support
+    display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
+
+    // Install HID suppression hooks if enabled
+    if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
+        renodx::hooks::InstallHIDSuppressionHooks();
+    }
+
+    // Install additional HID hooks for statistics tracking
+    display_commanderhooks::InstallAdditionalHIDHooks();
+    // Initialize keyboard tracking system
+    display_commanderhooks::keyboard_tracker::Initialize();
+    LogInfo("Keyboard tracking system initialized");
+
+    // Install Streamline hooks
+    if (InstallStreamlineHooks(nullptr)) {
+        LogInfo("Streamline hooks installed successfully");
+    } else {
+        LogInfo("Streamline hooks not installed (Streamline not detected)");
+    }
 }
 
 void DoInitializationWithoutHwnd(HMODULE h_module) {
@@ -2664,10 +2707,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Refuse to load if SpecialK is already loaded (incompatible with Display Commander)
             if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
-                reshade::log::message(
-                    reshade::log::level::error,
-                    "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
-                    "load Display Commander.");
                 OutputDebugStringA(
                     "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
                     "load Display Commander.\n");
@@ -2676,10 +2715,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Detect multiple Display Commander instances - refuse to load if multiple versions found
             if (DetectMultipleDisplayCommanderVersions()) {
-                // log to reshade log
-                reshade::log::message(
-                    reshade::log::level::error,
-                    "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.");
                 OutputDebugStringA(
                     "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
                 g_process_attached.store(true);

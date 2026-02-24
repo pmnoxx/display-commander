@@ -7,6 +7,8 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp
 )
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/cli_ui_exe/.*")
+# ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
+list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.cpp$")
 
 if(DISPLAY_COMMANDER_SOURCES STREQUAL "")
   message(FATAL_ERROR "No sources found under src/addons/display_commander")
@@ -33,7 +35,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 62)
+set(DISPLAY_COMMANDER_VERSION_PATCH 63)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -282,3 +284,4 @@ if(MSVC)
 endif()
 target_sources(zzz_display_commander PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/imgui_wrapper_standalone.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")

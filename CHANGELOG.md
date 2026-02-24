@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.63 (2026-02-24)
+
+- **Nvidia Profile tab / ImGui wrapper** - Migrated the Nvidia Profile (Inspector) tab to use an ImGui abstraction so it can run in both the ReShade overlay and the standalone UI. Introduced a common base (`IImGuiWrapper`), a ReShade-backed wrapper (header-only), and a standalone-backed wrapper; the shared tab takes API version (dx11, dx12, etc.) and the wrapper. Added a **Profile** tab to the standalone installer UI (SetupDC) and to the No-ReShade settings window as the second tab.
+
 ## v0.12.62 (2026-02-24)
 
 - **Standalone UI without ReShade** - Added support for running the standalone settings UI without ReShade. Activate by creating a `.NO_RESHADE` file in the game directory.

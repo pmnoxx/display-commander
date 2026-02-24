@@ -15,7 +15,10 @@ using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
 using ui::new_ui::StringSetting;
 
-/** Manual color space when auto_colorspace is off. Stored as int in config; use getter/setter for type safety. */
+/** Manual color space when auto_colorspace is off. Index 0 = No changes; 1..MANUAL_COLOR_SPACE_MAX_INDEX = DXGI types (see GetManualColorSpaceDisplayName). */
+constexpr int MANUAL_COLOR_SPACE_MAX_INDEX = 22;
+
+// Legacy enum: 0..4 map to first five entries (No changes, sRGB, scRGB, HDR10 ST2084, HDR10 HLG).
 enum class ManualColorSpace : int {
     NoChanges = 0,
     sRGB = 1,
@@ -46,9 +49,11 @@ class AdvancedTabSettings {
     BoolSetting hide_hdr_capabilities;
     BoolSetting enable_flip_chain;
     BoolSetting auto_colorspace;
-    IntSetting manual_colorspace;  // persisted as int; use GetManualColorSpace/SetManualColorSpace for enum
+    IntSetting manual_colorspace;  // persisted as int 0..MANUAL_COLOR_SPACE_MAX_INDEX; use Get/SetManualColorSpaceIndex
 
-    ManualColorSpace GetManualColorSpace() const;
+    int GetManualColorSpaceIndex() const;
+    void SetManualColorSpaceIndex(int index);
+    ManualColorSpace GetManualColorSpace() const;  // legacy: returns enum for 0..4
     void SetManualColorSpace(ManualColorSpace value);
 
     // D3D9 to D3D9Ex Upgrade

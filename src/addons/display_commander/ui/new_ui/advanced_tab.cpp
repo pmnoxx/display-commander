@@ -896,28 +896,26 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
                 "Applied automatically in presentBefore.");
         }
 
-        // Color space selector (used when Auto color space is off)
-        static const char* const s_colorspace_names[] = {
-            "No changes",
-            "sRGB (Non-linear)",
-            "Extended sRGB Linear (scRGB)",
-            "HDR10 ST2084",
-            "HDR10 HLG",
-        };
-        constexpr int num_colorspaces =
-            static_cast<int>(sizeof(s_colorspace_names) / sizeof(s_colorspace_names[0]));
-        settings::ManualColorSpace current = settings::g_advancedTabSettings.GetManualColorSpace();
-        int current_idx = static_cast<int>(current);
+        // Color space selector (used when Auto color space is off); all DXGI values with bracket labels (sRGB, scRGB, HDR10, etc.)
+        const int num_colorspaces = GetManualColorSpaceCount();
+        int current_idx = settings::g_advancedTabSettings.GetManualColorSpaceIndex();
         if (current_idx < 0 || current_idx >= num_colorspaces) {
             current_idx = 0;
         }
-        const char* preview = s_colorspace_names[current_idx];
-        if (imgui.BeginCombo("Color space", preview, 0)) {
+        std::string preview_str(GetManualColorSpaceDisplayName(current_idx));
+        const int cached_preview = GetManualColorSpaceSupportCached(current_idx);
+        preview_str += (cached_preview == 1 ? "  " ICON_FK_OK " Supported" : cached_preview == 0 ? "  " ICON_FK_CANCEL " Not supported" : "");
+        // Request a taller combo popup so more options are visible (~14 rows); reset before tooltip so tooltip stays auto-sized
+        const int visible_rows = (num_colorspaces < 14) ? num_colorspaces : 14;
+        imgui.SetNextWindowSize(ImVec2(0.f, imgui.GetTextLineHeightWithSpacing() * static_cast<float>(visible_rows)));
+        if (imgui.BeginCombo("Color space", preview_str.c_str(), 0)) {
             for (int i = 0; i < num_colorspaces; ++i) {
-                settings::ManualColorSpace cs = static_cast<settings::ManualColorSpace>(i);
                 const bool selected = (i == current_idx);
-                if (imgui.Selectable(s_colorspace_names[i], selected)) {
-                    settings::g_advancedTabSettings.SetManualColorSpace(cs);
+                std::string label(GetManualColorSpaceDisplayName(i));
+                const int cached = GetManualColorSpaceSupportCached(i);
+                label += (cached == 1 ? "  " ICON_FK_OK " Supported" : cached == 0 ? "  " ICON_FK_CANCEL " Not supported" : "  —");
+                if (imgui.Selectable(label.c_str(), selected)) {
+                    settings::g_advancedTabSettings.SetManualColorSpaceIndex(i);
                 }
                 if (selected) {
                     imgui.SetItemDefaultFocus();
@@ -926,9 +924,12 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
             imgui.EndCombo();
         }
         if (imgui.IsItemHovered()) {
+            imgui.SetNextWindowSize(ImVec2(0.f, 0.f)); // tooltip auto-sized (combo popup already used the larger size)
             imgui.SetTooltip(
                 "Manual color space applied to the swap chain when \"Auto color space\" is off.\n"
-                "Only applies to DirectX 11/12 games. Takes effect on next present.");
+                "Scroll the dropdown to see all %d options.\n"
+                "Supported / Not supported is cached from the current swap chain (refresh in-game).",
+                num_colorspaces);
         }
     }
 

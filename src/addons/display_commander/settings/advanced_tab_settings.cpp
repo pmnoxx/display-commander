@@ -36,8 +36,8 @@ AdvancedTabSettings::AdvancedTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", false, "DisplayCommander"),
-      manual_colorspace("ManualColorspace", 0, 0, 4,
-                        "DisplayCommander"),  // ManualColorSpace enum (0=NoChanges .. 4=HDR10_HLG)
+      manual_colorspace("ManualColorspace", 0, 0, MANUAL_COLOR_SPACE_MAX_INDEX,
+                        "DisplayCommander"),  // 0=No changes; 1..N=DXGI color space (see GetManualColorSpaceDisplayName)
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 
@@ -113,8 +113,23 @@ void AdvancedTabSettings::LoadAll() {
     // All Ref classes automatically sync with global variables
 }
 
-ManualColorSpace AdvancedTabSettings::GetManualColorSpace() const {
+int AdvancedTabSettings::GetManualColorSpaceIndex() const {
     int v = manual_colorspace.GetValue();
+    if (v < 0 || v > MANUAL_COLOR_SPACE_MAX_INDEX) {
+        return 0;
+    }
+    return v;
+}
+
+void AdvancedTabSettings::SetManualColorSpaceIndex(int index) {
+    if (index < 0 || index > MANUAL_COLOR_SPACE_MAX_INDEX) {
+        index = 0;
+    }
+    manual_colorspace.SetValue(index);
+}
+
+ManualColorSpace AdvancedTabSettings::GetManualColorSpace() const {
+    int v = GetManualColorSpaceIndex();
     if (v < static_cast<int>(ManualColorSpace::NoChanges) || v > static_cast<int>(ManualColorSpace::HDR10_HLG)) {
         return ManualColorSpace::NoChanges;
     }

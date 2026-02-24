@@ -407,25 +407,9 @@ STDMETHODIMP DXGISwapChain4Wrapper::CheckColorSpaceSupport(DXGI_COLOR_SPACE_TYPE
 }
 
 STDMETHODIMP DXGISwapChain4Wrapper::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
-    const settings::ManualColorSpace manual = settings::g_advancedTabSettings.GetManualColorSpace();
-    if (manual != settings::ManualColorSpace::NoChanges) {
-        DXGI_COLOR_SPACE_TYPE mapped = ColorSpace;
-        switch (manual) {
-            case settings::ManualColorSpace::sRGB:
-                mapped = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-                break;
-            case settings::ManualColorSpace::scRGB:
-                mapped = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
-                break;
-            case settings::ManualColorSpace::HDR10_ST2084:
-                mapped = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                break;
-            case settings::ManualColorSpace::HDR10_HLG:
-                mapped = DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020;
-                break;
-            default:
-                break;
-        }
+    DXGI_COLOR_SPACE_TYPE mapped = ColorSpace;
+    reshade::api::color_space unused_reshade{};
+    if (GetManualColorSpaceFromIndex(settings::g_advancedTabSettings.GetManualColorSpaceIndex(), &mapped, &unused_reshade)) {
         ColorSpace = mapped;
     }
     return m_originalSwapChain->SetColorSpace1(ColorSpace);

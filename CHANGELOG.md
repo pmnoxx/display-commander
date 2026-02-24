@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.82 (2026-02-24)
+
+- **Manual color space combo** - Advanced tab manual color space dropdown now lists all DXGI color space types (23 options) with bracket labels (sRGB, scRGB, HDR10, etc.). Dropdown is taller (~14 visible rows) and tooltip notes that the list is scrollable.
+
 ## v0.12.81 (2026-02-24)
 
 - **Color space** - Manual color space (Advanced tab) and auto format-based color space are applied in the present path; when manual is not "No changes", it overrides auto.

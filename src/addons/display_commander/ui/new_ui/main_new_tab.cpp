@@ -13,6 +13,7 @@
 #include "../../hooks/pclstats_etw_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
+#include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
@@ -1342,6 +1343,20 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effec
     if (!runtime) return display_commander::ui::GraphicsApi::Unknown;
     auto rapi = runtime->get_device()->get_api();
     switch (rapi) {
+        case reshade::api::device_api::d3d9:   return display_commander::ui::GraphicsApi::D3D9;
+        case reshade::api::device_api::d3d10:  return display_commander::ui::GraphicsApi::D3D10;
+        case reshade::api::device_api::d3d11:  return display_commander::ui::GraphicsApi::D3D11;
+        case reshade::api::device_api::d3d12:  return display_commander::ui::GraphicsApi::D3D12;
+        case reshade::api::device_api::opengl: return display_commander::ui::GraphicsApi::OpenGL;
+        case reshade::api::device_api::vulkan: return display_commander::ui::GraphicsApi::Vulkan;
+        default:                               return display_commander::ui::GraphicsApi::Unknown;
+    }
+}
+
+display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi() {
+    if (!g_reshade_loaded.load()) return display_commander::ui::GraphicsApi::Unknown;
+    const reshade::api::device_api api = g_last_reshade_device_api.load();
+    switch (api) {
         case reshade::api::device_api::d3d9:   return display_commander::ui::GraphicsApi::D3D9;
         case reshade::api::device_api::d3d10:  return display_commander::ui::GraphicsApi::D3D10;
         case reshade::api::device_api::d3d11:  return display_commander::ui::GraphicsApi::D3D11;
@@ -4757,6 +4772,924 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
     }
     imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + line_height));
     imgui.Dummy(ImVec2(total_width, line_height));
+}
+
+void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
+                                   display_commander::ui::GraphicsApi device_api,
+                                   bool show_tooltips) {
+    reshade::api::device_api current_api = static_cast<reshade::api::device_api>(0);
+    switch (device_api) {
+        case display_commander::ui::GraphicsApi::D3D9:   current_api = reshade::api::device_api::d3d9; break;
+        case display_commander::ui::GraphicsApi::D3D10:  current_api = reshade::api::device_api::d3d10; break;
+        case display_commander::ui::GraphicsApi::D3D11:  current_api = reshade::api::device_api::d3d11; break;
+        case display_commander::ui::GraphicsApi::D3D12:  current_api = reshade::api::device_api::d3d12; break;
+        case display_commander::ui::GraphicsApi::OpenGL: current_api = reshade::api::device_api::opengl; break;
+        case display_commander::ui::GraphicsApi::Vulkan: current_api = reshade::api::device_api::vulkan; break;
+        default: break;
+    }
+    bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
+    bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
+    bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
+    bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
+    bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
+    bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
+    bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
+    bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
+    bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
+    bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
+    bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
+    bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
+    bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
+    bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
+    bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
+    bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
+    bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
+
+    if (settings::g_mainTabSettings.show_clock.GetValue()) {
+        // Display current time
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        imgui.Text("%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
+    }
+
+    // Show playtime (time from game start)
+    if (settings::g_mainTabSettings.show_playtime.GetValue()) {
+        LONGLONG game_start_time_ns = g_game_start_time_ns.load();
+        if (game_start_time_ns > 0) {
+            LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG playtime_ns = now_ns - game_start_time_ns;
+            double playtime_seconds = static_cast<double>(playtime_ns) / static_cast<double>(utils::SEC_TO_NS);
+
+            // Format as HH:MM:SS.mmm
+            int hours = static_cast<int>(playtime_seconds / 3600.0);
+            int minutes = static_cast<int>((playtime_seconds - (hours * 3600.0)) / 60.0);
+            int seconds = static_cast<int>(playtime_seconds - (hours * 3600.0) - (minutes * 60.0));
+            int milliseconds = static_cast<int>((playtime_seconds - static_cast<int>(playtime_seconds)) * 1000.0);
+
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                imgui.Text("%02d:%02d:%02d", hours, minutes, seconds);
+            } else {
+                imgui.Text("%02d:%02d:%02d", hours, minutes, seconds);
+            }
+
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("Playtime: Time elapsed since game start");
+            }
+        }
+    }
+
+    if (show_fps_counter) {
+        const uint32_t count = ::g_perf_ring.GetCount();
+        double total_time = 0.0;
+
+        // Iterate through samples from the last second
+        uint32_t sample_count = 0;
+
+        // Iterate backwards through the ring buffer up to 1 second
+        for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
+            const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
+
+            // not enough data yet
+            if (sample.dt == 0.0f || total_time >= 1.0) break;
+
+            sample_count++;
+            total_time += sample.dt;
+        }
+
+        // Calculate average
+        if (sample_count > 0 && total_time >= 1.0) {
+            auto average_fps = sample_count / total_time;
+
+            // Check if native FPS should be shown
+            bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
+            if (show_native_fps) {
+                // Check if native Reflex was updated within the last 5 seconds
+                uint64_t last_sleep_timestamp = ::g_nvapi_last_sleep_timestamp_ns.load();
+                uint64_t current_time = utils::get_now_ns();
+                bool is_recent =
+                    (last_sleep_timestamp > 0) && (current_time - last_sleep_timestamp) < (5 * utils::SEC_TO_NS);
+
+                // Calculate native FPS from native Reflex sleep interval
+                LONGLONG native_sleep_ns_smooth = ::g_sleep_reflex_native_ns_smooth.load();
+                double native_fps = 0.0;
+
+                // Only calculate if we have valid native sleep data (> 0 and reasonable) and it's recent
+                if (is_recent && native_sleep_ns_smooth > 0 && native_sleep_ns_smooth < 1 * utils::SEC_TO_NS) {
+                    native_fps = static_cast<double>(utils::SEC_TO_NS) / static_cast<double>(native_sleep_ns_smooth);
+                }
+
+                // Display dual format: native FPS / regular FPS
+                if (native_fps > 0.0) {
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        imgui.Text("%.1f / %.1f fps", native_fps, average_fps);
+                    } else {
+                        imgui.Text("%.1f / %.1f", native_fps, average_fps);
+                    }
+                } else {
+                    // No valid native FPS data, show regular FPS only
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        imgui.Text("%.1f fps", average_fps);
+                    } else {
+                        imgui.Text("%.1f", average_fps);
+                    }
+                }
+            } else {
+                // Regular FPS display
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.Text("%.1f fps", average_fps);
+                } else {
+                    imgui.Text("%.1f", average_fps);
+                }
+            }
+        }
+    }
+
+    // Actual refresh rate (NVAPI Adaptive Sync flip data) - smoothed for display (alpha 0.02)
+    if (show_actual_refresh_rate) {
+        static double s_smoothed_actual_hz = 0.0;
+        constexpr double k_alpha = 0.02;
+        double actual_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+        if (actual_hz > 0.0) {
+            s_smoothed_actual_hz = k_alpha * actual_hz + (1.0 - k_alpha) * s_smoothed_actual_hz;
+            imgui.Text("%.1f Hz", s_smoothed_actual_hz);
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
+            }
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Actual: -- Hz");
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("Waiting for NVAPI display or samples.");
+            }
+        }
+    }
+
+    {
+        bool show_vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+
+        if (show_vrr_status || show_vrr_debug_mode) {
+            perf_measurement::ScopedTimer overlay_show_vrr_status_timer(perf_measurement::Metric::OverlayShowVrrStatus);
+            static bool cached_vrr_active = false;
+            static LONGLONG last_update_ns = 0;
+            static LONGLONG last_valid_sample_ns = 0;
+            static dxgi::fps_limiter::RefreshRateStats cached_stats{};
+            const LONGLONG update_interval_ns = 100 * utils::NS_TO_MS;  // 100ms in nanoseconds
+            const LONGLONG sample_timeout_ns = 1000 * utils::NS_TO_MS;  // 1 second in nanoseconds
+
+            // NVAPI VRR (more authoritative on NVIDIA). Status is now updated from OnPresentUpdateBefore
+            // with direct swapchain access, so we just read the cached values here.
+            bool cached_nvapi_ok = vrr_status::cached_nvapi_ok.load();
+            std::shared_ptr<nvapi::VrrStatus> cached_nvapi_vrr = vrr_status::cached_nvapi_vrr.load();
+
+            LONGLONG now_ns = utils::get_now_ns();
+
+            // Get refresh rate stats from continuous monitoring thread cache
+            auto shared_stats = g_cached_refresh_rate_stats.load();
+            if (shared_stats && shared_stats->is_valid && shared_stats->sample_count > 0) {
+                // Update cached values from shared stats
+                cached_vrr_active = (shared_stats->max_rate > shared_stats->min_rate + 2.0);
+                cached_stats = *shared_stats;
+                last_valid_sample_ns = now_ns;
+            }
+
+            // Check if we got a sample within the last 1 second
+            bool has_recent_sample = (now_ns - last_valid_sample_ns) < sample_timeout_ns;
+
+            // Display VRR status (only if show_vrr_status is enabled)
+            if (show_vrr_status) {
+                // Prefer NVAPI when available; fall back to the existing DXGI heuristic otherwise.
+                if (cached_nvapi_ok && cached_nvapi_vrr) {
+                    if (cached_nvapi_vrr->is_display_in_vrr_mode && cached_nvapi_vrr->is_vrr_enabled) {
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+
+                    } else if (cached_nvapi_vrr->is_display_in_vrr_mode) {
+                        imgui.TextColored(ui::colors::TEXT_WARNING, "VRR: Capable");
+                    } else if (cached_nvapi_vrr->is_vrr_requested) {
+                        imgui.TextColored(ui::colors::TEXT_WARNING, "VRR: Requested");
+                    } else {
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                    }
+                } else {
+                    if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
+                    } else {
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                    }
+                }
+            }
+
+            // Display debugging parameters below VRR status (only if vrr_debug_mode is enabled)
+            if (show_vrr_debug_mode && has_recent_sample && cached_stats.is_valid) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
+                                   cached_stats.total_samples_last_10s);
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
+                                   cached_stats.samples_below_threshold_last_10s);
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
+                                   cached_stats.all_last_20_within_1s ? "Yes" : "No");
+            }
+
+            // NVAPI debug info (optional, shown only in VRR debug mode)
+            if (show_vrr_debug_mode && cached_nvapi_vrr) {
+                if (!cached_nvapi_vrr->nvapi_initialized) {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
+                } else if (!cached_nvapi_vrr->display_id_resolved) {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
+                                       (int)cached_nvapi_vrr->resolve_status);
+                    if (!cached_nvapi_vrr->nvapi_display_name.empty()) {
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
+                                           cached_nvapi_vrr->nvapi_display_name.c_str());
+                    }
+                } else if (!cached_nvapi_ok) {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
+                                       (int)cached_nvapi_vrr->query_status);
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr->display_id);
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
+                                       (int)cached_nvapi_vrr->is_vrr_enabled, (int)cached_nvapi_vrr->is_vrr_requested,
+                                       (int)cached_nvapi_vrr->is_vrr_possible,
+                                       (int)cached_nvapi_vrr->is_display_in_vrr_mode);
+                    // Show which field is causing "VRR: On" to display
+                    if (cached_nvapi_vrr->is_display_in_vrr_mode) {
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
+                    } else if (cached_nvapi_vrr->is_vrr_enabled) {
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
+                    }
+                }
+            }
+        }
+    }
+
+    if (show_overlay_vram) {
+        uint64_t vram_used = 0;
+        uint64_t vram_total = 0;
+        if (display_commander::dxgi::GetVramInfo(&vram_used, &vram_total) && vram_total > 0) {
+            const uint64_t used_mib = vram_used / (1024ULL * 1024ULL);
+            const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                imgui.Text("VRAM: %llu / %llu MiB", static_cast<unsigned long long>(used_mib),
+                            static_cast<unsigned long long>(total_mib));
+            } else {
+                imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
+                            static_cast<unsigned long long>(total_mib));
+            }
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
+            }
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "VRAM: N/A");
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("VRAM unavailable (DXGI adapter or budget query failed).");
+            }
+        }
+
+        // RAM (system memory) on the same line
+        imgui.SameLine();
+        MEMORYSTATUSEX mem_status = {};
+        mem_status.dwLength = sizeof(mem_status);
+        if (GlobalMemoryStatusEx(&mem_status) != 0 && mem_status.ullTotalPhys > 0) {
+            const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
+            const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
+            const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                imgui.Text("RAM: %llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                            static_cast<unsigned long long>(ram_total_mib));
+            } else {
+                imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                            static_cast<unsigned long long>(ram_total_mib));
+            }
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
+            }
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "RAM: N/A");
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("System memory info unavailable.");
+            }
+        }
+    }
+
+    if (show_flip_status) {
+        // Get current API to determine flip state
+        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
+        const char* flip_state_str = DxgiBypassModeToString(flip_state);
+
+        // Color code based on flip state
+        ImVec4 flip_color;
+        if (flip_state == DxgiBypassMode::kComposed) {
+            flip_color = ui::colors::FLIP_COMPOSED;  // Red - bad
+        } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
+            flip_color = ui::colors::FLIP_INDEPENDENT;  // Green - good
+        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
+                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
+                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
+                   || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
+            flip_color = ui::colors::TEXT_ERROR;  // Red - query failed
+        } else {
+            flip_color = ui::colors::FLIP_UNKNOWN;  // Yellow - unknown/unset
+        }
+
+        // Display flip status with appropriate color
+        if (settings::g_mainTabSettings.show_labels.GetValue()) {
+            imgui.TextColored(flip_color, "Flip: %s", flip_state_str);
+        } else {
+            imgui.TextColored(flip_color, "%s", flip_state_str);
+        }
+
+        if (imgui.IsItemHovered() && show_tooltips) {
+            imgui.SetTooltip("DXGI Flip Mode: %s", flip_state_str);
+        }
+    }
+
+    if (show_fg_mode || show_dlss_internal_resolution || show_dlss_status || show_dlss_quality_preset
+        || show_dlss_render_preset) {
+        const DLSSGSummaryLite dlss_lite = GetDLSSGSummaryLite();
+        const bool any_dlss_active = dlss_lite.any_dlss_active;
+
+        // Get fg_mode if needed
+        std::string fg_mode = "N/A";
+        if (show_fg_mode) {
+            int enable_interp;
+            if (g_ngx_parameters.get_as_int("DLSSG.EnableInterp", enable_interp) && enable_interp == 1) {
+                unsigned int multi_frame_count;
+                if (g_ngx_parameters.get_as_uint("DLSSG.MultiFrameCount", multi_frame_count)) {
+                    if (multi_frame_count == 1) {
+                        fg_mode = "2x";
+                    } else if (multi_frame_count == 2) {
+                        fg_mode = "3x";
+                    } else if (multi_frame_count == 3) {
+                        fg_mode = "4x";
+                    } else {
+                        char buffer[16];
+                        snprintf(buffer, sizeof(buffer), "%dx", multi_frame_count + 1);
+                        fg_mode = std::string(buffer);
+                    }
+                }
+            }
+        }
+
+        // Get resolutions if needed
+        std::string internal_resolution = "N/A";
+        std::string output_resolution = "N/A";
+        if (show_dlss_internal_resolution) {
+            unsigned int internal_width, internal_height, output_width, output_height;
+            bool has_internal_width =
+                g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Width", internal_width);
+            bool has_internal_height =
+                g_ngx_parameters.get_as_uint("DLSS.Render.Subrect.Dimensions.Height", internal_height);
+            bool has_output_width = g_ngx_parameters.get_as_uint("Width", output_width);
+            bool has_output_height = g_ngx_parameters.get_as_uint("Height", output_height);
+
+            if (has_internal_width && has_internal_height && internal_width > 0 && internal_height > 0) {
+                internal_resolution = std::to_string(internal_width) + "x" + std::to_string(internal_height);
+            }
+            if (has_output_width && has_output_height) {
+                output_resolution = std::to_string(output_width) + "x" + std::to_string(output_height);
+            }
+        }
+
+        // Get quality preset if needed
+        std::string quality_preset = "N/A";
+        if (show_dlss_quality_preset || show_dlss_render_preset) {
+            unsigned int perf_quality;
+            if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
+                switch (static_cast<NVSDK_NGX_PerfQuality_Value>(perf_quality)) {
+                    case NVSDK_NGX_PerfQuality_Value_MaxPerf:          quality_preset = "Performance"; break;
+                    case NVSDK_NGX_PerfQuality_Value_Balanced:         quality_preset = "Balanced"; break;
+                    case NVSDK_NGX_PerfQuality_Value_MaxQuality:       quality_preset = "Quality"; break;
+                    case NVSDK_NGX_PerfQuality_Value_UltraPerformance: quality_preset = "Ultra Performance"; break;
+                    case NVSDK_NGX_PerfQuality_Value_UltraQuality:     quality_preset = "Ultra Quality"; break;
+                    case NVSDK_NGX_PerfQuality_Value_DLAA:             quality_preset = "DLAA"; break;
+                    default:                                           quality_preset = "Unknown"; break;
+                }
+            }
+        }
+
+        if (show_fg_mode) {
+            // Only show the 4 requested buckets: OFF / 2x / 3x / 4x
+            if (any_dlss_active && (fg_mode == "2x" || fg_mode == "3x" || fg_mode == "4x")) {
+                imgui.Text("FG: %s", fg_mode.c_str());
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "FG: OFF");
+            }
+        }
+
+        if (show_dlss_internal_resolution) {
+            // Show internal resolution -> output resolution -> backbuffer if DLSS is active and we have valid data
+            if (any_dlss_active && internal_resolution != "N/A") {
+                std::string res_text = internal_resolution;
+                const int bb_w = g_game_render_width.load();
+                const int bb_h = g_game_render_height.load();
+                if (bb_w > 0 && bb_h > 0) {
+                    res_text += " -> " + std::to_string(bb_w) + "x" + std::to_string(bb_h);
+                }
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.Text("DLSS Res: %s", res_text.c_str());
+                } else {
+                    imgui.Text("%s", res_text.c_str());
+                }
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Res: N/A");
+            }
+        }
+
+        if (show_dlss_status) {
+            // Show DLSS on/off status with details (Ray Reconstruction, etc.)
+            if (any_dlss_active) {
+                std::string status_text;
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    status_text = "DLSS: On";
+                } else {
+                    status_text = "DLSS On";
+                }
+
+                // Add details about which DLSS feature is active
+                if (dlss_lite.ray_reconstruction_active) {
+                    status_text += " (RR)";
+                } else if (dlss_lite.dlss_g_active) {
+                    status_text += " (DLSS-G)";
+                } else if (dlss_lite.dlss_active) {
+                    // Regular DLSS Super Resolution is active (no suffix needed)
+                }
+
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "%s", status_text.c_str());
+            } else {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS: Off");
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Off");
+                }
+            }
+        }
+
+        if (show_dlss_quality_preset) {
+            // Show quality preset (Performance, Balanced, Quality, etc.) if DLSS is active and we have valid data
+            if (any_dlss_active && quality_preset != "N/A") {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.Text("DLSS Quality: %s", quality_preset.c_str());
+                } else {
+                    imgui.Text("%s", quality_preset.c_str());
+                }
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Quality: N/A");
+            }
+        }
+
+        if (show_dlss_render_preset) {
+            // Show render preset (A, B, C, D, E, etc.) if DLSS is active and we have valid data
+            if (any_dlss_active) {
+                DLSSModelProfile model_profile = GetDLSSModelProfile();
+                if (model_profile.is_valid) {
+                    // Get current quality preset to determine which render preset value to show
+                    std::string current_quality = quality_preset;
+                    int render_preset_value = 0;
+
+                    // Use Ray Reconstruction presets if RR is active, otherwise use Super Resolution presets
+                    if (dlss_lite.ray_reconstruction_active) {
+                        // Determine which Ray Reconstruction render preset value to display based on current quality
+                        // preset
+                        if (current_quality == "Quality") {
+                            render_preset_value = model_profile.rr_quality_preset;
+                        } else if (current_quality == "Balanced") {
+                            render_preset_value = model_profile.rr_balanced_preset;
+                        } else if (current_quality == "Performance") {
+                            render_preset_value = model_profile.rr_performance_preset;
+                        } else if (current_quality == "Ultra Performance") {
+                            render_preset_value = model_profile.rr_ultra_performance_preset;
+                        } else if (current_quality == "Ultra Quality") {
+                            render_preset_value = model_profile.rr_ultra_quality_preset;
+                        } else {
+                            // Default to Quality if unknown
+                            render_preset_value = model_profile.rr_quality_preset;
+                        }
+                    } else {
+                        // Determine which Super Resolution render preset value to display based on current quality
+                        // preset
+                        if (current_quality == "Quality") {
+                            render_preset_value = model_profile.sr_quality_preset;
+                        } else if (current_quality == "Balanced") {
+                            render_preset_value = model_profile.sr_balanced_preset;
+                        } else if (current_quality == "Performance") {
+                            render_preset_value = model_profile.sr_performance_preset;
+                        } else if (current_quality == "Ultra Performance") {
+                            render_preset_value = model_profile.sr_ultra_performance_preset;
+                        } else if (current_quality == "Ultra Quality") {
+                            render_preset_value = model_profile.sr_ultra_quality_preset;
+                        } else if (current_quality == "DLAA") {
+                            render_preset_value = model_profile.sr_dlaa_preset;
+                        } else {
+                            // Default to Quality if unknown
+                            render_preset_value = model_profile.sr_quality_preset;
+                        }
+                    }
+
+                    // Convert render preset number to letter string
+                    std::string render_preset_letter = ConvertRenderPresetToLetter(render_preset_value);
+
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        imgui.Text("DLSS Render: %s", render_preset_letter.c_str());
+                    } else {
+                        imgui.Text("%s", render_preset_letter.c_str());
+                    }
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+                }
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DLSS Render: N/A");
+            }
+        }
+    }
+
+    if (show_volume) {
+        perf_measurement::ScopedTimer overlay_show_volume_timer(perf_measurement::Metric::OverlayShowVolume);
+        // Get volume values from atomic variables (updated by continuous monitoring thread)
+        float current_volume = s_audio_volume_percent.load();
+        float system_volume = s_system_volume_percent.load();
+
+        // Check if audio is muted
+        bool is_muted = g_muted_applied.load();
+
+        // Display game volume and system volume
+        if (settings::g_mainTabSettings.show_labels.GetValue()) {
+            if (is_muted) {
+                imgui.Text("%.0f%% vol / %.0f%% sys muted", current_volume, system_volume);
+            } else {
+                imgui.Text("%.0f%% vol / %.0f%% sys", current_volume, system_volume);
+            }
+        } else {
+            if (is_muted) {
+                imgui.Text("%.0f%% / %.0f%% muted", current_volume, system_volume);
+            } else {
+                imgui.Text("%.0f%% / %.0f%%", current_volume, system_volume);
+            }
+        }
+        if (imgui.IsItemHovered() && show_tooltips) {
+            if (is_muted) {
+                imgui.SetTooltip("Game Volume: %.0f%% | System Volume: %.0f%% (Muted)", current_volume, system_volume);
+            } else {
+                imgui.SetTooltip("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
+            }
+        }
+    }
+
+    if (show_overlay_vu_bars) {
+        ui::new_ui::DrawOverlayVUBars(imgui, show_tooltips);
+    }
+
+    if (show_gpu_measurement) {
+        // Display sim-to-display latency
+        LONGLONG latency_ns = ::g_sim_to_display_latency_ns.load();
+        if (latency_ns > 0) {
+            double latency_ms = (1.0 * latency_ns / utils::NS_TO_MS);
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                imgui.Text("%.1f ms lat", latency_ms);
+            } else {
+                imgui.Text("%.1f", latency_ms);
+            }
+        }
+    }
+
+    if (show_cpu_usage) {
+        // Calculate CPU usage: (sim_duration / frame_time) * 100%
+        // Get most recent frame time from performance ring buffer
+        //   const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
+        // //  if (head > 0) {
+        //     const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
+        //    const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
+
+        //     if (last_sample.dt > 0.0f) {
+        // Get simulation duration in nanoseconds
+        //     LONGLONG sim_duration_ns = ::g_simulation_duration_ns.load();
+        //    LONGLONG reshade_overhead_duration_ns = ::g_reshade_overhead_duration_ns.load();
+
+        // missing time spend in onpresent
+        // missing native reflex time
+        LONGLONG cpu_time_ns =
+            ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
+
+        LONGLONG frame_time_ns = ::g_frame_time_ns.load();
+
+        if (cpu_time_ns > 0 && frame_time_ns > 0) {
+            // Calculate CPU usage percentage: (sim_duration / frame_time) * 100
+            double cpu_usage_percent = (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+
+            // Clamp to 0-100%
+            if (cpu_usage_percent < 0.0) cpu_usage_percent = 0.0;
+            if (cpu_usage_percent > 100.0) cpu_usage_percent = 100.0;
+
+            // Smoothed CPU busy: updated every frame (EMA alpha 0.05), displayed every 0.2s to prevent flickering
+            static double smoothed_cpu_usage = cpu_usage_percent;
+            static double displayed_cpu_usage = cpu_usage_percent;
+            static LONGLONG s_cpu_busy_last_display_ns = 0;
+            const double alpha = 0.05;
+            smoothed_cpu_usage = (1.0 - alpha) * smoothed_cpu_usage + alpha * cpu_usage_percent;
+            LONGLONG now_ns = utils::get_now_ns();
+            const LONGLONG k_cpu_busy_display_interval_ns =
+                static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+            if (now_ns - s_cpu_busy_last_display_ns >= k_cpu_busy_display_interval_ns) {
+                s_cpu_busy_last_display_ns = now_ns;
+                displayed_cpu_usage = smoothed_cpu_usage;
+            }
+
+            // Track last 32 CPU usage values for max calculation
+            static constexpr size_t kCpuUsageHistorySize = 64;
+            static double cpu_usage_history[kCpuUsageHistorySize] = {};
+            static size_t cpu_usage_history_index = 0;
+            static size_t cpu_usage_history_count = 0;
+
+            // Add current value to history
+            cpu_usage_history[cpu_usage_history_index] = cpu_usage_percent;
+            cpu_usage_history_index = (cpu_usage_history_index + 1) % kCpuUsageHistorySize;
+            if (cpu_usage_history_count < kCpuUsageHistorySize) {
+                cpu_usage_history_count++;
+            }
+
+            // Find maximum from last 32 frames
+            double max_cpu_usage = cpu_usage_percent;
+            for (size_t i = 0; i < cpu_usage_history_count; ++i) {
+                max_cpu_usage = (std::max)(max_cpu_usage, cpu_usage_history[i]);
+            }
+
+            if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                imgui.Text("%.1f%% cpu busy (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
+            } else {
+                imgui.Text("%.1f%% (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
+            }
+        }
+        //      }
+        //    }
+    }
+
+    // Show Cpu FPS: current FPS / (cpu busy %)
+    if (show_cpu_fps) {
+        LONGLONG cpu_time_ns =
+            ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
+        LONGLONG frame_time_ns = ::g_frame_time_ns.load();
+
+        // Current FPS from perf ring (last second)
+        double current_fps = 0.0;
+        const uint32_t count = ::g_perf_ring.GetCount();
+        double total_time = 0.0;
+        uint32_t sample_count = 0;
+        for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
+            const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
+            if (sample.dt == 0.0f || total_time >= 1.0) break;
+            sample_count++;
+            total_time += sample.dt;
+        }
+        if (sample_count > 0 && total_time >= 1.0) {
+            current_fps = sample_count / total_time;
+        }
+
+        if (current_fps > 0.0 && cpu_time_ns > 0 && frame_time_ns > 0) {
+            double cpu_busy_percent = (static_cast<double>(cpu_time_ns) / static_cast<double>(frame_time_ns)) * 100.0;
+            if (cpu_busy_percent < 0.0) cpu_busy_percent = 0.0;
+            if (cpu_busy_percent > 100.0) cpu_busy_percent = 100.0;
+
+            if (cpu_busy_percent > 0.0) {
+                double cpu_fps_raw = current_fps / (cpu_busy_percent / 100.0);
+                if (cpu_fps_raw > 9999.0) cpu_fps_raw = 9999.0;
+                // Smoothed CPU FPS: updated every frame (EMA alpha 0.01), displayed every 0.2s to prevent flickering
+                static double s_smoothed_cpu_fps = 0.0;
+                static double s_displayed_cpu_fps = 0.0;
+                static LONGLONG s_cpu_fps_last_display_ns = 0;
+                constexpr double k_cpu_fps_alpha = 0.01;
+                s_smoothed_cpu_fps = k_cpu_fps_alpha * cpu_fps_raw + (1.0 - k_cpu_fps_alpha) * s_smoothed_cpu_fps;
+                LONGLONG now_ns = utils::get_now_ns();
+                const LONGLONG k_cpu_fps_display_interval_ns =
+                    static_cast<LONGLONG>(0.2 * static_cast<double>(utils::SEC_TO_NS));
+                if (now_ns - s_cpu_fps_last_display_ns >= k_cpu_fps_display_interval_ns) {
+                    s_cpu_fps_last_display_ns = now_ns;
+                    s_displayed_cpu_fps = s_smoothed_cpu_fps;
+                }
+                double cpu_fps = s_displayed_cpu_fps;
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.Text("%.1f cpu fps", cpu_fps);
+                } else {
+                    imgui.Text("%.1f", cpu_fps);
+                }
+            }
+        }
+    }
+
+    // Show stopwatch
+    if (settings::g_mainTabSettings.show_stopwatch.GetValue()) {
+        bool is_running = g_stopwatch_running.load();
+
+        // Update elapsed time if running
+        if (is_running) {
+            LONGLONG start_time_ns = g_stopwatch_start_time_ns.load();
+            LONGLONG now_ns = utils::get_now_ns();
+            LONGLONG elapsed_ns = now_ns - start_time_ns;
+            g_stopwatch_elapsed_time_ns.store(elapsed_ns);
+        }
+
+        LONGLONG elapsed_ns = g_stopwatch_elapsed_time_ns.load();
+        double elapsed_seconds = static_cast<double>(elapsed_ns) / static_cast<double>(utils::SEC_TO_NS);
+
+        // Format as HH:MM:SS.mmm
+        int hours = static_cast<int>(elapsed_seconds / 3600.0);
+        int minutes = static_cast<int>((elapsed_seconds - (hours * 3600.0)) / 60.0);
+        int seconds = static_cast<int>(elapsed_seconds - (hours * 3600.0) - (minutes * 60.0));
+        int milliseconds = static_cast<int>((elapsed_seconds - static_cast<int>(elapsed_seconds)) * 1000.0);
+
+        if (is_running) {
+            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%02d:%02d:%02d.%03d", hours, minutes, seconds,
+                               milliseconds);
+        } else {
+            imgui.Text("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
+        }
+
+        if (imgui.IsItemHovered() && show_tooltips) {
+            if (is_running) {
+                imgui.SetTooltip("Stopwatch: Running\nPress Ctrl+S to pause");
+            } else {
+                imgui.SetTooltip("Stopwatch: Paused\nPress Ctrl+S to reset and start");
+            }
+        }
+    }
+
+    // Show action notifications (volume, mute, etc.) for 10 seconds
+    ActionNotification notification = g_action_notification.load();
+    if (notification.type != ActionNotificationType::None) {
+        LONGLONG now_ns = utils::get_now_ns();
+        LONGLONG elapsed_ns = now_ns - notification.timestamp_ns;
+        const LONGLONG display_duration_ns = 10 * utils::SEC_TO_NS;  // 10 seconds
+
+        if (elapsed_ns < display_duration_ns) {
+            // Display based on notification type
+            switch (notification.type) {
+                case ActionNotificationType::Volume: {
+                    float volume_value = notification.float_value;
+                    bool is_muted = g_muted_applied.load();
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        if (is_muted) {
+                            imgui.Text("%.0f%% vol muted", volume_value);
+                        } else {
+                            imgui.Text("%.0f%% vol", volume_value);
+                        }
+                    } else {
+                        if (is_muted) {
+                            imgui.Text("%.0f%% muted", volume_value);
+                        } else {
+                            imgui.Text("%.0f%%", volume_value);
+                        }
+                    }
+                    if (imgui.IsItemHovered() && show_tooltips) {
+                        if (is_muted) {
+                            imgui.SetTooltip("Audio Volume: %.0f%% (Muted)", volume_value);
+                        } else {
+                            imgui.SetTooltip("Audio Volume: %.0f%%", volume_value);
+                        }
+                    }
+                    break;
+                }
+                case ActionNotificationType::Mute: {
+                    bool mute_state = notification.bool_value;
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        imgui.Text("%s", mute_state ? "Muted" : "Unmuted");
+                    } else {
+                        imgui.Text("%s", mute_state ? "Muted" : "Unmuted");
+                    }
+                    if (imgui.IsItemHovered() && show_tooltips) {
+                        imgui.SetTooltip("Audio: %s", mute_state ? "Muted" : "Unmuted");
+                    }
+                    break;
+                }
+                case ActionNotificationType::GenericAction: {
+                    if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                        imgui.Text("%s", notification.action_name);
+                    } else {
+                        imgui.Text("%s", notification.action_name);
+                    }
+                    if (imgui.IsItemHovered() && show_tooltips) {
+                        imgui.SetTooltip("Gamepad Action: %s", notification.action_name);
+                    }
+                    break;
+                }
+                default: break;
+            }
+        } else {
+            // Clear the notification after display duration expires
+            ActionNotification clear_notification;
+            clear_notification.type = ActionNotificationType::None;
+            clear_notification.timestamp_ns = 0;
+            clear_notification.float_value = 0.0f;
+            clear_notification.bool_value = false;
+            clear_notification.action_name[0] = '\0';
+            g_action_notification.store(clear_notification);
+        }
+    }
+
+    // Show enabled features indicator (time slowdown, auto-click, etc.)
+    if (show_enabledfeatures) {
+        char feature_text[512];
+        char tooltip_text[512];
+        feature_text[0] = '\0';
+        tooltip_text[0] = '\0';
+
+        bool first_feature = true;
+
+        // Time Slowdown
+        if (display_commanderhooks::IsTimeslowdownEnabled()) {
+            float multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
+
+            // Calculate QPC difference in seconds
+            double qpc_difference_seconds = 0.0;
+            if (display_commanderhooks::QueryPerformanceCounter_Original
+                && display_commanderhooks::QueryPerformanceFrequency_Original) {
+                LARGE_INTEGER frequency;
+                if (display_commanderhooks::QueryPerformanceFrequency_Original(&frequency) && frequency.QuadPart > 0) {
+                    LARGE_INTEGER original_qpc;
+                    if (display_commanderhooks::QueryPerformanceCounter_Original(&original_qpc)) {
+                        LONGLONG spoofed_qpc = display_commanderhooks::ApplyTimeslowdownToQPC(original_qpc.QuadPart);
+                        double original_qpc_seconds =
+                            static_cast<double>(original_qpc.QuadPart) / static_cast<double>(frequency.QuadPart);
+                        double spoofed_qpc_seconds =
+                            static_cast<double>(spoofed_qpc) / static_cast<double>(frequency.QuadPart);
+                        qpc_difference_seconds = spoofed_qpc_seconds - original_qpc_seconds;
+                    }
+                }
+            }
+
+            if (first_feature) {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    snprintf(feature_text, sizeof(feature_text), "%.2fx TS (%+.1fs)", multiplier,
+                             qpc_difference_seconds);
+                } else {
+                    snprintf(feature_text, sizeof(feature_text), "%.2fx (%+.1fs)", multiplier, qpc_difference_seconds);
+                }
+                snprintf(tooltip_text, sizeof(tooltip_text), "Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s",
+                         multiplier, qpc_difference_seconds);
+                first_feature = false;
+            } else {
+                size_t len = strlen(feature_text);
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx TS (%+.1fs)", multiplier,
+                             qpc_difference_seconds);
+                } else {
+                    snprintf(feature_text + len, sizeof(feature_text) - len, ", %.2fx (%+.1fs)", multiplier,
+                             qpc_difference_seconds);
+                }
+                len = strlen(tooltip_text);
+                snprintf(tooltip_text + len, sizeof(tooltip_text) - len,
+                         " | Time Slowdown: %.2fx multiplier, QPC diff: %+.1f s", multiplier, qpc_difference_seconds);
+            }
+        }
+
+        // Auto-Click
+        if (::g_auto_click_enabled.load()) {
+            if (first_feature) {
+                snprintf(feature_text, sizeof(feature_text), "AC");
+                snprintf(tooltip_text, sizeof(tooltip_text), "Auto-Click: Enabled");
+                first_feature = false;
+            } else {
+                size_t len = strlen(feature_text);
+                snprintf(feature_text + len, sizeof(feature_text) - len, ", AC");
+                len = strlen(tooltip_text);
+                snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Auto-Click: Enabled");
+            }
+        }
+
+        // Add more features here as needed
+        // Example:
+        // if (some_other_feature_enabled) {
+        //     if (first_feature) {
+        //         snprintf(feature_text, sizeof(feature_text), "FEATURE");
+        //         snprintf(tooltip_text, sizeof(tooltip_text), "Feature: Description");
+        //         first_feature = false;
+        //     } else {
+        //         size_t len = strlen(feature_text);
+        //         snprintf(feature_text + len, sizeof(feature_text) - len, ", FEATURE");
+        //         len = strlen(tooltip_text);
+        //         snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Feature: Description");
+        //     }
+        // }
+
+        if (feature_text[0] != '\0') {
+            imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", feature_text);
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("%s", tooltip_text);
+            }
+        }
+    }
+
+    if (show_frame_time_graph) {
+        ui::new_ui::DrawFrameTimeGraphOverlay(imgui, show_tooltips);
+    }
+
+    if (show_native_frame_time_graph) {
+        ui::new_ui::DrawNativeFrameTimeGraphOverlay(imgui, show_tooltips);
+    }
+
+    if (settings::g_mainTabSettings.show_frame_timeline_bar.GetValue()) {
+        ui::new_ui::DrawFrameTimelineBarOverlay(imgui, show_tooltips);
+    }
+
+    if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
+        ui::new_ui::DrawRefreshRateFrameTimesGraph(imgui, show_tooltips);
+    }
 }
 
 void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {

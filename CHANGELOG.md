@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.70 (2026-02-24)
+
+- **Window management** - Added 21.5:9 aspect ratio option to the Borderless Windowed (Aspect Ratio) dropdown (between 21:9 and 32:9).
+
 ## v0.12.69 (2026-02-24)
 
 - **Loading** - Add loading libraries through .dc64/.dc32/.dc/.asi (in addition to .dc64/.dc32, now also load .dc and .asi from the addon directory).

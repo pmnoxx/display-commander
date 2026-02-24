@@ -46,7 +46,7 @@ MainTabSettings::MainTabSettings()
           "window_mode", s_window_mode, static_cast<int>(WindowMode::kNoChanges),
           {"No changes mode", "Borderless Fullscreen (resize to fullscreen)", "Borderless Windowed (Aspect Ratio)"},
           "DisplayCommander"),
-      aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "32:9"},
+      aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "21.5:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9
       window_aspect_width("aspect_width", s_aspect_width, 0,
                           {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"},

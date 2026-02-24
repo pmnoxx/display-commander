@@ -75,8 +75,9 @@ const AspectRatio ASPECT_OPTIONS[] = {
     {16, 9},    // 1.778:1
     {19, 9},    // 2.111:1
     {195, 90},  // 2.167:1 (19.5:9)
-    {21, 9},    // 2.333:1
-    {32, 9},    // 3.556:1
+    {21, 9},    // 2.333:1 (21:9)
+    {43, 18},   // 2.389:1 (21.5:9)
+    {32, 9},    // 3.556:1 (32:9)
 };
 
 // Helper function implementations
@@ -89,7 +90,7 @@ RECT RectFromWH(int width, int height) {
 
 AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
     int index = static_cast<int>(aspect_type);
-    if (index >= 0 && index < 8) {
+    if (index >= 0 && index < 9) {
         return ASPECT_OPTIONS[index];
     }
     return {16, 9};  // Default to 16:9

@@ -32,6 +32,7 @@
 #include "ui/new_ui/advanced_tab.hpp"
 #include "ui/new_ui/main_new_tab_standalone.hpp"
 #include "ui/new_ui/performance_tab.hpp"
+#include "ui/new_ui/vulkan_tab.hpp"
 #include "ui/nvidia_profile_tab_shared.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
@@ -784,6 +785,11 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
                     ui::new_ui::DrawPerformanceOverlayContent(wrapper, ui::new_ui::GetGraphicsApiFromLastDeviceApi(),
                                                              true);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Vulkan (Experimental)")) {
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawVulkanTab(wrapper);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();

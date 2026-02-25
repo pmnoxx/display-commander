@@ -285,8 +285,10 @@ void InitializeNewUI() {
     g_tab_manager.AddTab(
         "Vulkan (Experimental)", "vulkan",
         [](reshade::api::effect_runtime* runtime) {
+            (void)runtime;
             try {
-                ui::new_ui::DrawVulkanTab(runtime);
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::DrawVulkanTab(wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing Vulkan tab: %s", e.what());
             } catch (...) {

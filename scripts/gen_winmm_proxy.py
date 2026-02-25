@@ -214,6 +214,8 @@ SIGS = {
     "waveOutWrite": ("UINT", [("HANDLE", "hWaveOut"), ("LPVOID", "pWaveOutHdr"), ("UINT", "cbWaveOutHdr")]),
     "wid32Message": ("LRESULT", [("UINT", "uDeviceID"), ("UINT", "uMsg"), ("DWORD_PTR", "dwParam1"), ("DWORD_PTR", "dwParam2")]),
     "wod32Message": ("LRESULT", [("UINT", "uDeviceID"), ("UINT", "uMsg"), ("DWORD_PTR", "dwParam1"), ("DWORD_PTR", "dwParam2")]),
+    "WINMM_3": ("DWORD", []),
+    "WINMM_4": ("DWORD", []),
 }
 
 # Types that need typedef in generated code (not in Windows.h base)
@@ -252,6 +254,10 @@ def main():
                     if name != "PRIVATE":
                         names.append(name)
 
+    # Ordinal-only stubs (in DEF at top with @3 @4, not in winmm section)
+    for stub in ("WINMM_3", "WINMM_4"):
+        if stub not in names:
+            names.append(stub)
     # Dedupe and keep order
     seen = set()
     unique = []

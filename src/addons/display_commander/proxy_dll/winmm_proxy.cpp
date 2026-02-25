@@ -1645,3 +1645,19 @@ extern "C" LRESULT WINAPI wod32Message(UINT uDeviceID, UINT uMsg, DWORD_PTR dwPa
     if (!fn) return (LRESULT)0;
     return fn(uDeviceID, uMsg, dwParam1, dwParam2);
 }
+
+extern "C" DWORD WINAPI WINMM_3() {
+    if (!LoadRealWinMM()) return (DWORD)0;
+    typedef DWORD (WINAPI *PFN)(void);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "WINMM_3");
+    if (!fn) return (DWORD)0;
+    return fn();
+}
+
+extern "C" DWORD WINAPI WINMM_4() {
+    if (!LoadRealWinMM()) return (DWORD)0;
+    typedef DWORD (WINAPI *PFN)(void);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "WINMM_4");
+    if (!fn) return (DWORD)0;
+    return fn();
+}

@@ -408,6 +408,7 @@ EXPORTS
 	DXGIDeclareAdapterRemovalSupport PRIVATE
 
 	; version.dll exports
+    ; https://github.com/wine-mirror/wine/blob/master/dlls/version/version.spec
 	GetFileVersionInfoA PRIVATE
 	GetFileVersionInfoByHandle PRIVATE
 	GetFileVersionInfoExA PRIVATE
@@ -425,6 +426,11 @@ EXPORTS
 	VerLanguageNameW PRIVATE
 	VerQueryValueA PRIVATE
 	VerQueryValueW PRIVATE
+
+	; winmm ordinal exports (Wine winmm.spec: 2=PlaySoundA, 3/4=stub)
+	WINMM_2=PlaySoundA @2 PRIVATE
+	WINMM_3 @3 PRIVATE
+	WINMM_4 @4 PRIVATE
 
 	; winmm.dll exports (proxy forwards to system winmm or winmmHooked.dll)
     ; https://source.winehq.org/WineAPI/winmm.html

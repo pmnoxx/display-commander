@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.100 (2026-02-25)
+
+- **winmm.dll proxy: ordinal exports** - Added Wine-style ordinal exports: ordinal 2 = PlaySoundA (WINMM_2), ordinals 3/4 = WINMM_3/WINMM_4 stubs (forward to real winmm or return 0). Matches [Wine winmm.spec](https://github.com/wine-mirror/wine/blob/master/dlls/winmm/winmm.spec).
+
 ## v0.12.99 (2026-02-25)
 
 - **winmm.dll proxy: added missing APIs** - Implemented the remaining winmm exports for parity with system winmm (Wine API reference): GetDriverFlags, OpenDriverA, DrvClose, DrvDefDriverProc, DrvOpen, DrvOpenA, DrvSendMessage, mmioInstallIOProc16. All forward to the real winmm.dll (or winmmHooked.dll when present).

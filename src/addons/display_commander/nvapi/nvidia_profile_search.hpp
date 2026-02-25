@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include <nvapi.h>
+
 namespace display_commander::nvapi {
 
 struct ImportantProfileSetting {
@@ -41,10 +43,10 @@ struct NvidiaProfileSearchResult {
     std::string error;              // If success is false
 };
 
-// Searches all NVIDIA driver profiles for any that contain the current process executable.
-// Enumerates profiles via DRS, then each profile's applications; matches by exe path or name.
-// Requires NVAPI to be available (NVIDIA GPU). Does not call NvAPI_Initialize/Unload.
-NvidiaProfileSearchResult SearchAllProfilesForCurrentExe();
+// Finds profile for current process exe by full path (single NvAPI_DRS_FindApplicationByName call).
+// Caller owns hSession (must be created and loaded). Returns true if profile and app found.
+bool FindApplicationByPathForCurrentExe(NvDRSSessionHandle hSession, NvDRSProfileHandle* phProfile,
+                                        NVDRS_APPLICATION* pApp);
 
 // Returns cached result for the current exe. Fills cache on first call or after InvalidateProfileSearchCache().
 // Use this in UI to avoid searching every frame. Call InvalidateProfileSearchCache() on user "Refresh".

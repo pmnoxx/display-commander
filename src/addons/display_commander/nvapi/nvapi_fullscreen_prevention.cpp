@@ -1,4 +1,5 @@
 #include "nvapi_fullscreen_prevention.hpp"
+#include "nvidia_profile_search.hpp"
 #include <nvapi.h>
 #include <NvApiDriverSettings.h>
 #include <windows.h>
@@ -133,29 +134,20 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
         LogInfo(oss_exe.str().c_str());
     }
 
-    // Copy full path to NvAPI_UnicodeString for FindApplicationByName
-    NvAPI_UnicodeString fullPathBuf = {};
-    const size_t toCopy = (std::min)(exePathW.size(), static_cast<size_t>(NVAPI_UNICODE_STRING_MAX - 1));
-    if (toCopy > 0) {
-        memcpy(fullPathBuf, exePathW.c_str(), toCopy * sizeof(NvU16));
-    }
-
-    // Find or create application profile (pass fully qualified path for unambiguous match)
-    NvDRSProfileHandle hProfile = {0};
+    // Find or create application profile (single lookup by current exe path)
+    NvDRSProfileHandle hProfile = nullptr;
     NVDRS_APPLICATION app = {0};
-    app.version = NVDRS_APPLICATION_VER;
-    memcpy(app.appName, fullPathBuf, sizeof(fullPathBuf));
 
     LogInfo("Searching for existing application profile...");
-    status = NvAPI_DRS_FindApplicationByName(hSession, fullPathBuf, &hProfile, &app);
+    const bool found = display_commander::nvapi::FindApplicationByPathForCurrentExe(hSession, &hProfile, &app);
 
-    if (status == NVAPI_EXECUTABLE_NOT_FOUND) {
+    if (!found) {
         LogInfo("Application profile not found, creating new one...");
         // Create new profile
         NVDRS_PROFILE profile = {0};
         profile.version = NVDRS_PROFILE_VER;
         profile.isPredefined = FALSE;
-        strcpy_s((char*)profile.profileName, sizeof(profile.profileName), "Fullscreen Prevention Profile");
+        strcpy_s(reinterpret_cast<char*>(profile.profileName), sizeof(profile.profileName), "Fullscreen Prevention Profile");
 
         status = NvAPI_DRS_CreateProfile(hSession, &profile, &hProfile);
         if (status != NVAPI_OK) {
@@ -171,7 +163,10 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
         app.version = NVDRS_APPLICATION_VER;
         app.isPredefined = FALSE;
         app.isMetro = FALSE;
-        memcpy(app.appName, fullPathBuf, sizeof(fullPathBuf));
+        const size_t pathCopy = (std::min)(exePathW.size(), static_cast<size_t>(NVAPI_UNICODE_STRING_MAX - 1));
+        if (pathCopy > 0) {
+            memcpy(app.appName, exePathW.c_str(), pathCopy * sizeof(NvU16));
+        }
         memset(app.userFriendlyName, 0, sizeof(app.userFriendlyName));
         size_t baseLen = wcsnlen_s(baseNameW, NVAPI_UNICODE_STRING_MAX - 1);
         if (baseLen > 0) {
@@ -189,14 +184,8 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
             return false;
         }
         LogInfo("Application added to profile successfully");
-    } else if (status == NVAPI_OK) {
-        LogInfo("Existing application profile found");
     } else {
-        last_error = "Failed to find or create application profile";
-        std::ostringstream oss_err;
-        oss_err << "Failed to find or create application profile. Status: " << status;
-        LogWarn(oss_err.str().c_str());
-        return false;
+        LogInfo("Existing application profile found");
     }
 
     // Set fullscreen prevention setting using the same approach as SpecialK

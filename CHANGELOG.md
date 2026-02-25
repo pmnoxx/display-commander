@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.92 (2026-02-25)
+
+- **NVIDIA profile search simplification** - Profile lookup for the current exe now uses a single path: `NvAPI_DRS_FindApplicationByName` with the full exe path (no profile enumeration). Find, create, delete, get details, and set setting all go through this. Removed `NvAPI_DRS_FindProfileByName` and profile/app enumeration for finding profiles; `SetOrDeleteProfileSettingForExe` (e.g. rundll32) supports only the current process exe. Cache and refresh behavior unchanged; UI still shows at most one matching profile.
+
 ## v0.12.90 (2026-02-24)
 
 - **Independent window hotkey** - Optional hotkey to open/close the independent (standalone) settings window. Configurable in the Hotkeys tab as "Independent window toggle"; no default binding (empty = disabled). Toggles window visibility; does not persist a separate state.

@@ -11,9 +11,9 @@
 #include "../../hooks/ngx_hooks.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
 #include "../../hooks/pclstats_etw_hooks.hpp"
+#include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
-#include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
@@ -45,6 +45,7 @@
 #include "settings_wrapper.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
+
 
 #include <d3d9.h>
 #include <d3d9types.h>
@@ -2188,8 +2189,10 @@ if (enabled_experimental_features) {
         imgui.Spacing();
 
         // Prevent display sleep & screensaver mode
-        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver", imgui)) {
-            LogInfo("Prevent display sleep & screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
+        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode,
+                                       "Prevent display sleep & screensaver", imgui)) {
+            LogInfo("Prevent display sleep & screensaver mode changed to %d",
+                    settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
@@ -3098,8 +3101,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
         if (current_item == static_cast<int>(FpsLimiterMode::kDisabled)
             || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
             imgui.Spacing();
-            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex",
-                                           imgui)) {
+            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui)) {
                 g_reflex_settings_outdated.store(true);
             }
             if (imgui.IsItemHovered()) {
@@ -3466,8 +3468,10 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui
             }
         }
     } else {
-        imgui.TextColored(ui::colors::TEXT_WARNING,
-                          "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
+        if (g_reshade_loaded.load()) {
+            imgui.TextColored(ui::colors::TEXT_WARNING,
+                              "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
+        }
     }
 
     auto desc_ptr = g_last_swapchain_desc.load();
@@ -4780,8 +4784,7 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
 }
 
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
-                                   display_commander::ui::GraphicsApi device_api,
-                                   bool show_tooltips) {
+                                   display_commander::ui::GraphicsApi device_api, bool show_tooltips) {
     reshade::api::device_api current_api = static_cast<reshade::api::device_api>(0);
     switch (device_api) {
         case display_commander::ui::GraphicsApi::D3D9:   current_api = reshade::api::device_api::d3d9; break;
@@ -4790,7 +4793,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         case display_commander::ui::GraphicsApi::D3D12:  current_api = reshade::api::device_api::d3d12; break;
         case display_commander::ui::GraphicsApi::OpenGL: current_api = reshade::api::device_api::opengl; break;
         case display_commander::ui::GraphicsApi::Vulkan: current_api = reshade::api::device_api::vulkan; break;
-        default: break;
+        default:                                         break;
     }
     bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
     bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
@@ -4988,11 +4991,11 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "  Fixed: %.2f Hz", cached_stats.fixed_refresh_hz);
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "  Threshold: %.2f Hz", cached_stats.threshold_hz);
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "  Total samples (10s): %u",
-                                   cached_stats.total_samples_last_10s);
+                                  cached_stats.total_samples_last_10s);
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "  Below threshold: %u",
-                                   cached_stats.samples_below_threshold_last_10s);
+                                  cached_stats.samples_below_threshold_last_10s);
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "  Last 20 within 1s: %s",
-                                   cached_stats.all_last_20_within_1s ? "Yes" : "No");
+                                  cached_stats.all_last_20_within_1s ? "Yes" : "No");
             }
 
             // NVAPI debug info (optional, shown only in VRR debug mode)
@@ -5001,20 +5004,20 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Unavailable");
                 } else if (!cached_nvapi_vrr->display_id_resolved) {
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: No displayId (st=%d)",
-                                       (int)cached_nvapi_vrr->resolve_status);
+                                      (int)cached_nvapi_vrr->resolve_status);
                     if (!cached_nvapi_vrr->nvapi_display_name.empty()) {
                         imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI Name: %s",
-                                           cached_nvapi_vrr->nvapi_display_name.c_str());
+                                          cached_nvapi_vrr->nvapi_display_name.c_str());
                     }
                 } else if (!cached_nvapi_ok) {
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: Query failed (st=%d)",
-                                       (int)cached_nvapi_vrr->query_status);
+                                      (int)cached_nvapi_vrr->query_status);
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI DisplayId: %u", cached_nvapi_vrr->display_id);
                 } else {
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "  NVAPI: enabled=%d req=%d poss=%d in_mode=%d",
-                                       (int)cached_nvapi_vrr->is_vrr_enabled, (int)cached_nvapi_vrr->is_vrr_requested,
-                                       (int)cached_nvapi_vrr->is_vrr_possible,
-                                       (int)cached_nvapi_vrr->is_display_in_vrr_mode);
+                                      (int)cached_nvapi_vrr->is_vrr_enabled, (int)cached_nvapi_vrr->is_vrr_requested,
+                                      (int)cached_nvapi_vrr->is_vrr_possible,
+                                      (int)cached_nvapi_vrr->is_display_in_vrr_mode);
                     // Show which field is causing "VRR: On" to display
                     if (cached_nvapi_vrr->is_display_in_vrr_mode) {
                         imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> Display is in VRR mode (authoritative)");
@@ -5034,10 +5037,10 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             const uint64_t total_mib = vram_total / (1024ULL * 1024ULL);
             if (settings::g_mainTabSettings.show_labels.GetValue()) {
                 imgui.Text("VRAM: %llu / %llu MiB", static_cast<unsigned long long>(used_mib),
-                            static_cast<unsigned long long>(total_mib));
+                           static_cast<unsigned long long>(total_mib));
             } else {
                 imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
-                            static_cast<unsigned long long>(total_mib));
+                           static_cast<unsigned long long>(total_mib));
             }
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
@@ -5059,10 +5062,10 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
             if (settings::g_mainTabSettings.show_labels.GetValue()) {
                 imgui.Text("RAM: %llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                            static_cast<unsigned long long>(ram_total_mib));
+                           static_cast<unsigned long long>(ram_total_mib));
             } else {
                 imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                            static_cast<unsigned long long>(ram_total_mib));
+                           static_cast<unsigned long long>(ram_total_mib));
             }
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
@@ -5501,7 +5504,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
         if (is_running) {
             imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "%02d:%02d:%02d.%03d", hours, minutes, seconds,
-                               milliseconds);
+                              milliseconds);
         } else {
             imgui.Text("%02d:%02d:%02d.%03d", hours, minutes, seconds, milliseconds);
         }
@@ -7212,8 +7215,7 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     if (hasMultipleMonitors) {
         imgui.SameLine();
-        if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode",
-                            imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode", imgui)) {
             LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
                     settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
         }

@@ -1,4 +1,24 @@
 EXPORTS
+	; d3d9.dll exports (ordinals match ReShade/d3d9.lib where specified)
+	Direct3DCreate9 PRIVATE
+	Direct3DCreate9Ex PRIVATE
+	Direct3DCreate9On12 @20 PRIVATE
+	Direct3DCreate9On12Ex @21 PRIVATE
+	D3DPERF_BeginEvent PRIVATE
+	D3DPERF_EndEvent PRIVATE
+	D3DPERF_GetStatus PRIVATE
+	D3DPERF_QueryRepeatFrame PRIVATE
+	D3DPERF_SetMarker PRIVATE
+	D3DPERF_SetOptions PRIVATE
+	D3DPERF_SetRegion PRIVATE
+	Direct3D9ForceHybridEnumeration @16 NONAME PRIVATE
+	Direct3D9SetMaximizedWindowedModeShim @17 NONAME PRIVATE
+	Direct3D9SetSwapEffectUpgradeShim @18 NONAME PRIVATE
+	Direct3D9Force9on12 @19 NONAME PRIVATE
+	Direct3D9SetMaximizedWindowHwndOverride @22 NONAME PRIVATE
+	Direct3D9SetVendorIDLieFor9on12 @23 NONAME PRIVATE
+	Direct3D9EnableMaximizedWindowedModeShim PRIVATE
+
 	; d3d11.dll exports
 	D3D11CreateDevice PRIVATE
 	D3D11CreateDeviceAndSwapChain PRIVATE

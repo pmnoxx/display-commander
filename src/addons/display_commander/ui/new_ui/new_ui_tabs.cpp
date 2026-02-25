@@ -271,7 +271,8 @@ void InitializeNewUI() {
         "Performance", "performance",
         [](reshade::api::effect_runtime* runtime) {
             try {
-                ui::new_ui::DrawPerformanceTab();
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::DrawPerformanceTab(wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing performance tab: %s", e.what());
             } catch (...) {

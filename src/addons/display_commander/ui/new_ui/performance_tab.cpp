@@ -1,98 +1,99 @@
 #include "performance_tab.hpp"
+#include "../imgui_wrapper_base.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "settings_wrapper.hpp"
 
-#include <reshade_imgui.hpp>
+#include <imgui.h>
 
 namespace ui::new_ui {
 
-void DrawPerformanceTab() {
-    ImGui::Text("Performance Measurements");
-    ImGui::Separator();
+void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Text("Performance Measurements");
+    imgui.Separator();
 
     if (CheckboxSetting(settings::g_experimentalTabSettings.performance_measurement_enabled,
-                        "Performance measurement")) {
+                        "Performance measurement", &imgui)) {
         // Auto-saved by CheckboxSetting
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "When enabled, measures CPU time spent in selected internal hot-path functions.\n"
             "When disabled, timing code does not run (no QPC reads, no stat updates).");
     }
 
-    ImGui::SameLine();
-    if (ImGui::Button("Reset stats")) {
+    imgui.SameLine();
+    if (imgui.Button("Reset stats")) {
         perf_measurement::ResetAll();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Reset all performance measurement counters (samples, totals, last).");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Reset all performance measurement counters (samples, totals, last).");
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
     if (CheckboxSetting(settings::g_experimentalTabSettings.performance_suppression_enabled,
-                        "Suppress execution (debug)")) {
+                        "Suppress execution (debug)", &imgui)) {
         // Auto-saved by CheckboxSetting
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "WARNING: Suppression changes behavior and can break features.\n"
             "Use this temporarily to isolate performance hotspots.\n"
             "Suppressed functions early-out, skipping their normal work.");
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
-    if (ImGui::BeginTable("PerfMeasurementsTable", 7,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable
-                              | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Metric");
-        ImGui::TableSetupColumn("Measure");
-        ImGui::TableSetupColumn("Avg (us)");
-        ImGui::TableSetupColumn("Last (us)");
-        ImGui::TableSetupColumn("Max (us)");
-        ImGui::TableSetupColumn("Samples");
-        ImGui::TableSetupColumn("Suppress");
-        ImGui::TableHeadersRow();
+    const int table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable
+                            | ImGuiTableFlags_SizingStretchProp;
+    if (imgui.BeginTable("PerfMeasurementsTable", 7, table_flags)) {
+        imgui.TableSetupColumn("Metric");
+        imgui.TableSetupColumn("Measure");
+        imgui.TableSetupColumn("Avg (us)");
+        imgui.TableSetupColumn("Last (us)");
+        imgui.TableSetupColumn("Max (us)");
+        imgui.TableSetupColumn("Samples");
+        imgui.TableSetupColumn("Suppress");
+        imgui.TableHeadersRow();
 
-        auto row = [](const char* name, perf_measurement::Metric metric, settings::BoolSetting& enabled_setting,
-                      const char* measure_checkbox_id, settings::BoolSetting& suppress_setting,
-                      const char* suppress_checkbox_id) {
+        auto row = [&imgui](const char* name, perf_measurement::Metric metric,
+                            settings::BoolSetting& enabled_setting, const char* measure_checkbox_id,
+                            settings::BoolSetting& suppress_setting, const char* suppress_checkbox_id) {
             const perf_measurement::Snapshot s = perf_measurement::GetSnapshot(metric);
             const double avg_us =
                 (s.samples > 0) ? (static_cast<double>(s.total_ns) / static_cast<double>(s.samples) / 1000.0) : 0.0;
             const double last_us = static_cast<double>(s.last_ns) / 1000.0;
             const double max_us = static_cast<double>(s.max_ns) / 1000.0;
 
-            ImGui::TableNextRow();
+            imgui.TableNextRow();
 
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted(name);
+            imgui.TableSetColumnIndex(0);
+            imgui.TextUnformatted(name);
 
-            ImGui::TableSetColumnIndex(1);
-            CheckboxSetting(enabled_setting, measure_checkbox_id);  // hidden label, unique ID
+            imgui.TableSetColumnIndex(1);
+            CheckboxSetting(enabled_setting, measure_checkbox_id, &imgui);
 
-            ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%.2f", avg_us);
+            imgui.TableSetColumnIndex(2);
+            imgui.Text("%.2f", avg_us);
 
-            ImGui::TableSetColumnIndex(3);
-            ImGui::Text("%.2f", last_us);
+            imgui.TableSetColumnIndex(3);
+            imgui.Text("%.2f", last_us);
 
-            ImGui::TableSetColumnIndex(4);
-            ImGui::Text("%.2f", max_us);
+            imgui.TableSetColumnIndex(4);
+            imgui.Text("%.2f", max_us);
 
-            ImGui::TableSetColumnIndex(5);
-            ImGui::Text("%llu", static_cast<unsigned long long>(s.samples));
+            imgui.TableSetColumnIndex(5);
+            imgui.Text("%llu", static_cast<std::uint64_t>(s.samples));
 
-            ImGui::TableSetColumnIndex(6);
+            imgui.TableSetColumnIndex(6);
             const bool suppress_master = settings::g_experimentalTabSettings.performance_suppression_enabled.GetValue();
             if (!suppress_master) {
-                ImGui::BeginDisabled(true);
+                imgui.BeginDisabled();
             }
-            CheckboxSetting(suppress_setting, suppress_checkbox_id);
+            CheckboxSetting(suppress_setting, suppress_checkbox_id, &imgui);
             if (!suppress_master) {
-                ImGui::EndDisabled();
+                imgui.EndDisabled();
             }
         };
 
@@ -147,11 +148,11 @@ void DrawPerformanceTab() {
             settings::g_experimentalTabSettings.perf_suppress_get_independent_flip_state,
             "##suppress_get_independent_flip_state");
 
-        ImGui::EndTable();
+        imgui.EndTable();
     }
 
-    ImGui::Spacing();
-    ImGui::TextDisabled("Tip: Enable master measurement first, then disable individual metrics to reduce overhead.");
+    imgui.Spacing();
+    imgui.TextDisabled("Tip: Enable master measurement first, then disable individual metrics to reduce overhead.");
 }
 
 }  // namespace ui::new_ui

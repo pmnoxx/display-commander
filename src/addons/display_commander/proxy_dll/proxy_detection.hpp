@@ -31,9 +31,10 @@ inline bool IsProxyDllMode(HMODULE h_module = nullptr)
 	// Convert to lowercase for comparison
 	std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
 
-	// Check if we're being loaded as d3d9.dll, ddraw.dll, dxgi.dll, d3d11.dll, d3d12.dll, or version.dll
+	// Check if we're being loaded as d3d9.dll, ddraw.dll, dxgi.dll, d3d11.dll, d3d12.dll, version.dll, or opengl32.dll
 	return module_name == L"d3d9.dll" || module_name == L"ddraw.dll" || module_name == L"dxgi.dll" ||
-	       module_name == L"d3d11.dll" || module_name == L"d3d12.dll" || module_name == L"version.dll";
+	       module_name == L"d3d11.dll" || module_name == L"d3d12.dll" || module_name == L"version.dll" ||
+	       module_name == L"opengl32.dll";
 }
 
 // Get the module name (stem) to determine which proxy DLL we are

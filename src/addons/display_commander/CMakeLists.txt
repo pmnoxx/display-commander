@@ -35,7 +35,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 95)
+set(DISPLAY_COMMANDER_VERSION_PATCH 96)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -130,7 +130,9 @@ target_include_directories(zzz_display_commander
 # WinInet library is needed for HTTP downloads (shader packages list)
 # Note: Some toolchains (e.g. clang-cl without full Windows SDK lib path) may not have evntrace.lib on the link path.
 # bcrypt for SHA256 (ReShade installer signature verification)
-target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt opengl32)
+# opengl32 not linked: when used as opengl32.dll proxy we export gl*/wgl*; linking opengl32.lib would conflict.
+# Standalone UI and imgui_impl_opengl3 use runtime loader (see opengl_loader and imgui embedded loader).
+target_link_libraries(zzz_display_commander PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt)
 
 # NVAPI static linking (official NVIDIA NVAPI layout: x86/ and amd64/)
 # NVIDIA recommends static linking - these are static libraries that act as shims
@@ -257,11 +259,15 @@ if(EXISTS "${DC_CONTROL_FX}")
   endif()
 endif()
 
-# Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll, version.dll)
+# Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll, version.dll, opengl32.dll)
 # CMake automatically handles .def files for MSVC when added as a source, but we also explicitly link it
 target_sources(zzz_display_commander PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
 )
+# opengl32_proxy.cpp defines wgl* that wingdi.h declares as dllimport; suppress inconsistent-dllimport
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/opengl32_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
+endif()
 
 # Standalone installer UI built into the DLL (CommandLine SetupDC [script_dir]). Uses a second ImGui in namespace
 # ImGuiStandalone to avoid symbol clash with ReShade's ImGui. No separate .exe.

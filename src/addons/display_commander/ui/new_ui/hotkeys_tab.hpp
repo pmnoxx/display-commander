@@ -1,5 +1,11 @@
 #pragma once
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}  // namespace ui
+}  // namespace display_commander
+
 #include <array>
 #include <functional>
 #include <string>
@@ -58,8 +64,8 @@ void SyncHotkeySettingsFromParsed();
 // Initialize hotkeys tab
 void InitHotkeysTab();
 
-// Draw hotkeys tab
-void DrawHotkeysTab();
+// Draw hotkeys tab (accepts ImGui wrapper for ReShade or independent UI)
+void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui);
 
 // Process all hotkeys (call from continuous monitoring loop)
 void ProcessHotkeys();

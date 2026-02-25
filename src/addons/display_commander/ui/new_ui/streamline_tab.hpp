@@ -1,7 +1,14 @@
 #pragma once
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}
+
 namespace ui::new_ui {
 
-void DrawStreamlineTab();
+// Draw Streamline tab content (uses ImGui wrapper for ReShade or standalone UI)
+void DrawStreamlineTab(display_commander::ui::IImGuiWrapper& imgui);
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

@@ -1225,7 +1225,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     // Logging Level Control
     // Note: ComboSettingEnumRefWrapper already updates g_min_log_level via SetValue(),
     // so we don't need to manually update it here. Just log the change.
-    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level", &imgui)) {
+    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level", imgui)) {
         // Always log the level change (using LogCurrentLogLevel which uses LogError)
         LogCurrentLogLevel();
     }
@@ -1245,7 +1245,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
     if (ui::new_ui::g_tab_manager.HasTab("advanced")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_advanced_tab, "Show Advanced Tab", &imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_advanced_tab, "Show Advanced Tab", imgui)) {
             LogInfo("Show Advanced tab %s",
                     settings::g_mainTabSettings.show_advanced_tab.GetValue() ? "enabled" : "disabled");
         }
@@ -1255,7 +1255,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("window_info")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab", &imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_window_info_tab, "Show Window Info Tab", imgui)) {
             LogInfo("Show Window Info tab %s",
                     settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
         }
@@ -1265,7 +1265,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("swapchain")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab", &imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_swapchain_tab, "Show Swapchain Tab", imgui)) {
             LogInfo("Show Swapchain tab %s",
                     settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
         }
@@ -1275,7 +1275,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("controller")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab", &imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_controller_tab, "Show Controller Tab", imgui)) {
             LogInfo("Show Controller tab %s",
                     settings::g_mainTabSettings.show_controller_tab.GetValue() ? "enabled" : "disabled");
         }
@@ -1286,7 +1286,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("streamline")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab", &imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_streamline_tab, "Show Streamline Tab", imgui)) {
             LogInfo("Show Streamline tab %s",
                     settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
         }
@@ -1296,7 +1296,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("experimental")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Debug Tab", &imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_experimental_tab, "Show Debug Tab", imgui)) {
             LogInfo("Show Debug tab %s",
                     settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
         }
@@ -1306,7 +1306,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (ui::new_ui::g_tab_manager.HasTab("vulkan")) {
-        if (CheckboxSetting(settings::g_mainTabSettings.show_vulkan_tab, "Show Vulkan (Experimental) tab", &imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.show_vulkan_tab, "Show Vulkan (Experimental) tab", imgui)) {
             LogInfo("Show Vulkan (Experimental) tab %s",
                     settings::g_mainTabSettings.show_vulkan_tab.GetValue() ? "enabled" : "disabled");
         }
@@ -1731,7 +1731,7 @@ if (enabled_experimental_features) {
             g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
             if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
                 imgui.Indent();
-                if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)", &imgui)) {
+                if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)", imgui)) {
                     LogInfo("Force FG Auto %s",
                             settings::g_mainTabSettings.force_fg_auto.GetValue() ? "enabled" : "disabled");
                 }
@@ -1756,7 +1756,7 @@ if (enabled_experimental_features) {
         if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
             if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f",
-                                      &imgui)) {
+                                      imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
@@ -1765,7 +1765,7 @@ if (enabled_experimental_features) {
                     "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                     "Ctrl+Shift+F5) or game restart.");
             }
-            if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", &imgui)) {
+            if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
@@ -1773,7 +1773,7 @@ if (enabled_experimental_features) {
                     "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, "
                     "multiply.");
             }
-            if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR", &imgui)) {
+            if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR", imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
@@ -1784,7 +1784,7 @@ if (enabled_experimental_features) {
             }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
                 if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
-                                          &imgui)) {
+                                          imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -1795,7 +1795,7 @@ if (enabled_experimental_features) {
             ui::colors::PushNestedHeaderColors(&imgui);
             if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
                 imgui.Indent();
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", &imgui)) {
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -1803,14 +1803,14 @@ if (enabled_experimental_features) {
                         "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
                         "Brightness.");
                 }
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", &imgui)) {
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
                         "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
                 }
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", &imgui)) {
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -1820,7 +1820,7 @@ if (enabled_experimental_features) {
                         "with "
                         "Brightness.");
                 }
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", &imgui)) {
+                if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -2051,7 +2051,7 @@ if (enabled_experimental_features) {
 
         // Second line: Selectors
         if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
-                                                   &imgui)) {
+                                                   imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
@@ -2065,7 +2065,7 @@ if (enabled_experimental_features) {
         imgui.NextColumn();
 
         if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse",
-                                                   &imgui)) {
+                                                   imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
@@ -2078,7 +2078,7 @@ if (enabled_experimental_features) {
 
         imgui.NextColumn();
 
-        ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad", &imgui);
+        ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Controls gamepad input blocking behavior.");
         }
@@ -2156,7 +2156,7 @@ if (enabled_experimental_features) {
 
         // Continue Rendering in Background
         if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background",
-                            &imgui)) {
+                            imgui)) {
             bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
             LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
 
@@ -2188,7 +2188,7 @@ if (enabled_experimental_features) {
         imgui.Spacing();
 
         // Prevent display sleep & screensaver mode
-        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver", &imgui)) {
+        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver", imgui)) {
             LogInfo("Prevent display sleep & screensaver mode changed to %d", settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
         if (imgui.IsItemHovered()) {
@@ -2682,7 +2682,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
 void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     // Window Mode dropdown (with persistent setting)
-    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode", &imgui)) {
+    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode", imgui)) {
         WindowMode old_mode = s_window_mode.load();
         s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
 
@@ -2697,7 +2697,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
 
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio", &imgui)) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio", imgui)) {
             s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
             LogInfo("Aspect ratio changed");
         }
@@ -2707,7 +2707,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
     }
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
         // Width dropdown for aspect ratio mode
-        if (ComboSettingRefWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width", &imgui)) {
+        if (ComboSettingRefWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width", imgui)) {
             s_aspect_width.store(settings::g_mainTabSettings.window_aspect_width.GetValue());
             LogInfo("Window width for aspect mode setting changed to: %d", s_aspect_width.load());
         }
@@ -2719,7 +2719,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
 
     // Window Alignment dropdown (only shown in Aspect Ratio mode)
     if (s_window_mode.load() == WindowMode::kAspectRatio) {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.alignment, "Alignment", &imgui)) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.alignment, "Alignment", imgui)) {
             s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
             LogInfo("Window alignment changed");
         }
@@ -2861,7 +2861,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
 
                 // Reflex mode selector for OnPresent: Low latency (default), Low+boost, Off, Game Defaults
                 imgui.Spacing();
-                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", &imgui)) {
+                if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui)) {
                     // Setting is automatically saved via ComboSettingEnumRefWrapper
                 }
                 if (imgui.IsItemHovered()) {
@@ -2882,7 +2882,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
 
                 if (display_input_ratio) {
                     if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
-                                            "Display / Input Ratio", &imgui)) {
+                                            "Display / Input Ratio", imgui)) {
                         // Setting is automatically saved via ComboSettingWrapper
                     }
                     if (imgui.IsItemHovered()) {
@@ -3048,7 +3048,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 // Reflex mode selector for Reflex FPS limiter (same options as OnPresent)
                 imgui.Spacing();
                 if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex",
-                                               &imgui)) {
+                                               imgui)) {
                     g_reflex_settings_outdated.store(true);
                 }
                 if (imgui.IsItemHovered()) {
@@ -3067,7 +3067,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
             if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
                 imgui.SameLine();
                 if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
-                                    ICON_FK_WARNING " Suppress Native Reflex", &imgui)) {
+                                    ICON_FK_WARNING " Suppress Native Reflex", imgui)) {
                     g_reflex_settings_outdated.store(true);
                     LogInfo("Suppress Native Reflex %s",
                             settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
@@ -3082,7 +3082,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
         if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
             // Suppress Reflex Sleep checkbox
             imgui.Spacing();
-            if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", &imgui)) {
+            if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", imgui)) {
                 g_reflex_settings_outdated.store(true);
                 LogInfo("Suppress Reflex Sleep %s",
                         settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
@@ -3099,7 +3099,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
             || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
             imgui.Spacing();
             if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex",
-                                           &imgui)) {
+                                           imgui)) {
                 g_reflex_settings_outdated.store(true);
             }
             if (imgui.IsItemHovered()) {
@@ -3118,7 +3118,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
             if (::IsNativeFramePacingInSync()) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
-                                    "Use Reflex Latency Markers as fps limiter", &imgui)) {
+                                    "Use Reflex Latency Markers as fps limiter", imgui)) {
                     LogInfo("Experimental FG native fps limiter %s",
                             settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() ? "enabled"
                                                                                                       : "disabled");
@@ -3129,7 +3129,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                         "Experimental; may improve frame pacing with FG.");
                 }
                 if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
-                                    &imgui)) {
+                                    imgui)) {
                     LogInfo(
                         "Native pacing sim start only %s",
                         settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
@@ -3142,7 +3142,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 // Schedule present start N frame times after simulation start (default on, improves native frame
                 // pacing)
                 if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
-                                    "Schedule present start N frame times after simulation start", &imgui)) {
+                                    "Schedule present start N frame times after simulation start", imgui)) {
                     LogInfo("Schedule present start after Sim Start %s",
                             settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
                                                                                                          : "disabled");
@@ -3155,7 +3155,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 }
                 imgui.SameLine();
                 if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)", "%.2f",
-                                       &imgui)) {
+                                       imgui)) {
                     // Setting is automatically saved by SliderFloatSetting
                 }
                 if (imgui.IsItemHovered()) {
@@ -3168,7 +3168,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
         if (enabled_experimental_features) {
             if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter,
-                                    "Experimental Safe Mode fps limiter", &imgui)) {
+                                    "Experimental Safe Mode fps limiter", imgui)) {
                     LogInfo("Experimental Safe Mode fps limiter %s",
                             settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue() ? "enabled"
                                                                                                       : "disabled");
@@ -3309,7 +3309,7 @@ void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& 
 
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, &imgui)) {
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, imgui)) {
         }
 
         auto cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
@@ -3381,7 +3381,7 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
         if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
-                                  &imgui)) {
+                                  imgui)) {
         }
         if (!fps_limit_enabled) {
             imgui.EndDisabled();
@@ -3483,9 +3483,14 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui
         }
         if (imgui.IsItemHovered()) {
             std::ostringstream tooltip;
-            tooltip << "Increases backbuffer count from " << desc_ptr->back_buffer_count
-                    << " to 3 (requires restart).\n"
-                    << "Current backbuffer count: " << desc_ptr->back_buffer_count;
+            if (desc_ptr) {
+                tooltip << "Increases backbuffer count from " << desc_ptr->back_buffer_count
+                        << " to 3 (requires restart).\n"
+                        << "Current backbuffer count: " << desc_ptr->back_buffer_count;
+            } else {
+                tooltip << "Increases backbuffer count to 3 (requires restart).\n"
+                        << "Current backbuffer count: unknown (no swapchain yet).";
+            }
             imgui.SetTooltip("%s", tooltip.str().c_str());
         }
     }
@@ -5756,7 +5761,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
     // Auto-apply checkbox next to Audio Volume
     imgui.SameLine();
-    if (CheckboxSetting(settings::g_mainTabSettings.audio_volume_auto_apply, "Auto-apply##audio_volume", &imgui)) {
+    if (CheckboxSetting(settings::g_mainTabSettings.audio_volume_auto_apply, "Auto-apply##audio_volume", imgui)) {
         // No immediate action required; stored for consistency with other UI
     }
     if (imgui.IsItemHovered()) {
@@ -6748,7 +6753,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Columns(1);  // Reset to single column
         if (show_refresh_rate_frame_times || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
             if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)", "%d ms",
-                                 &imgui)) {
+                                 imgui)) {
                 // Setting is automatically saved by SliderIntSetting
             }
             if (imgui.IsItemHovered()) {
@@ -6762,7 +6767,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Spacing();
         // Overlay background transparency slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_background_alpha, "Overlay Background Transparency",
-                               "%.2f", &imgui)) {
+                               "%.2f", imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
@@ -6771,7 +6776,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         // Overlay chart transparency slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_chart_alpha, "Frame Chart Transparency", "%.2f",
-                               &imgui)) {
+                               imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
@@ -6780,7 +6785,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
                 "transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
         }
         // Overlay graph scale slider
-        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_scale, "Graph Size Scale", "%.1fx", &imgui)) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_scale, "Graph Size Scale", "%.1fx", imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
@@ -6790,7 +6795,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         // Overlay graph max scale slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_graph_max_scale, "Graph Max Value Scale", "%.1fx",
-                               &imgui)) {
+                               imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
@@ -6802,7 +6807,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         // Overlay vertical spacing slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_vertical_spacing, "Overlay Vertical Spacing",
-                               "%.0f px", &imgui)) {
+                               "%.0f px", imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
@@ -6813,7 +6818,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         // Overlay horizontal spacing slider
         if (SliderFloatSetting(settings::g_mainTabSettings.overlay_horizontal_spacing, "Overlay Horizontal Spacing",
-                               "%.0f px", &imgui)) {
+                               "%.0f px", imgui)) {
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
@@ -7199,7 +7204,7 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.BeginGroup();
     // Use CheckboxSetting so the checkbox always reflects the current setting (e.g. when toggled via hotkey)
     if (CheckboxSetting(settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display,
-                        "ADHD on game display", &imgui)) {
+                        "ADHD on game display", imgui)) {
         LogInfo("ADHD on game display %s",
                 settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue() ? "enabled"
                                                                                                     : "disabled");
@@ -7208,7 +7213,7 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
     if (hasMultipleMonitors) {
         imgui.SameLine();
         if (CheckboxSetting(settings::g_mainTabSettings.adhd_multi_monitor_enabled, "ADHD Multi-Monitor Mode",
-                            &imgui)) {
+                            imgui)) {
             LogInfo("ADHD Multi-Monitor Mode (other displays) %s",
                     settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
         }

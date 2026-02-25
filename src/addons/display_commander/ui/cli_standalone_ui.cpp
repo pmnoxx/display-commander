@@ -31,8 +31,10 @@
 #include "ui/imgui_wrapper_standalone.hpp"
 #include "ui/new_ui/advanced_tab.hpp"
 #include "ui/new_ui/main_new_tab_standalone.hpp"
+#include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/performance_tab.hpp"
 #include "ui/new_ui/vulkan_tab.hpp"
+#include "ui/new_ui/experimental_tab.hpp"
 #include "ui/nvidia_profile_tab_shared.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
@@ -776,6 +778,11 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper);
                     ImGui::EndTabItem();
                 }
+                if (ImGui::BeginTabItem("Hotkeys")) {
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawHotkeysTab(wrapper);
+                    ImGui::EndTabItem();
+                }
                 if (ImGui::BeginTabItem("Performance")) {
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
                     ui::new_ui::DrawPerformanceTab(wrapper);
@@ -790,6 +797,11 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                 if (ImGui::BeginTabItem("Vulkan (Experimental)")) {
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
                     ui::new_ui::DrawVulkanTab(wrapper);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Debug")) {
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawExperimentalTab(wrapper, nullptr);
                     ImGui::EndTabItem();
                 }
                 ImGui::EndTabBar();

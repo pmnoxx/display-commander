@@ -6,6 +6,12 @@
 #include <chrono>
 #include <windows.h>
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}  // namespace display_commander
+
 namespace ui::new_ui {
 
 // Message history entry
@@ -19,38 +25,38 @@ struct MessageHistoryEntry {
     bool wasSuppressed;
 };
 
-// Draw the window info tab content
-void DrawWindowInfoTab();
+// Draw the window info tab content (uses ImGui wrapper for ReShade or standalone UI)
+void DrawWindowInfoTab(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw basic window information
-void DrawBasicWindowInfo();
+void DrawBasicWindowInfo(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw window styles and properties
-void DrawWindowStyles();
+void DrawWindowStyles(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw window state information
-void DrawWindowState();
+void DrawWindowState(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw global window state information
-void DrawGlobalWindowState();
+void DrawGlobalWindowState(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw focus and input state
-void DrawFocusAndInputState();
+void DrawFocusAndInputState(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw continue rendering and should-block-input debug info
-void DrawContinueRenderingAndInputBlocking();
+void DrawContinueRenderingAndInputBlocking(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw cursor information
-void DrawCursorInfo();
+void DrawCursorInfo(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw target state and change requirements
-void DrawTargetState();
+void DrawTargetState(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw message sending UI
-void DrawMessageSendingUI();
+void DrawMessageSendingUI(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw message history
-void DrawMessageHistory();
+void DrawMessageHistory(display_commander::ui::IImGuiWrapper& imgui);
 
 // Add message to history
 void AddMessageToHistory(UINT message, WPARAM wParam, LPARAM lParam, bool wasSuppressed = false);

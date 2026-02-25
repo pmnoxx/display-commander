@@ -237,8 +237,10 @@ void InitializeNewUI() {
     g_tab_manager.AddTab(
         "Hotkeys", "hotkeys",
         [](reshade::api::effect_runtime* runtime) {
+            (void)runtime;
             try {
-                ui::new_ui::DrawHotkeysTab();
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::DrawHotkeysTab(wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing hotkeys tab: %s", e.what());
             } catch (...) {
@@ -251,13 +253,12 @@ void InitializeNewUI() {
         "Controller", "controller",
         [](reshade::api::effect_runtime* runtime) {
             try {
-                // Draw XInput widget first
-                display_commander::widgets::xinput_widget::DrawXInputWidget();
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                display_commander::widgets::xinput_widget::DrawXInputWidget(wrapper);
 
                 ImGui::Spacing();
 
-                // Draw remapping widget below
-                display_commander::widgets::remapping_widget::DrawRemappingWidget();
+                display_commander::widgets::remapping_widget::DrawRemappingWidget(wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing Controller tab: %s", e.what());
             } catch (...) {
@@ -302,7 +303,8 @@ void InitializeNewUI() {
         "ReShade", "reshade",
         [](reshade::api::effect_runtime* runtime) {
             try {
-                ui::new_ui::DrawAddonsTab();
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::DrawAddonsTab(wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing reshade tab: %s", e.what());
             } catch (...) {
@@ -331,7 +333,8 @@ void InitializeNewUI() {
             "Debug", "experimental",
             [](reshade::api::effect_runtime* runtime) {
                 try {
-                    ui::new_ui::DrawExperimentalTab(runtime);
+                    display_commander::ui::ImGuiWrapperReshade wrapper;
+                    ui::new_ui::DrawExperimentalTab(wrapper, runtime);
                 } catch (const std::exception& e) {
                     LogError("Error drawing debug tab: %s", e.what());
                 } catch (...) {

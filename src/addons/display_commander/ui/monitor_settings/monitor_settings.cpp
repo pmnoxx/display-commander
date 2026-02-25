@@ -1,4 +1,5 @@
 #include "monitor_settings.hpp"
+#include "../imgui_wrapper_base.hpp"
 #include "../../display_cache.hpp"
 #include "../../display_restore.hpp"
 #include "../ui_display_tab.hpp"
@@ -7,6 +8,7 @@
 #include <atomic>
 #include <chrono>
 #include <iomanip>
+#include <imgui.h>
 #include <reshade_imgui.hpp>
 #include <sstream>
 #include <thread>
@@ -281,27 +283,24 @@ static void BeginConfirmationCountdown(int display_index, const std::string& lab
 }
 
 // Render UI and actions for pending confirmation
-void HandlePendingConfirmationUI() {
+void HandlePendingConfirmationUI(display_commander::ui::IImGuiWrapper& imgui) {
     if (!g_has_pending_confirmation.load()) return;
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
     ImVec4 warnColor(1.0f, 0.85f, 0.2f, 1.0f);
-    ImGui::TextColored(warnColor, "Confirm new display mode (%s)", g_last_applied_label.c_str());
+    imgui.TextColored(warnColor, "Confirm new display mode (%s)", g_last_applied_label.c_str());
     int remaining = g_confirm_seconds_remaining.load();
-    ImGui::SameLine();
-    ImGui::TextColored(warnColor, "(%ds)", remaining);
+    imgui.SameLine();
+    imgui.TextColored(warnColor, "(%ds)", remaining);
 
-    // Confirm and Cancel (Revert) buttons
-    if (ImGui::Button("Confirm")) {
-        // Keep the new mode; stop countdown
+    if (imgui.Button("Confirm")) {
         g_has_pending_confirmation.store(false);
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Revert")) {
-        // Revert immediately
+    imgui.SameLine();
+    if (imgui.Button("Revert")) {
         display_restore::RestoreDisplayByIndex(g_last_applied_display_index);
         g_has_pending_confirmation.store(false);
     }
@@ -320,8 +319,8 @@ void HandleAutoDetection() {
             int monitor_index = ui::FindMonitorIndexByDeviceId(saved_device_id);
 
             if (monitor_index >= 0) {
-                // Found matching monitor by device ID
-                s_selected_monitor_index.store(static_cast<float>(monitor_index));  // Set to direct monitor index
+                // Combo index 0 = Auto, 1 = display 0, 2 = display 1, ...
+                s_selected_monitor_index.store(static_cast<float>(monitor_index + 1));
                 LogInfo("Auto-detection: Found monitor by device ID: %s (index %d)", saved_device_id.c_str(),
                         monitor_index);
 
@@ -360,8 +359,8 @@ void HandleAutoDetection() {
                     for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
                         const auto* display = display_cache::g_displayCache.GetDisplay(i);
                         if (display && display->monitor_handle == current_monitor) {
-                            // Set to direct monitor index
-                            s_selected_monitor_index.store(static_cast<float>(i));
+                            // Combo index 0 = Auto, 1 = display 0, 2 = display 1, ...
+                            s_selected_monitor_index.store(static_cast<float>(i + 1));
                             LogInfo("Auto-detection: Found monitor by handle (fallback) at index %d", i);
 
                             // Prefer saved indices for this display (0..3). If out of range, fallback to closest
@@ -395,24 +394,23 @@ void HandleAutoDetection() {
 }
 
 // Handle monitor selection UI
-void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
-    // Check if current monitor is primary
+void HandleMonitorSelection(display_commander::ui::IImGuiWrapper& imgui,
+                            const std::vector<std::string>& monitor_labels) {
     std::string monitor_label = "Monitor";
-    if (s_selected_monitor_index >= 0 && s_selected_monitor_index < static_cast<int>(monitor_labels.size())) {
-        const auto* display = display_cache::g_displayCache.GetDisplay(static_cast<int>(s_selected_monitor_index));
-        if (display && display->monitor_handle) {
-            // Use cached primary monitor flag instead of calling GetMonitorInfoW
-            if (display->is_primary) {
-                monitor_label = "Monitor (Primary)";
-            }
+    const int sel = static_cast<int>(s_selected_monitor_index.load());
+    if (sel >= 1 && sel <= static_cast<int>(monitor_labels.size())) {
+        const auto* display = display_cache::g_displayCache.GetDisplay(sel - 1);
+        if (display && display->monitor_handle && display->is_primary) {
+            monitor_label = "Monitor (Primary)";
         }
     }
 
-    // Monitor selection
-    if (ImGui::BeginCombo(monitor_label.c_str(), monitor_labels[static_cast<int>(s_selected_monitor_index)].c_str())) {
+    if (monitor_labels.empty()) return;
+    if (imgui.BeginCombo(monitor_label.c_str(),
+                         monitor_labels[static_cast<size_t>(sel)].c_str())) {
         for (int i = 0; i < static_cast<int>(monitor_labels.size()); i++) {
-            const bool is_selected = (i == static_cast<int>(s_selected_monitor_index));
-            if (ImGui::Selectable(monitor_labels[i].c_str(), is_selected)) {
+            const bool is_selected = (i == sel);
+            if (imgui.Selectable(monitor_labels[static_cast<size_t>(i)].c_str(), is_selected)) {
                 s_selected_monitor_index.store(i);
 
                 if (i == 0) {
@@ -479,15 +477,15 @@ void HandleMonitorSelection(const std::vector<std::string>& monitor_labels) {
                 }
             }
             if (is_selected) {
-                ImGui::SetItemDefaultFocus();
+                imgui.SetItemDefaultFocus();
             }
         }
-        ImGui::EndCombo();
+        imgui.EndCombo();
     }
 }
 
 // Handle resolution selection UI
-void HandleResolutionSelection(int selected_monitor_index) {
+void HandleResolutionSelection(display_commander::ui::IImGuiWrapper& imgui, int selected_monitor_index) {
     EnsurePersistentSettingsLoadedOnce();
     // If Auto (Current) is selected, find the current monitor where the game is running
     int actual_monitor_index = selected_monitor_index;
@@ -541,48 +539,46 @@ void HandleResolutionSelection(int selected_monitor_index) {
         // Update the global index for compatibility
         s_selected_resolution_index.store(current_selection_index);
 
-        ImGui::BeginGroup();
-        ImGui::PushID("resolution_combo");
-        if (ImGui::BeginCombo("Resolution", resolution_labels[current_selection_index].c_str())) {
+        imgui.BeginGroup();
+        imgui.PushID("resolution_combo");
+        if (imgui.BeginCombo("Resolution", resolution_labels[static_cast<size_t>(current_selection_index)].c_str())) {
             for (int i = 0; i < static_cast<int>(resolution_labels.size()); i++) {
                 const bool is_selected = (i == current_selection_index);
-                if (ImGui::Selectable(resolution_labels[i].c_str(), is_selected)) {
+                if (imgui.Selectable(resolution_labels[static_cast<size_t>(i)].c_str(), is_selected)) {
                     s_selected_resolution_index.store(static_cast<float>(i));
                     s_selected_refresh_rate_index.store(0);  // Reset refresh rate when resolution changes
 
                     if (i == 0) {
-                        // Current resolution
                         resSetting.SetCurrentResolution();
                         refSetting.SetCurrentRefreshRate();
                     } else {
-                        // Specific resolution
                         int width, height;
-                        if (sscanf_s(resolution_labels[i].c_str(), "%d x %d", &width, &height) == 2) {
+                        if (sscanf_s(resolution_labels[static_cast<size_t>(i)].c_str(), "%d x %d", &width, &height) == 2) {
                             resSetting.SetResolution(width, height);
-                            refSetting.SetCurrentRefreshRate();  // Reset to current refresh rate
+                            refSetting.SetCurrentRefreshRate();
                         }
                     }
 
                     if (s_auto_apply_resolution_change) {
-                        // Disable auto-apply if a confirmation is pending
                         if (!g_has_pending_confirmation.load()) {
                             StartResolutionAutoApplyWithBackoff();
                         }
                     }
                 }
                 if (is_selected) {
-                    ImGui::SetItemDefaultFocus();
+                    imgui.SetItemDefaultFocus();
                 }
             }
-            ImGui::EndCombo();
+            imgui.EndCombo();
         }
-        ImGui::PopID();
-        ImGui::EndGroup();
+        imgui.PopID();
+        imgui.EndGroup();
     }
 }
 
 // Handle refresh rate selection UI
-void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolution_index) {
+void HandleRefreshRateSelection(display_commander::ui::IImGuiWrapper& imgui, int selected_monitor_index,
+                                int selected_resolution_index) {
     EnsurePersistentSettingsLoadedOnce();
     if (s_selected_resolution_index >= 0) {
         // If Auto (Current) is selected, find the current monitor where the game is running
@@ -643,22 +639,21 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                 // Update the global index for compatibility
                 s_selected_refresh_rate_index.store(current_refresh_index);
 
-                ImGui::BeginGroup();
-                ImGui::PushID("refresh_rate_combo");
-                if (ImGui::BeginCombo("Refresh Rate", refresh_rate_labels[current_refresh_index].c_str())) {
+                imgui.BeginGroup();
+                imgui.PushID("refresh_rate_combo");
+                if (imgui.BeginCombo("Refresh Rate",
+                                    refresh_rate_labels[static_cast<size_t>(current_refresh_index)].c_str())) {
                     for (int i = 0; i < static_cast<int>(refresh_rate_labels.size()); i++) {
                         const bool is_selected = (i == current_refresh_index);
-                        if (ImGui::Selectable(refresh_rate_labels[i].c_str(), is_selected)) {
+                        if (imgui.Selectable(refresh_rate_labels[static_cast<size_t>(i)].c_str(), is_selected)) {
                             s_selected_refresh_rate_index.store(i);
 
                             if (i == 0) {
-                                // Current refresh rate
                                 refSetting.SetCurrentRefreshRate();
                             } else {
-                                // Specific refresh rate
                                 double refresh_hz = 0.0;
-                                if (sscanf_s(refresh_rate_labels[i].c_str(), "%lf Hz", &refresh_hz) == 1) {
-                                    // Simple conversion - in a real implementation, you'd want more precision
+                                if (sscanf_s(refresh_rate_labels[static_cast<size_t>(i)].c_str(), "%lf Hz",
+                                             &refresh_hz) == 1) {
                                     UINT32 numerator = static_cast<UINT32>(std::round(refresh_hz * 1000));
                                     UINT32 denominator = 1000;
                                     refSetting.SetRefreshRate(numerator, denominator);
@@ -672,25 +667,36 @@ void HandleRefreshRateSelection(int selected_monitor_index, int selected_resolut
                             }
                         }
                         if (is_selected) {
-                            ImGui::SetItemDefaultFocus();
+                            imgui.SetItemDefaultFocus();
                         }
                     }
-                    ImGui::EndCombo();
+                    imgui.EndCombo();
                 }
-                ImGui::PopID();
-                ImGui::EndGroup();
+                imgui.PopID();
+                imgui.EndGroup();
             }
         }
     }
 }
+
+// Handle apply display settings at start checkbox
+void HandleApplyDisplaySettingsAtStartCheckbox(display_commander::ui::IImGuiWrapper& imgui) {
+    bool value = g_setting_apply_display_settings_at_start.GetValue();
+    if (imgui.Checkbox("Apply display settings at start", &value)) {
+        g_setting_apply_display_settings_at_start.SetValue(value);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("When enabled, applies the selected resolution/refresh to the target monitor when the game starts.");
+    }
+}
+
 // Handle auto-restore resolution checkbox
-void HandleAutoRestoreResolutionCheckbox() {
-    ImGui::Spacing();
+void HandleAutoRestoreResolutionCheckbox(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Spacing();
 
     bool auto_restore_resolution_on_close = s_auto_restore_resolution_on_close.load();
-    if (ImGui::Checkbox("Restore display settings when game closes (WIP)", &auto_restore_resolution_on_close)) {
+    if (imgui.Checkbox("Restore display settings when game closes (WIP)", &auto_restore_resolution_on_close)) {
         s_auto_restore_resolution_on_close.store(auto_restore_resolution_on_close);
-        // Log the setting change
         if (auto_restore_resolution_on_close) {
             LogInfo("Restore display settings when game closes: ENABLED");
         } else {
@@ -698,26 +704,25 @@ void HandleAutoRestoreResolutionCheckbox() {
         }
     }
 
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "When enabled, automatically restores the original monitor resolution and refresh rate when the game "
             "closes.\nThis ensures your display settings return to normal after gaming sessions.");
     }
 }
 
 // Handle the "Apply with DXGI API" button
-void HandleDXGIAPIApplyButton() {
-    // DXGI API Button (Alternative Fractional Method)
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+void HandleDXGIAPIApplyButton(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.TextDisabled("(?)");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Uses DXGI SetFullscreenState + ResizeTarget to set fractional refresh rates.\nThis method "
             "creates a temporary swap chain to apply the mode.");
     }
     bool pending = g_has_pending_confirmation.load();
-    if (pending) ImGui::BeginDisabled();
-    bool clicked = ImGui::Button("Apply with DXGI API");
-    if (pending) ImGui::EndDisabled();
+    if (pending) imgui.BeginDisabled();
+    bool clicked = imgui.Button("Apply with DXGI API");
+    if (pending) imgui.EndDisabled();
     if (clicked) {
         if (g_has_pending_confirmation.load()) {
             // Ignore clicks while confirmation is pending
@@ -877,5 +882,38 @@ void HandleDXGIAPIApplyButton() {
             }
         }).detach();
     }
+}
+
+void DrawMonitorSettings(display_commander::ui::IImGuiWrapper& imgui) {
+    HandleAutoDetection();
+    HandlePendingConfirmationUI(imgui);
+
+    std::vector<std::string> monitor_labels;
+    monitor_labels.push_back("Auto (Current)");
+    auto cache_labels = display_cache::g_displayCache.GetMonitorLabels();
+    for (const auto& L : cache_labels) {
+        monitor_labels.push_back(L);
+    }
+    if (monitor_labels.size() <= 1) {
+        imgui.Text("No displays available.");
+        return;
+    }
+
+    int sel_monitor = static_cast<int>(s_selected_monitor_index.load());
+    if (sel_monitor < 0 || sel_monitor >= static_cast<int>(monitor_labels.size())) {
+        s_selected_monitor_index.store(0);
+        sel_monitor = 0;
+    }
+
+    HandleMonitorSelection(imgui, monitor_labels);
+
+    const int selected_monitor_index = static_cast<int>(s_selected_monitor_index.load());
+    const int selected_resolution_index = static_cast<int>(s_selected_resolution_index.load());
+
+    HandleResolutionSelection(imgui, selected_monitor_index);
+    HandleRefreshRateSelection(imgui, selected_monitor_index, selected_resolution_index);
+    HandleApplyDisplaySettingsAtStartCheckbox(imgui);
+    HandleAutoRestoreResolutionCheckbox(imgui);
+    HandleDXGIAPIApplyButton(imgui);
 }
 }  // namespace ui::monitor_settings

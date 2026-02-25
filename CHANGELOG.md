@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.89 (2026-02-24)
+
+- **Hotkeys tab / ImGui wrapper** - `DrawHotkeysTab` now takes `IImGuiWrapper&` so the Hotkeys tab can be drawn in both the ReShade overlay and the independent (standalone) UI. Enables adding the Hotkeys tab to the independent settings window when desired.
+
 ## v0.12.88 (2026-02-24)
 
 - **Vulkan tab / ImGui wrapper** - `DrawVulkanTab` now takes `IImGuiWrapper&` so the Vulkan (experimental) tab can be drawn in both the ReShade overlay and the independent (standalone) UI. Added a **Vulkan (Experimental)** tab to the independent settings window.

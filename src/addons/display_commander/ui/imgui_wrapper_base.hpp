@@ -33,6 +33,7 @@ enum class GraphicsApi : std::uint32_t {
 /** ImGui table/tree flags as int (same numeric values as imgui.h for compatibility). */
 namespace wrapper_flags {
 constexpr int TreeNodeFlags_None        = 0;
+constexpr int TreeNodeFlags_Leaf        = 1 << 2;   // No expand/collapse
 constexpr int TreeNodeFlags_DefaultOpen = 1 << 5;
 constexpr int TableFlags_BordersOuter   = (1 << 8) | (1 << 10);
 constexpr int TableFlags_BordersH      = (1 << 7) | (1 << 8);
@@ -40,6 +41,7 @@ constexpr int TableFlags_SizingStretchProp = 3 << 13;
 constexpr int TableFlags_ScrollY       = 1 << 25;
 constexpr int TableFlags_RowBg         = 1 << 4;
 constexpr int TableFlags_Borders       = (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10);
+constexpr int TableFlags_Resizable     = 1 << 12;   // Columns can be resized by user
 constexpr int TableFlags_SizingFixedFit = 2 << 13;
 constexpr int TableColumnFlags_WidthStretch = 1 << 3;
 constexpr int TableColumnFlags_WidthFixed   = 1 << 4;
@@ -102,6 +104,9 @@ struct IImGuiWrapper {
     virtual void Indent() = 0;
     virtual void Unindent() = 0;
     virtual bool InputText(const char* label, char* buf, size_t buf_size) = 0;
+    virtual bool InputText(const char* label, char* buf, size_t buf_size, int flags) = 0;
+    virtual bool InputFloat(const char* label, float* v, float step = 0.0f, float step_fast = 0.0f,
+                            const char* format = "%.3f", int flags = 0) = 0;
     virtual bool InputInt(const char* label, int* v, int step = 1, int step_fast = 0, int flags = 0) = 0;
     virtual bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") = 0;
     virtual void TextWrapped(const char* fmt, ...) = 0;
@@ -109,6 +114,7 @@ struct IImGuiWrapper {
     virtual void PushStyleColor(int col_enum, const ImVec4& color) = 0;
     virtual void PopStyleColor(int count = 1) = 0;
     virtual bool TreeNodeEx(const char* label, int flags) = 0;
+    virtual bool TreeNode(const char* label) = 0;   // Same as ImGui::TreeNode(label)
     virtual void TreePop() = 0;
     virtual ImVec2 GetContentRegionAvail() = 0;
     virtual float GetStyleItemSpacingX() = 0;
@@ -131,6 +137,11 @@ struct IImGuiWrapper {
     virtual void SetCursorScreenPos(const ImVec2& pos) = 0;
     virtual float GetCursorPosX() = 0;
     virtual void Dummy(const ImVec2& size) = 0;
+    virtual ImVec2 GetItemRectMin() = 0;
+    virtual ImVec2 GetItemRectSize() = 0;
+
+    // Progress bar (fraction 0..1, size_arg, overlay text)
+    virtual void ProgressBar(float fraction, const ImVec2& size_arg, const char* overlay) = 0;
 
     // Colors (for draw lists)
     virtual ImU32 GetColorU32(int col_enum) = 0;
@@ -143,6 +154,7 @@ struct IImGuiWrapper {
     // Columns (legacy layout)
     virtual void Columns(int count = 1, const char* id = nullptr, bool border = true) = 0;
     virtual void NextColumn() = 0;
+    virtual void SetColumnWidth(int column_index, float width) = 0;
 
     // Tooltip (explicit begin/end for multi-line content)
     virtual void BeginTooltip() = 0;
@@ -170,6 +182,21 @@ struct IImGuiWrapper {
     virtual void SetNextWindowSize(const ImVec2& size, int cond = 0) = 0;
     virtual ImVec2 GetDisplaySize() = 0;
     virtual const ImGuiIO& GetIO() = 0;
+    virtual unsigned int GetFrameCount() = 0;
+
+    // Tab bar
+    virtual bool BeginTabBar(const char* str_id, int flags = 0) = 0;
+    virtual bool BeginTabItem(const char* label, bool* p_open = nullptr, int flags = 0) = 0;
+    virtual void EndTabItem() = 0;
+    virtual void EndTabBar() = 0;
+
+    // Input (key state; key is ImGuiKey_* as int)
+    virtual bool IsKeyDown(int key) = 0;
+
+    // Popup / modal
+    virtual void OpenPopup(const char* str_id) = 0;
+    virtual bool BeginPopupModal(const char* name, bool* p_open, int flags = 0) = 0;
+    virtual void EndPopup() = 0;
 };
 
 } // namespace ui

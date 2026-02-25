@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.93 (2026-02-25)
+
+- **Add ability to use Display Commander as ddraw.dll proxy** - Proxy DLL can be used as ddraw.dll for DirectDraw games; forwards to system ddraw.dll (same pattern as dxgi/d3d11/d3d12).
+
 ## v0.12.92 (2026-02-25)
 
 - **NVIDIA profile search simplification** - Profile lookup for the current exe now uses a single path: `NvAPI_DRS_FindApplicationByName` with the full exe path (no profile enumeration). Find, create, delete, get details, and set setting all go through this. Removed `NvAPI_DRS_FindProfileByName` and profile/app enumeration for finding profiles; `SetOrDeleteProfileSettingForExe` (e.g. rundll32) supports only the current process exe. Cache and refresh behavior unchanged; UI still shows at most one matching profile.

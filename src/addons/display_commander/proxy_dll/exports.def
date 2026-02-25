@@ -14,6 +14,10 @@ EXPORTS
 	D3D12SerializeRootSignature PRIVATE
 	D3D12SerializeVersionedRootSignature PRIVATE
 
+	; ddraw.dll exports
+	DirectDrawCreate @8 PRIVATE
+	DirectDrawCreateEx @10 PRIVATE
+
 	; dxgi.dll exports
 	CreateDXGIFactory PRIVATE
 	CreateDXGIFactory1 PRIVATE

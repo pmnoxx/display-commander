@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.99 (2026-02-25)
+
+- **winmm.dll proxy: added missing APIs** - Implemented the remaining winmm exports for parity with system winmm (Wine API reference): GetDriverFlags, OpenDriverA, DrvClose, DrvDefDriverProc, DrvOpen, DrvOpenA, DrvSendMessage, mmioInstallIOProc16. All forward to the real winmm.dll (or winmmHooked.dll when present).
+
 ## v0.12.98 (2026-02-25)
 
 - **DXGI factory hooks** - Added CreateDXGIFactory2 detour and hook installation (same pattern as CreateDXGIFactory/CreateDXGIFactory1). DXGI factory hooks are disabled for now (behind experimental / hook suppression).

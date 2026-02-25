@@ -51,6 +51,7 @@ class HotkeysTabSettings {
     StringSetting hotkey_win_left;
     StringSetting hotkey_win_right;
     StringSetting hotkey_move_to_primary;
+    StringSetting hotkey_move_to_secondary;
 
     // Exclusive key groups - predefined groups
     BoolSetting exclusive_keys_ad_enabled;      // A and D keys

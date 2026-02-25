@@ -631,11 +631,38 @@ void InitializeHotkeyDefinitions() {
              settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(primary_id);
              settings::g_mainTabSettings.target_extended_display_device_id.SetValue(primary_id);
              LogInfo("Move to primary: target display set to primary monitor.");
+         }},
+        {"move_to_secondary", "Move to secondary monitor", "numpad-",
+         "Set target display to the first non-primary monitor. Only when game is in foreground.",
+         []() {
+             if (display_commanderhooks::GetForegroundWindow_Direct() != g_last_swapchain_hwnd.load()) return;
+             if (!display_cache::g_displayCache.IsInitialized()) return;
+             auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
+             std::string secondary_id;
+             for (const auto& info : display_info) {
+                 if (!info.is_primary) {
+                     secondary_id = info.extended_device_id;
+                     break;
+                 }
+             }
+             if (secondary_id.empty()) {
+                 LogInfo("Move to secondary: no non-primary display found.");
+                 return;
+             }
+             bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+             if (switched_mode) {
+                 settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
+                 s_window_mode.store(WindowMode::kFullscreen);
+                 settings::g_mainTabSettings.window_mode.Save();
+             }
+             settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(secondary_id);
+             settings::g_mainTabSettings.target_extended_display_device_id.SetValue(secondary_id);
+             LogInfo("Move to secondary: target display set to secondary monitor.");
          }}};
 
     // Map settings to definitions
     auto& settings = settings::g_hotkeysTabSettings;
-    if (g_hotkey_definitions.size() >= 21) {
+    if (g_hotkey_definitions.size() >= kHotkeyDefinitionCount) {
         // Load from config: "0x11;0x10;0x65" or legacy "ctrl+shift+m"
         g_hotkey_definitions[0].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_mute_unmute.GetValue());
         g_hotkey_definitions[1].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_background_toggle.GetValue());
@@ -660,6 +687,7 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[18].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_left.GetValue());
         g_hotkey_definitions[19].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_right.GetValue());
         g_hotkey_definitions[20].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_move_to_primary.GetValue());
+        g_hotkey_definitions[21].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_move_to_secondary.GetValue());
     }
 }
 
@@ -789,7 +817,7 @@ void InitHotkeysTab() {
 }
 
 void SyncHotkeySettingsFromParsed() {
-    if (g_hotkey_definitions.size() < 20) {
+    if (g_hotkey_definitions.size() < kHotkeyDefinitionCount) {
         return;
     }
     auto& s = settings::g_hotkeysTabSettings;
@@ -816,6 +844,8 @@ void SyncHotkeySettingsFromParsed() {
     s.hotkey_win_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[17].parsed));
     s.hotkey_win_left.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[18].parsed));
     s.hotkey_win_right.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[19].parsed));
+    s.hotkey_move_to_primary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[20].parsed));
+    s.hotkey_move_to_secondary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[21].parsed));
 }
 
 void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
@@ -877,6 +907,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                     case 18: setting_ptr = &settings.hotkey_win_left; break;
                     case 19: setting_ptr = &settings.hotkey_win_right; break;
                     case 20: setting_ptr = &settings.hotkey_move_to_primary; break;
+                    case 21: setting_ptr = &settings.hotkey_move_to_secondary; break;
                     default: setting_ptr = nullptr; break;
                 }
 

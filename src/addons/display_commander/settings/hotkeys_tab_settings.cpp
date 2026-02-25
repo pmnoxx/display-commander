@@ -28,6 +28,7 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_win_left("HotkeyWinLeft", "win left", "DisplayCommander"),
       hotkey_win_right("HotkeyWinRight", "win right", "DisplayCommander"),
       hotkey_move_to_primary("HotkeyMoveToPrimary", "numpad+", "DisplayCommander"),
+      hotkey_move_to_secondary("HotkeyMoveToSecondary", "numpad-", "DisplayCommander"),
       exclusive_keys_ad_enabled("ExclusiveKeysADEnabled", false, "DisplayCommander"),
       exclusive_keys_ws_enabled("ExclusiveKeysWSEnabled", false, "DisplayCommander"),
       exclusive_keys_awsd_enabled("ExclusiveKeysAWSDEnabled", false, "DisplayCommander"),
@@ -71,6 +72,7 @@ void HotkeysTabSettings::SaveAll() {
     hotkey_win_left.Save();
     hotkey_win_right.Save();
     hotkey_move_to_primary.Save();
+    hotkey_move_to_secondary.Save();
     exclusive_keys_ad_enabled.Save();
     exclusive_keys_ws_enabled.Save();
     exclusive_keys_awsd_enabled.Save();
@@ -85,6 +87,7 @@ std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
             &hotkey_system_volume_up, &hotkey_system_volume_down, &hotkey_auto_hdr, &hotkey_brightness_up,
             &hotkey_brightness_down, &hotkey_win_down, &hotkey_win_up, &hotkey_win_left, &hotkey_win_right,
             &hotkey_move_to_primary,
+            &hotkey_move_to_secondary,
             &exclusive_keys_ad_enabled,
             &exclusive_keys_ws_enabled, &exclusive_keys_awsd_enabled, &exclusive_keys_custom_groups,
             &brightness_hotkey_step_percent};

@@ -20,6 +20,9 @@ using HotkeyAction = std::function<void()>;
 // Display strings are derived via FormatHotkeyString; no per-frame parsing.
 static constexpr int kHotkeyArraySize = 5;
 
+// Expected number of hotkey definitions (must match g_hotkey_definitions size in InitializeHotkeyDefinitions).
+static constexpr int kHotkeyDefinitionCount = 22;
+
 // Parsed hotkey structure (canonical in-memory representation)
 struct ParsedHotkey {
     int key_code = 0;              // Virtual key code (VK_*)

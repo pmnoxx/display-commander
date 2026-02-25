@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.90 (2026-02-24)
+
+- **Independent window hotkey** - Optional hotkey to open/close the independent (standalone) settings window. Configurable in the Hotkeys tab as "Independent window toggle"; no default binding (empty = disabled). Toggles window visibility; does not persist a separate state.
+- **Independent window hotkey fix** - Hotkeys are now processed when the ReShade overlay is open or when the independent window has focus (not only when the game is in foreground), so the independent-window toggle can close the window from the standalone window.
+- **Move to secondary monitor hotkey** - New hotkey "Move to secondary monitor" (default `numpad-`) sets the target display to the first non-primary monitor. Only when game is in foreground; pairs with "Move to primary monitor" (`numpad+`).
+- **Hotkeys tab** - Hotkey definition count centralized as `kHotkeyDefinitionCount` (22) in `hotkeys_tab.hpp`; load/sync checks use it instead of magic numbers.
+
 ## v0.12.89 (2026-02-24)
 
 - **Hotkeys tab / ImGui wrapper** - `DrawHotkeysTab` now takes `IImGuiWrapper&` so the Hotkeys tab can be drawn in both the ReShade overlay and the independent (standalone) UI. Enables adding the Hotkeys tab to the independent settings window when desired.

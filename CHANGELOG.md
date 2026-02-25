@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.88 (2026-02-24)
+
+- **Vulkan tab / ImGui wrapper** - `DrawVulkanTab` now takes `IImGuiWrapper&` so the Vulkan (experimental) tab can be drawn in both the ReShade overlay and the independent (standalone) UI. Added a **Vulkan (Experimental)** tab to the independent settings window.
+
 ## v0.12.87 (2026-02-24)
 
 - **Performance tab / ImGui wrapper** - `DrawPerformanceTab` now takes `IImGuiWrapper&` so the tab can be drawn in both the ReShade overlay and the independent (standalone) UI. Added a **Performance** tab to the independent settings window (alongside Main, NVIDIA Profile, Advanced, Performance Overlay).

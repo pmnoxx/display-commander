@@ -17,7 +17,7 @@
 #define DISPLAY_COMMANDER_VERSION_MINOR 12
 #endif
 #ifndef DISPLAY_COMMANDER_VERSION_PATCH
-#define DISPLAY_COMMANDER_VERSION_PATCH 87
+#define DISPLAY_COMMANDER_VERSION_PATCH 88
 #endif
 
 // Version string major.minor.patch (derived from the numeric macros above)

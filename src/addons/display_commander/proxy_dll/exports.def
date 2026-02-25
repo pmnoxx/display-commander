@@ -427,13 +427,21 @@ EXPORTS
 	VerQueryValueW PRIVATE
 
 	; winmm.dll exports (proxy forwards to system winmm or winmmHooked.dll)
+    ; https://source.winehq.org/WineAPI/winmm.html
 	CloseDriver PRIVATE
 	DefDriverProc PRIVATE
 	DriverCallback PRIVATE
+	DrvClose PRIVATE
+	DrvDefDriverProc PRIVATE
 	DrvGetModuleHandle PRIVATE
+	DrvOpen PRIVATE
+	DrvOpenA PRIVATE
+	DrvSendMessage PRIVATE
+	GetDriverFlags PRIVATE
 	GetDriverModuleHandle PRIVATE
 	NotifyCallbackData PRIVATE
 	OpenDriver PRIVATE
+	OpenDriverA PRIVATE
 	PlaySound PRIVATE
 	PlaySoundA PRIVATE
 	PlaySoundW PRIVATE
@@ -551,6 +559,7 @@ EXPORTS
 	mmioDescend PRIVATE
 	mmioFlush PRIVATE
 	mmioGetInfo PRIVATE
+	mmioInstallIOProc16 PRIVATE
 	mmioInstallIOProcA PRIVATE
 	mmioInstallIOProcW PRIVATE
 	mmioOpenA PRIVATE

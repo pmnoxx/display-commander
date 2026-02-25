@@ -70,12 +70,60 @@ extern "C" BOOL WINAPI DriverCallback(DWORD_PTR dwCallback, DWORD dwFlags, HANDL
     return fn(dwCallback, dwFlags, hDevice, dwMsg, dwUser, dwParam1, dwParam2);
 }
 
+extern "C" LRESULT WINAPI DrvClose(LPVOID hDriver, LPVOID lParam1, LPVOID lParam2) {
+    if (!LoadRealWinMM()) return (LRESULT)0;
+    typedef LRESULT (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "DrvClose");
+    if (!fn) return (LRESULT)0;
+    return fn(hDriver, lParam1, lParam2);
+}
+
+extern "C" LRESULT WINAPI DrvDefDriverProc(DWORD_PTR dwDriverIdentifier, HANDLE hdrvr, UINT uMsg, LPARAM lParam1, LPARAM lParam2) {
+    if (!LoadRealWinMM()) return (LRESULT)0;
+    typedef LRESULT (WINAPI *PFN)(DWORD_PTR, HANDLE, UINT, LPARAM, LPARAM);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "DrvDefDriverProc");
+    if (!fn) return (LRESULT)0;
+    return fn(dwDriverIdentifier, hdrvr, uMsg, lParam1, lParam2);
+}
+
 extern "C" HMODULE WINAPI DrvGetModuleHandle(HANDLE hDrv) {
     if (!LoadRealWinMM()) return (HMODULE)0;
     typedef HMODULE (WINAPI *PFN)(HANDLE);
     PFN fn = (PFN)GetProcAddress(g_winmm_module, "DrvGetModuleHandle");
     if (!fn) return (HMODULE)0;
     return fn(hDrv);
+}
+
+extern "C" HDRVR WINAPI DrvOpen(LPCWSTR szDriverName, LPCWSTR szSectionName, LPARAM lParam2) {
+    if (!LoadRealWinMM()) return (HDRVR)0;
+    typedef HDRVR (WINAPI *PFN)(LPCWSTR, LPCWSTR, LPARAM);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "DrvOpen");
+    if (!fn) return (HDRVR)0;
+    return fn(szDriverName, szSectionName, lParam2);
+}
+
+extern "C" HDRVR WINAPI DrvOpenA(LPCSTR szDriverName, LPCSTR szSectionName, LPARAM lParam2) {
+    if (!LoadRealWinMM()) return (HDRVR)0;
+    typedef HDRVR (WINAPI *PFN)(LPCSTR, LPCSTR, LPARAM);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "DrvOpenA");
+    if (!fn) return (HDRVR)0;
+    return fn(szDriverName, szSectionName, lParam2);
+}
+
+extern "C" LRESULT WINAPI DrvSendMessage(HDRVR hDriver, UINT message, LPARAM lParam1, LPARAM lParam2) {
+    if (!LoadRealWinMM()) return (LRESULT)0;
+    typedef LRESULT (WINAPI *PFN)(HDRVR, UINT, LPARAM, LPARAM);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "DrvSendMessage");
+    if (!fn) return (LRESULT)0;
+    return fn(hDriver, message, lParam1, lParam2);
+}
+
+extern "C" DWORD WINAPI GetDriverFlags(HDRVR hDriver) {
+    if (!LoadRealWinMM()) return (DWORD)0;
+    typedef DWORD (WINAPI *PFN)(HDRVR);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "GetDriverFlags");
+    if (!fn) return (DWORD)0;
+    return fn(hDriver);
 }
 
 extern "C" HMODULE WINAPI GetDriverModuleHandle(HANDLE hDrv) {
@@ -98,6 +146,14 @@ extern "C" HDRVR WINAPI OpenDriver(LPCWSTR szDriverName, LPCWSTR szSectionName, 
     if (!LoadRealWinMM()) return (HDRVR)0;
     typedef HDRVR (WINAPI *PFN)(LPCWSTR, LPCWSTR, LPARAM);
     PFN fn = (PFN)GetProcAddress(g_winmm_module, "OpenDriver");
+    if (!fn) return (HDRVR)0;
+    return fn(szDriverName, szSectionName, lParam2);
+}
+
+extern "C" HDRVR WINAPI OpenDriverA(LPCSTR szDriverName, LPCSTR szSectionName, LPARAM lParam2) {
+    if (!LoadRealWinMM()) return (HDRVR)0;
+    typedef HDRVR (WINAPI *PFN)(LPCSTR, LPCSTR, LPARAM);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "OpenDriverA");
     if (!fn) return (HDRVR)0;
     return fn(szDriverName, szSectionName, lParam2);
 }
@@ -1036,6 +1092,14 @@ extern "C" UINT WINAPI mmioGetInfo(HANDLE hmmio, LPVOID pmmioinfo, UINT fuInfo) 
     PFN fn = (PFN)GetProcAddress(g_winmm_module, "mmioGetInfo");
     if (!fn) return (UINT)0;
     return fn(hmmio, pmmioinfo, fuInfo);
+}
+
+extern "C" LPVOID WINAPI mmioInstallIOProc16(FOURCC fccIOProc, LPVOID pIOProc, DWORD dwFlags) {
+    if (!LoadRealWinMM()) return (LPVOID)0;
+    typedef LPVOID (WINAPI *PFN)(FOURCC, LPVOID, DWORD);
+    PFN fn = (PFN)GetProcAddress(g_winmm_module, "mmioInstallIOProc16");
+    if (!fn) return (LPVOID)0;
+    return fn(fccIOProc, pIOProc, dwFlags);
 }
 
 extern "C" LPVOID WINAPI mmioInstallIOProcA(FOURCC fccIOProc, LPVOID pIOProc, DWORD dwFlags) {

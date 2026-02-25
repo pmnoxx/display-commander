@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.87 (2026-02-24)
+
+- **Performance tab / ImGui wrapper** - `DrawPerformanceTab` now takes `IImGuiWrapper&` so the tab can be drawn in both the ReShade overlay and the independent (standalone) UI. Added a **Performance** tab to the independent settings window (alongside Main, NVIDIA Profile, Advanced, Performance Overlay).
+
 ## v0.12.86 (2026-02-24)
 
 - **Experimental: flip swapchain upgrade crash prevention** - Added experimental support to prevent crashes when upgrading to a flip-model swap chain. Not enabled by default; enable in settings when ready to test.

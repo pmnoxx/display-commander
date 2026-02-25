@@ -90,7 +90,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void TableNextColumn() override { ImGui::TableNextColumn(); }
     void TableSetColumnIndex(int column_n) override { ImGui::TableSetColumnIndex(column_n); }
     bool BeginCombo(const char* label, const char* preview_value, int flags = 0) override {
-        return ImGui::BeginCombo(label, preview_value, flags);
+        return ImGui::BeginCombo(label, preview_value, static_cast<ImGuiComboFlags>(flags));
     }
     void EndCombo() override { ImGui::EndCombo(); }
     bool Selectable(const char* label, bool selected = false) override { return ImGui::Selectable(label, selected); }
@@ -102,6 +102,13 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void Unindent() override { ImGui::Unindent(); }
     bool InputText(const char* label, char* buf, size_t buf_size) override {
         return ImGui::InputText(label, buf, buf_size);
+    }
+    bool InputText(const char* label, char* buf, size_t buf_size, int flags) override {
+        return ImGui::InputText(label, buf, buf_size, static_cast<ImGuiInputTextFlags>(flags));
+    }
+    bool InputFloat(const char* label, float* v, float step, float step_fast, const char* format,
+                    int flags) override {
+        return ImGui::InputFloat(label, v, step, step_fast, format, static_cast<ImGuiInputTextFlags>(flags));
     }
     bool InputInt(const char* label, int* v, int step, int step_fast, int flags) override {
         return ImGui::InputInt(label, v, step, step_fast, static_cast<ImGuiInputTextFlags>(flags));
@@ -128,6 +135,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     bool TreeNodeEx(const char* label, int flags) override {
         return ImGui::TreeNodeEx(label, static_cast<ImGuiTreeNodeFlags>(flags));
     }
+    bool TreeNode(const char* label) override { return ImGui::TreeNode(label); }
     void TreePop() override { ImGui::TreePop(); }
     ImVec2 GetContentRegionAvail() override { return ImGui::GetContentRegionAvail(); }
     float GetStyleItemSpacingX() override { return ImGui::GetStyle().ItemSpacing.x; }
@@ -154,6 +162,11 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void SetCursorScreenPos(const ImVec2& pos) override { ImGui::SetCursorScreenPos(pos); }
     float GetCursorPosX() override { return ImGui::GetCursorPosX(); }
     void Dummy(const ImVec2& size) override { ImGui::Dummy(size); }
+    ImVec2 GetItemRectMin() override { return ImGui::GetItemRectMin(); }
+    ImVec2 GetItemRectSize() override { return ImGui::GetItemRectSize(); }
+    void ProgressBar(float fraction, const ImVec2& size_arg, const char* overlay) override {
+        ImGui::ProgressBar(fraction, size_arg, overlay);
+    }
     ImU32 GetColorU32(int col_enum) override { return ImGui::GetColorU32(static_cast<ImGuiCol>(col_enum)); }
     ImU32 ColorConvertFloat4ToU32(const ImVec4& col) override { return ImGui::ColorConvertFloat4ToU32(col); }
     bool SliderFloat(const char* label, float* v, float v_min, float v_max, const char* format) override {
@@ -161,6 +174,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     }
     void Columns(int count, const char* id, bool border) override { ImGui::Columns(count, id, border); }
     void NextColumn() override { ImGui::NextColumn(); }
+    void SetColumnWidth(int column_index, float width) override { ImGui::SetColumnWidth(column_index, width); }
     void BeginTooltip() override { ImGui::BeginTooltip(); }
     void EndTooltip() override { ImGui::EndTooltip(); }
     void BulletText(const char* fmt, ...) override {
@@ -192,6 +206,23 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         return ImVec2(io.DisplaySize.x, io.DisplaySize.y);
     }
     const ImGuiIO& GetIO() override { return ImGui::GetIO(); }
+    unsigned int GetFrameCount() override {
+        return static_cast<unsigned int>(ImGui::GetFrameCount());
+    }
+    bool BeginTabBar(const char* str_id, int flags = 0) override {
+        return ImGui::BeginTabBar(str_id, static_cast<ImGuiTabBarFlags>(flags));
+    }
+    bool BeginTabItem(const char* label, bool* p_open, int flags) override {
+        return ImGui::BeginTabItem(label, p_open, static_cast<ImGuiTabItemFlags>(flags));
+    }
+    void EndTabItem() override { ImGui::EndTabItem(); }
+    void EndTabBar() override { ImGui::EndTabBar(); }
+    bool IsKeyDown(int key) override { return ImGui::IsKeyDown(static_cast<ImGuiKey>(key)); }
+    void OpenPopup(const char* str_id) override { ImGui::OpenPopup(str_id); }
+    bool BeginPopupModal(const char* name, bool* p_open, int flags) override {
+        return ImGui::BeginPopupModal(name, p_open, static_cast<ImGuiWindowFlags>(flags));
+    }
+    void EndPopup() override { ImGui::EndPopup(); }
 };
 
 } // namespace ui

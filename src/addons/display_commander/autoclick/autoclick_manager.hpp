@@ -7,6 +7,12 @@
 // Forward declaration for LONGLONG
 typedef long long LONGLONG;
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}  // namespace ui
+}  // namespace display_commander
+
 namespace autoclick {
 
 // Global variables for auto-click functionality
@@ -32,9 +38,9 @@ void PerformClick(int x, int y, int sequence_num, bool is_test = false);
 void AutoClickThread();
 void ToggleAutoClickEnabled();
 void StartAutoClickThread();
-void DrawAutoClickFeature();
-void DrawSequence(int sequence_num);
-void DrawMouseCoordinatesDisplay();
+void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui);
+void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num);
+void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui);
 void UpDownKeyPressThread();
 void StartUpDownKeyPressThread();
 void ButtonOnlyPressThread();

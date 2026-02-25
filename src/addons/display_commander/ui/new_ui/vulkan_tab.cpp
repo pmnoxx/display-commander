@@ -99,7 +99,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Indent();
 
         if (CheckboxSetting(settings::g_mainTabSettings.vulkan_nvll_hooks_enabled, "Enable NvLowLatencyVk hooks",
-                            &imgui)) {
+                            imgui)) {
             if (settings::g_mainTabSettings.vulkan_nvll_hooks_enabled.GetValue() && IsNvLowLatencyVkLoaded()
                 && !AreNvLowLatencyVkHooksInstalled()) {
                 InstallNvLowLatencyVkHooks(GetModuleHandleW(L"NvLowLatencyVk.dll"));
@@ -112,7 +112,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         if (CheckboxSetting(settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled,
-                            "Enable vulkan-1 loader hooks (VK_NV_low_latency2)", &imgui)) {
+                            "Enable vulkan-1 loader hooks (VK_NV_low_latency2)", imgui)) {
             if (settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled.GetValue() && IsVulkanLoaderLoaded()
                 && !AreVulkanLoaderHooksInstalled()) {
                 InstallVulkanLoaderHooks(GetModuleHandleW(L"vulkan-1.dll"));
@@ -125,7 +125,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         if (CheckboxSetting(settings::g_mainTabSettings.vulkan_append_reflex_extensions,
-                            "Append Reflex extensions in vkCreateDevice", &imgui)) {
+                            "Append Reflex extensions in vkCreateDevice", imgui)) {
             // Setting persisted by CheckboxSetting
         }
         if (imgui.IsItemHovered()) {

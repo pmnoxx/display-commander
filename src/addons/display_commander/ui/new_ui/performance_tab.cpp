@@ -13,7 +13,7 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Separator();
 
     if (CheckboxSetting(settings::g_experimentalTabSettings.performance_measurement_enabled,
-                        "Performance measurement", &imgui)) {
+                        "Performance measurement", imgui)) {
         // Auto-saved by CheckboxSetting
     }
     if (imgui.IsItemHovered()) {
@@ -33,7 +33,7 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
 
     if (CheckboxSetting(settings::g_experimentalTabSettings.performance_suppression_enabled,
-                        "Suppress execution (debug)", &imgui)) {
+                        "Suppress execution (debug)", imgui)) {
         // Auto-saved by CheckboxSetting
     }
     if (imgui.IsItemHovered()) {
@@ -72,7 +72,7 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.TextUnformatted(name);
 
             imgui.TableSetColumnIndex(1);
-            CheckboxSetting(enabled_setting, measure_checkbox_id, &imgui);
+            CheckboxSetting(enabled_setting, measure_checkbox_id, imgui);
 
             imgui.TableSetColumnIndex(2);
             imgui.Text("%.2f", avg_us);
@@ -91,7 +91,7 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
             if (!suppress_master) {
                 imgui.BeginDisabled();
             }
-            CheckboxSetting(suppress_setting, suppress_checkbox_id, &imgui);
+            CheckboxSetting(suppress_setting, suppress_checkbox_id, imgui);
             if (!suppress_master) {
                 imgui.EndDisabled();
             }

@@ -9,6 +9,12 @@
 #include <xinput.h>
 #include "../../dualsense/dualsense_hid_wrapper.hpp"
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}  // namespace display_commander
+
 namespace display_commander::widgets::dualsense_widget {
 
 // Use the HID wrapper's device structure
@@ -50,8 +56,8 @@ public:
     DualSenseWidget();
     ~DualSenseWidget() = default;
 
-    // Main draw function - call this from the main tab
-    void OnDraw();
+    // Main draw function - call this from the main tab (uses ImGui wrapper for ReShade or standalone UI)
+    void OnDraw(display_commander::ui::IImGuiWrapper& imgui);
 
     // Initialize the widget (call once at startup)
     void Initialize();
@@ -67,25 +73,25 @@ private:
     bool is_initialized_ = false;
     int selected_device_ = 0;
 
-    // UI helper functions
-    void DrawDeviceSelector();
-    void DrawDeviceList();
-    void DrawDeviceInfo();
-    void DrawSettings();
-    void DrawEventCounters();
-    void DrawDeviceDetails(const DualSenseDeviceInfo& device);
-    void DrawButtonStates(const DualSenseDeviceInfo& device);
-    void DrawStickStates(const DualSenseDeviceInfo& device);
-    void DrawTriggerStates(const DualSenseDeviceInfo& device);
-    void DrawBatteryStatus(const DualSenseDeviceInfo& device);
-    void DrawAdvancedFeatures(const DualSenseDeviceInfo& device);
-    void DrawInputReport(const DualSenseDeviceInfo& device);
+    // UI helper functions (all take ImGui wrapper for ReShade/standalone)
+    void DrawDeviceSelector(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawDeviceList(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawDeviceInfo(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawSettings(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawDeviceDetails(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawAdvancedFeatures(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawInputReport(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
 
     // Raw input report parsing with debug offset
-    void DrawRawButtonStates(const DualSenseDeviceInfo& device);
-    void DrawRawStickStates(const DualSenseDeviceInfo& device);
-    void DrawRawTriggerStates(const DualSenseDeviceInfo& device);
-    void DrawSpecialKData(const DualSenseDeviceInfo& device);
+    void DrawRawButtonStates(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawRawStickStates(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawRawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
+    void DrawSpecialKData(display_commander::ui::IImGuiWrapper& imgui, const DualSenseDeviceInfo& device);
 
     // Helper functions
     std::string GetButtonName(WORD button) const;
@@ -93,8 +99,12 @@ private:
     bool IsButtonPressed(WORD buttons, WORD button) const;
 
     // Special-K debug helper functions
-    void DrawSpecialKFieldRow(const char* fieldName, int offset, int size, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description = nullptr);
-    void DrawSpecialKBitFieldRow(const char* fieldName, int byteOffset, int bitOffset, int bitCount, const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device, const char* description = nullptr);
+    void DrawSpecialKFieldRow(display_commander::ui::IImGuiWrapper& imgui, const char* fieldName, int offset, int size,
+                              const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device,
+                              const char* description = nullptr);
+    void DrawSpecialKBitFieldRow(display_commander::ui::IImGuiWrapper& imgui, const char* fieldName, int byteOffset,
+                                  int bitOffset, int bitCount, const std::vector<BYTE>& inputReport,
+                                  const DualSenseDeviceInfo& device, const char* description = nullptr);
     std::string GetConnectionTypeString(const DualSenseDeviceInfo& device) const;
     std::string GetDeviceTypeString(const DualSenseDeviceInfo& device) const;
     std::string GetHIDTypeString(int hid_type) const;
@@ -125,7 +135,7 @@ extern std::unique_ptr<DualSenseWidget> g_dualsense_widget;
 // Global functions for integration
 void InitializeDualSenseWidget();
 void CleanupDualSenseWidget();
-void DrawDualSenseWidget();
+void DrawDualSenseWidget(display_commander::ui::IImGuiWrapper& imgui);
 
 // Global functions for device enumeration
 void EnumerateDualSenseDevices();

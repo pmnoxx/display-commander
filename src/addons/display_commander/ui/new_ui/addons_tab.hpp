@@ -5,6 +5,12 @@
 #include <string>
 #include <vector>
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}
+
 namespace ui::new_ui {
 
 // Structure to represent an addon
@@ -22,8 +28,8 @@ struct AddonInfo {
 // Initialize addons tab
 void InitAddonsTab();
 
-// Draw addons tab
-void DrawAddonsTab();
+// Draw addons tab (uses ImGui wrapper for ReShade or standalone UI)
+void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui);
 
 // Refresh the addon list
 void RefreshAddonList();

@@ -93,7 +93,7 @@ void ImGuiWrapperStandalone::TableSetColumnIndex(int column_n) {
     ImGui::TableSetColumnIndex(column_n);
 }
 bool ImGuiWrapperStandalone::BeginCombo(const char* label, const char* preview_value, int flags) {
-    return ImGui::BeginCombo(label, preview_value, flags);
+    return ImGui::BeginCombo(label, preview_value, static_cast<ImGuiComboFlags>(flags));
 }
 void ImGuiWrapperStandalone::EndCombo() {
     ImGui::EndCombo();
@@ -122,6 +122,13 @@ void ImGuiWrapperStandalone::Unindent() {
 bool ImGuiWrapperStandalone::InputText(const char* label, char* buf, size_t buf_size) {
     return ImGui::InputText(label, buf, buf_size);
 }
+bool ImGuiWrapperStandalone::InputText(const char* label, char* buf, size_t buf_size, int flags) {
+    return ImGui::InputText(label, buf, buf_size, static_cast<ImGuiInputTextFlags>(flags));
+}
+bool ImGuiWrapperStandalone::InputFloat(const char* label, float* v, float step, float step_fast,
+                                        const char* format, int flags) {
+    return ImGui::InputFloat(label, v, step, step_fast, format, static_cast<ImGuiInputTextFlags>(flags));
+}
 bool ImGuiWrapperStandalone::InputInt(const char* label, int* v, int step, int step_fast, int flags) {
     return ImGui::InputInt(label, v, step, step_fast, static_cast<ImGuiInputTextFlags>(flags));
 }
@@ -148,6 +155,9 @@ void ImGuiWrapperStandalone::PopStyleColor(int count) {
 }
 bool ImGuiWrapperStandalone::TreeNodeEx(const char* label, int flags) {
     return ImGui::TreeNodeEx(label, static_cast<ImGuiTreeNodeFlags>(flags));
+}
+bool ImGuiWrapperStandalone::TreeNode(const char* label) {
+    return ImGui::TreeNode(label);
 }
 void ImGuiWrapperStandalone::TreePop() {
     ImGui::TreePop();
@@ -222,6 +232,15 @@ float ImGuiWrapperStandalone::GetCursorPosX() {
 void ImGuiWrapperStandalone::Dummy(const ImVec2& size) {
     ImGui::Dummy(size);
 }
+ImVec2 ImGuiWrapperStandalone::GetItemRectMin() {
+    return ImGui::GetItemRectMin();
+}
+ImVec2 ImGuiWrapperStandalone::GetItemRectSize() {
+    return ImGui::GetItemRectSize();
+}
+void ImGuiWrapperStandalone::ProgressBar(float fraction, const ImVec2& size_arg, const char* overlay) {
+    ImGui::ProgressBar(fraction, size_arg, overlay);
+}
 ImU32 ImGuiWrapperStandalone::GetColorU32(int col_enum) {
     return ImGui::GetColorU32(static_cast<ImGuiCol>(col_enum));
 }
@@ -237,6 +256,10 @@ void ImGuiWrapperStandalone::Columns(int count, const char* id, bool border) {
 }
 void ImGuiWrapperStandalone::NextColumn() {
     ImGui::NextColumn();
+}
+
+void ImGuiWrapperStandalone::SetColumnWidth(int column_index, float width) {
+    ImGui::SetColumnWidth(column_index, width);
 }
 void ImGuiWrapperStandalone::BeginTooltip() {
     ImGui::BeginTooltip();
@@ -286,6 +309,33 @@ ImVec2 ImGuiWrapperStandalone::GetDisplaySize() {
 }
 const ImGuiIO& ImGuiWrapperStandalone::GetIO() {
     return ImGui::GetIO();
+}
+unsigned int ImGuiWrapperStandalone::GetFrameCount() {
+    return static_cast<unsigned int>(ImGui::GetFrameCount());
+}
+bool ImGuiWrapperStandalone::BeginTabBar(const char* str_id, int flags) {
+    return ImGui::BeginTabBar(str_id, static_cast<ImGuiTabBarFlags>(flags));
+}
+bool ImGuiWrapperStandalone::BeginTabItem(const char* label, bool* p_open, int flags) {
+    return ImGui::BeginTabItem(label, p_open, static_cast<ImGuiTabItemFlags>(flags));
+}
+void ImGuiWrapperStandalone::EndTabItem() {
+    ImGui::EndTabItem();
+}
+void ImGuiWrapperStandalone::EndTabBar() {
+    ImGui::EndTabBar();
+}
+bool ImGuiWrapperStandalone::IsKeyDown(int key) {
+    return ImGui::IsKeyDown(static_cast<ImGuiKey>(key));
+}
+void ImGuiWrapperStandalone::OpenPopup(const char* str_id) {
+    ImGui::OpenPopup(str_id);
+}
+bool ImGuiWrapperStandalone::BeginPopupModal(const char* name, bool* p_open, int flags) {
+    return ImGui::BeginPopupModal(name, p_open, static_cast<ImGuiWindowFlags>(flags));
+}
+void ImGuiWrapperStandalone::EndPopup() {
+    ImGui::EndPopup();
 }
 
 } // namespace ui

@@ -4,6 +4,11 @@
 #include <dxgi1_6.h>
 #include <reshade.hpp>
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}
 
 namespace ui::new_ui {
 
@@ -13,32 +18,32 @@ void InitSwapchainTab();
 // Auto-apply HDR metadata trigger (called from continuous monitoring)
 void AutoApplyTrigger();
 
-// Draw the swapchain tab content
-void DrawSwapchainTab(reshade::api::effect_runtime* runtime);
+// Draw the swapchain tab content (uses ImGui wrapper for ReShade or standalone UI)
+void DrawSwapchainTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime);
 
 // Draw swapchain information section
-void DrawSwapchainInfo(reshade::api::effect_runtime* runtime);
+void DrawSwapchainInfo(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime);
 
 // Draw adapter information section
-void DrawAdapterInfo();
+void DrawAdapterInfo(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw DXGI composition information
-void DrawDxgiCompositionInfo();
+void DrawDxgiCompositionInfo(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw swapchain wrapper statistics
-void DrawSwapchainWrapperStats();
+void DrawSwapchainWrapperStats(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw swapchain event counters
-void DrawSwapchainEventCounters();
+void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw NGX parameters section
-void DrawNGXParameters();
+void DrawNGXParameters(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw DLSS/DLSS-G summary section
-void DrawDLSSGSummary();
+void DrawDLSSGSummary(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw DLSS preset override section
-void DrawDLSSPresetOverride();
+void DrawDLSSPresetOverride(display_commander::ui::IImGuiWrapper& imgui);
 
 // Helper functions for DXGI string conversion
 const char* GetDXGIFormatString(DXGI_FORMAT format);

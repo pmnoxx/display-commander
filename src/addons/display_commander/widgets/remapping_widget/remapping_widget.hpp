@@ -10,6 +10,12 @@
 #include <memory>
 #include <string>
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}  // namespace display_commander
+
 namespace display_commander::widgets::remapping_widget {
 // Remapping widget class
 class RemappingWidget {
@@ -17,8 +23,8 @@ class RemappingWidget {
     RemappingWidget();
     ~RemappingWidget() = default;
 
-    // Main draw function - call this from the main tab
-    void OnDraw();
+    // Main draw function - call this from the main tab (uses ImGui wrapper for ReShade or standalone UI)
+    void OnDraw(display_commander::ui::IImGuiWrapper& imgui);
 
     // Initialize the widget (call once at startup)
     void Initialize();
@@ -47,14 +53,15 @@ class RemappingWidget {
         bool enabled = true;
     } dialog_state_;
 
-    // UI helper functions
-    void DrawRemappingSettings();
-    void DrawRemappingList();
-    void DrawAddRemapDialog();
-    void DrawEditRemapDialog();
-    void DrawInputMethodSlider();
-    void DrawControllerSelector();
-    void DrawRemapEntry(const input_remapping::ButtonRemap &remap, int index);
+    // UI helper functions (all take ImGui wrapper for ReShade/standalone)
+    void DrawRemappingSettings(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawRemappingList(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawAddRemapDialog(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawEditRemapDialog(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawInputMethodSlider(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawControllerSelector(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawRemapEntry(display_commander::ui::IImGuiWrapper& imgui, const input_remapping::ButtonRemap& remap,
+                        int index);
 
     // Helper functions
     std::string GetGamepadButtonName(int button_index) const;
@@ -80,5 +87,5 @@ class RemappingWidget {
 // Global functions for integration
 void InitializeRemappingWidget();
 void CleanupRemappingWidget();
-void DrawRemappingWidget();
+void DrawRemappingWidget(display_commander::ui::IImGuiWrapper& imgui);
 } // namespace display_commander::widgets::remapping_widget

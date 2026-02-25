@@ -186,17 +186,17 @@ void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
     // Prevent Fullscreen
-    CheckboxSetting(settings::g_advancedTabSettings.prevent_fullscreen, "Prevent Fullscreen", &imgui);
+    CheckboxSetting(settings::g_advancedTabSettings.prevent_fullscreen, "Prevent Fullscreen", imgui);
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
     }
 
-    CheckboxSetting(settings::g_advancedTabSettings.prevent_always_on_top, "Prevent Always On Top", &imgui);
+    CheckboxSetting(settings::g_advancedTabSettings.prevent_always_on_top, "Prevent Always On Top", imgui);
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");
     }
 
-    CheckboxSetting(settings::g_advancedTabSettings.prevent_minimize, "Prevent Minimize", &imgui);
+    CheckboxSetting(settings::g_advancedTabSettings.prevent_minimize, "Prevent Minimize", imgui);
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Prevents the game window from being minimized (e.g. via taskbar or system menu).");
     }
@@ -208,7 +208,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     imgui.Indent();
 
     // Safemode setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.safemode, "Safemode (requires restart)", &imgui)) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.safemode, "Safemode (requires restart)", imgui)) {
         LogInfo("Safemode setting changed to: %s",
                 settings::g_advancedTabSettings.safemode.GetValue() ? "enabled" : "disabled");
     }
@@ -256,7 +256,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     }
 
     // Suppress MinHook setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_minhook, "Suppress MinHook Initialization", &imgui)) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_minhook, "Suppress MinHook Initialization", imgui)) {
         LogInfo("Suppress MinHook setting changed to: %s",
                 settings::g_advancedTabSettings.suppress_minhook.GetValue() ? "enabled" : "disabled");
     }
@@ -273,7 +273,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
 
     // Suppress Windows.Gaming.Input (force XInput for continue rendering with gamepad)
     if (CheckboxSetting(settings::g_advancedTabSettings.suppress_windows_gaming_input,
-                        "Suppress Windows.Gaming.Input (use XInput)", &imgui)) {
+                        "Suppress Windows.Gaming.Input (use XInput)", imgui)) {
         LogInfo("Suppress Windows.Gaming.Input setting changed to: %s",
                 settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue() ? "enabled" : "disabled");
     }
@@ -289,7 +289,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
 
     // Auto-hide Discord Overlay setting
     if (CheckboxSetting(settings::g_advancedTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay",
-                        &imgui)) {
+                        imgui)) {
         LogInfo("Auto-hide Discord Overlay setting changed to: %s",
                 settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue() ? "enabled" : "disabled");
     }
@@ -304,7 +304,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     imgui.Spacing();
 
     // Suppress Window Changes setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_window_changes, "Suppress Window Changes", &imgui)) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_window_changes, "Suppress Window Changes", imgui)) {
         LogInfo("Suppress Window Changes setting changed to: %s",
                 settings::g_advancedTabSettings.suppress_window_changes.GetValue() ? "enabled" : "disabled");
     }
@@ -342,7 +342,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
 
     // PresentMon ETW Tracing setting
     if (CheckboxSetting(settings::g_advancedTabSettings.enable_presentmon_tracing, "Enable PresentMon ETW Tracing",
-                        &imgui)) {
+                        imgui)) {
         LogInfo("PresentMon ETW tracing setting changed to: %s",
                 settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue() ? "enabled" : "disabled");
 
@@ -696,7 +696,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     imgui.SameLine();
     imgui.TextColored(::ui::colors::ICON_WARNING, "REQUIRES SETUP:");
     imgui.SameLine();
-    if (CheckboxSetting(settings::g_advancedTabSettings.debug_layer_enabled, "Enable DX11/DX12 Debug Layer", &imgui)) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.debug_layer_enabled, "Enable DX11/DX12 Debug Layer", imgui)) {
         LogInfo("Debug layer setting changed to: %s",
                 settings::g_advancedTabSettings.debug_layer_enabled.GetValue() ? "enabled" : "disabled");
     }
@@ -739,7 +739,7 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     if (settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
         imgui.Indent();
         if (CheckboxSetting(settings::g_advancedTabSettings.debug_break_on_severity, "SetBreakOnSeverity (All Levels)",
-                            &imgui)) {
+                            imgui)) {
             LogInfo("Debug break on severity setting changed to: %s",
                     settings::g_advancedTabSettings.debug_break_on_severity.GetValue() ? "enabled" : "disabled");
         }
@@ -767,14 +767,14 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
     if (imgui.TreeNodeEx("High-frequency updates (~120 Hz)", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
         CheckboxSetting(settings::g_advancedTabSettings.monitor_high_freq_enabled, "Enable high-frequency updates",
-                        &imgui);
+                        imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Background/foreground check, ADHD multi-monitor, keyboard tracking, hotkeys.\n"
                 "Disable to reduce CPU when these features are not needed.");
         }
         SliderIntSetting(settings::g_advancedTabSettings.monitor_high_freq_interval_ms, "Interval (ms)", "%d ms",
-                         &imgui);
+                         imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Loop interval: 8 = ~120 Hz, 16 = ~60 Hz, 33 = ~30 Hz. When disabled, loop sleeps 50 ms.");
         }
@@ -784,40 +784,40 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
 
     if (imgui.TreeNodeEx("Per-second tasks", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_per_second_enabled, "Enable per-second tasks", &imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_per_second_enabled, "Enable per-second tasks", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Prevent display sleep & screensaver, FPS aggregate, volume, refresh rate, VRR status, and other periodic tasks.");
         }
         SliderIntSetting(settings::g_advancedTabSettings.monitor_per_second_interval_sec, "Interval (seconds)", "%d s",
-                         &imgui);
+                         imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("How often the per-second block runs (1–60 seconds).");
         }
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_LABEL, "Triggers:");
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Prevent display sleep & screensaver", &imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_fps_aggregate, "FPS aggregate (overlay stats)", &imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_volume, "Volume (game & system)", &imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_refresh_rate, "Refresh rate stats", &imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_vrr_status, "VRR status (NVAPI)", &imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Prevent display sleep & screensaver", imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_fps_aggregate, "FPS aggregate (overlay stats)", imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_volume, "Volume (game & system)", imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_refresh_rate, "Refresh rate stats", imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_vrr_status, "VRR status (NVAPI)", imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_exclusive_key_groups, "Exclusive key groups cache",
-                        &imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_discord_overlay, "Discord overlay auto-hide", &imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_reflex_auto_configure, "Reflex auto-configure", &imgui);
+                        imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_discord_overlay, "Discord overlay auto-hide", imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_reflex_auto_configure, "Reflex auto-configure", imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_auto_apply_trigger,
-                        "Auto-apply (HDR/resolution) trigger", &imgui);
+                        "Auto-apply (HDR/resolution) trigger", imgui);
         imgui.Unindent();
         imgui.TreePop();
     }
 
     if (imgui.TreeNodeEx("Display cache refresh", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_display_cache, "Enable display cache refresh", &imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_display_cache, "Enable display cache refresh", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Refreshes display list off the UI thread. Disable to reduce overhead.");
         }
         SliderIntSetting(settings::g_advancedTabSettings.monitor_display_cache_interval_sec, "Interval (seconds)",
-                         "%d s", &imgui);
+                         "%d s", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("How often to refresh the display cache (1–60 seconds).");
         }
@@ -837,7 +837,7 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
 
     // Hide HDR Capabilities
     if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities,
-                        "Hide display's HDR capabilities from game", &imgui)) {
+                        "Hide display's HDR capabilities from game", imgui)) {
         LogInfo("HDR hiding setting changed to: %s",
                 settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue() ? "true" : "false");
     }
@@ -849,7 +849,7 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
     }
 
     // Enable Flip Chain
-    if (CheckboxSetting(settings::g_advancedTabSettings.enable_flip_chain, "Enable flip chain", &imgui)) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.enable_flip_chain, "Enable flip chain", imgui)) {
         LogInfo("Enable flip chain setting changed to: %s",
                 settings::g_advancedTabSettings.enable_flip_chain.GetValue() ? "true" : "false");
     }
@@ -861,7 +861,7 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
     }
 
     // Disable DPI Scaling checkbox
-    if (CheckboxSetting(settings::g_advancedTabSettings.disable_dpi_scaling, "Disable DPI scaling", &imgui)) {
+    if (CheckboxSetting(settings::g_advancedTabSettings.disable_dpi_scaling, "Disable DPI scaling", imgui)) {
         bool enabled = settings::g_advancedTabSettings.disable_dpi_scaling.GetValue();
         LogInfo("Disable DPI scaling setting changed to: %s", enabled ? "true" : "false");
 
@@ -1018,7 +1018,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Indent();
             // NVAPI Auto-enable checkbox
             if (CheckboxSetting(settings::g_advancedTabSettings.nvapi_auto_enable_enabled,
-                                "Enable NVAPI Auto-enable for Games", &imgui)) {
+                                "Enable NVAPI Auto-enable for Games", imgui)) {
                 LogInfo("NVAPI Auto-enable setting changed to: %s",
                         settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
             }

@@ -1,4 +1,5 @@
 #include "autoclick_manager.hpp"
+#include "../ui/imgui_wrapper_base.hpp"
 #include <imgui.h>
 #include <windows.h>
 #include <algorithm>
@@ -114,80 +115,69 @@ void SendKeyUp(HWND hwnd, int vk_code) {
 }
 
 // Helper function to draw a sequence using settings directly
-void DrawSequence(int sequence_num) {
+void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num) {
     int idx = sequence_num - 1;  // Convert to 0-based index
 
-    ImGui::TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%d:", sequence_num);
-    ImGui::SameLine();
+    imgui.TextColored(ImVec4(0.9f, 0.9f, 0.9f, 1.0f), "%d:", sequence_num);
+    imgui.SameLine();
 
-    // Get current values from settings
     bool enabled = settings::g_experimentalTabSettings.sequence_enabled.GetValue(idx) != 0;
     int x = settings::g_experimentalTabSettings.sequence_x.GetValue(idx);
     int y = settings::g_experimentalTabSettings.sequence_y.GetValue(idx);
     int interval = settings::g_experimentalTabSettings.sequence_interval.GetValue(idx);
 
-    // Debug logging for sequence values
-    // LogInfo("DrawSequence(%d) - enabled=%s, x=%d, y=%d, interval=%d", sequence_num, enabled ? "true" : "false", x, y,
-    //         interval);
-
-    // Checkbox for enabling this sequence
-    if (ImGui::Checkbox(("Enabled##seq" + std::to_string(sequence_num)).c_str(), &enabled)) {
+    if (imgui.Checkbox(("Enabled##seq" + std::to_string(sequence_num)).c_str(), &enabled)) {
         settings::g_experimentalTabSettings.sequence_enabled.SetValue(idx, enabled ? 1 : 0);
         LogInfo("Click sequence %d %s", sequence_num, enabled ? "enabled" : "disabled");
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable/disable this click sequence.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Enable/disable this click sequence.");
     }
 
-    // Only show other controls if this sequence is enabled
     if (enabled) {
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(120);
-        if (ImGui::InputInt(("X##seq" + std::to_string(sequence_num)).c_str(), &x, 0, 0,
-                            ImGuiInputTextFlags_CharsDecimal)) {
+        imgui.SameLine();
+        imgui.SetNextItemWidth(120);
+        if (imgui.InputInt(("X##seq" + std::to_string(sequence_num)).c_str(), &x, 0, 0,
+                           static_cast<int>(ImGuiInputTextFlags_CharsDecimal))) {
             settings::g_experimentalTabSettings.sequence_x.SetValue(idx, x);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("X coordinate for the click (game window client coordinates).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("X coordinate for the click (game window client coordinates).");
         }
 
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(120);
-        if (ImGui::InputInt(("Y##seq" + std::to_string(sequence_num)).c_str(), &y, 0, 0,
-                            ImGuiInputTextFlags_CharsDecimal)) {
+        imgui.SameLine();
+        imgui.SetNextItemWidth(120);
+        if (imgui.InputInt(("Y##seq" + std::to_string(sequence_num)).c_str(), &y, 0, 0,
+                           static_cast<int>(ImGuiInputTextFlags_CharsDecimal))) {
             settings::g_experimentalTabSettings.sequence_y.SetValue(idx, y);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Y coordinate for the click (game window client coordinates).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Y coordinate for the click (game window client coordinates).");
         }
 
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(150);
-        if (ImGui::InputInt(("Interval (ms)##seq" + std::to_string(sequence_num)).c_str(), &interval, 0, 0,
-                            ImGuiInputTextFlags_CharsDecimal)) {
-            // Clamp to reasonable values
+        imgui.SameLine();
+        imgui.SetNextItemWidth(150);
+        if (imgui.InputInt(("Interval (ms)##seq" + std::to_string(sequence_num)).c_str(), &interval, 0, 0,
+                           static_cast<int>(ImGuiInputTextFlags_CharsDecimal))) {
             interval = (std::max)(100, (std::min)(60000, interval));
             settings::g_experimentalTabSettings.sequence_interval.SetValue(idx, interval);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Time interval between clicks for this sequence (100ms to 60 seconds).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Time interval between clicks for this sequence (100ms to 60 seconds).");
         }
 
-        // Test button for this sequence
-        ImGui::SameLine();
-        if (ImGui::Button(("Test##seq" + std::to_string(sequence_num)).c_str())) {
+        imgui.SameLine();
+        if (imgui.Button(("Test##seq" + std::to_string(sequence_num)).c_str())) {
             PerformClick(x, y, sequence_num, true);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Send a test click for this sequence.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Send a test click for this sequence.");
         }
 
-        // Use current mouse position button
-        ImGui::SameLine();
-        if (ImGui::Button(("Use Current##seq" + std::to_string(sequence_num)).c_str())) {
+        imgui.SameLine();
+        if (imgui.Button(("Use Current##seq" + std::to_string(sequence_num)).c_str())) {
             POINT cursor_pos;
             if (GetCursorPos(&cursor_pos)) {
-                // Convert screen coordinates to client coordinates
                 HWND hwnd = g_last_swapchain_hwnd.load();
                 if (hwnd && IsWindow(hwnd)) {
                     POINT client_pos = cursor_pos;
@@ -199,11 +189,11 @@ void DrawSequence(int sequence_num) {
                 }
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Set coordinates to current mouse position (relative to game window).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Set coordinates to current mouse position (relative to game window).");
         }
     }
-    ImGui::Spacing();
+    imgui.Spacing();
 }
 
 // Auto-click thread function - always running, sleeps when inactive
@@ -561,46 +551,42 @@ void ToggleAutoClickEnabled() {
 }
 
 // Function to draw mouse coordinates display
-void DrawMouseCoordinatesDisplay() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Mouse Coordinates ===");
+void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Mouse Coordinates ===");
 
-    // Get current mouse position
     POINT cursor_pos;
     if (GetCursorPos(&cursor_pos)) {
-        ImGui::Text("Screen: (%ld, %ld)", cursor_pos.x, cursor_pos.y);
+        imgui.Text("Screen: (%ld, %ld)", cursor_pos.x, cursor_pos.y);
 
-        // Convert to client coordinates if we have a game window
         HWND hwnd = g_last_swapchain_hwnd.load();
         if (hwnd && IsWindow(hwnd)) {
             POINT client_pos = cursor_pos;
             ScreenToClient(hwnd, &client_pos);
-            ImGui::Text("Game Window: (%ld, %ld)", client_pos.x, client_pos.y);
+            imgui.Text("Game Window: (%ld, %ld)", client_pos.x, client_pos.y);
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No game window detected");
+            imgui.TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "No game window detected");
         }
     } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Failed to get mouse position");
+        imgui.TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Failed to get mouse position");
     }
 
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Use 'Use Current' buttons above to set click coordinates");
+    imgui.Spacing();
+    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Use 'Use Current' buttons above to set click coordinates");
 }
 
 // Main function to draw the auto-click feature UI
-void DrawAutoClickFeature() {
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Auto-Click Sequences ===");
+void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Auto-Click Sequences ===");
 
-    // Warning about experimental nature
-    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - Use with caution!");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - Use with caution!");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "This feature sends mouse click messages directly to the game window.\nUse responsibly and "
             "be aware of game rules and terms of service.");
     }
 
-    // Master enable/disable checkbox
     bool auto_click_enabled = g_auto_click_enabled.load();
-    if (ImGui::Checkbox("Enable Auto-Click Sequences", &auto_click_enabled)) {
+    if (imgui.Checkbox("Enable Auto-Click Sequences", &auto_click_enabled)) {
         g_auto_click_enabled.store(auto_click_enabled);
 
         if (auto_click_enabled) {
@@ -609,34 +595,31 @@ void DrawAutoClickFeature() {
             LogInfo("Auto-click sequences disabled");
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Enable/disable all auto-click sequences. Each sequence can be individually configured "
             "below.\n\nShortcut: Ctrl+P (can be enabled in Advanced tab)\n\nNote: Mouse position spoofing is always "
             "enabled for better stealth.");
     }
-    // Mouse position spoofing is always enabled
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-                       ICON_FK_OK " Mouse position spoofing is always enabled for better stealth");
+    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
+                     ICON_FK_OK " Mouse position spoofing is always enabled for better stealth");
 
-    // Show current status
     if (g_auto_click_enabled.load()) {
         if (g_auto_click_thread_running.load()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Auto-click sequences are ACTIVE");
+            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Auto-click sequences are ACTIVE");
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Auto-click sequences are STARTING...");
+            imgui.TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING " Auto-click sequences are STARTING...");
         }
     }
 
-    ImGui::Spacing();
+    imgui.Spacing();
 
-    DrawSequence(1);
-    DrawSequence(2);
-    DrawSequence(3);
-    DrawSequence(4);
-    DrawSequence(5);
+    DrawSequence(imgui, 1);
+    DrawSequence(imgui, 2);
+    DrawSequence(imgui, 3);
+    DrawSequence(imgui, 4);
+    DrawSequence(imgui, 5);
 
-    // Summary information
     int enabled_sequences = 0;
     for (int i = 0; i < 5; i++) {
         if (settings::g_experimentalTabSettings.sequence_enabled.GetValue(i) != 0) {
@@ -644,26 +627,24 @@ void DrawAutoClickFeature() {
         }
     }
 
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Active sequences: %d/5", enabled_sequences);
+    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Active sequences: %d/5", enabled_sequences);
 
     if (enabled_sequences > 0 && g_auto_click_enabled.load()) {
-        ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-                           "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
+        imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
+                         "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+    imgui.Spacing();
+    imgui.Separator();
 
-    // Up/Down key press automation
     bool up_down_enabled = settings::g_experimentalTabSettings.up_down_key_press_enabled.GetValue();
     bool auto_click_enabled_state = g_auto_click_enabled.load();
 
-    // Disable checkbox if auto-click is off
     if (!auto_click_enabled_state) {
-        ImGui::BeginDisabled();
+        imgui.BeginDisabled();
     }
 
-    if (ImGui::Checkbox("W/S Key Press (10s W, 3s S, repeat)", &up_down_enabled)) {
+    if (imgui.Checkbox("W/S Key Press (10s W, 3s S, repeat)", &up_down_enabled)) {
         settings::g_experimentalTabSettings.up_down_key_press_enabled.SetValue(up_down_enabled);
         if (up_down_enabled) {
             LogInfo("W/S key press automation enabled");
@@ -671,26 +652,24 @@ void DrawAutoClickFeature() {
             LogInfo("W/S key press automation disabled");
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Automatically presses W key for 10 seconds, then S key for 3 seconds, repeating forever.\nSequence: W "
             "down → wait 10s → W up → wait 100ms → S down → wait 3s → S up → wait 100ms → repeat.\nUses W and S keys "
             "with SendInput API.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
     }
 
     if (!auto_click_enabled_state) {
-        ImGui::EndDisabled();
+        imgui.EndDisabled();
     }
 
-    // Button-only press automation
     bool button_only_enabled = settings::g_experimentalTabSettings.button_only_press_enabled.GetValue();
 
-    // Disable checkbox if auto-click is off
     if (!auto_click_enabled_state) {
-        ImGui::BeginDisabled();
+        imgui.BeginDisabled();
     }
 
-    if (ImGui::Checkbox("Y/A Button Press Only (10s hold, repeat)", &button_only_enabled)) {
+    if (imgui.Checkbox("Y/A Button Press Only (10s hold, repeat)", &button_only_enabled)) {
         settings::g_experimentalTabSettings.button_only_press_enabled.SetValue(button_only_enabled);
         if (button_only_enabled) {
             LogInfo("Button-only press automation enabled");
@@ -698,22 +677,21 @@ void DrawAutoClickFeature() {
             LogInfo("Button-only press automation disabled");
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
             "Automatically presses Y button, then adds A button (Y+A), holds for 10 seconds, then clears and "
             "repeats.\nSequence: Y down → wait 100ms → Y+A down → hold 10s → clear → wait 100ms → repeat.\nNo stick "
             "movement - buttons only.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
     }
 
     if (!auto_click_enabled_state) {
-        ImGui::EndDisabled();
+        imgui.EndDisabled();
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+    imgui.Spacing();
+    imgui.Separator();
 
-    // Draw mouse coordinates display
-    DrawMouseCoordinatesDisplay();
+    DrawMouseCoordinatesDisplay(imgui);
 }
 
 // UI state management functions

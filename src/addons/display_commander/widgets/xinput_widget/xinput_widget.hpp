@@ -10,6 +10,12 @@
 #include <xinput.h>
 #include "../../dualsense/dualsense_hid_wrapper.hpp"
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}
+}  // namespace display_commander
+
 
 // Guide button constant (not defined in standard XInput headers)
 #ifndef XINPUT_GAMEPAD_GUIDE
@@ -199,8 +205,8 @@ class XInputWidget {
     XInputWidget();
     ~XInputWidget() = default;
 
-    // Main draw function - call this from the main tab
-    void OnDraw();
+    // Main draw function - call this from the main tab (uses ImGui wrapper for ReShade or standalone UI)
+    void OnDraw(display_commander::ui::IImGuiWrapper& imgui);
 
     // Initialize the widget (call once at startup)
     void Initialize();
@@ -216,19 +222,20 @@ class XInputWidget {
     bool is_initialized_ = false;
     int selected_controller_ = 0;
 
-    // UI helper functions
-    void DrawControllerSelector();
-    void DrawControllerState();
-    void DrawSettings();
-    void DrawEventCounters();
-    void DrawVibrationTest();
-    void DrawButtonStates(const XINPUT_GAMEPAD &gamepad);
-    void DrawStickStates(const XINPUT_GAMEPAD &gamepad);
-    void DrawStickStatesExtended(float left_deadzone, float left_max_input, float left_min_output, float right_deadzone,
-                                 float right_max_input, float right_min_output);
-    void DrawTriggerStates(const XINPUT_GAMEPAD &gamepad);
-    void DrawBatteryStatus(int controller_index);
-    void DrawDualSenseReport(int controller_index);
+    // UI helper functions (all take ImGui wrapper for ReShade/standalone)
+    void DrawControllerSelector(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawControllerState(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawSettings(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui);
+    void DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
+    void DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
+    void DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_deadzone, float left_max_input,
+                                 float left_min_output, float right_deadzone, float right_max_input,
+                                 float right_min_output);
+    void DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
+    void DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui, int controller_index);
+    void DrawDualSenseReport(display_commander::ui::IImGuiWrapper& imgui, int controller_index);
 
     // Helper functions
     std::string GetButtonName(WORD button) const;
@@ -245,7 +252,7 @@ class XInputWidget {
     void StopVibration();
 
     // Autofire functions
-    void DrawAutofireSettings();
+    void DrawAutofireSettings(display_commander::ui::IImGuiWrapper& imgui);
     void AddAutofireButton(WORD button_mask);
     void RemoveAutofireButton(WORD button_mask);
     bool IsAutofireButton(WORD button_mask) const;
@@ -253,8 +260,8 @@ class XInputWidget {
     void RemoveAutofireTrigger(XInputSharedState::TriggerType trigger_type);
     bool IsAutofireTrigger(XInputSharedState::TriggerType trigger_type) const;
 
-     // Recenter calibration functions
-    void DrawRecenterSettings();
+    // Recenter calibration functions
+    void DrawRecenterSettings(display_commander::ui::IImGuiWrapper& imgui);
     void ClearRecenterData();
     void StartRecenterRecording();
     void StopRecenterRecording();
@@ -271,7 +278,7 @@ extern std::unique_ptr<XInputWidget> g_xinput_widget;
 // Global functions for integration
 void InitializeXInputWidget();
 void CleanupXInputWidget();
-void DrawXInputWidget();
+void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui);
 
 // Global functions for hooks to use
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state);

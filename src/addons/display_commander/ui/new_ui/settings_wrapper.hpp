@@ -408,66 +408,33 @@ class StringSetting : public SettingBase {
     std::string default_value_;
 };
 
-// Wrapper functions for ImGui controls that automatically handle settings
+// Wrapper functions for ImGui controls (always require imgui for ReShade/standalone compatibility)
 
-// SliderFloat wrapper
-bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *format = "%.3f");
-bool SliderFloatSetting(FloatSetting &setting, const char *label, const char *format,
-                       display_commander::ui::IImGuiWrapper *imgui);
+bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format,
+                        display_commander::ui::IImGuiWrapper& imgui);
+bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const char* format,
+                           display_commander::ui::IImGuiWrapper& imgui);
+bool SliderIntSetting(IntSetting& setting, const char* label, const char* format,
+                      display_commander::ui::IImGuiWrapper& imgui);
+bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format,
+                      display_commander::ui::IImGuiWrapper& imgui);
+bool CheckboxSetting(BoolSetting& setting, const char* label,
+                     display_commander::ui::IImGuiWrapper& imgui);
+bool CheckboxSetting(BoolSettingRef& setting, const char* label,
+                     display_commander::ui::IImGuiWrapper& imgui);
+bool ComboSettingWrapper(ComboSetting& setting, const char* label,
+                         display_commander::ui::IImGuiWrapper& imgui);
+bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label,
+                            display_commander::ui::IImGuiWrapper& imgui);
+template <typename EnumType>
+bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label,
+                                display_commander::ui::IImGuiWrapper& imgui);
 
-// SliderFloat wrapper for FloatSettingRef
-bool SliderFloatSettingRef(FloatSettingRef &setting, const char *label, const char *format = "%.3f");
-bool SliderFloatSettingRef(FloatSettingRef &setting, const char *label, const char *format,
-                          display_commander::ui::IImGuiWrapper *imgui);
-
-// SliderInt wrapper
-bool SliderIntSetting(IntSetting &setting, const char *label, const char *format = "%d");
-
-// SliderInt wrapper with optional ImGui wrapper (for shared UI e.g. advanced tab)
-bool SliderIntSetting(IntSetting &setting, const char *label, const char *format,
-                     display_commander::ui::IImGuiWrapper *imgui);
-
-// SliderInt wrapper for IntSettingRef
-bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *format = "%d");
-bool SliderIntSetting(IntSettingRef &setting, const char *label, const char *format,
-                     display_commander::ui::IImGuiWrapper *imgui);
-
-// Checkbox wrapper
-bool CheckboxSetting(BoolSetting &setting, const char *label);
-
-// Checkbox wrapper with optional ImGui wrapper (for shared UI e.g. advanced tab in standalone)
-bool CheckboxSetting(BoolSetting &setting, const char *label,
-                    display_commander::ui::IImGuiWrapper *imgui);
-
-// Checkbox wrapper for BoolSettingRef
-bool CheckboxSetting(BoolSettingRef &setting, const char *label);
-
-// Checkbox wrapper for BoolSettingRef with optional ImGui wrapper
-bool CheckboxSetting(BoolSettingRef &setting, const char *label,
-                    display_commander::ui::IImGuiWrapper *imgui);
-
-// Combo wrapper
-bool ComboSettingWrapper(ComboSetting &setting, const char *label);
-bool ComboSettingWrapper(ComboSetting &setting, const char *label,
-                        display_commander::ui::IImGuiWrapper *imgui);
-bool ComboSettingRefWrapper(ComboSettingRef &setting, const char *label);
-bool ComboSettingRefWrapper(ComboSettingRef &setting, const char *label,
-                           display_commander::ui::IImGuiWrapper *imgui);
-template <typename EnumType> bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType> &setting, const char *label);
-template <typename EnumType> bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType> &setting, const char *label,
-                                                             display_commander::ui::IImGuiWrapper *imgui);
-
-// Button wrapper (for settings that don't store values)
-bool ButtonSetting(const char *label, const ImVec2 &size = ImVec2(0, 0));
-
-// Text wrapper
-void TextSetting(const char *text);
-
-// Separator wrapper
-void SeparatorSetting();
-
-// Spacing wrapper
-void SpacingSetting();
+bool ButtonSetting(const char* label, display_commander::ui::IImGuiWrapper& imgui,
+                   const ImVec2& size = ImVec2(0, 0));
+void TextSetting(const char* text, display_commander::ui::IImGuiWrapper& imgui);
+void SeparatorSetting(display_commander::ui::IImGuiWrapper& imgui);
+void SpacingSetting(display_commander::ui::IImGuiWrapper& imgui);
 
 // Utility function to load all settings for a tab
 void LoadTabSettings(const std::vector<SettingBase *> &settings);

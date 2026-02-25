@@ -1,4 +1,5 @@
 #include "hook_stats_tab.hpp"
+#include "../imgui_wrapper_base.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/dinput_hooks.hpp"
 #include "../../hooks/opengl_hooks.hpp"
@@ -13,22 +14,22 @@
 
 namespace ui::new_ui {
 
-void DrawHookStatsTab() {
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Hook Call Statistics ===");
-    ImGui::Text("Track the number of times each Windows message hook was called");
-    ImGui::Separator();
+using namespace display_commander::ui::wrapper_flags;
 
-    // Reset button
-    if (ImGui::Button("Reset All Statistics")) {
+void DrawHookStatsTab(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== Hook Call Statistics ===");
+    imgui.Text("Track the number of times each Windows message hook was called");
+    imgui.Separator();
+
+    if (imgui.Button("Reset All Statistics")) {
         display_commanderhooks::ResetAllHookStats();
     }
-    ImGui::SameLine();
-    ImGui::Text("Click to reset all counters to zero");
+    imgui.SameLine();
+    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Click to reset all counters to zero");
 
-    ImGui::Spacing();
-    ImGui::Separator();
+    imgui.Spacing();
+    imgui.Separator();
 
-    // Define DLL groups using the new enum-based system
     static const display_commanderhooks::DllGroup DLL_GROUPS[] = {
         display_commanderhooks::DllGroup::USER32,
         display_commanderhooks::DllGroup::XINPUT1_4,
@@ -40,16 +41,13 @@ void DrawHookStatsTab() {
         display_commanderhooks::DllGroup::HID_API
     };
 
-    // Display statistics grouped by DLL
     int hook_count = display_commanderhooks::GetHookCount();
 
     for (const auto& group : DLL_GROUPS) {
-        // Calculate group totals
         uint64_t group_total_calls = 0;
         uint64_t group_unsuppressed_calls = 0;
         int group_hook_count = 0;
 
-        // Iterate through all hooks and find those belonging to this DLL group
         for (int i = 0; i < hook_count; ++i) {
             if (display_commanderhooks::GetHookDllGroup(i) == group) {
                 const auto &stats = display_commanderhooks::GetHookStats(i);
@@ -60,42 +58,33 @@ void DrawHookStatsTab() {
         }
 
         uint64_t group_suppressed_calls = group_total_calls - group_unsuppressed_calls;
-
-        // Get DLL group name
         const char* group_name = display_commanderhooks::GetDllGroupName(group);
 
-        // Create collapsible header for each DLL group
-        ImGui::PushID(group_name);
+        imgui.PushID(group_name);
 
-        bool group_open = ImGui::CollapsingHeader(
-            group_name,
-            ImGuiTreeNodeFlags_DefaultOpen |
-            (group_total_calls > 0 ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_Leaf)
-        );
+        const int tree_flags = TreeNodeFlags_DefaultOpen |
+            (group_total_calls > 0 ? TreeNodeFlags_None : TreeNodeFlags_Leaf);
+        bool group_open = imgui.CollapsingHeader(group_name, tree_flags);
 
-        // Show group summary in header
         if (group_total_calls > 0) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+            imgui.SameLine();
+            imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
                 "(%llu calls, %.1f%% suppressed)",
                 group_total_calls,
                 group_total_calls > 0 ? static_cast<float>(group_suppressed_calls) / static_cast<float>(group_total_calls) * 100.0f : 0.0f);
         }
 
         if (group_open) {
-            ImGui::Indent();
+            imgui.Indent();
 
-            // Create table for this DLL's hooks
-            if (ImGui::BeginTable("HookStats", 4,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-                // Table headers
-                ImGui::TableSetupColumn("Hook Name", ImGuiTableColumnFlags_WidthFixed, 400.0f);
-                ImGui::TableSetupColumn("Total Calls", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-                ImGui::TableSetupColumn("Unsuppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-                ImGui::TableSetupColumn("Suppressed Calls", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-                ImGui::TableHeadersRow();
+            const int table_flags = TableFlags_Borders | TableFlags_RowBg | TableFlags_Resizable;
+            if (imgui.BeginTable("HookStats", 4, table_flags)) {
+                imgui.TableSetupColumn("Hook Name", TableColumnFlags_WidthFixed, 400.0f);
+                imgui.TableSetupColumn("Total Calls", TableColumnFlags_WidthFixed, 120.0f);
+                imgui.TableSetupColumn("Unsuppressed Calls", TableColumnFlags_WidthFixed, 150.0f);
+                imgui.TableSetupColumn("Suppressed Calls", TableColumnFlags_WidthFixed, 150.0f);
+                imgui.TableHeadersRow();
 
-                // Display statistics for each hook in this group
                 for (int i = 0; i < hook_count; ++i) {
                     if (display_commanderhooks::GetHookDllGroup(i) == group) {
                         const auto &stats = display_commanderhooks::GetHookStats(i);
@@ -105,50 +94,44 @@ void DrawHookStatsTab() {
                         uint64_t unsuppressed_calls = stats.unsuppressed_calls.load();
                         uint64_t suppressed_calls = total_calls - unsuppressed_calls;
 
-                        ImGui::TableNextRow();
+                        imgui.TableNextRow();
 
-                        // Hook name
-                        ImGui::TableSetColumnIndex(0);
-                        ImGui::Text("%s", hook_name);
+                        imgui.TableSetColumnIndex(0);
+                        imgui.Text("%s", hook_name);
 
-                        // Total calls
-                        ImGui::TableSetColumnIndex(1);
-                        ImGui::Text("%llu", total_calls);
+                        imgui.TableSetColumnIndex(1);
+                        imgui.Text("%llu", total_calls);
 
-                        // Unsuppressed calls
-                        ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("%llu", unsuppressed_calls);
+                        imgui.TableSetColumnIndex(2);
+                        imgui.Text("%llu", unsuppressed_calls);
 
-                        // Suppressed calls
-                        ImGui::TableSetColumnIndex(3);
+                        imgui.TableSetColumnIndex(3);
                         if (suppressed_calls > 0) {
-                            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%llu", suppressed_calls);
+                            imgui.TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%llu", suppressed_calls);
                         } else {
-                            ImGui::Text("%llu", suppressed_calls);
+                            imgui.Text("%llu", suppressed_calls);
                         }
                     }
                 }
 
-                ImGui::EndTable();
+                imgui.EndTable();
             }
 
-            ImGui::Unindent();
+            imgui.Unindent();
         }
 
-        ImGui::PopID();
-        ImGui::Spacing();
+        imgui.PopID();
+        imgui.Spacing();
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+    imgui.Spacing();
+    imgui.Separator();
 
-    // Summary statistics
-    ImGui::TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Summary:");
+    imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Summary:");
 
     uint64_t total_all_calls = 0;
     uint64_t total_unsuppressed_calls = 0;
 
-    // Calculate totals across all DLL groups
     for (const auto& group : DLL_GROUPS) {
         for (int i = 0; i < hook_count; ++i) {
             if (display_commanderhooks::GetHookDllGroup(i) == group) {
@@ -161,82 +144,75 @@ void DrawHookStatsTab() {
 
     uint64_t total_suppressed_calls = total_all_calls - total_unsuppressed_calls;
 
-    ImGui::Text("Total Hook Calls: %llu", total_all_calls);
-    ImGui::Text("Unsuppressed Calls: %llu", total_unsuppressed_calls);
-    ImGui::Text("Suppressed Calls: %llu", total_suppressed_calls);
+    imgui.Text("Total Hook Calls: %llu", total_all_calls);
+    imgui.Text("Unsuppressed Calls: %llu", total_unsuppressed_calls);
+    imgui.Text("Suppressed Calls: %llu", total_suppressed_calls);
 
     if (total_all_calls > 0) {
         float suppression_rate = static_cast<float>(total_suppressed_calls) / static_cast<float>(total_all_calls) * 100.0f;
-        ImGui::Text("Suppression Rate: %.2f%%", suppression_rate);
+        imgui.Text("Suppression Rate: %.2f%%", suppression_rate);
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+    imgui.Spacing();
+    imgui.Separator();
 
-    // DirectInput Hook Suppression
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== DirectInput Hook Controls ===");
-    ImGui::Text("Control DirectInput hook behavior and suppression");
-    ImGui::Separator();
+    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== DirectInput Hook Controls ===");
+    imgui.Text("Control DirectInput hook behavior and suppression");
+    imgui.Separator();
 
-    // DirectInput hook suppression checkbox
     bool suppress_dinput = settings::g_experimentalTabSettings.suppress_dinput_hooks.GetValue();
-    if (ImGui::Checkbox("Suppress DirectInput Hooks", &suppress_dinput)) {
+    if (imgui.Checkbox("Suppress DirectInput Hooks", &suppress_dinput)) {
         settings::g_experimentalTabSettings.suppress_dinput_hooks.SetValue(suppress_dinput);
-        // Update the global atomic variable
         s_suppress_dinput_hooks.store(suppress_dinput);
     }
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Disable DirectInput hook processing)");
+    imgui.SameLine();
+    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Disable DirectInput hook processing)");
 
-    // DirectInput device state blocking checkbox
     bool dinput_device_state_blocking = settings::g_experimentalTabSettings.dinput_device_state_blocking.GetValue();
-    if (ImGui::Checkbox("DirectInput Device State Blocking", &dinput_device_state_blocking)) {
+    if (imgui.Checkbox("DirectInput Device State Blocking", &dinput_device_state_blocking)) {
         settings::g_experimentalTabSettings.dinput_device_state_blocking.SetValue(dinput_device_state_blocking);
     }
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Block mouse/keyboard input via DirectInput)");
+    imgui.SameLine();
+    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Block mouse/keyboard input via DirectInput)");
 
-    // Show device hook count
     int device_hook_count = display_commanderhooks::GetDirectInputDeviceHookCount();
-    ImGui::Text("Hooked Devices: %d", device_hook_count);
+    imgui.Text("Hooked Devices: %d", device_hook_count);
 
-    // Manual hook button
-    if (ImGui::Button("Hook All DirectInput Devices")) {
+    if (imgui.Button("Hook All DirectInput Devices")) {
         display_commanderhooks::HookAllDirectInputDevices();
     }
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Manually hook existing devices)");
+    imgui.SameLine();
+    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "(Manually hook existing devices)");
 
-    ImGui::Spacing();
-    ImGui::Separator();
+    imgui.Spacing();
+    imgui.Separator();
 
-    // DirectInput Device Information
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== DirectInput Device Information ===");
-    ImGui::Text("Track DirectInput device creation and connection status");
-    ImGui::Separator();
+    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== DirectInput Device Information ===");
+    imgui.Text("Track DirectInput device creation and connection status");
+    imgui.Separator();
 
     const auto& devices = display_commanderhooks::GetDInputDevices();
 
     if (devices.empty()) {
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No DirectInput devices created yet");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No DirectInput devices created yet");
     } else {
-        ImGui::Text("Created Devices: %zu", devices.size());
+        imgui.Text("Created Devices: %zu", devices.size());
 
-        if (ImGui::BeginTable("DInputDevices", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Device Name", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-            ImGui::TableSetupColumn("Device Type", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-            ImGui::TableSetupColumn("Interface", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-            ImGui::TableSetupColumn("Creation Time", ImGuiTableColumnFlags_WidthFixed, 200.0f);
-            ImGui::TableHeadersRow();
+        const int table_flags = TableFlags_Borders | TableFlags_RowBg | TableFlags_Resizable;
+        if (imgui.BeginTable("DInputDevices", 4, table_flags)) {
+            imgui.TableSetupColumn("Device Name", TableColumnFlags_WidthFixed, 150.0f);
+            imgui.TableSetupColumn("Device Type", TableColumnFlags_WidthFixed, 120.0f);
+            imgui.TableSetupColumn("Interface", TableColumnFlags_WidthFixed, 150.0f);
+            imgui.TableSetupColumn("Creation Time", TableColumnFlags_WidthFixed, 200.0f);
+            imgui.TableHeadersRow();
 
             for (const auto& device : devices) {
-                ImGui::TableNextRow();
+                imgui.TableNextRow();
 
-                ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%s", device.device_name.c_str());
+                imgui.TableSetColumnIndex(0);
+                imgui.Text("%s", device.device_name.c_str());
 
-                ImGui::TableSetColumnIndex(1);
-                // Convert device type to string
+                imgui.TableSetColumnIndex(1);
                 std::string device_type_name;
                 switch (device.device_type) {
                     case 0x00000000: device_type_name = "Keyboard"; break;
@@ -246,36 +222,32 @@ void DrawHookStatsTab() {
                     case 0x00000004: device_type_name = "Generic Device"; break;
                     default: device_type_name = "Unknown Device"; break;
                 }
-                ImGui::Text("%s", device_type_name.c_str());
+                imgui.Text("%s", device_type_name.c_str());
 
-                ImGui::TableSetColumnIndex(2);
-                ImGui::Text("%s", device.interface_name.c_str());
+                imgui.TableSetColumnIndex(2);
+                imgui.Text("%s", device.interface_name.c_str());
 
-                ImGui::TableSetColumnIndex(3);
+                imgui.TableSetColumnIndex(3);
                 LONGLONG now = utils::get_now_ns();
                 LONGLONG duration_ns = now - device.creation_time;
                 LONGLONG duration_ms = duration_ns / utils::NS_TO_MS;
-                ImGui::Text("%lld ms ago", duration_ms);
+                imgui.Text("%lld ms ago", duration_ms);
             }
 
-            ImGui::EndTable();
+            imgui.EndTable();
         }
 
-        if (ImGui::Button("Clear Device History")) {
+        if (imgui.Button("Clear Device History")) {
             display_commanderhooks::ClearDInputDevices();
         }
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
+    imgui.Spacing();
+    imgui.Separator();
 
-
-
-
-    // HID Device Type Statistics
-    ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== HID Device Type Statistics ===");
-    ImGui::Text("Track different types of HID devices accessed");
-    ImGui::Separator();
+    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== HID Device Type Statistics ===");
+    imgui.Text("Track different types of HID devices accessed");
+    imgui.Separator();
 
     const auto& device_stats = display_commanderhooks::GetHIDDeviceStats();
     uint64_t total_devices = device_stats.total_devices.load();
@@ -284,11 +256,11 @@ void DrawHookStatsTab() {
     uint64_t generic_devices = device_stats.generic_hid_devices.load();
     uint64_t unknown_devices = device_stats.unknown_devices.load();
 
-    ImGui::Text("Total HID Devices: %llu", total_devices);
-    ImGui::Text("DualSense Controllers: %llu", dualsense_devices);
-    ImGui::Text("Xbox Controllers: %llu", xbox_devices);
-    ImGui::Text("Generic HID Devices: %llu", generic_devices);
-    ImGui::Text("Unknown Devices: %llu", unknown_devices);
+    imgui.Text("Total HID Devices: %llu", total_devices);
+    imgui.Text("DualSense Controllers: %llu", dualsense_devices);
+    imgui.Text("Xbox Controllers: %llu", xbox_devices);
+    imgui.Text("Generic HID Devices: %llu", generic_devices);
+    imgui.Text("Unknown Devices: %llu", unknown_devices);
 
     if (total_devices > 0) {
         float dualsense_rate = static_cast<float>(dualsense_devices) / static_cast<float>(total_devices) * 100.0f;
@@ -296,12 +268,12 @@ void DrawHookStatsTab() {
         float generic_rate = static_cast<float>(generic_devices) / static_cast<float>(total_devices) * 100.0f;
         float unknown_rate = static_cast<float>(unknown_devices) / static_cast<float>(total_devices) * 100.0f;
 
-        ImGui::Spacing();
-        ImGui::Text("Device Distribution:");
-        ImGui::Text("DualSense: %.2f%%", dualsense_rate);
-        ImGui::Text("Xbox: %.2f%%", xbox_rate);
-        ImGui::Text("Generic HID: %.2f%%", generic_rate);
-        ImGui::Text("Unknown: %.2f%%", unknown_rate);
+        imgui.Spacing();
+        imgui.Text("Device Distribution:");
+        imgui.Text("DualSense: %.2f%%", dualsense_rate);
+        imgui.Text("Xbox: %.2f%%", xbox_rate);
+        imgui.Text("Generic HID: %.2f%%", generic_rate);
+        imgui.Text("Unknown: %.2f%%", unknown_rate);
     }
 }
 

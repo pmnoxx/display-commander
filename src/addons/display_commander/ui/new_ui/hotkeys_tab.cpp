@@ -1,4 +1,5 @@
 #include "hotkeys_tab.hpp"
+#include "../imgui_wrapper_base.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
@@ -201,22 +202,23 @@ static bool HotkeyMatchesCurrentState(const ParsedHotkey& p) {
 }
 
 // Draw a single hotkey entry in the table. Display string is derived from def.parsed (no parsing).
-void DrawHotkeyEntry(HotkeyDefinition& def, ui::new_ui::StringSetting& setting, int index) {
-    ImGui::TableNextRow();
+void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefinition& def,
+                    ui::new_ui::StringSetting& setting, int index) {
+    imgui.TableNextRow();
 
     // Source of truth is def.parsed (numeric); display from formatted string
     std::string display_value = FormatHotkeyString(def.parsed);
     const bool this_row_capturing = (s_capturing_hotkey_index == index);
 
     // Hotkey Name
-    ImGui::TableNextColumn();
-    ImGui::Text("%s", def.name.c_str());
-    if (ImGui::IsItemHovered() && !def.description.empty()) {
-        ImGui::SetTooltip("%s", def.description.c_str());
+    imgui.TableNextColumn();
+    imgui.Text("%s", def.name.c_str());
+    if (imgui.IsItemHovered() && !def.description.empty()) {
+        imgui.SetTooltip("%s", def.description.c_str());
     }
 
     // Shortcut Input + Capture
-    ImGui::TableNextColumn();
+    imgui.TableNextColumn();
     // Apply pending capture from ProcessHotkeys (runs in same thread as keyboard_tracker::Update)
     if (s_capture_pending && s_captured_for_index == index) {
         setting.SetValue(SerializeHotkeyToConfigString(s_captured_parsed));
@@ -227,13 +229,13 @@ void DrawHotkeyEntry(HotkeyDefinition& def, ui::new_ui::StringSetting& setting, 
     }
 
     if (this_row_capturing) {
-        ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f), "Press key... (Esc to cancel)");
+        imgui.TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f), "Press key... (Esc to cancel)");
     } else {
         char buffer[256] = {0};
         strncpy_s(buffer, sizeof(buffer), display_value.c_str(), _TRUNCATE);
 
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::InputText(("##HotkeyInput" + std::to_string(index)).c_str(), buffer, sizeof(buffer))) {
+        imgui.SetNextItemWidth(-1);
+        if (imgui.InputText(("##HotkeyInput" + std::to_string(index)).c_str(), buffer, sizeof(buffer))) {
             std::string new_value(buffer);
             setting.SetValue(new_value);
             def.parsed = DeserializeHotkeyFromConfigString(new_value);
@@ -241,40 +243,40 @@ void DrawHotkeyEntry(HotkeyDefinition& def, ui::new_ui::StringSetting& setting, 
     }
 
     // Status (from parsed state only; no string parsing)
-    ImGui::TableNextColumn();
+    imgui.TableNextColumn();
     if (this_row_capturing) {
-        ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-        ImGui::Text(ICON_FK_PENCIL " Capturing");
-        ui::colors::PopIconColor();
+        ui::colors::PushIconColor(&imgui, ui::colors::ICON_WARNING);
+        imgui.Text(ICON_FK_PENCIL " Capturing");
+        ui::colors::PopIconColor(&imgui);
     } else if (def.parsed.IsValid()) {
-        ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-        ImGui::Text(ICON_FK_OK " Active");
-        ui::colors::PopIconColor();
+        ui::colors::PushIconColor(&imgui, ui::colors::ICON_SUCCESS);
+        imgui.Text(ICON_FK_OK " Active");
+        ui::colors::PopIconColor(&imgui);
     } else if (!def.parsed.IsEmpty()) {
-        ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-        ImGui::Text(ICON_FK_WARNING " Invalid");
-        ui::colors::PopIconColor();
+        ui::colors::PushIconColor(&imgui, ui::colors::ICON_WARNING);
+        imgui.Text(ICON_FK_WARNING " Invalid");
+        ui::colors::PopIconColor(&imgui);
     } else {
-        ui::colors::PushIconColor(ui::colors::ICON_DISABLED);
-        ImGui::Text(ICON_FK_MINUS " Disabled");
-        ui::colors::PopIconColor();
+        ui::colors::PushIconColor(&imgui, ui::colors::ICON_DISABLED);
+        imgui.Text(ICON_FK_MINUS " Disabled");
+        ui::colors::PopIconColor(&imgui);
     }
 
     // Actions: Capture + Reset
-    ImGui::TableNextColumn();
+    imgui.TableNextColumn();
     if (this_row_capturing) {
-        if (ImGui::Button(("Cancel##" + def.id).c_str())) {
+        if (imgui.Button(("Cancel##" + def.id).c_str())) {
             s_capturing_hotkey_index = -1;
         }
     } else {
-        if (ImGui::Button(("...##Capture" + def.id).c_str())) {
+        if (imgui.Button(("...##Capture" + def.id).c_str())) {
             s_capturing_hotkey_index = index;
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Capture shortcut (press key combination including numpad)");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Capture shortcut (press key combination including numpad)");
         }
-        ImGui::SameLine();
-        if (ImGui::Button(("Reset##" + def.id).c_str())) {
+        imgui.SameLine();
+        if (imgui.Button(("Reset##" + def.id).c_str())) {
             setting.SetValue(def.default_shortcut);
             def.parsed = DeserializeHotkeyFromConfigString(def.default_shortcut);
         }
@@ -816,32 +818,32 @@ void SyncHotkeySettingsFromParsed() {
     s.hotkey_win_right.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[19].parsed));
 }
 
-void DrawHotkeysTab() {
+void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
     auto& settings = settings::g_hotkeysTabSettings;
 
     // Enable Hotkeys Master Toggle
-    if (CheckboxSetting(settings.enable_hotkeys, "Enable Hotkeys")) {
+    if (CheckboxSetting(settings.enable_hotkeys, "Enable Hotkeys", imgui)) {
         s_enable_hotkeys.store(settings.enable_hotkeys.GetValue());
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Master toggle for all keyboard shortcuts. When disabled, all hotkeys will not work.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Master toggle for all keyboard shortcuts. When disabled, all hotkeys will not work.");
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
     // Only show individual hotkey settings if hotkeys are enabled.
     // Source of truth is def.parsed (numeric); display via FormatHotkeyString; no per-frame parsing.
     if (settings.enable_hotkeys.GetValue()) {
         // Create a table for hotkeys
-        if (ImGui::BeginTable("HotkeysTable", 4,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Hotkey Name", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed, 250.0f);
-            ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 150.0f);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-            ImGui::TableHeadersRow();
+        const int table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable;
+        if (imgui.BeginTable("HotkeysTable", 4, table_flags)) {
+            imgui.TableSetupColumn("Hotkey Name", ImGuiTableColumnFlags_WidthStretch);
+            imgui.TableSetupColumn("Shortcut", ImGuiTableColumnFlags_WidthFixed, 250.0f);
+            imgui.TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+            imgui.TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 120.0f);
+            imgui.TableHeadersRow();
 
             // Draw each hotkey configuration
             for (size_t i = 0; i < g_hotkey_definitions.size(); ++i) {
@@ -881,58 +883,58 @@ void DrawHotkeysTab() {
                 if (setting_ptr == nullptr) continue;
 
                 ui::new_ui::StringSetting& setting = *setting_ptr;
-                DrawHotkeyEntry(def, setting, static_cast<int>(i));
+                DrawHotkeyEntry(imgui, def, setting, static_cast<int>(i));
             }
 
-            ImGui::EndTable();
+            imgui.EndTable();
         }
 
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Format: ctrl+shift+key");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Empty string = disabled");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"ctrl a\", \"alt numpad+\"");
+        imgui.Spacing();
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Format: ctrl+shift+key");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Empty string = disabled");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"ctrl a\", \"alt numpad+\"");
     }
 
     // Exclusive Keys Section
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
-    if (ImGui::CollapsingHeader("Exclusive Keys", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextWrapped(
+    if (imgui.CollapsingHeader("Exclusive Keys", ImGuiTreeNodeFlags_DefaultOpen)) {
+        imgui.TextWrapped(
             "Exclusive key groups ensure that when one key in a group is pressed, other keys in the same group are "
             "automatically released. Useful for strafe macros and preventing conflicting key states.");
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Predefined groups
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Predefined Groups:");
-        ImGui::Spacing();
+        imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Predefined Groups:");
+        imgui.Spacing();
 
-        CheckboxSetting(settings.exclusive_keys_ad_enabled, "AD Group (A and D keys)");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When A is pressed, D is released. When D is pressed, A is released.");
+        CheckboxSetting(settings.exclusive_keys_ad_enabled, "AD Group (A and D keys)", imgui);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("When A is pressed, D is released. When D is pressed, A is released.");
         }
 
-        CheckboxSetting(settings.exclusive_keys_ws_enabled, "WS Group (W and S keys)");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When W is pressed, S is released. When S is pressed, W is released.");
+        CheckboxSetting(settings.exclusive_keys_ws_enabled, "WS Group (W and S keys)", imgui);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("When W is pressed, S is released. When S is pressed, W is released.");
         }
 
-        CheckboxSetting(settings.exclusive_keys_awsd_enabled, "AWSD Group (A, W, S, D keys)");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
+        CheckboxSetting(settings.exclusive_keys_awsd_enabled, "AWSD Group (A, W, S, D keys)", imgui);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
         }
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Spacing();
 
         // Custom groups
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Custom Groups:");
-        ImGui::Spacing();
-        ImGui::TextWrapped("Format: Groups separated by |, keys within groups separated by commas");
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"A,S|Q,E|Left,Right\"");
-        ImGui::Spacing();
+        imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Custom Groups:");
+        imgui.Spacing();
+        imgui.TextWrapped("Format: Groups separated by |, keys within groups separated by commas");
+        imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Example: \"A,S|Q,E|Left,Right\"");
+        imgui.Spacing();
 
         // Parse and display custom groups as individual entries
         std::string custom_groups = settings.exclusive_keys_custom_groups.GetValue();
@@ -949,11 +951,12 @@ void DrawHotkeysTab() {
 
         // Display existing groups with delete buttons
         for (size_t i = 0; i < group_list.size(); ++i) {
-            ImGui::PushID(static_cast<int>(i));
-            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 80);
+            imgui.PushID(static_cast<int>(i));
+            ImVec2 avail = imgui.GetContentRegionAvail();
+            imgui.SetNextItemWidth(avail.x - 80);
             char group_buffer[256] = {0};
             strncpy_s(group_buffer, sizeof(group_buffer), group_list[i].c_str(), _TRUNCATE);
-            if (ImGui::InputText("##GroupEdit", group_buffer, sizeof(group_buffer))) {
+            if (imgui.InputText("##GroupEdit", group_buffer, sizeof(group_buffer))) {
                 group_list[i] = std::string(group_buffer);
                 // Rebuild custom groups string
                 std::ostringstream oss;
@@ -963,8 +966,8 @@ void DrawHotkeysTab() {
                 }
                 settings.exclusive_keys_custom_groups.SetValue(oss.str());
             }
-            ImGui::SameLine();
-            if (ImGui::Button("Delete")) {
+            imgui.SameLine();
+            if (imgui.Button("Delete")) {
                 group_list.erase(group_list.begin() + i);
                 // Rebuild custom groups string
                 std::ostringstream oss;
@@ -973,14 +976,14 @@ void DrawHotkeysTab() {
                     oss << group_list[j];
                 }
                 settings.exclusive_keys_custom_groups.SetValue(oss.str());
-                ImGui::PopID();
+                imgui.PopID();
                 break;  // Exit loop after deletion
             }
-            ImGui::PopID();
+            imgui.PopID();
         }
 
         // Add new group button
-        if (ImGui::Button("Add Group")) {
+        if (imgui.Button("Add Group")) {
             group_list.push_back("Key1,Key2");
             // Rebuild custom groups string
             std::ostringstream oss;
@@ -990,124 +993,124 @@ void DrawHotkeysTab() {
             }
             settings.exclusive_keys_custom_groups.SetValue(oss.str());
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Add a new custom exclusive key group");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Add a new custom exclusive key group");
         }
     }
 
     // Debug Information Section
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
-    if (ImGui::CollapsingHeader("Debug Information", ImGuiTreeNodeFlags_None)) {
+    if (imgui.CollapsingHeader("Debug Information", ImGuiTreeNodeFlags_None)) {
         LONGLONG now_ns = utils::get_now_ns();
         LONGLONG last_call_age_ns = now_ns - g_hotkey_debug_info.last_call_time_ns;
         double last_call_age_ms = static_cast<double>(last_call_age_ns) / 1000000.0;
 
         // Last call time
         if (g_hotkey_debug_info.last_call_time_ns > 0) {
-            ImGui::Text("Last ProcessHotkeys() call: %.2f ms ago", last_call_age_ms);
+            imgui.Text("Last ProcessHotkeys() call: %.2f ms ago", last_call_age_ms);
             if (last_call_age_ms > 1000.0) {
-                ImGui::SameLine();
-                ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-                ImGui::Text(ICON_FK_WARNING);
-                ui::colors::PopIconColor();
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip(
+                imgui.SameLine();
+                ui::colors::PushIconColor(&imgui, ui::colors::ICON_WARNING);
+                imgui.Text(ICON_FK_WARNING);
+                ui::colors::PopIconColor(&imgui);
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
                         "ProcessHotkeys hasn't been called recently - check continuous monitoring thread");
                 }
             }
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Last ProcessHotkeys() call: Never");
+            imgui.TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Last ProcessHotkeys() call: Never");
         }
 
         // Last successful call time
         if (g_hotkey_debug_info.last_successful_call_time_ns > 0) {
             LONGLONG last_success_age_ns = now_ns - g_hotkey_debug_info.last_successful_call_time_ns;
             double last_success_age_ms = static_cast<double>(last_success_age_ns) / 1000000.0;
-            ImGui::Text("Last successful call: %.2f ms ago", last_success_age_ms);
+            imgui.Text("Last successful call: %.2f ms ago", last_success_age_ms);
         } else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Last successful call: Never");
+            imgui.TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Last successful call: Never");
         }
 
-        ImGui::Spacing();
+        imgui.Spacing();
 
         // Current state checks
-        ImGui::Text("Current State:");
-        ImGui::Indent();
+        imgui.Text("Current State:");
+        imgui.Indent();
 
         // Hotkeys enabled
         if (g_hotkey_debug_info.hotkeys_enabled) {
-            ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-            ImGui::Text(ICON_FK_OK " Hotkeys enabled: Yes");
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_SUCCESS);
+            imgui.Text(ICON_FK_OK " Hotkeys enabled: Yes");
+            ui::colors::PopIconColor(&imgui);
         } else {
-            ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-            ImGui::Text(ICON_FK_CANCEL " Hotkeys enabled: No");
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_WARNING);
+            imgui.Text(ICON_FK_CANCEL " Hotkeys enabled: No");
+            ui::colors::PopIconColor(&imgui);
         }
 
         // Game HWND
         if (g_hotkey_debug_info.game_hwnd_valid) {
-            ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-            ImGui::Text(ICON_FK_OK " Game window: Valid (0x%p)", g_hotkey_debug_info.game_hwnd);
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_SUCCESS);
+            imgui.Text(ICON_FK_OK " Game window: Valid (0x%p)", g_hotkey_debug_info.game_hwnd);
+            ui::colors::PopIconColor(&imgui);
         } else {
-            ui::colors::PushIconColor(ui::colors::ICON_WARNING);
-            ImGui::Text(ICON_FK_CANCEL " Game window: Invalid (null)");
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_WARNING);
+            imgui.Text(ICON_FK_CANCEL " Game window: Invalid (null)");
+            ui::colors::PopIconColor(&imgui);
         }
 
         // Game in foreground
         if (g_hotkey_debug_info.game_in_foreground) {
-            ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-            ImGui::Text(ICON_FK_OK " Game in foreground: Yes");
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_SUCCESS);
+            imgui.Text(ICON_FK_OK " Game in foreground: Yes");
+            ui::colors::PopIconColor(&imgui);
         } else {
-            ui::colors::PushIconColor(ui::colors::ICON_DISABLED);
-            ImGui::Text(ICON_FK_MINUS " Game in foreground: No");
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_DISABLED);
+            imgui.Text(ICON_FK_MINUS " Game in foreground: No");
+            ui::colors::PopIconColor(&imgui);
             if (g_hotkey_debug_info.current_foreground_hwnd != nullptr) {
-                ImGui::Text("  Foreground window: 0x%p", g_hotkey_debug_info.current_foreground_hwnd);
+                imgui.Text("  Foreground window: 0x%p", g_hotkey_debug_info.current_foreground_hwnd);
             }
         }
 
         // UI open
         if (g_hotkey_debug_info.ui_open) {
-            ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-            ImGui::Text(ICON_FK_OK " Display Commander UI: Open");
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_SUCCESS);
+            imgui.Text(ICON_FK_OK " Display Commander UI: Open");
+            ui::colors::PopIconColor(&imgui);
         } else {
-            ui::colors::PushIconColor(ui::colors::ICON_DISABLED);
-            ImGui::Text(ICON_FK_MINUS " Display Commander UI: Closed");
-            ui::colors::PopIconColor();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_DISABLED);
+            imgui.Text(ICON_FK_MINUS " Display Commander UI: Closed");
+            ui::colors::PopIconColor(&imgui);
         }
 
-        ImGui::Unindent();
+        imgui.Unindent();
 
         // Block reason
         if (!g_hotkey_debug_info.last_block_reason.empty()) {
-            ImGui::Spacing();
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Last block reason:");
-            ImGui::SameLine();
-            ImGui::Text("%s", g_hotkey_debug_info.last_block_reason.c_str());
+            imgui.Spacing();
+            imgui.TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Last block reason:");
+            imgui.SameLine();
+            imgui.Text("%s", g_hotkey_debug_info.last_block_reason.c_str());
         } else if (g_hotkey_debug_info.last_call_time_ns > 0) {
-            ImGui::Spacing();
-            ui::colors::PushIconColor(ui::colors::ICON_SUCCESS);
-            ImGui::Text(ICON_FK_OK " No blocking conditions - hotkeys should work");
-            ui::colors::PopIconColor();
+            imgui.Spacing();
+            ui::colors::PushIconColor(&imgui, ui::colors::ICON_SUCCESS);
+            imgui.Text(ICON_FK_OK " No blocking conditions - hotkeys should work");
+            ui::colors::PopIconColor(&imgui);
         }
     }
 
     // Brightness hotkey step (at bottom of tab)
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
-    SliderIntSetting(settings.brightness_hotkey_step_percent, "Brightness hotkey step (%)", "%d%%");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Step size for Brightness Up/Down hotkeys (0-200%%, 100%% = neutral). Default 5%%.");
+    SliderIntSetting(settings.brightness_hotkey_step_percent, "Brightness hotkey step (%)", "%d%%", imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Step size for Brightness Up/Down hotkeys (0-200%%, 100%% = neutral). Default 5%%.");
     }
 }
 

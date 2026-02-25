@@ -60,6 +60,9 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void Indent() override;
     void Unindent() override;
     bool InputText(const char* label, char* buf, size_t buf_size) override;
+    bool InputText(const char* label, char* buf, size_t buf_size, int flags) override;
+    bool InputFloat(const char* label, float* v, float step = 0.0f, float step_fast = 0.0f,
+                    const char* format = "%.3f", int flags = 0) override;
     bool InputInt(const char* label, int* v, int step = 1, int step_fast = 0, int flags = 0) override;
     bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") override;
     void TextWrapped(const char* fmt, ...) override;
@@ -67,6 +70,7 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void PushStyleColor(int col_enum, const ImVec4& color) override;
     void PopStyleColor(int count = 1) override;
     bool TreeNodeEx(const char* label, int flags) override;
+    bool TreeNode(const char* label) override;
     void TreePop() override;
     ImVec2 GetContentRegionAvail() override;
     float GetStyleItemSpacingX() override;
@@ -85,12 +89,16 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void SetCursorScreenPos(const ImVec2& pos) override;
     float GetCursorPosX() override;
     void Dummy(const ImVec2& size) override;
+    ImVec2 GetItemRectMin() override;
+    ImVec2 GetItemRectSize() override;
+    void ProgressBar(float fraction, const ImVec2& size_arg, const char* overlay) override;
     ImU32 GetColorU32(int col_enum) override;
     ImU32 ColorConvertFloat4ToU32(const ImVec4& col) override;
     bool SliderFloat(const char* label, float* v, float v_min, float v_max,
                      const char* format = "%.3f") override;
     void Columns(int count = 1, const char* id = nullptr, bool border = true) override;
     void NextColumn() override;
+    void SetColumnWidth(int column_index, float width) override;
     void BeginTooltip() override;
     void EndTooltip() override;
     void BulletText(const char* fmt, ...) override;
@@ -106,6 +114,15 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void SetNextWindowSize(const ImVec2& size, int cond = 0) override;
     ImVec2 GetDisplaySize() override;
     const ImGuiIO& GetIO() override;
+    unsigned int GetFrameCount() override;
+    bool BeginTabBar(const char* str_id, int flags = 0) override;
+    bool BeginTabItem(const char* label, bool* p_open = nullptr, int flags = 0) override;
+    void EndTabItem() override;
+    void EndTabBar() override;
+    bool IsKeyDown(int key) override;
+    void OpenPopup(const char* str_id) override;
+    bool BeginPopupModal(const char* name, bool* p_open, int flags) override;
+    void EndPopup() override;
 };
 
 } // namespace ui

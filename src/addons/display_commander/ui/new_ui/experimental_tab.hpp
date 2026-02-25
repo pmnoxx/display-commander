@@ -1,5 +1,11 @@
 #pragma once
 
+namespace display_commander {
+namespace ui {
+struct IImGuiWrapper;
+}  // namespace ui
+}  // namespace display_commander
+
 namespace reshade {
 namespace api {
 struct effect_runtime;
@@ -11,59 +17,57 @@ namespace ui::new_ui {
 // Initialize experimental tab
 void InitExperimentalTab();
 
-// Draw the experimental tab content
-void DrawExperimentalTab(reshade::api::effect_runtime* runtime);
+// Draw the experimental tab content (accepts ImGui wrapper for ReShade overlay or standalone UI).
+void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
+                        reshade::api::effect_runtime* runtime);
 
-// Draw auto-click feature section
-void DrawAutoClickFeature();
-
-// Draw mouse coordinates display section
-void DrawMouseCoordinatesDisplay();
+// Draw mouse coordinates display section (experimental tab's own display)
+void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw backbuffer format override section
-void DrawBackbufferFormatOverride();
+void DrawBackbufferFormatOverride(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw buffer resolution upgrade section
-void DrawBufferResolutionUpgrade();
+void DrawBufferResolutionUpgrade(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw texture format upgrade section
-void DrawTextureFormatUpgrade();
+void DrawTextureFormatUpgrade(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw sleep hook controls section
-void DrawSleepHookControls();
+void DrawSleepHookControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw rand hook controls section
-void DrawRandHookControls();
+void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw time slowdown controls section
-void DrawTimeSlowdownControls();
+void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw DLSS indicator controls section
-void DrawDlssIndicatorControls();
+void DrawDlssIndicatorControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw D3D9 FLIPEX controls section
-void DrawD3D9FlipExControls();
+void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw disable flip chain controls section
 void DrawDisableFlipChainControls();
 
 // Draw developer tools section
-void DrawDeveloperTools();
+void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw HID suppression controls section
-void DrawHIDSuppression();
+void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw debug output hooks section
-void DrawDebugOutputHooks();
+void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw anisotropic filtering upgrade section
-void DrawAnisotropicFilteringUpgrade();
+void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw DLL blocking controls section
-void DrawDLLBlockingControls();
+void DrawDLLBlockingControls(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw input test tab
-void DrawInputTestTab();
+void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw NVIDIA Profile tab (standalone top-level tab content)
 void DrawNvidiaProfileTab(reshade::api::effect_runtime* runtime);

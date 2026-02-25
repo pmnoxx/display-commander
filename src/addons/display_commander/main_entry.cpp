@@ -78,7 +78,6 @@
 #include <string>
 #include <vector>
 
-
 // Forward declarations for ReShade event handlers
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime);
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source);
@@ -1870,6 +1869,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Record load timestamp as early as possible for conflict resolution
             g_hmodule = h_module;
             g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
+
+            // todo initialize logger
+            // for testing purposes
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
             // Preload real dxgi.dll when this DLL is used as dxgi proxy (safe in DllMain: system path only)
             LoadRealDXGIFromDllMain();

@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.86 (2026-02-24)
+
+- **Experimental: flip swapchain upgrade crash prevention** - Added experimental support to prevent crashes when upgrading to a flip-model swap chain. Not enabled by default; enable in settings when ready to test.
+
 ## v0.12.85 (2026-02-24)
 
 - **NVIDIA profile match score** - Match score is now +1000 per non-empty app-entry field (app name, file-in-folder, user-friendly name, launcher, command line, is_metro, is_command_line) and +1 per character in string fields. More specific and longer identifiers rank higher when sorting matching profiles.

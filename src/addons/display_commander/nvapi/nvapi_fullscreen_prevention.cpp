@@ -1,16 +1,17 @@
 #include "nvapi_fullscreen_prevention.hpp"
-#include "../utils.hpp"
-#include "../utils/logging.hpp"
-#include "globals.hpp"
-#include "settings/advanced_tab_settings.hpp"
-#include <NvApiDriverSettings.h>
 #include <nvapi.h>
+#include <NvApiDriverSettings.h>
 #include <windows.h>
 #include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <sstream>
 #include <vector>
+#include "../utils.hpp"
+#include "../utils/logging.hpp"
+#include "globals.hpp"
+#include "settings/advanced_tab_settings.hpp"
+
 
 NVAPIFullscreenPrevention::NVAPIFullscreenPrevention() {}
 
@@ -66,8 +67,7 @@ void NVAPIFullscreenPrevention::Cleanup() {
 }
 
 bool NVAPIFullscreenPrevention::IsAvailable() const {
-    if (g_shutdown.load())
-        return false;
+    if (g_shutdown.load()) return false;
     return initialized;
 }
 
@@ -155,7 +155,7 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
         NVDRS_PROFILE profile = {0};
         profile.version = NVDRS_PROFILE_VER;
         profile.isPredefined = FALSE;
-        strcpy_s((char *)profile.profileName, sizeof(profile.profileName), "Fullscreen Prevention Profile");
+        strcpy_s((char*)profile.profileName, sizeof(profile.profileName), "Fullscreen Prevention Profile");
 
         status = NvAPI_DRS_CreateProfile(hSession, &profile, &hProfile);
         if (status != NVAPI_OK) {
@@ -210,7 +210,7 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
 
     NVDRS_SETTING setting = {0};
     setting.version = NVDRS_SETTING_VER;
-    setting.settingId = 0x20324987; // OGL_DX_PRESENT_DEBUG_ID from SpecialK
+    setting.settingId = 0x20324987;  // OGL_DX_PRESENT_DEBUG_ID from SpecialK
     setting.settingType = NVDRS_DWORD_TYPE;
     setting.settingLocation = NVDRS_CURRENT_PROFILE_LOCATION;
 
@@ -223,7 +223,7 @@ bool NVAPIFullscreenPrevention::SetFullscreenPrevention(bool enable) {
         oss_flags << "Setting fullscreen prevention flags: 0x" << std::hex << setting.u32CurrentValue << std::dec;
         LogInfo(oss_flags.str().c_str());
     } else {
-        setting.u32CurrentValue = 0x00000000; // Disable all flags
+        setting.u32CurrentValue = 0x00000000;  // Disable all flags
         LogInfo("Disabling all fullscreen prevention flags");
     }
 
@@ -301,21 +301,10 @@ bool NVAPIFullscreenPrevention::HasNVIDIAHardware() const {
 // Global instance
 NVAPIFullscreenPrevention g_nvapiFullscreenPrevention;
 
-
 // Game list for auto-enable functionality (sorted alphabetically)
 static const std::vector<std::string> g_nvapi_auto_enable_games = {
-    "armoredcore6.exe",
-    "devilmaycry5.exe",
-    "eldenring.exe",
-    "hitman.exe",
-    "hitman2.exe",
-    "hitman3.exe",
-    "re2.exe",
-    "re3.exe",
-    "re7.exe",
-    "re8.exe",
-    "sekiro.exe"
-};
+    "armoredcore6.exe", "devilmaycry5.exe", "eldenring.exe", "hitman.exe", "hitman2.exe", "hitman3.exe",
+    "re2.exe",          "re3.exe",          "re7.exe",       "re8.exe",    "sekiro.exe"};
 
 bool NVAPIFullscreenPrevention::IsGameInAutoEnableList(const std::string& processName) {
     // Convert to lowercase for case-insensitive comparison
@@ -323,11 +312,11 @@ bool NVAPIFullscreenPrevention::IsGameInAutoEnableList(const std::string& proces
     std::transform(lowerProcessName.begin(), lowerProcessName.end(), lowerProcessName.begin(), ::tolower);
 
     // Check if the process name is in our auto-enable list
-    return std::find(g_nvapi_auto_enable_games.begin(), g_nvapi_auto_enable_games.end(), lowerProcessName) != g_nvapi_auto_enable_games.end();
+    return std::find(g_nvapi_auto_enable_games.begin(), g_nvapi_auto_enable_games.end(), lowerProcessName)
+           != g_nvapi_auto_enable_games.end();
 }
 
 void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
-
     // Check if NVAPI auto-enable is enabled in settings
     if (!settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue()) {
         LogInfo("NVAPI Auto-enable: Disabled in settings, skipping auto-enable");
@@ -342,7 +331,7 @@ void NVAPIFullscreenPrevention::CheckAndAutoEnable() {
 
     char* exe_name = strrchr(exe_path, '\\');
     if (exe_name != nullptr) {
-        exe_name++; // Skip the backslash
+        exe_name++;  // Skip the backslash
     } else {
         exe_name = exe_path;
     }

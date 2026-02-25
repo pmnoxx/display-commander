@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.95 (2026-02-25)
+
+- **Version resource FileDescription shows bitness** - The addon DLL's version resource FileDescription now includes "(32-bit)" or "(64-bit)" so users can tell at a glance which build they have (e.g. in Explorer file properties).
+
 ## v0.12.94 (2026-02-25)
 
 - **Add ability to use Display Commander as d3d9.dll proxy (untested)** - Proxy DLL can be used as d3d9.dll for Direct3D 9 games; forwards all D3D9 exports to system d3d9.dll (same pattern as ddraw/dxgi). Untested.

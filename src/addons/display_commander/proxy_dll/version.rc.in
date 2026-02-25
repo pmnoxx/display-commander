@@ -16,7 +16,7 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Display Commander"
-            VALUE "FileDescription", "Display Commander ReShade Addon"
+            VALUE "FileDescription", "Display Commander ReShade Addon (@DISPLAY_COMMANDER_BITNESS@)"
             VALUE "FileVersion", "@DISPLAY_COMMANDER_VERSION_STRING@"
             VALUE "InternalName", "zzz_display_commander"
             VALUE "LegalCopyright", "Display Commander"

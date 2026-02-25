@@ -23,15 +23,16 @@
 #include "../../utils/stack_trace.hpp"
 #include "../../utils/timing.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
-#include "hook_stats_tab.hpp"
 #include "../imgui_wrapper_reshade.hpp"
+#include "../monitor_settings/monitor_settings.hpp"
+#include "hook_stats_tab.hpp"
 #include "main_new_tab.hpp"
 #include "settings_wrapper.hpp"
 #include "streamline_tab.hpp"
 #include "swapchain_tab.hpp"
 #include "updates_tab.hpp"
 #include "window_info_tab.hpp"
-#include "../monitor_settings/monitor_settings.hpp"
+
 
 #include <psapi.h>
 #include <windows.h>
@@ -115,8 +116,7 @@ void InitExperimentalTab() {
     LogInfo("InitExperimentalTab() - Experimental tab settings loaded and applied to hook system");
 }
 
-void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
-                        reshade::api::effect_runtime* runtime) {
+void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime) {
     const bool is_standalone = (runtime == nullptr);
     if (!imgui.BeginTabBar("ExperimentalSubTabs", 0)) {
         return;
@@ -127,14 +127,14 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
         imgui.Separator();
 
         if (imgui.CollapsingHeader("Direct3D 9 FLIPEX Upgrade",
-                                  display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawD3D9FlipExControls(imgui);
         }
         imgui.Spacing();
 
         if (enabled_experimental_features) {
             if (imgui.CollapsingHeader("Backbuffer Format Override",
-                                      display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
                 DrawBackbufferFormatOverride(imgui);
                 imgui.Spacing();
                 DrawBufferResolutionUpgrade(imgui);
@@ -144,7 +144,7 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
             imgui.Spacing();
 
             if (imgui.CollapsingHeader("Auto-Click Sequences",
-                                      display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
                 POINT mouse_pos;
                 GetCursorPos(&mouse_pos);
 
@@ -217,7 +217,7 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
 
         if (enabled_experimental_features) {
             if (imgui.CollapsingHeader("Sleep Hook Controls",
-                                      display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
                 DrawSleepHookControls(imgui);
             }
             imgui.Spacing();
@@ -225,7 +225,7 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
 
         if (enabled_experimental_features) {
             if (imgui.CollapsingHeader("Rand Hook Controls",
-                                      display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
                 DrawRandHookControls(imgui);
             }
             imgui.Spacing();
@@ -233,53 +233,47 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui,
 
         if (enabled_experimental_features) {
             if (imgui.CollapsingHeader("Time Slowdown Controls",
-                                      display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
                 DrawTimeSlowdownControls(imgui);
             }
             imgui.Spacing();
         }
 
-        if (imgui.CollapsingHeader("HID Suppression",
-                                  display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+        if (imgui.CollapsingHeader("HID Suppression", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawHIDSuppression(imgui);
         }
         imgui.Spacing();
 
         if (imgui.CollapsingHeader("DualSense Controller Monitor",
-                                  display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             display_commander::widgets::dualsense_widget::DrawDualSenseWidget(imgui);
         }
         imgui.Spacing();
 
-        if (imgui.CollapsingHeader("Developer Tools",
-                                  display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+        if (imgui.CollapsingHeader("Developer Tools", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawDeveloperTools(imgui);
         }
         imgui.Spacing();
 
-        if (imgui.CollapsingHeader("Debug Output Hooks",
-                                  display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+        if (imgui.CollapsingHeader("Debug Output Hooks", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawDebugOutputHooks(imgui);
         }
         imgui.Spacing();
 
         if (imgui.CollapsingHeader("DLSS Indicator Controls",
-                                  display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawDlssIndicatorControls(imgui);
         }
         imgui.Spacing();
 
         if (imgui.CollapsingHeader("Anisotropic Filtering Upgrade",
-                                  display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawAnisotropicFilteringUpgrade(imgui);
         }
         imgui.Spacing();
 
-        if (enabled_experimental_features) {
-            if (imgui.CollapsingHeader("DLL Blocking",
-                                      display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-                DrawDLLBlockingControls(imgui);
-            }
+        if (imgui.CollapsingHeader("DLL Blocking", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+            DrawDLLBlockingControls(imgui);
         }
 
         imgui.EndTabItem();
@@ -363,7 +357,7 @@ void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         bool mouse_over_window = (mouse_pos.x >= window_rect.left && mouse_pos.x <= window_rect.right
-                                 && mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
+                                  && mouse_pos.y >= window_rect.top && mouse_pos.y <= window_rect.bottom);
 
         if (mouse_over_window) {
             imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), ICON_FK_OK " Mouse is over game window");
@@ -434,7 +428,7 @@ static void DrawThreadTrackingSubTab(display_commander::ui::IImGuiWrapper& imgui
     }
 
     if (imgui.CollapsingHeader("NvAPI_D3D_SetLatencyMarker_Detour (first 6 marker types)",
-                              display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+                               display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
         imgui.Text("Last thread ID and frame_id reported for each marker type (0 = not yet called):");
         imgui.Spacing();
@@ -450,7 +444,7 @@ static void DrawThreadTrackingSubTab(display_commander::ui::IImGuiWrapper& imgui
 
     imgui.Spacing();
     if (imgui.CollapsingHeader("ChooseFpsLimiter call sites",
-                              display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+                               display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
         imgui.Text("Last thread ID that called ChooseFpsLimiter for each option (0 = not yet called):");
         imgui.Spacing();
@@ -484,8 +478,7 @@ void DrawBackbufferFormatOverride(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Override the backbuffer format during swapchain creation.\nRequires restart to take effect.");
+        imgui.SetTooltip("Override the backbuffer format during swapchain creation.\nRequires restart to take effect.");
     }
 
     if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
@@ -540,7 +533,7 @@ void DrawBufferResolutionUpgrade(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Spacing();
 
         if (ComboSettingWrapper(settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode, "Upgrade Mode",
-                               imgui)) {
+                                imgui)) {
             LogInfo("Buffer resolution upgrade mode changed to: %s",
                     settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode
                         .GetLabels()[settings::g_experimentalTabSettings.buffer_resolution_upgrade_mode.GetValue()]);
@@ -601,13 +594,13 @@ void DrawBufferResolutionUpgrade(display_commander::ui::IImGuiWrapper& imgui) {
         int scale = settings::g_experimentalTabSettings.buffer_resolution_upgrade_scale_factor.GetValue();
         if (mode == 0) {
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade 1280x720 buffers to %dx%d (%dx scale)",
-                             1280 * scale, 720 * scale, scale);
+                              1280 * scale, 720 * scale, scale);
         } else if (mode == 1) {
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will scale all buffers by %dx", scale);
         } else if (mode == 2) {
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Will upgrade buffers to: %dx%d",
-                             settings::g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue(),
-                             settings::g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
+                              settings::g_experimentalTabSettings.buffer_resolution_upgrade_width.GetValue(),
+                              settings::g_experimentalTabSettings.buffer_resolution_upgrade_height.GetValue());
         }
     }
 }
@@ -650,7 +643,7 @@ void DrawTextureFormatUpgrade(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawSleepHookControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Sleep Hook Controls ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks game sleep calls for FPS control!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks game sleep calls for FPS control!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature hooks Windows Sleep APIs (Sleep, SleepEx, WaitForSingleObject, WaitForMultipleObjects) to "
@@ -674,7 +667,8 @@ void DrawSleepHookControls(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Spacing();
 
         // Sleep multiplier slider
-        if (SliderFloatSetting(settings::g_experimentalTabSettings.sleep_multiplier, "Sleep Multiplier", "%.2fx", imgui)) {
+        if (SliderFloatSetting(settings::g_experimentalTabSettings.sleep_multiplier, "Sleep Multiplier", "%.2fx",
+                               imgui)) {
             LogInfo("Sleep multiplier set to %.2fx", settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
         }
         if (imgui.IsItemHovered()) {
@@ -707,30 +701,28 @@ void DrawSleepHookControls(display_commander::ui::IImGuiWrapper& imgui) {
         // Show current settings summary
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Multiplier: %.2fx",
-                           settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
+                          settings::g_experimentalTabSettings.sleep_multiplier.GetValue());
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Min Duration: %d ms",
-                           settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
+                          settings::g_experimentalTabSettings.min_sleep_duration_ms.GetValue());
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Duration: %d ms",
-                           settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
+                          settings::g_experimentalTabSettings.max_sleep_duration_ms.GetValue());
 
         // Show hook statistics if available
         if (display_commanderhooks::g_sleep_hook_stats.total_calls.load() > 0) {
             imgui.Spacing();
             imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "Hook Statistics:");
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Calls: %llu",
-                               display_commanderhooks::g_sleep_hook_stats.total_calls.load());
+                              display_commanderhooks::g_sleep_hook_stats.total_calls.load());
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Modified Calls: %llu",
-                               display_commanderhooks::g_sleep_hook_stats.modified_calls.load());
+                              display_commanderhooks::g_sleep_hook_stats.modified_calls.load());
 
             uint64_t total_original = display_commanderhooks::g_sleep_hook_stats.total_original_duration_ms.load();
             uint64_t total_modified = display_commanderhooks::g_sleep_hook_stats.total_modified_duration_ms.load();
             if (total_original > 0) {
-                imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Original Duration: %llu ms",
-                                   total_original);
-                imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Modified Duration: %llu ms",
-                                   total_modified);
+                imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Original Duration: %llu ms", total_original);
+                imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total Modified Duration: %llu ms", total_modified);
                 imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Saved: %lld ms",
-                                   static_cast<int64_t>(total_original) - static_cast<int64_t>(total_modified));
+                                  static_cast<int64_t>(total_original) - static_cast<int64_t>(total_modified));
             }
         }
     }
@@ -739,7 +731,7 @@ void DrawSleepHookControls(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand Hook Controls ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING
-                       " EXPERIMENTAL FEATURE - Hooks C runtime rand() function to return constant value!");
+                      " EXPERIMENTAL FEATURE - Hooks C runtime rand() function to return constant value!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature hooks the C runtime rand() function from msvcrt.dll or ucrtbase.dll.\n"
@@ -785,17 +777,17 @@ void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Statistics:");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total rand() calls: %llu", rand_calls);
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
-                           hooks_installed ? "Installed" : "Not Installed");
+                          hooks_installed ? "Installed" : "Not Installed");
 
         // Show current settings
         imgui.Spacing();
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Rand Value: %d",
-                           settings::g_experimentalTabSettings.rand_hook_value.GetValue());
+                          settings::g_experimentalTabSettings.rand_hook_value.GetValue());
 
         imgui.Spacing();
         imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                           ICON_FK_WARNING " WARNING: This affects all code that uses rand()!");
+                          ICON_FK_WARNING " WARNING: This affects all code that uses rand()!");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "The rand() hook affects all code in the game process that calls rand(),\n"
@@ -810,7 +802,7 @@ void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui) {
     // Rand_s hook controls
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Rand_s Hook Controls ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING
-                       " EXPERIMENTAL FEATURE - Hooks C runtime rand_s() function to return constant value!");
+                      " EXPERIMENTAL FEATURE - Hooks C runtime rand_s() function to return constant value!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature hooks the C runtime rand_s() function from msvcrt.dll or ucrtbase.dll.\n"
@@ -855,17 +847,17 @@ void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Statistics:");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Total rand_s() calls: %llu", rand_s_calls);
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
-                           hooks_installed ? "Installed" : "Not Installed");
+                          hooks_installed ? "Installed" : "Not Installed");
 
         // Show current settings
         imgui.Spacing();
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Rand_s Value: %u",
-                           settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
+                          settings::g_experimentalTabSettings.rand_s_hook_value.GetValue());
 
         imgui.Spacing();
         imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                           ICON_FK_WARNING " WARNING: This affects all code that uses rand_s()!");
+                          ICON_FK_WARNING " WARNING: This affects all code that uses rand_s()!");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "The rand_s() hook affects all code in the game process that calls rand_s(),\n"
@@ -879,7 +871,7 @@ void DrawRandHookControls(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Time Slowdown Controls ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Manipulates game time via multiple timer APIs!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Manipulates game time via multiple timer APIs!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature hooks multiple timer APIs to manipulate game time.\nUseful for bypassing FPS "
@@ -899,7 +891,8 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.SameLine();
 
     // Compatibility mode checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.timeslowdown_compatibility_mode, "Compatibility Mode", imgui)) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.timeslowdown_compatibility_mode, "Compatibility Mode",
+                        imgui)) {
         LogInfo(
             "Time slowdown compatibility mode %s",
             settings::g_experimentalTabSettings.timeslowdown_compatibility_mode.GetValue() ? "enabled" : "disabled");
@@ -945,8 +938,8 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         // Time multiplier slider
-        if (SliderFloatSetting(settings::g_experimentalTabSettings.timeslowdown_multiplier, "Time Multiplier",
-                               "%.2fx", imgui)) {
+        if (SliderFloatSetting(settings::g_experimentalTabSettings.timeslowdown_multiplier, "Time Multiplier", "%.2fx",
+                               imgui)) {
             LogInfo("Time multiplier set to %.2fx",
                     settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
         }
@@ -961,7 +954,7 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
         // Timer Hook Selection
         imgui.TextColored(ImVec4(0.9f, 0.9f, 1.0f, 1.0f), "Timer Hook Selection:");
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                           "Choose which timer APIs to hook (None/Enabled/Render Thread/Non-Render Thread)");
+                          "Choose which timer APIs to hook (None/Enabled/Render Thread/Non-Render Thread)");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Select which timer APIs to hook for time manipulation.\n\nOptions:\n- None: Disabled\n- Enabled: Hook "
@@ -1201,7 +1194,8 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
         // NtQuerySystemTime hook
         uint64_t ntqst_calls = display_commanderhooks::GetTimerHookCallCountById(
             display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime);
-        if (ComboSettingWrapper(settings::g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime", imgui)) {
+        if (ComboSettingWrapper(settings::g_experimentalTabSettings.nt_query_system_time_hook, "NtQuerySystemTime",
+                                imgui)) {
             display_commanderhooks::TimerHookType type = static_cast<display_commanderhooks::TimerHookType>(
                 settings::g_experimentalTabSettings.nt_query_system_time_hook.GetValue());
             display_commanderhooks::SetTimerHookTypeById(display_commanderhooks::TimerHookIdentifier::NtQuerySystemTime,
@@ -1220,9 +1214,9 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
         // Show current settings summary
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Time Multiplier: %.2fx",
-                           settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
+                          settings::g_experimentalTabSettings.timeslowdown_multiplier.GetValue());
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Max Time Multiplier: %.0fx",
-                           settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue());
+                          settings::g_experimentalTabSettings.timeslowdown_max_multiplier.GetValue());
 
         // QPC comparison display
         imgui.Spacing();
@@ -1286,7 +1280,7 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
         // Show hook status
         bool hooks_installed = display_commanderhooks::AreTimeslowdownHooksInstalled();
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
-                           hooks_installed ? "Installed" : "Not Installed");
+                          hooks_installed ? "Installed" : "Not Installed");
 
         // Show current runtime values
         double current_multiplier = display_commanderhooks::GetTimeslowdownMultiplier();
@@ -1324,7 +1318,7 @@ void DrawTimeSlowdownControls(display_commander::ui::IImGuiWrapper& imgui) {
 
         imgui.Spacing();
         imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                           ICON_FK_WARNING " WARNING: This affects all time-based game logic!");
+                          ICON_FK_WARNING " WARNING: This affects all time-based game logic!");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Time slowdown affects all game systems that use the selected timer APIs for timing.");
         }
@@ -1341,7 +1335,7 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Direct3D 9 FLIPEX Upgrade ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades D3D9 games to use FLIPEX swap effect!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades D3D9 games to use FLIPEX swap effect!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature upgrades Direct3D 9 games to use the D3DSWAPEFFECT_FLIPEX swap effect.\n"
@@ -1419,7 +1413,7 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Spacing();
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " WARNING: If the game fails to start, disable this feature!");
+                      ICON_FK_WARNING " WARNING: If the game fails to start, disable this feature!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "Some games and drivers don't support FLIPEX.\n"
@@ -1434,7 +1428,7 @@ void DrawDlssIndicatorControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== DLSS Indicator Controls ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Modifies NVIDIA registry settings!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Modifies NVIDIA registry settings!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature modifies the NVIDIA registry to enable/disable the DLSS indicator.\n"
@@ -1450,12 +1444,12 @@ void DrawDlssIndicatorControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Status:");
     imgui.TextColored(current_status ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.5f, 0.5f, 1.0f),
-                       "  DLSS Indicator: %s", current_status ? "ENABLED" : "DISABLED");
+                      "  DLSS Indicator: %s", current_status ? "ENABLED" : "DISABLED");
     imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Registry Value: %lu (0x%lX)", current_value, current_value);
     imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Registry Path: HKEY_LOCAL_MACHINE\\%s",
-                       dlss::DlssIndicatorManager::GetRegistryKeyPath().c_str());
+                      dlss::DlssIndicatorManager::GetRegistryKeyPath().c_str());
     imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Value Name: %s",
-                       dlss::DlssIndicatorManager::GetRegistryValueName().c_str());
+                      dlss::DlssIndicatorManager::GetRegistryValueName().c_str());
 
     imgui.Spacing();
 
@@ -1537,16 +1531,16 @@ void DrawDlssIndicatorControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "Instructions:");
     imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "1. Generate the appropriate .reg file using the buttons above");
     imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                       "2. Open the folder and double-click the .reg file to apply changes");
+                      "2. Open the folder and double-click the .reg file to apply changes");
     imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                       "3. Windows will prompt for administrator privileges when executing");
+                      "3. Windows will prompt for administrator privileges when executing");
     imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "4. Restart your game to see the DLSS indicator");
     imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                       "5. The indicator appears in the bottom left corner when enabled");
+                      "5. The indicator appears in the bottom left corner when enabled");
 
     imgui.Spacing();
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " WARNING: Registry modifications require administrator privileges!");
+                      ICON_FK_WARNING " WARNING: Registry modifications require administrator privileges!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "The registry modification requires administrator privileges.\n"
@@ -1557,7 +1551,7 @@ void DrawDlssIndicatorControls(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Developer Tools ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - For debugging purposes only!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - For debugging purposes only!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "These tools are for developers and debugging purposes.\nUse with caution as they can cause crashes or "
@@ -1824,17 +1818,17 @@ void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Spacing();
     imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                       "Note: Debugger break button will trigger a debugger breakpoint when clicked.");
+                      "Note: Debugger break button will trigger a debugger breakpoint when clicked.");
     imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                       "Make sure you have a debugger attached before using the debugger break feature.");
+                      "Make sure you have a debugger attached before using the debugger break feature.");
     imgui.TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f),
-                       "WARNING: Crash Handler test will intentionally crash the application!");
+                      "WARNING: Crash Handler test will intentionally crash the application!");
     imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                       "Use it to test our SetUnhandledExceptionFilter spoofing and crash logging system.");
-    imgui.TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), ICON_FK_WARNING
-                       " DANGER: Unload ReShade DLL button will attempt to unload ReShade from memory!");
+                      "Use it to test our SetUnhandledExceptionFilter spoofing and crash logging system.");
     imgui.TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
-                       "This is extremely dangerous and will likely crash the game if ReShade is in use!");
+                      ICON_FK_WARNING " DANGER: Unload ReShade DLL button will attempt to unload ReShade from memory!");
+    imgui.TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+                      "This is extremely dangerous and will likely crash the game if ReShade is in use!");
 }
 
 void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
@@ -1869,7 +1863,8 @@ void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Spacing();
 
         // DualSense only option
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_dualsense_only, "DualSense Only", imgui)) {
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_dualsense_only, "DualSense Only",
+                            imgui)) {
             LogInfo(
                 "HID suppression DualSense only %s",
                 settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue() ? "enabled" : "disabled");
@@ -1886,7 +1881,8 @@ void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltip("Select which HID functions to block for games.");
         }
 
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_readfile, "Block ReadFile", imgui)) {
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_readfile, "Block ReadFile",
+                            imgui)) {
             LogInfo(
                 "HID suppression ReadFile blocking %s",
                 settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "enabled" : "disabled");
@@ -1915,7 +1911,8 @@ void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltip("Block HidD_GetAttributes operations to prevent device detection.");
         }
 
-        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_createfile, "Block CreateFile", imgui)) {
+        if (CheckboxSetting(settings::g_experimentalTabSettings.hid_suppression_block_createfile, "Block CreateFile",
+                            imgui)) {
             LogInfo("HID suppression CreateFile blocking %s",
                     settings::g_experimentalTabSettings.hid_suppression_block_createfile.GetValue() ? "enabled"
                                                                                                     : "disabled");
@@ -1929,16 +1926,16 @@ void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
         // Show current settings summary
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Target: %s",
-                           settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue()
-                               ? "DualSense Only"
-                               : "All HID Devices");
+                          settings::g_experimentalTabSettings.hid_suppression_dualsense_only.GetValue()
+                              ? "DualSense Only"
+                              : "All HID Devices");
         imgui.TextColored(
             ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  ReadFile: %s",
             settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue() ? "Blocked" : "Allowed");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetInputReport: %s",
-                           settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue()
-                               ? "Blocked"
-                               : "Allowed");
+                          settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue()
+                              ? "Blocked"
+                              : "Allowed");
         imgui.TextColored(
             ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  GetAttributes: %s",
             settings::g_experimentalTabSettings.hid_suppression_block_getattributes.GetValue() ? "Blocked" : "Allowed");
@@ -1949,11 +1946,11 @@ void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
         // Show hook status
         bool hooks_installed = renodx::hooks::AreHIDSuppressionHooksInstalled();
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Hooks Status: %s",
-                           hooks_installed ? "Installed" : "Not Installed");
+                          hooks_installed ? "Installed" : "Not Installed");
 
         imgui.Spacing();
         imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                           ICON_FK_WARNING " WARNING: This prevents games from reading HID input!");
+                          ICON_FK_WARNING " WARNING: This prevents games from reading HID input!");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "HID suppression prevents games from reading controller input directly.\nThis may cause games to not "
@@ -1965,7 +1962,7 @@ void DrawHIDSuppression(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Debug Output Hooks ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks OutputDebugStringA/W to log to ReShade!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Hooks OutputDebugStringA/W to log to ReShade!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature hooks Windows debug output functions (OutputDebugStringA/W) and logs their output to the "
@@ -2003,9 +2000,9 @@ void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui) {
         auto& stats = display_commanderhooks::debug_output::GetDebugOutputStats();
 
         imgui.Text("OutputDebugStringA calls: %llu",
-                    static_cast<unsigned long long>(stats.output_debug_string_a_calls.load()));
+                   static_cast<unsigned long long>(stats.output_debug_string_a_calls.load()));
         imgui.Text("OutputDebugStringW calls: %llu",
-                    static_cast<unsigned long long>(stats.output_debug_string_w_calls.load()));
+                   static_cast<unsigned long long>(stats.output_debug_string_w_calls.load()));
         imgui.Text("Total bytes logged: %llu", static_cast<unsigned long long>(stats.total_bytes_logged.load()));
 
         // Reset statistics button
@@ -2021,16 +2018,15 @@ void DrawDebugOutputHooks(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     imgui.Spacing();
-    imgui.TextColored(
-        ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-        "Note: This feature captures debug output from OutputDebugStringA and OutputDebugStringW calls.");
+    imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
+                      "Note: This feature captures debug output from OutputDebugStringA and OutputDebugStringW calls.");
     imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Debug output will appear in ReShade.log when enabled.");
 }
 
 void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(ImVec4(0.8f, 0.8f, 1.0f, 1.0f), "=== Anisotropic Filtering Upgrade ===");
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades linear/bilinear filters to anisotropic!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - Upgrades linear/bilinear filters to anisotropic!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature upgrades linear and bilinear texture filters to anisotropic filtering.\n"
@@ -2065,8 +2061,8 @@ void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui
         imgui.Spacing();
 
         // Upgrade trilinear (min_mag_mip_linear) to anisotropic
-        if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear,
-                            "Upgrade Trilinear Filters", imgui)) {
+        if (CheckboxSetting(settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear, "Upgrade Trilinear Filters",
+                            imgui)) {
             LogInfo("Upgrade trilinear filters %s",
                     settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue() ? "enabled" : "disabled");
         }
@@ -2127,17 +2123,17 @@ void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui
             ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Trilinear: %s",
             settings::g_experimentalTabSettings.upgrade_min_mag_mip_linear.GetValue() ? "Upgrade" : "Keep Original");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Compare Trilinear: %s",
-                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue()
-                               ? "Upgrade"
-                               : "Keep Original");
+                          settings::g_experimentalTabSettings.upgrade_compare_min_mag_mip_linear.GetValue()
+                              ? "Upgrade"
+                              : "Keep Original");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Bilinear: %s",
-                           settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue()
-                               ? "Upgrade"
-                               : "Keep Original");
+                          settings::g_experimentalTabSettings.upgrade_min_mag_linear_mip_point.GetValue()
+                              ? "Upgrade"
+                              : "Keep Original");
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  Compare Bilinear: %s",
-                           settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()
-                               ? "Upgrade"
-                               : "Keep Original");
+                          settings::g_experimentalTabSettings.upgrade_compare_min_mag_linear_mip_point.GetValue()
+                              ? "Upgrade"
+                              : "Keep Original");
 
         // Show anisotropy level from main tab
         int aniso_level = settings::g_mainTabSettings.max_anisotropy.GetValue();
@@ -2149,7 +2145,7 @@ void DrawAnisotropicFilteringUpgrade(display_commander::ui::IImGuiWrapper& imgui
 
         imgui.Spacing();
         imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f),
-                           ICON_FK_WARNING " WARNING: This may cause performance issues or rendering artifacts!");
+                          ICON_FK_WARNING " WARNING: This may cause performance issues or rendering artifacts!");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Upgrading filters to anisotropic may increase GPU load and cause visual artifacts in some games.\n"
@@ -2279,7 +2275,7 @@ void DrawDLLBlockingControls(display_commander::ui::IImGuiWrapper& imgui) {
                     if (imgui.IsItemHovered()) {
                         std::string full_path(module.fullPath.begin(), module.fullPath.end());
                         imgui.SetTooltip("Cannot block: Loaded before Display Commander\nFull path: %s",
-                                          full_path.c_str());
+                                         full_path.c_str());
                     }
                 } else if (is_blocked) {
                     // Red for blocked modules
@@ -2287,7 +2283,7 @@ void DrawDLLBlockingControls(display_commander::ui::IImGuiWrapper& imgui) {
                     if (imgui.IsItemHovered()) {
                         std::string full_path(module.fullPath.begin(), module.fullPath.end());
                         imgui.SetTooltip("Blocked: Will prevent loading on next restart\nFull path: %s",
-                                          full_path.c_str());
+                                         full_path.c_str());
                     }
                 } else {
                     // Normal color for unblocked modules that can be blocked
@@ -2295,7 +2291,7 @@ void DrawDLLBlockingControls(display_commander::ui::IImGuiWrapper& imgui) {
                     if (imgui.IsItemHovered()) {
                         std::string full_path(module.fullPath.begin(), module.fullPath.end());
                         imgui.SetTooltip("Can be blocked: Loaded after Display Commander\nFull path: %s",
-                                          full_path.c_str());
+                                         full_path.c_str());
                     }
                 }
             }
@@ -2413,14 +2409,16 @@ void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
 
     // Mouse input testing section
-    if (imgui.CollapsingHeader("Mouse Input Testing", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (imgui.CollapsingHeader("Mouse Input Testing",
+                               display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
 
         imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mouse Input Blocking Methods:");
         imgui.Spacing();
 
         // Translate mouse position (window resolution -> render resolution)
-        CheckboxSetting(settings::g_experimentalTabSettings.translate_mouse_position, "Translate Mouse Position", imgui);
+        CheckboxSetting(settings::g_experimentalTabSettings.translate_mouse_position, "Translate Mouse Position",
+                        imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "When window resolution is larger than render resolution (e.g. 3840x2160 window, "
@@ -2463,12 +2461,12 @@ void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {
         RECT client_rect = {};
         if (GetClientRect(game_hwnd, &client_rect)) {
             imgui.Text("Client Rect: %ld, %ld, %ld, %ld", client_rect.left, client_rect.top, client_rect.right,
-                        client_rect.bottom);
+                       client_rect.bottom);
         }
         RECT window_rect = {};
         if (GetWindowRect(game_hwnd, &window_rect)) {
             imgui.Text("Window Rect: %ld, %ld, %ld, %ld", window_rect.left, window_rect.top, window_rect.right,
-                        window_rect.bottom);
+                       window_rect.bottom);
         }
         // WindoPos
         POINT window_pos;
@@ -2513,13 +2511,15 @@ void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         // GetKeyState/GetAsyncKeyState for mouse buttons
-        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_getkeystate, "Block GetKeyState (Mouse)", imgui);
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_getkeystate, "Block GetKeyState (Mouse)",
+                        imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Blocks GetKeyState/GetAsyncKeyState for mouse buttons (VK_LBUTTON, VK_RBUTTON, etc.)");
         }
 
         // Raw Input
-        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_rawinput, "Block Raw Input (Mouse)", imgui);
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_mouse_rawinput, "Block Raw Input (Mouse)",
+                        imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Blocks GetRawInputData/GetRawInputBuffer for mouse input");
         }
@@ -2552,36 +2552,36 @@ void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {
 
         const auto& mouse_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetCursorPos);
         imgui.Text("GetCursorPos: Total=%llu, Unsuppressed=%llu", mouse_stats.total_calls.load(),
-                    mouse_stats.unsuppressed_calls.load());
+                   mouse_stats.unsuppressed_calls.load());
 
         const auto& setcursor_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_SetCursorPos);
         imgui.Text("SetCursorPos: Total=%llu, Unsuppressed=%llu", setcursor_stats.total_calls.load(),
-                    setcursor_stats.unsuppressed_calls.load());
+                   setcursor_stats.unsuppressed_calls.load());
 
         const auto& keystate_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyState);
         imgui.Text("GetKeyState: Total=%llu, Unsuppressed=%llu", keystate_stats.total_calls.load(),
-                    keystate_stats.unsuppressed_calls.load());
+                   keystate_stats.unsuppressed_calls.load());
 
         const auto& asynckeystate_stats =
             display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetAsyncKeyState);
         imgui.Text("GetAsyncKeyState: Total=%llu, Unsuppressed=%llu", asynckeystate_stats.total_calls.load(),
-                    asynckeystate_stats.unsuppressed_calls.load());
+                   asynckeystate_stats.unsuppressed_calls.load());
 
         const auto& rawinput_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetRawInputData);
         imgui.Text("GetRawInputData: Total=%llu, Unsuppressed=%llu", rawinput_stats.total_calls.load(),
-                    rawinput_stats.unsuppressed_calls.load());
+                   rawinput_stats.unsuppressed_calls.load());
 
         const auto& mouseevent_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_mouse_event);
         imgui.Text("mouse_event: Total=%llu, Unsuppressed=%llu", mouseevent_stats.total_calls.load(),
-                    mouseevent_stats.unsuppressed_calls.load());
+                   mouseevent_stats.unsuppressed_calls.load());
 
         const auto& clipcursor_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_ClipCursor);
         imgui.Text("ClipCursor: Total=%llu, Unsuppressed=%llu", clipcursor_stats.total_calls.load(),
-                    clipcursor_stats.unsuppressed_calls.load());
+                   clipcursor_stats.unsuppressed_calls.load());
 
         const auto& setcapture_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_SetCapture);
         imgui.Text("SetCapture: Total=%llu, Unsuppressed=%llu", setcapture_stats.total_calls.load(),
-                    setcapture_stats.unsuppressed_calls.load());
+                   setcapture_stats.unsuppressed_calls.load());
 
         imgui.Unindent();
     }
@@ -2589,20 +2589,23 @@ void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
 
     // Keyboard input testing section
-    if (imgui.CollapsingHeader("Keyboard Input Testing", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (imgui.CollapsingHeader("Keyboard Input Testing",
+                               display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
 
         imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Keyboard Input Blocking Methods:");
         imgui.Spacing();
 
         // Windows Messages
-        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_messages, "Block Keyboard Messages", imgui);
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_messages, "Block Keyboard Messages",
+                        imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Blocks WM_KEYDOWN, WM_KEYUP, WM_CHAR, WM_SYSKEYDOWN, WM_SYSKEYUP messages");
         }
 
         // GetKeyState
-        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getkeystate, "Block GetKeyState", imgui);
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_getkeystate, "Block GetKeyState",
+                        imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Blocks GetKeyState API for keyboard keys");
         }
@@ -2622,7 +2625,8 @@ void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         // Raw Input
-        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_rawinput, "Block Raw Input (Keyboard)", imgui);
+        CheckboxSetting(settings::g_experimentalTabSettings.test_block_keyboard_rawinput, "Block Raw Input (Keyboard)",
+                        imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Blocks GetRawInputData/GetRawInputBuffer for keyboard input");
         }
@@ -2650,29 +2654,29 @@ void DrawInputTestTab(display_commander::ui::IImGuiWrapper& imgui) {
         const auto& keyboard_state_stats =
             display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyboardState);
         imgui.Text("GetKeyboardState: Total=%llu, Unsuppressed=%llu", keyboard_state_stats.total_calls.load(),
-                    keyboard_state_stats.unsuppressed_calls.load());
+                   keyboard_state_stats.unsuppressed_calls.load());
 
         const auto& kbd_keystate_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetKeyState);
         imgui.Text("GetKeyState: Total=%llu, Unsuppressed=%llu", kbd_keystate_stats.total_calls.load(),
-                    kbd_keystate_stats.unsuppressed_calls.load());
+                   kbd_keystate_stats.unsuppressed_calls.load());
 
         const auto& kbd_asynckeystate_stats =
             display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetAsyncKeyState);
         imgui.Text("GetAsyncKeyState: Total=%llu, Unsuppressed=%llu", kbd_asynckeystate_stats.total_calls.load(),
-                    kbd_asynckeystate_stats.unsuppressed_calls.load());
+                   kbd_asynckeystate_stats.unsuppressed_calls.load());
 
         const auto& kbd_rawinput_stats =
             display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_GetRawInputData);
         imgui.Text("GetRawInputData: Total=%llu, Unsuppressed=%llu", kbd_rawinput_stats.total_calls.load(),
-                    kbd_rawinput_stats.unsuppressed_calls.load());
+                   kbd_rawinput_stats.unsuppressed_calls.load());
 
         const auto& keybdevent_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_keybd_event);
         imgui.Text("keybd_event: Total=%llu, Unsuppressed=%llu", keybdevent_stats.total_calls.load(),
-                    keybdevent_stats.unsuppressed_calls.load());
+                   keybdevent_stats.unsuppressed_calls.load());
 
         const auto& sendinput_stats = display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_SendInput);
         imgui.Text("SendInput: Total=%llu, Unsuppressed=%llu", sendinput_stats.total_calls.load(),
-                    sendinput_stats.unsuppressed_calls.load());
+                   sendinput_stats.unsuppressed_calls.load());
 
         imgui.Unindent();
     }

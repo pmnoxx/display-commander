@@ -49,7 +49,7 @@
 #define IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
 #endif
 
-#pragma comment(lib, "opengl32.lib")
+// opengl32.lib not linked: gl/wgl symbols from opengl32_proxy (forwards to system opengl32)
 
 static HDC g_hDC = nullptr;
 static HGLRC g_hGLRC = nullptr;

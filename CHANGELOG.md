@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.96 (2026-02-25)
+
+- **Added loading Display Commander as opengl32.dll (untested)**
+
 ## v0.12.95 (2026-02-25)
 
 - **Version resource FileDescription shows bitness** - The addon DLL's version resource FileDescription now includes "(32-bit)" or "(64-bit)" so users can tell at a glance which build they have (e.g. in Explorer file properties).

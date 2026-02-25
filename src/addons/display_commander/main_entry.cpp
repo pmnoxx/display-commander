@@ -37,6 +37,7 @@
 #include "proxy_dll/dxgi_proxy_init.hpp"
 #include "proxy_dll/opengl32_proxy_init.hpp"
 #include "proxy_dll/proxy_detection.hpp"
+#include "proxy_dll/winmm_proxy_init.hpp"
 #include "res/forkawesome.h"
 #include "res/ui_colors.hpp"
 #include "settings/advanced_tab_settings.hpp"
@@ -1878,11 +1879,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
             display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
-            // Preload real dxgi.dll / ddraw.dll / d3d9.dll / opengl32.dll when this DLL is used as proxy (safe in DllMain: system path only)
+            // Preload real dxgi.dll / ddraw.dll / d3d9.dll / opengl32.dll / winmm.dll when this DLL is used as proxy (safe in DllMain: system path only)
             LoadRealDXGIFromDllMain();
             LoadRealDDrawFromDllMain();
             LoadRealD3D9FromDllMain();
             LoadRealOpenGL32FromDllMain();
+            LoadRealWinMMFromDllMain();
 
             DetectWine();
 

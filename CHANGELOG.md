@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.97 (2026-02-25)
+
+- **Supports loading Display Commander through winmm.dll**
+
 ## v0.12.96 (2026-02-25)
 
 - **Added loading Display Commander as opengl32.dll (untested)**

@@ -35,7 +35,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 96)
+set(DISPLAY_COMMANDER_VERSION_PATCH 97)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -259,7 +259,7 @@ if(EXISTS "${DC_CONTROL_FX}")
   endif()
 endif()
 
-# Link exports.def file for proxy DLL exports (dxgi.dll, d3d11.dll, d3d12.dll, version.dll, opengl32.dll)
+# Link exports.def file for proxy DLL exports (dxgi, d3d11, d3d12, version, opengl32, winmm)
 # CMake automatically handles .def files for MSVC when added as a source, but we also explicitly link it
 target_sources(zzz_display_commander PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
@@ -267,6 +267,7 @@ target_sources(zzz_display_commander PRIVATE
 # opengl32_proxy.cpp defines wgl* that wingdi.h declares as dllimport; suppress inconsistent-dllimport
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/opengl32_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
+  set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/winmm_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
 endif()
 
 # Standalone installer UI built into the DLL (CommandLine SetupDC [script_dir]). Uses a second ImGui in namespace

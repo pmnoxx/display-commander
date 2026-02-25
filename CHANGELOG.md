@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.101 (2026-02-25)
+
+- **Generic dll proxy generator from Wine .spec** - Added `scripts/gen_proxy_from_spec.py`: takes DLL name and path to a Wine .spec file, outputs `xxx_proxy.cpp` and `xxx_exports.def` (fragment to paste into proxy_dll). Supports ordinal block, `@ stdcall` / `@ stub`, winmm (winmmHooked + init), d3d11 (gdi32 fallback). Winmm proxy and exports.def winmm section are now generated from `scripts/specs/winmm.spec`; exports aligned with Wine (comment-only symbols in spec are not exported).
+
 ## v0.12.100 (2026-02-25)
 
 - **winmm.dll proxy: ordinal exports** - Added Wine-style ordinal exports: ordinal 2 = PlaySoundA (WINMM_2), ordinals 3/4 = WINMM_3/WINMM_4 stubs (forward to real winmm or return 0). Matches [Wine winmm.spec](https://github.com/wine-mirror/wine/blob/master/dlls/winmm/winmm.spec).

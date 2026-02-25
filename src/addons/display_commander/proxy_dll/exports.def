@@ -20,9 +20,51 @@ EXPORTS
 	Direct3D9EnableMaximizedWindowedModeShim PRIVATE
 
 	; d3d11.dll exports
+	D3D11CoreCreateDevice PRIVATE
+	D3D11CoreCreateLayeredDevice PRIVATE
+	D3D11CoreGetLayeredDeviceSize PRIVATE
+	D3D11CoreRegisterLayers PRIVATE
 	D3D11CreateDevice PRIVATE
 	D3D11CreateDeviceAndSwapChain PRIVATE
 	D3D11On12CreateDevice PRIVATE
+	D3DKMTCheckVidPnExclusiveOwnership PRIVATE
+	D3DKMTCloseAdapter PRIVATE
+	D3DKMTCreateAllocation PRIVATE
+	D3DKMTCreateContext PRIVATE
+	D3DKMTCreateDevice PRIVATE
+	D3DKMTCreateSynchronizationObject PRIVATE
+	D3DKMTDestroyAllocation PRIVATE
+	D3DKMTDestroyContext PRIVATE
+	D3DKMTDestroyDevice PRIVATE
+	D3DKMTDestroySynchronizationObject PRIVATE
+	D3DKMTEscape PRIVATE
+	D3DKMTGetContextSchedulingPriority PRIVATE
+	D3DKMTGetDeviceState PRIVATE
+	D3DKMTGetDisplayModeList PRIVATE
+	D3DKMTGetMultisampleMethodList PRIVATE
+	D3DKMTGetRuntimeData PRIVATE
+	D3DKMTGetSharedPrimaryHandle PRIVATE
+	D3DKMTLock PRIVATE
+	D3DKMTOpenAdapterFromGdiDisplayName PRIVATE
+	D3DKMTOpenAdapterFromHdc PRIVATE
+	D3DKMTOpenResource PRIVATE
+	D3DKMTPresent PRIVATE
+	D3DKMTQueryAdapterInfo PRIVATE
+	D3DKMTQueryAllocationResidency PRIVATE
+	D3DKMTQueryResourceInfo PRIVATE
+	D3DKMTRender PRIVATE
+	D3DKMTSetAllocationPriority PRIVATE
+	D3DKMTSetContextSchedulingPriority PRIVATE
+	D3DKMTSetDisplayMode PRIVATE
+	D3DKMTSetDisplayPrivateDriverFormat PRIVATE
+	D3DKMTSetGammaRamp PRIVATE
+	D3DKMTSetVidPnSourceOwner PRIVATE
+	D3DKMTSignalSynchronizationObject PRIVATE
+	D3DKMTUnlock PRIVATE
+	D3DKMTWaitForSynchronizationObject PRIVATE
+	D3DKMTWaitForVerticalBlankEvent PRIVATE
+	OpenAdapter10 PRIVATE
+	OpenAdapter10_2 PRIVATE
 
 	; d3d12.dll exports
 	D3D12CreateDevice @101 PRIVATE
@@ -432,8 +474,7 @@ EXPORTS
 	WINMM_3 @3 PRIVATE
 	WINMM_4 @4 PRIVATE
 
-	; winmm.dll exports (proxy forwards to system winmm or winmmHooked.dll)
-    ; https://source.winehq.org/WineAPI/winmm.html
+	; winmm.dll exports (from scripts/gen_proxy_from_spec.py + scripts/specs/winmm.spec)
 	CloseDriver PRIVATE
 	DefDriverProc PRIVATE
 	DriverCallback PRIVATE
@@ -445,24 +486,18 @@ EXPORTS
 	DrvSendMessage PRIVATE
 	GetDriverFlags PRIVATE
 	GetDriverModuleHandle PRIVATE
-	NotifyCallbackData PRIVATE
 	OpenDriver PRIVATE
 	OpenDriverA PRIVATE
 	PlaySound PRIVATE
 	PlaySoundA PRIVATE
 	PlaySoundW PRIVATE
 	SendDriverMessage PRIVATE
-	WOW32DriverCallback PRIVATE
-	WOW32ResolveMultiMediaHandle PRIVATE
-	WOWAppExit PRIVATE
-	aux32Message PRIVATE
 	auxGetDevCapsA PRIVATE
 	auxGetDevCapsW PRIVATE
 	auxGetNumDevs PRIVATE
 	auxGetVolume PRIVATE
 	auxOutMessage PRIVATE
 	auxSetVolume PRIVATE
-	joy32Message PRIVATE
 	joyConfigChanged PRIVATE
 	joyGetDevCapsA PRIVATE
 	joyGetDevCapsW PRIVATE
@@ -473,7 +508,6 @@ EXPORTS
 	joyReleaseCapture PRIVATE
 	joySetCapture PRIVATE
 	joySetThreshold PRIVATE
-	mci32Message PRIVATE
 	mciDriverNotify PRIVATE
 	mciDriverYield PRIVATE
 	mciExecute PRIVATE
@@ -494,7 +528,6 @@ EXPORTS
 	mciSendStringW PRIVATE
 	mciSetDriverData PRIVATE
 	mciSetYieldProc PRIVATE
-	mid32Message PRIVATE
 	midiConnect PRIVATE
 	midiDisconnect PRIVATE
 	midiInAddBuffer PRIVATE
@@ -552,7 +585,6 @@ EXPORTS
 	mixerMessage PRIVATE
 	mixerOpen PRIVATE
 	mixerSetControlDetails PRIVATE
-	mmDrvInstall PRIVATE
 	mmGetCurrentTask PRIVATE
 	mmTaskBlock PRIVATE
 	mmTaskCreate PRIVATE
@@ -581,11 +613,8 @@ EXPORTS
 	mmioStringToFOURCCW PRIVATE
 	mmioWrite PRIVATE
 	mmsystemGetVersion PRIVATE
-	mod32Message PRIVATE
-	mxd32Message PRIVATE
 	sndPlaySoundA PRIVATE
 	sndPlaySoundW PRIVATE
-	tid32Message PRIVATE
 	timeBeginPeriod PRIVATE
 	timeEndPeriod PRIVATE
 	timeGetDevCaps PRIVATE
@@ -632,8 +661,6 @@ EXPORTS
 	waveOutSetVolume PRIVATE
 	waveOutUnprepareHeader PRIVATE
 	waveOutWrite PRIVATE
-	wid32Message PRIVATE
-	wod32Message PRIVATE
 
 	; ReShade loader API (same names as ReShade so installer/tools work when this proxy is used as d3d11/dxgi)
 	Service30

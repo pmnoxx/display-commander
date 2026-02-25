@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.98 (2026-02-25)
+
+- **DXGI factory hooks** - Added CreateDXGIFactory2 detour and hook installation (same pattern as CreateDXGIFactory/CreateDXGIFactory1). DXGI factory hooks are disabled for now (behind experimental / hook suppression).
+
 ## v0.12.97 (2026-02-25)
 
 - **Supports loading Display Commander through winmm.dll**

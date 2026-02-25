@@ -32,6 +32,7 @@
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
+#include "proxy_dll/d3d9_proxy_init.hpp"
 #include "proxy_dll/ddraw_proxy_init.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
 #include "proxy_dll/proxy_detection.hpp"
@@ -1876,9 +1877,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
             display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
-            // Preload real dxgi.dll / ddraw.dll when this DLL is used as proxy (safe in DllMain: system path only)
+            // Preload real dxgi.dll / ddraw.dll / d3d9.dll when this DLL is used as proxy (safe in DllMain: system path only)
             LoadRealDXGIFromDllMain();
             LoadRealDDrawFromDllMain();
+            LoadRealD3D9FromDllMain();
 
             DetectWine();
 

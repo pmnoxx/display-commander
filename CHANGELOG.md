@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.94 (2026-02-25)
+
+- **Add ability to use Display Commander as d3d9.dll proxy (untested)** - Proxy DLL can be used as d3d9.dll for Direct3D 9 games; forwards all D3D9 exports to system d3d9.dll (same pattern as ddraw/dxgi). Untested.
+
 ## v0.12.93 (2026-02-25)
 
 - **Add ability to use Display Commander as ddraw.dll proxy** - Proxy DLL can be used as ddraw.dll for DirectDraw games; forwards to system ddraw.dll (same pattern as dxgi/d3d11/d3d12).

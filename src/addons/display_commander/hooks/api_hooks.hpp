@@ -36,6 +36,7 @@ using AddVectoredExceptionHandler_pfn = PVOID(WINAPI*)(ULONG, PVECTORED_EXCEPTIO
 // DXGI Factory creation function pointer types
 using CreateDXGIFactory_pfn = HRESULT(WINAPI*)(REFIID, void**);
 using CreateDXGIFactory1_pfn = HRESULT(WINAPI*)(REFIID, void**);
+using CreateDXGIFactory2_pfn = HRESULT(WINAPI*)(UINT Flags, REFIID, void**);
 
 // D3D11 Device creation function pointer types
 using D3D11CreateDeviceAndSwapChain_pfn = HRESULT(WINAPI*)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT,
@@ -68,6 +69,7 @@ extern ShowCursor_pfn ShowCursor_Original;
 extern AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original;
 extern CreateDXGIFactory_pfn CreateDXGIFactory_Original;
 extern CreateDXGIFactory1_pfn CreateDXGIFactory1_Original;
+extern CreateDXGIFactory2_pfn CreateDXGIFactory2_Original;
 extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
 extern D3D11CreateDevice_pfn D3D11CreateDevice_Original;
 extern D3D12CreateDevice_pfn D3D12CreateDevice_Original;
@@ -99,6 +101,7 @@ int WINAPI ShowCursor_Detour(BOOL bShow);
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory);
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory);
+HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFactory);
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
                                                     HMODULE Software, UINT Flags,
                                                     const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,

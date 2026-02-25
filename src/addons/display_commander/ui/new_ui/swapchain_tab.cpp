@@ -408,7 +408,8 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
         static const std::map<DxgiFactoryEventIndex, const char*> dxgi_factory_event_names = {
             {DXGI_FACTORY_EVENT_CREATESWAPCHAIN, "DXGI_FACTORY_EVENT_CREATESWAPCHAIN"},
             {DXGI_FACTORY_EVENT_CREATEFACTORY, "DXGI_FACTORY_EVENT_CREATEFACTORY"},
-            {DXGI_FACTORY_EVENT_CREATEFACTORY1, "DXGI_FACTORY_EVENT_CREATEFACTORY1"}};
+            {DXGI_FACTORY_EVENT_CREATEFACTORY1, "DXGI_FACTORY_EVENT_CREATEFACTORY1"},
+            {DXGI_FACTORY_EVENT_CREATEFACTORY2, "DXGI_FACTORY_EVENT_CREATEFACTORY2"}};
         displayEventCategory("DXGI Factory Methods", g_dxgi_factory_event_counters, dxgi_factory_event_names,
                              ImVec4(1.0f, 0.8f, 1.0f, 1.0f));
 

@@ -51,6 +51,7 @@ ShowCursor_pfn ShowCursor_Original = nullptr;
 AddVectoredExceptionHandler_pfn AddVectoredExceptionHandler_Original = nullptr;
 CreateDXGIFactory_pfn CreateDXGIFactory_Original = nullptr;
 CreateDXGIFactory1_pfn CreateDXGIFactory1_Original = nullptr;
+CreateDXGIFactory2_pfn CreateDXGIFactory2_Original = nullptr;
 D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original = nullptr;
 D3D11CreateDevice_pfn D3D11CreateDevice_Original = nullptr;
 D3D12CreateDevice_pfn D3D12CreateDevice_Original = nullptr;
@@ -478,6 +479,32 @@ PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION
                                                 : AddVectoredExceptionHandler(First, Handler);
 }
 
+// Hooked CreateDXGIFactory2 function
+HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFactory) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // Increment counter
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY2].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    std::array<const GUID, 8> rrids = {__uuidof(IDXGIFactory),  __uuidof(IDXGIFactory1), __uuidof(IDXGIFactory2),
+                                       __uuidof(IDXGIFactory3), __uuidof(IDXGIFactory4), __uuidof(IDXGIFactory5),
+                                       __uuidof(IDXGIFactory6), __uuidof(IDXGIFactory7)};
+
+    if (std::find(rrids.begin(), rrids.end(), riid) == rrids.end()) {
+        LogWarn("CreateDXGIFactory2: Unknown interface %s", riid);
+        return E_NOINTERFACE;
+    }
+    LogInfo("CreateDXGIFactory2: Found interface %s -> IDXGIFactory7", riid);
+    // Upgrading interface
+    const GUID rrid_override = __uuidof(IDXGIFactory7);
+
+    // Call original function
+    HRESULT hr = CreateDXGIFactory2_Original ? CreateDXGIFactory2_Original(Flags, rrid_override, ppFactory)
+                                             : CreateDXGIFactory2(Flags, rrid_override, ppFactory);
+
+    return hr;
+}
+
 // Hooked CreateDXGIFactory function
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -485,38 +512,8 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Call original function
-    HRESULT hr =
-        CreateDXGIFactory_Original ? CreateDXGIFactory_Original(riid, ppFactory) : CreateDXGIFactory(riid, ppFactory);
-
-    // If successful and we got a factory, wrap it with our proxy
-    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        // Try to query for IDXGIFactory7 (highest version)
-        Microsoft::WRL::ComPtr<IDXGIFactory7> factory7;
-        if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory7)))) {
-            // AddRef the factory so wrapper can take ownership (wrapper doesn't AddRef in constructor)
-            // This ensures the factory stays alive when ComPtr releases and when we release the original
-            factory7->AddRef();
-
-            // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
-            display_commanderhooks::DXGIFactoryWrapper* wrapper = new display_commanderhooks::DXGIFactoryWrapper(
-                factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
-
-            // Release the original factory reference from the original function
-            static_cast<IUnknown*>(*ppFactory)->Release();
-
-            // Replace with wrapper (wrapper already has refcount of 1 from constructor)
-            *ppFactory = wrapper;
-            // No need to AddRef - wrapper constructor sets refcount to 1
-            // When ComPtr goes out of scope, it will release its ref, but wrapper's AddRef keeps it alive
-
-            LogInfo("CreateDXGIFactory: Created factory wrapper for IDXGIFactory7: 0x%p", wrapper);
-        } else {
-            LogWarn("CreateDXGIFactory: Failed to query IDXGIFactory7, skipping wrapper creation");
-        }
-    }
-
-    return hr;
+    LogInfo("Redirecting CreateDXGIFactory to CreateDXGIFactory2");
+    return CreateDXGIFactory2(0, riid, ppFactory);
 }
 
 // Hooked CreateDXGIFactory1 function
@@ -526,40 +523,10 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Call original function
-    HRESULT hr = CreateDXGIFactory1_Original ? CreateDXGIFactory1_Original(riid, ppFactory)
-                                             : CreateDXGIFactory1(riid, ppFactory);
+    LogInfo("Redirecting CreateDXGIFactory1 to CreateDXGIFactory2");
 
-    // If successful and we got a factory, wrap it with our proxy
-    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        // Try to query for IDXGIFactory7 (highest version)
-        Microsoft::WRL::ComPtr<IDXGIFactory7> factory7;
-        if (SUCCEEDED(static_cast<IUnknown*>(*ppFactory)->QueryInterface(IID_PPV_ARGS(&factory7)))) {
-            // AddRef the factory so wrapper can take ownership (wrapper doesn't AddRef in constructor)
-            // This ensures the factory stays alive when ComPtr releases and when we release the original
-            factory7->AddRef();
-
-            // Create wrapper for the factory (wrapper takes ownership, doesn't AddRef)
-            display_commanderhooks::DXGIFactoryWrapper* wrapper = new display_commanderhooks::DXGIFactoryWrapper(
-                factory7.Get(), display_commanderhooks::SwapChainHook::NativeRaw);
-
-            // Release the original factory reference from the original function
-            static_cast<IUnknown*>(*ppFactory)->Release();
-
-            // Replace with wrapper (wrapper already has refcount of 1 from constructor)
-            *ppFactory = wrapper;
-            // No need to AddRef - wrapper constructor sets refcount to 1
-            // When ComPtr goes out of scope, it will release its ref, but wrapper's AddRef keeps it alive
-
-            LogInfo("CreateDXGIFactory1: Created factory wrapper for IDXGIFactory7: 0x%p", wrapper);
-        } else {
-            LogWarn("CreateDXGIFactory1: Failed to query IDXGIFactory7, skipping wrapper creation");
-        }
-    }
-
-    return hr;
+    return CreateDXGIFactory2(0, riid, ppFactory);
 }
-
 // Hooked D3D11CreateDeviceAndSwapChain function
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
                                                     HMODULE Software, UINT Flags,
@@ -837,6 +804,9 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 }
 
 bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
+    if (true) {
+        return true;
+    }
     if (!enabled_experimental_features) {
         return true;
     }
@@ -844,7 +814,7 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(dxgi_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(dxgi_module, "ReShadeUnregisterAddon");
-    if (reshade_register != nullptr && reshade_unregister != nullptr) {
+    if (reshade_register != nullptr || reshade_unregister != nullptr) {
         LogInfo("Skipping DXGI hooks installation - detected ReShade proxy module (0x%p)", dxgi_module);
         return true;
     }
@@ -918,6 +888,26 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
             return false;
         }
         LogInfo("CreateDXGIFactory1 ReShade hook created successfully");
+    }
+
+    // Hook CreateDXGIFactory2 - try both system and ReShade versions
+    auto CreateDXGIFactory2_sys =
+        reinterpret_cast<CreateDXGIFactory2_pfn>(GetProcAddress(dxgi_module, "CreateDXGIFactory2"));
+    if (CreateDXGIFactory2_sys != nullptr) {
+        if (!CreateAndEnableHook(CreateDXGIFactory2_sys, CreateDXGIFactory2_Detour,
+                                 reinterpret_cast<LPVOID*>(&CreateDXGIFactory2_Original), "CreateDXGIFactory2")) {
+            LogError("Failed to create and enable CreateDXGIFactory2 system hook");
+            return false;
+        }
+        LogInfo("CreateDXGIFactory2 system hook created successfully");
+    } else {
+        LogWarn("Failed to get CreateDXGIFactory2 system address, trying ReShade version");
+        if (!CreateAndEnableHook(CreateDXGIFactory2, CreateDXGIFactory2_Detour,
+                                 reinterpret_cast<LPVOID*>(&CreateDXGIFactory2_Original), "CreateDXGIFactory2")) {
+            LogError("Failed to create and enable CreateDXGIFactory2 ReShade hook");
+            return false;
+        }
+        LogInfo("CreateDXGIFactory2 ReShade hook created successfully");
     }
 
     LogInfo("DXGI hooks installed successfully");
@@ -1304,6 +1294,7 @@ void UninstallApiHooks() {
     MH_RemoveHook(AddVectoredExceptionHandler);
     MH_RemoveHook(CreateDXGIFactory);
     MH_RemoveHook(CreateDXGIFactory1);
+    MH_RemoveHook(CreateDXGIFactory2);
 
     // Remove D3D device hooks
     HMODULE d3d11_module = GetModuleHandleW(L"d3d11.dll");
@@ -1350,6 +1341,7 @@ void UninstallApiHooks() {
     AddVectoredExceptionHandler_Original = nullptr;
     CreateDXGIFactory_Original = nullptr;
     CreateDXGIFactory1_Original = nullptr;
+    CreateDXGIFactory2_Original = nullptr;
     D3D11CreateDeviceAndSwapChain_Original = nullptr;
     D3D11CreateDevice_Original = nullptr;
     D3D12CreateDevice_Original = nullptr;

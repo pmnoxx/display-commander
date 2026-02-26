@@ -7,6 +7,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "../present_traffic_tracking.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
@@ -36,7 +37,9 @@ std::atomic<bool> g_d3d9_present_hooks_installed{false};
 HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This, const RECT* pSourceRect,
                                                           const RECT* pDestRect, HWND hDestWindowOverride,
                                                           const RGNDATA* pDirtyRegion) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    const LONGLONG now_ns = utils::get_now_ns();
+    display_commanderhooks::g_last_d3d9_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
+    RECORD_DETOUR_CALL(now_ns);
     // Skip if this is not the device used by OnPresentUpdateBefore
     IDirect3DDevice9* expected_device = g_last_present_update_device.load();
     if (expected_device != nullptr && This != expected_device) {

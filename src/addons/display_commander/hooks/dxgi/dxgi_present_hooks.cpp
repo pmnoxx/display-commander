@@ -14,6 +14,7 @@
 #include "../../utils/timing.hpp"
 #include "../dxgi_factory_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
+#include "../present_traffic_tracking.hpp"
 
 #include <dwmapi.h>
 #include <MinHook.h>
@@ -383,7 +384,9 @@ void HandlePresentAfter(bool from_wrapper) {
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    const LONGLONG now_ns = utils::get_now_ns();
+    display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
+    RECORD_DETOUR_CALL(now_ns);
     // Early return if swapchain doesn't match
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
     if (expected_swapchain != nullptr && This != expected_swapchain) {

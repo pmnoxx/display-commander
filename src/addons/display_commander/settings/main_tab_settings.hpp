@@ -77,9 +77,6 @@ class MainTabSettings {
     ui::new_ui::FloatSetting delay_present_start_frames;
     ui::new_ui::BoolSetting experimental_safe_mode_fps_limiter;
 
-    // Misc (Streamline DLSS-G)
-    ui::new_ui::BoolSetting force_fg_auto;
-
     // VSync & Tearing
     ui::new_ui::BoolSettingRef force_vsync_on;
     ui::new_ui::BoolSettingRef force_vsync_off;

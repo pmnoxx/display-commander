@@ -279,6 +279,11 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
             && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
             continue;
         }
+        if (settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue()
+            && s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync
+            && site != FpsLimiterCallSite::reshade_addon_event) {
+            continue;
+        }
         if (IsFpsLimiterSiteEligible(site, timestamp_ns)) {
             new_chosen = site;
             break;

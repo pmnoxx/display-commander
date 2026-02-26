@@ -12,6 +12,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
+#include "present_traffic_tracking.hpp"
 
 // WGL function pointers (dynamically loaded)
 static wglSwapBuffers_pfn wglSwapBuffers_ptr = nullptr;
@@ -46,7 +47,10 @@ static std::atomic<bool> g_opengl_hooks_installed{false};
 
 // Hook detour functions
 BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    const LONGLONG now_ns = utils::get_now_ns();
+    display_commanderhooks::g_last_opengl_swapbuffers_time_ns.store(static_cast<uint64_t>(now_ns),
+                                                                    std::memory_order_relaxed);
+    RECORD_DETOUR_CALL(now_ns);
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SWAPBUFFERS].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
 

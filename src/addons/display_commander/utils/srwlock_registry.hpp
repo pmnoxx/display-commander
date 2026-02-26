@@ -14,6 +14,7 @@ extern SRWLOCK g_dlss_override_handles_srwlock;
 extern SRWLOCK g_dlss_tracked_srwlock;  // protects g_dlss_*_tracked_module/path (OnModuleLoaded + readers)
 extern SRWLOCK g_module_srwlock;
 extern SRWLOCK g_blocked_dlls_srwlock;
+extern SRWLOCK g_host_loaded_apis_srwlock;  // host-loaded graphics API names (LoadLibrary caller tracking)
 extern SRWLOCK g_context_lock;
 extern SRWLOCK g_seen_exception_addresses_lock;
 extern SRWLOCK g_hid_suppression_mutex;

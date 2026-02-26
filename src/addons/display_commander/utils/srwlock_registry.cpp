@@ -1,8 +1,8 @@
 #include "srwlock_registry.hpp"
-#include "srwlock_wrapper.hpp"
 #include "display_commander_logger.hpp"
 #include "globals.hpp"
 #include "logging.hpp"
+#include "srwlock_wrapper.hpp"
 
 namespace utils {
 
@@ -12,6 +12,7 @@ SRWLOCK g_dlss_override_handles_srwlock = SRWLOCK_INIT;
 SRWLOCK g_dlss_tracked_srwlock = SRWLOCK_INIT;
 SRWLOCK g_module_srwlock = SRWLOCK_INIT;
 SRWLOCK g_blocked_dlls_srwlock = SRWLOCK_INIT;
+SRWLOCK g_host_loaded_apis_srwlock = SRWLOCK_INIT;
 SRWLOCK g_context_lock = SRWLOCK_INIT;
 SRWLOCK g_seen_exception_addresses_lock = SRWLOCK_INIT;
 SRWLOCK g_hid_suppression_mutex = SRWLOCK_INIT;
@@ -27,9 +28,7 @@ SRWLOCK g_wndproc_map_lock = SRWLOCK_INIT;
 
 namespace {
 
-static void LogOne(const char* name, bool held) {
-    LogInfo("SRWLOCK %s: %s", name, held ? "HELD" : "free");
-}
+static void LogOne(const char* name, bool held) { LogInfo("SRWLOCK %s: %s", name, held ? "HELD" : "free"); }
 
 }  // namespace
 
@@ -39,6 +38,7 @@ void LogAllSrwlockStatus() {
     LogOne("swapchain_tracking", IsSwapchainTrackingLockHeld());
     LogOne("loadlibrary module", TryIsSRWLockHeld(g_module_srwlock));
     LogOne("loadlibrary blocked_dlls", TryIsSRWLockHeld(g_blocked_dlls_srwlock));
+    LogOne("host_loaded_apis", TryIsSRWLockHeld(g_host_loaded_apis_srwlock));
     LogOne("dlss_override_handles", TryIsSRWLockHeld(g_dlss_override_handles_srwlock));
     LogOne("dlss_tracked", TryIsSRWLockHeld(g_dlss_tracked_srwlock));
     LogOne("detour context_lock", TryIsSRWLockHeld(g_context_lock));

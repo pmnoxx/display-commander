@@ -11,6 +11,7 @@
 #include "../../hooks/ngx_hooks.hpp"
 #include "../../hooks/nvapi_hooks.hpp"
 #include "../../hooks/pclstats_etw_hooks.hpp"
+#include "../../hooks/present_traffic_tracking.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
@@ -45,7 +46,6 @@
 #include "settings_wrapper.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
-
 
 #include <d3d9.h>
 #include <d3d9types.h>
@@ -1539,6 +1539,13 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             } else {
                 imgui.TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, GetDeviceApiString(api));
             }
+        } else {
+#ifdef _WIN64
+            const char* bitness_label = "64-bit";
+#else
+            const char* bitness_label = "32-bit";
+#endif
+            imgui.TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, "Unknown");
         }
 
         // Display detected platform APIs (Steam, Epic, GOG, etc.)
@@ -1727,25 +1734,6 @@ if (enabled_experimental_features) {
     if (imgui.CollapsingHeader("Display Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
         DrawDisplaySettings(api, imgui);
-        if (enabled_experimental_features) {
-            // Misc (Streamline DLSS-G)
-            g_rendering_ui_section.store("ui:tab:main_new:misc", std::memory_order_release);
-            if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
-                imgui.Indent();
-                if (CheckboxSetting(settings::g_mainTabSettings.force_fg_auto, "Force FG Auto (Streamline)", imgui)) {
-                    LogInfo("Force FG Auto %s",
-                            settings::g_mainTabSettings.force_fg_auto.GetValue() ? "enabled" : "disabled");
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
-                        "Override slDLSSGSetOptions to force DLSS-G mode to Auto. Applies to Streamline (sl.dlss_g) "
-                        "integrations only. When enabled, games that set Off or On will have their choice overridden "
-                        "to "
-                        "Auto.");
-                }
-                imgui.Unindent();
-            }
-        }
         imgui.Unindent();
     }
 
@@ -3167,11 +3155,11 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
         }
 
         // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
-        if (enabled_experimental_features) {
+        {
             if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
                 if (CheckboxSetting(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter,
-                                    "Experimental Safe Mode fps limiter", imgui)) {
-                    LogInfo("Experimental Safe Mode fps limiter %s",
+                                    "Safe Mode fps limiter", imgui)) {
+                    LogInfo("Safe Mode fps limiter %s",
                             settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue() ? "enabled"
                                                                                                       : "disabled");
                 }
@@ -3415,7 +3403,6 @@ static const char* GetPresentModeNameNonDxgi(int device_api_value, uint32_t pres
 }
 
 static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc.load();
         bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
@@ -3475,8 +3462,8 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui
     }
 
     auto desc_ptr = g_last_swapchain_desc.load();
-    if (desc_ptr && desc_ptr->back_buffer_count < 3
-        || settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue()) {
+    if (desc_ptr
+        && (desc_ptr->back_buffer_count < 3 || settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue())) {
         imgui.SameLine();
         bool increase_backbuffer = settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue();
         if (imgui.Checkbox("Increase Backbuffer Count to 3", &increase_backbuffer)) {
@@ -4319,13 +4306,31 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     DrawDisplaySettings_FpsAndBackground(imgui);
     DrawDisplaySettings_VSyncAndTearing(imgui);
 
-    // Unknown in standalone UI; skip API-dependent sections
-    if (api == display_commander::ui::GraphicsApi::Unknown) {
-        return;
-    }
     const bool is_dxgi = api == display_commander::ui::GraphicsApi::D3D10
                          || api == display_commander::ui::GraphicsApi::D3D11
                          || api == display_commander::ui::GraphicsApi::D3D12;
+    // Show graphics/API libraries loaded by the host (game), not by Display Commander or ReShade
+    {
+        const std::string host_apis = display_commanderhooks::GetHostLoadedGraphicsApisString();
+        if (!host_apis.empty()) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "APIs (loaded by host): %s", host_apis.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Graphics/API libraries that the game (or host process) loaded via LoadLibrary.\n"
+                    "Excludes loads where the caller was Display Commander or ReShade.");
+            }
+        }
+        const std::string traffic_apis = display_commanderhooks::GetPresentTrafficApisString();
+        if (!traffic_apis.empty()) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Active APIs: %s", traffic_apis.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Graphics APIs where we observed present/swap traffic in the last 1 second (our hooks were "
+                    "called).\n"
+                    "DXGI = IDXGISwapChain::Present, D3D9 = IDirect3DDevice9::Present, OpenGL32 = wglSwapBuffers.");
+            }
+        }
+    }
     {
         const DLSSGSummary dlss_summary = GetDLSSGSummary();
         // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded

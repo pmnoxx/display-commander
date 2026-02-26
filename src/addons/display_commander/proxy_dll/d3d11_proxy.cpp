@@ -34,54 +34,54 @@ static FARPROC GetD3D11OrGdi32Proc(const char* name) {
         FARPROC fn = GetProcAddress(g_d3d11_module, name);
         if (fn != nullptr) return fn;
     }
-    if (LoadRealGdi32())
-        return GetProcAddress(g_gdi32_module, name);
+    if (LoadRealGdi32()) return GetProcAddress(g_gdi32_module, name);
     return nullptr;
 }
 
 extern "C" HRESULT WINAPI D3D11CoreCreateDevice(LPVOID p0, LPVOID p1, LONG p2, LPVOID p3, LONG p4, LPVOID p5) {
     if (!LoadRealD3D11()) return E_FAIL;
-    typedef HRESULT (WINAPI *PFN)(LPVOID, LPVOID, LONG, LPVOID, LONG, LPVOID);
+    typedef HRESULT(WINAPI * PFN)(LPVOID, LPVOID, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealD3D11() ? GetProcAddress(g_d3d11_module, "D3D11CoreCreateDevice") : nullptr);
     if (!fn) return E_FAIL;
     return fn(p0, p1, p2, p3, p4, p5);
 }
 
-extern "C" HRESULT WINAPI D3D11CoreCreateLayeredDevice() {
-    return E_FAIL;
-}
+extern "C" HRESULT WINAPI D3D11CoreCreateLayeredDevice() { return E_FAIL; }
 
-extern "C" HRESULT WINAPI D3D11CoreGetLayeredDeviceSize() {
-    return E_FAIL;
-}
+extern "C" HRESULT WINAPI D3D11CoreGetLayeredDeviceSize() { return E_FAIL; }
 
 extern "C" HRESULT WINAPI D3D11CoreRegisterLayers() {
     if (!LoadRealD3D11()) return E_FAIL;
-    typedef HRESULT (WINAPI *PFN)(void);
+    typedef HRESULT(WINAPI * PFN)(void);
     PFN fn = (PFN)(LoadRealD3D11() ? GetProcAddress(g_d3d11_module, "D3D11CoreRegisterLayers") : nullptr);
     if (!fn) return E_FAIL;
     return fn();
 }
 
-extern "C" HRESULT WINAPI D3D11CreateDevice(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6, LPVOID p7, LPVOID p8, LPVOID p9) {
+extern "C" HRESULT WINAPI D3D11CreateDevice(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6,
+                                            LPVOID p7, LPVOID p8, LPVOID p9) {
     if (!LoadRealD3D11()) return E_FAIL;
-    typedef HRESULT (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID);
+    typedef HRESULT(WINAPI * PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealD3D11() ? GetProcAddress(g_d3d11_module, "D3D11CreateDevice") : nullptr);
     if (!fn) return E_FAIL;
     return fn(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9);
 }
 
-extern "C" HRESULT WINAPI D3D11CreateDeviceAndSwapChain(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6, LPVOID p7, LPVOID p8, LPVOID p9, LPVOID p10, LPVOID p11) {
+extern "C" HRESULT WINAPI D3D11CreateDeviceAndSwapChain(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5,
+                                                        LONG p6, LPVOID p7, LPVOID p8, LPVOID p9, LPVOID p10,
+                                                        LPVOID p11) {
     if (!LoadRealD3D11()) return E_FAIL;
-    typedef HRESULT (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef HRESULT(WINAPI * PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID,
+                                  LPVOID);
     PFN fn = (PFN)(LoadRealD3D11() ? GetProcAddress(g_d3d11_module, "D3D11CreateDeviceAndSwapChain") : nullptr);
     if (!fn) return E_FAIL;
     return fn(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11);
 }
 
-extern "C" HRESULT WINAPI D3D11On12CreateDevice(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6, LPVOID p7, LPVOID p8, LPVOID p9) {
+extern "C" HRESULT WINAPI D3D11On12CreateDevice(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4, LONG p5, LONG p6,
+                                                LPVOID p7, LPVOID p8, LPVOID p9) {
     if (!LoadRealD3D11()) return E_FAIL;
-    typedef HRESULT (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID);
+    typedef HRESULT(WINAPI * PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealD3D11() ? GetProcAddress(g_d3d11_module, "D3D11On12CreateDevice") : nullptr);
     if (!fn) return E_FAIL;
     return fn(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9);
@@ -89,7 +89,7 @@ extern "C" HRESULT WINAPI D3D11On12CreateDevice(LPVOID p0, LONG p1, LPVOID p2, L
 
 extern "C" LONG WINAPI D3DKMTCheckVidPnExclusiveOwnership(LPVOID p0) {
     if (!LoadRealD3D11() && !LoadRealGdi32()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
+    typedef LONG(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(GetD3D11OrGdi32Proc("D3DKMTCheckVidPnExclusiveOwnership"));
     if (!fn) return 0;
     return fn(p0);
@@ -97,7 +97,7 @@ extern "C" LONG WINAPI D3DKMTCheckVidPnExclusiveOwnership(LPVOID p0) {
 
 extern "C" LONG WINAPI D3DKMTCloseAdapter(LPVOID p0) {
     if (!LoadRealD3D11() && !LoadRealGdi32()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
+    typedef LONG(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(GetD3D11OrGdi32Proc("D3DKMTCloseAdapter"));
     if (!fn) return 0;
     return fn(p0);
@@ -115,7 +115,7 @@ extern "C" LONG WINAPI D3DKMTCreateContext(LPVOID p0) {
 
 extern "C" LONG WINAPI D3DKMTCreateDevice(LPVOID p0) {
     if (!LoadRealD3D11() && !LoadRealGdi32()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
+    typedef LONG(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(GetD3D11OrGdi32Proc("D3DKMTCreateDevice"));
     if (!fn) return 0;
     return fn(p0);
@@ -138,7 +138,7 @@ extern "C" LONG WINAPI D3DKMTDestroyContext(LPVOID p0) {
 
 extern "C" LONG WINAPI D3DKMTDestroyDevice(LPVOID p0) {
     if (!LoadRealD3D11() && !LoadRealGdi32()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
+    typedef LONG(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(GetD3D11OrGdi32Proc("D3DKMTDestroyDevice"));
     if (!fn) return 0;
     return fn(p0);
@@ -191,7 +191,7 @@ extern "C" LONG WINAPI D3DKMTLock(LPVOID p0) {
 
 extern "C" LONG WINAPI D3DKMTOpenAdapterFromGdiDisplayName(LPVOID p0) {
     if (!LoadRealD3D11() && !LoadRealGdi32()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
+    typedef LONG(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(GetD3D11OrGdi32Proc("D3DKMTOpenAdapterFromGdiDisplayName"));
     if (!fn) return 0;
     return fn(p0);
@@ -214,7 +214,7 @@ extern "C" LONG WINAPI D3DKMTPresent(LPVOID p0) {
 
 extern "C" LONG WINAPI D3DKMTQueryAdapterInfo(LPVOID p0) {
     if (!LoadRealD3D11() && !LoadRealGdi32()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
+    typedef LONG(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(GetD3D11OrGdi32Proc("D3DKMTQueryAdapterInfo"));
     if (!fn) return 0;
     return fn(p0);
@@ -262,7 +262,7 @@ extern "C" LONG WINAPI D3DKMTSetGammaRamp(LPVOID p0) {
 
 extern "C" LONG WINAPI D3DKMTSetVidPnSourceOwner(LPVOID p0) {
     if (!LoadRealD3D11() && !LoadRealGdi32()) return 0;
-    typedef LONG (WINAPI *PFN)(LPVOID);
+    typedef LONG(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(GetD3D11OrGdi32Proc("D3DKMTSetVidPnSourceOwner"));
     if (!fn) return 0;
     return fn(p0);

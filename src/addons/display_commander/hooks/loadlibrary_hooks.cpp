@@ -18,7 +18,7 @@
 #include "../settings/main_tab_settings.hpp"
 #include "../settings/streamline_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
-#include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder
+#include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder, GetCallingDLL
 #include "../utils/logging.hpp"
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
@@ -218,6 +218,44 @@ static HMODULE g_display_commander_module = nullptr;
 // Blocked DLL tracking
 static std::set<std::wstring> g_blocked_dlls;
 
+// Host-loaded graphics/API libraries (loaded by game/host, not by us). Display names e.g. "dxgi", "d3d11".
+static std::set<std::string> g_host_loaded_graphics_apis;
+
+// Graphics API module filenames (lowercase) -> display name for UI. Only these are shown as "loaded by host".
+static const std::pair<const wchar_t*, const char*> k_host_graphics_api_list[] = {
+    {L"dxgi.dll", "dxgi"},         {L"d3d9.dll", "d3d9"},           {L"d3d10.dll", "d3d10"},
+    {L"d3d10_1.dll", "d3d10_1"},   {L"d3d10core.dll", "d3d10core"}, {L"d3d11.dll", "d3d11"},
+    {L"d3d12.dll", "d3d12"},       {L"ddraw.dll", "ddraw"},         {L"opengl32.dll", "opengl32"},
+    {L"vulkan-1.dll", "vulkan-1"}, {L"libEGL.dll", "libEGL"},       {L"libGLESv2.dll", "libGLESv2"},
+};
+static std::string GetGraphicsApiDisplayName(const std::wstring& filename_lower) {
+    for (const auto& p : k_host_graphics_api_list) {
+        std::wstring w(p.first);
+        std::transform(w.begin(), w.end(), w.begin(), ::towlower);
+        if (filename_lower == w) return std::string(p.second);
+    }
+    return std::string();
+}
+// Record a module as "host-loaded" only if caller is not Display Commander and not ReShade.
+static void RecordHostLoadedApiIfAppropriate(HMODULE caller_module, const std::wstring& module_name) {
+    if (caller_module == g_display_commander_module || caller_module == g_reshade_module) return;
+    std::wstring fn = std::filesystem::path(module_name).filename().wstring();
+    std::transform(fn.begin(), fn.end(), fn.begin(), ::towlower);
+    std::string display = GetGraphicsApiDisplayName(fn);
+    if (display.empty()) return;
+    utils::SRWLockExclusive lock(utils::g_host_loaded_apis_srwlock);
+    g_host_loaded_graphics_apis.insert(display);
+}
+// When enumerating existing modules we don't have a caller; treat all graphics APIs as host-loaded.
+static void RecordHostLoadedApiFromEnum(const std::wstring& module_name) {
+    std::wstring fn = std::filesystem::path(module_name).filename().wstring();
+    std::transform(fn.begin(), fn.end(), fn.begin(), ::towlower);
+    std::string display = GetGraphicsApiDisplayName(fn);
+    if (display.empty()) return;
+    utils::SRWLockExclusive lock(utils::g_host_loaded_apis_srwlock);
+    g_host_loaded_graphics_apis.insert(display);
+}
+
 // Helper function to get current timestamp as string
 std::string GetCurrentTimestamp() {
     auto now = std::chrono::system_clock::now();
@@ -269,6 +307,7 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     TryStartStandaloneUIFromSafeContext();
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
@@ -379,6 +418,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
             }
         }
         if (callback_hmodule != nullptr) {
+            RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
@@ -392,6 +432,7 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
 // Hooked LoadLibraryW function
 HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
@@ -500,6 +541,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
             }
         }
         if (callback_hmodule != nullptr) {
+            RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
@@ -513,6 +555,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 // Hooked LoadLibraryExA function
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
 
@@ -630,6 +673,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
             }
         }
         if (callback_hmodule != nullptr) {
+            RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
@@ -643,6 +687,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 // Hooked LoadLibraryExW function
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
 
@@ -748,6 +793,7 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
             }
         }
         if (callback_hmodule != nullptr) {
+            RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
@@ -762,6 +808,7 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 // override (package full name is not a file path).
 HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Reserved) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string name_str = lpwszPackageFullName ? WideToNarrow(lpwszPackageFullName) : "NULL";
 
@@ -819,6 +866,7 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
             }
         }
         if (callback_hmodule != nullptr) {
+            RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
     } else {
@@ -833,6 +881,7 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
 // (no DLSS path override from this path).
 LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const HMODULE load_caller = GetCallingDLL();
     const auto* name = static_cast<const UnicodeStringNtdll*>(DllName);
     std::wstring dll_name_wide;
     if (name != nullptr && name->Buffer != nullptr && name->Length > 0) {
@@ -910,6 +959,7 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
             }
         }
         if (callback_hmodule != nullptr) {
+            RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
         // Only log success when we actually added (avoids spam when library was already loaded)
@@ -1055,6 +1105,12 @@ bool InstallLoadLibraryHooks() {
         }
         LogInfo("LoadLibrary hooks already installed");
         return true;
+    }
+
+    // Our module handle for caller detection (ignore loads where caller is us or ReShade)
+    if (g_display_commander_module == nullptr) {
+        (void)GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                                 reinterpret_cast<LPCWSTR>(&InstallLoadLibraryHooks), &g_display_commander_module);
     }
 
     // Check if LoadLibrary hooks should be suppressed
@@ -1248,79 +1304,97 @@ void UninstallLoadLibraryHooks() {
 // NvLowLatencyVk.dll - gets loaded by unknown api
 // dinput9_1.dll - gets loaded by unknown api
 bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing) {
-    utils::SRWLockExclusive lock(utils::g_module_srwlock);
+    // Collect graphics API names to add to host-loaded set after we release g_module_srwlock
+    // (avoid holding both g_module_srwlock and g_host_loaded_apis_srwlock to prevent deadlock).
+    std::vector<std::wstring> host_apis_to_record;
 
-    if (!modules_loaded_late_without_noticing) {
-        g_loaded_modules.clear();
-        g_module_handles.clear();
-    }
+    {
+        {
+            utils::SRWLockExclusive lock(utils::g_module_srwlock);
 
-    constexpr DWORD kMaxModules = 1024;
-    HMODULE hModules[kMaxModules];
-    DWORD cbNeeded = 0;
-
-    HANDLE hProcess = GetCurrentProcess();
-    if (!EnumProcessModules(hProcess, hModules, sizeof(hModules), &cbNeeded)) {
-        LogError("Failed to enumerate process modules - Error: %lu", GetLastError());
-        return false;
-    }
-
-    const DWORD moduleCount = (cbNeeded / sizeof(HMODULE) < kMaxModules) ? (cbNeeded / sizeof(HMODULE)) : kMaxModules;
-    if (!modules_loaded_late_without_noticing) {
-        LogInfo("Found %lu loaded modules", moduleCount);
-    }
-
-    int added = 0;
-    for (DWORD i = 0; i < moduleCount; i++) {
-        if (g_module_handles.find(hModules[i]) != g_module_handles.end()) {
-            continue;
+            if (!modules_loaded_late_without_noticing) {
+                g_loaded_modules.clear();
+                g_module_handles.clear();
+                {
+                    utils::SRWLockExclusive lock_apis(utils::g_host_loaded_apis_srwlock);
+                    g_host_loaded_graphics_apis.clear();
+                }
+            }
         }
 
-        ModuleInfo moduleInfo;
-        moduleInfo.hModule = hModules[i];
+        constexpr DWORD kMaxModules = 1024;
+        HMODULE hModules[kMaxModules];
+        DWORD cbNeeded = 0;
 
-        // Get module file name
-        wchar_t modulePath[MAX_PATH];
-        if (GetModuleFileNameW(hModules[i], modulePath, MAX_PATH)) {
-            moduleInfo.fullPath = modulePath;
-            moduleInfo.moduleName = ExtractModuleName(modulePath);
-        } else {
-            moduleInfo.moduleName = L"Unknown";
-            moduleInfo.fullPath = L"Unknown";
+        HANDLE hProcess = GetCurrentProcess();
+        if (!EnumProcessModules(hProcess, hModules, sizeof(hModules), &cbNeeded)) {
+            LogError("Failed to enumerate process modules - Error: %lu", GetLastError());
+            return false;
         }
 
-        // Get module information
-        MODULEINFO modInfo;
-        if (GetModuleInformation(hProcess, hModules[i], &modInfo, sizeof(modInfo))) {
-            moduleInfo.baseAddress = modInfo.lpBaseOfDll;
-            moduleInfo.sizeOfImage = modInfo.SizeOfImage;
-            moduleInfo.entryPoint = modInfo.EntryPoint;
+        const DWORD moduleCount =
+            (cbNeeded / sizeof(HMODULE) < kMaxModules) ? (cbNeeded / sizeof(HMODULE)) : kMaxModules;
+        if (!modules_loaded_late_without_noticing) {
+            LogInfo("Found %lu loaded modules", moduleCount);
         }
 
-        // Get file time
-        moduleInfo.loadTime = GetModuleFileTime(hModules[i]);
+        int added = 0;
+        for (DWORD i = 0; i < moduleCount; i++) {
+            if (g_module_handles.find(hModules[i]) != g_module_handles.end()) {
+                continue;
+            }
 
-        // Late enumeration: we discovered this module now; initial enumeration: loaded before our hooks
-        moduleInfo.loadedBeforeHooks = !modules_loaded_late_without_noticing;
+            ModuleInfo moduleInfo;
+            moduleInfo.hModule = hModules[i];
 
-        g_loaded_modules.push_back(moduleInfo);
-        g_module_handles.insert(hModules[i]);
-        added++;
+            // Get module file name
+            wchar_t modulePath[MAX_PATH];
+            if (GetModuleFileNameW(hModules[i], modulePath, MAX_PATH)) {
+                moduleInfo.fullPath = modulePath;
+                moduleInfo.moduleName = ExtractModuleName(modulePath);
+            } else {
+                moduleInfo.moduleName = L"Unknown";
+                moduleInfo.fullPath = L"Unknown";
+            }
 
-        if (modules_loaded_late_without_noticing) {
-            LogInfo("Late enumeration: added %ws (0x%p) - was loaded without us noticing",
-                    moduleInfo.moduleName.c_str(), moduleInfo.baseAddress);
-        } else {
-            LogInfo("Module %lu: %ws (0x%p, %u bytes)", i, moduleInfo.moduleName.c_str(), moduleInfo.baseAddress,
-                    moduleInfo.sizeOfImage);
+            // Get module information
+            MODULEINFO modInfo;
+            if (GetModuleInformation(hProcess, hModules[i], &modInfo, sizeof(modInfo))) {
+                moduleInfo.baseAddress = modInfo.lpBaseOfDll;
+                moduleInfo.sizeOfImage = modInfo.SizeOfImage;
+                moduleInfo.entryPoint = modInfo.EntryPoint;
+            }
+
+            // Get file time
+            moduleInfo.loadTime = GetModuleFileTime(hModules[i]);
+
+            // Late enumeration: we discovered this module now; initial enumeration: loaded before our hooks
+            moduleInfo.loadedBeforeHooks = !modules_loaded_late_without_noticing;
+
+            g_loaded_modules.push_back(moduleInfo);
+            g_module_handles.insert(hModules[i]);
+            host_apis_to_record.push_back(moduleInfo.moduleName);
+            added++;
+
+            if (modules_loaded_late_without_noticing) {
+                LogInfo("Late enumeration: added %ws (0x%p) - was loaded without us noticing",
+                        moduleInfo.moduleName.c_str(), moduleInfo.baseAddress);
+            } else {
+                LogInfo("Module %lu: %ws (0x%p, %u bytes)", i, moduleInfo.moduleName.c_str(), moduleInfo.baseAddress,
+                        moduleInfo.sizeOfImage);
+            }
+
+            // Call the module loaded callback (so hooks can be installed for this module)
+            OnModuleLoaded(moduleInfo.moduleName, hModules[i]);
         }
 
-        // Call the module loaded callback (so hooks can be installed for this module)
-        OnModuleLoaded(moduleInfo.moduleName, hModules[i]);
-    }
+        if (modules_loaded_late_without_noticing && added > 0) {
+            LogInfo("Late enumeration: %d new module(s) added", added);
+        }
+    }  // release g_module_srwlock before taking g_host_loaded_apis_srwlock
 
-    if (modules_loaded_late_without_noticing && added > 0) {
-        LogInfo("Late enumeration: %d new module(s) added", added);
+    for (const std::wstring& module_name : host_apis_to_record) {
+        RecordHostLoadedApiFromEnum(module_name);
     }
 
     return true;
@@ -1827,5 +1901,15 @@ bool CanBlockDLL(const ModuleInfo& module_info) {
 bool IsModuleSrwlockHeld() { return utils::TryIsSRWLockHeld(utils::g_module_srwlock); }
 
 bool IsBlockedDllsSrwlockHeld() { return utils::TryIsSRWLockHeld(utils::g_blocked_dlls_srwlock); }
+
+std::string GetHostLoadedGraphicsApisString() {
+    utils::SRWLockShared lock(utils::g_host_loaded_apis_srwlock);
+    std::string result;
+    for (const auto& name : g_host_loaded_graphics_apis) {
+        if (!result.empty()) result += ' ';
+        result += name;
+    }
+    return result;
+}
 
 }  // namespace display_commanderhooks

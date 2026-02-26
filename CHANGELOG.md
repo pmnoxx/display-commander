@@ -2,6 +2,25 @@
 
 ---
 
+## v0.12.106 (2026-02-26)
+
+- **Added "FPS Limiter Safe mode"** - Added safe mode to fps limiter in case other modes are broken.
+
+---
+
+## v0.12.105 (2026-02-25)
+
+- **Active APIs (Main tab)** - Main tab now shows "Active APIs" next to "APIs (loaded by host)": a list of graphics APIs that had present/swap traffic in the last 1 second (DXGI, D3D9, or OpenGL32). Based on calls to our present detours (IDXGISwapChain::Present, IDirect3DDevice9::Present, wglSwapBuffers). Uses lock-free timestamp tracking in `present_traffic_tracking`; tooltip explains the meaning.
+
+## v0.12.104 (2026-02-25)
+
+- **Removed Force FG Auto (Streamline)** - Removed the "Force FG Auto (Streamline)" option from Main → Display Settings (Misc). The slDLSSGSetOptions hook and related setting have been removed; NGX parameter updates from DLSS-G still occur via slDLSSGGetState.
+
+## v0.12.103 (2026-02-25)
+
+- **APIs (loaded by host)** - Main tab now shows which graphics/API libraries the game (or host process) loaded via LoadLibrary, e.g. "dxgi d3d11" or "opengl32". Uses GetCallingDLL so loads from Display Commander or ReShade are excluded. Tracks dxgi, d3d9/10/11/12, ddraw, opengl32, vulkan-1, libEGL, libGLESv2.
+- **LoadLibrary host-API tracking deadlock fix** - EnumerateLoadedModules no longer holds g_module_srwlock while taking g_host_loaded_apis_srwlock; host-API names are recorded after releasing the module lock to avoid deadlock with UI or other threads.
+
 ## v0.12.102 (2026-02-25)
 
 - **Added scripts for SK-like global injection** - Added `scripts/dc_service/`: `download_dc.bat` (downloads latest_build addon .addon64/.addon32 to the script folder, copies as dc_installer64.dll for SetupDC), and `dc_start32.cmd` / `dc_start64.cmd` / `dc_stop32.cmd` / `dc_stop64.cmd` for service control.

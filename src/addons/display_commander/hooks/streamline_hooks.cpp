@@ -2,7 +2,6 @@
 #include "../config/display_commander_config.hpp"
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
-#include "../settings/main_tab_settings.hpp"
 #include "../settings/swapchain_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
@@ -38,11 +37,6 @@ static slIsFeatureSupported_pfn slIsFeatureSupported_Original = nullptr;
 static slGetNativeInterface_pfn slGetNativeInterface_Original = nullptr;
 static slUpgradeInterface_pfn slUpgradeInterface_Original = nullptr;
 static slGetFeatureFunction_pfn slGetFeatureFunction_Original = nullptr;
-
-// slDLSSGSetOptions: Result(viewport, options) - hooked when game requests it via slGetFeatureFunction
-using slDLSSGSetOptions_pfn = int (*)(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options);
-static slDLSSGSetOptions_pfn slDLSSGSetOptions_Original = nullptr;
-static std::atomic<bool> g_slDLSSGSetOptions_hook_installed{false};
 
 // slDLSSGetOptimalSettings: Result(options, settings) - hooked when game requests it via slGetFeatureFunction
 using slDLSSGetOptimalSettings_pfn = int (*)(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings);
@@ -442,25 +436,6 @@ using slDLSSGGetState_pfn = int (*)(const sl::ViewportHandle& viewport, sl::DLSS
 static slDLSSGGetState_pfn slDLSSGGetState_Original = nullptr;
 static std::atomic<bool> g_slDLSSGGetState_hook_installed{false};
 
-// slDLSSGSetOptions detour: when force_fg_auto is enabled, override options.mode to eAuto; update g_ngx_parameters and
-// FG atomic
-static int slDLSSGSetOptions_Detour(const sl::ViewportHandle& viewport, const sl::DLSSGOptions& options) {
-    if (slDLSSGSetOptions_Original == nullptr) {
-        return static_cast<int>(sl::Result::eErrorInvalidParameter);
-    }
-    sl::DLSSGOptions modified_options = options;
-    if (settings::g_mainTabSettings.force_fg_auto.GetValue()) {
-        modified_options.mode = sl::DLSSGMode::eAuto;
-        if (modified_options.numFramesToGenerate == 0) {
-            modified_options.numFramesToGenerate = 1;
-        }
-        LogInfo("slDLSSGSetOptions: force_fg_auto enabled -> mode=eAuto numFramesToGenerate=%d",
-                modified_options.numFramesToGenerate);
-    }
-    UpdateNGXParamsFromDLSSGOptions(modified_options);
-    return slDLSSGSetOptions_Original(viewport, modified_options);
-}
-
 // slDLSSGGetState detour: after original, update g_ngx_parameters and FG atomic from options when non-null
 static int slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl::DLSSGState& state,
                                   const sl::DLSSGOptions* options) {
@@ -474,7 +449,7 @@ static int slDLSSGGetState_Detour(const sl::ViewportHandle& viewport, sl::DLSSGS
     return result;
 }
 
-// slGetFeatureFunction detour: when game requests slDLSSGSetOptions, hook it for force_fg_auto
+// slGetFeatureFunction detour: install hooks when game requests DLSS-G/DLSS feature functions
 static int slGetFeatureFunction_Detour(int feature, const char* functionName, void*& function) {
     if (slGetFeatureFunction_Original == nullptr) {
         return -1;
@@ -482,17 +457,6 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
     int result = slGetFeatureFunction_Original(feature, functionName, function);
     if (result != static_cast<int>(sl::Result::eOk) || function == nullptr) {
         return result;
-    }
-    // Install slDLSSGSetOptions hook on first successful lookup
-    if (functionName != nullptr && std::strcmp(functionName, "slDLSSGSetOptions") == 0
-        && !g_slDLSSGSetOptions_hook_installed.exchange(true)) {
-        if (CreateAndEnableHook(function, reinterpret_cast<LPVOID>(slDLSSGSetOptions_Detour),
-                                reinterpret_cast<LPVOID*>(&slDLSSGSetOptions_Original), "slDLSSGSetOptions")) {
-            LogInfo("Installed slDLSSGSetOptions hook for force_fg_auto support");
-        } else {
-            g_slDLSSGSetOptions_hook_installed.store(false);
-            LogError("Failed to install slDLSSGSetOptions hook");
-        }
     }
     // Install slDLSSGGetState hook on first successful lookup
     if (functionName != nullptr && std::strcmp(functionName, "slDLSSGGetState") == 0
@@ -686,7 +650,7 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
         LogError("Failed to create and enable slGetNativeInterface hook");
     }
 
-    // Hook slGetFeatureFunction to intercept slDLSSGSetOptions for force_fg_auto
+    // Hook slGetFeatureFunction to install DLSS-G/DLSS feature detours
     if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slGetFeatureFunction"),
                              reinterpret_cast<LPVOID>(slGetFeatureFunction_Detour),
                              reinterpret_cast<LPVOID*>(&slGetFeatureFunction_Original), "slGetFeatureFunction")) {

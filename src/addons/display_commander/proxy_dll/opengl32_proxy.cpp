@@ -8,9 +8,9 @@
 #include <wingdi.h>
 #include <string>
 
-#include "opengl32_proxy_init.hpp"
-#include "opengl32_proxy_gl.h"
 #include "../utils/logging.hpp"
+#include "opengl32_proxy_gl.h"
+#include "opengl32_proxy_init.hpp"
 
 static HMODULE g_opengl32_module = nullptr;
 
@@ -34,7 +34,7 @@ void LoadRealOpenGL32FromDllMain() { LoadRealOpenGL32(); }
 
 extern "C" void APIENTRY glAccum(GLenum op, GLfloat value) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glAccum");
     if (!fn) return;
     if (fn) fn(op, value);
@@ -42,15 +42,15 @@ extern "C" void APIENTRY glAccum(GLenum op, GLfloat value) {
 
 extern "C" void APIENTRY glAlphaFunc(GLenum func, GLfloat ref) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glAlphaFunc");
     if (!fn) return;
     if (fn) fn(func, ref);
 }
 
-extern "C" GLboolean APIENTRY glAreTexturesResident(GLsizei n, const GLuint * textures, GLboolean * residences) {
+extern "C" GLboolean APIENTRY glAreTexturesResident(GLsizei n, const GLuint* textures, GLboolean* residences) {
     if (!LoadRealOpenGL32()) return (GLboolean)0;
-    typedef GLboolean (APIENTRY *PFN)(GLsizei, const GLuint *, GLboolean *);
+    typedef GLboolean(APIENTRY * PFN)(GLsizei, const GLuint*, GLboolean*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glAreTexturesResident");
     if (!fn) return (GLboolean)0;
     return fn(n, textures, residences);
@@ -58,7 +58,7 @@ extern "C" GLboolean APIENTRY glAreTexturesResident(GLsizei n, const GLuint * te
 
 extern "C" void APIENTRY glArrayElement(GLint i) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint);
+    typedef void(APIENTRY * PFN)(GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glArrayElement");
     if (!fn) return;
     if (fn) fn(i);
@@ -66,7 +66,7 @@ extern "C" void APIENTRY glArrayElement(GLint i) {
 
 extern "C" void APIENTRY glBegin(GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glBegin");
     if (!fn) return;
     if (fn) fn(mode);
@@ -74,15 +74,16 @@ extern "C" void APIENTRY glBegin(GLenum mode) {
 
 extern "C" void APIENTRY glBindTexture(GLenum target, GLuint texture) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLuint);
+    typedef void(APIENTRY * PFN)(GLenum, GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glBindTexture");
     if (!fn) return;
     if (fn) fn(target, texture);
 }
 
-extern "C" void APIENTRY glBitmap(GLsizei width, GLsizei height, GLfloat xorig, GLfloat yorig, GLfloat xmove, GLfloat ymove, const GLubyte * bitmap) {
+extern "C" void APIENTRY glBitmap(GLsizei width, GLsizei height, GLfloat xorig, GLfloat yorig, GLfloat xmove,
+                                  GLfloat ymove, const GLubyte* bitmap) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, GLsizei, GLfloat, GLfloat, GLfloat, GLfloat, const GLubyte *);
+    typedef void(APIENTRY * PFN)(GLsizei, GLsizei, GLfloat, GLfloat, GLfloat, GLfloat, const GLubyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glBitmap");
     if (!fn) return;
     if (fn) fn(width, height, xorig, yorig, xmove, ymove, bitmap);
@@ -90,7 +91,7 @@ extern "C" void APIENTRY glBitmap(GLsizei width, GLsizei height, GLfloat xorig, 
 
 extern "C" void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glBlendFunc");
     if (!fn) return;
     if (fn) fn(sfactor, dfactor);
@@ -98,15 +99,15 @@ extern "C" void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
 
 extern "C" void APIENTRY glCallList(GLuint list) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint);
+    typedef void(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCallList");
     if (!fn) return;
     if (fn) fn(list);
 }
 
-extern "C" void APIENTRY glCallLists(GLsizei n, GLenum type, const GLvoid * lists) {
+extern "C" void APIENTRY glCallLists(GLsizei n, GLenum type, const GLvoid* lists) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, GLenum, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLsizei, GLenum, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCallLists");
     if (!fn) return;
     if (fn) fn(n, type, lists);
@@ -114,7 +115,7 @@ extern "C" void APIENTRY glCallLists(GLsizei n, GLenum type, const GLvoid * list
 
 extern "C" void APIENTRY glClear(GLbitfield mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLbitfield);
+    typedef void(APIENTRY * PFN)(GLbitfield);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glClear");
     if (!fn) return;
     if (fn) fn(mask);
@@ -122,7 +123,7 @@ extern "C" void APIENTRY glClear(GLbitfield mask) {
 
 extern "C" void APIENTRY glClearAccum(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glClearAccum");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
@@ -130,7 +131,7 @@ extern "C" void APIENTRY glClearAccum(GLfloat red, GLfloat green, GLfloat blue, 
 
 extern "C" void APIENTRY glClearColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glClearColor");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
@@ -138,7 +139,7 @@ extern "C" void APIENTRY glClearColor(GLfloat red, GLfloat green, GLfloat blue, 
 
 extern "C" void APIENTRY glClearDepth(GLdouble depth) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glClearDepth");
     if (!fn) return;
     if (fn) fn(depth);
@@ -146,7 +147,7 @@ extern "C" void APIENTRY glClearDepth(GLdouble depth) {
 
 extern "C" void APIENTRY glClearIndex(GLfloat c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glClearIndex");
     if (!fn) return;
     if (fn) fn(c);
@@ -154,15 +155,15 @@ extern "C" void APIENTRY glClearIndex(GLfloat c) {
 
 extern "C" void APIENTRY glClearStencil(GLint s) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint);
+    typedef void(APIENTRY * PFN)(GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glClearStencil");
     if (!fn) return;
     if (fn) fn(s);
 }
 
-extern "C" void APIENTRY glClipPlane(GLenum plane, const GLdouble * equation) {
+extern "C" void APIENTRY glClipPlane(GLenum plane, const GLdouble* equation) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, const GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glClipPlane");
     if (!fn) return;
     if (fn) fn(plane, equation);
@@ -170,15 +171,15 @@ extern "C" void APIENTRY glClipPlane(GLenum plane, const GLdouble * equation) {
 
 extern "C" void APIENTRY glColor3b(GLbyte red, GLbyte green, GLbyte blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLbyte, GLbyte, GLbyte);
+    typedef void(APIENTRY * PFN)(GLbyte, GLbyte, GLbyte);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3b");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3bv(const GLbyte * v) {
+extern "C" void APIENTRY glColor3bv(const GLbyte* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLbyte *);
+    typedef void(APIENTRY * PFN)(const GLbyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3bv");
     if (!fn) return;
     if (fn) fn(v);
@@ -186,15 +187,15 @@ extern "C" void APIENTRY glColor3bv(const GLbyte * v) {
 
 extern "C" void APIENTRY glColor3d(GLdouble red, GLdouble green, GLdouble blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3d");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3dv(const GLdouble * v) {
+extern "C" void APIENTRY glColor3dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -202,15 +203,15 @@ extern "C" void APIENTRY glColor3dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glColor3f(GLfloat red, GLfloat green, GLfloat blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3f");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3fv(const GLfloat * v) {
+extern "C" void APIENTRY glColor3fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -218,15 +219,15 @@ extern "C" void APIENTRY glColor3fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glColor3i(GLint red, GLint green, GLint blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3i");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3iv(const GLint * v) {
+extern "C" void APIENTRY glColor3iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -234,15 +235,15 @@ extern "C" void APIENTRY glColor3iv(const GLint * v) {
 
 extern "C" void APIENTRY glColor3s(GLshort red, GLshort green, GLshort blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3s");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3sv(const GLshort * v) {
+extern "C" void APIENTRY glColor3sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -250,15 +251,15 @@ extern "C" void APIENTRY glColor3sv(const GLshort * v) {
 
 extern "C" void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLubyte, GLubyte, GLubyte);
+    typedef void(APIENTRY * PFN)(GLubyte, GLubyte, GLubyte);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3ub");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3ubv(const GLubyte * v) {
+extern "C" void APIENTRY glColor3ubv(const GLubyte* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLubyte *);
+    typedef void(APIENTRY * PFN)(const GLubyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3ubv");
     if (!fn) return;
     if (fn) fn(v);
@@ -266,15 +267,15 @@ extern "C" void APIENTRY glColor3ubv(const GLubyte * v) {
 
 extern "C" void APIENTRY glColor3ui(GLuint red, GLuint green, GLuint blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint, GLuint, GLuint);
+    typedef void(APIENTRY * PFN)(GLuint, GLuint, GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3ui");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3uiv(const GLuint * v) {
+extern "C" void APIENTRY glColor3uiv(const GLuint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLuint *);
+    typedef void(APIENTRY * PFN)(const GLuint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3uiv");
     if (!fn) return;
     if (fn) fn(v);
@@ -282,15 +283,15 @@ extern "C" void APIENTRY glColor3uiv(const GLuint * v) {
 
 extern "C" void APIENTRY glColor3us(GLushort red, GLushort green, GLushort blue) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLushort, GLushort, GLushort);
+    typedef void(APIENTRY * PFN)(GLushort, GLushort, GLushort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3us");
     if (!fn) return;
     if (fn) fn(red, green, blue);
 }
 
-extern "C" void APIENTRY glColor3usv(const GLushort * v) {
+extern "C" void APIENTRY glColor3usv(const GLushort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLushort *);
+    typedef void(APIENTRY * PFN)(const GLushort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor3usv");
     if (!fn) return;
     if (fn) fn(v);
@@ -298,15 +299,15 @@ extern "C" void APIENTRY glColor3usv(const GLushort * v) {
 
 extern "C" void APIENTRY glColor4b(GLbyte red, GLbyte green, GLbyte blue, GLbyte alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLbyte, GLbyte, GLbyte, GLbyte);
+    typedef void(APIENTRY * PFN)(GLbyte, GLbyte, GLbyte, GLbyte);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4b");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4bv(const GLbyte * v) {
+extern "C" void APIENTRY glColor4bv(const GLbyte* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLbyte *);
+    typedef void(APIENTRY * PFN)(const GLbyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4bv");
     if (!fn) return;
     if (fn) fn(v);
@@ -314,15 +315,15 @@ extern "C" void APIENTRY glColor4bv(const GLbyte * v) {
 
 extern "C" void APIENTRY glColor4d(GLdouble red, GLdouble green, GLdouble blue, GLdouble alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4d");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4dv(const GLdouble * v) {
+extern "C" void APIENTRY glColor4dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -330,15 +331,15 @@ extern "C" void APIENTRY glColor4dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glColor4f(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4f");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4fv(const GLfloat * v) {
+extern "C" void APIENTRY glColor4fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -346,15 +347,15 @@ extern "C" void APIENTRY glColor4fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glColor4i(GLint red, GLint green, GLint blue, GLint alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4i");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4iv(const GLint * v) {
+extern "C" void APIENTRY glColor4iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -362,15 +363,15 @@ extern "C" void APIENTRY glColor4iv(const GLint * v) {
 
 extern "C" void APIENTRY glColor4s(GLshort red, GLshort green, GLshort blue, GLshort alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4s");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4sv(const GLshort * v) {
+extern "C" void APIENTRY glColor4sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -378,15 +379,15 @@ extern "C" void APIENTRY glColor4sv(const GLshort * v) {
 
 extern "C" void APIENTRY glColor4ub(GLubyte red, GLubyte green, GLubyte blue, GLubyte alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLubyte, GLubyte, GLubyte, GLubyte);
+    typedef void(APIENTRY * PFN)(GLubyte, GLubyte, GLubyte, GLubyte);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4ub");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4ubv(const GLubyte * v) {
+extern "C" void APIENTRY glColor4ubv(const GLubyte* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLubyte *);
+    typedef void(APIENTRY * PFN)(const GLubyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4ubv");
     if (!fn) return;
     if (fn) fn(v);
@@ -394,15 +395,15 @@ extern "C" void APIENTRY glColor4ubv(const GLubyte * v) {
 
 extern "C" void APIENTRY glColor4ui(GLuint red, GLuint green, GLuint blue, GLuint alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint, GLuint, GLuint, GLuint);
+    typedef void(APIENTRY * PFN)(GLuint, GLuint, GLuint, GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4ui");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4uiv(const GLuint * v) {
+extern "C" void APIENTRY glColor4uiv(const GLuint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLuint *);
+    typedef void(APIENTRY * PFN)(const GLuint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4uiv");
     if (!fn) return;
     if (fn) fn(v);
@@ -410,15 +411,15 @@ extern "C" void APIENTRY glColor4uiv(const GLuint * v) {
 
 extern "C" void APIENTRY glColor4us(GLushort red, GLushort green, GLushort blue, GLushort alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLushort, GLushort, GLushort, GLushort);
+    typedef void(APIENTRY * PFN)(GLushort, GLushort, GLushort, GLushort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4us");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
 }
 
-extern "C" void APIENTRY glColor4usv(const GLushort * v) {
+extern "C" void APIENTRY glColor4usv(const GLushort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLushort *);
+    typedef void(APIENTRY * PFN)(const GLushort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColor4usv");
     if (!fn) return;
     if (fn) fn(v);
@@ -426,7 +427,7 @@ extern "C" void APIENTRY glColor4usv(const GLushort * v) {
 
 extern "C" void APIENTRY glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLboolean, GLboolean, GLboolean, GLboolean);
+    typedef void(APIENTRY * PFN)(GLboolean, GLboolean, GLboolean, GLboolean);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColorMask");
     if (!fn) return;
     if (fn) fn(red, green, blue, alpha);
@@ -434,15 +435,15 @@ extern "C" void APIENTRY glColorMask(GLboolean red, GLboolean green, GLboolean b
 
 extern "C" void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColorMaterial");
     if (!fn) return;
     if (fn) fn(face, mode);
 }
 
-extern "C" void APIENTRY glColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
+extern "C" void APIENTRY glColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid* pointer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLenum, GLsizei, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLint, GLenum, GLsizei, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glColorPointer");
     if (!fn) return;
     if (fn) fn(size, type, stride, pointer);
@@ -450,39 +451,43 @@ extern "C" void APIENTRY glColorPointer(GLint size, GLenum type, GLsizei stride,
 
 extern "C" void APIENTRY glCopyPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum type) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLsizei, GLsizei, GLenum);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLsizei, GLsizei, GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCopyPixels");
     if (!fn) return;
     if (fn) fn(x, y, width, height, type);
 }
 
-extern "C" void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internalFormat, GLint x, GLint y, GLsizei width, GLint border) {
+extern "C" void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internalFormat, GLint x, GLint y,
+                                          GLsizei width, GLint border) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLenum, GLint, GLint, GLsizei, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLenum, GLint, GLint, GLsizei, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCopyTexImage1D");
     if (!fn) return;
     if (fn) fn(target, level, internalFormat, x, y, width, border);
 }
 
-extern "C" void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internalFormat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border) {
+extern "C" void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internalFormat, GLint x, GLint y,
+                                          GLsizei width, GLsizei height, GLint border) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLenum, GLint, GLint, GLsizei, GLsizei, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLenum, GLint, GLint, GLsizei, GLsizei, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCopyTexImage2D");
     if (!fn) return;
     if (fn) fn(target, level, internalFormat, x, y, width, height, border);
 }
 
-extern "C" void APIENTRY glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width) {
+extern "C" void APIENTRY glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLint x, GLint y,
+                                             GLsizei width) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint, GLint, GLint, GLsizei);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint, GLint, GLint, GLsizei);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCopyTexSubImage1D");
     if (!fn) return;
     if (fn) fn(target, level, xoffset, x, y, width);
 }
 
-extern "C" void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
+extern "C" void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y,
+                                             GLsizei width, GLsizei height) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint, GLint, GLint, GLint, GLsizei, GLsizei);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCopyTexSubImage2D");
     if (!fn) return;
     if (fn) fn(target, level, xoffset, yoffset, x, y, width, height);
@@ -490,7 +495,7 @@ extern "C" void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint x
 
 extern "C" void APIENTRY glCullFace(GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glCullFace");
     if (!fn) return;
     if (fn) fn(mode);
@@ -498,15 +503,15 @@ extern "C" void APIENTRY glCullFace(GLenum mode) {
 
 extern "C" void APIENTRY glDeleteLists(GLuint list, GLsizei range) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint, GLsizei);
+    typedef void(APIENTRY * PFN)(GLuint, GLsizei);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDeleteLists");
     if (!fn) return;
     if (fn) fn(list, range);
 }
 
-extern "C" void APIENTRY glDeleteTextures(GLsizei n, const GLuint * textures) {
+extern "C" void APIENTRY glDeleteTextures(GLsizei n, const GLuint* textures) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, const GLuint *);
+    typedef void(APIENTRY * PFN)(GLsizei, const GLuint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDeleteTextures");
     if (!fn) return;
     if (fn) fn(n, textures);
@@ -514,7 +519,7 @@ extern "C" void APIENTRY glDeleteTextures(GLsizei n, const GLuint * textures) {
 
 extern "C" void APIENTRY glDepthFunc(GLenum func) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDepthFunc");
     if (!fn) return;
     if (fn) fn(func);
@@ -522,7 +527,7 @@ extern "C" void APIENTRY glDepthFunc(GLenum func) {
 
 extern "C" void APIENTRY glDepthMask(GLboolean flag) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLboolean);
+    typedef void(APIENTRY * PFN)(GLboolean);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDepthMask");
     if (!fn) return;
     if (fn) fn(flag);
@@ -530,7 +535,7 @@ extern "C" void APIENTRY glDepthMask(GLboolean flag) {
 
 extern "C" void APIENTRY glDepthRange(GLdouble zNear, GLdouble zFar) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDepthRange");
     if (!fn) return;
     if (fn) fn(zNear, zFar);
@@ -538,7 +543,7 @@ extern "C" void APIENTRY glDepthRange(GLdouble zNear, GLdouble zFar) {
 
 extern "C" void APIENTRY glDisable(GLenum cap) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDisable");
     if (!fn) return;
     if (fn) fn(cap);
@@ -546,7 +551,7 @@ extern "C" void APIENTRY glDisable(GLenum cap) {
 
 extern "C" void APIENTRY glDisableClientState(GLenum array) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDisableClientState");
     if (!fn) return;
     if (fn) fn(array);
@@ -554,7 +559,7 @@ extern "C" void APIENTRY glDisableClientState(GLenum array) {
 
 extern "C" void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLsizei);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLsizei);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDrawArrays");
     if (!fn) return;
     if (fn) fn(mode, first, count);
@@ -562,23 +567,23 @@ extern "C" void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
 
 extern "C" void APIENTRY glDrawBuffer(GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDrawBuffer");
     if (!fn) return;
     if (fn) fn(mode);
 }
 
-extern "C" void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid * indices) {
+extern "C" void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLsizei, GLenum, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLsizei, GLenum, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDrawElements");
     if (!fn) return;
     if (fn) fn(mode, count, type, indices);
 }
 
-extern "C" void APIENTRY glDrawPixels(GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid * pixels) {
+extern "C" void APIENTRY glDrawPixels(GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, GLsizei, GLenum, GLenum, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLsizei, GLsizei, GLenum, GLenum, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glDrawPixels");
     if (!fn) return;
     if (fn) fn(width, height, format, type, pixels);
@@ -586,23 +591,23 @@ extern "C" void APIENTRY glDrawPixels(GLsizei width, GLsizei height, GLenum form
 
 extern "C" void APIENTRY glEdgeFlag(GLboolean flag) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLboolean);
+    typedef void(APIENTRY * PFN)(GLboolean);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEdgeFlag");
     if (!fn) return;
     if (fn) fn(flag);
 }
 
-extern "C" void APIENTRY glEdgeFlagPointer(GLsizei stride, const GLvoid * pointer) {
+extern "C" void APIENTRY glEdgeFlagPointer(GLsizei stride, const GLvoid* pointer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLsizei, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEdgeFlagPointer");
     if (!fn) return;
     if (fn) fn(stride, pointer);
 }
 
-extern "C" void APIENTRY glEdgeFlagv(const GLboolean * flag) {
+extern "C" void APIENTRY glEdgeFlagv(const GLboolean* flag) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLboolean *);
+    typedef void(APIENTRY * PFN)(const GLboolean*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEdgeFlagv");
     if (!fn) return;
     if (fn) fn(flag);
@@ -610,7 +615,7 @@ extern "C" void APIENTRY glEdgeFlagv(const GLboolean * flag) {
 
 extern "C" void APIENTRY glEnable(GLenum cap) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEnable");
     if (!fn) return;
     if (fn) fn(cap);
@@ -618,7 +623,7 @@ extern "C" void APIENTRY glEnable(GLenum cap) {
 
 extern "C" void APIENTRY glEnableClientState(GLenum array) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEnableClientState");
     if (!fn) return;
     if (fn) fn(array);
@@ -626,7 +631,7 @@ extern "C" void APIENTRY glEnableClientState(GLenum array) {
 
 extern "C" void APIENTRY glEnd() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEnd");
     if (!fn) return;
     if (fn) fn();
@@ -634,7 +639,7 @@ extern "C" void APIENTRY glEnd() {
 
 extern "C" void APIENTRY glEndList() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEndList");
     if (!fn) return;
     if (fn) fn();
@@ -642,15 +647,15 @@ extern "C" void APIENTRY glEndList() {
 
 extern "C" void APIENTRY glEvalCoord1d(GLdouble u) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord1d");
     if (!fn) return;
     if (fn) fn(u);
 }
 
-extern "C" void APIENTRY glEvalCoord1dv(const GLdouble * u) {
+extern "C" void APIENTRY glEvalCoord1dv(const GLdouble* u) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord1dv");
     if (!fn) return;
     if (fn) fn(u);
@@ -658,15 +663,15 @@ extern "C" void APIENTRY glEvalCoord1dv(const GLdouble * u) {
 
 extern "C" void APIENTRY glEvalCoord1f(GLfloat u) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord1f");
     if (!fn) return;
     if (fn) fn(u);
 }
 
-extern "C" void APIENTRY glEvalCoord1fv(const GLfloat * u) {
+extern "C" void APIENTRY glEvalCoord1fv(const GLfloat* u) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord1fv");
     if (!fn) return;
     if (fn) fn(u);
@@ -674,15 +679,15 @@ extern "C" void APIENTRY glEvalCoord1fv(const GLfloat * u) {
 
 extern "C" void APIENTRY glEvalCoord2d(GLdouble u, GLdouble v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord2d");
     if (!fn) return;
     if (fn) fn(u, v);
 }
 
-extern "C" void APIENTRY glEvalCoord2dv(const GLdouble * u) {
+extern "C" void APIENTRY glEvalCoord2dv(const GLdouble* u) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord2dv");
     if (!fn) return;
     if (fn) fn(u);
@@ -690,15 +695,15 @@ extern "C" void APIENTRY glEvalCoord2dv(const GLdouble * u) {
 
 extern "C" void APIENTRY glEvalCoord2f(GLfloat u, GLfloat v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord2f");
     if (!fn) return;
     if (fn) fn(u, v);
 }
 
-extern "C" void APIENTRY glEvalCoord2fv(const GLfloat * u) {
+extern "C" void APIENTRY glEvalCoord2fv(const GLfloat* u) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalCoord2fv");
     if (!fn) return;
     if (fn) fn(u);
@@ -706,7 +711,7 @@ extern "C" void APIENTRY glEvalCoord2fv(const GLfloat * u) {
 
 extern "C" void APIENTRY glEvalMesh1(GLenum mode, GLint i1, GLint i2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalMesh1");
     if (!fn) return;
     if (fn) fn(mode, i1, i2);
@@ -714,7 +719,7 @@ extern "C" void APIENTRY glEvalMesh1(GLenum mode, GLint i1, GLint i2) {
 
 extern "C" void APIENTRY glEvalMesh2(GLenum mode, GLint i1, GLint i2, GLint j1, GLint j2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalMesh2");
     if (!fn) return;
     if (fn) fn(mode, i1, i2, j1, j2);
@@ -722,7 +727,7 @@ extern "C" void APIENTRY glEvalMesh2(GLenum mode, GLint i1, GLint i2, GLint j1, 
 
 extern "C" void APIENTRY glEvalPoint1(GLint i) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint);
+    typedef void(APIENTRY * PFN)(GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalPoint1");
     if (!fn) return;
     if (fn) fn(i);
@@ -730,15 +735,15 @@ extern "C" void APIENTRY glEvalPoint1(GLint i) {
 
 extern "C" void APIENTRY glEvalPoint2(GLint i, GLint j) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glEvalPoint2");
     if (!fn) return;
     if (fn) fn(i, j);
 }
 
-extern "C" void APIENTRY glFeedbackBuffer(GLsizei size, GLenum type, GLfloat * buffer) {
+extern "C" void APIENTRY glFeedbackBuffer(GLsizei size, GLenum type, GLfloat* buffer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLsizei, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFeedbackBuffer");
     if (!fn) return;
     if (fn) fn(size, type, buffer);
@@ -746,7 +751,7 @@ extern "C" void APIENTRY glFeedbackBuffer(GLsizei size, GLenum type, GLfloat * b
 
 extern "C" void APIENTRY glFinish() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFinish");
     if (!fn) return;
     if (fn) fn();
@@ -754,7 +759,7 @@ extern "C" void APIENTRY glFinish() {
 
 extern "C" void APIENTRY glFlush() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFlush");
     if (!fn) return;
     if (fn) fn();
@@ -762,15 +767,15 @@ extern "C" void APIENTRY glFlush() {
 
 extern "C" void APIENTRY glFogf(GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFogf");
     if (!fn) return;
     if (fn) fn(pname, param);
 }
 
-extern "C" void APIENTRY glFogfv(GLenum pname, const GLfloat * params) {
+extern "C" void APIENTRY glFogfv(GLenum pname, const GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFogfv");
     if (!fn) return;
     if (fn) fn(pname, params);
@@ -778,15 +783,15 @@ extern "C" void APIENTRY glFogfv(GLenum pname, const GLfloat * params) {
 
 extern "C" void APIENTRY glFogi(GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFogi");
     if (!fn) return;
     if (fn) fn(pname, param);
 }
 
-extern "C" void APIENTRY glFogiv(GLenum pname, const GLint * params) {
+extern "C" void APIENTRY glFogiv(GLenum pname, const GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, const GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFogiv");
     if (!fn) return;
     if (fn) fn(pname, params);
@@ -794,15 +799,16 @@ extern "C" void APIENTRY glFogiv(GLenum pname, const GLint * params) {
 
 extern "C" void APIENTRY glFrontFace(GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFrontFace");
     if (!fn) return;
     if (fn) fn(mode);
 }
 
-extern "C" void APIENTRY glFrustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble zNear, GLdouble zFar) {
+extern "C" void APIENTRY glFrustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble zNear,
+                                   GLdouble zFar) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glFrustum");
     if (!fn) return;
     if (fn) fn(left, right, bottom, top, zNear, zFar);
@@ -810,39 +816,39 @@ extern "C" void APIENTRY glFrustum(GLdouble left, GLdouble right, GLdouble botto
 
 extern "C" GLuint APIENTRY glGenLists(GLsizei range) {
     if (!LoadRealOpenGL32()) return (GLuint)0;
-    typedef GLuint (APIENTRY *PFN)(GLsizei);
+    typedef GLuint(APIENTRY * PFN)(GLsizei);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGenLists");
     if (!fn) return (GLuint)0;
     return fn(range);
 }
 
-extern "C" void APIENTRY glGenTextures(GLsizei n, GLuint * textures) {
+extern "C" void APIENTRY glGenTextures(GLsizei n, GLuint* textures) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, GLuint *);
+    typedef void(APIENTRY * PFN)(GLsizei, GLuint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGenTextures");
     if (!fn) return;
     if (fn) fn(n, textures);
 }
 
-extern "C" void APIENTRY glGetBooleanv(GLenum pname, GLboolean * params) {
+extern "C" void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLboolean *);
+    typedef void(APIENTRY * PFN)(GLenum, GLboolean*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetBooleanv");
     if (!fn) return;
     if (fn) fn(pname, params);
 }
 
-extern "C" void APIENTRY glGetClipPlane(GLenum plane, GLdouble * equation) {
+extern "C" void APIENTRY glGetClipPlane(GLenum plane, GLdouble* equation) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetClipPlane");
     if (!fn) return;
     if (fn) fn(plane, equation);
 }
 
-extern "C" void APIENTRY glGetDoublev(GLenum pname, GLdouble * params) {
+extern "C" void APIENTRY glGetDoublev(GLenum pname, GLdouble* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetDoublev");
     if (!fn) return;
     if (fn) fn(pname, params);
@@ -850,207 +856,207 @@ extern "C" void APIENTRY glGetDoublev(GLenum pname, GLdouble * params) {
 
 extern "C" GLenum APIENTRY glGetError() {
     if (!LoadRealOpenGL32()) return (GLenum)0;
-    typedef GLenum (APIENTRY *PFN)(void);
+    typedef GLenum(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetError");
     if (!fn) return (GLenum)0;
     return fn();
 }
 
-extern "C" void APIENTRY glGetFloatv(GLenum pname, GLfloat * params) {
+extern "C" void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetFloatv");
     if (!fn) return;
     if (fn) fn(pname, params);
 }
 
-extern "C" void APIENTRY glGetIntegerv(GLenum pname, GLint * params) {
+extern "C" void APIENTRY glGetIntegerv(GLenum pname, GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetIntegerv");
     if (!fn) return;
     if (fn) fn(pname, params);
 }
 
-extern "C" void APIENTRY glGetLightfv(GLenum light, GLenum pname, GLfloat * params) {
+extern "C" void APIENTRY glGetLightfv(GLenum light, GLenum pname, GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetLightfv");
     if (!fn) return;
     if (fn) fn(light, pname, params);
 }
 
-extern "C" void APIENTRY glGetLightiv(GLenum light, GLenum pname, GLint * params) {
+extern "C" void APIENTRY glGetLightiv(GLenum light, GLenum pname, GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetLightiv");
     if (!fn) return;
     if (fn) fn(light, pname, params);
 }
 
-extern "C" void APIENTRY glGetMapdv(GLenum target, GLenum query, GLdouble * v) {
+extern "C" void APIENTRY glGetMapdv(GLenum target, GLenum query, GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetMapdv");
     if (!fn) return;
     if (fn) fn(target, query, v);
 }
 
-extern "C" void APIENTRY glGetMapfv(GLenum target, GLenum query, GLfloat * v) {
+extern "C" void APIENTRY glGetMapfv(GLenum target, GLenum query, GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetMapfv");
     if (!fn) return;
     if (fn) fn(target, query, v);
 }
 
-extern "C" void APIENTRY glGetMapiv(GLenum target, GLenum query, GLint * v) {
+extern "C" void APIENTRY glGetMapiv(GLenum target, GLenum query, GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetMapiv");
     if (!fn) return;
     if (fn) fn(target, query, v);
 }
 
-extern "C" void APIENTRY glGetMaterialfv(GLenum face, GLenum pname, GLfloat * params) {
+extern "C" void APIENTRY glGetMaterialfv(GLenum face, GLenum pname, GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetMaterialfv");
     if (!fn) return;
     if (fn) fn(face, pname, params);
 }
 
-extern "C" void APIENTRY glGetMaterialiv(GLenum face, GLenum pname, GLint * params) {
+extern "C" void APIENTRY glGetMaterialiv(GLenum face, GLenum pname, GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetMaterialiv");
     if (!fn) return;
     if (fn) fn(face, pname, params);
 }
 
-extern "C" void APIENTRY glGetPixelMapfv(GLenum map, GLfloat * values) {
+extern "C" void APIENTRY glGetPixelMapfv(GLenum map, GLfloat* values) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetPixelMapfv");
     if (!fn) return;
     if (fn) fn(map, values);
 }
 
-extern "C" void APIENTRY glGetPixelMapuiv(GLenum map, GLuint * values) {
+extern "C" void APIENTRY glGetPixelMapuiv(GLenum map, GLuint* values) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLuint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLuint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetPixelMapuiv");
     if (!fn) return;
     if (fn) fn(map, values);
 }
 
-extern "C" void APIENTRY glGetPixelMapusv(GLenum map, GLushort * values) {
+extern "C" void APIENTRY glGetPixelMapusv(GLenum map, GLushort* values) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLushort *);
+    typedef void(APIENTRY * PFN)(GLenum, GLushort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetPixelMapusv");
     if (!fn) return;
     if (fn) fn(map, values);
 }
 
-extern "C" void APIENTRY glGetPointerv(GLenum pname, GLvoid ** params) {
+extern "C" void APIENTRY glGetPointerv(GLenum pname, GLvoid** params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLvoid **);
+    typedef void(APIENTRY * PFN)(GLenum, GLvoid**);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetPointerv");
     if (!fn) return;
     if (fn) fn(pname, params);
 }
 
-extern "C" void APIENTRY glGetPolygonStipple(GLubyte * mask) {
+extern "C" void APIENTRY glGetPolygonStipple(GLubyte* mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLubyte *);
+    typedef void(APIENTRY * PFN)(GLubyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetPolygonStipple");
     if (!fn) return;
     if (fn) fn(mask);
 }
 
-extern "C" const GLubyte * APIENTRY glGetString(GLenum name) {
-    if (!LoadRealOpenGL32()) return (const GLubyte *)0;
-    typedef const GLubyte * (APIENTRY *PFN)(GLenum);
+extern "C" const GLubyte* APIENTRY glGetString(GLenum name) {
+    if (!LoadRealOpenGL32()) return (const GLubyte*)0;
+    typedef const GLubyte*(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetString");
-    if (!fn) return (const GLubyte *)0;
+    if (!fn) return (const GLubyte*)0;
     return fn(name);
 }
 
-extern "C" void APIENTRY glGetTexEnvfv(GLenum target, GLenum pname, GLfloat * params) {
+extern "C" void APIENTRY glGetTexEnvfv(GLenum target, GLenum pname, GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexEnvfv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexEnviv(GLenum target, GLenum pname, GLint * params) {
+extern "C" void APIENTRY glGetTexEnviv(GLenum target, GLenum pname, GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexEnviv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexGendv(GLenum coord, GLenum pname, GLdouble * params) {
+extern "C" void APIENTRY glGetTexGendv(GLenum coord, GLenum pname, GLdouble* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexGendv");
     if (!fn) return;
     if (fn) fn(coord, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexGenfv(GLenum coord, GLenum pname, GLfloat * params) {
+extern "C" void APIENTRY glGetTexGenfv(GLenum coord, GLenum pname, GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexGenfv");
     if (!fn) return;
     if (fn) fn(coord, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexGeniv(GLenum coord, GLenum pname, GLint * params) {
+extern "C" void APIENTRY glGetTexGeniv(GLenum coord, GLenum pname, GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexGeniv");
     if (!fn) return;
     if (fn) fn(coord, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexImage(GLenum target, GLint level, GLenum format, GLenum type, GLvoid * pixels) {
+extern "C" void APIENTRY glGetTexImage(GLenum target, GLint level, GLenum format, GLenum type, GLvoid* pixels) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLenum, GLenum, GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLenum, GLenum, GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexImage");
     if (!fn) return;
     if (fn) fn(target, level, format, type, pixels);
 }
 
-extern "C" void APIENTRY glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfloat * params) {
+extern "C" void APIENTRY glGetTexLevelParameterfv(GLenum target, GLint level, GLenum pname, GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexLevelParameterfv");
     if (!fn) return;
     if (fn) fn(target, level, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLint * params) {
+extern "C" void APIENTRY glGetTexLevelParameteriv(GLenum target, GLint level, GLenum pname, GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexLevelParameteriv");
     if (!fn) return;
     if (fn) fn(target, level, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexParameterfv(GLenum target, GLenum pname, GLfloat * params) {
+extern "C" void APIENTRY glGetTexParameterfv(GLenum target, GLenum pname, GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexParameterfv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
 }
 
-extern "C" void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint * params) {
+extern "C" void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glGetTexParameteriv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
@@ -1058,7 +1064,7 @@ extern "C" void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint 
 
 extern "C" void APIENTRY glHint(GLenum target, GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glHint");
     if (!fn) return;
     if (fn) fn(target, mode);
@@ -1066,15 +1072,15 @@ extern "C" void APIENTRY glHint(GLenum target, GLenum mode) {
 
 extern "C" void APIENTRY glIndexMask(GLuint mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint);
+    typedef void(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexMask");
     if (!fn) return;
     if (fn) fn(mask);
 }
 
-extern "C" void APIENTRY glIndexPointer(GLenum type, GLsizei stride, const GLvoid * pointer) {
+extern "C" void APIENTRY glIndexPointer(GLenum type, GLsizei stride, const GLvoid* pointer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLsizei, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLsizei, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexPointer");
     if (!fn) return;
     if (fn) fn(type, stride, pointer);
@@ -1082,15 +1088,15 @@ extern "C" void APIENTRY glIndexPointer(GLenum type, GLsizei stride, const GLvoi
 
 extern "C" void APIENTRY glIndexd(GLdouble c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexd");
     if (!fn) return;
     if (fn) fn(c);
 }
 
-extern "C" void APIENTRY glIndexdv(const GLdouble * c) {
+extern "C" void APIENTRY glIndexdv(const GLdouble* c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexdv");
     if (!fn) return;
     if (fn) fn(c);
@@ -1098,15 +1104,15 @@ extern "C" void APIENTRY glIndexdv(const GLdouble * c) {
 
 extern "C" void APIENTRY glIndexf(GLfloat c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexf");
     if (!fn) return;
     if (fn) fn(c);
 }
 
-extern "C" void APIENTRY glIndexfv(const GLfloat * c) {
+extern "C" void APIENTRY glIndexfv(const GLfloat* c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexfv");
     if (!fn) return;
     if (fn) fn(c);
@@ -1114,15 +1120,15 @@ extern "C" void APIENTRY glIndexfv(const GLfloat * c) {
 
 extern "C" void APIENTRY glIndexi(GLint c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint);
+    typedef void(APIENTRY * PFN)(GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexi");
     if (!fn) return;
     if (fn) fn(c);
 }
 
-extern "C" void APIENTRY glIndexiv(const GLint * c) {
+extern "C" void APIENTRY glIndexiv(const GLint* c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexiv");
     if (!fn) return;
     if (fn) fn(c);
@@ -1130,15 +1136,15 @@ extern "C" void APIENTRY glIndexiv(const GLint * c) {
 
 extern "C" void APIENTRY glIndexs(GLshort c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort);
+    typedef void(APIENTRY * PFN)(GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexs");
     if (!fn) return;
     if (fn) fn(c);
 }
 
-extern "C" void APIENTRY glIndexsv(const GLshort * c) {
+extern "C" void APIENTRY glIndexsv(const GLshort* c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexsv");
     if (!fn) return;
     if (fn) fn(c);
@@ -1146,15 +1152,15 @@ extern "C" void APIENTRY glIndexsv(const GLshort * c) {
 
 extern "C" void APIENTRY glIndexub(GLubyte c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLubyte);
+    typedef void(APIENTRY * PFN)(GLubyte);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexub");
     if (!fn) return;
     if (fn) fn(c);
 }
 
-extern "C" void APIENTRY glIndexubv(const GLubyte * c) {
+extern "C" void APIENTRY glIndexubv(const GLubyte* c) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLubyte *);
+    typedef void(APIENTRY * PFN)(const GLubyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIndexubv");
     if (!fn) return;
     if (fn) fn(c);
@@ -1162,15 +1168,15 @@ extern "C" void APIENTRY glIndexubv(const GLubyte * c) {
 
 extern "C" void APIENTRY glInitNames() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glInitNames");
     if (!fn) return;
     if (fn) fn();
 }
 
-extern "C" void APIENTRY glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid * pointer) {
+extern "C" void APIENTRY glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid* pointer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLsizei, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLsizei, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glInterleavedArrays");
     if (!fn) return;
     if (fn) fn(format, stride, pointer);
@@ -1178,7 +1184,7 @@ extern "C" void APIENTRY glInterleavedArrays(GLenum format, GLsizei stride, cons
 
 extern "C" GLboolean APIENTRY glIsEnabled(GLenum cap) {
     if (!LoadRealOpenGL32()) return (GLboolean)0;
-    typedef GLboolean (APIENTRY *PFN)(GLenum);
+    typedef GLboolean(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIsEnabled");
     if (!fn) return (GLboolean)0;
     return fn(cap);
@@ -1186,7 +1192,7 @@ extern "C" GLboolean APIENTRY glIsEnabled(GLenum cap) {
 
 extern "C" GLboolean APIENTRY glIsList(GLuint list) {
     if (!LoadRealOpenGL32()) return (GLboolean)0;
-    typedef GLboolean (APIENTRY *PFN)(GLuint);
+    typedef GLboolean(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIsList");
     if (!fn) return (GLboolean)0;
     return fn(list);
@@ -1194,7 +1200,7 @@ extern "C" GLboolean APIENTRY glIsList(GLuint list) {
 
 extern "C" GLboolean APIENTRY glIsTexture(GLuint texture) {
     if (!LoadRealOpenGL32()) return (GLboolean)0;
-    typedef GLboolean (APIENTRY *PFN)(GLuint);
+    typedef GLboolean(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glIsTexture");
     if (!fn) return (GLboolean)0;
     return fn(texture);
@@ -1202,15 +1208,15 @@ extern "C" GLboolean APIENTRY glIsTexture(GLuint texture) {
 
 extern "C" void APIENTRY glLightModelf(GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLightModelf");
     if (!fn) return;
     if (fn) fn(pname, param);
 }
 
-extern "C" void APIENTRY glLightModelfv(GLenum pname, const GLfloat * params) {
+extern "C" void APIENTRY glLightModelfv(GLenum pname, const GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLightModelfv");
     if (!fn) return;
     if (fn) fn(pname, params);
@@ -1218,15 +1224,15 @@ extern "C" void APIENTRY glLightModelfv(GLenum pname, const GLfloat * params) {
 
 extern "C" void APIENTRY glLightModeli(GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLightModeli");
     if (!fn) return;
     if (fn) fn(pname, param);
 }
 
-extern "C" void APIENTRY glLightModeliv(GLenum pname, const GLint * params) {
+extern "C" void APIENTRY glLightModeliv(GLenum pname, const GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, const GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLightModeliv");
     if (!fn) return;
     if (fn) fn(pname, params);
@@ -1234,15 +1240,15 @@ extern "C" void APIENTRY glLightModeliv(GLenum pname, const GLint * params) {
 
 extern "C" void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLightf");
     if (!fn) return;
     if (fn) fn(light, pname, param);
 }
 
-extern "C" void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat * params) {
+extern "C" void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLightfv");
     if (!fn) return;
     if (fn) fn(light, pname, params);
@@ -1250,15 +1256,15 @@ extern "C" void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat * p
 
 extern "C" void APIENTRY glLighti(GLenum light, GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLighti");
     if (!fn) return;
     if (fn) fn(light, pname, param);
 }
 
-extern "C" void APIENTRY glLightiv(GLenum light, GLenum pname, const GLint * params) {
+extern "C" void APIENTRY glLightiv(GLenum light, GLenum pname, const GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLightiv");
     if (!fn) return;
     if (fn) fn(light, pname, params);
@@ -1266,7 +1272,7 @@ extern "C" void APIENTRY glLightiv(GLenum light, GLenum pname, const GLint * par
 
 extern "C" void APIENTRY glLineStipple(GLint factor, GLushort pattern) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLushort);
+    typedef void(APIENTRY * PFN)(GLint, GLushort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLineStipple");
     if (!fn) return;
     if (fn) fn(factor, pattern);
@@ -1274,7 +1280,7 @@ extern "C" void APIENTRY glLineStipple(GLint factor, GLushort pattern) {
 
 extern "C" void APIENTRY glLineWidth(GLfloat width) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLineWidth");
     if (!fn) return;
     if (fn) fn(width);
@@ -1282,7 +1288,7 @@ extern "C" void APIENTRY glLineWidth(GLfloat width) {
 
 extern "C" void APIENTRY glListBase(GLuint base) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint);
+    typedef void(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glListBase");
     if (!fn) return;
     if (fn) fn(base);
@@ -1290,23 +1296,23 @@ extern "C" void APIENTRY glListBase(GLuint base) {
 
 extern "C" void APIENTRY glLoadIdentity() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLoadIdentity");
     if (!fn) return;
     if (fn) fn();
 }
 
-extern "C" void APIENTRY glLoadMatrixd(const GLdouble * m) {
+extern "C" void APIENTRY glLoadMatrixd(const GLdouble* m) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLoadMatrixd");
     if (!fn) return;
     if (fn) fn(m);
 }
 
-extern "C" void APIENTRY glLoadMatrixf(const GLfloat * m) {
+extern "C" void APIENTRY glLoadMatrixf(const GLfloat* m) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLoadMatrixf");
     if (!fn) return;
     if (fn) fn(m);
@@ -1314,7 +1320,7 @@ extern "C" void APIENTRY glLoadMatrixf(const GLfloat * m) {
 
 extern "C" void APIENTRY glLoadName(GLuint name) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint);
+    typedef void(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLoadName");
     if (!fn) return;
     if (fn) fn(name);
@@ -1322,39 +1328,45 @@ extern "C" void APIENTRY glLoadName(GLuint name) {
 
 extern "C" void APIENTRY glLogicOp(GLenum opcode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glLogicOp");
     if (!fn) return;
     if (fn) fn(opcode);
 }
 
-extern "C" void APIENTRY glMap1d(GLenum target, GLdouble u1, GLdouble u2, GLint stride, GLint order, const GLdouble * points) {
+extern "C" void APIENTRY glMap1d(GLenum target, GLdouble u1, GLdouble u2, GLint stride, GLint order,
+                                 const GLdouble* points) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLdouble, GLdouble, GLint, GLint, const GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, GLdouble, GLdouble, GLint, GLint, const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMap1d");
     if (!fn) return;
     if (fn) fn(target, u1, u2, stride, order, points);
 }
 
-extern "C" void APIENTRY glMap1f(GLenum target, GLfloat u1, GLfloat u2, GLint stride, GLint order, const GLfloat * points) {
+extern "C" void APIENTRY glMap1f(GLenum target, GLfloat u1, GLfloat u2, GLint stride, GLint order,
+                                 const GLfloat* points) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat, GLfloat, GLint, GLint, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat, GLfloat, GLint, GLint, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMap1f");
     if (!fn) return;
     if (fn) fn(target, u1, u2, stride, order, points);
 }
 
-extern "C" void APIENTRY glMap2d(GLenum target, GLdouble u1, GLdouble u2, GLint ustride, GLint uorder, GLdouble v1, GLdouble v2, GLint vstride, GLint vorder, const GLdouble * points) {
+extern "C" void APIENTRY glMap2d(GLenum target, GLdouble u1, GLdouble u2, GLint ustride, GLint uorder, GLdouble v1,
+                                 GLdouble v2, GLint vstride, GLint vorder, const GLdouble* points) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLdouble, GLdouble, GLint, GLint, GLdouble, GLdouble, GLint, GLint, const GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, GLdouble, GLdouble, GLint, GLint, GLdouble, GLdouble, GLint, GLint,
+                                 const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMap2d");
     if (!fn) return;
     if (fn) fn(target, u1, u2, ustride, uorder, v1, v2, vstride, vorder, points);
 }
 
-extern "C" void APIENTRY glMap2f(GLenum target, GLfloat u1, GLfloat u2, GLint ustride, GLint uorder, GLfloat v1, GLfloat v2, GLint vstride, GLint vorder, const GLfloat * points) {
+extern "C" void APIENTRY glMap2f(GLenum target, GLfloat u1, GLfloat u2, GLint ustride, GLint uorder, GLfloat v1,
+                                 GLfloat v2, GLint vstride, GLint vorder, const GLfloat* points) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat, GLfloat, GLint, GLint, GLfloat, GLfloat, GLint, GLint, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat, GLfloat, GLint, GLint, GLfloat, GLfloat, GLint, GLint,
+                                 const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMap2f");
     if (!fn) return;
     if (fn) fn(target, u1, u2, ustride, uorder, v1, v2, vstride, vorder, points);
@@ -1362,7 +1374,7 @@ extern "C" void APIENTRY glMap2f(GLenum target, GLfloat u1, GLfloat u2, GLint us
 
 extern "C" void APIENTRY glMapGrid1d(GLint un, GLdouble u1, GLdouble u2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLint, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMapGrid1d");
     if (!fn) return;
     if (fn) fn(un, u1, u2);
@@ -1370,7 +1382,7 @@ extern "C" void APIENTRY glMapGrid1d(GLint un, GLdouble u1, GLdouble u2) {
 
 extern "C" void APIENTRY glMapGrid1f(GLint un, GLfloat u1, GLfloat u2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLint, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMapGrid1f");
     if (!fn) return;
     if (fn) fn(un, u1, u2);
@@ -1378,7 +1390,7 @@ extern "C" void APIENTRY glMapGrid1f(GLint un, GLfloat u1, GLfloat u2) {
 
 extern "C" void APIENTRY glMapGrid2d(GLint un, GLdouble u1, GLdouble u2, GLint vn, GLdouble v1, GLdouble v2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLdouble, GLdouble, GLint, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLint, GLdouble, GLdouble, GLint, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMapGrid2d");
     if (!fn) return;
     if (fn) fn(un, u1, u2, vn, v1, v2);
@@ -1386,7 +1398,7 @@ extern "C" void APIENTRY glMapGrid2d(GLint un, GLdouble u1, GLdouble u2, GLint v
 
 extern "C" void APIENTRY glMapGrid2f(GLint un, GLfloat u1, GLfloat u2, GLint vn, GLfloat v1, GLfloat v2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLfloat, GLfloat, GLint, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLint, GLfloat, GLfloat, GLint, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMapGrid2f");
     if (!fn) return;
     if (fn) fn(un, u1, u2, vn, v1, v2);
@@ -1394,15 +1406,15 @@ extern "C" void APIENTRY glMapGrid2f(GLint un, GLfloat u1, GLfloat u2, GLint vn,
 
 extern "C" void APIENTRY glMaterialf(GLenum face, GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMaterialf");
     if (!fn) return;
     if (fn) fn(face, pname, param);
 }
 
-extern "C" void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat * params) {
+extern "C" void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMaterialfv");
     if (!fn) return;
     if (fn) fn(face, pname, params);
@@ -1410,15 +1422,15 @@ extern "C" void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *
 
 extern "C" void APIENTRY glMateriali(GLenum face, GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMateriali");
     if (!fn) return;
     if (fn) fn(face, pname, param);
 }
 
-extern "C" void APIENTRY glMaterialiv(GLenum face, GLenum pname, const GLint * params) {
+extern "C" void APIENTRY glMaterialiv(GLenum face, GLenum pname, const GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMaterialiv");
     if (!fn) return;
     if (fn) fn(face, pname, params);
@@ -1426,23 +1438,23 @@ extern "C" void APIENTRY glMaterialiv(GLenum face, GLenum pname, const GLint * p
 
 extern "C" void APIENTRY glMatrixMode(GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMatrixMode");
     if (!fn) return;
     if (fn) fn(mode);
 }
 
-extern "C" void APIENTRY glMultMatrixd(const GLdouble * m) {
+extern "C" void APIENTRY glMultMatrixd(const GLdouble* m) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMultMatrixd");
     if (!fn) return;
     if (fn) fn(m);
 }
 
-extern "C" void APIENTRY glMultMatrixf(const GLfloat * m) {
+extern "C" void APIENTRY glMultMatrixf(const GLfloat* m) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glMultMatrixf");
     if (!fn) return;
     if (fn) fn(m);
@@ -1450,7 +1462,7 @@ extern "C" void APIENTRY glMultMatrixf(const GLfloat * m) {
 
 extern "C" void APIENTRY glNewList(GLuint list, GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint, GLenum);
+    typedef void(APIENTRY * PFN)(GLuint, GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNewList");
     if (!fn) return;
     if (fn) fn(list, mode);
@@ -1458,15 +1470,15 @@ extern "C" void APIENTRY glNewList(GLuint list, GLenum mode) {
 
 extern "C" void APIENTRY glNormal3b(GLbyte nx, GLbyte ny, GLbyte nz) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLbyte, GLbyte, GLbyte);
+    typedef void(APIENTRY * PFN)(GLbyte, GLbyte, GLbyte);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3b");
     if (!fn) return;
     if (fn) fn(nx, ny, nz);
 }
 
-extern "C" void APIENTRY glNormal3bv(const GLbyte * v) {
+extern "C" void APIENTRY glNormal3bv(const GLbyte* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLbyte *);
+    typedef void(APIENTRY * PFN)(const GLbyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3bv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1474,15 +1486,15 @@ extern "C" void APIENTRY glNormal3bv(const GLbyte * v) {
 
 extern "C" void APIENTRY glNormal3d(GLdouble nx, GLdouble ny, GLdouble nz) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3d");
     if (!fn) return;
     if (fn) fn(nx, ny, nz);
 }
 
-extern "C" void APIENTRY glNormal3dv(const GLdouble * v) {
+extern "C" void APIENTRY glNormal3dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1490,15 +1502,15 @@ extern "C" void APIENTRY glNormal3dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glNormal3f(GLfloat nx, GLfloat ny, GLfloat nz) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3f");
     if (!fn) return;
     if (fn) fn(nx, ny, nz);
 }
 
-extern "C" void APIENTRY glNormal3fv(const GLfloat * v) {
+extern "C" void APIENTRY glNormal3fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1506,15 +1518,15 @@ extern "C" void APIENTRY glNormal3fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glNormal3i(GLint nx, GLint ny, GLint nz) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3i");
     if (!fn) return;
     if (fn) fn(nx, ny, nz);
 }
 
-extern "C" void APIENTRY glNormal3iv(const GLint * v) {
+extern "C" void APIENTRY glNormal3iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1522,31 +1534,32 @@ extern "C" void APIENTRY glNormal3iv(const GLint * v) {
 
 extern "C" void APIENTRY glNormal3s(GLshort nx, GLshort ny, GLshort nz) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3s");
     if (!fn) return;
     if (fn) fn(nx, ny, nz);
 }
 
-extern "C" void APIENTRY glNormal3sv(const GLshort * v) {
+extern "C" void APIENTRY glNormal3sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormal3sv");
     if (!fn) return;
     if (fn) fn(v);
 }
 
-extern "C" void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid * pointer) {
+extern "C" void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid* pointer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLsizei, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLsizei, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glNormalPointer");
     if (!fn) return;
     if (fn) fn(type, stride, pointer);
 }
 
-extern "C" void APIENTRY glOrtho(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble zNear, GLdouble zFar) {
+extern "C" void APIENTRY glOrtho(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble zNear,
+                                 GLdouble zFar) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glOrtho");
     if (!fn) return;
     if (fn) fn(left, right, bottom, top, zNear, zFar);
@@ -1554,31 +1567,31 @@ extern "C" void APIENTRY glOrtho(GLdouble left, GLdouble right, GLdouble bottom,
 
 extern "C" void APIENTRY glPassThrough(GLfloat token) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPassThrough");
     if (!fn) return;
     if (fn) fn(token);
 }
 
-extern "C" void APIENTRY glPixelMapfv(GLenum map, GLsizei mapsize, const GLfloat * values) {
+extern "C" void APIENTRY glPixelMapfv(GLenum map, GLsizei mapsize, const GLfloat* values) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLsizei, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLsizei, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelMapfv");
     if (!fn) return;
     if (fn) fn(map, mapsize, values);
 }
 
-extern "C" void APIENTRY glPixelMapuiv(GLenum map, GLsizei mapsize, const GLuint * values) {
+extern "C" void APIENTRY glPixelMapuiv(GLenum map, GLsizei mapsize, const GLuint* values) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLsizei, const GLuint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLsizei, const GLuint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelMapuiv");
     if (!fn) return;
     if (fn) fn(map, mapsize, values);
 }
 
-extern "C" void APIENTRY glPixelMapusv(GLenum map, GLsizei mapsize, const GLushort * values) {
+extern "C" void APIENTRY glPixelMapusv(GLenum map, GLsizei mapsize, const GLushort* values) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLsizei, const GLushort *);
+    typedef void(APIENTRY * PFN)(GLenum, GLsizei, const GLushort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelMapusv");
     if (!fn) return;
     if (fn) fn(map, mapsize, values);
@@ -1586,7 +1599,7 @@ extern "C" void APIENTRY glPixelMapusv(GLenum map, GLsizei mapsize, const GLusho
 
 extern "C" void APIENTRY glPixelStoref(GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelStoref");
     if (!fn) return;
     if (fn) fn(pname, param);
@@ -1594,7 +1607,7 @@ extern "C" void APIENTRY glPixelStoref(GLenum pname, GLfloat param) {
 
 extern "C" void APIENTRY glPixelStorei(GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelStorei");
     if (!fn) return;
     if (fn) fn(pname, param);
@@ -1602,7 +1615,7 @@ extern "C" void APIENTRY glPixelStorei(GLenum pname, GLint param) {
 
 extern "C" void APIENTRY glPixelTransferf(GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelTransferf");
     if (!fn) return;
     if (fn) fn(pname, param);
@@ -1610,7 +1623,7 @@ extern "C" void APIENTRY glPixelTransferf(GLenum pname, GLfloat param) {
 
 extern "C" void APIENTRY glPixelTransferi(GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelTransferi");
     if (!fn) return;
     if (fn) fn(pname, param);
@@ -1618,7 +1631,7 @@ extern "C" void APIENTRY glPixelTransferi(GLenum pname, GLint param) {
 
 extern "C" void APIENTRY glPixelZoom(GLfloat xfactor, GLfloat yfactor) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPixelZoom");
     if (!fn) return;
     if (fn) fn(xfactor, yfactor);
@@ -1626,7 +1639,7 @@ extern "C" void APIENTRY glPixelZoom(GLfloat xfactor, GLfloat yfactor) {
 
 extern "C" void APIENTRY glPointSize(GLfloat size) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPointSize");
     if (!fn) return;
     if (fn) fn(size);
@@ -1634,7 +1647,7 @@ extern "C" void APIENTRY glPointSize(GLfloat size) {
 
 extern "C" void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPolygonMode");
     if (!fn) return;
     if (fn) fn(face, mode);
@@ -1642,15 +1655,15 @@ extern "C" void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
 
 extern "C" void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPolygonOffset");
     if (!fn) return;
     if (fn) fn(factor, units);
 }
 
-extern "C" void APIENTRY glPolygonStipple(const GLubyte * mask) {
+extern "C" void APIENTRY glPolygonStipple(const GLubyte* mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLubyte *);
+    typedef void(APIENTRY * PFN)(const GLubyte*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPolygonStipple");
     if (!fn) return;
     if (fn) fn(mask);
@@ -1658,7 +1671,7 @@ extern "C" void APIENTRY glPolygonStipple(const GLubyte * mask) {
 
 extern "C" void APIENTRY glPopAttrib() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPopAttrib");
     if (!fn) return;
     if (fn) fn();
@@ -1666,7 +1679,7 @@ extern "C" void APIENTRY glPopAttrib() {
 
 extern "C" void APIENTRY glPopClientAttrib() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPopClientAttrib");
     if (!fn) return;
     if (fn) fn();
@@ -1674,7 +1687,7 @@ extern "C" void APIENTRY glPopClientAttrib() {
 
 extern "C" void APIENTRY glPopMatrix() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPopMatrix");
     if (!fn) return;
     if (fn) fn();
@@ -1682,15 +1695,15 @@ extern "C" void APIENTRY glPopMatrix() {
 
 extern "C" void APIENTRY glPopName() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPopName");
     if (!fn) return;
     if (fn) fn();
 }
 
-extern "C" void APIENTRY glPrioritizeTextures(GLsizei n, const GLuint * textures, const GLclampf * priorities) {
+extern "C" void APIENTRY glPrioritizeTextures(GLsizei n, const GLuint* textures, const GLclampf* priorities) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, const GLuint *, const GLclampf *);
+    typedef void(APIENTRY * PFN)(GLsizei, const GLuint*, const GLclampf*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPrioritizeTextures");
     if (!fn) return;
     if (fn) fn(n, textures, priorities);
@@ -1698,7 +1711,7 @@ extern "C" void APIENTRY glPrioritizeTextures(GLsizei n, const GLuint * textures
 
 extern "C" void APIENTRY glPushAttrib(GLbitfield mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLbitfield);
+    typedef void(APIENTRY * PFN)(GLbitfield);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPushAttrib");
     if (!fn) return;
     if (fn) fn(mask);
@@ -1706,7 +1719,7 @@ extern "C" void APIENTRY glPushAttrib(GLbitfield mask) {
 
 extern "C" void APIENTRY glPushClientAttrib(GLbitfield mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLbitfield);
+    typedef void(APIENTRY * PFN)(GLbitfield);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPushClientAttrib");
     if (!fn) return;
     if (fn) fn(mask);
@@ -1714,7 +1727,7 @@ extern "C" void APIENTRY glPushClientAttrib(GLbitfield mask) {
 
 extern "C" void APIENTRY glPushMatrix() {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(void);
+    typedef void(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPushMatrix");
     if (!fn) return;
     if (fn) fn();
@@ -1722,7 +1735,7 @@ extern "C" void APIENTRY glPushMatrix() {
 
 extern "C" void APIENTRY glPushName(GLuint name) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint);
+    typedef void(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glPushName");
     if (!fn) return;
     if (fn) fn(name);
@@ -1730,15 +1743,15 @@ extern "C" void APIENTRY glPushName(GLuint name) {
 
 extern "C" void APIENTRY glRasterPos2d(GLdouble x, GLdouble y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2d");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glRasterPos2dv(const GLdouble * v) {
+extern "C" void APIENTRY glRasterPos2dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1746,15 +1759,15 @@ extern "C" void APIENTRY glRasterPos2dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glRasterPos2f(GLfloat x, GLfloat y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2f");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glRasterPos2fv(const GLfloat * v) {
+extern "C" void APIENTRY glRasterPos2fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1762,15 +1775,15 @@ extern "C" void APIENTRY glRasterPos2fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glRasterPos2i(GLint x, GLint y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2i");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glRasterPos2iv(const GLint * v) {
+extern "C" void APIENTRY glRasterPos2iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1778,15 +1791,15 @@ extern "C" void APIENTRY glRasterPos2iv(const GLint * v) {
 
 extern "C" void APIENTRY glRasterPos2s(GLshort x, GLshort y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2s");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glRasterPos2sv(const GLshort * v) {
+extern "C" void APIENTRY glRasterPos2sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos2sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1794,15 +1807,15 @@ extern "C" void APIENTRY glRasterPos2sv(const GLshort * v) {
 
 extern "C" void APIENTRY glRasterPos3d(GLdouble x, GLdouble y, GLdouble z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3d");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glRasterPos3dv(const GLdouble * v) {
+extern "C" void APIENTRY glRasterPos3dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1810,15 +1823,15 @@ extern "C" void APIENTRY glRasterPos3dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glRasterPos3f(GLfloat x, GLfloat y, GLfloat z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3f");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glRasterPos3fv(const GLfloat * v) {
+extern "C" void APIENTRY glRasterPos3fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1826,15 +1839,15 @@ extern "C" void APIENTRY glRasterPos3fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glRasterPos3i(GLint x, GLint y, GLint z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3i");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glRasterPos3iv(const GLint * v) {
+extern "C" void APIENTRY glRasterPos3iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1842,15 +1855,15 @@ extern "C" void APIENTRY glRasterPos3iv(const GLint * v) {
 
 extern "C" void APIENTRY glRasterPos3s(GLshort x, GLshort y, GLshort z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3s");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glRasterPos3sv(const GLshort * v) {
+extern "C" void APIENTRY glRasterPos3sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos3sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1858,15 +1871,15 @@ extern "C" void APIENTRY glRasterPos3sv(const GLshort * v) {
 
 extern "C" void APIENTRY glRasterPos4d(GLdouble x, GLdouble y, GLdouble z, GLdouble w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4d");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glRasterPos4dv(const GLdouble * v) {
+extern "C" void APIENTRY glRasterPos4dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1874,15 +1887,15 @@ extern "C" void APIENTRY glRasterPos4dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glRasterPos4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4f");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glRasterPos4fv(const GLfloat * v) {
+extern "C" void APIENTRY glRasterPos4fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1890,15 +1903,15 @@ extern "C" void APIENTRY glRasterPos4fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glRasterPos4i(GLint x, GLint y, GLint z, GLint w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4i");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glRasterPos4iv(const GLint * v) {
+extern "C" void APIENTRY glRasterPos4iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1906,15 +1919,15 @@ extern "C" void APIENTRY glRasterPos4iv(const GLint * v) {
 
 extern "C" void APIENTRY glRasterPos4s(GLshort x, GLshort y, GLshort z, GLshort w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4s");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glRasterPos4sv(const GLshort * v) {
+extern "C" void APIENTRY glRasterPos4sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRasterPos4sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -1922,15 +1935,16 @@ extern "C" void APIENTRY glRasterPos4sv(const GLshort * v) {
 
 extern "C" void APIENTRY glReadBuffer(GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glReadBuffer");
     if (!fn) return;
     if (fn) fn(mode);
 }
 
-extern "C" void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid * pixels) {
+extern "C" void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type,
+                                      GLvoid* pixels) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, GLvoid *);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glReadPixels");
     if (!fn) return;
     if (fn) fn(x, y, width, height, format, type, pixels);
@@ -1938,15 +1952,15 @@ extern "C" void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei h
 
 extern "C" void APIENTRY glRectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRectd");
     if (!fn) return;
     if (fn) fn(x1, y1, x2, y2);
 }
 
-extern "C" void APIENTRY glRectdv(const GLdouble * v1, const GLdouble * v2) {
+extern "C" void APIENTRY glRectdv(const GLdouble* v1, const GLdouble* v2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *, const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*, const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRectdv");
     if (!fn) return;
     if (fn) fn(v1, v2);
@@ -1954,15 +1968,15 @@ extern "C" void APIENTRY glRectdv(const GLdouble * v1, const GLdouble * v2) {
 
 extern "C" void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRectf");
     if (!fn) return;
     if (fn) fn(x1, y1, x2, y2);
 }
 
-extern "C" void APIENTRY glRectfv(const GLfloat * v1, const GLfloat * v2) {
+extern "C" void APIENTRY glRectfv(const GLfloat* v1, const GLfloat* v2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *, const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRectfv");
     if (!fn) return;
     if (fn) fn(v1, v2);
@@ -1970,15 +1984,15 @@ extern "C" void APIENTRY glRectfv(const GLfloat * v1, const GLfloat * v2) {
 
 extern "C" void APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRecti");
     if (!fn) return;
     if (fn) fn(x1, y1, x2, y2);
 }
 
-extern "C" void APIENTRY glRectiv(const GLint * v1, const GLint * v2) {
+extern "C" void APIENTRY glRectiv(const GLint* v1, const GLint* v2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *, const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRectiv");
     if (!fn) return;
     if (fn) fn(v1, v2);
@@ -1986,15 +2000,15 @@ extern "C" void APIENTRY glRectiv(const GLint * v1, const GLint * v2) {
 
 extern "C" void APIENTRY glRects(GLshort x1, GLshort y1, GLshort x2, GLshort y2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRects");
     if (!fn) return;
     if (fn) fn(x1, y1, x2, y2);
 }
 
-extern "C" void APIENTRY glRectsv(const GLshort * v1, const GLshort * v2) {
+extern "C" void APIENTRY glRectsv(const GLshort* v1, const GLshort* v2) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *, const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*, const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRectsv");
     if (!fn) return;
     if (fn) fn(v1, v2);
@@ -2002,7 +2016,7 @@ extern "C" void APIENTRY glRectsv(const GLshort * v1, const GLshort * v2) {
 
 extern "C" GLint APIENTRY glRenderMode(GLenum mode) {
     if (!LoadRealOpenGL32()) return (GLint)0;
-    typedef GLint (APIENTRY *PFN)(GLenum);
+    typedef GLint(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRenderMode");
     if (!fn) return (GLint)0;
     return fn(mode);
@@ -2010,7 +2024,7 @@ extern "C" GLint APIENTRY glRenderMode(GLenum mode) {
 
 extern "C" void APIENTRY glRotated(GLdouble angle, GLdouble x, GLdouble y, GLdouble z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRotated");
     if (!fn) return;
     if (fn) fn(angle, x, y, z);
@@ -2018,7 +2032,7 @@ extern "C" void APIENTRY glRotated(GLdouble angle, GLdouble x, GLdouble y, GLdou
 
 extern "C" void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glRotatef");
     if (!fn) return;
     if (fn) fn(angle, x, y, z);
@@ -2026,7 +2040,7 @@ extern "C" void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat 
 
 extern "C" void APIENTRY glScaled(GLdouble x, GLdouble y, GLdouble z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glScaled");
     if (!fn) return;
     if (fn) fn(x, y, z);
@@ -2034,7 +2048,7 @@ extern "C" void APIENTRY glScaled(GLdouble x, GLdouble y, GLdouble z) {
 
 extern "C" void APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glScalef");
     if (!fn) return;
     if (fn) fn(x, y, z);
@@ -2042,15 +2056,15 @@ extern "C" void APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z) {
 
 extern "C" void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLsizei, GLsizei);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLsizei, GLsizei);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glScissor");
     if (!fn) return;
     if (fn) fn(x, y, width, height);
 }
 
-extern "C" void APIENTRY glSelectBuffer(GLsizei size, GLuint * buffer) {
+extern "C" void APIENTRY glSelectBuffer(GLsizei size, GLuint* buffer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLsizei, GLuint *);
+    typedef void(APIENTRY * PFN)(GLsizei, GLuint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glSelectBuffer");
     if (!fn) return;
     if (fn) fn(size, buffer);
@@ -2058,7 +2072,7 @@ extern "C" void APIENTRY glSelectBuffer(GLsizei size, GLuint * buffer) {
 
 extern "C" void APIENTRY glShadeModel(GLenum mode) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum);
+    typedef void(APIENTRY * PFN)(GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glShadeModel");
     if (!fn) return;
     if (fn) fn(mode);
@@ -2066,7 +2080,7 @@ extern "C" void APIENTRY glShadeModel(GLenum mode) {
 
 extern "C" void APIENTRY glStencilFunc(GLenum func, GLint ref, GLuint mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLuint);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glStencilFunc");
     if (!fn) return;
     if (fn) fn(func, ref, mask);
@@ -2074,7 +2088,7 @@ extern "C" void APIENTRY glStencilFunc(GLenum func, GLint ref, GLuint mask) {
 
 extern "C" void APIENTRY glStencilMask(GLuint mask) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLuint);
+    typedef void(APIENTRY * PFN)(GLuint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glStencilMask");
     if (!fn) return;
     if (fn) fn(mask);
@@ -2082,7 +2096,7 @@ extern "C" void APIENTRY glStencilMask(GLuint mask) {
 
 extern "C" void APIENTRY glStencilOp(GLenum fail, GLenum zfail, GLenum zpass) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLenum);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLenum);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glStencilOp");
     if (!fn) return;
     if (fn) fn(fail, zfail, zpass);
@@ -2090,15 +2104,15 @@ extern "C" void APIENTRY glStencilOp(GLenum fail, GLenum zfail, GLenum zpass) {
 
 extern "C" void APIENTRY glTexCoord1d(GLdouble s) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1d");
     if (!fn) return;
     if (fn) fn(s);
 }
 
-extern "C" void APIENTRY glTexCoord1dv(const GLdouble * v) {
+extern "C" void APIENTRY glTexCoord1dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2106,15 +2120,15 @@ extern "C" void APIENTRY glTexCoord1dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glTexCoord1f(GLfloat s) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1f");
     if (!fn) return;
     if (fn) fn(s);
 }
 
-extern "C" void APIENTRY glTexCoord1fv(const GLfloat * v) {
+extern "C" void APIENTRY glTexCoord1fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2122,15 +2136,15 @@ extern "C" void APIENTRY glTexCoord1fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glTexCoord1i(GLint s) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint);
+    typedef void(APIENTRY * PFN)(GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1i");
     if (!fn) return;
     if (fn) fn(s);
 }
 
-extern "C" void APIENTRY glTexCoord1iv(const GLint * v) {
+extern "C" void APIENTRY glTexCoord1iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2138,15 +2152,15 @@ extern "C" void APIENTRY glTexCoord1iv(const GLint * v) {
 
 extern "C" void APIENTRY glTexCoord1s(GLshort s) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort);
+    typedef void(APIENTRY * PFN)(GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1s");
     if (!fn) return;
     if (fn) fn(s);
 }
 
-extern "C" void APIENTRY glTexCoord1sv(const GLshort * v) {
+extern "C" void APIENTRY glTexCoord1sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord1sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2154,15 +2168,15 @@ extern "C" void APIENTRY glTexCoord1sv(const GLshort * v) {
 
 extern "C" void APIENTRY glTexCoord2d(GLdouble s, GLdouble t) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2d");
     if (!fn) return;
     if (fn) fn(s, t);
 }
 
-extern "C" void APIENTRY glTexCoord2dv(const GLdouble * v) {
+extern "C" void APIENTRY glTexCoord2dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2170,15 +2184,15 @@ extern "C" void APIENTRY glTexCoord2dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glTexCoord2f(GLfloat s, GLfloat t) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2f");
     if (!fn) return;
     if (fn) fn(s, t);
 }
 
-extern "C" void APIENTRY glTexCoord2fv(const GLfloat * v) {
+extern "C" void APIENTRY glTexCoord2fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2186,15 +2200,15 @@ extern "C" void APIENTRY glTexCoord2fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glTexCoord2i(GLint s, GLint t) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2i");
     if (!fn) return;
     if (fn) fn(s, t);
 }
 
-extern "C" void APIENTRY glTexCoord2iv(const GLint * v) {
+extern "C" void APIENTRY glTexCoord2iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2202,15 +2216,15 @@ extern "C" void APIENTRY glTexCoord2iv(const GLint * v) {
 
 extern "C" void APIENTRY glTexCoord2s(GLshort s, GLshort t) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2s");
     if (!fn) return;
     if (fn) fn(s, t);
 }
 
-extern "C" void APIENTRY glTexCoord2sv(const GLshort * v) {
+extern "C" void APIENTRY glTexCoord2sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord2sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2218,15 +2232,15 @@ extern "C" void APIENTRY glTexCoord2sv(const GLshort * v) {
 
 extern "C" void APIENTRY glTexCoord3d(GLdouble s, GLdouble t, GLdouble r) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3d");
     if (!fn) return;
     if (fn) fn(s, t, r);
 }
 
-extern "C" void APIENTRY glTexCoord3dv(const GLdouble * v) {
+extern "C" void APIENTRY glTexCoord3dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2234,15 +2248,15 @@ extern "C" void APIENTRY glTexCoord3dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glTexCoord3f(GLfloat s, GLfloat t, GLfloat r) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3f");
     if (!fn) return;
     if (fn) fn(s, t, r);
 }
 
-extern "C" void APIENTRY glTexCoord3fv(const GLfloat * v) {
+extern "C" void APIENTRY glTexCoord3fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2250,15 +2264,15 @@ extern "C" void APIENTRY glTexCoord3fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glTexCoord3i(GLint s, GLint t, GLint r) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3i");
     if (!fn) return;
     if (fn) fn(s, t, r);
 }
 
-extern "C" void APIENTRY glTexCoord3iv(const GLint * v) {
+extern "C" void APIENTRY glTexCoord3iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2266,15 +2280,15 @@ extern "C" void APIENTRY glTexCoord3iv(const GLint * v) {
 
 extern "C" void APIENTRY glTexCoord3s(GLshort s, GLshort t, GLshort r) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3s");
     if (!fn) return;
     if (fn) fn(s, t, r);
 }
 
-extern "C" void APIENTRY glTexCoord3sv(const GLshort * v) {
+extern "C" void APIENTRY glTexCoord3sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord3sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2282,15 +2296,15 @@ extern "C" void APIENTRY glTexCoord3sv(const GLshort * v) {
 
 extern "C" void APIENTRY glTexCoord4d(GLdouble s, GLdouble t, GLdouble r, GLdouble q) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4d");
     if (!fn) return;
     if (fn) fn(s, t, r, q);
 }
 
-extern "C" void APIENTRY glTexCoord4dv(const GLdouble * v) {
+extern "C" void APIENTRY glTexCoord4dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2298,15 +2312,15 @@ extern "C" void APIENTRY glTexCoord4dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glTexCoord4f(GLfloat s, GLfloat t, GLfloat r, GLfloat q) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4f");
     if (!fn) return;
     if (fn) fn(s, t, r, q);
 }
 
-extern "C" void APIENTRY glTexCoord4fv(const GLfloat * v) {
+extern "C" void APIENTRY glTexCoord4fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2314,15 +2328,15 @@ extern "C" void APIENTRY glTexCoord4fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glTexCoord4i(GLint s, GLint t, GLint r, GLint q) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4i");
     if (!fn) return;
     if (fn) fn(s, t, r, q);
 }
 
-extern "C" void APIENTRY glTexCoord4iv(const GLint * v) {
+extern "C" void APIENTRY glTexCoord4iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2330,23 +2344,23 @@ extern "C" void APIENTRY glTexCoord4iv(const GLint * v) {
 
 extern "C" void APIENTRY glTexCoord4s(GLshort s, GLshort t, GLshort r, GLshort q) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4s");
     if (!fn) return;
     if (fn) fn(s, t, r, q);
 }
 
-extern "C" void APIENTRY glTexCoord4sv(const GLshort * v) {
+extern "C" void APIENTRY glTexCoord4sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoord4sv");
     if (!fn) return;
     if (fn) fn(v);
 }
 
-extern "C" void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
+extern "C" void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid* pointer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLenum, GLsizei, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLint, GLenum, GLsizei, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexCoordPointer");
     if (!fn) return;
     if (fn) fn(size, type, stride, pointer);
@@ -2354,15 +2368,15 @@ extern "C" void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stri
 
 extern "C" void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexEnvf");
     if (!fn) return;
     if (fn) fn(target, pname, param);
 }
 
-extern "C" void APIENTRY glTexEnvfv(GLenum target, GLenum pname, const GLfloat * params) {
+extern "C" void APIENTRY glTexEnvfv(GLenum target, GLenum pname, const GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexEnvfv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
@@ -2370,15 +2384,15 @@ extern "C" void APIENTRY glTexEnvfv(GLenum target, GLenum pname, const GLfloat *
 
 extern "C" void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexEnvi");
     if (!fn) return;
     if (fn) fn(target, pname, param);
 }
 
-extern "C" void APIENTRY glTexEnviv(GLenum target, GLenum pname, const GLint * params) {
+extern "C" void APIENTRY glTexEnviv(GLenum target, GLenum pname, const GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexEnviv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
@@ -2386,15 +2400,15 @@ extern "C" void APIENTRY glTexEnviv(GLenum target, GLenum pname, const GLint * p
 
 extern "C" void APIENTRY glTexGend(GLenum coord, GLenum pname, GLdouble param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLdouble);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexGend");
     if (!fn) return;
     if (fn) fn(coord, pname, param);
 }
 
-extern "C" void APIENTRY glTexGendv(GLenum coord, GLenum pname, const GLdouble * params) {
+extern "C" void APIENTRY glTexGendv(GLenum coord, GLenum pname, const GLdouble* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLdouble *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexGendv");
     if (!fn) return;
     if (fn) fn(coord, pname, params);
@@ -2402,15 +2416,15 @@ extern "C" void APIENTRY glTexGendv(GLenum coord, GLenum pname, const GLdouble *
 
 extern "C" void APIENTRY glTexGenf(GLenum coord, GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexGenf");
     if (!fn) return;
     if (fn) fn(coord, pname, param);
 }
 
-extern "C" void APIENTRY glTexGenfv(GLenum coord, GLenum pname, const GLfloat * params) {
+extern "C" void APIENTRY glTexGenfv(GLenum coord, GLenum pname, const GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexGenfv");
     if (!fn) return;
     if (fn) fn(coord, pname, params);
@@ -2418,31 +2432,33 @@ extern "C" void APIENTRY glTexGenfv(GLenum coord, GLenum pname, const GLfloat * 
 
 extern "C" void APIENTRY glTexGeni(GLenum coord, GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexGeni");
     if (!fn) return;
     if (fn) fn(coord, pname, param);
 }
 
-extern "C" void APIENTRY glTexGeniv(GLenum coord, GLenum pname, const GLint * params) {
+extern "C" void APIENTRY glTexGeniv(GLenum coord, GLenum pname, const GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexGeniv");
     if (!fn) return;
     if (fn) fn(coord, pname, params);
 }
 
-extern "C" void APIENTRY glTexImage1D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid * pixels) {
+extern "C" void APIENTRY glTexImage1D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLint border,
+                                      GLenum format, GLenum type, const GLvoid* pixels) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint, GLsizei, GLint, GLenum, GLenum, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint, GLsizei, GLint, GLenum, GLenum, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexImage1D");
     if (!fn) return;
     if (fn) fn(target, level, internalformat, width, border, format, type, pixels);
 }
 
-extern "C" void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid * pixels) {
+extern "C" void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                                      GLint border, GLenum format, GLenum type, const GLvoid* pixels) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexImage2D");
     if (!fn) return;
     if (fn) fn(target, level, internalformat, width, height, border, format, type, pixels);
@@ -2450,15 +2466,15 @@ extern "C" void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internal
 
 extern "C" void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLfloat);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexParameterf");
     if (!fn) return;
     if (fn) fn(target, pname, param);
 }
 
-extern "C" void APIENTRY glTexParameterfv(GLenum target, GLenum pname, const GLfloat * params) {
+extern "C" void APIENTRY glTexParameterfv(GLenum target, GLenum pname, const GLfloat* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLfloat *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexParameterfv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
@@ -2466,31 +2482,33 @@ extern "C" void APIENTRY glTexParameterfv(GLenum target, GLenum pname, const GLf
 
 extern "C" void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, GLint);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexParameteri");
     if (!fn) return;
     if (fn) fn(target, pname, param);
 }
 
-extern "C" void APIENTRY glTexParameteriv(GLenum target, GLenum pname, const GLint * params) {
+extern "C" void APIENTRY glTexParameteriv(GLenum target, GLenum pname, const GLint* params) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLenum, const GLint *);
+    typedef void(APIENTRY * PFN)(GLenum, GLenum, const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexParameteriv");
     if (!fn) return;
     if (fn) fn(target, pname, params);
 }
 
-extern "C" void APIENTRY glTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLsizei width, GLenum format, GLenum type, const GLvoid * pixels) {
+extern "C" void APIENTRY glTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLsizei width, GLenum format,
+                                         GLenum type, const GLvoid* pixels) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint, GLsizei, GLenum, GLenum, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint, GLsizei, GLenum, GLenum, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexSubImage1D");
     if (!fn) return;
     if (fn) fn(target, level, xoffset, width, format, type, pixels);
 }
 
-extern "C" void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid * pixels) {
+extern "C" void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width,
+                                         GLsizei height, GLenum format, GLenum type, const GLvoid* pixels) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLenum, GLint, GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTexSubImage2D");
     if (!fn) return;
     if (fn) fn(target, level, xoffset, yoffset, width, height, format, type, pixels);
@@ -2498,7 +2516,7 @@ extern "C" void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffs
 
 extern "C" void APIENTRY glTranslated(GLdouble x, GLdouble y, GLdouble z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTranslated");
     if (!fn) return;
     if (fn) fn(x, y, z);
@@ -2506,7 +2524,7 @@ extern "C" void APIENTRY glTranslated(GLdouble x, GLdouble y, GLdouble z) {
 
 extern "C" void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glTranslatef");
     if (!fn) return;
     if (fn) fn(x, y, z);
@@ -2514,15 +2532,15 @@ extern "C" void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
 
 extern "C" void APIENTRY glVertex2d(GLdouble x, GLdouble y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2d");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glVertex2dv(const GLdouble * v) {
+extern "C" void APIENTRY glVertex2dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2530,15 +2548,15 @@ extern "C" void APIENTRY glVertex2dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glVertex2f(GLfloat x, GLfloat y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2f");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glVertex2fv(const GLfloat * v) {
+extern "C" void APIENTRY glVertex2fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2546,15 +2564,15 @@ extern "C" void APIENTRY glVertex2fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glVertex2i(GLint x, GLint y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2i");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glVertex2iv(const GLint * v) {
+extern "C" void APIENTRY glVertex2iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2562,15 +2580,15 @@ extern "C" void APIENTRY glVertex2iv(const GLint * v) {
 
 extern "C" void APIENTRY glVertex2s(GLshort x, GLshort y) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2s");
     if (!fn) return;
     if (fn) fn(x, y);
 }
 
-extern "C" void APIENTRY glVertex2sv(const GLshort * v) {
+extern "C" void APIENTRY glVertex2sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex2sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2578,15 +2596,15 @@ extern "C" void APIENTRY glVertex2sv(const GLshort * v) {
 
 extern "C" void APIENTRY glVertex3d(GLdouble x, GLdouble y, GLdouble z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3d");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glVertex3dv(const GLdouble * v) {
+extern "C" void APIENTRY glVertex3dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2594,15 +2612,15 @@ extern "C" void APIENTRY glVertex3dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3f");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glVertex3fv(const GLfloat * v) {
+extern "C" void APIENTRY glVertex3fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2610,15 +2628,15 @@ extern "C" void APIENTRY glVertex3fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glVertex3i(GLint x, GLint y, GLint z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3i");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glVertex3iv(const GLint * v) {
+extern "C" void APIENTRY glVertex3iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2626,15 +2644,15 @@ extern "C" void APIENTRY glVertex3iv(const GLint * v) {
 
 extern "C" void APIENTRY glVertex3s(GLshort x, GLshort y, GLshort z) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3s");
     if (!fn) return;
     if (fn) fn(x, y, z);
 }
 
-extern "C" void APIENTRY glVertex3sv(const GLshort * v) {
+extern "C" void APIENTRY glVertex3sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex3sv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2642,15 +2660,15 @@ extern "C" void APIENTRY glVertex3sv(const GLshort * v) {
 
 extern "C" void APIENTRY glVertex4d(GLdouble x, GLdouble y, GLdouble z, GLdouble w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
+    typedef void(APIENTRY * PFN)(GLdouble, GLdouble, GLdouble, GLdouble);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4d");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glVertex4dv(const GLdouble * v) {
+extern "C" void APIENTRY glVertex4dv(const GLdouble* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLdouble *);
+    typedef void(APIENTRY * PFN)(const GLdouble*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4dv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2658,15 +2676,15 @@ extern "C" void APIENTRY glVertex4dv(const GLdouble * v) {
 
 extern "C" void APIENTRY glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
+    typedef void(APIENTRY * PFN)(GLfloat, GLfloat, GLfloat, GLfloat);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4f");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glVertex4fv(const GLfloat * v) {
+extern "C" void APIENTRY glVertex4fv(const GLfloat* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLfloat *);
+    typedef void(APIENTRY * PFN)(const GLfloat*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4fv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2674,15 +2692,15 @@ extern "C" void APIENTRY glVertex4fv(const GLfloat * v) {
 
 extern "C" void APIENTRY glVertex4i(GLint x, GLint y, GLint z, GLint w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLint, GLint);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLint, GLint);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4i");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glVertex4iv(const GLint * v) {
+extern "C" void APIENTRY glVertex4iv(const GLint* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLint *);
+    typedef void(APIENTRY * PFN)(const GLint*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4iv");
     if (!fn) return;
     if (fn) fn(v);
@@ -2690,23 +2708,23 @@ extern "C" void APIENTRY glVertex4iv(const GLint * v) {
 
 extern "C" void APIENTRY glVertex4s(GLshort x, GLshort y, GLshort z, GLshort w) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLshort, GLshort, GLshort, GLshort);
+    typedef void(APIENTRY * PFN)(GLshort, GLshort, GLshort, GLshort);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4s");
     if (!fn) return;
     if (fn) fn(x, y, z, w);
 }
 
-extern "C" void APIENTRY glVertex4sv(const GLshort * v) {
+extern "C" void APIENTRY glVertex4sv(const GLshort* v) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(const GLshort *);
+    typedef void(APIENTRY * PFN)(const GLshort*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertex4sv");
     if (!fn) return;
     if (fn) fn(v);
 }
 
-extern "C" void APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
+extern "C" void APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid* pointer) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLenum, GLsizei, const GLvoid *);
+    typedef void(APIENTRY * PFN)(GLint, GLenum, GLsizei, const GLvoid*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glVertexPointer");
     if (!fn) return;
     if (fn) fn(size, type, stride, pointer);
@@ -2714,15 +2732,15 @@ extern "C" void APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride
 
 extern "C" void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
     if (!LoadRealOpenGL32()) return;
-    typedef void (APIENTRY *PFN)(GLint, GLint, GLsizei, GLsizei);
+    typedef void(APIENTRY * PFN)(GLint, GLint, GLsizei, GLsizei);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "glViewport");
     if (!fn) return;
     if (fn) fn(x, y, width, height);
 }
 
-extern "C" int APIENTRY wglChoosePixelFormat(HDC hdc, const PIXELFORMATDESCRIPTOR * ppfd) {
+extern "C" int APIENTRY wglChoosePixelFormat(HDC hdc, const PIXELFORMATDESCRIPTOR* ppfd) {
     if (!LoadRealOpenGL32()) return (int)0;
-    typedef int (APIENTRY *PFN)(HDC, const PIXELFORMATDESCRIPTOR *);
+    typedef int(APIENTRY * PFN)(HDC, const PIXELFORMATDESCRIPTOR*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglChoosePixelFormat");
     if (!fn) return (int)0;
     return fn(hdc, ppfd);
@@ -2730,7 +2748,7 @@ extern "C" int APIENTRY wglChoosePixelFormat(HDC hdc, const PIXELFORMATDESCRIPTO
 
 extern "C" BOOL APIENTRY wglCopyContext(HGLRC hglrcSrc, HGLRC hglrcDst, UINT mask) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HGLRC, HGLRC, UINT);
+    typedef BOOL(APIENTRY * PFN)(HGLRC, HGLRC, UINT);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglCopyContext");
     if (!fn) return (BOOL)0;
     return fn(hglrcSrc, hglrcDst, mask);
@@ -2738,7 +2756,7 @@ extern "C" BOOL APIENTRY wglCopyContext(HGLRC hglrcSrc, HGLRC hglrcDst, UINT mas
 
 extern "C" HGLRC APIENTRY wglCreateContext(HDC hdc) {
     if (!LoadRealOpenGL32()) return (HGLRC)0;
-    typedef HGLRC (APIENTRY *PFN)(HDC);
+    typedef HGLRC(APIENTRY * PFN)(HDC);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglCreateContext");
     if (!fn) return (HGLRC)0;
     return fn(hdc);
@@ -2746,7 +2764,7 @@ extern "C" HGLRC APIENTRY wglCreateContext(HDC hdc) {
 
 extern "C" HGLRC APIENTRY wglCreateLayerContext(HDC hdc, int iLayerPlane) {
     if (!LoadRealOpenGL32()) return (HGLRC)0;
-    typedef HGLRC (APIENTRY *PFN)(HDC, int);
+    typedef HGLRC(APIENTRY * PFN)(HDC, int);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglCreateLayerContext");
     if (!fn) return (HGLRC)0;
     return fn(hdc, iLayerPlane);
@@ -2754,15 +2772,16 @@ extern "C" HGLRC APIENTRY wglCreateLayerContext(HDC hdc, int iLayerPlane) {
 
 extern "C" BOOL APIENTRY wglDeleteContext(HGLRC hglrc) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HGLRC);
+    typedef BOOL(APIENTRY * PFN)(HGLRC);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglDeleteContext");
     if (!fn) return (BOOL)0;
     return fn(hglrc);
 }
 
-extern "C" BOOL APIENTRY wglDescribeLayerPlane(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nBytes, LPLAYERPLANEDESCRIPTOR plpd) {
+extern "C" BOOL APIENTRY wglDescribeLayerPlane(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nBytes,
+                                               LPLAYERPLANEDESCRIPTOR plpd) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, int, int, UINT, LPLAYERPLANEDESCRIPTOR);
+    typedef BOOL(APIENTRY * PFN)(HDC, int, int, UINT, LPLAYERPLANEDESCRIPTOR);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglDescribeLayerPlane");
     if (!fn) return (BOOL)0;
     return fn(hdc, iPixelFormat, iLayerPlane, nBytes, plpd);
@@ -2770,7 +2789,7 @@ extern "C" BOOL APIENTRY wglDescribeLayerPlane(HDC hdc, int iPixelFormat, int iL
 
 extern "C" int APIENTRY wglDescribePixelFormat(HDC hdc, int iPixelFormat, UINT nBytes, LPPIXELFORMATDESCRIPTOR ppfd) {
     if (!LoadRealOpenGL32()) return (int)0;
-    typedef int (APIENTRY *PFN)(HDC, int, UINT, LPPIXELFORMATDESCRIPTOR);
+    typedef int(APIENTRY * PFN)(HDC, int, UINT, LPPIXELFORMATDESCRIPTOR);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglDescribePixelFormat");
     if (!fn) return (int)0;
     return fn(hdc, iPixelFormat, nBytes, ppfd);
@@ -2778,7 +2797,7 @@ extern "C" int APIENTRY wglDescribePixelFormat(HDC hdc, int iPixelFormat, UINT n
 
 extern "C" HGLRC APIENTRY wglGetCurrentContext() {
     if (!LoadRealOpenGL32()) return (HGLRC)0;
-    typedef HGLRC (APIENTRY *PFN)(void);
+    typedef HGLRC(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglGetCurrentContext");
     if (!fn) return (HGLRC)0;
     return fn();
@@ -2786,15 +2805,15 @@ extern "C" HGLRC APIENTRY wglGetCurrentContext() {
 
 extern "C" HDC APIENTRY wglGetCurrentDC() {
     if (!LoadRealOpenGL32()) return (HDC)0;
-    typedef HDC (APIENTRY *PFN)(void);
+    typedef HDC(APIENTRY * PFN)(void);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglGetCurrentDC");
     if (!fn) return (HDC)0;
     return fn();
 }
 
-extern "C" int APIENTRY wglGetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries, COLORREF * pcr) {
+extern "C" int APIENTRY wglGetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries, COLORREF* pcr) {
     if (!LoadRealOpenGL32()) return (int)0;
-    typedef int (APIENTRY *PFN)(HDC, int, int, int, COLORREF *);
+    typedef int(APIENTRY * PFN)(HDC, int, int, int, COLORREF*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglGetLayerPaletteEntries");
     if (!fn) return (int)0;
     return fn(hdc, iLayerPlane, iStart, cEntries, pcr);
@@ -2802,7 +2821,7 @@ extern "C" int APIENTRY wglGetLayerPaletteEntries(HDC hdc, int iLayerPlane, int 
 
 extern "C" int APIENTRY wglGetPixelFormat(HDC hdc) {
     if (!LoadRealOpenGL32()) return (int)0;
-    typedef int (APIENTRY *PFN)(HDC);
+    typedef int(APIENTRY * PFN)(HDC);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglGetPixelFormat");
     if (!fn) return (int)0;
     return fn(hdc);
@@ -2810,7 +2829,7 @@ extern "C" int APIENTRY wglGetPixelFormat(HDC hdc) {
 
 extern "C" PROC APIENTRY wglGetProcAddress(LPCSTR lpszProc) {
     if (!LoadRealOpenGL32()) return (PROC)0;
-    typedef PROC (APIENTRY *PFN)(LPCSTR);
+    typedef PROC(APIENTRY * PFN)(LPCSTR);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglGetProcAddress");
     if (!fn) return (PROC)0;
     return fn(lpszProc);
@@ -2818,7 +2837,7 @@ extern "C" PROC APIENTRY wglGetProcAddress(LPCSTR lpszProc) {
 
 extern "C" BOOL APIENTRY wglMakeCurrent(HDC hdc, HGLRC hglrc) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, HGLRC);
+    typedef BOOL(APIENTRY * PFN)(HDC, HGLRC);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglMakeCurrent");
     if (!fn) return (BOOL)0;
     return fn(hdc, hglrc);
@@ -2826,23 +2845,24 @@ extern "C" BOOL APIENTRY wglMakeCurrent(HDC hdc, HGLRC hglrc) {
 
 extern "C" BOOL APIENTRY wglRealizeLayerPalette(HDC hdc, int iLayerPlane, BOOL bRealize) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, int, BOOL);
+    typedef BOOL(APIENTRY * PFN)(HDC, int, BOOL);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglRealizeLayerPalette");
     if (!fn) return (BOOL)0;
     return fn(hdc, iLayerPlane, bRealize);
 }
 
-extern "C" int APIENTRY wglSetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries, const COLORREF * pcr) {
+extern "C" int APIENTRY wglSetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries,
+                                                  const COLORREF* pcr) {
     if (!LoadRealOpenGL32()) return (int)0;
-    typedef int (APIENTRY *PFN)(HDC, int, int, int, const COLORREF *);
+    typedef int(APIENTRY * PFN)(HDC, int, int, int, const COLORREF*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglSetLayerPaletteEntries");
     if (!fn) return (int)0;
     return fn(hdc, iLayerPlane, iStart, cEntries, pcr);
 }
 
-extern "C" BOOL APIENTRY wglSetPixelFormat(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR * ppfd) {
+extern "C" BOOL APIENTRY wglSetPixelFormat(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR* ppfd) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, int, const PIXELFORMATDESCRIPTOR *);
+    typedef BOOL(APIENTRY * PFN)(HDC, int, const PIXELFORMATDESCRIPTOR*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglSetPixelFormat");
     if (!fn) return (BOOL)0;
     return fn(hdc, iPixelFormat, ppfd);
@@ -2850,7 +2870,7 @@ extern "C" BOOL APIENTRY wglSetPixelFormat(HDC hdc, int iPixelFormat, const PIXE
 
 extern "C" BOOL APIENTRY wglShareLists(HGLRC hglrc1, HGLRC hglrc2) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HGLRC, HGLRC);
+    typedef BOOL(APIENTRY * PFN)(HGLRC, HGLRC);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglShareLists");
     if (!fn) return (BOOL)0;
     return fn(hglrc1, hglrc2);
@@ -2858,7 +2878,7 @@ extern "C" BOOL APIENTRY wglShareLists(HGLRC hglrc1, HGLRC hglrc2) {
 
 extern "C" BOOL APIENTRY wglSwapBuffers(HDC hdc) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC);
+    typedef BOOL(APIENTRY * PFN)(HDC);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglSwapBuffers");
     if (!fn) return (BOOL)0;
     return fn(hdc);
@@ -2866,15 +2886,15 @@ extern "C" BOOL APIENTRY wglSwapBuffers(HDC hdc) {
 
 extern "C" BOOL APIENTRY wglSwapLayerBuffers(HDC hdc, UINT planes) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, UINT);
+    typedef BOOL(APIENTRY * PFN)(HDC, UINT);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglSwapLayerBuffers");
     if (!fn) return (BOOL)0;
     return fn(hdc, planes);
 }
 
-extern "C" DWORD APIENTRY wglSwapMultipleBuffers(UINT nBuffers, const WGLSWAP * pBuffers) {
+extern "C" DWORD APIENTRY wglSwapMultipleBuffers(UINT nBuffers, const WGLSWAP* pBuffers) {
     if (!LoadRealOpenGL32()) return (DWORD)0;
-    typedef DWORD (APIENTRY *PFN)(UINT, const WGLSWAP *);
+    typedef DWORD(APIENTRY * PFN)(UINT, const WGLSWAP*);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglSwapMultipleBuffers");
     if (!fn) return (DWORD)0;
     return fn(nBuffers, pBuffers);
@@ -2882,7 +2902,7 @@ extern "C" DWORD APIENTRY wglSwapMultipleBuffers(UINT nBuffers, const WGLSWAP * 
 
 extern "C" BOOL APIENTRY wglUseFontBitmapsA(HDC hdc, DWORD first, DWORD count, DWORD listBase) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, DWORD, DWORD, DWORD);
+    typedef BOOL(APIENTRY * PFN)(HDC, DWORD, DWORD, DWORD);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglUseFontBitmapsA");
     if (!fn) return (BOOL)0;
     return fn(hdc, first, count, listBase);
@@ -2890,23 +2910,25 @@ extern "C" BOOL APIENTRY wglUseFontBitmapsA(HDC hdc, DWORD first, DWORD count, D
 
 extern "C" BOOL APIENTRY wglUseFontBitmapsW(HDC hdc, DWORD first, DWORD count, DWORD listBase) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, DWORD, DWORD, DWORD);
+    typedef BOOL(APIENTRY * PFN)(HDC, DWORD, DWORD, DWORD);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglUseFontBitmapsW");
     if (!fn) return (BOOL)0;
     return fn(hdc, first, count, listBase);
 }
 
-extern "C" BOOL APIENTRY wglUseFontOutlinesA(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation, FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf) {
+extern "C" BOOL APIENTRY wglUseFontOutlinesA(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation,
+                                             FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, DWORD, DWORD, DWORD, FLOAT, FLOAT, int, LPGLYPHMETRICSFLOAT);
+    typedef BOOL(APIENTRY * PFN)(HDC, DWORD, DWORD, DWORD, FLOAT, FLOAT, int, LPGLYPHMETRICSFLOAT);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglUseFontOutlinesA");
     if (!fn) return (BOOL)0;
     return fn(hdc, first, count, listBase, deviation, extrusion, format, lpgmf);
 }
 
-extern "C" BOOL APIENTRY wglUseFontOutlinesW(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation, FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf) {
+extern "C" BOOL APIENTRY wglUseFontOutlinesW(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation,
+                                             FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf) {
     if (!LoadRealOpenGL32()) return (BOOL)0;
-    typedef BOOL (APIENTRY *PFN)(HDC, DWORD, DWORD, DWORD, FLOAT, FLOAT, int, LPGLYPHMETRICSFLOAT);
+    typedef BOOL(APIENTRY * PFN)(HDC, DWORD, DWORD, DWORD, FLOAT, FLOAT, int, LPGLYPHMETRICSFLOAT);
     PFN fn = (PFN)GetProcAddress(g_opengl32_module, "wglUseFontOutlinesW");
     if (!fn) return (BOOL)0;
     return fn(hdc, first, count, listBase, deviation, extrusion, format, lpgmf);

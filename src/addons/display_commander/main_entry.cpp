@@ -1879,12 +1879,13 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
             display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
-            // Preload real dxgi.dll / ddraw.dll / d3d9.dll / opengl32.dll / winmm.dll when this DLL is used as proxy (safe in DllMain: system path only)
-            LoadRealDXGIFromDllMain();
-            LoadRealDDrawFromDllMain();
-            LoadRealD3D9FromDllMain();
-            LoadRealOpenGL32FromDllMain();
-            LoadRealWinMMFromDllMain();
+            // Preload real dxgi.dll / ddraw.dll / d3d9.dll / opengl32.dll / winmm.dll when this DLL is used as proxy
+            // (safe in DllMain: system path only)
+            // LoadRealDXGIFromDllMain();
+            // LoadRealDDrawFromDllMain();
+            // LoadRealD3D9FromDllMain();
+            // LoadRealOpenGL32FromDllMain();
+            // LoadRealWinMMFromDllMain();
 
             DetectWine();
 
@@ -2099,7 +2100,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                      "Display Commander loaded as version.dll proxy - Version functions will be forwarded to "
                      "system "
                      "version.dll"},
-                    {L"opengl32", L"opengl32.dll", "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
+                    {L"opengl32", L"opengl32.dll",
+                     "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
                      "Display Commander loaded as opengl32.dll proxy - OpenGL/WGL functions will be forwarded to "
                      "system opengl32.dll"}};
 

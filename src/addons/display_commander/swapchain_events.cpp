@@ -1521,6 +1521,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     RECORD_DETOUR_CALL(start_time_ns);
     LONGLONG handle_fps_limiter_start_time_ns = start_time_ns;
     float target_fps = GetTargetFps();
+    auto target_fps_native = target_fps;
     late_amount_ns.store(0);
 
     if (from_wrapper) {
@@ -1533,6 +1534,14 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
             case DLSSGFgMode::k4x: target_fps /= 4.0f; break;
             default:               break;
         }
+        static float last_target_fps = -1.0f;  // unset
+
+        if (last_target_fps != target_fps) {
+            last_target_fps = target_fps;
+            LogInfo("Target FPS: %f, Target FPS Native: %f from wrapper: %s lite.fg_mode: %d", target_fps,
+                    target_fps_native, from_wrapper ? "true" : "false", static_cast<int>(lite.fg_mode));
+        }
+
         {
             static bool logged = false;
             if (!logged
@@ -1548,6 +1557,13 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
 
                 logged = true;
             }
+        }
+    } else {
+        static float last_target_fps = -1.0f;  // unset
+        if (last_target_fps != target_fps) {
+            last_target_fps = target_fps;
+            LogInfo("Target FPS: %f, Target FPS Native: %f from wrapper: %s", target_fps, target_fps_native,
+                    from_wrapper ? "true" : "false");
         }
     }
     if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {

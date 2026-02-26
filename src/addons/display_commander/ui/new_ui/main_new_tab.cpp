@@ -2795,7 +2795,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
             imgui.SetTooltip(
                 "Which path is currently applying the FPS limiter this frame.\n"
                 "Priority: reflex_marker > reflex_marker_vk_nvll > reflex_marker_vk_loader > "
-                "reflex_marker_pclstats_etw > dxgi_swapchain > "
+                "reflex_marker_pclstats_etw > dxgi_swapchain1 > dxgi_swapchain > "
                 "dxgi_factory_wrapper > reshade_addon_event. src: %s",
                 GetChosenFpsLimiterSiteName());
         }

@@ -382,8 +382,13 @@ void HandlePresentAfter(bool from_wrapper) {
     ::OnPresentUpdateAfter2(from_wrapper);
 }
 
+static std::atomic<int> in_present_call(0);
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
+    if (in_present_call.load() > 0) {
+        return IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+    }
+
     const LONGLONG now_ns = utils::get_now_ns();
     display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
     RECORD_DETOUR_CALL(now_ns);
@@ -443,8 +448,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::dxgi_swapchain);
-    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain);
+    ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::dxgi_swapchain1);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain1);
 
     if (use_fps_limiter) {
         // Handle common before logic (with D3D10 check enabled)
@@ -452,16 +457,20 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
         RecordNativeFrameTime();
         // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
-    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain) {
+    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain1) {
         RecordFrameTime(FrameTimeMode::kPresent);
     }
-
+    in_present_call.fetch_add(1);
     if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");
-        return This->Present1(SyncInterval, PresentFlags, pPresentParameters);
+        auto res = This->Present1(SyncInterval, PresentFlags, pPresentParameters);
+
+        in_present_call.fetch_sub(1);
+        return res;
     }
 
     auto res = IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+    in_present_call.fetch_sub(1);
 
     if (use_fps_limiter) {
         // Handle common after logic
@@ -485,7 +494,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DX
         HRESULT hr = IDXGISwapChain_GetDesc_Original(This, pDesc);
         /*
                 // Hide HDR capabilities if enabled
-                if (SUCCEEDED(hr) && pDesc != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
+                if (SUCCEEDED(hr) && pDesc != nullptr &&
+           settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
                     // Check if the format is HDR-capable and hide it
                     bool is_hdr_format = false;
                     switch (pDesc->BufferDesc.Format) {
@@ -553,7 +563,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1* This, 
         HRESULT hr = IDXGISwapChain_GetDesc1_Original(This, pDesc);
         /*
                 // Hide HDR capabilities if enabled
-                if (SUCCEEDED(hr) && pDesc != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
+                if (SUCCEEDED(hr) && pDesc != nullptr &&
+           settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
                     // Check if the format is HDR-capable and hide it
                     bool is_hdr_format = false;
                     switch (pDesc->Format) {
@@ -628,7 +639,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
         HRESULT hr = IDXGISwapChain_CheckColorSpaceSupport_Original(This, ColorSpace, pColorSpaceSupport);
 
         // Hide HDR capabilities if enabled
-        if (SUCCEEDED(hr) && pColorSpaceSupport != nullptr && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
+        if (SUCCEEDED(hr) && pColorSpaceSupport != nullptr
+            && settings::g_advancedTabSettings.hide_hdr_capabilities.GetValue()) {
             // Check if this is an HDR color space
             bool is_hdr_colorspace = false;
             switch (ColorSpace) {

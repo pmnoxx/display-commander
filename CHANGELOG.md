@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.107 (2026-02-26)
+
+- **DXGI Present re-entrancy guard** - Added an atomic re-entrancy guard in the DXGI Present detours so that when the detour is already executing (e.g. Present1 calling back into Present), the inner call bypasses addon logic and calls the original directly, avoiding recursion or crashes. Present1 increments the guard before calling the original and decrements on all return paths (including when the original pointer is null).
+
+---
+
 ## v0.12.106 (2026-02-26)
 
 - **Added "FPS Limiter Safe mode"** - Added safe mode to fps limiter in case other modes are broken.

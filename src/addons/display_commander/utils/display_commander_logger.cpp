@@ -67,6 +67,9 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
             return;
         }
         queue_.push_back(std::move(formatted_message));
+        if (force_auto_flush_count_.load(std::memory_order_relaxed) > 0) {
+            queue_.push_back(kFlushSentinel);
+        }
         WakeConditionVariable(&queue_cv_);
     }
 }
@@ -89,6 +92,14 @@ void DisplayCommanderLogger::FlushLogs() {
         queue_.push_back(kFlushSentinel);
         WakeConditionVariable(&queue_cv_);
     }
+}
+
+void DisplayCommanderLogger::IncrementForceAutoFlush() {
+    force_auto_flush_count_.fetch_add(1, std::memory_order_relaxed);
+}
+
+void DisplayCommanderLogger::DecrementForceAutoFlush() {
+    force_auto_flush_count_.fetch_sub(1, std::memory_order_relaxed);
 }
 
 void DisplayCommanderLogger::Shutdown() {

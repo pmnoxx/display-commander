@@ -265,7 +265,8 @@ static void Every1sScreensaver() {
         if (display_commanderhooks::SetThreadExecutionState_Original) {
             EXECUTION_STATE result = display_commanderhooks::SetThreadExecutionState_Original(desired_state);
             if (result != 0) {
-                LogDebug("Prevent display sleep & screensaver: SetThreadExecutionState(0x%x) = 0x%x", desired_state, result);
+                LogDebug("Prevent display sleep & screensaver: SetThreadExecutionState(0x%x) = 0x%x", desired_state,
+                         result);
             }
         }
     }
@@ -604,6 +605,8 @@ namespace {
 // Stuck methods detection: if g_global_frame_id does not increase for 15s, log undestroyed detour guards
 // (indicates a detour may be stuck and helps identify which call path is blocking the render thread).
 void CheckStuckMethodsAndLogUndestroyedGuards() {
+    display_commander::logger::ScopedForceAutoFlush scoped_force_flush;
+
     constexpr LONGLONG STUCK_THRESHOLD_NS = 25 * utils::SEC_TO_NS;
 
     static uint64_t s_last_frame_id = 0;
@@ -762,7 +765,6 @@ void StuckCheckWatchdogThread() {
             break;
         }
         CheckStuckMethodsAndLogUndestroyedGuards();
-        display_commander::logger::FlushLogs();
     }
     LogInfo("Stuck-check watchdog thread stopped");
 }

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.109 (2026-02-26)
+
+- **Stuck methods / undestroyed guards report** - The periodic stuck-methods and undestroyed-detour-guards diagnostic now flushes logs so the output is visible in ReShade logs.
+
+---
+
 ## v0.12.108 (2026-02-26)
 
 - **FPS limit change in logs** - FPS limiter changes are now logged so users can see when the limit is applied or changed in ReShade logs.

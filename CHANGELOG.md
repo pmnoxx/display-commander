@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.111 (2026-02-26)
+
+- **Stuck-report direct logging (relative time only)** - The stuck-methods / undestroyed-guards report now writes to the log file directly from the same thread that runs `CheckStuckMethodsAndLogUndestroyedGuards` via `LogInfoDirectSynchronized`, so output is visible even if the logger's writer thread is blocked. Timestamps use relative time only (`t+XX.Xs`, `X.Xs ago`) from `get_now_ns()` with no `FileTimeToLocalFileTime` or `FileTimeToSystemTime` system calls. Added `g_global_frame_id_last_updated_ns` and `g_last_window_message_processed_ns` (set alongside existing filetime globals) so the report shows "last_updated=X.Xs ago" and "last Windows message processed: X.Xs ago" without wall-clock conversion.
+
+---
+
 ## v0.12.110 (2026-02-26)
 
 - **LoadLibrary hooks: g_module_srwlock never held during system calls** - Module tracking now uses two helpers: `FillModuleInfoFromHandle` (system calls only, no lock) and `TryAddModuleUnderLock` (lock only, no system calls). All six detours (LoadLibraryA/W, LoadLibraryExA/W, LoadPackagedLibrary, LdrLoadDll) call the original API first, then fill module info without the lock, then update shared state under the lock only. This avoids holding `g_module_srwlock` across GetModuleFileNameW, GetModuleInformation, or GetModuleFileTime.

@@ -604,9 +604,8 @@ namespace {
 
 // Stuck methods detection: if g_global_frame_id does not increase for 15s, log undestroyed detour guards
 // (indicates a detour may be stuck and helps identify which call path is blocking the render thread).
+// All log output is written directly from this thread via LogInfoDirectSynchronized (relative time only, no system calls).
 void CheckStuckMethodsAndLogUndestroyedGuards() {
-    display_commander::logger::ScopedForceAutoFlush scoped_force_flush;
-
     constexpr LONGLONG STUCK_THRESHOLD_NS = 25 * utils::SEC_TO_NS;
 
     static uint64_t s_last_frame_id = 0;
@@ -641,83 +640,47 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
     }
     s_stuck_logged_this_period = true;
 
-    // Format "last_updated=HH:MM:SS.mmm" when g_global_frame_id was last incremented
+    // Relative time only (no FileTimeToLocalFileTime/FileTimeToSystemTime)
     char last_updated_buf[64] = "last_updated=never";
-    const uint64_t last_updated_ft64 = g_global_frame_id_last_updated_filetime.load(std::memory_order_acquire);
-    if (last_updated_ft64 != 0) {
-        FILETIME ft = {};
-        ft.dwLowDateTime = static_cast<DWORD>(last_updated_ft64 & 0xFFFFFFFFu);
-        ft.dwHighDateTime = static_cast<DWORD>(last_updated_ft64 >> 32);
-        FILETIME ftLocal = {};
-        if (FileTimeToLocalFileTime(&ft, &ftLocal)) {
-            SYSTEMTIME st = {};
-            if (FileTimeToSystemTime(&ftLocal, &st)) {
-                sprintf_s(last_updated_buf, sizeof(last_updated_buf), "last_updated=%02u:%02u:%02u.%03u",
-                          static_cast<unsigned>(st.wHour), static_cast<unsigned>(st.wMinute),
-                          static_cast<unsigned>(st.wSecond), static_cast<unsigned>(st.wMilliseconds));
-            }
-        }
+    const LONGLONG last_updated_ns = g_global_frame_id_last_updated_ns.load(std::memory_order_acquire);
+    if (last_updated_ns != 0) {
+        const double ago_s = static_cast<double>(now_real_ns - last_updated_ns) / 1e9;
+        sprintf_s(last_updated_buf, sizeof(last_updated_buf), "last_updated=%.2fs ago", ago_s);
     }
-    LogInfo("=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu, %s) ===",
-            static_cast<uint64_t>(current_frame_id), last_updated_buf);
+    display_commander::logger::LogInfoDirectSynchronized(
+        "=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu, %s) ===",
+        static_cast<uint64_t>(current_frame_id), last_updated_buf);
 
-    // Last time a Windows message was processed (if message queue is stuck, this will be old)
     char last_wndproc_buf[80] = "last Windows message processed: never";
-    const uint64_t last_wndproc_ft64 = g_last_window_message_processed_filetime.load(std::memory_order_acquire);
-    if (last_wndproc_ft64 != 0) {
-        FILETIME ftWnd = {};
-        ftWnd.dwLowDateTime = static_cast<DWORD>(last_wndproc_ft64 & 0xFFFFFFFFu);
-        ftWnd.dwHighDateTime = static_cast<DWORD>(last_wndproc_ft64 >> 32);
-        FILETIME ftWndLocal = {};
-        if (FileTimeToLocalFileTime(&ftWnd, &ftWndLocal)) {
-            SYSTEMTIME stWnd = {};
-            if (FileTimeToSystemTime(&ftWndLocal, &stWnd)) {
-                sprintf_s(last_wndproc_buf, sizeof(last_wndproc_buf),
-                          "last Windows message processed: %02u:%02u:%02u.%03u (queue may be stuck if this is old)",
-                          static_cast<unsigned>(stWnd.wHour), static_cast<unsigned>(stWnd.wMinute),
-                          static_cast<unsigned>(stWnd.wSecond), static_cast<unsigned>(stWnd.wMilliseconds));
-            }
-        }
+    const LONGLONG last_wndproc_ns = g_last_window_message_processed_ns.load(std::memory_order_acquire);
+    if (last_wndproc_ns != 0) {
+        const double ago_s = static_cast<double>(now_real_ns - last_wndproc_ns) / 1e9;
+        sprintf_s(last_wndproc_buf, sizeof(last_wndproc_buf),
+                  "last Windows message processed: %.2fs ago (queue may be stuck if this is old)", ago_s);
     }
-    LogInfo("%s", last_wndproc_buf);
+    display_commander::logger::LogInfoDirectSynchronized("%s", last_wndproc_buf);
 
     LONGLONG last_loop_ns = g_last_continuous_monitoring_loop_real_ns.load(std::memory_order_acquire);
-    const uint64_t last_loop_ft64 = g_last_continuous_monitoring_loop_filetime.load(std::memory_order_acquire);
     const char* section = g_continuous_monitoring_section.load(std::memory_order_acquire);
     if (last_loop_ns > 0) {
-        LONGLONG loop_ago_ns = now_real_ns - last_loop_ns;
-        double loop_ago_s = static_cast<double>(loop_ago_ns) / 1e9;
-        char at_buf[32] = "";
-        if (last_loop_ft64 != 0) {
-            FILETIME ft = {};
-            ft.dwLowDateTime = static_cast<DWORD>(last_loop_ft64 & 0xFFFFFFFFu);
-            ft.dwHighDateTime = static_cast<DWORD>(last_loop_ft64 >> 32);
-            FILETIME ft_local = {};
-            if (FileTimeToLocalFileTime(&ft, &ft_local) != 0) {
-                SYSTEMTIME st = {};
-                if (FileTimeToSystemTime(&ft_local, &st) != 0) {
-                    sprintf_s(at_buf, sizeof(at_buf), " (at %02u:%02u:%02u.%03u)", static_cast<unsigned>(st.wHour),
-                              static_cast<unsigned>(st.wMinute), static_cast<unsigned>(st.wSecond),
-                              static_cast<unsigned>(st.wMilliseconds));
-                }
-            }
-        }
-        LogInfo("Continuous monitoring last looped: %.2f s ago%s", loop_ago_s, at_buf);
+        const double loop_ago_s = static_cast<double>(now_real_ns - last_loop_ns) / 1e9;
+        display_commander::logger::LogInfoDirectSynchronized("Continuous monitoring last looped: %.2f s ago",
+                                                             loop_ago_s);
     } else {
-        LogInfo("Continuous monitoring: no iteration completed yet");
+        display_commander::logger::LogInfoDirectSynchronized("Continuous monitoring: no iteration completed yet");
     }
     if (section != nullptr && section[0] != '\0') {
-        LogInfo("Continuous monitoring current section: %s (stuck here if not sleeping)", section);
+        display_commander::logger::LogInfoDirectSynchronized(
+            "Continuous monitoring current section: %s (stuck here if not sleeping)", section);
     }
     const char* ui_section = g_rendering_ui_section.load(std::memory_order_acquire);
     if (ui_section != nullptr && ui_section[0] != '\0') {
-        LogInfo("Rendering UI current section: %s (stuck here if overlay was open)", ui_section);
+        display_commander::logger::LogInfoDirectSynchronized(
+            "Rendering UI current section: %s (stuck here if overlay was open)", ui_section);
     }
 
-    // Report every SRWLOCK (HELD = in use; helps identify which lock is hanging when diagnosing deadlocks)
     utils::LogAllSrwlockStatus();
 
-    // Recent detour calls (last 256) to see call trail when stuck
     {
         constexpr size_t RECENT_CALLS_COUNT = 256;
         std::string recent_calls =
@@ -730,7 +693,7 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
                     line.pop_back();
                 }
                 if (!line.empty()) {
-                    LogInfo("%s", line.c_str());
+                    display_commander::logger::LogInfoDirectSynchronized("%s", line.c_str());
                 }
             }
         }
@@ -745,13 +708,13 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
                 line.pop_back();
             }
             if (!line.empty()) {
-                LogInfo("%s", line.c_str());
+                display_commander::logger::LogInfoDirectSynchronized("%s", line.c_str());
             }
         }
     } else {
-        LogInfo("Undestroyed Detour Guards: 0");
+        display_commander::logger::LogInfoDirectSynchronized("Undestroyed Detour Guards: 0");
     }
-    LogInfo("=== END STUCK METHODS (undestroyed guards) ===");
+    display_commander::logger::LogInfoDirectSynchronized("=== END STUCK METHODS (undestroyed guards) ===");
 }
 
 // Dedicated thread that periodically calls CheckStuckMethodsAndLogUndestroyedGuards

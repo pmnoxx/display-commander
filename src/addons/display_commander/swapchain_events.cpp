@@ -1422,6 +1422,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
         GetSystemTimePreciseAsFileTime(&ft);
         const uint64_t ft64 = (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
         g_global_frame_id_last_updated_filetime.store(ft64, std::memory_order_release);
+        g_global_frame_id_last_updated_ns.store(utils::get_real_time_ns(), std::memory_order_release);
     }
 
     if (s_reflex_enable_current_frame.load()) {

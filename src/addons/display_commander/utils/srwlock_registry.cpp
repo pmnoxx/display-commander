@@ -28,7 +28,9 @@ SRWLOCK g_wndproc_map_lock = SRWLOCK_INIT;
 
 namespace {
 
-static void LogOne(const char* name, bool held) { LogInfo("SRWLOCK %s: %s", name, held ? "HELD" : "free"); }
+static void LogOne(const char* name, bool held) {
+    display_commander::logger::LogInfoDirectSynchronized("SRWLOCK %s: %s", name, held ? "HELD" : "free");
+}
 
 }  // namespace
 

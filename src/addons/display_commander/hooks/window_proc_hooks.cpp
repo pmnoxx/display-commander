@@ -17,6 +17,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_registry.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "../utils/timing.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
 #include "pclstats_etw_hooks.hpp"
 
@@ -38,6 +39,7 @@ static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, L
         GetSystemTimePreciseAsFileTime(&ft);
         const uint64_t ft64 = (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
         g_last_window_message_processed_filetime.store(ft64, std::memory_order_release);
+        g_last_window_message_processed_ns.store(utils::get_real_time_ns(), std::memory_order_release);
     }
     if (ProcessWindowMessage(hwnd, uMsg, wParam, lParam)) {
         return 0;  // Message suppressed (skipped)

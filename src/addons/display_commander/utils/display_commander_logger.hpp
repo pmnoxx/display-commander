@@ -35,7 +35,13 @@ class DisplayCommanderLogger {
     // Request flush: enqueues a flush sentinel so writer flushes without blocking the caller
     void FlushLogs();
 
-    // When > 0, each Log() enqueues a flush sentinel after the message so output is visible immediately (e.g. stuck-report).
+    // Write INFO line directly to log file from calling thread (synchronized with queue_lock_).
+    // Uses relative time only (t+XX.Xs from baseline at init); no FileTime/SystemTime system calls.
+    // For use from same thread as CheckStuckMethodsAndLogUndestroyedGuards to avoid queue/writer dependency.
+    void LogInfoDirectSynchronized(const std::string& message);
+
+    // When > 0, each Log() enqueues a flush sentinel after the message so output is visible immediately (e.g.
+    // stuck-report).
     void IncrementForceAutoFlush();
     void DecrementForceAutoFlush();
 
@@ -57,12 +63,14 @@ class DisplayCommanderLogger {
     void CloseLogFile();
     void WriteToFile(const std::string& formatted_message);
     std::string FormatMessage(LogLevel level, const std::string& message);
+    std::string FormatMessageDirectRelativeTime(const std::string& message, LONGLONG now_ns);
     std::string GetLogLevelString(LogLevel level);
     bool ShouldRotateLog();
     void RotateLog();
 
     std::string log_path_;
     std::ofstream log_file_;
+    LONGLONG baseline_ns_ = 0;  // get_now_ns() at Initialize; used for relative "t+XX.Xs" in direct log
 
     // Queue and writer thread (async I/O)
     std::deque<std::string> queue_;
@@ -75,7 +83,8 @@ class DisplayCommanderLogger {
     std::atomic<int> force_auto_flush_count_{0};
 };
 
-// RAII: increment force-auto-flush on construction, decrement on destruction (e.g. in CheckStuckMethodsAndLogUndestroyedGuards).
+// RAII: increment force-auto-flush on construction, decrement on destruction (e.g. in
+// CheckStuckMethodsAndLogUndestroyedGuards).
 struct ScopedForceAutoFlush {
     ScopedForceAutoFlush() { DisplayCommanderLogger::GetInstance().IncrementForceAutoFlush(); }
     ~ScopedForceAutoFlush() { DisplayCommanderLogger::GetInstance().DecrementForceAutoFlush(); }
@@ -94,5 +103,8 @@ void FlushLogs();
 
 // Diagnostic: returns true if logger write lock is currently held
 bool IsWriteLockHeld();
+
+// Write INFO directly to log file from calling thread (relative time only; no system time calls).
+void LogInfoDirectSynchronized(const char* fmt, ...);
 
 }  // namespace display_commander::logger

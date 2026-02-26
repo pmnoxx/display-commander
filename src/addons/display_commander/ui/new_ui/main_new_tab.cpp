@@ -16,6 +16,7 @@
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
+#include "../../hooks/windows_gaming_input_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
 #include "../../latency/reflex_provider.hpp"
@@ -2144,8 +2145,11 @@ if (enabled_experimental_features) {
         imgui.Indent();
 
         // Continue Rendering in Background
+        static bool continue_rendering_changed = false;
+        static bool suppress_windows_gaming_input_changed = false;
         if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background",
                             imgui)) {
+            continue_rendering_changed = true;
             bool new_value = settings::g_advancedTabSettings.continue_rendering.GetValue();
             LogInfo("Continue rendering in background %s", new_value ? "enabled" : "disabled");
 
@@ -2174,6 +2178,32 @@ if (enabled_experimental_features) {
                 "messages to keep games running in background.");
         }
 
+        if (display_commanderhooks::g_wgi_state.wgi_called.load()) {
+            if ((settings::g_advancedTabSettings.continue_rendering.GetValue()
+                 || settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue())) {
+                imgui.Spacing();
+                imgui.Indent();
+                if (CheckboxSetting(settings::g_advancedTabSettings.suppress_windows_gaming_input,
+                                    "Suppress Windows.Gaming.Input (use XInput)", imgui)) {
+                    suppress_windows_gaming_input_changed = true;
+                    LogInfo("Suppress Windows.Gaming.Input setting changed to: %s",
+                            settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue() ? "enabled"
+                                                                                                     : "disabled");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "Suppress Windows.Gaming.Input.dll so the game uses XInput instead.\n"
+                        "Disable if causes issues (e.g. gamepad not working).\n"
+                        "Default: on.");
+                }
+                imgui.Unindent();
+            }
+            if (continue_rendering_changed || suppress_windows_gaming_input_changed) {
+                // Show restart required message
+                imgui.TextColored(ui::colors::TEXT_WARNING,
+                                  ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
+            }
+        }
         imgui.Spacing();
 
         // Prevent display sleep & screensaver mode

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.114 (2026-02-26)
+
+- **Suppress Windows.Gaming.Input UI** - "Suppress Windows.Gaming.Input" checkbox moved from Advanced tab to Main tab (Window Control), shown directly below "Continue Rendering in Background". Checkbox is only visible when Windows.Gaming.Input hooks are installed for the current process (`g_windows_gaming_input` / WGI hooks active). Added global atomic `g_windows_gaming_input` (set on hook install/uninstall and when a suppressible WGI factory request is seen).
+
+---
+
 ## v0.12.113 (2026-02-26)
 
 - **Suppress Windows.Gaming.Input (Special K–aligned)** - "Suppress Windows.Gaming.Input" now only fails the same three RoGetActivationFactory requests that Special K suppresses (IGamepadStatics, IGamepadStatics2, IRawGameControllerStatics). Other Windows.Gaming.Input interfaces (racing wheel, arcade stick, flight stick, etc.) are passed through so they keep working when the option is enabled.

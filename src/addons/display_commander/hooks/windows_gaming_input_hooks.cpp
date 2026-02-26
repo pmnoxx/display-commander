@@ -24,7 +24,7 @@ std::string IIDToGUIDString(const IID& iid) {
 }
 
 // Hook state
-std::atomic<bool> g_wgi_hooks_installed{false};
+WindowsGamingInputState g_wgi_state;
 
 // Hooked RoGetActivationFactory function
 // This function handles all Windows.Gaming.Input ABI interfaces:
@@ -47,19 +47,21 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
     // requests that Special K suppresses (blackout_api): IGamepadStatics, IGamepadStatics2,
     // IRawGameControllerStatics. That makes the game fall back to XInput for gamepad; other WGI
     // interfaces (racing wheel, arcade stick, etc.) are left intact. Example: Hollow Knight
-    const bool suppress = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
-    if (suppress
-        && (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics
-            || iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2
-            || iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics)) {
-        LogInfo("Suppressing WGI factory request: %s", IIDToGUIDString(iid).c_str());
-        return E_NOTIMPL;
+    if ((iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics
+         || iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2
+         || iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics)) {
+        g_wgi_state.wgi_called.store(true);
+        const bool suppress = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
+        if (suppress && settings::g_advancedTabSettings.continue_rendering.GetValue()) {
+            LogInfo("Suppressing WGI factory request: %s", IIDToGUIDString(iid).c_str());
+            return E_NOTIMPL;
+        }
     }
     return RoGetActivationFactory_Original(activatableClassId, iid, factory);
 }
 
 bool InstallWindowsGamingInputHooks(HMODULE module) {
-    if (g_wgi_hooks_installed.load()) {
+    if (g_wgi_state.hooks_installed.load()) {
         LogInfo("Windows.Gaming.Input hooks already installed");
         return true;
     }
@@ -96,7 +98,8 @@ bool InstallWindowsGamingInputHooks(HMODULE module) {
     // Create and enable the hook
     if (CreateAndEnableHook(ro_get_activation_factory_proc, RoGetActivationFactory_Detour,
                             (LPVOID*)&RoGetActivationFactory_Original, "RoGetActivationFactory")) {
-        g_wgi_hooks_installed.store(true);
+        g_wgi_state.hooks_installed.store(true);
+        g_wgi_state.wgi_called.store(true);
         LogInfo("Successfully hooked RoGetActivationFactory");
 
         // Mark Windows Gaming Input hooks as installed
@@ -111,7 +114,7 @@ bool InstallWindowsGamingInputHooks(HMODULE module) {
 }
 
 void UninstallWindowsGamingInputHooks() {
-    if (!g_wgi_hooks_installed.load()) {
+    if (!g_wgi_state.hooks_installed.load()) {
         LogInfo("Windows.Gaming.Input hooks not installed");
         return;
     }
@@ -129,7 +132,8 @@ void UninstallWindowsGamingInputHooks() {
 
     // Clean up
     RoGetActivationFactory_Original = nullptr;
-    g_wgi_hooks_installed.store(false);
+    g_wgi_state.hooks_installed.store(false);
+    g_wgi_state.wgi_called.store(false);
     LogInfo("Windows.Gaming.Input hooks uninstalled successfully");
 }
 

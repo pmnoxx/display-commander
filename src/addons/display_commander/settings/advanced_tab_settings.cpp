@@ -36,8 +36,9 @@ AdvancedTabSettings::AdvancedTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", false, "DisplayCommander"),
-      manual_colorspace("ManualColorspace", 0, 0, MANUAL_COLOR_SPACE_MAX_INDEX,
-                        "DisplayCommander"),  // 0=No changes; 1..N=DXGI color space (see GetManualColorSpaceDisplayName)
+      manual_colorspace(
+          "ManualColorspace", 0, 0, MANUAL_COLOR_SPACE_MAX_INDEX,
+          "DisplayCommander"),  // 0=No changes; 1..N=DXGI color space (see GetManualColorSpaceDisplayName)
       // enable_d3d9e_upgrade("EnableD3D9EUpgrade", s_enable_d3d9e_upgrade, true, "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 

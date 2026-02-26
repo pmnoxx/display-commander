@@ -271,22 +271,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
 
     imgui.Spacing();
 
-    // Suppress Windows.Gaming.Input (force XInput for continue rendering with gamepad)
-    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_windows_gaming_input,
-                        "Suppress Windows.Gaming.Input (use XInput)", imgui)) {
-        LogInfo("Suppress Windows.Gaming.Input setting changed to: %s",
-                settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Suppress Windows.Gaming.Input.dll so the game uses XInput instead.\n"
-            "When enabled, continue rendering in background works with gamepad (WGI loses input when the window is "
-            "inactive).\n"
-            "Default: on.");
-    }
-
-    imgui.Spacing();
-
     // Auto-hide Discord Overlay setting
     if (CheckboxSetting(settings::g_advancedTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay",
                         imgui)) {

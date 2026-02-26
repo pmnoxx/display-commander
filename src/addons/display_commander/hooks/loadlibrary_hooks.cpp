@@ -297,6 +297,42 @@ FILETIME GetModuleFileTime(HMODULE hModule) {
     return ft;
 }
 
+// Fills ModuleInfo from HMODULE using system calls. Call without holding g_module_srwlock.
+static void FillModuleInfoFromHandle(HMODULE hMod, const std::wstring& moduleName, ModuleInfo& out) {
+    out.hModule = hMod;
+    out.moduleName = moduleName;
+    out.loadedBeforeHooks = false;
+    wchar_t modulePath[MAX_PATH];
+    if (GetModuleFileNameW(hMod, modulePath, MAX_PATH)) {
+        out.fullPath = modulePath;
+    }
+    MODULEINFO modInfo;
+    if (GetModuleInformation(GetCurrentProcess(), hMod, &modInfo, sizeof(modInfo))) {
+        out.baseAddress = modInfo.lpBaseOfDll;
+        out.sizeOfImage = modInfo.SizeOfImage;
+        out.entryPoint = modInfo.EntryPoint;
+    }
+    out.loadTime = GetModuleFileTime(hMod);
+}
+
+// Only uses g_module_srwlock; no system calls. Returns true if module was added; sets callback outputs when added.
+static bool TryAddModuleUnderLock(HMODULE hMod, ModuleInfo info, std::wstring* out_callback_name,
+                                  HMODULE* out_callback_handle) {
+    utils::SRWLockExclusive lock(utils::g_module_srwlock);
+    if (g_module_handles.find(hMod) != g_module_handles.end()) {
+        return false;
+    }
+    if (out_callback_name != nullptr) {
+        *out_callback_name = info.moduleName;
+    }
+    if (out_callback_handle != nullptr) {
+        *out_callback_handle = hMod;
+    }
+    g_loaded_modules.push_back(std::move(info));
+    g_module_handles.insert(hMod);
+    return true;
+}
+
 // Helper function to extract module name from full path
 std::wstring ExtractModuleName(const std::wstring& fullPath) {
     std::filesystem::path path(fullPath);
@@ -305,8 +341,8 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
-    TryStartStandaloneUIFromSafeContext();
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    TryStartStandaloneUIFromSafeContext();
     const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
@@ -380,44 +416,15 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
             LogInfo("[%s] LoadLibraryA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
         }
 
-        // Track the newly loaded module
+        std::wstring module_name_wide(dll_name.begin(), dll_name.end());
+        ModuleInfo moduleInfo;
+        FillModuleInfoFromHandle(result, module_name_wide, moduleInfo);
+        LPVOID base_addr = moduleInfo.baseAddress;
+        DWORD size_img = moduleInfo.sizeOfImage;
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
-        {
-            utils::SRWLockExclusive lock(utils::g_module_srwlock);
-            if (g_module_handles.find(result) == g_module_handles.end()) {
-                ModuleInfo moduleInfo;
-                moduleInfo.hModule = result;
-                moduleInfo.moduleName = std::wstring(dll_name.begin(), dll_name.end());
-
-                wchar_t modulePath[MAX_PATH];
-                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
-                    moduleInfo.fullPath = modulePath;
-                }
-
-                MODULEINFO modInfo;
-                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
-                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
-                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
-                    moduleInfo.entryPoint = modInfo.EntryPoint;
-                }
-
-                moduleInfo.loadTime = GetModuleFileTime(result);
-
-                // Mark as loaded after hooks (added through hook detour)
-                moduleInfo.loadedBeforeHooks = false;
-
-                g_loaded_modules.push_back(moduleInfo);
-                g_module_handles.insert(result);
-
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
-                        moduleInfo.sizeOfImage);
-
-                callback_module_name = moduleInfo.moduleName;
-                callback_hmodule = result;
-            }
-        }
-        if (callback_hmodule != nullptr) {
+        if (TryAddModuleUnderLock(result, std::move(moduleInfo), &callback_module_name, &callback_hmodule)) {
+            LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
@@ -503,44 +510,15 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
             LogInfo("[%s] LoadLibraryW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
         }
 
-        // Track the newly loaded module
+        std::wstring module_name_wide(dll_name.begin(), dll_name.end());
+        ModuleInfo moduleInfo;
+        FillModuleInfoFromHandle(result, module_name_wide, moduleInfo);
+        LPVOID base_addr = moduleInfo.baseAddress;
+        DWORD size_img = moduleInfo.sizeOfImage;
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
-        {
-            utils::SRWLockExclusive lock(utils::g_module_srwlock);
-            if (g_module_handles.find(result) == g_module_handles.end()) {
-                ModuleInfo moduleInfo;
-                moduleInfo.hModule = result;
-                moduleInfo.moduleName = std::wstring(dll_name.begin(), dll_name.end());
-
-                wchar_t modulePath[MAX_PATH];
-                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
-                    moduleInfo.fullPath = modulePath;
-                }
-
-                MODULEINFO modInfo;
-                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
-                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
-                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
-                    moduleInfo.entryPoint = modInfo.EntryPoint;
-                }
-
-                moduleInfo.loadTime = GetModuleFileTime(result);
-
-                // Mark as loaded after hooks (added through hook detour)
-                moduleInfo.loadedBeforeHooks = false;
-
-                g_loaded_modules.push_back(moduleInfo);
-                g_module_handles.insert(result);
-
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
-                        moduleInfo.sizeOfImage);
-
-                callback_module_name = moduleInfo.moduleName;
-                callback_hmodule = result;
-            }
-        }
-        if (callback_hmodule != nullptr) {
+        if (TryAddModuleUnderLock(result, std::move(moduleInfo), &callback_module_name, &callback_hmodule)) {
+            LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
@@ -624,55 +602,23 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
     if (result) {
         LogInfo("[%s] LoadLibraryExA success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
 
-        // Track the module if it's not already tracked
-        std::wstring callback_module_name;
-        HMODULE callback_hmodule = nullptr;
-        {
-            utils::SRWLockExclusive lock(utils::g_module_srwlock);
-            if (g_module_handles.find(result) == g_module_handles.end()) {
-                ModuleInfo moduleInfo;
-                moduleInfo.hModule = result;
-
-                // Convert narrow string to wide string for module name
-                std::wstring wideModuleName;
-                if (lpLibFileName) {
-                    int wideLen = MultiByteToWideChar(CP_ACP, 0, lpLibFileName, -1, nullptr, 0);
-                    if (wideLen > 0) {
-                        wideModuleName.resize(wideLen - 1);
-                        MultiByteToWideChar(CP_ACP, 0, lpLibFileName, -1, &wideModuleName[0], wideLen);
-                    }
-                }
-                moduleInfo.moduleName = wideModuleName.empty() ? L"Unknown" : wideModuleName;
-
-                // Get full path
-                wchar_t modulePath[MAX_PATH];
-                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
-                    moduleInfo.fullPath = modulePath;
-                }
-
-                MODULEINFO modInfo;
-                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
-                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
-                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
-                    moduleInfo.entryPoint = modInfo.EntryPoint;
-                }
-
-                moduleInfo.loadTime = GetModuleFileTime(result);
-
-                // Mark as loaded after hooks (added through hook detour)
-                moduleInfo.loadedBeforeHooks = false;
-
-                g_loaded_modules.push_back(moduleInfo);
-                g_module_handles.insert(result);
-
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
-                        moduleInfo.sizeOfImage);
-
-                callback_module_name = moduleInfo.moduleName;
-                callback_hmodule = result;
+        std::wstring wideModuleName;
+        if (lpLibFileName) {
+            int wideLen = MultiByteToWideChar(CP_ACP, 0, lpLibFileName, -1, nullptr, 0);
+            if (wideLen > 0) {
+                wideModuleName.resize(wideLen - 1);
+                MultiByteToWideChar(CP_ACP, 0, lpLibFileName, -1, &wideModuleName[0], wideLen);
             }
         }
-        if (callback_hmodule != nullptr) {
+        std::wstring module_name_wide = wideModuleName.empty() ? L"Unknown" : wideModuleName;
+        ModuleInfo moduleInfo;
+        FillModuleInfoFromHandle(result, module_name_wide, moduleInfo);
+        LPVOID base_addr = moduleInfo.baseAddress;
+        DWORD size_img = moduleInfo.sizeOfImage;
+        std::wstring callback_module_name;
+        HMODULE callback_hmodule = nullptr;
+        if (TryAddModuleUnderLock(result, std::move(moduleInfo), &callback_module_name, &callback_hmodule)) {
+            LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
@@ -754,45 +700,15 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
     if (result) {
         LogInfo("[%s] LoadLibraryExW success: %s -> HMODULE: 0x%p", timestamp.c_str(), dll_name.c_str(), result);
 
-        // Track the module if it's not already tracked
+        std::wstring module_name_wide = lpLibFileName ? lpLibFileName : L"Unknown";
+        ModuleInfo moduleInfo;
+        FillModuleInfoFromHandle(result, module_name_wide, moduleInfo);
+        LPVOID base_addr = moduleInfo.baseAddress;
+        DWORD size_img = moduleInfo.sizeOfImage;
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
-        {
-            utils::SRWLockExclusive lock(utils::g_module_srwlock);
-            if (g_module_handles.find(result) == g_module_handles.end()) {
-                ModuleInfo moduleInfo;
-                moduleInfo.hModule = result;
-                moduleInfo.moduleName = lpLibFileName ? lpLibFileName : L"Unknown";
-
-                // Get full path
-                wchar_t modulePath[MAX_PATH];
-                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
-                    moduleInfo.fullPath = modulePath;
-                }
-
-                MODULEINFO modInfo;
-                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
-                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
-                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
-                    moduleInfo.entryPoint = modInfo.EntryPoint;
-                }
-
-                moduleInfo.loadTime = GetModuleFileTime(result);
-
-                // Mark as loaded after hooks (added through hook detour)
-                moduleInfo.loadedBeforeHooks = false;
-
-                g_loaded_modules.push_back(moduleInfo);
-                g_module_handles.insert(result);
-
-                LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), moduleInfo.baseAddress,
-                        moduleInfo.sizeOfImage);
-
-                callback_module_name = moduleInfo.moduleName;
-                callback_hmodule = result;
-            }
-        }
-        if (callback_hmodule != nullptr) {
+        if (TryAddModuleUnderLock(result, std::move(moduleInfo), &callback_module_name, &callback_hmodule)) {
+            LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
@@ -837,35 +753,14 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
 
     if (result) {
         LogInfo("[%s] LoadPackagedLibrary success: %s -> HMODULE: 0x%p", timestamp.c_str(), name_str.c_str(), result);
+        std::wstring module_name_wide(name_str.begin(), name_str.end());
+        ModuleInfo moduleInfo;
+        FillModuleInfoFromHandle(result, module_name_wide, moduleInfo);
+        LPVOID base_addr = moduleInfo.baseAddress;
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
-        {
-            utils::SRWLockExclusive lock(utils::g_module_srwlock);
-            if (g_module_handles.find(result) == g_module_handles.end()) {
-                ModuleInfo moduleInfo;
-                moduleInfo.hModule = result;
-                moduleInfo.moduleName = std::wstring(name_str.begin(), name_str.end());
-                wchar_t modulePath[MAX_PATH];
-                if (GetModuleFileNameW(result, modulePath, MAX_PATH)) {
-                    moduleInfo.fullPath = modulePath;
-                }
-                MODULEINFO modInfo;
-                if (GetModuleInformation(GetCurrentProcess(), result, &modInfo, sizeof(modInfo))) {
-                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
-                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
-                    moduleInfo.entryPoint = modInfo.EntryPoint;
-                }
-                moduleInfo.loadTime = GetModuleFileTime(result);
-                moduleInfo.loadedBeforeHooks = false;
-                g_loaded_modules.push_back(moduleInfo);
-                g_module_handles.insert(result);
-                LogInfo("Added new module to tracking (LoadPackagedLibrary): %s (0x%p)", name_str.c_str(),
-                        moduleInfo.baseAddress);
-                callback_module_name = moduleInfo.moduleName;
-                callback_hmodule = result;
-            }
-        }
-        if (callback_hmodule != nullptr) {
+        if (TryAddModuleUnderLock(result, std::move(moduleInfo), &callback_module_name, &callback_hmodule)) {
+            LogInfo("Added new module to tracking (LoadPackagedLibrary): %s (0x%p)", name_str.c_str(), base_addr);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
         }
@@ -928,42 +823,18 @@ LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const voi
 
     if (status == 0 && base != nullptr) {
         HMODULE hMod = static_cast<HMODULE>(base);
-        bool added = false;
+        std::wstring module_name_wide = dll_name_wide.empty() ? L"Unknown" : dll_name_wide;
+        ModuleInfo moduleInfo;
+        FillModuleInfoFromHandle(hMod, module_name_wide, moduleInfo);
+        LPVOID base_addr = moduleInfo.baseAddress;
         std::wstring callback_module_name;
         HMODULE callback_hmodule = nullptr;
-        {
-            utils::SRWLockExclusive lock(utils::g_module_srwlock);
-            if (g_module_handles.find(hMod) == g_module_handles.end()) {
-                added = true;
-                ModuleInfo moduleInfo;
-                moduleInfo.hModule = hMod;
-                moduleInfo.moduleName = dll_name_wide.empty() ? L"Unknown" : dll_name_wide;
-                wchar_t modulePath[MAX_PATH];
-                if (GetModuleFileNameW(hMod, modulePath, MAX_PATH)) {
-                    moduleInfo.fullPath = modulePath;
-                }
-                MODULEINFO modInfo;
-                if (GetModuleInformation(GetCurrentProcess(), hMod, &modInfo, sizeof(modInfo))) {
-                    moduleInfo.baseAddress = modInfo.lpBaseOfDll;
-                    moduleInfo.sizeOfImage = modInfo.SizeOfImage;
-                    moduleInfo.entryPoint = modInfo.EntryPoint;
-                }
-                moduleInfo.loadTime = GetModuleFileTime(hMod);
-                moduleInfo.loadedBeforeHooks = false;
-                g_loaded_modules.push_back(moduleInfo);
-                g_module_handles.insert(hMod);
-                LogInfo("Added new module to tracking (LdrLoadDll): %s (0x%p)",
-                        dll_name.empty() ? "Unknown" : dll_name.c_str(), moduleInfo.baseAddress);
-                callback_module_name = moduleInfo.moduleName;
-                callback_hmodule = hMod;
-            }
-        }
-        if (callback_hmodule != nullptr) {
+        const bool added = TryAddModuleUnderLock(hMod, std::move(moduleInfo), &callback_module_name, &callback_hmodule);
+        if (added) {
+            LogInfo("Added new module to tracking (LdrLoadDll): %s (0x%p)",
+                    dll_name.empty() ? "Unknown" : dll_name.c_str(), base_addr);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
-        }
-        // Only log success when we actually added (avoids spam when library was already loaded)
-        if (added) {
             LogInfo("[%s] LdrLoadDll success: %s -> 0x%p", timestamp.c_str(),
                     dll_name.empty() ? "(no name)" : dll_name.c_str(), base);
         }

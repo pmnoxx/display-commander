@@ -88,4 +88,8 @@ std::vector<std::wstring> GetBlockedDLLs();
 bool IsModuleSrwlockHeld();
 bool IsBlockedDllsSrwlockHeld();
 
+// Host-loaded graphics/API libraries (loaded by game/host, not by Display Commander or ReShade).
+// Returns space-separated list e.g. "dxgi d3d11" or "opengl32" or "dxgi vulkan-1".
+std::string GetHostLoadedGraphicsApisString();
+
 }  // namespace display_commanderhooks

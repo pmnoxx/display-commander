@@ -3,12 +3,12 @@
  * Forwards DirectDraw calls to the real system ddraw.dll
  */
 
-#include <Windows.h>
 #include <ddraw.h>
+#include <Windows.h>
 #include <string>
 
-#include "ddraw_proxy_init.hpp"
 #include "../utils/logging.hpp"
+#include "ddraw_proxy_init.hpp"
 
 typedef HRESULT(WINAPI* PFN_DirectDrawCreate)(GUID* lpGUID, LPDIRECTDRAW* lplpDD, IUnknown* pUnkOuter);
 typedef HRESULT(WINAPI* PFN_DirectDrawCreateEx)(GUID* lpGuid, LPVOID* lplpDD, REFIID iid, IUnknown* pUnkOuter);

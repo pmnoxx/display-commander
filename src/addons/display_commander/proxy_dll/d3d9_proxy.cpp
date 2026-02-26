@@ -3,13 +3,13 @@
  * Forwards D3D9 calls to the real system d3d9.dll
  */
 
-#include <Windows.h>
 #include <d3d9.h>
 #include <unknwn.h>
+#include <Windows.h>
 #include <string>
 
-#include "d3d9_proxy_init.hpp"
 #include "../utils/logging.hpp"
+#include "d3d9_proxy_init.hpp"
 
 // 9on12 types (avoid pulling in d3d9on12.h / d3d12.h)
 #define MAX_D3D9ON12_QUEUES 2
@@ -21,22 +21,22 @@ typedef struct _D3D9ON12_ARGS_PROXY {
     UINT NodeMask;
 } D3D9ON12_ARGS_PROXY;
 
-typedef IDirect3D9* (WINAPI* PFN_Direct3DCreate9)(UINT SDKVersion);
+typedef IDirect3D9*(WINAPI* PFN_Direct3DCreate9)(UINT SDKVersion);
 typedef HRESULT(WINAPI* PFN_Direct3DCreate9Ex)(UINT SDKVersion, IDirect3D9Ex** ppD3D);
-typedef IDirect3D9* (WINAPI* PFN_Direct3DCreate9On12)(UINT SDKVersion, D3D9ON12_ARGS_PROXY* pOverrideList,
-                                                      UINT NumOverrideEntries);
+typedef IDirect3D9*(WINAPI* PFN_Direct3DCreate9On12)(UINT SDKVersion, D3D9ON12_ARGS_PROXY* pOverrideList,
+                                                     UINT NumOverrideEntries);
 typedef HRESULT(WINAPI* PFN_Direct3DCreate9On12Ex)(UINT SDKVersion, D3D9ON12_ARGS_PROXY* pOverrideList,
                                                    UINT NumOverrideEntries, IDirect3D9Ex** ppOutputInterface);
-typedef int (WINAPI* PFN_D3DPERF_BeginEvent)(D3DCOLOR col, LPCWSTR wszName);
-typedef int (WINAPI* PFN_D3DPERF_EndEvent)(void);
+typedef int(WINAPI* PFN_D3DPERF_BeginEvent)(D3DCOLOR col, LPCWSTR wszName);
+typedef int(WINAPI* PFN_D3DPERF_EndEvent)(void);
 typedef DWORD(WINAPI* PFN_D3DPERF_GetStatus)(void);
 typedef BOOL(WINAPI* PFN_D3DPERF_QueryRepeatFrame)(void);
-typedef void (WINAPI* PFN_D3DPERF_SetMarker)(D3DCOLOR col, LPCWSTR wszName);
-typedef void (WINAPI* PFN_D3DPERF_SetOptions)(DWORD dwOptions);
-typedef void (WINAPI* PFN_D3DPERF_SetRegion)(D3DCOLOR col, LPCWSTR wszName);
-typedef void (WINAPI* PFN_Direct3D9EnableMaximizedWindowedModeShim)(void);
+typedef void(WINAPI* PFN_D3DPERF_SetMarker)(D3DCOLOR col, LPCWSTR wszName);
+typedef void(WINAPI* PFN_D3DPERF_SetOptions)(DWORD dwOptions);
+typedef void(WINAPI* PFN_D3DPERF_SetRegion)(D3DCOLOR col, LPCWSTR wszName);
+typedef void(WINAPI* PFN_Direct3D9EnableMaximizedWindowedModeShim)(void);
 // Ordinal-only exports (16-19, 22-23): forward by ordinal; assume no-arg shims
-typedef void (WINAPI* PFN_OrdinalShim)(void);
+typedef void(WINAPI* PFN_OrdinalShim)(void);
 
 static HMODULE g_d3d9_module = nullptr;
 
@@ -89,7 +89,7 @@ extern "C" IDirect3D9* WINAPI Direct3DCreate9On12(UINT SDKVersion, void* pOverri
 }
 
 extern "C" HRESULT WINAPI Direct3DCreate9On12Ex(UINT SDKVersion, void* pOverrideList, UINT NumOverrideEntries,
-                                               IDirect3D9Ex** ppOutputInterface) {
+                                                IDirect3D9Ex** ppOutputInterface) {
     if (!LoadRealD3D9()) return E_FAIL;
     auto func = reinterpret_cast<PFN_Direct3DCreate9On12Ex>(GetProcAddress(g_d3d9_module, "Direct3DCreate9On12Ex"));
     if (func == nullptr) return E_FAIL;
@@ -119,7 +119,8 @@ extern "C" DWORD WINAPI D3DPERF_GetStatus(void) {
 
 extern "C" BOOL WINAPI D3DPERF_QueryRepeatFrame(void) {
     if (!LoadRealD3D9()) return FALSE;
-    auto func = reinterpret_cast<PFN_D3DPERF_QueryRepeatFrame>(GetProcAddress(g_d3d9_module, "D3DPERF_QueryRepeatFrame"));
+    auto func =
+        reinterpret_cast<PFN_D3DPERF_QueryRepeatFrame>(GetProcAddress(g_d3d9_module, "D3DPERF_QueryRepeatFrame"));
     if (func == nullptr) return FALSE;
     return func();
 }

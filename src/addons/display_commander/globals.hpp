@@ -264,7 +264,8 @@ extern std::atomic<bool> g_process_attached;
 // ReShade load state (defined in main_entry.cpp)
 extern std::atomic<bool> g_reshade_loaded;
 
-// No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded, standalone settings UI used
+// No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded, standalone settings UI
+// used
 extern std::atomic<bool> g_no_reshade_mode;
 // When true, TryStartStandaloneUIFromSafeContext() will start the standalone settings UI (e.g. from LoadLibrary detour)
 extern std::atomic<bool> g_standalone_ui_pending;
@@ -609,12 +610,13 @@ extern std::atomic<DxgiBypassMode> g_comp_last_logged;
 extern std::atomic<void*>
     g_last_swapchain_ptr_unsafe;  // Using void* to avoid reshade dependency // TODO: unsafe remove later
 extern std::atomic<reshade::api::device_api> g_last_reshade_device_api;
-extern std::atomic<uint32_t> g_last_api_version;    // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
+extern std::atomic<uint32_t> g_last_api_version;  // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
 extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>>
     g_last_swapchain_desc;  // Store last swapchain description
 extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
-/** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game window from foreground. */
+/** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game
+ * window from foreground. */
 extern std::atomic<HWND> g_standalone_ui_hwnd;
 
 /** Show the independent settings window from ReShade overlay (no-op when not in ReShade or window already open). */

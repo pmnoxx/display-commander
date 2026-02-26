@@ -225,12 +225,12 @@ std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount] 
 std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
 
 namespace {
-// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event.
-constexpr std::array<FpsLimiterCallSite, 7> kFpsLimiterPriorityOrder = {
+// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event.
+constexpr std::array<FpsLimiterCallSite, 8> kFpsLimiterPriorityOrder = {
     FpsLimiterCallSite::reflex_marker,           FpsLimiterCallSite::reflex_marker_vk_nvll,
     FpsLimiterCallSite::reflex_marker_vk_loader, FpsLimiterCallSite::reflex_marker_pclstats_etw,
-    FpsLimiterCallSite::dxgi_swapchain,          FpsLimiterCallSite::dxgi_factory_wrapper,
-    FpsLimiterCallSite::reshade_addon_event,
+    FpsLimiterCallSite::dxgi_swapchain1,         FpsLimiterCallSite::dxgi_swapchain,
+    FpsLimiterCallSite::dxgi_factory_wrapper,    FpsLimiterCallSite::reshade_addon_event,
 };
 
 bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
@@ -250,6 +250,7 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::reflex_marker_vk_nvll:      return "reflex_marker_vk_nvll";
         case FpsLimiterCallSite::reflex_marker_vk_loader:    return "reflex_marker_vk_loader";
         case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
+        case FpsLimiterCallSite::dxgi_swapchain1:             return "dxgi_swapchain1";
         case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
         case FpsLimiterCallSite::reshade_addon_event:        return "reshade_addon_event";
         case FpsLimiterCallSite::dxgi_factory_wrapper:       return "dxgi_factory_wrapper";
@@ -258,9 +259,14 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
 }
 
 FpsLimiterCallSite GetChosenFrameTimeLocation() {
-    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-    if (IsFpsLimiterSiteEligible(FpsLimiterCallSite::dxgi_swapchain, now_ns)) {
-        return FpsLimiterCallSite::dxgi_swapchain;
+    const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
+    if (chosen == kFpsLimiterChosenUnset) {
+        return FpsLimiterCallSite::reshade_addon_event;
+    }
+    const FpsLimiterCallSite site = static_cast<FpsLimiterCallSite>(chosen);
+    if (site == FpsLimiterCallSite::dxgi_swapchain1 || site == FpsLimiterCallSite::dxgi_swapchain
+        || site == FpsLimiterCallSite::reshade_addon_event) {
+        return site;
     }
     return FpsLimiterCallSite::reshade_addon_event;
 }
@@ -345,12 +351,17 @@ bool IsNativeFramePacingInSync() {
 }
 
 bool IsDxgiSwapChainGettingCalled() {
+    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
+    const uint64_t dxgi1_ts =
+        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::dxgi_swapchain1)].load();
+    if (dxgi1_ts != 0 && (now_ns - dxgi1_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS)) {
+        return true;
+    }
     const uint64_t dxgi_ts =
         g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::dxgi_swapchain)].load();
     if (dxgi_ts == 0) {
         return false;
     }
-    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
     return (now_ns - dxgi_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS);
 }
 

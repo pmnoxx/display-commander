@@ -1664,8 +1664,8 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
 }
 
 // Last manual color space we tried and whether it was supported (for UI). -1 = not yet set / unknown.
-static std::atomic<int> g_last_color_space_support_dxgi{-1};   // DXGI_COLOR_SPACE_TYPE as int
-static std::atomic<int> g_last_color_space_support_result{-1}; // -1 unknown, 0 not supported, 1 supported
+static std::atomic<int> g_last_color_space_support_dxgi{-1};    // DXGI_COLOR_SPACE_TYPE as int
+static std::atomic<int> g_last_color_space_support_result{-1};  // -1 unknown, 0 not supported, 1 supported
 
 void GetLastColorSpaceSupportForUI(int* out_dxgi, int* out_supported) {
     if (out_dxgi) {
@@ -1716,7 +1716,8 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
     }
 }
 
-// Manual color space table: index 0 = No changes; 1..N = DXGI types with display names (bracket = sRGB/scRGB/HDR10/etc.)
+// Manual color space table: index 0 = No changes; 1..N = DXGI types with display names (bracket =
+// sRGB/scRGB/HDR10/etc.)
 struct ManualColorSpaceEntry {
     DXGI_COLOR_SPACE_TYPE dxgi;
     reshade::api::color_space reshade_cs;
@@ -1724,35 +1725,47 @@ struct ManualColorSpaceEntry {
 };
 static const ManualColorSpaceEntry s_manual_color_space_table[] = {
     {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, reshade::api::color_space::unknown, "No changes"},  // index 0: no-op
-    {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, reshade::api::color_space::srgb_nonlinear, "RGB Full G22 None P709 (sRGB)"},
-    {DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709, reshade::api::color_space::extended_srgb_linear, "RGB Full G10 None P709 (scRGB)"},
-    {DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, reshade::api::color_space::hdr10_st2084, "RGB Full G2084 None P2020 (HDR10)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020, reshade::api::color_space::hdr10_hlg, "YCbCr Studio G2084 TopLeft P2020 (HDR10 HLG)"},
+    {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, reshade::api::color_space::srgb_nonlinear,
+     "RGB Full G22 None P709 (sRGB)"},
+    {DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709, reshade::api::color_space::extended_srgb_linear,
+     "RGB Full G10 None P709 (scRGB)"},
+    {DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, reshade::api::color_space::hdr10_st2084,
+     "RGB Full G2084 None P2020 (HDR10)"},
+    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020, reshade::api::color_space::hdr10_hlg,
+     "YCbCr Studio G2084 TopLeft P2020 (HDR10 HLG)"},
     {DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709, reshade::api::color_space::unknown, "RGB Studio G22 None P709 (SDR)"},
     {DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020, reshade::api::color_space::unknown, "RGB Studio G22 None P2020"},
     {DXGI_COLOR_SPACE_RESERVED, reshade::api::color_space::unknown, "Reserved"},
-    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601, reshade::api::color_space::unknown, "YCbCr Full G22 None P709 X601 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601, reshade::api::color_space::unknown, "YCbCr Studio G22 Left P601 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601, reshade::api::color_space::unknown, "YCbCr Full G22 Left P601 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709, reshade::api::color_space::unknown, "YCbCr Studio G22 Left P709 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709, reshade::api::color_space::unknown, "YCbCr Full G22 Left P709 (SDR YCbCr)"},
+    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601, reshade::api::color_space::unknown,
+     "YCbCr Full G22 None P709 X601 (SDR YCbCr)"},
+    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601, reshade::api::color_space::unknown,
+     "YCbCr Studio G22 Left P601 (SDR YCbCr)"},
+    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601, reshade::api::color_space::unknown,
+     "YCbCr Full G22 Left P601 (SDR YCbCr)"},
+    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709, reshade::api::color_space::unknown,
+     "YCbCr Studio G22 Left P709 (SDR YCbCr)"},
+    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709, reshade::api::color_space::unknown,
+     "YCbCr Full G22 Left P709 (SDR YCbCr)"},
     {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020, reshade::api::color_space::unknown, "YCbCr Studio G22 Left P2020"},
     {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020, reshade::api::color_space::unknown, "YCbCr Full G22 Left P2020"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020, reshade::api::color_space::unknown, "YCbCr Studio G2084 Left P2020 (HDR10-related)"},
-    {DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020, reshade::api::color_space::unknown, "RGB Studio G2084 None P2020 (HDR10-related)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020, reshade::api::color_space::unknown, "YCbCr Studio G22 TopLeft P2020"},
-    {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020, reshade::api::color_space::unknown, "RGB Full G22 None P2020 (HLG-related)"},
+    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020, reshade::api::color_space::unknown,
+     "YCbCr Studio G2084 Left P2020 (HDR10-related)"},
+    {DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020, reshade::api::color_space::unknown,
+     "RGB Studio G2084 None P2020 (HDR10-related)"},
+    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020, reshade::api::color_space::unknown,
+     "YCbCr Studio G22 TopLeft P2020"},
+    {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020, reshade::api::color_space::unknown,
+     "RGB Full G22 None P2020 (HLG-related)"},
     {DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P709, reshade::api::color_space::unknown, "YCbCr Studio G24 Left P709"},
     {DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P2020, reshade::api::color_space::unknown, "YCbCr Studio G24 Left P2020"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020, reshade::api::color_space::unknown, "YCbCr Studio G24 TopLeft P2020"},
+    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020, reshade::api::color_space::unknown,
+     "YCbCr Studio G24 TopLeft P2020"},
     {DXGI_COLOR_SPACE_CUSTOM, reshade::api::color_space::unknown, "Custom"},
 };
 static const int s_manual_color_space_count =
     static_cast<int>(sizeof(s_manual_color_space_table) / sizeof(s_manual_color_space_table[0]));
 
-int GetManualColorSpaceCount() {
-    return s_manual_color_space_count;
-}
+int GetManualColorSpaceCount() { return s_manual_color_space_count; }
 
 const char* GetManualColorSpaceDisplayName(int index) {
     if (index < 0 || index >= s_manual_color_space_count) {
@@ -1761,8 +1774,7 @@ const char* GetManualColorSpaceDisplayName(int index) {
     return s_manual_color_space_table[index].label;
 }
 
-bool GetManualColorSpaceFromIndex(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi,
-                                  reshade::api::color_space* out_reshade) {
+bool GetManualColorSpaceFromIndex(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi, reshade::api::color_space* out_reshade) {
     if (index <= 0 || index >= s_manual_color_space_count || out_dxgi == nullptr || out_reshade == nullptr) {
         return false;
     }
@@ -1780,7 +1792,8 @@ int GetManualColorSpaceDXGIAsInt(int index) {
     return static_cast<int>(s_manual_color_space_table[index].dxgi);
 }
 
-// Cached support per manual color space index. -1 unknown, 0 not supported, 1 supported. Refreshed when we have swapchain3.
+// Cached support per manual color space index. -1 unknown, 0 not supported, 1 supported. Refreshed when we have
+// swapchain3.
 static constexpr int k_max_manual_color_space_cache = 23;
 static std::atomic<int> g_manual_color_space_support_cache[k_max_manual_color_space_cache];
 
@@ -2001,7 +2014,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         RecordNativeFrameTime();
     }
 
-    if (GetChosenFrameTimeLocation() != FpsLimiterCallSite::dxgi_swapchain) {
+    const FpsLimiterCallSite frame_loc = GetChosenFrameTimeLocation();
+    if (frame_loc != FpsLimiterCallSite::dxgi_swapchain1 && frame_loc != FpsLimiterCallSite::dxgi_swapchain) {
         RecordFrameTime(FrameTimeMode::kPresent);
     }
 

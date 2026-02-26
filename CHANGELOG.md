@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.113 (2026-02-26)
+
+- **Suppress Windows.Gaming.Input (Special K–aligned)** - "Suppress Windows.Gaming.Input" now only fails the same three RoGetActivationFactory requests that Special K suppresses (IGamepadStatics, IGamepadStatics2, IRawGameControllerStatics). Other Windows.Gaming.Input interfaces (racing wheel, arcade stick, flight stick, etc.) are passed through so they keep working when the option is enabled.
+
+---
+
 ## v0.12.112 (2026-02-26)
 
 - **Reflex RestoreSleepMode crash fix** - Fixed ACCESS_VIOLATION (0xC0000005) in dxgi when using "Game Defaults" Reflex mode. `RestoreSleepMode` was calling NVAPI with a null device when the game had never called `NvAPI_D3D_SetSleepMode`; it now returns early if the device is null and uses a default params struct when params were not stored. `NvAPI_D3D_SetSleepMode_Direct` now rejects null device or params and returns `NVAPI_INVALID_ARGUMENT` instead of calling into the driver.

@@ -43,116 +43,19 @@ std::atomic<bool> g_wgi_hooks_installed{false};
 // ABI::Windows::UI::Core::IID_ICoreWindow
 
 HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void** factory) {
-    // When "Suppress Windows.Gaming.Input" is on (Advanced tab), fail all WGI factory requests so the game
-    // falls back to XInput. That makes continue rendering in background work with gamepad (WGI drops input when
-    // inactive). Example: Hollow Knight
-    if (settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue()) {
+    // When "Suppress Windows.Gaming.Input" is on (Advanced tab), fail only the same three WGI factory
+    // requests that Special K suppresses (blackout_api): IGamepadStatics, IGamepadStatics2,
+    // IRawGameControllerStatics. That makes the game fall back to XInput for gamepad; other WGI
+    // interfaces (racing wheel, arcade stick, etc.) are left intact. Example: Hollow Knight
+    const bool suppress = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
+    if (suppress
+        && (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics
+            || iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2
+            || iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics)) {
+        LogInfo("Suppressing WGI factory request: %s", IIDToGUIDString(iid).c_str());
         return E_NOTIMPL;
     }
-    std::string guid_str = IIDToGUIDString(iid);
-    //  LogInfo("RoGetActivationFactory called with IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
-    //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4], iid.Data4[5],
-    //        iid.Data4[6], iid.Data4[7]);
-    // LogInfo(" => GUID: %s", guid_str.c_str());
-
-    // Switch statement to handle all Windows.Gaming.Input ABI interfaces
-    if (iid == ABI::Windows::Gaming::Input::IID_IArcadeStick) {
-        LogInfo("RoGetActivationFactory (IID_IArcadeStick) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IArcadeStickStatics) {
-        LogInfo("RoGetActivationFactory (IID_IArcadeStickStatics) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IArcadeStickStatics2) {
-        LogInfo("RoGetActivationFactory (IID_IArcadeStickStatics2) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IFlightStick) {
-        LogInfo("RoGetActivationFactory (IID_IFlightStick) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IFlightStickStatics) {
-        LogInfo("RoGetActivationFactory (IID_IFlightStickStatics) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IGameController) {
-        LogInfo("RoGetActivationFactory (IID_IGameController) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IGameControllerBatteryInfo) {
-        LogInfo("RoGetActivationFactory (IID_IGameControllerBatteryInfo) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IGamepad) {
-        LogInfo("RoGetActivationFactory (IID_IGamepad) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IGamepad2) {
-        LogInfo("RoGetActivationFactory (IID_IGamepad2) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics) {
-        LogInfo("RoGetActivationFactory (IID_IGamepadStatics)");
-        LogInfo(" => Disabling Interface for Current Game.");
-        return E_NOTIMPL;
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2) {
-        LogInfo("RoGetActivationFactory (IID_IGamepadStatics2)");
-        LogInfo(" => Disabling Interface for Current Game.");
-        return E_NOTIMPL;
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IHeadset) {
-        LogInfo("RoGetActivationFactory (IID_IHeadset) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IRacingWheel) {
-        LogInfo("RoGetActivationFactory (IID_IRacingWheel) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IRacingWheelStatics) {
-        LogInfo("RoGetActivationFactory (IID_IRacingWheelStatics) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IRacingWheelStatics2) {
-        LogInfo("RoGetActivationFactory (IID_IRacingWheelStatics2) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IRawGameController) {
-        LogInfo("RoGetActivationFactory (IID_IRawGameController) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IRawGameController2) {
-        LogInfo("RoGetActivationFactory (IID_IRawGameController2) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics) {
-        LogInfo("RoGetActivationFactory (IID_IRawGameControllerStatics)");
-        LogInfo(" => Disabling Interface for Current Game.");
-        return E_NOTIMPL;
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IUINavigationController) {
-        LogInfo("RoGetActivationFactory (IID_IUINavigationController) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IUINavigationControllerStatics) {
-        LogInfo("RoGetActivationFactory (IID_IUINavigationControllerStatics) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else if (iid == ABI::Windows::Gaming::Input::IID_IUINavigationControllerStatics2) {
-        LogInfo("RoGetActivationFactory (IID_IUINavigationControllerStatics2) - UNHANDLED");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    }
-    // Handle ICoreWindow interface (Windows.UI.Core.ICoreWindow)
-    else if (iid == ABI::Windows::UI::Core::IID_ICoreWindow) {
-        LogInfo("RoGetActivationFactory (ICoreWindow) - DISABLED");
-        LogInfo(
-            " => Windows.UI.Core.ICoreWindow interface - "
-            "https://learn.microsoft.com/en-us/uwp/api/windows.ui.core.icorewindow?view=winrt-26100");
-        LogInfo(" => Disabling Interface for Current Game.");
-        return E_NOTIMPL;
-    }
-    // Handle unknown IID that appears frequently: (242708616, 30204, 18607, 135, 88, 6, 82, 246, 240, 124, 89)
-    // GUID: {0E6A0E38-761F-4A57-5888-06-52F6F07C59}
-    else if (iid.Data1 == 242708616 && iid.Data2 == 30204 && iid.Data3 == 18607 && iid.Data4[0] == 135
-             && iid.Data4[1] == 88 && iid.Data4[2] == 6 && iid.Data4[3] == 82 && iid.Data4[4] == 246
-             && iid.Data4[5] == 240 && iid.Data4[6] == 124 && iid.Data4[7] == 89) {
-        LogInfo("RoGetActivationFactory (Unknown Interface) - UNHANDLED");
-        LogInfo(" => GUID: {0E6A0E38-761F-4A57-5888-06-52F6F07C59} - Need to identify this interface");
-        LogInfo(" => This appears to be a non-standard Windows Gaming Input interface");
-        LogInfo(" => Possible sources: Third-party library, custom interface, or undocumented Windows API");
-        LogInfo(" => Calling original function for unknown interface");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    } else {
-        // Log all unhandled IID calls for debugging
-        std::string guid_str = IIDToGUIDString(iid);
-        //  LogInfo("RoGetActivationFactory - UNHANDLED IID: (%lu, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u)", iid.Data1,
-        //         iid.Data2, iid.Data3, iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3], iid.Data4[4],
-        //         iid.Data4[5], iid.Data4[6], iid.Data4[7]);
-        //  LogInfo(" => GUID: %s", guid_str.c_str());
-        //  LogInfo(" => Calling original function for non-Windows.Gaming.Input interface");
-        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
-    }
+    return RoGetActivationFactory_Original(activatableClassId, iid, factory);
 }
 
 bool InstallWindowsGamingInputHooks(HMODULE module) {

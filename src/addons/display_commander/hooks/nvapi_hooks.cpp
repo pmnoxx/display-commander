@@ -348,6 +348,10 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
 // Direct call to NvAPI_D3D_SetSleepMode without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown* pDev, NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams) {
+    if (pDev == nullptr || pSetSleepModeParams == nullptr) {
+        LogError("NvAPI_D3D_SetSleepMode_Direct: pDev or pSetSleepModeParams is nullptr");
+        return NVAPI_INVALID_ARGUMENT;
+    }
     // utils::SRWLockExclusive lock(g_nvapi_lock);
 
     // Track the frame when this function was called

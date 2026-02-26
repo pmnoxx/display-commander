@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.112 (2026-02-26)
+
+- **Reflex RestoreSleepMode crash fix** - Fixed ACCESS_VIOLATION (0xC0000005) in dxgi when using "Game Defaults" Reflex mode. `RestoreSleepMode` was calling NVAPI with a null device when the game had never called `NvAPI_D3D_SetSleepMode`; it now returns early if the device is null and uses a default params struct when params were not stored. `NvAPI_D3D_SetSleepMode_Direct` now rejects null device or params and returns `NVAPI_INVALID_ARGUMENT` instead of calling into the driver.
+- **PDB copied next to addon DLL** - CMake post-build step copies the addon PDB into the same directory as the DLL so debug symbols are available for crash dumps when deploying to ReShade.
+
+---
+
 ## v0.12.111 (2026-02-26)
 
 - **Stuck-report direct logging (relative time only)** - The stuck-methods / undestroyed-guards report now writes to the log file directly from the same thread that runs `CheckStuckMethodsAndLogUndestroyedGuards` via `LogInfoDirectSynchronized`, so output is visible even if the logger's writer thread is blocked. Timestamps use relative time only (`t+XX.Xs`, `X.Xs ago`) from `get_now_ns()` with no `FileTimeToLocalFileTime` or `FileTimeToSystemTime` system calls. Added `g_global_frame_id_last_updated_ns` and `g_last_window_message_processed_ns` (set alongside existing filetime globals) so the report shows "last_updated=X.Xs ago" and "last Windows message processed: X.Xs ago" without wall-clock conversion.

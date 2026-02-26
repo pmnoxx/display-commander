@@ -35,7 +35,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 111)
+set(DISPLAY_COMMANDER_VERSION_PATCH 112)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -84,10 +84,19 @@ if(MSVC)
     $<$<CONFIG:Release>:/DEBUG>  # Also generate debug info in Release for crash analysis
   )
 
-  # Ensure PDB file is placed alongside the DLL for easier debugging
+  # Ensure PDB file is placed alongside the DLL for easier debugging and crash analysis.
+  # After build, zzz_display_commander.pdb is next to zzz_display_commander.addon64; copy both
+  # when deploying to ReShade if you need symbol resolution for crash dumps.
   set_target_properties(zzz_display_commander PROPERTIES
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     PDB_NAME "zzz_display_commander"
+  )
+  # Copy PDB next to the DLL so it is in the same folder regardless of generator layout
+  add_custom_command(TARGET zzz_display_commander POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      "$<TARGET_PDB_FILE:zzz_display_commander>"
+      "$<TARGET_FILE_DIR:zzz_display_commander>/zzz_display_commander.pdb"
+    COMMENT "Copy PDB next to addon DLL for debug symbols"
   )
 endif()
 

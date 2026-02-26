@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.110 (2026-02-26)
+
+- **LoadLibrary hooks: g_module_srwlock never held during system calls** - Module tracking now uses two helpers: `FillModuleInfoFromHandle` (system calls only, no lock) and `TryAddModuleUnderLock` (lock only, no system calls). All six detours (LoadLibraryA/W, LoadLibraryExA/W, LoadPackagedLibrary, LdrLoadDll) call the original API first, then fill module info without the lock, then update shared state under the lock only. This avoids holding `g_module_srwlock` across GetModuleFileNameW, GetModuleInformation, or GetModuleFileTime.
+
+---
+
 ## v0.12.109 (2026-02-26)
 
 - **Stuck methods / undestroyed guards report** - The periodic stuck-methods and undestroyed-detour-guards diagnostic now flushes logs so the output is visible in ReShade logs.

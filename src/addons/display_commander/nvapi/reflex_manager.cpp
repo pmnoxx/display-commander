@@ -196,6 +196,17 @@ bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
 
 // params may be nullptr if no parameters were stored
 void ReflexManager::RestoreSleepMode(IUnknown* d3d_device_, NV_SET_SLEEP_MODE_PARAMS* params) {
-    // unsted for params == nullptr
+    if (d3d_device_ == nullptr) {
+        return;  // No device to restore on (e.g. game never called SetSleepMode). Calling NVAPI with null device crashes in dxgi.
+    }
+    NV_SET_SLEEP_MODE_PARAMS default_params = {};
+    if (params == nullptr) {
+        default_params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
+        default_params.bLowLatencyMode = NV_FALSE;
+        default_params.bLowLatencyBoost = NV_FALSE;
+        default_params.bUseMarkersToOptimize = NV_FALSE;
+        default_params.minimumIntervalUs = 0;
+        params = &default_params;
+    }
     NvAPI_D3D_SetSleepMode_Direct(d3d_device_, params);
 }

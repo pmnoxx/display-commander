@@ -281,12 +281,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
         LogInfo("[DoInit] already initialized, returning");
         return;  // Already initialized
     }
-
-    // Install XInput hooks
-    LogInfo("[DoInit] before InstallXInputHooks");
-    display_commanderhooks::InstallXInputHooks(nullptr);
-    LogInfo("[DoInit] after InstallXInputHooks");
-
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 
     // Initialize display cache

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.136 (2026-02-27)
+
+- **VSync & Tearing: Reshade vs no-ReShade UI** - Main tab "VSync & Tearing" checkboxes are split into two code paths. `DrawDisplaySettings_VSyncAndTearing_Checkboxes` was renamed to `DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade` (used when ReShade is loaded). New `DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode` is used when running without ReShade (e.g. D3D9 FLIPEX from CreateDevice upgrade): same options (Force VSync ON/OFF, Prevent Tearing, Increase Backbuffer to 3, Enable Flip Chain, Enable Flip State) are shown; DXGI vs D3D9 visibility is derived from present traffic and D3D9 present hooks instead of ReShade swapchain/device API.
+
+---
+
 ## v0.12.135 (2026-02-27)
 
 - **D3D9 FPS limiter in no-ReShade mode** - When the addon is used without ReShade (e.g. standalone or proxy d3d9), D3D9 device creation is now hooked via Direct3DCreate9/Direct3DCreate9Ex and IDirect3D9::CreateDevice / IDirect3D9Ex::CreateDeviceEx. The first created device gets Present/PresentEx and vtable hooks, so the FPS limiter works for D3D9 games even when ReShade is not loaded. The FPS counter does not work in this mode (it relies on ReShade swapchain/overlay); only the limiter is active.

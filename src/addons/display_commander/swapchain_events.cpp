@@ -94,11 +94,6 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
         return false;
     }
 
-    if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-        LogWarn("D3D9: Fullscreen state change blocked by developer settings");
-        return false;
-    }
-
     // Check if already D3D9Ex (0x9100)
     if (api_version == 0x9100) {
         LogInfo("D3D9Ex already detected, no upgrade needed");

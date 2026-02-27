@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.133 (2026-02-27)
+
+- **D3D9 device error logging (59 methods)** - Hook all HRESULT-returning IDirect3DDevice9/IDirect3DDevice9Ex methods and log every failure; on first failure per method also log full arguments and HRESULT name (e.g. D3DERR_INVALIDCALL). Covers Reset, BeginScene, EndScene, Clear, TestCooperativeLevel, CreateAdditionalSwapChain, GetBackBuffer, GetSwapChain, all Create* (texture, VB, IB, render target, depth stencil, offscreen surface, state block, vertex declaration, vertex/pixel shader, query), UpdateSurface, UpdateTexture, GetRenderTargetData, GetFrontBufferData, StretchRect, ColorFill, SetRenderTarget, GetRenderTarget, SetDepthStencilSurface, GetDepthStencilSurface, CreateStateBlock, BeginStateBlock, EndStateBlock, SetStreamSource, SetIndices, SetVertexDeclaration, SetFVF, SetStreamSourceFreq, DrawPrimitive, DrawIndexedPrimitive, DrawPrimitiveUP, DrawIndexedPrimitiveUP, ProcessVertices, SetViewport, SetTransform, SetRenderState, GetTexture, SetTexture, SetVertexShader, SetPixelShader, and Device9Ex: CheckDeviceState, CreateRenderTargetEx, CreateOffscreenPlainSurfaceEx, CreateDepthStencilSurfaceEx, ResetEx, GetDisplayModeEx. Plan and optional future methods documented in `docs/tasks/d3d9_error_logging_plan.md`.
+- **D3D9 vtable install log** - `InstallD3D9DeviceVtableLogging` now logs the device pointer when installing hooks (after the "already installed" check).
+
+---
+
 ## v0.12.132 (2026-02-27)
 
 - **D3D9 CreateTexture error diagnostics** - When `IDirect3DDevice9::CreateTexture` fails, the first failure in a session now logs full arguments (device, Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle) and the HRESULT name (e.g. D3DERR_INVALIDCALL for 0x8876086C). Later failures still log only the short error line to avoid log spam.

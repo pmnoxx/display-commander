@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.144 (2026-02-27)
+
+- **XInput vibration test: auto-stop and timer** - Vibration test (Left/Right/Both motors) now auto-stops after 10 s. While running, the UI shows a countdown ("Stopping in X.X s"). The 10 s check runs whenever the XInput tab is visible; Stop button still ends vibration immediately.
+
+---
+
 ## v0.12.143 (2026-02-27)
 
 - **D3D9 prevent fullscreen: fix D3DERR_INVALIDCALL** - When forcing windowed mode (prevent fullscreen) for D3D9 CreateDevice, the addon now sets `FullScreen_RefreshRateInHz` to 0. Leaving it at the game's fullscreen refresh rate (e.g. 180) with `Windowed=1` caused D3DERR_INVALIDCALL (0x8876086C) with some drivers (e.g. NVIDIA). In windowed mode the refresh rate must be 0 per D3D9 semantics.

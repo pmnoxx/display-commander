@@ -18,8 +18,13 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
+#include "../../utils/timing.hpp"
 
 namespace display_commander::widgets::xinput_widget {
+
+namespace {
+constexpr uint64_t VIBRATION_TEST_DURATION_NS = 10ULL * 1000000000ULL;  // 10 seconds
+}
 
 // Helper function to get original GetTickCount64 value (unhooked)
 static ULONGLONG GetOriginalTickCount64() {
@@ -84,6 +89,15 @@ void XInputWidget::OnDraw(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TextColored(::ui::colors::ICON_CRITICAL, "XInput shared state not initialized");
         imgui.Unindent();
         return;
+    }
+
+    // Auto-stop vibration test after 10s (runs whenever this tab is drawn)
+    if (vibration_test_start_ns_ != 0) {
+        const uint64_t now_ns = utils::get_now_ns();
+        if (now_ns - vibration_test_start_ns_ >= VIBRATION_TEST_DURATION_NS) {
+            StopVibration();
+            vibration_test_start_ns_ = 0;
+        }
     }
 
     DrawSettings(imgui);
@@ -461,6 +475,20 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
         imgui.Text("Test controller vibration motors:");
         imgui.Spacing();
 
+        // Auto-stop after 10s and show timer
+        if (vibration_test_start_ns_ != 0) {
+            const uint64_t now_ns = utils::get_now_ns();
+            const uint64_t elapsed_ns = now_ns - vibration_test_start_ns_;
+            if (elapsed_ns >= VIBRATION_TEST_DURATION_NS) {
+                StopVibration();
+                vibration_test_start_ns_ = 0;
+            } else {
+                const float remaining_s = static_cast<float>(VIBRATION_TEST_DURATION_NS - elapsed_ns) / 1e9f;
+                imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stopping in %.1f s (auto-stop)", remaining_s);
+                imgui.Spacing();
+            }
+        }
+
         // Show current controller selection
         imgui.Text("Testing Controller: %d", selected_controller_);
         imgui.Spacing();
@@ -506,7 +534,7 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
 
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_DIMMED,
-                          "Note: Vibration will continue until stopped or controller disconnects");
+                          "Note: Vibration auto-stops after 10 s, or use Stop to end early.");
         imgui.Unindent();
     }
 }
@@ -1446,6 +1474,8 @@ void XInputWidget::TestLeftMotor() {
         return;
     }
 
+    display_commanderhooks::EnsureXInputSetStateForTest();
+
     XINPUT_VIBRATION vibration = {};
     vibration.wLeftMotorSpeed = 65535;  // Maximum intensity
     vibration.wRightMotorSpeed = 0;     // Right motor off
@@ -1454,6 +1484,7 @@ void XInputWidget::TestLeftMotor() {
                        ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
                        : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
+        vibration_test_start_ns_ = utils::get_now_ns();
         LogInfo("XInputWidget::TestLeftMotor() - Left motor test started for controller %d", selected_controller_);
     } else {
         LogError("XInputWidget::TestLeftMotor() - Failed to set vibration for controller %d, error: %lu",
@@ -1467,6 +1498,8 @@ void XInputWidget::TestRightMotor() {
         return;
     }
 
+    display_commanderhooks::EnsureXInputSetStateForTest();
+
     XINPUT_VIBRATION vibration = {};
     vibration.wLeftMotorSpeed = 0;       // Left motor off
     vibration.wRightMotorSpeed = 65535;  // Maximum intensity
@@ -1475,6 +1508,7 @@ void XInputWidget::TestRightMotor() {
                        ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
                        : ERROR_DEVICE_NOT_CONNECTED;
     if (result == ERROR_SUCCESS) {
+        vibration_test_start_ns_ = utils::get_now_ns();
         LogInfo("XInputWidget::TestRightMotor() - Right motor test started for controller %d", selected_controller_);
     } else {
         LogError("XInputWidget::TestRightMotor() - Failed to set vibration for controller %d, error: %lu",
@@ -1488,10 +1522,13 @@ void XInputWidget::StopVibration() {
         return;
     }
 
+    display_commanderhooks::EnsureXInputSetStateForTest();
+
     XINPUT_VIBRATION vibration = {};
     vibration.wLeftMotorSpeed = 0;  // Both motors off
     vibration.wRightMotorSpeed = 0;
 
+    vibration_test_start_ns_ = 0;  // Clear timer so UI stops showing countdown
     DWORD result = display_commanderhooks::XInputSetState_Direct
                        ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
                        : ERROR_DEVICE_NOT_CONNECTED;

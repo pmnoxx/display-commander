@@ -31,6 +31,9 @@ DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINP
 // Hook management
 bool InstallXInputHooks(HMODULE xinput_module = nullptr);
 
+// Ensures XInputSetState_Direct is set (for vibration test). Loads an XInput DLL if the game has not loaded one yet.
+void EnsureXInputSetStateForTest();
+
 // True if at least one XInput module has been hooked (e.g. xinput1_3.dll)
 bool IsXInputHooksInstalled();
 

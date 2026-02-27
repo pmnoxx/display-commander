@@ -172,6 +172,38 @@ static void InitializeXInputDirectFunctions() {
     }
 }
 
+// Module we may load for vibration test when game has not loaded XInput (never FreeLibrary'd)
+static HMODULE g_xinput_module_for_test = nullptr;
+
+void EnsureXInputSetStateForTest() {
+    if (XInputSetState_Direct != nullptr) {
+        return;
+    }
+    for (const char* module_name : xinput_modules) {
+        HMODULE mod = GetModuleHandleA(module_name);
+        if (mod != nullptr) {
+            FARPROC proc = GetProcAddress(mod, "XInputSetState");
+            if (proc != nullptr) {
+                XInputSetState_Direct = reinterpret_cast<XInputSetState_pfn>(proc);
+                return;
+            }
+        }
+    }
+    for (const char* module_name : xinput_modules) {
+        HMODULE mod = LoadLibraryA(module_name);
+        if (mod != nullptr) {
+            FARPROC proc = GetProcAddress(mod, "XInputSetState");
+            if (proc != nullptr) {
+                g_xinput_module_for_test = mod;
+                XInputSetState_Direct = reinterpret_cast<XInputSetState_pfn>(proc);
+                LogInfo("XInputSetStateForTest: loaded %s for vibration test", module_name);
+                return;
+            }
+            FreeLibrary(mod);
+        }
+    }
+}
+
 float recenter(float value, float center) {
     auto new_value = value - center;
 

@@ -222,6 +222,9 @@ class XInputWidget {
     bool is_initialized_ = false;
     int selected_controller_ = 0;
 
+    // Vibration test auto-stop: start time in ns (0 = not running), auto-stops after 10s
+    uint64_t vibration_test_start_ns_ = 0;
+
     // UI helper functions (all take ImGui wrapper for ReShade/standalone)
     void DrawControllerSelector(display_commander::ui::IImGuiWrapper& imgui);
     void DrawControllerState(display_commander::ui::IImGuiWrapper& imgui);

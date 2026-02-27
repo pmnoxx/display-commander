@@ -651,10 +651,11 @@ std::uint64_t GetXInputGetStateUserIndexZeroCallCount() {
     return g_getstate_userindex0_calls.load(std::memory_order_relaxed);
 }
 
+bool IsXInputHooksInstalled() {
+    return g_xinput_hooks_installed.load(std::memory_order_relaxed);
+}
+
 bool InstallXInputHooks(HMODULE xinput_module) {
-    if (true) {
-        return true;
-    }
     // Check if XInput hooks should be suppressed
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::XINPUT)) {

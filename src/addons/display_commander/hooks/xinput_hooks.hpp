@@ -31,7 +31,10 @@ DWORD WINAPI XInputGetCapabilities_Detour(DWORD dwUserIndex, DWORD dwFlags, XINP
 // Hook management
 bool InstallXInputHooks(HMODULE xinput_module = nullptr);
 
-// Number of game calls to XInputGetState(dwUserIndex=0) seen by the detour (0 = hook likely not active)
+// True if at least one XInput module has been hooked (e.g. xinput1_3.dll)
+bool IsXInputHooksInstalled();
+
+// Number of game calls to XInputGetState(dwUserIndex=0) seen by the detour (0 = game may use WGI/other API)
 std::uint64_t GetXInputGetStateUserIndexZeroCallCount();
 
 // Helper functions for thumbstick processing

@@ -373,6 +373,15 @@ void DoInitializationWithHwnd(HWND hwnd) {
     }
     LogInfo("[DoInit] after InstallStreamlineHooks");
 
+    // Retry XInput hooks for any XInput DLL already loaded (e.g. before first present)
+    LogInfo("[DoInit] before InstallXInputHooks (retry)");
+    if (display_commanderhooks::InstallXInputHooks(nullptr)) {
+        LogInfo("[DoInit]: XInput hooks installed successfully");
+    } else {
+        LogInfo("[DoInit]: XInput hooks not installed (no XInput DLL loaded yet or suppressed)");
+    }
+    LogInfo("[DoInit] after InstallXInputHooks");
+
     // Initialize keyboard tracking system
     LogInfo("[DoInit] before keyboard_tracker::Initialize");
     display_commanderhooks::keyboard_tracker::Initialize();

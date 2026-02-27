@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.139 (2026-02-27)
+
+- **XInput hooks fix (e.g. Hollow Knight)** - XInput hooks were previously disabled by a stub in `InstallXInputHooks`; the stub was removed so hooks install correctly. Added a retry of `InstallXInputHooks(nullptr)` in `DoInitializationWithHwnd` so games that load XInput before the first present get hooked. Added "Suppress Windows.Gaming.Input (use XInput)" option in the XInput widget so games that use Windows.Gaming.Input can be forced to use XInput instead (with a warning when XInput is on but WGI is not suppressed). Exposed `IsXInputHooksInstalled()` for UI/status.
+
+---
+
 ## v0.12.138 (2026-02-27)
 
 - **DXGI error logging and re-enabled swapchain hooks** - All IDXGISwapChain / IDXGISwapChain1–4 and IDXGIOutput HRESULT-returning methods now log failures: each method logs up to 10 times per session via an internal static counter, using a shared `LogDxgiErrorUpTo10` helper and `[DXGI error] <method> returned 0x<hr>`. Re-enabled all vtable hooks in `HookSwapchain`: GetBuffer (9), GetDesc (12), GetFrameStatistics (16), GetLastPresentCount (17), GetDesc1/GetFullscreenDesc/GetHwnd/GetCoreWindow (18–21), IsTemporaryMonoSupported/GetRestrictToOutput/SetGetBackgroundColor/SetGetRotation (23–28), full IDXGISwapChain2 block (29–35), GetCurrentBackBufferIndex (36), SetHDRMetaData (40). Non-critical hook failures no longer abort hooking.

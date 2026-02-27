@@ -1,5 +1,4 @@
 #include "xinput_widget.hpp"
-#include "../../ui/imgui_wrapper_base.hpp"
 #include <windows.h>
 #include <algorithm>
 #include <reshade_imgui.hpp>
@@ -12,8 +11,10 @@
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../res/ui_colors.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/hook_suppression_settings.hpp"
+#include "../../ui/imgui_wrapper_base.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
@@ -118,6 +119,30 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltip("Enable XInput API hooks for input processing and remapping");
         }
 
+        // Suppress Windows.Gaming.Input (use XInput)
+        bool suppress_wgi = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
+        if (imgui.Checkbox("Suppress Windows.Gaming.Input (use XInput)", &suppress_wgi)) {
+            settings::g_advancedTabSettings.suppress_windows_gaming_input.SetValue(suppress_wgi);
+            settings::g_advancedTabSettings.suppress_windows_gaming_input.Save();
+            LogInfo("Suppress Windows.Gaming.Input setting changed to: %s", suppress_wgi ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Suppress Windows.Gaming.Input.dll so the game uses XInput instead.\n"
+                "Disable if it causes issues (e.g. gamepad not working).\n"
+                "Game restart may be required for changes to take effect.");
+        }
+
+        if (enable_hooks && !suppress_wgi) {
+            imgui.TextColored(::ui::colors::ICON_WARNING,
+                              "Warning: XInput is enabled but Windows.Gaming.Input is not suppressed. Games that use "
+                              "WGI may not call XInput; enable suppression above for XInput features to work.");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Enable \"Suppress Windows.Gaming.Input\" so the game falls back to XInput instead of WGI.");
+            }
+        }
+
         imgui.Spacing();
 
         // Swap A/B buttons
@@ -190,8 +215,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         // Left stick sensitivity setting
         float left_max_input = g_shared_state->left_stick_max_input.load();
         float left_max_input_percent = left_max_input * 100.0f;
-        if (imgui.SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input_percent, 10.0f, 100.0f,
-                               "%.0f%%")) {
+        if (imgui.SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input_percent, 10.0f, 100.0f, "%.0f%%")) {
             g_shared_state->left_stick_max_input.store(left_max_input_percent / 100.0f);
             SaveSettings();
         }
@@ -205,7 +229,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         float right_max_input = g_shared_state->right_stick_max_input.load();
         float right_max_input_percent = right_max_input * 100.0f;
         if (imgui.SliderFloat("Right Stick Sensitivity (Max Input)", &right_max_input_percent, 10.0f, 100.0f,
-                               "%.0f%%")) {
+                              "%.0f%%")) {
             g_shared_state->right_stick_max_input.store(right_max_input_percent / 100.0f);
             SaveSettings();
         }
@@ -219,7 +243,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         float left_min_output = g_shared_state->left_stick_min_output.load();
         float left_min_output_percent = left_min_output * 100.0f;
         if (imgui.SliderFloat("Left Stick Remove Game's Deadzone (Min Output)", &left_min_output_percent, 0.0f, 90.0f,
-                               "%.0f%%")) {
+                              "%.0f%%")) {
             g_shared_state->left_stick_min_output.store(left_min_output_percent / 100.0f);
             SaveSettings();
         }
@@ -231,8 +255,8 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         // Right stick remove game's deadzone setting
         float right_min_output = g_shared_state->right_stick_min_output.load();
         float right_min_output_percent = right_min_output * 100.0f;
-        if (imgui.SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output_percent, 0.0f,
-                               90.0f, "%.0f%%")) {
+        if (imgui.SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output_percent, 0.0f, 90.0f,
+                              "%.0f%%")) {
             g_shared_state->right_stick_min_output.store(right_min_output_percent / 100.0f);
             SaveSettings();
         }
@@ -393,7 +417,7 @@ void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui
         if (getstateex_update_ns > 0) {
             double getstateex_rate_hz = 1000000000.0 / getstateex_update_ns;  // Convert ns to Hz
             imgui.Text("XInputGetStateEx Rate: %.1f Hz (%.2f ms)", getstateex_rate_hz,
-                        getstateex_update_ns / 1000000.0);
+                       getstateex_update_ns / 1000000.0);
         } else {
             imgui.TextColored(::ui::colors::TEXT_DIMMED, "XInputGetStateEx Rate: No data");
         }
@@ -482,16 +506,16 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
 
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_DIMMED,
-                           "Note: Vibration will continue until stopped or controller disconnects");
+                          "Note: Vibration will continue until stopped or controller disconnects");
         imgui.Unindent();
     }
 }
 
 void XInputWidget::DrawControllerSelector(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Text("Controller:");
+    imgui.Text("Controller (0-3):");
     imgui.SameLine();
 
-    // Create controller list
+    // XInput uses 0-based indices 0..3 for the four controller slots
     std::vector<std::string> controller_names;
     for (int i = 0; i < XUSER_MAX_COUNT; ++i) {
         std::string status = GetControllerStatus(i);
@@ -511,6 +535,9 @@ void XInputWidget::DrawControllerSelector(display_commander::ui::IImGuiWrapper& 
         }
         imgui.EndCombo();
     }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("XInput controller indices 0-3 (first to fourth controller). Same numbering as Autofire.");
+    }
     imgui.PopID();
 }
 
@@ -526,8 +553,27 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
     const XINPUT_STATE& state = g_shared_state->controller_states[selected_controller_];
     ControllerState controller_state = g_shared_state->controller_connected[selected_controller_];
 
+    // Show XInput hook status so user can see if hooking is active (even when no controller data yet)
+    const bool hooks_installed = display_commanderhooks::IsXInputHooksInstalled();
+    if (hooks_installed) {
+        imgui.TextColored(::ui::colors::STATUS_ACTIVE, "XInput hooks: active");
+    } else {
+        imgui.TextColored(::ui::colors::ICON_CRITICAL, "XInput hooks: not installed");
+    }
+
     if (controller_state == ControllerState::Uninitialized) {
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "Controller %d - Uninitialized", selected_controller_);
+        const std::uint64_t getstate0_calls = display_commanderhooks::GetXInputGetStateUserIndexZeroCallCount();
+        if (getstate0_calls == 0 && hooks_installed) {
+            imgui.TextColored(::ui::colors::ICON_CRITICAL,
+                             "No game calls to XInputGetState(0) yet. Game may use Windows.Gaming.Input or "
+                             "DirectInput instead of XInput.");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Hollow Knight and some other games use Windows.Gaming.Input for controllers, so XInput is never "
+                    "polled. Hooks are active on the XInput DLL when/if the game loads it.");
+            }
+        }
         return;
     } else if (controller_state == ControllerState::Unconnected) {
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "Controller %d - Disconnected", selected_controller_);
@@ -543,7 +589,7 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
     if (getstate0_calls == 0) {
         imgui.TextColored(
             ::ui::colors::ICON_CRITICAL,
-            "Warning: No game calls to XInputGetState(dwUserIndex=0) detected. XInput hooking may not be active.");
+            "No game calls to XInputGetState(0) detected. Game may use Windows.Gaming.Input or DirectInput instead.");
     }
 
     // Debug: Show raw button state
@@ -617,10 +663,10 @@ void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui,
                 // Special styling for Home button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
                     imgui.PushStyleColor(ImGuiCol_Button,
-                                          pressed1 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
+                                         pressed1 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
                 } else {
                     imgui.PushStyleColor(ImGuiCol_Button,
-                                          pressed1 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
+                                         pressed1 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
                 }
                 imgui.Button(buttons[i].name, ImVec2(60, 30));
                 imgui.PopStyleColor();
@@ -630,10 +676,10 @@ void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui,
                 // Special styling for Home button
                 if (buttons[i + 1].mask == XINPUT_GAMEPAD_GUIDE) {
                     imgui.PushStyleColor(ImGuiCol_Button,
-                                          pressed2 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
+                                         pressed2 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
                 } else {
                     imgui.PushStyleColor(ImGuiCol_Button,
-                                          pressed2 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
+                                         pressed2 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
                 }
                 imgui.Button(buttons[i + 1].name, ImVec2(60, 30));
                 imgui.PopStyleColor();
@@ -644,10 +690,10 @@ void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui,
                 // Special styling for Home button
                 if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
                     imgui.PushStyleColor(ImGuiCol_Button,
-                                          pressed ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
+                                         pressed ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
                 } else {
                     imgui.PushStyleColor(ImGuiCol_Button,
-                                          pressed ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
+                                         pressed ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
                 }
                 imgui.Button(buttons[i].name, ImVec2(60, 30));
                 imgui.PopStyleColor();
@@ -689,9 +735,9 @@ void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, 
         }
 
         imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final,
-                    gamepad.sThumbLX);
+                   gamepad.sThumbLX);
         imgui.Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ly, ly_recentered, ly_final,
-                    gamepad.sThumbLY);
+                   gamepad.sThumbLY);
 
         // Visual representation
         imgui.Text("Position:");
@@ -738,9 +784,9 @@ void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, 
         }
 
         imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final,
-                    gamepad.sThumbRX);
+                   gamepad.sThumbRX);
         imgui.Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ry, ry_recentered, ry_final,
-                    gamepad.sThumbRY);
+                   gamepad.sThumbRY);
 
         // Visual representation for right stick
         imgui.Text("Position:");
@@ -771,8 +817,8 @@ void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, 
 }
 
 void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_deadzone,
-                                            float left_max_input, float left_min_output, float right_deadzone,
-                                            float right_max_input, float right_min_output) {
+                                           float left_max_input, float left_min_output, float right_deadzone,
+                                           float right_max_input, float right_min_output) {
     if (imgui.CollapsingHeader("Input/Output Curves", 0)) {
         imgui.Indent();
         imgui.TextColored(::ui::colors::TEXT_DEFAULT, "Visual representation of how stick input is processed");
@@ -824,11 +870,11 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
         // Left stick curve
         imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Left Stick Input/Output Curve");
         imgui.Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", left_deadzone * 100.0f,
-                    left_max_input * 100.0f, left_min_output * 100.0f);
+                   left_max_input * 100.0f, left_min_output * 100.0f);
 
         // Create plot for left stick (0.0 to 1.0 input range)
         imgui.PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0, "Left Stick Output", 0.0f, 1.0f,
-                         ImVec2(-1, 150));
+                        ImVec2(-1, 150));
 
         // Add reference lines
         display_commander::ui::IImDrawList* draw_list = imgui.GetWindowDrawList();
@@ -855,11 +901,11 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
         // Right stick curve
         imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Right Stick Input/Output Curve");
         imgui.Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", right_deadzone * 100.0f,
-                    right_max_input * 100.0f, right_min_output * 100.0f);
+                   right_max_input * 100.0f, right_min_output * 100.0f);
 
         // Create plot for right stick (0.0 to 1.0 input range)
         imgui.PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0, "Right Stick Output", 0.0f, 1.0f,
-                         ImVec2(-1, 150));
+                        ImVec2(-1, 150));
 
         // Add reference lines for right stick
         plot_pos = imgui.GetItemRectMin();
@@ -892,7 +938,7 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
         imgui.TextColored(::ui::colors::ICON_ANALYSIS, "Cyan = Min Output (Horizontal)");
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_DIMMED,
-                           "Note: Radial deadzone preserves stick direction (circular deadzone)");
+                          "Note: Radial deadzone preserves stick direction (circular deadzone)");
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");
@@ -905,7 +951,7 @@ void XInputWidget::DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui
         imgui.Indent();
         // Left trigger
         imgui.Text("Left Trigger: %u/255 (%.1f%%)", gamepad.bLeftTrigger,
-                    (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
+                   (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
 
         // Visual bar for left trigger
         float left_trigger_norm = static_cast<float>(gamepad.bLeftTrigger) / 255.0f;
@@ -913,7 +959,7 @@ void XInputWidget::DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui
 
         // Right trigger
         imgui.Text("Right Trigger: %u/255 (%.1f%%)", gamepad.bRightTrigger,
-                    (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
+                   (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
 
         // Visual bar for right trigger
         float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
@@ -1588,7 +1634,7 @@ void XInputWidget::DrawDualSenseReport(display_commander::ui::IImGuiWrapper& img
 
         // Display basic device info
         imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Device: %s",
-                           device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
+                          device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
         imgui.Text("Connection: %s", device.connection_type.c_str());
         imgui.Text("Vendor ID: 0x%04X", device.vendor_id);
         imgui.Text("Product ID: 0x%04X", device.product_id);
@@ -1853,7 +1899,7 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
             // Input field for precise control
             imgui.SetNextItemWidth(80);
             if (imgui.InputInt("##HoldDownFramesInput", &hold_down_frames_int, 1, 5,
-                                ImGuiInputTextFlags_EnterReturnsTrue)) {
+                               ImGuiInputTextFlags_EnterReturnsTrue)) {
                 if (hold_down_frames_int < 1) {
                     hold_down_frames_int = 1;
                 } else if (hold_down_frames_int > 1000) {
@@ -1889,7 +1935,7 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
             // Input field for precise control
             imgui.SetNextItemWidth(80);
             if (imgui.InputInt("##HoldUpFramesInput", &hold_up_frames_int, 1, 5,
-                                ImGuiInputTextFlags_EnterReturnsTrue)) {
+                               ImGuiInputTextFlags_EnterReturnsTrue)) {
                 if (hold_up_frames_int < 1) {
                     hold_up_frames_int = 1;
                 } else if (hold_up_frames_int > 1000) {

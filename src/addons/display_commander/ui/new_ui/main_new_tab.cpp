@@ -3448,7 +3448,8 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the Custom FPS Limiter.");
+                "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the "
+                "Custom FPS Limiter.");
         }
     }
 }
@@ -4208,6 +4209,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
                                      : "Unavailable";
                 break;
         }
+        /*
         imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
         if (flip_state != DxgiBypassMode::kQueryFailedNoMedia) {
             imgui.SameLine();
@@ -4225,6 +4227,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
                     : ui::colors::FLIP_UNKNOWN,
                 "Status: %s", flip_state_str);
         }
+        */
         bool status_hovered = imgui.IsItemHovered();
         static DWORD last_discord_check = 0;
         DWORD current_time = GetTickCount();
@@ -7155,10 +7158,10 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
                        || flip_state == DxgiBypassMode::kQueryFailedNoMedia
                        || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
                 // Query Failed - Red
-                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
+                // imgui.TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
             } else {
                 // Unknown/Unset - Yellow
-                imgui.TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
+                // imgui.TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
             }
         }
 

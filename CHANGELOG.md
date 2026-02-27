@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.125 (2026-02-27)
+
+- **UI** - No longer show DXGI flip state status in the UI.
+
+---
+
 ## v0.12.124 (2026-02-27)
 
 - **D3D9 device vtable logging** - Hook all IDirect3DDevice9 resource-creation methods that ReShade wraps: CreateTexture, CreateVolumeTexture, CreateCubeTexture, CreateVertexBuffer, CreateIndexBuffer (in addition to existing CreateRenderTarget, CreateDepthStencilSurface, CreateOffscreenPlainSurface). Each detour uses RECORD_DETOUR_CALL and logs on FAILED(hr).

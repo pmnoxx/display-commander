@@ -23,22 +23,72 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 ## Features
 
-- Window management: Borderless windowed (aspect ratio or explicit width/height) and borderless fullscreen
-- Monitor targeting: Choose which monitor to use and view current display info
-- Background black curtain: Fill unused screen space behind a smaller game window
-- Alignment options: Snap window to corners or center
-- Auto-apply (continuous monitoring): Keep size/position in sync
-- FPS limiter: Foreground and background caps using a custom limiter
-- Audio controls: Per-process volume, manual mute, mute in background, conditional background mute
-- Live indicators: flip state
-- **NVIDIA Reflex support**: Low-latency mode integration for reduced input lag
-- **AntiLag II/XeLL support**: AMD AntiLag 2 and XeLL latency reduction technologies (via fake NVAPI)
+### Display & window
+
+- **Window mode**: Borderless windowed (aspect ratio or explicit width/height), borderless fullscreen, or no changes
+- **Monitor targeting**: Choose which monitor to use; view current display info and refresh rate
+- **Background black curtain**: Fill unused screen space behind a smaller game window (ADHD multi-monitor mode)
+- **Alignment**: Snap window to corners or center
+- **Window controls**: Minimize, restore, maximize (applied on a background thread to avoid crashes)
+- **Display hotkeys**: Move to previous/next monitor (Win+Left / Win+Right), move to primary/secondary (numpad +/-), minimize/restore (Win+Down / Win+Up)
+- **Prevent minimize**: Option to avoid game window minimizing on alt-tab
+
+### Performance & FPS
+
+- **FPS limiter**: Custom limiter with foreground and optional background caps; multiple modes (e.g. OnPresentSync, Reflex, LatentSync, Safe mode)
+- **Background FPS**: Optional separate FPS limit when game is in background (checkbox + slider)
+- **Live indicators**: Flip state (composed/independent), VRR status, present mode (DXGI/Vulkan/OpenGL)
+- **Limit real frames**: Works with frame generation (DLSS-G, etc.) to limit real frames instead of generated ones
+
+### Audio
+
+- **Per-process volume**: Control game volume independently
+- **Mute options**: Manual mute, mute in background, conditional background mute
+- **Per-channel VU meters**: Main tab and performance overlay
+- **Hotkeys**: Volume up/down, brightness up/down (configurable step)
+
+### Latency
+
+- **NVIDIA Reflex**: Low-latency mode integration for reduced input lag (native and configurable)
+- **Inject Reflex**: Optional injection of Reflex (sleep + latency markers) for games without native Reflex
+- **AntiLag II / XeLL**: AMD AntiLag 2 and XeLL support via fake NVAPI (experimental, for non-NVIDIA GPUs)
+- **PCLStats (ETW)**: Optional PCLStats event reporting for Special K–style tools
+
+### HDR & color
+
+- **Auto color space**: Format-based color space (sRGB / scRGB / HDR10) on the swap chain (DXGI)
+- **Manual color space**: Override color space (sRGB, scRGB, HDR10 ST2084/HLG) from Advanced tab
+- **HDR hiding** (experimental): Option to hide HDR modes or force SDR for compatibility
+
+### DLSS & upscaling
+
+- **DLSS information**: Status, quality preset, scaling ratio, internal/output resolution on Main and Swapchain tabs
+- **Frame Generation (FG)**: FG mode display in performance overlay when DLSS-G is active
+- **DLSS overrides**: Preset overrides, internal resolution scale, M–Z presets; optional hide DLSS-G from ReShade
+- **VRR status**: DXGI and NVAPI VRR state (enabled/requested/possible) on Swapchain tab
+
+### Input & hotkeys
+
+- **Configurable hotkeys**: Full Hotkeys tab — window/display, volume, brightness, ADHD mode, independent window toggle, etc.
+- **XInput**: Controller support and hooks for remapping / compatibility
+- **Windows.Gaming.Input**: Option to suppress WGI so games use XInput (helps with continue-rendering-in-background)
+- **Input remapping**: Controller remapping and related presets
+
+### Advanced & power user
+
+- **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
+- **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
+- **Proxy loading**: Load as dxgi, d3d11, d3d12, d3d9, ddraw, opengl32, or winmm proxy when needed
+- **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator
+- **CPU control**: Core affinity and process priority (Main / Settings tab in standalone)
+- **Prevent display sleep & screensaver**: Keep display awake while gaming
+- **Clip cursor**: Option to clip cursor to game window
+- **Image adjustment**: Brightness, gamma, saturation, hue; AutoHDR option
+- **Fake NVAPI** (experimental): Spoof NVIDIA on non-NVIDIA GPUs for DLSS/Reflex-style features
 
 ## Known Issues
 
 **⚠️ Load Order Requirement**: Display Commander must be loaded last by ReShade. This is why we've added the `zzz_` prefix to the filename - it ensures proper load order and prevents conflicts with other addons.
-
-## Known Issues
 
 For a comprehensive list of known issues and workarounds, see [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 

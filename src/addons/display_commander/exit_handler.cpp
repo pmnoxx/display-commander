@@ -11,7 +11,6 @@
 #include "utils.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
-#include "utils/logging.hpp"
 #include "utils/timing.hpp"
 
 namespace exit_handler {
@@ -20,15 +19,33 @@ namespace exit_handler {
 static std::atomic<bool> g_exit_handled{false};
 
 // Helper function to write to both ReShade log and DisplayCommander.log
+// Uses LogInfoDirectSynchronized so crash/exception handlers write directly to file without queue.
 void WriteToDebugLog(const std::string& message) {
     try {
-        // Write to DisplayCommander.log using the logger system
-        display_commander::logger::LogInfo(message.c_str());
+        // Write to DisplayCommander.log using direct synchronized logging (safe during crash/VEH)
+        display_commander::logger::DisplayCommanderLogger::GetInstance().LogInfoDirectSynchronized(message);
 
         // Also write to ReShade log for comprehensive coverage
         // reshade::log::message(reshade::log::level::info, message.c_str());
     } catch (...) {
         // Ignore any errors during logging to prevent crashes
+    }
+}
+
+void WriteMultiLineToDebugLog(const std::string& text, const char* empty_fallback) {
+    if (text.empty()) {
+        WriteToDebugLog(empty_fallback);
+        return;
+    }
+    std::istringstream iss(text);
+    std::string line;
+    while (std::getline(iss, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (!line.empty()) {
+            WriteToDebugLog(line);
+        }
     }
 }
 
@@ -50,31 +67,13 @@ void OnHandleExit(ExitSource source, const std::string& message) {
         // Another thread already handled the exit
         return;
     }
-    LogInfo("%s", exit_message.str().c_str());
+    display_commander::logger::LogInfoDirectSynchronized("%s", exit_message.str().c_str());
 
     // Print undestroyed guard information (crash detection)
-    // Always print count, even if 0
     uint64_t exit_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
     std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(exit_timestamp_ns);
     WriteToDebugLog("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
-
-    // Split multi-line string and write each line separately
-    if (!undestroyed_guards_info.empty()) {
-        std::istringstream iss(undestroyed_guards_info);
-        std::string line;
-        while (std::getline(iss, line)) {
-            // Remove any trailing carriage return
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (!line.empty()) {
-                WriteToDebugLog(line);
-            }
-        }
-    } else {
-        WriteToDebugLog("Undestroyed Detour Guards: 0");
-    }
-
+    WriteMultiLineToDebugLog(undestroyed_guards_info, "Undestroyed Detour Guards: 0");
     WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
 
     // Enumerate loaded modules and report any hookable module we never saw (e.g. LdrLoadDll or load before hooks)

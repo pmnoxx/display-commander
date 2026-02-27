@@ -1,4 +1,5 @@
 #include "d3d9_present_hooks.hpp"
+#include "d3d9_vtable_indices.hpp"
 #include "../../globals.hpp"
 #include "../../gpu_completion_monitoring.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
@@ -180,8 +181,7 @@ bool HookD3D9Present(IDirect3DDevice9* device) {
         return true;
     }
     void** vtable = *reinterpret_cast<void***>(device);
-    // Hook Present (vtable index 17 for IDirect3DDevice9::Present)
-    if (!CreateAndEnableHook(vtable[17], &IDirect3DDevice9_Present_Detour,
+    if (!CreateAndEnableHook(vtable[VTable::Present], &IDirect3DDevice9_Present_Detour,
                              reinterpret_cast<LPVOID*>(&IDirect3DDevice9_Present_Original),
                              "IDirect3DDevice9::Present")) {
         LogWarn("HookD3D9Present: failed to create and enable Present hook");
@@ -208,9 +208,8 @@ bool HookD3D9Present(IDirect3DDevice9* device) {
         return false;
     }
 
-    // Hook PresentEx (vtable index 121 for IDirect3DDevice9Ex::PresentEx)
-    // Note: PresentEx is only available on IDirect3DDevice9Ex, so we need to check if it exists
-    if (!CreateAndEnableHook(vtable9ex[121], &IDirect3DDevice9_PresentEx_Detour,
+    // PresentEx is only on IDirect3DDevice9Ex
+    if (!CreateAndEnableHook(vtable9ex[VTable::PresentEx], &IDirect3DDevice9_PresentEx_Detour,
                              reinterpret_cast<LPVOID*>(&IDirect3DDevice9_PresentEx_Original),
                              "IDirect3DDevice9Ex::PresentEx")) {
         LogWarn("HookD3D9Present: PresentEx hook not available (device may not be IDirect3DDevice9Ex)");

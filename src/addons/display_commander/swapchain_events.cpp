@@ -275,110 +275,117 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
 
 // Centralized initialization method
 void DoInitializationWithHwnd(HWND hwnd) {
+    LogInfo("[DoInit] entry HWND: 0x%p", hwnd);
     bool expected = false;
     if (!g_initialized_with_hwnd.compare_exchange_strong(expected, true)) {
+        LogInfo("[DoInit] already initialized, returning");
         return;  // Already initialized
     }
 
     // Install XInput hooks
+    LogInfo("[DoInit] before InstallXInputHooks");
     display_commanderhooks::InstallXInputHooks(nullptr);
+    LogInfo("[DoInit] after InstallXInputHooks");
 
     LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 
     // Initialize display cache
+    LogInfo("[DoInit] before display_cache::Initialize");
     display_cache::g_displayCache.Initialize();
+    LogInfo("[DoInit] after display_cache::Initialize");
 
     // Capture initial display state for restoration
+    LogInfo("[DoInit] before CaptureInitialState");
     display_initial_state::g_initialDisplayState.CaptureInitialState();
+    LogInfo("[DoInit] after CaptureInitialState");
 
     // Initialize input remapping system
+    LogInfo("[DoInit] before initialize_input_remapping");
     display_commander::input_remapping::initialize_input_remapping();
+    LogInfo("[DoInit] after initialize_input_remapping");
 
     // Initialize UI system
+    LogInfo("[DoInit] before InitializeNewUISystem");
     ui::new_ui::InitializeNewUISystem();
+    LogInfo("[DoInit] after InitializeNewUISystem");
+    LogInfo("[DoInit] before StartContinuousMonitoring");
     StartContinuousMonitoring();
+    LogInfo("[DoInit] after StartContinuousMonitoring");
+    LogInfo("[DoInit] before StartGPUCompletionMonitoring");
     StartGPUCompletionMonitoring();
+    LogInfo("[DoInit] after StartGPUCompletionMonitoring");
 
     // Initialize refresh rate monitoring
+    LogInfo("[DoInit] before StartRefreshRateMonitoring");
     dxgi::fps_limiter::StartRefreshRateMonitoring();
+    LogInfo("[DoInit] after StartRefreshRateMonitoring");
 
     // Initialize experimental tab
+    LogInfo("[DoInit] before RunBackgroundAudioMonitor detach");
     std::thread(RunBackgroundAudioMonitor).detach();
+    LogInfo("[DoInit] after RunBackgroundAudioMonitor detach");
 
     // Check for auto-enable NVAPI features for specific games
+    LogInfo("[DoInit] before CheckAndAutoEnable (NVAPI fullscreen prevention)");
     g_nvapiFullscreenPrevention.CheckAndAutoEnable();
+    LogInfo("[DoInit] after CheckAndAutoEnable");
 
+    LogInfo("[DoInit] before InitExperimentalTab");
     ui::new_ui::InitExperimentalTab();
+    LogInfo("[DoInit] after InitExperimentalTab");
 
     // Initialize DualSense support
+    LogInfo("[DoInit] before InitializeDualSenseWidget");
     display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
+    LogInfo("[DoInit] after InitializeDualSenseWidget");
 
     // Install HID suppression hooks if enabled
+    LogInfo("[DoInit] before HID hooks");
     if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
         renodx::hooks::InstallHIDSuppressionHooks();
     }
 
     // Install additional HID hooks for statistics tracking
     display_commanderhooks::InstallAdditionalHIDHooks();
+    LogInfo("[DoInit] after HID hooks");
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {
-        LogInfo("DoInitialization: Setting up window hooks for HWND: 0x%p", hwnd);
+        LogInfo("[DoInit]: Setting up window hooks for HWND: 0x%p", hwnd);
+        LogInfo("[DoInit] before InstallWindowProcHooks");
 
         // Install window procedure hooks (this also sets the game window)
         if (display_commanderhooks::InstallWindowProcHooks(hwnd)) {
-            LogInfo("Window procedure hooks installed successfully");
+            LogInfo("[DoInit]: Window procedure hooks installed successfully");
         } else {
-            LogError("Failed to install window procedure hooks");
+            LogError("[DoInit]: Failed to install window procedure hooks");
         }
+        LogInfo("[DoInit] after InstallWindowProcHooks");
 
         // Save the display device ID for the game window
+        LogInfo("[DoInit] before SaveGameWindowDisplayDeviceId");
         settings::SaveGameWindowDisplayDeviceId(hwnd);
+        LogInfo("[DoInit] after SaveGameWindowDisplayDeviceId");
     }
 
-    LogInfo("DoInitialization: Initialization completed");
+    LogInfo("[DoInit]: Initialization completed");
 
     // Install Streamline hooks
+    LogInfo("[DoInit] before InstallStreamlineHooks");
     if (InstallStreamlineHooks(nullptr)) {
-        LogInfo("Streamline hooks installed successfully");
+        LogInfo("[DoInit]: Streamline hooks installed successfully");
     } else {
-        LogInfo("Streamline hooks not installed (Streamline not detected)");
+        LogInfo("[DoInit]: Streamline hooks not installed (Streamline not detected)");
     }
+    LogInfo("[DoInit] after InstallStreamlineHooks");
 
     // Initialize keyboard tracking system
+    LogInfo("[DoInit] before keyboard_tracker::Initialize");
     display_commanderhooks::keyboard_tracker::Initialize();
-    LogInfo("Keyboard tracking system initialized");
+    LogInfo("[DoInit]: Keyboard tracking system initialized");
+    LogInfo("[DoInit] after keyboard_tracker::Initialize");
 
-    // Record this game in registry for Installer UI game launcher (skip when running as standalone UI via rundll32)
-    wchar_t processPath[MAX_PATH];
-    if (GetModuleFileNameW(nullptr, processPath, (DWORD)std::size(processPath)) != 0) {
-        const wchar_t* p = processPath + wcslen(processPath);
-        while (p > processPath && p[-1] != L'\\' && p[-1] != L'/') --p;
-        if (_wcsicmp(p, L"rundll32.exe") != 0) {
-            const wchar_t* cmdLine = GetCommandLineW();
-            const wchar_t* args = nullptr;
-            if (cmdLine && *cmdLine) {
-                if (*cmdLine == L'"') {
-                    args = wcschr(cmdLine + 1, L'"');
-                    if (args)
-                        args = args + 1;
-                    else
-                        args = cmdLine;
-                } else {
-                    args = wcschr(cmdLine, L' ');
-                }
-                if (args)
-                    while (*args == L' ') ++args;
-                if (args && !*args) args = nullptr;
-            }
-            const wchar_t* titlePtr = nullptr;
-            wchar_t windowTitleBuf[4096];
-            if (hwnd != nullptr && IsWindow(hwnd)
-                && GetWindowTextW(hwnd, windowTitleBuf, (int)std::size(windowTitleBuf)) > 0)
-                titlePtr = windowTitleBuf;
-            display_commander::game_launcher_registry::RecordGameRun(processPath, args, titlePtr);
-        }
-    }
+    LogInfo("[DoInit] exit");
 }
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};
@@ -472,9 +479,7 @@ void HandleOnPresentEnd() {
 }
 
 // Query DXGI composition state - no-op; independent flip state is no longer queried or shown in UI
-void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain) {
-    (void)dxgi_swapchain;
-}
+void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain) { (void)dxgi_swapchain; }
 
 void RecordFrameTime(FrameTimeMode reason) {
     // Filter calls based on the selected frame time mode

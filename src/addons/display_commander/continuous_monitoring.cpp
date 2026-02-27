@@ -961,6 +961,7 @@ void ContinuousMonitoringThread() {
 
 // Start continuous monitoring
 void StartContinuousMonitoring() {
+    LogInfo("[StartContinuousMonitoring] entry");
     if (g_monitoring_thread_running.load()) {
         LogDebug("Continuous monitoring already running");
         return;
@@ -969,9 +970,12 @@ void StartContinuousMonitoring() {
 
     // Start the monitoring thread
     if (g_monitoring_thread.joinable()) {
+        LogInfo("[StartContinuousMonitoring] joining previous monitoring thread...");
         g_monitoring_thread.join();
+        LogInfo("[StartContinuousMonitoring] join done");
     }
 
+    LogInfo("[StartContinuousMonitoring] starting ContinuousMonitoringThread");
     g_monitoring_thread = std::thread(ContinuousMonitoringThread);
 
     // Separate thread to call CheckStuckMethodsAndLogUndestroyedGuards so we can detect

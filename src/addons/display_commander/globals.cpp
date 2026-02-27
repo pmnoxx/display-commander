@@ -520,8 +520,9 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
 
     // Create new factory
     auto new_factory_ptr = std::make_unique<Microsoft::WRL::ComPtr<IDXGIFactory1>>();
-    LogInfo("Creating shared DXGI factory");
+    LogInfo("[GetSharedDXGIFactory] Creating shared DXGI factory (before CreateDXGIFactory1)");
     HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(new_factory_ptr->GetAddressOf()));
+    LogInfo("[GetSharedDXGIFactory] CreateDXGIFactory1 returned hr=0x%x", static_cast<unsigned>(hr));
     if (FAILED(hr)) {
         LogWarn("Failed to create shared DXGI factory");
         return nullptr;

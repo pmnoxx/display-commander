@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.138 (2026-02-27)
+
+- **DXGI error logging and re-enabled swapchain hooks** - All IDXGISwapChain / IDXGISwapChain1–4 and IDXGIOutput HRESULT-returning methods now log failures: each method logs up to 10 times per session via an internal static counter, using a shared `LogDxgiErrorUpTo10` helper and `[DXGI error] <method> returned 0x<hr>`. Re-enabled all vtable hooks in `HookSwapchain`: GetBuffer (9), GetDesc (12), GetFrameStatistics (16), GetLastPresentCount (17), GetDesc1/GetFullscreenDesc/GetHwnd/GetCoreWindow (18–21), IsTemporaryMonoSupported/GetRestrictToOutput/SetGetBackgroundColor/SetGetRotation (23–28), full IDXGISwapChain2 block (29–35), GetCurrentBackBufferIndex (36), SetHDRMetaData (40). Non-critical hook failures no longer abort hooking.
+
+---
+
 ## v0.12.137 (2026-02-27)
 
 - **D3D9 → D3D9Ex / flip swapchain upgrade in no-ReShade mode** - Full support for upgrading D3D9 games to D3D9Ex and FLIPEX when running without ReShade. Separate settings: "Enable D3D9 FLIPEX (with ReShade)" vs "Enable D3D9 FLIPEX (no-ReShade mode)" so ReShade and standalone paths can be configured independently. D3D9Ex resource creation: when the game passes D3DPOOL_MANAGED (1), the addon now passes the D3D9Ex managed pool (6) to CreateTexture/CreateVertexBuffer/CreateIndexBuffer/CreateVolumeTexture/CreateCubeTexture/CreateOffscreenPlainSurface so creation succeeds on IDirect3DDevice9Ex. Main tab no-ReShade section shows "Last D3D9 (no-ReShade)" state (CreateDevice vs CreateDeviceEx, swap effect, back buffer count, sync interval, windowed/fullscreen). PresentEx hook uses the appropriate FLIPEX setting based on whether ReShade is loaded.

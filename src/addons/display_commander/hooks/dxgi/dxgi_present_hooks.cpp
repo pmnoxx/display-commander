@@ -291,6 +291,14 @@ void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dx
 
 namespace display_commanderhooks::dxgi {
 
+// Log DXGI error up to 10 times per method (each detour has its own static counter).
+inline void LogDxgiErrorUpTo10(const char* method, HRESULT hr, int* pCount) {
+    if (SUCCEEDED(hr) || pCount == nullptr || *pCount >= 10)
+        return;
+    LogError("[DXGI error] %s returned 0x%08X", method, static_cast<unsigned>(hr));
+    (*pCount)++;
+}
+
 // Helper function to safely check if vtable entry exists
 bool IsVTableEntryValid(void** vtable, int index) {
     if (!vtable) return false;
@@ -420,7 +428,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     }
 
     auto res = IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
-
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGISwapChain::Present", res, &s_err_count);
+    }
     if (use_fps_limiter) {
         // Handle common after logic
         HandlePresentAfter(false);
@@ -471,7 +482,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
 
     auto res = IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
     in_present_call.fetch_sub(1);
-
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGISwapChain1::Present1", res, &s_err_count);
+    }
     if (use_fps_limiter) {
         // Handle common after logic
         HandlePresentAfter(false);
@@ -492,6 +506,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc_Detour(IDXGISwapChain* This, DX
     // Call original function
     if (IDXGISwapChain_GetDesc_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_GetDesc_Original(This, pDesc);
+        {
+            static int s_err_count = 0;
+            LogDxgiErrorUpTo10("IDXGISwapChain::GetDesc", hr, &s_err_count);
+        }
         /*
                 // Hide HDR capabilities if enabled
                 if (SUCCEEDED(hr) && pDesc != nullptr &&
@@ -561,6 +579,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetDesc1_Detour(IDXGISwapChain1* This, 
     // Call original function
     if (IDXGISwapChain_GetDesc1_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_GetDesc1_Original(This, pDesc);
+        {
+            static int s_err_count = 0;
+            LogDxgiErrorUpTo10("IDXGISwapChain1::GetDesc1", hr, &s_err_count);
+        }
         /*
                 // Hide HDR capabilities if enabled
                 if (SUCCEEDED(hr) && pDesc != nullptr &&
@@ -637,6 +659,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_CheckColorSpaceSupport_Detour(IDXGISwap
     // Call original function
     if (IDXGISwapChain_CheckColorSpaceSupport_Original != nullptr) {
         HRESULT hr = IDXGISwapChain_CheckColorSpaceSupport_Original(This, ColorSpace, pColorSpaceSupport);
+        {
+            static int s_err_count = 0;
+            LogDxgiErrorUpTo10("IDXGISwapChain3::CheckColorSpaceSupport", hr, &s_err_count);
+        }
 
         // Hide HDR capabilities if enabled
         if (SUCCEEDED(hr) && pColorSpaceSupport != nullptr
@@ -707,6 +733,10 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory* This
     // Call original function
     if (IDXGIFactory_CreateSwapChain_Original != nullptr) {
         HRESULT hr = IDXGIFactory_CreateSwapChain_Original(This, pDevice, pDesc, ppSwapChain);
+        {
+            static int s_err_count = 0;
+            LogDxgiErrorUpTo10("IDXGIFactory::CreateSwapChain", hr, &s_err_count);
+        }
 
         // If successful, hook the newly created swapchain
         if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
@@ -728,7 +758,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBuffer_Detour(IDXGISwapChain* This, 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETBUFFER].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
+    HRESULT hr = IDXGISwapChain_GetBuffer_Original(This, Buffer, riid, ppSurface);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain::GetBuffer", hr, &s_err_count);
+    return hr;
 }
 
 std::atomic<int> g_last_set_fullscreen_state{-1};  // -1 for not set, 0 for false, 1 for true
@@ -747,11 +780,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
     g_last_set_fullscreen_state.store(Fullscreen);
 
     // Check if fullscreen prevention is enabled and we're trying to go fullscreen
+    HRESULT hr;
     if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-        return IDXGISwapChain_SetFullscreenState_Original(This, false, pTarget);
+        hr = IDXGISwapChain_SetFullscreenState_Original(This, false, pTarget);
+    } else {
+        hr = IDXGISwapChain_SetFullscreenState_Original(This, Fullscreen, pTarget);
     }
-
-    return IDXGISwapChain_SetFullscreenState_Original(This, Fullscreen, pTarget);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain::SetFullscreenState", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChain* This, BOOL* pFullscreen,
@@ -760,6 +797,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFULLSCREENSTATE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
     auto hr = IDXGISwapChain_GetFullscreenState_Original(This, pFullscreen, ppTarget);
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGISwapChain::GetFullscreenState", hr, &s_err_count);
+    }
 
     // NOTE: we assume that ppTarget is g_last_set_fullscreen_target.load()
     if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue() && g_last_set_fullscreen_state.load() != -1) {
@@ -793,7 +834,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers_Detour(IDXGISwapChain* Th
         LogInfo("IDXGISwapChain_ResizeBuffers_Detour - Game render resolution: %ux%u", Width, Height);
     }
 
-    return IDXGISwapChain_ResizeBuffers_Original(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    HRESULT hr = IDXGISwapChain_ResizeBuffers_Original(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain::ResizeBuffers", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain* This,
@@ -812,7 +856,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeTarget_Detour(IDXGISwapChain* Thi
         }
     }
 
-    return IDXGISwapChain_ResizeTarget_Original(This, pNewTargetParameters);
+    HRESULT hr = IDXGISwapChain_ResizeTarget_Original(This, pNewTargetParameters);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain::ResizeTarget", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapChain* This, IDXGIOutput** ppOutput) {
@@ -821,6 +868,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetContainingOutput_Detour(IDXGISwapCha
     g_swapchain_event_total_count.fetch_add(1);
 
     HRESULT hr = IDXGISwapChain_GetContainingOutput_Original(This, ppOutput);
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGISwapChain::GetContainingOutput", hr, &s_err_count);
+    }
 
     // Return proxy wrapper instead of hooking vtable
     if (SUCCEEDED(hr) && ppOutput && *ppOutput) {
@@ -841,14 +892,20 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFrameStatistics_Detour(IDXGISwapChai
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETFRAMESTATISTICS].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetFrameStatistics_Original(This, pStats);
+    HRESULT hr = IDXGISwapChain_GetFrameStatistics_Original(This, pStats);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain::GetFrameStatistics", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetLastPresentCount_Detour(IDXGISwapChain* This, UINT* pLastPresentCount) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_GETLASTPRESENTCOUNT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetLastPresentCount_Original(This, pLastPresentCount);
+    HRESULT hr = IDXGISwapChain_GetLastPresentCount_Original(This, pLastPresentCount);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain::GetLastPresentCount", hr, &s_err_count);
+    return hr;
 }
 
 // IDXGISwapChain1 detour functions
@@ -857,7 +914,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenDesc_Detour(IDXGISwapChain
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETFULLSCREENDESC].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetFullscreenDesc_Original(This, pDesc);
+    HRESULT hr = IDXGISwapChain_GetFullscreenDesc_Original(This, pDesc);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::GetFullscreenDesc", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1* This, HWND* pHwnd) {
@@ -866,7 +926,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetHwnd_Detour(IDXGISwapChain1* This, H
     g_swapchain_event_total_count.fetch_add(1);
 
     HRESULT hr = IDXGISwapChain_GetHwnd_Original(This, pHwnd);
-
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::GetHwnd", hr, &s_err_count);
     return hr;
 }
 
@@ -874,7 +935,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetCoreWindow_Detour(IDXGISwapChain1* T
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETCOREWINDOW].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetCoreWindow_Original(This, refiid, ppUnk);
+    HRESULT hr = IDXGISwapChain_GetCoreWindow_Original(This, refiid, ppUnk);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::GetCoreWindow", hr, &s_err_count);
+    return hr;
 }
 
 BOOL STDMETHODCALLTYPE IDXGISwapChain_IsTemporaryMonoSupported_Detour(IDXGISwapChain1* This) {
@@ -891,6 +955,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRestrictToOutput_Detour(IDXGISwapCha
     g_swapchain_event_total_count.fetch_add(1);
 
     HRESULT hr = IDXGISwapChain_GetRestrictToOutput_Original(This, ppRestrictToOutput);
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGISwapChain1::GetRestrictToOutput", hr, &s_err_count);
+    }
 
     // Return proxy wrapper instead of hooking vtable
     if (SUCCEEDED(hr) && ppRestrictToOutput && *ppRestrictToOutput) {
@@ -910,28 +978,40 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetBackgroundColor_Detour(IDXGISwapChai
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_SetBackgroundColor_Original(This, pColor);
+    HRESULT hr = IDXGISwapChain_SetBackgroundColor_Original(This, pColor);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::SetBackgroundColor", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetBackgroundColor_Detour(IDXGISwapChain1* This, DXGI_RGBA* pColor) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETBACKGROUNDCOLOR].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetBackgroundColor_Original(This, pColor);
+    HRESULT hr = IDXGISwapChain_GetBackgroundColor_Original(This, pColor);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::GetBackgroundColor", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetRotation_Detour(IDXGISwapChain1* This, DXGI_MODE_ROTATION Rotation) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_SETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_SetRotation_Original(This, Rotation);
+    HRESULT hr = IDXGISwapChain_SetRotation_Original(This, Rotation);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::SetRotation", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetRotation_Detour(IDXGISwapChain1* This, DXGI_MODE_ROTATION* pRotation) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_GETROTATION].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetRotation_Original(This, pRotation);
+    HRESULT hr = IDXGISwapChain_GetRotation_Original(This, pRotation);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::GetRotation", hr, &s_err_count);
+    return hr;
 }
 
 // IDXGISwapChain2 detour functions
@@ -939,28 +1019,40 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetSourceSize_Detour(IDXGISwapChain2* T
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_SetSourceSize_Original(This, Width, Height);
+    HRESULT hr = IDXGISwapChain_SetSourceSize_Original(This, Width, Height);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain2::SetSourceSize", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetSourceSize_Detour(IDXGISwapChain2* This, UINT* pWidth, UINT* pHeight) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETSOURCESIZE].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetSourceSize_Original(This, pWidth, pHeight);
+    HRESULT hr = IDXGISwapChain_GetSourceSize_Original(This, pWidth, pHeight);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain2::GetSourceSize", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMaximumFrameLatency_Detour(IDXGISwapChain2* This, UINT MaxLatency) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_SetMaximumFrameLatency_Original(This, MaxLatency);
+    HRESULT hr = IDXGISwapChain_SetMaximumFrameLatency_Original(This, MaxLatency);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain2::SetMaximumFrameLatency", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMaximumFrameLatency_Detour(IDXGISwapChain2* This, UINT* pMaxLatency) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMAXIMUMFRAMELATENCY].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetMaximumFrameLatency_Original(This, pMaxLatency);
+    HRESULT hr = IDXGISwapChain_GetMaximumFrameLatency_Original(This, pMaxLatency);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain2::GetMaximumFrameLatency", hr, &s_err_count);
+    return hr;
 }
 
 HANDLE STDMETHODCALLTYPE IDXGISwapChain_GetFrameLatencyWaitableObject_Detour(IDXGISwapChain2* This) {
@@ -975,14 +1067,20 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetMatrixTransform_Detour(IDXGISwapChai
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_SETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_SetMatrixTransform_Original(This, pMatrix);
+    HRESULT hr = IDXGISwapChain_SetMatrixTransform_Original(This, pMatrix);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain2::SetMatrixTransform", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetMatrixTransform_Detour(IDXGISwapChain2* This, DXGI_MATRIX_3X2_F* pMatrix) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc2_event_counters[DXGI_SC2_EVENT_GETMATRIXTRANSFORM].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_GetMatrixTransform_Original(This, pMatrix);
+    HRESULT hr = IDXGISwapChain_GetMatrixTransform_Original(This, pMatrix);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain2::GetMatrixTransform", hr, &s_err_count);
+    return hr;
 }
 
 // IDXGISwapChain3 detour functions
@@ -998,7 +1096,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3* 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_SETCOLORSPACE1].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
-    return IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
+    HRESULT hr = IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain3::SetColorSpace1", hr, &s_err_count);
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3* This, UINT BufferCount, UINT Width,
@@ -1016,8 +1117,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_ResizeBuffers1_Detour(IDXGISwapChain3* 
         LogInfo("IDXGISwapChain_ResizeBuffers1_Detour - Game render resolution: %ux%u", Width, Height);
     }
 
-    return IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags,
-                                                  pCreationNodeMask, ppPresentQueue);
+    HRESULT hr = IDXGISwapChain_ResizeBuffers1_Original(This, BufferCount, Width, Height, Format, SwapChainFlags,
+                                                        pCreationNodeMask, ppPresentQueue);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain3::ResizeBuffers1", hr, &s_err_count);
+    return hr;
 }
 
 // IDXGISwapChain4 detour functions
@@ -1037,7 +1141,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4* 
 
     // Call original function
     if (IDXGISwapChain_SetHDRMetaData_Original != nullptr) {
-        return IDXGISwapChain_SetHDRMetaData_Original(This, Type, Size, pMetaData);
+        HRESULT hr = IDXGISwapChain_SetHDRMetaData_Original(This, Type, Size, pMetaData);
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGISwapChain4::SetHDRMetaData", hr, &s_err_count);
+        return hr;
     }
 
     // Fallback to direct call if hook failed
@@ -1060,7 +1167,10 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, 
 
     // Call original function
     if (IDXGIOutput_SetGammaControl_Original != nullptr) {
-        return IDXGIOutput_SetGammaControl_Original(This, pArray);
+        HRESULT hr = IDXGIOutput_SetGammaControl_Original(This, pArray);
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGIOutput::SetGammaControl", hr, &s_err_count);
+        return hr;
     }
 
     // Fallback to direct call if hook failed
@@ -1082,7 +1192,10 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetGammaControl_Detour(IDXGIOutput* This, 
 
     // Call original function
     if (IDXGIOutput_GetGammaControl_Original != nullptr) {
-        return IDXGIOutput_GetGammaControl_Original(This, pArray);
+        HRESULT hr = IDXGIOutput_GetGammaControl_Original(This, pArray);
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGIOutput::GetGammaControl", hr, &s_err_count);
+        return hr;
     }
 
     // Fallback to direct call if hook failed
@@ -1104,7 +1217,10 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput* This, DXGI_OUT
 
     // Call original function
     if (IDXGIOutput_GetDesc_Original != nullptr) {
-        return IDXGIOutput_GetDesc_Original(This, pDesc);
+        HRESULT hr = IDXGIOutput_GetDesc_Original(This, pDesc);
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGIOutput::GetDesc", hr, &s_err_count);
+        return hr;
     }
 
     // Fallback to direct call if hook failed
@@ -1125,6 +1241,10 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6* This, DXGI_
     } else {
         // Fallback to direct call if hook failed
         hr = This->GetDesc1(pDesc);
+    }
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGIOutput6::GetDesc1", hr, &s_err_count);
     }
 
     // Hide HDR capabilities if enabled (similar to Special-K's approach)
@@ -1309,12 +1429,10 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
             return false;
         }
 
-        /*
-        // Hook other IDXGISwapChain methods (9-11, 13-17)
         if (!CreateAndEnableHook(vtable[9], IDXGISwapChain_GetBuffer_Detour,
-        (LPVOID*)&IDXGISwapChain_GetBuffer_Original, "IDXGISwapChain::GetBuffer")) { LogError("Failed to create and
-        enable IDXGISwapChain::GetBuffer hook");
-        }*/
+                                 (LPVOID*)&IDXGISwapChain_GetBuffer_Original, "IDXGISwapChain::GetBuffer")) {
+            LogError("Failed to create and enable IDXGISwapChain::GetBuffer hook");
+        }
         if (!CreateAndEnableHook(vtable[10], IDXGISwapChain_SetFullscreenState_Detour,
                                  (LPVOID*)&IDXGISwapChain_SetFullscreenState_Original,
                                  "IDXGISwapChain::SetFullscreenState")) {
@@ -1325,14 +1443,10 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  "IDXGISwapChain::GetFullscreenState")) {
             LogError("Failed to create and enable IDXGISwapChain::GetFullscreenState hook");
         }
-        /*
-        // Hook GetDesc (index 12) - Always present in base interface
         if (!CreateAndEnableHook(vtable[12], IDXGISwapChain_GetDesc_Detour, (LPVOID*)&IDXGISwapChain_GetDesc_Original,
-                                "IDXGISwapChain::GetDesc")) {
+                                 "IDXGISwapChain::GetDesc")) {
             LogError("Failed to create and enable IDXGISwapChain::GetDesc hook");
-            // Don't return false, this is not critical
         }
-        */
         if (!CreateAndEnableHook(vtable[13], IDXGISwapChain_ResizeBuffers_Detour,
                                  (LPVOID*)&IDXGISwapChain_ResizeBuffers_Original, "IDXGISwapChain::ResizeBuffers")) {
             LogError("Failed to create and enable IDXGISwapChain::ResizeBuffers hook");
@@ -1346,7 +1460,6 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  "IDXGISwapChain::GetContainingOutput")) {
             LogError("Failed to create and enable IDXGISwapChain::GetContainingOutput hook");
         }
-        /*
         if (!CreateAndEnableHook(vtable[16], IDXGISwapChain_GetFrameStatistics_Detour,
                                  (LPVOID*)&IDXGISwapChain_GetFrameStatistics_Original,
                                  "IDXGISwapChain::GetFrameStatistics")) {
@@ -1357,7 +1470,6 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  "IDXGISwapChain::GetLastPresentCount")) {
             LogError("Failed to create and enable IDXGISwapChain::GetLastPresentCount hook");
         }
-        */
     }
 
     // ============================================================================
@@ -1365,35 +1477,30 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     // ============================================================================
     if (vtable_version >= 1) {
         LogInfo("Hooking IDXGISwapChain1 methods (indices 18-28)");
-        /*
-                // Hook GetDesc1 (index 18) - Critical for IDXGISwapChain1
-                if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour,
-           (LPVOID*)&IDXGISwapChain_GetDesc1_Original, "IDXGISwapChain1::GetDesc1")) { LogError("Failed to create and
-           enable IDXGISwapChain1::GetDesc1 hook"); return false;
-                }
-
-                // Hook other IDXGISwapChain1 methods (19-21, 23-28)
-                if (!CreateAndEnableHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour,
-                                         (LPVOID*)&IDXGISwapChain_GetFullscreenDesc_Original,
-                                         "IDXGISwapChain1::GetFullscreenDesc")) {
-                    LogError("Failed to create and enable IDXGISwapChain1::GetFullscreenDesc hook");
-                }
-                if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour,
-           (LPVOID*)&IDXGISwapChain_GetHwnd_Original, "IDXGISwapChain1::GetHwnd")) { LogError("Failed to create and
-           enable IDXGISwapChain1::GetHwnd hook");
-                }
-                if (!CreateAndEnableHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour,
-                                         (LPVOID*)&IDXGISwapChain_GetCoreWindow_Original,
-           "IDXGISwapChain1::GetCoreWindow")) { LogError("Failed to create and enable IDXGISwapChain1::GetCoreWindow
-           hook");
-                }*/
+        if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetDesc1_Original, "IDXGISwapChain1::GetDesc1")) {
+            LogError("Failed to create and enable IDXGISwapChain1::GetDesc1 hook");
+        }
+        if (!CreateAndEnableHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetFullscreenDesc_Original,
+                                 "IDXGISwapChain1::GetFullscreenDesc")) {
+            LogError("Failed to create and enable IDXGISwapChain1::GetFullscreenDesc hook");
+        }
+        if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetHwnd_Original, "IDXGISwapChain1::GetHwnd")) {
+            LogError("Failed to create and enable IDXGISwapChain1::GetHwnd hook");
+        }
+        if (!CreateAndEnableHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetCoreWindow_Original,
+                                 "IDXGISwapChain1::GetCoreWindow")) {
+            LogError("Failed to create and enable IDXGISwapChain1::GetCoreWindow hook");
+        }
 
         // Hook Present1 (index 22) - Critical for IDXGISwapChain1
         if (!CreateAndEnableHook(vtable[22], IDXGISwapChain_Present1_Detour, (LPVOID*)&IDXGISwapChain_Present1_Original,
                                  "IDXGISwapChain1::Present1")) {
             LogError("Failed to create and enable IDXGISwapChain1::Present1 hook");
         }
-        /*
         if (!CreateAndEnableHook(vtable[23], IDXGISwapChain_IsTemporaryMonoSupported_Detour,
                                  (LPVOID*)&IDXGISwapChain_IsTemporaryMonoSupported_Original,
                                  "IDXGISwapChain1::IsTemporaryMonoSupported")) {
@@ -1422,16 +1529,14 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  (LPVOID*)&IDXGISwapChain_GetRotation_Original, "IDXGISwapChain1::GetRotation")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetRotation hook");
         }
-        */
     }
 
     // ============================================================================
     // GROUP 2: IDXGISwapChain2 (Extended Interface) - Indices 29-35
     // ============================================================================
-    /*if (vtable_version >= 2) {
+    if (vtable_version >= 2) {
         LogInfo("Hooking IDXGISwapChain2 methods (indices 29-35)");
 
-        // Hook IDXGISwapChain2 methods (29-35)
         if (!CreateAndEnableHook(vtable[29], IDXGISwapChain_SetSourceSize_Detour,
                                  (LPVOID*)&IDXGISwapChain_SetSourceSize_Original, "IDXGISwapChain2::SetSourceSize")) {
             LogError("Failed to create and enable IDXGISwapChain2::SetSourceSize hook");
@@ -1465,23 +1570,19 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  "IDXGISwapChain2::GetMatrixTransform")) {
             LogError("Failed to create and enable IDXGISwapChain2::GetMatrixTransform hook");
         }
-
-    }*/
+    }
 
     // ============================================================================
     // GROUP 3: IDXGISwapChain3 (Extended Interface) - Indices 36-39
     // ============================================================================
     if (vtable_version >= 3) {
         LogInfo("Hooking IDXGISwapChain3 methods (indices 36-39)");
-        /*
-                // Hook IDXGISwapChain3 methods (36-39)
-                if (!CreateAndEnableHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour,
-                                         (LPVOID*)&IDXGISwapChain_GetCurrentBackBufferIndex_Original,
-                                         "IDXGISwapChain3::GetCurrentBackBufferIndex")) {
-                    LogError("Failed to create and enable IDXGISwapChain3::GetCurrentBackBufferIndex hook");
-                }
-
-          */      // Hook CheckColorSpaceSupport (index 37)
+        if (!CreateAndEnableHook(vtable[36], IDXGISwapChain_GetCurrentBackBufferIndex_Detour,
+                                 (LPVOID*)&IDXGISwapChain_GetCurrentBackBufferIndex_Original,
+                                 "IDXGISwapChain3::GetCurrentBackBufferIndex")) {
+            LogError("Failed to create and enable IDXGISwapChain3::GetCurrentBackBufferIndex hook");
+        }
+        // Hook CheckColorSpaceSupport (index 37)
         if (!CreateAndEnableHook(vtable[37], IDXGISwapChain_CheckColorSpaceSupport_Detour,
                                  (LPVOID*)&IDXGISwapChain_CheckColorSpaceSupport_Original,
                                  "IDXGISwapChain3::CheckColorSpaceSupport")) {
@@ -1499,20 +1600,17 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
         }
     }
 
-    /*
     // ============================================================================
     // GROUP 4: IDXGISwapChain4 (Extended Interface) - Indices 40+
     // ============================================================================
     if (vtable_version >= 4) {
         LogInfo("Hooking IDXGISwapChain4 methods (indices 40+)");
-
-        // Hook SetHDRMetaData (index 40) - HDR metadata setting
-        if (!CreateAndEnableHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour, // causes crash in Crimson Freedom
-    Demo (LPVOID*)&IDXGISwapChain_SetHDRMetaData_Original, "IDXGISwapChain4::SetHDRMetaData")) { LogError("Failed to
-    create and enable IDXGISwapChain4::SetHDRMetaData hook");
-            // Don't return false, this is not critical for basic functionality
+        if (!CreateAndEnableHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour,
+                                 (LPVOID*)&IDXGISwapChain_SetHDRMetaData_Original,
+                                 "IDXGISwapChain4::SetHDRMetaData")) {
+            LogError("Failed to create and enable IDXGISwapChain4::SetHDRMetaData hook");
         }
-    }*/
+    }
 
     LogInfo("Successfully hooked IDXGISWAPCHAIN4 for swapchain: %x%p", swapchain);
 

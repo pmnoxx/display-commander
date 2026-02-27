@@ -1,8 +1,10 @@
 #include "d3d9_hooks.hpp"
 #include "d3d9_present_hooks.hpp"
 #include "d3d9_device_vtable_logging.hpp"
+#include "d3d9_present_params_upgrade.hpp"
 #include "d3d9_vtable_indices.hpp"
 #include "../../globals.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 
@@ -50,13 +52,57 @@ void OnD3D9DeviceCreated(IDirect3DDevice9* device) {
     InstallD3D9DeviceVtableLogging(device);
 }
 
-// Detour for IDirect3D9::CreateDevice - after successful device creation, hook the device
+// Detour for IDirect3D9::CreateDevice. When d3d9_flipex_enabled: upgrade to D3D9Ex (like ReShade
+// OnCreateDevice api_version 0x9100) by calling Direct3DCreate9Ex + CreateDeviceEx. Otherwise apply
+// present-param upgrades (no FLIPEX) and call original CreateDevice.
 HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3DDEVTYPE DeviceType,
                                               HWND hFocusWindow, DWORD BehaviorFlags,
                                               D3DPRESENT_PARAMETERS* pPresentationParameters,
                                               IDirect3DDevice9** ppReturnedDeviceInterface) {
     if (CreateDevice_Original == nullptr) {
         return D3DERR_INVALIDCALL;
+    }
+    if (pPresentationParameters == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+    if ((BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE) != 0) {
+        LogInfo("D3D9 CreateDevice: adapter group devices unsupported");
+        return D3DERR_NOTAVAILABLE;
+    }
+
+    // Upgrade CreateDevice -> CreateDeviceEx when FLIPEX is enabled (mirrors ReShade create_device 0x9100)
+    if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
+        && Direct3DCreate9Ex_Original != nullptr) {
+        IDirect3D9Ex* d3dex = nullptr;
+        HRESULT hrEx = Direct3DCreate9Ex_Original(D3D_SDK_VERSION, &d3dex);
+        if (SUCCEEDED(hrEx) && d3dex != nullptr) {
+            ApplyD3D9PresentParameterUpgrades(pPresentationParameters, true);
+            D3DPRESENT_PARAMETERS pp = *pPresentationParameters;
+            // ReShade's upgrade path passes nullptr for pFullscreenDisplayMode
+            HRESULT hr = d3dex->CreateDeviceEx(
+                Adapter, DeviceType, hFocusWindow, BehaviorFlags, &pp, nullptr,
+                reinterpret_cast<IDirect3DDevice9Ex**>(ppReturnedDeviceInterface));
+            d3dex->Release();
+
+            if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
+                pPresentationParameters->BackBufferWidth = pp.BackBufferWidth;
+                pPresentationParameters->BackBufferHeight = pp.BackBufferHeight;
+                pPresentationParameters->BackBufferFormat = pp.BackBufferFormat;
+                pPresentationParameters->BackBufferCount = pp.BackBufferCount;
+                s_d3d9e_upgrade_successful.store(true, std::memory_order_relaxed);
+                OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
+                LogInfo("D3D9 CreateDevice -> CreateDeviceEx upgrade (FLIPEX) succeeded");
+            }
+            return hr;
+        }
+        if (d3dex != nullptr) {
+            d3dex->Release();
+        }
+        LogInfo("D3D9 CreateDevice -> CreateDeviceEx upgrade skipped (Direct3DCreate9Ex failed), using CreateDevice");
+    }
+
+    if (pPresentationParameters != nullptr) {
+        ApplyD3D9PresentParameterUpgrades(pPresentationParameters, false);  // no FLIPEX for non-Ex
     }
     HRESULT hr = CreateDevice_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
                                       pPresentationParameters, ppReturnedDeviceInterface);
@@ -66,7 +112,7 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
     return hr;
 }
 
-// Detour for IDirect3D9Ex::CreateDeviceEx - after successful device creation, hook the device
+// Detour for IDirect3D9Ex::CreateDeviceEx - mark D3D9Ex in use, apply FLIPEX/VSync upgrades, then hook the device on success
 HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType,
                                                 HWND hFocusWindow, DWORD BehaviorFlags,
                                                 D3DPRESENT_PARAMETERS* pPresentationParameters,
@@ -74,6 +120,10 @@ HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter
                                                 IDirect3DDevice9Ex** ppReturnedDeviceInterface) {
     if (CreateDeviceEx_Original == nullptr) {
         return D3DERR_INVALIDCALL;
+    }
+    s_d3d9e_upgrade_successful.store(true, std::memory_order_relaxed);
+    if (pPresentationParameters != nullptr) {
+        ApplyD3D9PresentParameterUpgrades(pPresentationParameters, true);  // full FLIPEX/VSync upgrades for Ex
     }
     HRESULT hr = CreateDeviceEx_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
                                          pPresentationParameters, pFullscreenDisplayMode,

@@ -605,7 +605,8 @@ namespace {
 
 // Stuck methods detection: if g_global_frame_id does not increase for 15s, log undestroyed detour guards
 // (indicates a detour may be stuck and helps identify which call path is blocking the render thread).
-// All log output is written directly from this thread via LogInfoDirectSynchronized (relative time only, no system calls).
+// All log output is written directly from this thread via LogInfoDirectSynchronized (relative time only, no system
+// calls).
 void CheckStuckMethodsAndLogUndestroyedGuards() {
     constexpr LONGLONG STUCK_THRESHOLD_NS = 25 * utils::SEC_TO_NS;
 
@@ -678,6 +679,8 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
     if (ui_section != nullptr && ui_section[0] != '\0') {
         display_commander::logger::LogInfoDirectSynchronized(
             "Rendering UI current section: %s (stuck here if overlay was open)", ui_section);
+    } else {
+        display_commander::logger::LogInfoDirectSynchronized("Rendering UI: no section set");
     }
 
     utils::LogAllSrwlockStatus();

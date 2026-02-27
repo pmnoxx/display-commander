@@ -10,7 +10,8 @@
 std::atomic<int> s_scanline_offset{0};
 std::atomic<int> s_vblank_sync_divisor{1};
 std::atomic<float> s_fps_limit{0.f};
-std::atomic<float> s_fps_limit_background{30.f};
+std::atomic<float> s_fps_limit_background{60.f};
+std::atomic<bool> s_background_fps_enabled{false};
 std::atomic<bool> s_force_vsync_on{false};
 std::atomic<bool> s_force_vsync_off{false};
 std::atomic<bool> s_prevent_tearing{false};
@@ -61,7 +62,8 @@ MainTabSettings::MainTabSettings()
       scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "DisplayCommander"),
       vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "DisplayCommander"),
       fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "DisplayCommander"),
-      fps_limit_background("fps_limit_background", s_fps_limit_background, 30.0f, 0.0f, 240.0f, "DisplayCommander"),
+      fps_limit_background("fps_limit_background", s_fps_limit_background, 60.0f, 0.0f, 240.0f, "DisplayCommander"),
+      background_fps_enabled("background_fps_enabled", s_background_fps_enabled, false, "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       inject_reflex("inject_reflex", false, "DisplayCommander"),
       onpresent_sync_low_latency_ratio(
@@ -213,6 +215,7 @@ MainTabSettings::MainTabSettings()
         &vblank_sync_divisor,
         &fps_limit,
         &fps_limit_background,
+        &background_fps_enabled,
         &suppress_reflex_sleep,
         &inject_reflex,
         &onpresent_sync_low_latency_ratio,

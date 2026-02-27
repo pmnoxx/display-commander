@@ -12,6 +12,7 @@ extern std::atomic<int> s_scanline_offset;
 extern std::atomic<int> s_vblank_sync_divisor;
 extern std::atomic<float> s_fps_limit;
 extern std::atomic<float> s_fps_limit_background;
+extern std::atomic<bool> s_background_fps_enabled;
 extern std::atomic<bool> s_force_vsync_on;
 extern std::atomic<bool> s_force_vsync_off;
 extern std::atomic<bool> s_prevent_tearing;
@@ -65,6 +66,8 @@ class MainTabSettings {
     ui::new_ui::IntSettingRef vblank_sync_divisor;
     ui::new_ui::FloatSettingRef fps_limit;
     ui::new_ui::FloatSettingRef fps_limit_background;
+    /** When true, cap FPS to fps_limit_background when window is in background. When false, use same limit as foreground. Default off. */
+    ui::new_ui::BoolSettingRef background_fps_enabled;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     /** When true and native Reflex is not active, addon injects Reflex (sleep + markers). Default false. */
     ui::new_ui::BoolSetting inject_reflex;

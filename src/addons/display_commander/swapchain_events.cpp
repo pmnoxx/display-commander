@@ -1451,7 +1451,7 @@ float GetTargetFps() {
     // GetForegroundWindow here
     float target_fps = 0.0f;
     bool is_background = g_app_in_background.load();
-    if (is_background) {
+    if (is_background && s_background_fps_enabled.load()) {
         target_fps = s_fps_limit_background.load();
     } else {
         target_fps = s_fps_limit.load();

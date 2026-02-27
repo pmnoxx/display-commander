@@ -1381,6 +1381,19 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
             "Requires restart. Uses D3D9Ex managed pool (6) for resource creation.");
     }
 
+    if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_fix_create_texture_dimensions,
+                        "Fix CreateTexture dimensions (DXT/BC)", imgui)) {
+        LogInfo("D3D9 Fix CreateTexture dimensions %s",
+                settings::g_experimentalTabSettings.d3d9_fix_create_texture_dimensions.GetValue() ? "enabled"
+                                                                                                  : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, CreateTexture/CreateVolumeTexture/CreateCubeTexture width/height/depth are rounded up to a "
+            "multiple of 4 for DXT1-DXT5 (and other block-compressed) formats.\n"
+            "Fixes D3DERR_INVALIDCALL when games pass invalid dimensions (e.g. width=2 with DXT5).");
+    }
+
     imgui.Spacing();
 
     // Display current D3D9 state if applicable

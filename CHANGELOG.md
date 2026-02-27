@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.141 (2026-02-27)
+
+- **D3D9 CreateTexture experimental fix** - Experimental fix for CreateTexture (D3D9 pool upgrade / D3D9Ex path). See Experimental tab for related options.
+
+---
+
 ## v0.12.140 (2026-02-27)
 
 - **D3D9 CreateDevice/CreateDeviceEx full-argument logging** - CreateDevice and CreateDeviceEx detours now log all arguments before any modifications, after present-parameter upgrades, and on success or failure. Logged: Adapter, DeviceType, hFocusWindow, BehaviorFlags, ppReturnedDeviceInterface; full D3DPRESENT_PARAMETERS (BackBufferWidth/Height/Format/Count, MultiSampleType/Quality, SwapEffect, hDeviceWindow, Windowed, EnableAutoDepthStencil, AutoDepthStencilFormat, Flags, FullScreen_RefreshRateInHz, PresentationInterval); for CreateDeviceEx also D3DDISPLAYMODEEX when non-null. Success/failure lines include hr and device pointer. Enables diagnosing D3D9 device creation failures (e.g. when creation appeared to hang after "Forcing windowed mode" with no outcome log).

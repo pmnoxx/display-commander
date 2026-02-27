@@ -15,4 +15,9 @@ namespace display_commanderhooks::d3d9 {
 // pool is D3DPOOL_MANAGED, returns D3DPOOL_MANAGED_EX (6); otherwise returns pool unchanged.
 D3DPOOL UpgradePoolForDevice9Ex(IDirect3DDevice9* device, D3DPOOL pool);
 
+// Returns true if the "fix CreateTexture dimensions for DXT/BC" experimental setting is enabled.
+// When enabled, CreateTexture/CreateVolumeTexture/CreateCubeTexture arguments are adjusted so
+// width/height/depth/edge are multiples of 4 for compressed formats (avoids D3DERR_INVALIDCALL).
+bool IsD3D9FixCreateTextureDimensionsEnabled();
+
 }  // namespace display_commanderhooks::d3d9

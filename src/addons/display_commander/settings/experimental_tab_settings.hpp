@@ -90,6 +90,9 @@ class ExperimentalTabSettings {
     // D3D9 FLIPEX upgrade: without ReShade (CreateDevice/CreateDeviceEx detour path)
     BoolSetting d3d9_flipex_enabled_no_reshade;
 
+    // D3D9 CreateTexture: fix dimensions for DXT/BC compressed formats (width/height must be multiple of 4)
+    BoolSetting d3d9_fix_create_texture_dimensions;
+
     // Enable flip chain settings (DXGI only) - forces flip model
     BoolSetting enable_flip_chain_enabled;
 

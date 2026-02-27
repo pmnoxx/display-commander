@@ -1,4 +1,6 @@
 #include "d3d9_pool_upgrade.hpp"
+#include "../../globals.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
 
 #include <d3d9.h>
 
@@ -22,6 +24,10 @@ D3DPOOL UpgradePoolForDevice9Ex(IDirect3DDevice9* device, D3DPOOL pool) {
         return D3DPOOL_MANAGED_EX;
     }
     return pool;
+}
+
+bool IsD3D9FixCreateTextureDimensionsEnabled() {
+    return settings::g_experimentalTabSettings.d3d9_fix_create_texture_dimensions.GetValue();
 }
 
 }  // namespace display_commanderhooks::d3d9

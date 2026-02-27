@@ -347,20 +347,34 @@ static std::atomic<bool> g_first_ResetEx_error{true};
 static std::atomic<bool> g_first_GetDisplayModeEx_error{true};
 static std::atomic<bool> g_first_CheckDeviceState_error{true};
 
+// DXT/BC compressed formats (FourCC). For these, width/height/depth must be multiple of 4.
+static bool IsD3DFormatDXT(D3DFORMAT format) {
+    const auto u = static_cast<unsigned>(format);
+    return u == 0x31545844u /* DXT1 */ || u == 0x32545844u /* DXT2 */ || u == 0x33545844u /* DXT3 */
+           || u == 0x34545844u /* DXT4 */ || u == 0x35545844u /* DXT5 */;
+}
+static UINT AlignUpToMultipleOf4(UINT value) { return (value + 3u) & ~3u; }
+
 }  // namespace
 
 // Detours: RECORD_DETOUR_CALL, log first call, call original, log on error.
 
 static HRESULT STDMETHODCALLTYPE CreateTexture_Detour(IDirect3DDevice9* This, UINT Width, UINT Height, UINT Levels,
-                                                      DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
-                                                      IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) {
+                                                     DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
+                                                     IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (g_first_CreateTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateTexture");
     }
+    UINT widthToUse = Width;
+    UINT heightToUse = Height;
+    if (IsD3D9FixCreateTextureDimensionsEnabled() && IsD3DFormatDXT(Format)) {
+        widthToUse = AlignUpToMultipleOf4(Width);
+        heightToUse = AlignUpToMultipleOf4(Height);
+    }
     const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
-    HRESULT hr =
-        CreateTexture_Original(This, Width, Height, Levels, Usage, Format, poolToUse, ppTexture, pSharedHandle);
+    HRESULT hr = CreateTexture_Original(This, widthToUse, heightToUse, Levels, Usage, Format, poolToUse, ppTexture,
+                                        pSharedHandle);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateTexture_error.exchange(false)) {
@@ -369,7 +383,7 @@ static HRESULT STDMETHODCALLTYPE CreateTexture_Detour(IDirect3DDevice9* This, UI
             LogError(
                 "[D3D9 error] CreateTexture first failure — full arguments: This=%p Width=%u Height=%u Levels=%u "
                 "Usage=0x%X Format=%u Pool=%u ppTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                static_cast<void*>(This), Width, Height, Levels, static_cast<unsigned>(Usage),
+                static_cast<void*>(This), widthToUse, heightToUse, Levels, static_cast<unsigned>(Usage),
                 static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppTexture),
                 static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr), has_hr_name ? " (" : "",
                 has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
@@ -386,9 +400,17 @@ static HRESULT STDMETHODCALLTYPE CreateVolumeTexture_Detour(IDirect3DDevice9* Th
     if (g_first_CreateVolumeTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateVolumeTexture");
     }
+    UINT widthToUse = Width;
+    UINT heightToUse = Height;
+    UINT depthToUse = Depth;
+    if (IsD3D9FixCreateTextureDimensionsEnabled() && IsD3DFormatDXT(Format)) {
+        widthToUse = AlignUpToMultipleOf4(Width);
+        heightToUse = AlignUpToMultipleOf4(Height);
+        depthToUse = AlignUpToMultipleOf4(Depth);
+    }
     const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
-    HRESULT hr = CreateVolumeTexture_Original(This, Width, Height, Depth, Levels, Usage, Format, poolToUse,
-                                              ppVolumeTexture, pSharedHandle);
+    HRESULT hr = CreateVolumeTexture_Original(This, widthToUse, heightToUse, depthToUse, Levels, Usage, Format,
+                                              poolToUse, ppVolumeTexture, pSharedHandle);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateVolumeTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateVolumeTexture_error.exchange(false)) {
@@ -397,7 +419,7 @@ static HRESULT STDMETHODCALLTYPE CreateVolumeTexture_Detour(IDirect3DDevice9* Th
             LogError(
                 "[D3D9 error] CreateVolumeTexture first failure — This=%p Width=%u Height=%u Depth=%u Levels=%u "
                 "Usage=0x%X Format=%u Pool=%u ppVolumeTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                static_cast<void*>(This), Width, Height, Depth, Levels, static_cast<unsigned>(Usage),
+                static_cast<void*>(This), widthToUse, heightToUse, depthToUse, Levels, static_cast<unsigned>(Usage),
                 static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppVolumeTexture),
                 static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr), has_hr_name ? " (" : "",
                 has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
@@ -414,9 +436,13 @@ static HRESULT STDMETHODCALLTYPE CreateCubeTexture_Detour(IDirect3DDevice9* This
     if (g_first_CreateCubeTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateCubeTexture");
     }
+    UINT edgeToUse = EdgeLength;
+    if (IsD3D9FixCreateTextureDimensionsEnabled() && IsD3DFormatDXT(Format)) {
+        edgeToUse = AlignUpToMultipleOf4(EdgeLength);
+    }
     const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
-    HRESULT hr =
-        CreateCubeTexture_Original(This, EdgeLength, Levels, Usage, Format, poolToUse, ppCubeTexture, pSharedHandle);
+    HRESULT hr = CreateCubeTexture_Original(This, edgeToUse, Levels, Usage, Format, poolToUse, ppCubeTexture,
+                                            pSharedHandle);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateCubeTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateCubeTexture_error.exchange(false)) {
@@ -425,7 +451,7 @@ static HRESULT STDMETHODCALLTYPE CreateCubeTexture_Detour(IDirect3DDevice9* This
             LogError(
                 "[D3D9 error] CreateCubeTexture first failure — This=%p EdgeLength=%u Levels=%u Usage=0x%X "
                 "Format=%u Pool=%u ppCubeTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                static_cast<void*>(This), EdgeLength, Levels, static_cast<unsigned>(Usage),
+                static_cast<void*>(This), edgeToUse, Levels, static_cast<unsigned>(Usage),
                 static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppCubeTexture),
                 static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr), has_hr_name ? " (" : "",
                 has_hr_name ? hr_name : "", has_hr_name ? ")" : "");

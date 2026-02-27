@@ -64,8 +64,11 @@ if ($Experimental) {
 }
 cmake @cmakeArgs
 
-# Build
-cmake --build build32 --config "$BuildType" --parallel
+# Build in parallel (use all logical CPUs unless CMAKE_BUILD_PARALLEL_LEVEL is set)
+$parallelJobs = if ($env:CMAKE_BUILD_PARALLEL_LEVEL) { $env:CMAKE_BUILD_PARALLEL_LEVEL } else { $env:NUMBER_OF_PROCESSORS }
+if (-not $parallelJobs) { $parallelJobs = 32 }
+Write-Host "Building with $parallelJobs parallel job(s)" -ForegroundColor Gray
+cmake --build build32 --config "$BuildType" --parallel $parallelJobs
 
 # Check if build was successful
 if ($LASTEXITCODE -eq 0) {

@@ -94,7 +94,19 @@ void ReflexManager::Shutdown() {
 }
 
 bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) {
+    if (g_global_frame_id.load(std::memory_order_acquire) < 500) {
+        return true;
+    }
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
+
+    {
+        static bool first_call = true;
+        if (first_call) {
+            first_call = false;
+            LogInfo("ReflexManager::ApplySleepMode: First call for frame %llu",
+                    g_global_frame_id.load(std::memory_order_acquire));
+        }
+    }
 
     NV_SET_SLEEP_MODE_PARAMS params = {};
     params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
@@ -114,7 +126,18 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
 }
 
 bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
+    if (g_global_frame_id.load(std::memory_order_acquire) < 500) {
+        return true;
+    }
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
+    {
+        static bool first_call = true;
+        if (first_call) {
+            first_call = false;
+            LogInfo("ReflexManager::SetMarker: First call for frame %llu",
+                    g_global_frame_id.load(std::memory_order_acquire));
+        }
+    }
 
     if (s_enable_reflex_logging.load()) {
         std::ostringstream oss;
@@ -154,7 +177,18 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
 }
 
 bool ReflexManager::Sleep() {
+    if (g_global_frame_id.load(std::memory_order_acquire) < 500) {
+        return true;
+    }
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
+    {
+        static bool first_call = true;
+        if (first_call) {
+            first_call = false;
+            LogInfo("ReflexManager::Sleep: First call for frame %llu",
+                    g_global_frame_id.load(std::memory_order_acquire));
+        }
+    }
 
     // Check if Reflex sleep suppression is enabled
     if (settings::g_mainTabSettings.suppress_reflex_sleep.GetValue()) {
@@ -196,8 +230,12 @@ bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
 
 // params may be nullptr if no parameters were stored
 void ReflexManager::RestoreSleepMode(IUnknown* d3d_device_, NV_SET_SLEEP_MODE_PARAMS* params) {
+    if (g_global_frame_id.load(std::memory_order_acquire) < 500) {
+        return;
+    }
     if (d3d_device_ == nullptr) {
-        return;  // No device to restore on (e.g. game never called SetSleepMode). Calling NVAPI with null device crashes in dxgi.
+        return;  // No device to restore on (e.g. game never called SetSleepMode). Calling NVAPI with null device
+                 // crashes in dxgi.
     }
     NV_SET_SLEEP_MODE_PARAMS default_params = {};
     if (params == nullptr) {

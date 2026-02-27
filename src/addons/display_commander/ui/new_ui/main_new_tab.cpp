@@ -2830,6 +2830,17 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 GetChosenFpsLimiterSiteName());
         }
         auto DrawPclStatsCheckbox = [&imgui]() {
+            if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
+                g_reflex_settings_outdated.store(true);
+                LogInfo("Inject Reflex %s",
+                        settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
+                    "latency.");
+            }
+            imgui.Spacing();
             bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
             if (imgui.Checkbox("PCL stats for injected reflex", &pcl_stats)) {
                 settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
@@ -3096,6 +3107,19 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
                         "Override the game's native Reflex implementation with the addon's injected version.");
+                }
+            }
+            if (!IsNativeReflexActive()) {
+                imgui.Spacing();
+                if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
+                    g_reflex_settings_outdated.store(true);
+                    LogInfo("Inject Reflex %s",
+                            settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
+                        "latency.");
                 }
             }
         }

@@ -2,6 +2,19 @@
 
 ---
 
+## v0.12.117 (2026-02-26)
+
+- **Inject Reflex checkbox (Main tab)** - Added "Inject Reflex" checkbox on the Main tab (default off), shown only when native Reflex is not active. When enabled, the addon injects Reflex (sleep + latency markers) for games without native Reflex support.
+
+---
+
+## v0.12.116 (2026-02-26)
+
+- **DirectInput hooks split by DLL** - DirectInput install is now split into `InstallDirectInput8Hooks(HMODULE)` (dinput8.dll) and `InstallDirectInputHooks(HMODULE)` (dinput.dll). Both are called from `OnModuleLoaded` with the loaded module handle as argument, so the correct module is hooked without `GetModuleHandle` lookup.
+- **Separate HookType for DirectInput 8** - Added `HookType::DINPUT8` for dinput8.dll (DirectInput8Create) alongside existing `HookType::DINPUT` for dinput.dll (DirectInputCreateA/W). Hook suppression settings now have separate `DInput8Hooks` / `SuppressDInput8Hooks` / `DInput8HooksInstalled` in `DisplayCommander.HookSuppression` and `DisplayCommander.HooksInstalled`.
+
+---
+
 ## v0.12.115 (2026-02-26)
 
 - **DirectInput and OpenGL hooks via OnModuleLoaded** - Fixed creating hooks when Display Commnader is used as dll proxy.

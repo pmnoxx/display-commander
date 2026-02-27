@@ -203,6 +203,7 @@ static void UpdateNGXParamsFromDLSSOptimalSettings(const sl::DLSSOptimalSettings
 }
 
 // Update g_ngx_parameters and FG atomic from Streamline DLSS-G options (for Vulkan/Streamline DLSS Information tab).
+// Log only when mode or numFramesToGenerate changes to avoid flooding the log.
 static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGOptions& options) {
     const bool fg_on = (options.mode != sl::DLSSGMode::eOff);
     g_streamline_dlssg_fg_enabled.store(fg_on);
@@ -212,8 +213,16 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGOptions& options) {
     g_ngx_parameters.update_int("DLSSG.EnableInterp", fg_on ? 1 : 0);
     g_ngx_parameters.update_uint("DLSSG.MultiFrameCount", options.numFramesToGenerate);
 
-    LogInfo("UpdateNGXParamsFromDLSSGOptions: mode=%d numFramesToGenerate=%d", static_cast<int>(options.mode),
-            options.numFramesToGenerate);
+    static std::atomic<int> s_last_mode{-1};
+    static std::atomic<uint32_t> s_last_num_frames{UINT32_MAX};
+    const int mode_val = static_cast<int>(options.mode);
+    const uint32_t num_frames = static_cast<uint32_t>(options.numFramesToGenerate);
+    if (s_last_mode.load(std::memory_order_relaxed) != mode_val
+        || s_last_num_frames.load(std::memory_order_relaxed) != num_frames) {
+        s_last_mode.store(mode_val, std::memory_order_relaxed);
+        s_last_num_frames.store(num_frames, std::memory_order_relaxed);
+        LogInfo("UpdateNGXParamsFromDLSSGOptions: mode=%d numFramesToGenerate=%d", mode_val, options.numFramesToGenerate);
+    }
 }
 
 // Hook functions

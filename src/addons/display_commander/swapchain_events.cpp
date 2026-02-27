@@ -59,6 +59,8 @@ static OnPresentReflexMode GetEffectiveReflexMode();
 static bool GetReflexLowLatency();
 static bool GetReflexBoost();
 
+bool IsInjectedReflexEnabled() { return settings::g_mainTabSettings.inject_reflex.GetValue(); }
+
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -1362,6 +1364,10 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     if (delay_first_500_frames && current_frame_id < 500) {
         override_game_reflex_settings = false;
     }
+    // TODO add or Injected Reflex Enabled
+    if (!(IsNativeReflexActive(utils::get_now_ns()) || IsInjectedReflexEnabled())) {
+        override_game_reflex_settings = false;
+    }
 
     HandleFpsLimiterPost(false, from_wrapper);
     const LONGLONG end_ns = TimerPresentPacingDelayEnd(start_ns);
@@ -1725,8 +1731,21 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
         }
         return;
     }
-    LogInfo("SetSwapChainColorSpace: color_space=%d, reshade_color_space=%d, supported=%d", color_space,
-            reshade_color_space, supported);
+    // Log only when values change to avoid repeated identical log lines.
+    static std::atomic<int> s_last_color_space{-1};
+    static std::atomic<int> s_last_reshade_cs{-1};
+    static std::atomic<int> s_last_supported{-1};
+    const int cs = static_cast<int>(color_space);
+    const int rcs = static_cast<int>(reshade_color_space);
+    if (s_last_color_space.load(std::memory_order_relaxed) != cs
+        || s_last_reshade_cs.load(std::memory_order_relaxed) != rcs
+        || s_last_supported.load(std::memory_order_relaxed) != supported) {
+        s_last_color_space.store(cs, std::memory_order_relaxed);
+        s_last_reshade_cs.store(rcs, std::memory_order_relaxed);
+        s_last_supported.store(supported, std::memory_order_relaxed);
+        LogInfo("SetSwapChainColorSpace: color_space=%d, reshade_color_space=%d, supported=%d", color_space,
+                reshade_color_space, supported);
+    }
     reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
     if (runtime != nullptr) {
         runtime->set_color_space(reshade_color_space);
@@ -1882,6 +1901,7 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
 void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::api::swapchain* swapchain,
                            const reshade::api::rect* /*source_rect*/, const reshade::api::rect* /*dest_rect*/,
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
+    auto api = swapchain->get_device()->get_api();
     command_queue->flush_immediate_command_list();
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
@@ -1916,7 +1936,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     hookToSwapChain(swapchain);
 
     // Auto set color space if enabled
-    auto api = swapchain->get_device()->get_api();
     bool idx_dx12 = api == reshade::api::device_api::d3d12;
     bool dx_dx11 = api == reshade::api::device_api::d3d11;
     bool dx_dx10 = api == reshade::api::device_api::d3d10;
@@ -2036,12 +2055,15 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         RecordFrameTime(FrameTimeMode::kPresent);
     }
 
-    if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d12) {
-        g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);
-    } else if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d11) {
-        g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX11);
-    } else if (swapchain->get_device()->get_api() == reshade::api::device_api::d3d10) {
-        g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX10);
+    auto ok_to_initialize_reflex = IsNativeReflexActive(utils::get_now_ns()) || IsInjectedReflexEnabled();
+    if (ok_to_initialize_reflex) {
+        if (api == reshade::api::device_api::d3d12) {
+            g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);
+        } else if (api == reshade::api::device_api::d3d11) {
+            g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX11);
+        } else if (api == reshade::api::device_api::d3d10) {
+            g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX10);
+        }
     }
 
     perf_timer.resume();

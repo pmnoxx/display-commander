@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.129 (2026-02-27)
+
+- **D3D9 vtable indices** - Fixed IDirect3DDevice9 vtable indices to match d3d9.h / ReShade declaration order. CreateTexture..CreateDepthStencilSurface are 23-29 (was 21-27); CreateOffscreenPlainSurface is 36 (was 28). Added `d3d9_vtable_indices.hpp` with a full `VTable` enum for all IDirect3DDevice9/IDirect3DDevice9Ex slots; Present and PresentEx hooks now use `VTable::Present` and `VTable::PresentEx` instead of magic 17 and 121.
+- **D3D9 detour first-call logging** - Each D3D9 device vtable detour (CreateTexture, CreateVolumeTexture, CreateCubeTexture, CreateVertexBuffer, CreateIndexBuffer, CreateOffscreenPlainSurface, CreateRenderTarget, CreateDepthStencilSurface) logs once on first call: `[D3D9] First call: IDirect3DDevice9::<Method>`.
+
+---
+
 ## v0.12.128 (2026-02-27)
 
 - **DXGI flip state removal** - Removed `GetIndependentFlipState`, `DxgiBypassMode`, and `GetFlipStateForAPI`. DXGI flip state is no longer queried or shown in the main tab, swapchain tab, overlay, or Reflex section. PresentMon still reports flip state from ETW using a simpler `PresentMonFlipMode` enum (Unset, Composed, Overlay, IndependentFlip, Unknown) in the PresentMon ETW subsection only.

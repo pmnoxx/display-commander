@@ -334,7 +334,9 @@ static void RunCommandLine(HINSTANCE hinst, LPSTR lpszCmdLine) {
         out_line("Commands:");
         out_line("  version    Print addon version (for scripts)");
         out_line("  DetectExe [dir]  Find largest .exe in directory, detect 32/64-bit and graphics API (ReShade DLL)");
-        out_line("  SetupDC [script_dir]  Show standalone installer UI; script_dir = folder where installer script runs (default: .)");
+        out_line(
+            "  SetupDC [script_dir]  Show standalone installer UI; script_dir = folder where installer script runs "
+            "(default: .)");
         out_line("  help       Show this help");
         out_line("");
         out_line("Output is written to CommandLine.log in this addon's directory.");

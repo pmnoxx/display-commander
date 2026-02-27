@@ -389,14 +389,17 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
 }
 
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
+    LogInfo("[OnInitEffectRuntime] entry");
     RECORD_DETOUR_CALL(utils::get_now_ns());
 #ifdef TRY_CATCH_BLOCKS
     __try {
 #endif
         if (runtime == nullptr) {
+            LogInfo("[OnInitEffectRuntime] runtime is null, returning");
             return;
         }
         AddReShadeRuntime(runtime);
+        LogInfo("[OnInitEffectRuntime] after AddReShadeRuntime");
 
         // One-time: extract DisplayCommander shaders from DLL (embedded RCDATA) to Reshade\Shaders\DisplayCommander:
         // - %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
@@ -404,6 +407,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
         // - ReShade's Shaders\DisplayCommander folder (so the effect loads after reload/restart)
         // Only the DLL is shipped; .fx and .fxh are embedded in the binary.
         {
+            RECORD_DETOUR_CALL(utils::get_now_ns());
             static std::atomic<bool> shader_extract_done{false};
             if (!shader_extract_done.exchange(true)) {
                 constexpr int IDR_CONTROL_FX = 300;
@@ -477,8 +481,9 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
                                  "DisplayCommander_PerceptualBoost.fx");
             }
         }
+        LogInfo("[OnInitEffectRuntime] after shader extract block");
 
-        LogInfo("ReShade effect runtime initialized - Input blocking now available");
+        LogInfo("[OnInitEffectRuntime] ReShade effect runtime initialized - Input blocking now available");
 
         if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
             || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
@@ -490,14 +495,17 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
             // Set up window procedure hooks now that we have the runtime
             HWND game_window = static_cast<HWND>(runtime->get_hwnd());
             if (game_window != nullptr && IsWindow(game_window) != 0) {
-                LogInfo("Game window detected - HWND: 0x%p", game_window);
-
+                LogInfo("[OnInitEffectRuntime] Game window detected - HWND: 0x%p", game_window);
+                LogInfo("[OnInitEffectRuntime] calling DoInitializationWithHwnd...");
                 // Initialize if not already done
                 DoInitializationWithHwnd(game_window);
+                LogInfo("[OnInitEffectRuntime] DoInitializationWithHwnd returned");
             } else {
-                LogWarn("ReShade runtime window is not valid - HWND: 0x%p", game_window);
+                LogWarn("[OnInitEffectRuntime] ReShade runtime window is not valid - HWND: 0x%p", game_window);
             }
             initialized_with_hwnd = true;
+            LogInfo("[OnInitEffectRuntime] before autoclick start (enabled_experimental_features=%d)",
+                    enabled_experimental_features ? 1 : 0);
 
             // Start the auto-click thread (always running, sleeps when disabled)
             if (enabled_experimental_features) {
@@ -506,6 +514,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
                 autoclick::StartButtonOnlyPressThread();
             }
         }
+        LogInfo("[OnInitEffectRuntime] exit");
 #ifdef TRY_CATCH_BLOCKS
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         LogError("Exception occurred during OnInitEffectRuntime: 0x%x", GetExceptionCode());
@@ -1777,13 +1786,6 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     // Initialize keyboard tracking system
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
-
-    // Install Streamline hooks
-    if (InstallStreamlineHooks(nullptr)) {
-        LogInfo("Streamline hooks installed successfully");
-    } else {
-        LogInfo("Streamline hooks not installed (Streamline not detected)");
-    }
 }
 
 void DoInitializationWithoutHwnd(HMODULE h_module) {

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.131 (2026-02-27)
+
+- **Log level filter** - When the logging level is set to "Warning" (or "Error Only"), INFO and Debug lines were still written because some code called the logger directly (`display_commander::logger::LogInfo`, `LogInfoDirectSynchronized`, or `DisplayCommanderLogger::Log`) and bypassed the level check in `utils/logging.cpp`. The minimum log level is now enforced inside the logger: `DisplayCommanderLogger::Log()` and the namespace helpers (`LogInfo`, `LogWarning`, `LogDebug`, `LogInfoDirectSynchronized`) all respect `g_min_log_level`, so only messages at or above the selected severity are written.
+
+---
+
 ## v0.12.130 (2026-02-27)
 
 - **Fix DX9 UI crash in Main tab (VSync & Tearing)** - Crash occurred in the present-mode line when calling Discord overlay visibility check (`IsWindowWithTitleVisible`) on the D3D9 path. Discord overlay check and warning are now skipped when the API is D3D9 so the UI no longer crashes or hangs when the overlay is open with a D3D9 game.

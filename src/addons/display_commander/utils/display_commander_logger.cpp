@@ -1,6 +1,7 @@
 #include "display_commander_logger.hpp"
 #include "srwlock_wrapper.hpp"
 #include "timing.hpp"
+#include "../globals.hpp"
 #include <cstdarg>
 #include <exception>
 #include <filesystem>
@@ -14,6 +15,13 @@ const std::string kFlushSentinel("\x01", 1);
 
 // Max enqueued messages; when exceeded we drop the new message to avoid unbounded growth
 constexpr size_t kMaxQueueSize = 16384;
+
+// Map logger::LogLevel (Debug=0, Info=1, Warning=2, Error=3) to globals::LogLevel (Error=1, Warning=2, Info=3, Debug=4).
+// Log when message is at or above min severity, i.e. when (globals) message level <= g_min_log_level.
+bool ShouldLogLevel(display_commander::logger::LogLevel logger_level) {
+    const int globals_message_level = 4 - static_cast<int>(logger_level);
+    return globals_message_level <= static_cast<int>(g_min_log_level.load());
+}
 
 }  // namespace
 
@@ -57,6 +65,9 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
 
 void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
     if (!initialized_.load()) {
+        return;
+    }
+    if (!ShouldLogLevel(level)) {
         return;
     }
 
@@ -346,6 +357,7 @@ void DisplayCommanderLogger::RotateLog() {
 void Initialize(const std::string& log_path) { DisplayCommanderLogger::GetInstance().Initialize(log_path); }
 
 void LogDebug(const char* msg, ...) {
+    if (!ShouldLogLevel(LogLevel::Debug)) return;
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -355,6 +367,7 @@ void LogDebug(const char* msg, ...) {
 }
 
 void LogInfo(const char* msg, ...) {
+    if (!ShouldLogLevel(LogLevel::Info)) return;
     va_list args;
     va_start(args, msg);
     char buffer[1024];
@@ -364,6 +377,7 @@ void LogInfo(const char* msg, ...) {
 }
 
 void LogInfoDirectSynchronized(const char* fmt, ...) {
+    if (!ShouldLogLevel(LogLevel::Info)) return;
     va_list args;
     va_start(args, fmt);
     char buffer[1024];
@@ -373,6 +387,7 @@ void LogInfoDirectSynchronized(const char* fmt, ...) {
 }
 
 void LogWarning(const char* msg, ...) {
+    if (!ShouldLogLevel(LogLevel::Warning)) return;
     va_list args;
     va_start(args, msg);
     char buffer[1024];

@@ -147,6 +147,20 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         return NVAPI_OK;
     }
 
+    // Mark native Reflex as active when we see SetLatencyMarker from game or Streamline (sl.chi/sl.reflex).
+    // Without this, g_native_reflex_detected stays false and IsNativeReflexActive() is false, so
+    // SetSleepMode_Detour and Sleep_Detour return early and never forward to the driver, preventing
+    // Reflex low-latency and sleep from working (e.g. with Streamline).
+    g_native_reflex_detected.store(true, std::memory_order_relaxed);
+    {
+        static bool first_call = true;
+        if (first_call) {
+            first_call = false;
+            LogInfo("NvAPI_D3D_SetLatencyMarker_Detour: First call for frame %llu",
+                    g_global_frame_id.load(std::memory_order_acquire));
+        }
+    }
+
     // only for first 6 latency marker types
     if (pSetLatencyMarkerParams != nullptr
         && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
@@ -348,8 +362,8 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
 // Direct call to NvAPI_D3D_SetSleepMode without stats tracking
 // For internal use to avoid inflating statistics
 NvAPI_Status NvAPI_D3D_SetSleepMode_Direct(IUnknown* pDev, NV_SET_SLEEP_MODE_PARAMS* pSetSleepModeParams) {
-    if (pDev == nullptr || pSetSleepModeParams == nullptr) {
-        LogError("NvAPI_D3D_SetSleepMode_Direct: pDev or pSetSleepModeParams is nullptr");
+    if (pDev == nullptr) {
+        LogError("NvAPI_D3D_SetSleepMode_Direct: pDev");
         return NVAPI_INVALID_ARGUMENT;
     }
     // utils::SRWLockExclusive lock(g_nvapi_lock);

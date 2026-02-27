@@ -16,6 +16,9 @@
 // Forward declaration for OnPresentUpdateAfter2
 void OnPresentUpdateAfter2(bool from_wrapper);
 
+/** True when user enabled "Inject Reflex" and addon should run Reflex (sleep + markers) in place of native. */
+bool IsInjectedReflexEnabled();
+
 // ============================================================================
 // SWAPCHAIN EVENT HANDLERS
 // ============================================================================

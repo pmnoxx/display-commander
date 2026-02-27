@@ -66,6 +66,8 @@ class MainTabSettings {
     ui::new_ui::FloatSettingRef fps_limit;
     ui::new_ui::FloatSettingRef fps_limit_background;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
+    /** When true and native Reflex is not active, addon injects Reflex (sleep + markers). Default false. */
+    ui::new_ui::BoolSetting inject_reflex;
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;
     ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> onpresent_reflex_mode;
     ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> reflex_limiter_reflex_mode;  // Used when FPS limiter is Reflex

@@ -63,6 +63,7 @@ MainTabSettings::MainTabSettings()
       fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "DisplayCommander"),
       fps_limit_background("fps_limit_background", s_fps_limit_background, 30.0f, 0.0f, 240.0f, "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
+      inject_reflex("inject_reflex", false, "DisplayCommander"),
       onpresent_sync_low_latency_ratio(
           "onpresent_sync_low_latency_ratio", 0,
           {"100% Display / 0% Input (default)", "87.5% Display / 12.5% Input", "75% Display / 25% Input",
@@ -213,6 +214,7 @@ MainTabSettings::MainTabSettings()
         &fps_limit,
         &fps_limit_background,
         &suppress_reflex_sleep,
+        &inject_reflex,
         &onpresent_sync_low_latency_ratio,
         &onpresent_reflex_mode,
         &reflex_limiter_reflex_mode,

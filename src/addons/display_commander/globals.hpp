@@ -703,7 +703,8 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum);
 /** Returns true iff the chosen FPS limiter source for the current decision is caller_enum. */
 bool GetChosenFpsLimiter(FpsLimiterCallSite caller_enum);
 
-/** Returns the chosen FPS limiter call site for the current frame (dxgi_swapchain1, dxgi_swapchain, or reshade_addon_event). */
+/** Returns the chosen FPS limiter call site for the current frame (dxgi_swapchain1, dxgi_swapchain, or
+ * reshade_addon_event). */
 FpsLimiterCallSite GetChosenFrameTimeLocation();
 
 /** Returns display name for a FPS limiter call site ("reflex_marker", "reflex_marker_vk_nvll", etc.). */
@@ -1538,7 +1539,6 @@ extern std::atomic<LONGLONG> g_reflex_sleep_status_last_update_ns;   // Last upd
 // Helper function to check if native Reflex is active
 // Now detects native Reflex only via SetLatencyMarker calls (following Special-K approach)
 inline bool IsNativeReflexActive(uint64_t now_ns) {
-    (void)now_ns;  // Unused parameter, kept for backward compatibility
     return g_native_reflex_detected.load() && !settings::g_advancedTabSettings.reflex_supress_native.GetValue();
 }
 // Backward-compatible overload (calls the above with current time)

@@ -63,8 +63,22 @@ void LogD3D9Error(const char* method, HRESULT hr) {
     LogError("[D3D9 error] %s returned 0x%08X", method, static_cast<unsigned>(hr));
 }
 
+// Returns a known D3D9 HRESULT name or nullptr (caller can fall back to hex).
+static const char* D3D9HResultName(HRESULT hr) {
+    switch (static_cast<unsigned>(hr)) {
+        case 0x8876017C: return "D3DERR_OUTOFVIDEOMEMORY";
+        case 0x88760868: return "D3DERR_DEVICELOST";
+        case 0x8876086A: return "D3DERR_NOTAVAILABLE";
+        case 0x8876086C: return "D3DERR_INVALIDCALL";
+        case 0x88760870: return "D3DERR_DEVICEREMOVED";
+        case 0x88760874: return "D3DERR_DEVICEHUNG";
+        default: return nullptr;
+    }
+}
+
 // First-call flags (one per detour)
 static std::atomic<bool> g_first_CreateTexture{true};
+static std::atomic<bool> g_first_CreateTexture_error{true};
 static std::atomic<bool> g_first_CreateVolumeTexture{true};
 static std::atomic<bool> g_first_CreateCubeTexture{true};
 static std::atomic<bool> g_first_CreateVertexBuffer{true};
@@ -87,6 +101,16 @@ static HRESULT STDMETHODCALLTYPE CreateTexture_Detour(IDirect3DDevice9* This, UI
     HRESULT hr = CreateTexture_Original(This, Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
     if (FAILED(hr)) {
         LogD3D9Error("CreateTexture", hr);
+        if (g_first_CreateTexture_error.exchange(false)) {
+            const char* hr_name = D3D9HResultName(hr);
+            const bool has_hr_name = (hr_name != nullptr);
+            LogError("[D3D9 error] CreateTexture first failure — full arguments: This=%p Width=%u Height=%u Levels=%u "
+                     "Usage=0x%X Format=%u Pool=%u ppTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                     static_cast<void*>(This), Width, Height, Levels, static_cast<unsigned>(Usage),
+                     static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppTexture),
+                     static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
+                     has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
+        }
     }
     return hr;
 }

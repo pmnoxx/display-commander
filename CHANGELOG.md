@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.132 (2026-02-27)
+
+- **D3D9 CreateTexture error diagnostics** - When `IDirect3DDevice9::CreateTexture` fails, the first failure in a session now logs full arguments (device, Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle) and the HRESULT name (e.g. D3DERR_INVALIDCALL for 0x8876086C). Later failures still log only the short error line to avoid log spam.
+
+---
+
 ## v0.12.131 (2026-02-27)
 
 - **Log level filter** - When the logging level is set to "Warning" (or "Error Only"), INFO and Debug lines were still written because some code called the logger directly (`display_commander::logger::LogInfo`, `LogInfoDirectSynchronized`, or `DisplayCommanderLogger::Log`) and bypassed the level check in `utils/logging.cpp`. The minimum log level is now enforced inside the logger: `DisplayCommanderLogger::Log()` and the namespace helpers (`LogInfo`, `LogWarning`, `LogDebug`, `LogInfoDirectSynchronized`) all respect `g_min_log_level`, so only messages at or above the selected severity are written.

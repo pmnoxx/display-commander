@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.123 (2026-02-27)
+
+- **OpenGL and PCLStats ETW hooks take HMODULE** - `InstallOpenGLHooks` and `InstallPCLStatsEtwHooks` now take an `HMODULE` argument (the loaded module). Call sites in the LoadLibrary/OnModuleLoaded path pass the module handle so hooks are installed on the correct DLL when the addon is used as a proxy (e.g. opengl32 or advapi32). Aligns with the existing DirectInput/DirectInput8/DbgHelp pattern.
+
+---
+
 ## v0.12.122 (2026-02-27)
 
 - **D3D9 proxy (Wine d3d9.spec parity)** - Added missing d3d9.dll exports: `Direct3DShaderValidatorCreate9` and `DebugSetMute`, with forwarding to the real system d3d9.dll. Fixed exports.def typo (`EXPORTS` was written as `` `XPORTS ``), which caused linker failures when building the addon as a proxy DLL.

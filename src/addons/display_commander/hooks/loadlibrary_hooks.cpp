@@ -1637,7 +1637,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     // advapi32.dll – PCLStats ETW (EventRegister + EventWriteTransfer) for Reflex/PCLStats event counting
     else if (lowerModuleName.find(L"advapi32.dll") != std::wstring::npos) {
-        if (InstallPCLStatsEtwHooks()) {
+        if (InstallPCLStatsEtwHooks(hModule)) {
             LogInfo("PCLStats ETW hooks installed (advapi32.dll)");
         } else {
             LogInfo("PCLStats ETW hooks not installed (e.g. already installed or advapi32 not ready)");
@@ -1646,7 +1646,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // opengl32.dll – WGL / OpenGL present and context hooks
     else if (lowerModuleName.find(L"opengl32.dll") != std::wstring::npos) {
         LogInfo("Installing OpenGL hooks for module: %ws", moduleName.c_str());
-        if (InstallOpenGLHooks()) {
+        if (InstallOpenGLHooks(hModule)) {
             LogInfo("OpenGL hooks installed successfully");
         } else {
             LogInfo("OpenGL hooks not installed (e.g. suppressed, already installed, or opengl32 not ready)");

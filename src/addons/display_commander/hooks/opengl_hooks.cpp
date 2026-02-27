@@ -176,7 +176,7 @@ int WINAPI wglGetSwapIntervalEXT_Detour(void) {
 }
 
 // Hook installation function
-bool InstallOpenGLHooks() {
+bool InstallOpenGLHooks(HMODULE hModule) {
     if (g_opengl_hooks_installed.load()) {
         LogInfo("OpenGL hooks already installed");
         return true;
@@ -194,14 +194,14 @@ bool InstallOpenGLHooks() {
         return false;
     }
 
-    LogInfo("Installing OpenGL hooks...");
-
-    // Get OpenGL module handle
-    HMODULE opengl_module = GetModuleHandleW(L"opengl32.dll");
-    if (!opengl_module) {
-        LogWarn("opengl32.dll not loaded, skipping OpenGL hooks");
+    if (!hModule) {
+        LogWarn("InstallOpenGLHooks: null module handle, skipping OpenGL hooks");
         return false;
     }
+
+    LogInfo("Installing OpenGL hooks...");
+
+    HMODULE opengl_module = hModule;
 
     // Dynamically load WGL functions
     wglSwapBuffers_ptr = reinterpret_cast<wglSwapBuffers_pfn>(GetProcAddress(opengl_module, "wglSwapBuffers"));

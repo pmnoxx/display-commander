@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.127 (2026-02-27)
+
+- **Fix D3D9 device vtable logging crash** - Install D3D9 device vtable logging (CreateTexture, CreateRenderTarget, etc.) only when Present hooks were installed successfully (i.e. when the device is IDirect3DDevice9Ex). On base IDirect3DDevice9 the device from ReShade's get_native() can be a proxy whose vtable layout may not match, causing ACCESS_VIOLATION in the game (e.g. Assassin's Creed Brotherhood). Vtable logging is now skipped for non-Ex D3D9 devices.
+
+---
+
 ## v0.12.126 (2026-02-27)
 
 - **Fix controller support in Death Stranding** - Default for "Suppress Windows.Gaming.Input" (Advanced tab) changed to off; setting key renamed to SuppressWindowsGamingInput2 so existing configs pick up the new default. Restores controller input when using the addon with Death Stranding.

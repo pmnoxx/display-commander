@@ -6,6 +6,7 @@
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/d3d9/d3d9_device_vtable_logging.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
@@ -251,11 +252,14 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     // Get the underlying DX9 device from the ReShade device
     else if (api == reshade::api::device_api::d3d9) {
         if (auto* device = swapchain->get_device()) {
-            // do query instead
             IUnknown* iunknown = reinterpret_cast<IUnknown*>(device->get_native());
             Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device = nullptr;
             if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
                 display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
+                if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device.Get())) {
+                    LogInfo("D3D9 Present hooks installed for device 0x%p", d3d9_device.Get());
+                }
+                display_commanderhooks::d3d9::InstallD3D9DeviceVtableLogging(d3d9_device.Get());
             }
         }
     } else if (api == reshade::api::device_api::vulkan) {
@@ -595,7 +599,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             oss << "Device Creation Flags: " << D3DPresentFlagsToString(desc.present_flags) << ", ";
             oss << "Back Buffer: " << desc.back_buffer.texture.width << "x" << desc.back_buffer.texture.height << ", ";
             oss << "Back Buffer Format: " << (long long)desc.back_buffer.texture.format << ", ";
-            oss << "Back Buffer Usage: " << (long long)desc.back_buffer.usage;
+            oss << "Back Buffer Usage: " << (long long)desc.back_buffer.usage << ", ";
             oss << "Multisample: " << desc.back_buffer.texture.samples << ", ";
             LogInfo(oss.str().c_str());
         }
@@ -671,9 +675,13 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             LogInfo("D3D9 FLIPEX: Successfully applied FLIPEX swap effect (upgrade count: %d)",
                     flipex_upgrade_count.load());
         } else {
-            LogInfo("D3D9 FLIPEX: FLIPEX cannot be applied. Present mode is %u", desc.present_mode);
-            // FLIPEX cannot be applied, set to false
             g_used_flipex.store(false);
+            if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+                LogWarn("D3D9 FLIPEX: FLIPEX upgrade is not enabled. Present mode is %u", desc.present_mode);
+            } else {
+                LogInfo("D3D9 FLIPEX: FLIPEX upgrade is not enabled. Present mode is %u", desc.present_mode);
+                // FLIPEX cannot be applied, set to false
+            }
         }
         return modified;
     } else if (is_dxgi) {
@@ -2046,7 +2054,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     }
 
     const FpsLimiterCallSite frame_loc = GetChosenFrameTimeLocation();
-    if (frame_loc != FpsLimiterCallSite::dxgi_swapchain1 && frame_loc != FpsLimiterCallSite::dxgi_swapchain) {
+    if (frame_loc != FpsLimiterCallSite::dxgi_swapchain1 && frame_loc != FpsLimiterCallSite::dxgi_swapchain
+        && frame_loc != FpsLimiterCallSite::dx9_present && frame_loc != FpsLimiterCallSite::dx9_presentex) {
         RecordFrameTime(FrameTimeMode::kPresent);
     }
 

@@ -681,11 +681,14 @@ enum class FpsLimiterCallSite {
     reflex_marker_pclstats_etw,  // PCLStats ETW (EventWriteTransfer) – first 6 markers only
     dxgi_swapchain1,             // DXGI IDXGISwapChain1::Present1 detour
     dxgi_swapchain,              // DXGI IDXGISwapChain::Present detour
+    dx9_present,                 // D3D9 IDirect3DDevice9::Present detour
+    dx9_presentex,               // D3D9 IDirect3DDevice9Ex::PresentEx detour
     reshade_addon_event,         // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
     dxgi_factory_wrapper,        // Currently unused in practice
+    kFpsLimiterCallSiteCount     // count of call sites above (use for array size / iteration)
 };
 
-constexpr size_t kFpsLimiterCallSiteCount = 8;
+constexpr size_t kFpsLimiterCallSiteCount = static_cast<size_t>(FpsLimiterCallSite::kFpsLimiterCallSiteCount);
 
 /** Last timestamp (ns) at which each FPS limiter call site was hit (0 = never). */
 extern std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount];

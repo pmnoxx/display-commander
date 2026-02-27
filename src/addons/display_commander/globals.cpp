@@ -227,13 +227,14 @@ std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount] 
 std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
 
 namespace {
-// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dxgi_factory_wrapper,
-// reshade_addon_event.
-constexpr std::array<FpsLimiterCallSite, 8> kFpsLimiterPriorityOrder = {
+// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dx9_present, dx9_presentex,
+// dxgi_factory_wrapper, reshade_addon_event.
+constexpr std::array<FpsLimiterCallSite, kFpsLimiterCallSiteCount> kFpsLimiterPriorityOrder = {
     FpsLimiterCallSite::reflex_marker,           FpsLimiterCallSite::reflex_marker_vk_nvll,
-    FpsLimiterCallSite::reflex_marker_vk_loader, FpsLimiterCallSite::reflex_marker_pclstats_etw,
-    FpsLimiterCallSite::dxgi_swapchain1,         FpsLimiterCallSite::dxgi_swapchain,
-    FpsLimiterCallSite::dxgi_factory_wrapper,    FpsLimiterCallSite::reshade_addon_event,
+    FpsLimiterCallSite::reflex_marker_vk_loader,  FpsLimiterCallSite::reflex_marker_pclstats_etw,
+    FpsLimiterCallSite::dxgi_swapchain1,          FpsLimiterCallSite::dxgi_swapchain,
+    FpsLimiterCallSite::dx9_present,              FpsLimiterCallSite::dx9_presentex,
+    FpsLimiterCallSite::dxgi_factory_wrapper,     FpsLimiterCallSite::reshade_addon_event,
 };
 
 bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
@@ -255,6 +256,8 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
         case FpsLimiterCallSite::dxgi_swapchain1:            return "dxgi_swapchain1";
         case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
+        case FpsLimiterCallSite::dx9_present:                 return "dx9_present";
+        case FpsLimiterCallSite::dx9_presentex:              return "dx9_presentex";
         case FpsLimiterCallSite::reshade_addon_event:        return "reshade_addon_event";
         case FpsLimiterCallSite::dxgi_factory_wrapper:       return "dxgi_factory_wrapper";
         default:                                             return "?";
@@ -268,6 +271,7 @@ FpsLimiterCallSite GetChosenFrameTimeLocation() {
     }
     const FpsLimiterCallSite site = static_cast<FpsLimiterCallSite>(chosen);
     if (site == FpsLimiterCallSite::dxgi_swapchain1 || site == FpsLimiterCallSite::dxgi_swapchain
+        || site == FpsLimiterCallSite::dx9_present || site == FpsLimiterCallSite::dx9_presentex
         || site == FpsLimiterCallSite::reshade_addon_event) {
         return site;
     }

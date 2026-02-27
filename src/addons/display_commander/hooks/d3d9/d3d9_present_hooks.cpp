@@ -8,6 +8,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
 #include "../present_traffic_tracking.hpp"
+#include "../dxgi/dxgi_present_hooks.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
@@ -50,18 +51,26 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     g_dx9_event_counters[DX9_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Call OnPresentFlags2 with flags = 0 (no flags for regular Present)
-    OnPresentFlags2(true, false);  // Called from present_detour
-
-    RecordNativeFrameTime();
-
-    // Record per-frame FPS sample for background aggregation
-    //..RecordFrameTime(FrameTimeMode::kPresent);
+    ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::dx9_present);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dx9_present);
+    if (use_fps_limiter) {
+        OnPresentFlags2(true, false);  // Called from present_detour
+        RecordNativeFrameTime();
+    }
+    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dx9_present) {
+        RecordFrameTime(FrameTimeMode::kPresent);
+    }
 
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
-        auto res = IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
-
+        HRESULT res = IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride,
+                                                         pDirtyRegion);
+        if (FAILED(res)) {
+            LogError("[D3D9 error] IDirect3DDevice9::Present returned 0x%08X", static_cast<unsigned>(res));
+        }
+        if (use_fps_limiter) {
+            display_commanderhooks::dxgi::HandlePresentAfter(false);
+        }
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
@@ -70,8 +79,13 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     }
 
     // Fallback to direct call if hook failed
-    auto res = This->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
-
+    HRESULT res = This->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+    if (FAILED(res)) {
+        LogError("[D3D9 error] IDirect3DDevice9::Present returned 0x%08X", static_cast<unsigned>(res));
+    }
+    if (use_fps_limiter) {
+        display_commanderhooks::dxgi::HandlePresentAfter(false);
+    }
     // Handle GPU completion for D3D9 (assumes immediate completion)
     HandleOpenGLGPUCompletion();
 
@@ -83,7 +97,9 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
 HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* This, const RECT* pSourceRect,
                                                             const RECT* pDestRect, HWND hDestWindowOverride,
                                                             const RGNDATA* pDirtyRegion, DWORD dwFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    const LONGLONG now_ns = utils::get_now_ns();
+    display_commanderhooks::g_last_d3d9_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
+    RECORD_DETOUR_CALL(now_ns);
     // Skip if this is not the device used by OnPresentUpdateBefore
     IDirect3DDevice9* expected_device = g_last_present_update_device.load();
     if (expected_device != nullptr && This != expected_device) {
@@ -101,19 +117,26 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
     g_dx9_event_counters[DX9_EVENT_PRESENT].fetch_add(1);
     g_swapchain_event_total_count.fetch_add(1);
 
-    // Call OnPresentFlags with the actual flags
-    OnPresentFlags2(true, false);  // Called from present_detour
-
-    RecordNativeFrameTime();
-
-    // Record per-frame FPS sample for background aggregation
-    // RecordFrameTime(FrameTimeMode::kPresent);
+    ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::dx9_presentex);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dx9_presentex);
+    if (use_fps_limiter) {
+        OnPresentFlags2(true, false);  // Called from present_detour
+        RecordNativeFrameTime();
+    }
+    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dx9_presentex) {
+        RecordFrameTime(FrameTimeMode::kPresent);
+    }
 
     // Call original function
     if (IDirect3DDevice9_PresentEx_Original != nullptr) {
-        auto res = IDirect3DDevice9_PresentEx_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion,
-                                                       dwFlags);
-
+        HRESULT res = IDirect3DDevice9_PresentEx_Original(This, pSourceRect, pDestRect, hDestWindowOverride,
+                                                          pDirtyRegion, dwFlags);
+        if (FAILED(res)) {
+            LogError("[D3D9 error] IDirect3DDevice9Ex::PresentEx returned 0x%08X", static_cast<unsigned>(res));
+        }
+        if (use_fps_limiter) {
+            display_commanderhooks::dxgi::HandlePresentAfter(false);
+        }
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 
@@ -124,8 +147,13 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
     // Fallback to direct call if hook failed
     // Note: PresentEx is only available on IDirect3DDevice9Ex, so we need to cast
     if (auto* deviceEx = static_cast<IDirect3DDevice9Ex*>(This)) {
-        auto res = deviceEx->PresentEx(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
-
+        HRESULT res = deviceEx->PresentEx(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        if (FAILED(res)) {
+            LogError("[D3D9 error] IDirect3DDevice9Ex::PresentEx returned 0x%08X", static_cast<unsigned>(res));
+        }
+        if (use_fps_limiter) {
+            display_commanderhooks::dxgi::HandlePresentAfter(false);
+        }
         // Handle GPU completion for D3D9 (assumes immediate completion)
         HandleOpenGLGPUCompletion();
 

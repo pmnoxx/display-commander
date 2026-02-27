@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.124 (2026-02-27)
+
+- **D3D9 device vtable logging** - Hook all IDirect3DDevice9 resource-creation methods that ReShade wraps: CreateTexture, CreateVolumeTexture, CreateCubeTexture, CreateVertexBuffer, CreateIndexBuffer (in addition to existing CreateRenderTarget, CreateDepthStencilSurface, CreateOffscreenPlainSurface). Each detour uses RECORD_DETOUR_CALL and logs on FAILED(hr).
+- **D3D9 Active APIs in Main tab** - When IDirect3DDevice9::Present or PresentEx is called, D3D9 now appears under "Active APIs" in the Main tab (present traffic timestamp was already updated for Present; PresentEx detour now updates it as well).
+
+---
+
 ## v0.12.123 (2026-02-27)
 
 - **OpenGL and PCLStats ETW hooks take HMODULE** - `InstallOpenGLHooks` and `InstallPCLStatsEtwHooks` now take an `HMODULE` argument (the loaded module). Call sites in the LoadLibrary/OnModuleLoaded path pass the module handle so hooks are installed on the correct DLL when the addon is used as a proxy (e.g. opengl32 or advapi32). Aligns with the existing DirectInput/DirectInput8/DbgHelp pattern.

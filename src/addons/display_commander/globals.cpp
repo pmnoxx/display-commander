@@ -99,8 +99,6 @@ std::atomic<bool> s_restart_needed_nvapi{false};
 // VSync and tearing controls
 
 // Monitor and display settings
-std::atomic<DxgiBypassMode> s_dxgi_composition_state{DxgiBypassMode::kUnset};
-
 // Continue rendering in background
 
 // DirectInput hook suppression
@@ -158,7 +156,6 @@ std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by def
 
 // Atomic variables
 std::atomic<int> g_comp_query_counter{0};
-std::atomic<DxgiBypassMode> g_comp_last_logged{DxgiBypassMode::kUnset};
 std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr};  // TODO: unsafe remove later
 std::atomic<reshade::api::device_api> g_last_reshade_device_api{static_cast<reshade::api::device_api>(0)};
 std::atomic<uint32_t> g_last_api_version{0};
@@ -230,12 +227,18 @@ namespace {
 // Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dx9_present, dx9_presentex,
 // opengl_swapbuffers, ddraw_flip, dxgi_factory_wrapper, reshade_addon_event.
 constexpr std::array<FpsLimiterCallSite, kFpsLimiterCallSiteCount> kFpsLimiterPriorityOrder = {
-    FpsLimiterCallSite::reflex_marker,           FpsLimiterCallSite::reflex_marker_vk_nvll,
-    FpsLimiterCallSite::reflex_marker_vk_loader,  FpsLimiterCallSite::reflex_marker_pclstats_etw,
-    FpsLimiterCallSite::dxgi_swapchain1,          FpsLimiterCallSite::dxgi_swapchain,
-    FpsLimiterCallSite::dx9_present,              FpsLimiterCallSite::dx9_presentex,
-    FpsLimiterCallSite::opengl_swapbuffers,       FpsLimiterCallSite::ddraw_flip,
-    FpsLimiterCallSite::dxgi_factory_wrapper,     FpsLimiterCallSite::reshade_addon_event,
+    FpsLimiterCallSite::reflex_marker,
+    FpsLimiterCallSite::reflex_marker_vk_nvll,
+    FpsLimiterCallSite::reflex_marker_vk_loader,
+    FpsLimiterCallSite::reflex_marker_pclstats_etw,
+    FpsLimiterCallSite::dxgi_swapchain1,
+    FpsLimiterCallSite::dxgi_swapchain,
+    FpsLimiterCallSite::dx9_present,
+    FpsLimiterCallSite::dx9_presentex,
+    FpsLimiterCallSite::opengl_swapbuffers,
+    FpsLimiterCallSite::ddraw_flip,
+    FpsLimiterCallSite::dxgi_factory_wrapper,
+    FpsLimiterCallSite::reshade_addon_event,
 };
 
 bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
@@ -257,7 +260,7 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
         case FpsLimiterCallSite::dxgi_swapchain1:            return "dxgi_swapchain1";
         case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
-        case FpsLimiterCallSite::dx9_present:                 return "dx9_present";
+        case FpsLimiterCallSite::dx9_present:                return "dx9_present";
         case FpsLimiterCallSite::dx9_presentex:              return "dx9_presentex";
         case FpsLimiterCallSite::opengl_swapbuffers:         return "opengl_swapbuffers";
         case FpsLimiterCallSite::ddraw_flip:                 return "ddraw_flip";
@@ -533,17 +536,6 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     } else {
         // Another thread created the factory first, use the existing one
         return *expected;
-    }
-}
-
-// Helper function to get flip state based on API type
-DxgiBypassMode GetFlipStateForAPI(reshade::api::device_api api) {
-    // For D3D9, use FlipEx state instead of DXGI composition state
-    if (api == reshade::api::device_api::d3d9) {
-        bool using_flipex = g_used_flipex.load();
-        return using_flipex ? DxgiBypassMode::kIndependentFlip : DxgiBypassMode::kComposed;
-    } else {
-        return s_dxgi_composition_state.load();
     }
 }
 

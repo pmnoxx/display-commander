@@ -145,10 +145,6 @@ bool ShouldReflexBoostBeEnabled();
 /** True only when FPS limiter mode is Reflex: use Reflex minimumIntervalUs for FPS limiting. */
 bool ShouldUseReflexAsFpsLimiter();
 
-// DXGI composition state utilities
-DxgiBypassMode GetIndependentFlipState(IDXGISwapChain* dxgi_swapchain);
-const char* DxgiBypassModeToString(DxgiBypassMode mode);
-
 // Query DXGI composition state - should only be called from DXGI present hooks
 void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain);
 

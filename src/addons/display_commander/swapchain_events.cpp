@@ -471,28 +471,9 @@ void HandleOnPresentEnd() {
     }
 }
 
-// Query DXGI composition state - should only be called from DXGI present hooks
+// Query DXGI composition state - no-op; independent flip state is no longer queried or shown in UI
 void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain) {
-    if (dxgi_swapchain == nullptr) {
-        return;
-    }
-
-    if (std::abs(static_cast<long long>(g_global_frame_id.load() - g_last_ui_drawn_frame_id.load())) > 10) {
-        return;
-    }
-    /// xxx123
-
-    // Periodically refresh colorspace and enumerate devices (approx every 4
-    // seconds at 60fps = 240 frames)
-    static int present_after_counter = 0;
-    if (present_after_counter % 1 == 0) {
-        // Compute DXGI composition state and log on change
-        DxgiBypassMode mode = GetIndependentFlipState(dxgi_swapchain);
-
-        // Update shared state for fast reads on present
-        s_dxgi_composition_state.store(mode);
-    }
-    present_after_counter++;
+    (void)dxgi_swapchain;
 }
 
 void RecordFrameTime(FrameTimeMode reason) {

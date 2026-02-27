@@ -3403,8 +3403,6 @@ void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& 
 // Context for VSync & Tearing swapchain debug tooltip (filled by PresentModeLine, consumed by SwapchainTooltip).
 struct VSyncTearingTooltipContext {
     const reshade::api::swapchain_desc* desc = nullptr;
-    DxgiBypassMode flip_state = DxgiBypassMode::kUnset;
-    std::string flip_state_str;
     std::string present_mode_name;
 };
 
@@ -3448,7 +3446,8 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the Custom FPS Limiter.");
+                "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the "
+                "Custom FPS Limiter.");
         }
     }
 }
@@ -3611,12 +3610,12 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_
 
     imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon Flip State:");
     if (has_pm_flip_state) {
-        const char* pm_flip_str = DxgiBypassModeToString(pm_flip_state.flip_mode);
+        const char* pm_flip_str = presentmon::PresentMonFlipModeToString(pm_flip_state.flip_mode);
         ImVec4 pm_flip_color;
-        if (pm_flip_state.flip_mode == DxgiBypassMode::kComposed) {
+        if (pm_flip_state.flip_mode == presentmon::PresentMonFlipMode::Composed) {
             pm_flip_color = ui::colors::FLIP_COMPOSED;
-        } else if (pm_flip_state.flip_mode == DxgiBypassMode::kOverlay
-                   || pm_flip_state.flip_mode == DxgiBypassMode::kIndependentFlip) {
+        } else if (pm_flip_state.flip_mode == presentmon::PresentMonFlipMode::Overlay
+                   || pm_flip_state.flip_mode == presentmon::PresentMonFlipMode::IndependentFlip) {
             pm_flip_color = ui::colors::FLIP_INDEPENDENT;
         } else {
             pm_flip_color = ui::colors::FLIP_UNKNOWN;
@@ -3787,80 +3786,23 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_
     }
 }
 
-/// DXGI-only: draws flip state explanation (Composed / Independent / query failed, etc.) in the swapchain tooltip.
-static void DrawDisplaySettings_VSyncAndTearing_DxgiFlipStateTooltip(display_commander::ui::IImGuiWrapper& imgui,
-                                                                     DxgiBypassMode flip_state) {
-    (void)imgui;
-    if (flip_state == DxgiBypassMode::kComposed) {
-        imgui.Separator();
-        imgui.TextColored(ui::colors::FLIP_COMPOSED,
-                          "  - Composed Flip (Red): Desktop Window Manager composition mode");
-        imgui.Text("    Higher latency, not ideal for gaming");
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_LABEL, "Why Composed Flip?");
-        imgui.BulletText("Fullscreen: No (Borderless windowed mode)");
-        imgui.BulletText("DWM composition required for windowed mode");
-        imgui.BulletText("Independent Flip requires True Fullscreen Exclusive (FSE)");
-        imgui.Spacing();
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "To achieve Independent Flip:");
-        imgui.BulletText("Enable True Fullscreen Exclusive in game settings");
-        imgui.BulletText("Or use borderless fullscreen with exact resolution match");
-        imgui.BulletText("Ensure no overlays or DWM effects are active");
-    } else if (flip_state == DxgiBypassMode::kOverlay) {
-        imgui.TextColored(ui::colors::FLIP_INDEPENDENT,
-                          "  - MPO Independent Flip (Green): Modern hardware overlay plane");
-        imgui.Text("    Best performance and lowest latency");
-    } else if (flip_state == DxgiBypassMode::kIndependentFlip) {
-        imgui.TextColored(ui::colors::FLIP_INDEPENDENT, "  - Independent Flip (Green): Legacy direct flip mode");
-        imgui.Text("    Good performance and low latency");
-    } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull) {
-        imgui.TextColored(ui::colors::TEXT_ERROR, "  - Query Failed: Swapchain is null");
-        imgui.Text("    Cannot determine flip state - swapchain not available");
-    } else if (flip_state == DxgiBypassMode::kQueryFailedNoMedia) {
-        if (GetModuleHandleA("sl.interposer.dll") != nullptr) {
-            imgui.TextColored(ui::colors::TEXT_ERROR,
-                              ICON_FK_WARNING "  - Streamline Interposer detected - Flip State Query not supported");
-            imgui.Text("    Cannot determine flip state - call after at least one Present");
-        } else {
-            imgui.TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
-            imgui.Text("    Cannot determine flip state - call after at least one Present");
-        }
-    } else if (flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-        imgui.TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: GetFrameStatisticsMedia failed");
-        imgui.Text("    Cannot determine flip state - call after at least one Present");
-    } else if (flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1) {
-        imgui.TextColored(ui::colors::TEXT_ERROR, "  • Query Failed: IDXGISwapChain1 not available");
-        imgui.Text("    Cannot determine flip state - SwapChain1 interface not supported");
-    } else if (flip_state == DxgiBypassMode::kUnset) {
-        imgui.TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet queried");
-        imgui.Text("    Initial state - will be determined on first query");
-    } else {
-        imgui.TextColored(ui::colors::FLIP_UNKNOWN, "  • Flip state not yet determined");
-        imgui.Text("    Wait for a few frames to render");
-    }
-}
-
 static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_commander::ui::IImGuiWrapper& imgui,
                                                                  const VSyncTearingTooltipContext& ctx) {
     (void)imgui;
     const auto& desc = *ctx.desc;
-    const DxgiBypassMode flip_state = ctx.flip_state;
-    const char* flip_state_str = ctx.flip_state_str.c_str();
     const reshade::api::device_api api_val = g_last_reshade_device_api.load();
-    const bool is_dxgi_tooltip =
-        (api_val == reshade::api::device_api::d3d10 || api_val == reshade::api::device_api::d3d11
-         || api_val == reshade::api::device_api::d3d12);
 
     imgui.TextColored(ui::colors::TEXT_LABEL, "Swapchain Information:");
     imgui.Separator();
     imgui.Text("Present Mode: %s", ctx.present_mode_name.c_str());
     imgui.Text("Present Mode ID: %u", desc.present_mode);
-    if (is_dxgi_tooltip) {
-        imgui.Text("Status: %s", flip_state_str);
-    } else if (api_val == reshade::api::device_api::vulkan) {
+    if (api_val == reshade::api::device_api::vulkan) {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "Vulkan swapchain (VkPresentModeKHR, flags below)");
     } else if (api_val == reshade::api::device_api::opengl) {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "OpenGL swapchain");
+    } else if (api_val == reshade::api::device_api::d3d10 || api_val == reshade::api::device_api::d3d11
+               || api_val == reshade::api::device_api::d3d12) {
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI swapchain");
     }
 
     HWND game_window = display_commanderhooks::GetGameWindow();
@@ -3937,10 +3879,6 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
                 }
             }
         }
-    }
-
-    if (is_dxgi_tooltip) {
-        DrawDisplaySettings_VSyncAndTearing_DxgiFlipStateTooltip(imgui, flip_state);
     }
 
     imgui.Text("Back Buffer Count: %u", desc.back_buffer_count);
@@ -4020,23 +3958,20 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
                 }
             }
             if (found_surface != nullptr) {
-                DxgiBypassMode determined_flip_mode = DxgiBypassMode::kComposed;
+                presentmon::PresentMonFlipMode determined_flip_mode = presentmon::PresentMonFlipMode::Composed;
                 if (found_surface->is_overlay_compatible
                     && (found_surface->is_overlay_required || found_surface->no_overlapping_content)) {
-                    determined_flip_mode = DxgiBypassMode::kOverlay;
-                } else if (found_surface->is_advanced_direct_flip_compatible) {
-                    determined_flip_mode = DxgiBypassMode::kIndependentFlip;
-                } else if (found_surface->is_direct_flip_compatible) {
-                    determined_flip_mode = DxgiBypassMode::kIndependentFlip;
-                } else {
-                    determined_flip_mode = DxgiBypassMode::kComposed;
+                    determined_flip_mode = presentmon::PresentMonFlipMode::Overlay;
+                } else if (found_surface->is_advanced_direct_flip_compatible
+                           || found_surface->is_direct_flip_compatible) {
+                    determined_flip_mode = presentmon::PresentMonFlipMode::IndependentFlip;
                 }
-                const char* flip_str = DxgiBypassModeToString(determined_flip_mode);
+                const char* flip_str = presentmon::PresentMonFlipModeToString(determined_flip_mode);
                 ImVec4 flip_color;
-                if (determined_flip_mode == DxgiBypassMode::kComposed) {
+                if (determined_flip_mode == presentmon::PresentMonFlipMode::Composed) {
                     flip_color = ui::colors::FLIP_COMPOSED;
-                } else if (determined_flip_mode == DxgiBypassMode::kOverlay
-                           || determined_flip_mode == DxgiBypassMode::kIndependentFlip) {
+                } else if (determined_flip_mode == presentmon::PresentMonFlipMode::Overlay
+                           || determined_flip_mode == presentmon::PresentMonFlipMode::IndependentFlip) {
                     flip_color = ui::colors::FLIP_INDEPENDENT;
                 } else {
                     flip_color = ui::colors::FLIP_UNKNOWN;
@@ -4149,7 +4084,6 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
 
 static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commander::ui::IImGuiWrapper& imgui,
                                                                 VSyncTearingTooltipContext* out_ctx) {
-    (void)imgui;
     auto desc_ptr = g_last_swapchain_desc.load();
     if (!desc_ptr) {
         return false;
@@ -4189,42 +4123,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
         if (desc.fullscreen_state) {
             present_mode_name = present_mode_name + "(FSE)";
         }
-        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
-        const char* flip_state_str = "Unknown";
-        switch (flip_state) {
-            case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
-            case DxgiBypassMode::kComposed:                 flip_state_str = "Composed"; break;
-            case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO iFlip"; break;
-            case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
-            case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
-            case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media"; break;
-            case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
-            case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Stats"; break;
-            case DxgiBypassMode::kUnknown:
-            default:
-                flip_state_str = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                                  || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)
-                                     ? "Unknown"
-                                     : "Unavailable";
-                break;
-        }
         imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
-        if (flip_state != DxgiBypassMode::kQueryFailedNoMedia) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
-            imgui.SameLine();
-            imgui.TextColored(
-                flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
-                : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
-                    ? ui::colors::FLIP_INDEPENDENT
-                : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                   || flip_state == DxgiBypassMode::kQueryFailedNoStats)
-                    ? ui::colors::TEXT_ERROR
-                    : ui::colors::FLIP_UNKNOWN,
-                "Status: %s", flip_state_str);
-        }
         bool status_hovered = imgui.IsItemHovered();
         static DWORD last_discord_check = 0;
         DWORD current_time = GetTickCount();
@@ -4248,8 +4147,6 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
         DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
         if (out_ctx) {
             out_ctx->desc = desc_ptr.get();
-            out_ctx->flip_state = flip_state;
-            out_ctx->flip_state_str = flip_state_str;
             out_ctx->present_mode_name = std::move(present_mode_name);
         }
         return status_hovered;
@@ -4273,53 +4170,10 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
             present_mode_color = ui::colors::TEXT_ERROR;
         }
         imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
-        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
-        const char* flip_state_str = "Unknown";
-        switch (flip_state) {
-            case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
-            case DxgiBypassMode::kComposed:                 flip_state_str = "Composed"; break;
-            case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO iFlip"; break;
-            case DxgiBypassMode::kIndependentFlip:          flip_state_str = "iFlip"; break;
-            case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Null"; break;
-            case DxgiBypassMode::kQueryFailedNoMedia:
-                flip_state_str =
-                    (GetModuleHandleA("sl.interposer.dll") != nullptr) ? "(not implemented)" : "Query Failed: No Media";
-                break;
-            case DxgiBypassMode::kQueryFailedNoSwapchain1: flip_state_str = "Query Failed: No Swapchain1"; break;
-            case DxgiBypassMode::kQueryFailedNoStats:      flip_state_str = "Query Failed: No Stats"; break;
-            case DxgiBypassMode::kUnknown:
-            default:
-                flip_state_str = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                                  || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)
-                                     ? "Unknown"
-                                     : "Unavailable";
-                break;
-        }
-        bool status_hovered = false;
-        if (flip_state != DxgiBypassMode::kQueryFailedNoMedia) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
-            imgui.SameLine();
-            imgui.TextColored(
-                flip_state == DxgiBypassMode::kComposed ? ui::colors::FLIP_COMPOSED
-                : (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip)
-                    ? ui::colors::FLIP_INDEPENDENT
-                : (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                   || flip_state == DxgiBypassMode::kQueryFailedNoStats)
-                    ? ui::colors::TEXT_ERROR
-                    : ui::colors::FLIP_UNKNOWN,
-                "Status: %s", flip_state_str);
-            status_hovered = imgui.IsItemHovered();
-        }
-
+        bool status_hovered = imgui.IsItemHovered();
         DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
-
         if (out_ctx) {
             out_ctx->desc = desc_ptr.get();
-            out_ctx->flip_state = flip_state;
-            out_ctx->flip_state_str = flip_state_str;
             out_ctx->present_mode_name = std::move(present_mode_name);
         }
         return status_hovered;
@@ -4333,8 +4187,6 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
     DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
     if (out_ctx) {
         out_ctx->desc = desc_ptr.get();
-        out_ctx->flip_state = DxgiBypassMode::kUnset;
-        out_ctx->flip_state_str = "N/A";
         out_ctx->present_mode_name = std::move(present_mode_name);
     }
     return status_hovered;
@@ -5150,38 +5002,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltip("System memory info unavailable.");
             }
-        }
-    }
-
-    if (show_flip_status) {
-        // Get current API to determine flip state
-        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
-        const char* flip_state_str = DxgiBypassModeToString(flip_state);
-
-        // Color code based on flip state
-        ImVec4 flip_color;
-        if (flip_state == DxgiBypassMode::kComposed) {
-            flip_color = ui::colors::FLIP_COMPOSED;  // Red - bad
-        } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
-            flip_color = ui::colors::FLIP_INDEPENDENT;  // Green - good
-        } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                   || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                   || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                   || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-            flip_color = ui::colors::TEXT_ERROR;  // Red - query failed
-        } else {
-            flip_color = ui::colors::FLIP_UNKNOWN;  // Yellow - unknown/unset
-        }
-
-        // Display flip status with appropriate color
-        if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            imgui.TextColored(flip_color, "Flip: %s", flip_state_str);
-        } else {
-            imgui.TextColored(flip_color, "%s", flip_state_str);
-        }
-
-        if (imgui.IsItemHovered() && show_tooltips) {
-            imgui.SetTooltip("DXGI Flip Mode: %s", flip_state_str);
         }
     }
 
@@ -7120,46 +6940,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.TextUnformatted(oss.str().c_str());
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
-            }
-
-            // Flip State Display (renamed from DXGI Composition)
-            const char* flip_state_str = "Unknown";
-            const reshade::api::device_api current_api = g_last_reshade_device_api.load();
-            DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
-
-            switch (flip_state) {
-                case DxgiBypassMode::kUnset:                    flip_state_str = "Unset"; break;
-                case DxgiBypassMode::kComposed:                 flip_state_str = "Composed Flip"; break;
-                case DxgiBypassMode::kOverlay:                  flip_state_str = "MPO Independent Flip"; break;
-                case DxgiBypassMode::kIndependentFlip:          flip_state_str = "Legacy Independent Flip"; break;
-                case DxgiBypassMode::kQueryFailedSwapchainNull: flip_state_str = "Query Failed: Swapchain Null"; break;
-                case DxgiBypassMode::kQueryFailedNoMedia:       flip_state_str = "Query Failed: No Media Interface"; break;
-                case DxgiBypassMode::kQueryFailedNoSwapchain1:  flip_state_str = "Query Failed: No Swapchain1"; break;
-                case DxgiBypassMode::kQueryFailedNoStats:       flip_state_str = "Query Failed: No Statistics"; break;
-                case DxgiBypassMode::kUnknown:
-                default:                                        flip_state_str = "Unknown"; break;
-            }
-
-            oss.str("");
-            oss.clear();
-            oss << "Status: " << flip_state_str;
-
-            // Color code based on flip state
-            if (flip_state == DxgiBypassMode::kComposed) {
-                // Composed Flip - Red
-                imgui.TextColored(ui::colors::FLIP_COMPOSED, "%s", oss.str().c_str());
-            } else if (flip_state == DxgiBypassMode::kOverlay || flip_state == DxgiBypassMode::kIndependentFlip) {
-                // Independent Flip modes - Green
-                imgui.TextColored(ui::colors::FLIP_INDEPENDENT, "%s", oss.str().c_str());
-            } else if (flip_state == DxgiBypassMode::kQueryFailedSwapchainNull
-                       || flip_state == DxgiBypassMode::kQueryFailedNoSwapchain1
-                       || flip_state == DxgiBypassMode::kQueryFailedNoMedia
-                       || flip_state == DxgiBypassMode::kQueryFailedNoStats) {
-                // Query Failed - Red
-                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", oss.str().c_str());
-            } else {
-                // Unknown/Unset - Yellow
-                imgui.TextColored(ui::colors::FLIP_UNKNOWN, "%s", oss.str().c_str());
             }
         }
 

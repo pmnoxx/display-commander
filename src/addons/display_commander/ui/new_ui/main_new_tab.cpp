@@ -3427,18 +3427,28 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         if (!fps_limit_enabled) {
             imgui.BeginDisabled();
         }
+        CheckboxSetting(settings::g_mainTabSettings.background_fps_enabled, "Background FPS", imgui);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled, cap FPS when the game window is in the background. Slider sets the limit (default 60).");
+        }
+        imgui.SameLine();
+        if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
+            imgui.BeginDisabled();
+        }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
-                                  imgui)) {
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Limit", fmt_bg, imgui)) {
+        }
+        if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
+            imgui.EndDisabled();
         }
         if (!fps_limit_enabled) {
             imgui.EndDisabled();
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "FPS cap when the game window is not in the foreground. Now uses the new Custom FPS Limiter "
-                "system.");
+                "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the Custom FPS Limiter.");
         }
     }
 }

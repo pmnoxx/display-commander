@@ -21,6 +21,11 @@ bool ApplyD3D9PresentParameterUpgrades(D3DPRESENT_PARAMETERS* pp, bool is_create
     if (pp->Windowed == FALSE && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
         LogInfo("D3D9 (no-ReShade): Forcing windowed mode (prevent fullscreen)");
         pp->Windowed = TRUE;
+        // FullScreen_RefreshRateInHz is only meaningful in fullscreen; leave it non-zero can cause
+        // D3DERR_INVALIDCALL (0x8876086C) with some drivers (e.g. NVIDIA) when Windowed=1.
+        if (pp->FullScreen_RefreshRateInHz != 0) {
+            pp->FullScreen_RefreshRateInHz = 0;
+        }
         modified = true;
     }
 

@@ -1,4 +1,5 @@
 #include "d3d9_device_vtable_logging.hpp"
+#include "d3d9_pool_upgrade.hpp"
 #include "d3d9_vtable_indices.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
@@ -372,7 +373,8 @@ static HRESULT STDMETHODCALLTYPE CreateTexture_Detour(IDirect3DDevice9* This, UI
     if (g_first_CreateTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateTexture");
     }
-    HRESULT hr = CreateTexture_Original(This, Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle);
+    const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
+    HRESULT hr = CreateTexture_Original(This, Width, Height, Levels, Usage, Format, poolToUse, ppTexture, pSharedHandle);
     if (FAILED(hr)) {
         LogD3D9Error("CreateTexture", hr);
         if (g_first_CreateTexture_error.exchange(false)) {
@@ -397,8 +399,9 @@ static HRESULT STDMETHODCALLTYPE CreateVolumeTexture_Detour(IDirect3DDevice9* Th
     if (g_first_CreateVolumeTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateVolumeTexture");
     }
-    HRESULT hr = CreateVolumeTexture_Original(This, Width, Height, Depth, Levels, Usage, Format, Pool, ppVolumeTexture,
-                                              pSharedHandle);
+    const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
+    HRESULT hr = CreateVolumeTexture_Original(This, Width, Height, Depth, Levels, Usage, Format, poolToUse,
+                                              ppVolumeTexture, pSharedHandle);
     if (FAILED(hr)) {
         LogD3D9Error("CreateVolumeTexture", hr);
         if (g_first_CreateVolumeTexture_error.exchange(false)) {
@@ -423,8 +426,9 @@ static HRESULT STDMETHODCALLTYPE CreateCubeTexture_Detour(IDirect3DDevice9* This
     if (g_first_CreateCubeTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateCubeTexture");
     }
+    const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
     HRESULT hr =
-        CreateCubeTexture_Original(This, EdgeLength, Levels, Usage, Format, Pool, ppCubeTexture, pSharedHandle);
+        CreateCubeTexture_Original(This, EdgeLength, Levels, Usage, Format, poolToUse, ppCubeTexture, pSharedHandle);
     if (FAILED(hr)) {
         LogD3D9Error("CreateCubeTexture", hr);
         if (g_first_CreateCubeTexture_error.exchange(false)) {
@@ -448,7 +452,8 @@ static HRESULT STDMETHODCALLTYPE CreateVertexBuffer_Detour(IDirect3DDevice9* Thi
     if (g_first_CreateVertexBuffer.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateVertexBuffer");
     }
-    HRESULT hr = CreateVertexBuffer_Original(This, Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle);
+    const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
+    HRESULT hr = CreateVertexBuffer_Original(This, Length, Usage, FVF, poolToUse, ppVertexBuffer, pSharedHandle);
     if (FAILED(hr)) {
         LogD3D9Error("CreateVertexBuffer", hr);
         if (g_first_CreateVertexBuffer_error.exchange(false)) {
@@ -473,7 +478,8 @@ static HRESULT STDMETHODCALLTYPE CreateIndexBuffer_Detour(IDirect3DDevice9* This
     if (g_first_CreateIndexBuffer.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateIndexBuffer");
     }
-    HRESULT hr = CreateIndexBuffer_Original(This, Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle);
+    const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
+    HRESULT hr = CreateIndexBuffer_Original(This, Length, Usage, Format, poolToUse, ppIndexBuffer, pSharedHandle);
     if (FAILED(hr)) {
         LogD3D9Error("CreateIndexBuffer", hr);
         if (g_first_CreateIndexBuffer_error.exchange(false)) {
@@ -500,7 +506,8 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface_Detour(IDirect3DDev
     }
     LogInfo("IDirect3DDevice9::CreateOffscreenPlainSurface(Width=%u, Height=%u, Format=%u, Pool=%u)", Width, Height,
             static_cast<unsigned>(Format), static_cast<unsigned>(Pool));
-    HRESULT hr = CreateOffscreenPlainSurface_Original(This, Width, Height, Format, Pool, ppSurface, pSharedHandle);
+    const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
+    HRESULT hr = CreateOffscreenPlainSurface_Original(This, Width, Height, Format, poolToUse, ppSurface, pSharedHandle);
     if (FAILED(hr)) {
         LogD3D9Error("CreateOffscreenPlainSurface", hr);
         if (g_first_CreateOffscreenPlainSurface_error.exchange(false)) {

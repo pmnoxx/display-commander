@@ -1357,15 +1357,28 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Spacing();
 
-    // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_flipex_enabled, "Enable D3D9 FLIPEX Upgrade", imgui)) {
-        LogInfo("D3D9 FLIPEX upgrade %s",
+    // With ReShade: OnCreateDevice / OnCreateSwapchain path
+    if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_flipex_enabled,
+                        "Enable D3D9 FLIPEX (with ReShade)", imgui)) {
+        LogInfo("D3D9 FLIPEX (ReShade) %s",
                 settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue() ? "enabled" : "disabled");
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
-            "Enable automatic upgrade of D3D9 games to use FLIPEX swap effect for better performance.\n"
-            "This feature requires the game to run in full-screen mode and support D3D9Ex.");
+            "When ReShade is loaded: upgrade D3D9 to D3D9Ex and FLIPEX via OnCreateDevice / swapchain.\n"
+            "Requires full-screen and D3D9Ex support.");
+    }
+
+    // Without ReShade: CreateDevice/CreateDeviceEx detour path
+    if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade,
+                        "Enable D3D9 FLIPEX (no-ReShade mode)", imgui)) {
+        LogInfo("D3D9 FLIPEX (no-ReShade) %s",
+                settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When ReShade is not loaded: hook CreateDevice and upgrade to CreateDeviceEx + FLIPEX.\n"
+            "Requires restart. Uses D3D9Ex managed pool (6) for resource creation.");
     }
 
     imgui.Spacing();

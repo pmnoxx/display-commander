@@ -85,8 +85,10 @@ class ExperimentalTabSettings {
     // DLSS indicator settings
     BoolSetting dlss_indicator_enabled;
 
-    // D3D9 FLIPEX upgrade settings
+    // D3D9 FLIPEX upgrade: with ReShade (OnCreateDevice / OnCreateSwapchain path)
     BoolSetting d3d9_flipex_enabled;
+    // D3D9 FLIPEX upgrade: without ReShade (CreateDevice/CreateDeviceEx detour path)
+    BoolSetting d3d9_flipex_enabled_no_reshade;
 
     // Enable flip chain settings (DXGI only) - forces flip model
     BoolSetting enable_flip_chain_enabled;

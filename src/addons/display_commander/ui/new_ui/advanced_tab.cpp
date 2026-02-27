@@ -927,7 +927,8 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
                 "Your game is now using the enhanced D3D9Ex API.");
         }
         imgui.Unindent();
-    } else if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+    } else if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
+               || settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()) {
         imgui.Indent();
         imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Waiting for D3D9 device creation...");
         if (imgui.IsItemHovered()) {

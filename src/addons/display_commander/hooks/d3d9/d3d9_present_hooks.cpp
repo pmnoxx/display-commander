@@ -188,8 +188,11 @@ bool HookD3D9Present(IDirect3DDevice9* device) {
         return false;
     }
 
-    // if not flip ex upgrade enabled
-    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+    // If FLIPEX not enabled for this mode (ReShade vs no-ReShade), skip PresentEx hook
+    const bool flipex_wanted = g_reshade_loaded.load()
+                                  ? settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
+                                  : settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue();
+    if (!flipex_wanted) {
         g_d3d9_present_hooks_installed.store(true);
         LogInfo("HookD3D9Present: hooks installed successfully for device: 0x%p", device);
         return true;

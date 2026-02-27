@@ -1,20 +1,37 @@
 #include "d3d9_hooks.hpp"
-#include "d3d9_present_hooks.hpp"
-#include "d3d9_device_vtable_logging.hpp"
-#include "d3d9_present_params_upgrade.hpp"
-#include "d3d9_vtable_indices.hpp"
 #include "../../globals.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "d3d9_device_vtable_logging.hpp"
+#include "d3d9_no_reshade_device_state.hpp"
+#include "d3d9_present_hooks.hpp"
+#include "d3d9_present_params_upgrade.hpp"
+#include "d3d9_vtable_indices.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
 #include <atomic>
+#include <memory>
 
 namespace display_commanderhooks::d3d9 {
 
 std::atomic<bool> g_dx9_hooks_installed{false};
+std::atomic<std::shared_ptr<const D3D9NoReShadeDeviceSnapshot>> g_last_d3d9_no_reshade_device_snapshot{nullptr};
+
+namespace {
+
+void StoreD3D9NoReShadeDeviceSnapshot(bool created_with_ex, const D3DPRESENT_PARAMETERS& pp) {
+    auto s = std::make_shared<D3D9NoReShadeDeviceSnapshot>();
+    s->created_with_ex = created_with_ex;
+    s->back_buffer_count = pp.BackBufferCount;
+    s->swap_effect = pp.SwapEffect;
+    s->presentation_interval = pp.PresentationInterval;
+    s->windowed = (pp.Windowed != FALSE) ? 1 : 0;
+    g_last_d3d9_no_reshade_device_snapshot.store(s);
+}
+
+}  // namespace
 
 namespace {
 
@@ -28,10 +45,10 @@ using CreateDevice_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3D9* This, UINT Adap
                                                      D3DPRESENT_PARAMETERS* pPresentationParameters,
                                                      IDirect3DDevice9** ppReturnedDeviceInterface);
 using CreateDeviceEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType,
-                                                      HWND hFocusWindow, DWORD BehaviorFlags,
-                                                      D3DPRESENT_PARAMETERS* pPresentationParameters,
-                                                      D3DDISPLAYMODEEX* pFullscreenDisplayMode,
-                                                      IDirect3DDevice9Ex** ppReturnedDeviceInterface);
+                                                       HWND hFocusWindow, DWORD BehaviorFlags,
+                                                       D3DPRESENT_PARAMETERS* pPresentationParameters,
+                                                       D3DDISPLAYMODEEX* pFullscreenDisplayMode,
+                                                       IDirect3DDevice9Ex** ppReturnedDeviceInterface);
 
 Direct3DCreate9_pfn Direct3DCreate9_Original = nullptr;
 Direct3DCreate9Ex_pfn Direct3DCreate9Ex_Original = nullptr;
@@ -52,12 +69,11 @@ void OnD3D9DeviceCreated(IDirect3DDevice9* device) {
     InstallD3D9DeviceVtableLogging(device);
 }
 
-// Detour for IDirect3D9::CreateDevice. When d3d9_flipex_enabled: upgrade to D3D9Ex (like ReShade
+// Detour for IDirect3D9::CreateDevice. When d3d9_flipex_enabled_no_reshade: upgrade to D3D9Ex (like ReShade
 // OnCreateDevice api_version 0x9100) by calling Direct3DCreate9Ex + CreateDeviceEx. Otherwise apply
 // present-param upgrades (no FLIPEX) and call original CreateDevice.
-HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3DDEVTYPE DeviceType,
-                                              HWND hFocusWindow, DWORD BehaviorFlags,
-                                              D3DPRESENT_PARAMETERS* pPresentationParameters,
+HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow,
+                                              DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters,
                                               IDirect3DDevice9** ppReturnedDeviceInterface) {
     if (CreateDevice_Original == nullptr) {
         return D3DERR_INVALIDCALL;
@@ -71,7 +87,7 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
     }
 
     // Upgrade CreateDevice -> CreateDeviceEx when FLIPEX is enabled (mirrors ReShade create_device 0x9100)
-    if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
+    if (settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()
         && Direct3DCreate9Ex_Original != nullptr) {
         IDirect3D9Ex* d3dex = nullptr;
         HRESULT hrEx = Direct3DCreate9Ex_Original(D3D_SDK_VERSION, &d3dex);
@@ -79,9 +95,8 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
             ApplyD3D9PresentParameterUpgrades(pPresentationParameters, true);
             D3DPRESENT_PARAMETERS pp = *pPresentationParameters;
             // ReShade's upgrade path passes nullptr for pFullscreenDisplayMode
-            HRESULT hr = d3dex->CreateDeviceEx(
-                Adapter, DeviceType, hFocusWindow, BehaviorFlags, &pp, nullptr,
-                reinterpret_cast<IDirect3DDevice9Ex**>(ppReturnedDeviceInterface));
+            HRESULT hr = d3dex->CreateDeviceEx(Adapter, DeviceType, hFocusWindow, BehaviorFlags, &pp, nullptr,
+                                               reinterpret_cast<IDirect3DDevice9Ex**>(ppReturnedDeviceInterface));
             d3dex->Release();
 
             if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
@@ -90,6 +105,7 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
                 pPresentationParameters->BackBufferFormat = pp.BackBufferFormat;
                 pPresentationParameters->BackBufferCount = pp.BackBufferCount;
                 s_d3d9e_upgrade_successful.store(true, std::memory_order_relaxed);
+                StoreD3D9NoReShadeDeviceSnapshot(true, pp);
                 OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
                 LogInfo("D3D9 CreateDevice -> CreateDeviceEx upgrade (FLIPEX) succeeded");
             }
@@ -104,15 +120,17 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
     if (pPresentationParameters != nullptr) {
         ApplyD3D9PresentParameterUpgrades(pPresentationParameters, false);  // no FLIPEX for non-Ex
     }
-    HRESULT hr = CreateDevice_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
-                                      pPresentationParameters, ppReturnedDeviceInterface);
+    HRESULT hr = CreateDevice_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters,
+                                       ppReturnedDeviceInterface);
     if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
+        StoreD3D9NoReShadeDeviceSnapshot(false, *pPresentationParameters);
         OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
     }
     return hr;
 }
 
-// Detour for IDirect3D9Ex::CreateDeviceEx - mark D3D9Ex in use, apply FLIPEX/VSync upgrades, then hook the device on success
+// Detour for IDirect3D9Ex::CreateDeviceEx - mark D3D9Ex in use, apply FLIPEX/VSync upgrades, then hook the device on
+// success
 HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType,
                                                 HWND hFocusWindow, DWORD BehaviorFlags,
                                                 D3DPRESENT_PARAMETERS* pPresentationParameters,
@@ -126,9 +144,11 @@ HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter
         ApplyD3D9PresentParameterUpgrades(pPresentationParameters, true);  // full FLIPEX/VSync upgrades for Ex
     }
     HRESULT hr = CreateDeviceEx_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
-                                         pPresentationParameters, pFullscreenDisplayMode,
-                                         ppReturnedDeviceInterface);
+                                         pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
     if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
+        if (pPresentationParameters != nullptr) {
+            StoreD3D9NoReShadeDeviceSnapshot(true, *pPresentationParameters);
+        }
         OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
     }
     return hr;
@@ -143,10 +163,9 @@ void HookD3D9FactoryVtable(IDirect3D9* d3d9, bool isEx) {
 
     if (!g_d3d9_factory_create_device_hooked.load(std::memory_order_relaxed)) {
         void* createDeviceTarget = vtable[D3D9FactoryVTable::CreateDevice];
-        if (createDeviceTarget != nullptr &&
-            CreateAndEnableHook(createDeviceTarget, reinterpret_cast<LPVOID>(&CreateDevice_Detour),
-                                reinterpret_cast<LPVOID*>(&CreateDevice_Original),
-                                "IDirect3D9::CreateDevice")) {
+        if (createDeviceTarget != nullptr
+            && CreateAndEnableHook(createDeviceTarget, reinterpret_cast<LPVOID>(&CreateDevice_Detour),
+                                   reinterpret_cast<LPVOID*>(&CreateDevice_Original), "IDirect3D9::CreateDevice")) {
             g_d3d9_factory_create_device_hooked.store(true, std::memory_order_relaxed);
             LogInfo("InstallDX9Hooks: IDirect3D9::CreateDevice hooked");
         }
@@ -154,10 +173,10 @@ void HookD3D9FactoryVtable(IDirect3D9* d3d9, bool isEx) {
 
     if (isEx && !g_d3d9_factory_create_device_ex_hooked.load(std::memory_order_relaxed)) {
         void* createDeviceExTarget = vtable[D3D9FactoryVTable::CreateDeviceEx];
-        if (createDeviceExTarget != nullptr &&
-            CreateAndEnableHook(createDeviceExTarget, reinterpret_cast<LPVOID>(&CreateDeviceEx_Detour),
-                                reinterpret_cast<LPVOID*>(&CreateDeviceEx_Original),
-                                "IDirect3D9Ex::CreateDeviceEx")) {
+        if (createDeviceExTarget != nullptr
+            && CreateAndEnableHook(createDeviceExTarget, reinterpret_cast<LPVOID>(&CreateDeviceEx_Detour),
+                                   reinterpret_cast<LPVOID*>(&CreateDeviceEx_Original),
+                                   "IDirect3D9Ex::CreateDeviceEx")) {
             g_d3d9_factory_create_device_ex_hooked.store(true, std::memory_order_relaxed);
             LogInfo("InstallDX9Hooks: IDirect3D9Ex::CreateDeviceEx hooked");
         }
@@ -204,24 +223,22 @@ bool InstallDX9Hooks(HMODULE hModule) {
         return false;
     }
 
-    auto* pDirect3DCreate9 =
-        reinterpret_cast<LPVOID>(GetProcAddress(hModule, "Direct3DCreate9"));
+    auto* pDirect3DCreate9 = reinterpret_cast<LPVOID>(GetProcAddress(hModule, "Direct3DCreate9"));
     if (pDirect3DCreate9 == nullptr) {
         LogWarn("InstallDX9Hooks: Direct3DCreate9 not found in d3d9.dll");
         return false;
     }
 
     if (!CreateAndEnableHook(pDirect3DCreate9, reinterpret_cast<LPVOID>(&Direct3DCreate9_Detour),
-                            reinterpret_cast<LPVOID*>(&Direct3DCreate9_Original), "Direct3DCreate9")) {
+                             reinterpret_cast<LPVOID*>(&Direct3DCreate9_Original), "Direct3DCreate9")) {
         LogWarn("InstallDX9Hooks: Direct3DCreate9 hook failed");
         return false;
     }
 
-    auto* pDirect3DCreate9Ex =
-        reinterpret_cast<LPVOID>(GetProcAddress(hModule, "Direct3DCreate9Ex"));
+    auto* pDirect3DCreate9Ex = reinterpret_cast<LPVOID>(GetProcAddress(hModule, "Direct3DCreate9Ex"));
     if (pDirect3DCreate9Ex != nullptr) {
         if (CreateAndEnableHook(pDirect3DCreate9Ex, reinterpret_cast<LPVOID>(&Direct3DCreate9Ex_Detour),
-                               reinterpret_cast<LPVOID*>(&Direct3DCreate9Ex_Original), "Direct3DCreate9Ex")) {
+                                reinterpret_cast<LPVOID*>(&Direct3DCreate9Ex_Original), "Direct3DCreate9Ex")) {
             LogInfo("InstallDX9Hooks: Direct3DCreate9Ex hooked");
         }
     } else {

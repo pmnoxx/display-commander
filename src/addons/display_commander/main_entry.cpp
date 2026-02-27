@@ -1664,6 +1664,9 @@ void HandleSafemode() {
         if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
             settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(false);
         }
+        if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()) {
+            settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.SetValue(false);
+        }
         settings::g_advancedTabSettings.SaveAll();
 
         LogInfo("Safemode not enabled - setting to 0 for config visibility");

@@ -7,6 +7,7 @@
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
+#include "../../hooks/d3d9/d3d9_no_reshade_device_state.hpp"
 #include "../../hooks/d3d9/d3d9_present_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/ngx_hooks.hpp"
@@ -3669,8 +3670,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
         bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
         if (imgui.Checkbox("Prevent Tearing", &prevent_t)) {
             settings::g_mainTabSettings.prevent_tearing.SetValue(prevent_t);
-            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)"
-                              : "Prevent Tearing disabled");
+            LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
@@ -3709,14 +3709,48 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
 
     if (has_d3d9) {
         imgui.SameLine();
-        bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue();
+        bool enable_d9ex_with_flip = settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue();
         if (imgui.Checkbox("Enable Flip State (requires restart)", &enable_d9ex_with_flip)) {
-            settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(enable_d9ex_with_flip);
+            settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.SetValue(enable_d9ex_with_flip);
             LogInfo(enable_d9ex_with_flip ? "Enable D9EX with Flip Model enabled"
                                           : "Enable D9EX with Flip Model disabled");
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("D3D9: use CreateDeviceEx + flip-model present (requires restart).");
+        }
+    }
+
+    // Last D3D9 (no-ReShade) device creation state
+    {
+        auto snap = display_commanderhooks::d3d9::g_last_d3d9_no_reshade_device_snapshot.load();
+        if (snap != nullptr) {
+            imgui.Spacing();
+            const char* api_str = snap->created_with_ex ? "CreateDeviceEx (D3D9Ex)" : "CreateDevice (D3D9)";
+            const char* swap_str = "?";
+            switch (snap->swap_effect) {
+                case 1: swap_str = "DISCARD"; break;
+                case 2: swap_str = "FLIP"; break;
+                case 3: swap_str = "COPY"; break;
+                case 4: swap_str = "OVERLAY"; break;
+                case 5: swap_str = "FLIPEX"; break;
+                default: break;
+            }
+            const char* interval_str = "?";
+            if (snap->presentation_interval == 0) {
+                interval_str = "Default";
+            } else if (snap->presentation_interval == 0x80000000u) {
+                interval_str = "Immediate";
+            } else if (snap->presentation_interval >= 1 && snap->presentation_interval <= 4) {
+                interval_str = (snap->presentation_interval == 1) ? "VSync 1" : "VSync";
+            }
+            imgui.TextColored(ui::colors::TEXT_DIMMED,
+                              "Last D3D9 (no-ReShade): %s, %s, %u back buffer(s), %s, %s",
+                              api_str, swap_str, snap->back_buffer_count, interval_str,
+                              snap->windowed ? "windowed" : "fullscreen");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "State of the last D3D9 device created via our CreateDevice/CreateDeviceEx hooks (no-ReShade path).");
+            }
         }
     }
 

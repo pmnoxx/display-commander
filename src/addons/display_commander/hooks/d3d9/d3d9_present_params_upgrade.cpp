@@ -32,7 +32,7 @@ bool ApplyD3D9PresentParameterUpgrades(D3DPRESENT_PARAMETERS* pp, bool is_create
     }
 
     // FLIPEX and VSync upgrades only for CreateDeviceEx (D3D9Ex)
-    if (is_create_device_ex && settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
+    if (is_create_device_ex && settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()
         && pp->SwapEffect != D3DSWAPEFFECT_FLIPEX) {
         if (pp->BackBufferCount < 3) {
             LogInfo("D3D9 FLIPEX (no-ReShade): Increasing back buffer count from %u to 3 (required for FLIPEX)",

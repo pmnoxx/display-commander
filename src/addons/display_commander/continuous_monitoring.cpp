@@ -3,6 +3,7 @@
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
 #include "display_cache.hpp"
+#include "exit_handler.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
@@ -685,35 +686,11 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         constexpr size_t RECENT_CALLS_COUNT = 256;
         std::string recent_calls =
             detour_call_tracker::FormatRecentDetourCalls(static_cast<uint64_t>(now_real_ns), RECENT_CALLS_COUNT);
-        if (!recent_calls.empty()) {
-            std::istringstream iss(recent_calls);
-            std::string line;
-            while (std::getline(iss, line)) {
-                if (!line.empty() && line.back() == '\r') {
-                    line.pop_back();
-                }
-                if (!line.empty()) {
-                    display_commander::logger::LogInfoDirectSynchronized("%s", line.c_str());
-                }
-            }
-        }
+        exit_handler::WriteMultiLineToDebugLog(recent_calls, "Recent Detour Calls: <none recorded>");
     }
 
     std::string undestroyed_info = detour_call_tracker::FormatUndestroyedGuards(static_cast<uint64_t>(now_real_ns));
-    if (!undestroyed_info.empty()) {
-        std::istringstream iss(undestroyed_info);
-        std::string line;
-        while (std::getline(iss, line)) {
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (!line.empty()) {
-                display_commander::logger::LogInfoDirectSynchronized("%s", line.c_str());
-            }
-        }
-    } else {
-        display_commander::logger::LogInfoDirectSynchronized("Undestroyed Detour Guards: 0");
-    }
+    exit_handler::WriteMultiLineToDebugLog(undestroyed_info, "Undestroyed Detour Guards: 0");
     display_commander::logger::LogInfoDirectSynchronized("=== END STUCK METHODS (undestroyed guards) ===");
 }
 

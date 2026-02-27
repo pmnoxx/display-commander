@@ -2,6 +2,18 @@
 
 ---
 
+## v0.12.119 (2026-02-27)
+
+- **Crash handler refactor** - Removed duplication between `VectoredExceptionHandler` and `UnhandledExceptionHandler`. Shared logic moved into `LogCrashReport(PEXCEPTION_POINTERS, header_line, log_section_context)` and `WriteMultiLineToDebugLog`; both handlers now call `LogCrashReport` with the appropriate header and section-context flag. Unhandled report now also logs system memory load (aligned with VEH).
+
+---
+
+## v0.12.118 (2026-02-27)
+
+- **Crash/exit handler logging** - Crash and vectored exception handler paths now use `LogInfoDirectSynchronized` instead of `LogInfo`. `WriteToDebugLog` and the single exit message in `OnHandleExit` write directly to the log file (synchronized, with flush), so crash reports are not lost if the logger's writer thread is blocked or the process is in a bad state.
+
+---
+
 ## v0.12.117 (2026-02-26)
 
 - **Inject Reflex checkbox (Main tab)** - Added "Inject Reflex" checkbox on the Main tab (default off), shown only when native Reflex is not active. When enabled, the addon injects Reflex (sleep + latency markers) for games without native Reflex support.

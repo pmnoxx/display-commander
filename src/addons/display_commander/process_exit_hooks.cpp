@@ -12,10 +12,10 @@
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/display_commander_logger.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "utils/stack_trace.hpp"
 #include "utils/timing.hpp"
-#include "utils/display_commander_logger.hpp"
 #include "version.hpp"
 
 namespace {
@@ -235,6 +235,75 @@ void PrintLoadedModules() {
     }
 }
 
+// Shared crash report: header, optional section context, version/system/process info,
+// exception details, memory load, recent detour calls, undestroyed guards, stack trace, loaded modules.
+void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line, bool log_section_context) {
+    exit_handler::WriteToDebugLog(header_line);
+
+    if (log_section_context) {
+        const char* monitoring_section = g_continuous_monitoring_section.load(std::memory_order_acquire);
+        const char* rendering_section = g_rendering_ui_section.load(std::memory_order_acquire);
+        std::ostringstream section_msg;
+        section_msg << "g_continuous_monitoring_section: "
+                    << (monitoring_section != nullptr ? monitoring_section : "(null)");
+        exit_handler::WriteToDebugLog(section_msg.str());
+        section_msg.str("");
+        section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)");
+        exit_handler::WriteToDebugLog(section_msg.str());
+    }
+
+    PrintVersionInfo();
+    PrintSystemInfo();
+    PrintProcessInfo();
+
+    if (exception_info && exception_info->ExceptionRecord) {
+        const EXCEPTION_RECORD* rec = exception_info->ExceptionRecord;
+        std::ostringstream oss;
+        oss << "Exception Code: 0x" << std::hex << std::uppercase << rec->ExceptionCode;
+        exit_handler::WriteToDebugLog(oss.str());
+        oss.str("");
+        oss << "Exception Flags: 0x" << std::hex << std::uppercase << rec->ExceptionFlags;
+        exit_handler::WriteToDebugLog(oss.str());
+        oss.str("");
+        oss << "Exception Address: 0x" << std::hex << std::uppercase
+            << reinterpret_cast<uintptr_t>(rec->ExceptionAddress);
+        exit_handler::WriteToDebugLog(oss.str());
+    }
+
+    MEMORYSTATUSEX mem_status = {};
+    mem_status.dwLength = sizeof(mem_status);
+    if (GlobalMemoryStatusEx(&mem_status)) {
+        std::ostringstream mem_details;
+        mem_details << "System Memory Load: " << mem_status.dwMemoryLoad << "%";
+        exit_handler::WriteToDebugLog(mem_details.str());
+    }
+
+    uint64_t crash_timestamp_ns = utils::get_real_time_ns();
+    std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
+    exit_handler::WriteToDebugLog("=== RECENT DETOUR CALLS ===");
+    exit_handler::WriteMultiLineToDebugLog(recent_detour_info, "Recent Detour Calls: <none recorded>");
+    exit_handler::WriteToDebugLog("=== END RECENT DETOUR CALLS ===");
+
+    std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(crash_timestamp_ns);
+    exit_handler::WriteToDebugLog("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
+    exit_handler::WriteMultiLineToDebugLog(undestroyed_guards_info, "Undestroyed Detour Guards: 0");
+    exit_handler::WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
+
+    exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");
+    CONTEXT* exception_context =
+        (exception_info && exception_info->ContextRecord) ? exception_info->ContextRecord : nullptr;
+    auto stack_trace = stack_trace::GenerateStackTrace(exception_context);
+    exit_handler::WriteToDebugLog("=== STACK TRACE ===");
+    for (const auto& frame : stack_trace) {
+        exit_handler::WriteToDebugLog(frame);
+    }
+    exit_handler::WriteToDebugLog("=== END STACK TRACE ===");
+
+    PrintLoadedModules();
+
+    display_commander::logger::FlushLogs();
+}
+
 }  // anonymous namespace
 
 namespace process_exit_hooks {
@@ -271,119 +340,11 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
         }
     }
 
-    // Ensure DbgHelp is loaded before attempting stack trace
     dbghelp_loader::LoadDbgHelp();
 
-    // Log detailed crash information similar to Special-K's approach
-    exit_handler::WriteToDebugLog("=== CRASH DETECTED - DETAILED CRASH REPORT ===");
+    LogCrashReport(exception_info, "=== CRASH DETECTED - DETAILED CRASH REPORT ===", false);
 
-    // Print version information first
-    PrintVersionInfo();
-
-    // Print system information
-    PrintSystemInfo();
-
-    // Print process information
-    PrintProcessInfo();
-
-    // Log exception information
-    if (exception_info && exception_info->ExceptionRecord) {
-        std::ostringstream exception_details;
-        exception_details << "Exception Code: 0x" << std::hex << std::uppercase
-                          << exception_info->ExceptionRecord->ExceptionCode;
-        exit_handler::WriteToDebugLog(exception_details.str());
-
-        // Log exception flags
-        std::ostringstream flags_details;
-        flags_details << "Exception Flags: 0x" << std::hex << std::uppercase
-                      << exception_info->ExceptionRecord->ExceptionFlags;
-        exit_handler::WriteToDebugLog(flags_details.str());
-
-        // Log exception address
-        std::ostringstream address_details;
-        address_details << "Exception Address: 0x" << std::hex << std::uppercase
-                        << reinterpret_cast<uintptr_t>(exception_info->ExceptionRecord->ExceptionAddress);
-        exit_handler::WriteToDebugLog(address_details.str());
-    }
-
-    // Log system information
-    MEMORYSTATUSEX mem_status = {};
-    mem_status.dwLength = sizeof(mem_status);
-    if (GlobalMemoryStatusEx(&mem_status)) {
-        std::ostringstream mem_details;
-        mem_details << "System Memory Load: " << mem_status.dwMemoryLoad << "%";
-        exit_handler::WriteToDebugLog(mem_details.str());
-    }
-
-    // Print recent detour calls information
-    uint64_t crash_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
-    std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
-    exit_handler::WriteToDebugLog("=== RECENT DETOUR CALLS ===");
-
-    // Split multi-line string and write each line separately
-    if (!recent_detour_info.empty()) {
-        std::istringstream iss(recent_detour_info);
-        std::string line;
-        while (std::getline(iss, line)) {
-            // Remove any trailing carriage return
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (!line.empty()) {
-                exit_handler::WriteToDebugLog(line);
-            }
-        }
-    } else {
-        exit_handler::WriteToDebugLog("Recent Detour Calls: <none recorded>");
-    }
-
-    exit_handler::WriteToDebugLog("=== END RECENT DETOUR CALLS ===");
-
-    // Print undestroyed detour guards (helps identify which call path was active at crash)
-    std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(crash_timestamp_ns);
-    exit_handler::WriteToDebugLog("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
-    if (!undestroyed_guards_info.empty()) {
-        std::istringstream iss_guards(undestroyed_guards_info);
-        std::string line;
-        while (std::getline(iss_guards, line)) {
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (!line.empty()) {
-                exit_handler::WriteToDebugLog(line);
-            }
-        }
-    } else {
-        exit_handler::WriteToDebugLog("Undestroyed Detour Guards: 0");
-    }
-    exit_handler::WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
-
-    // Print stack trace to DbgView using exception context
-    exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");
-    CONTEXT* exception_context = nullptr;
-    if (exception_info && exception_info->ContextRecord) {
-        exception_context = exception_info->ContextRecord;
-    }
-
-    // Generate stack trace using exception context
-    auto stack_trace = stack_trace::GenerateStackTrace(exception_context);
-
-    // Also log stack trace to file frame by frame to avoid truncation
-    exit_handler::WriteToDebugLog("=== STACK TRACE ===");
-    for (const auto& frame : stack_trace) {
-        exit_handler::WriteToDebugLog(frame);
-    }
-    exit_handler::WriteToDebugLog("=== END STACK TRACE ===");
-
-    // Print list of loaded modules
-    PrintLoadedModules();
-
-    display_commander::logger::FlushLogs();
-
-    // Do not chain to ReShade (or other) crash handler - our log is sufficient
     return EXCEPTION_EXECUTE_HANDLER;
-    // assert(IsDebuggerPresent());
-    //  return EXCEPTION_CONTINUE_EXECUTION;
 }
 
 // Vectored exception handler - catches exceptions early and prints stack traces
@@ -417,99 +378,10 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
         }
     }
 
-    // Ensure DbgHelp is loaded before attempting stack trace
     dbghelp_loader::LoadDbgHelp();
 
-    // Log detailed crash information
-    exit_handler::WriteToDebugLog("=== VECTORED EXCEPTION HANDLER - CRASH DETECTED ===");
+    LogCrashReport(ex, "=== VECTORED EXCEPTION HANDLER - CRASH DETECTED ===", true);
 
-    // Print current section context (where we were when crash occurred)
-    const char* monitoring_section = g_continuous_monitoring_section.load(std::memory_order_acquire);
-    const char* rendering_section = g_rendering_ui_section.load(std::memory_order_acquire);
-    {
-        std::ostringstream section_msg;
-        section_msg << "g_continuous_monitoring_section: "
-                    << (monitoring_section != nullptr ? monitoring_section : "(null)");
-        exit_handler::WriteToDebugLog(section_msg.str());
-    }
-    {
-        std::ostringstream section_msg;
-        section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)");
-        exit_handler::WriteToDebugLog(section_msg.str());
-    }
-
-    // Print version information first
-    PrintVersionInfo();
-
-    // Print system information
-    PrintSystemInfo();
-
-    // Print process information
-    PrintProcessInfo();
-
-    // Log exception information
-    if (ex && ex->ExceptionRecord) {
-        std::ostringstream exception_details;
-        exception_details << "Exception Code: 0x" << std::hex << std::uppercase << ex->ExceptionRecord->ExceptionCode;
-        exit_handler::WriteToDebugLog(exception_details.str());
-
-        // Log exception flags
-        std::ostringstream flags_details;
-        flags_details << "Exception Flags: 0x" << std::hex << std::uppercase << ex->ExceptionRecord->ExceptionFlags;
-        exit_handler::WriteToDebugLog(flags_details.str());
-
-        // Log exception address
-        std::ostringstream address_details;
-        address_details << "Exception Address: 0x" << std::hex << std::uppercase
-                        << reinterpret_cast<uintptr_t>(ex->ExceptionRecord->ExceptionAddress);
-        exit_handler::WriteToDebugLog(address_details.str());
-    }
-
-    // Print recent detour calls information
-    uint64_t crash_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
-    std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
-    exit_handler::WriteToDebugLog("=== RECENT DETOUR CALLS ===");
-
-    // Split multi-line string and write each line separately
-    if (!recent_detour_info.empty()) {
-        std::istringstream iss(recent_detour_info);
-        std::string line;
-        while (std::getline(iss, line)) {
-            // Remove any trailing carriage return
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (!line.empty()) {
-                exit_handler::WriteToDebugLog(line);
-            }
-        }
-    } else {
-        exit_handler::WriteToDebugLog("Recent Detour Calls: <none recorded>");
-    }
-
-    exit_handler::WriteToDebugLog("=== END RECENT DETOUR CALLS ===");
-
-    // Print stack trace using exception context
-    exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");
-    CONTEXT* exception_context = nullptr;
-    if (ex && ex->ContextRecord) {
-        exception_context = ex->ContextRecord;
-    }
-
-    // Generate stack trace using exception context
-    auto stack_trace = stack_trace::GenerateStackTrace(exception_context);
-
-    // Log stack trace to file frame by frame to avoid truncation
-    exit_handler::WriteToDebugLog("=== STACK TRACE ===");
-    for (const auto& frame : stack_trace) {
-        exit_handler::WriteToDebugLog(frame);
-    }
-    exit_handler::WriteToDebugLog("=== END STACK TRACE ===");
-
-    // Print list of loaded modules
-    PrintLoadedModules();
-
-    // Continue searching for other handlers (like SetUnhandledExceptionFilter)
     return EXCEPTION_CONTINUE_SEARCH;
 }
 

@@ -1,14 +1,15 @@
 #include "d3d9_present_hooks.hpp"
 #include "../../globals.hpp"
 #include "../../gpu_completion_monitoring.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
-#include "../present_traffic_tracking.hpp"
 #include "../dxgi/dxgi_present_hooks.hpp"
+#include "../present_traffic_tracking.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
@@ -63,8 +64,8 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
 
     // Call original function
     if (IDirect3DDevice9_Present_Original != nullptr) {
-        HRESULT res = IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride,
-                                                         pDirtyRegion);
+        HRESULT res =
+            IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
         if (FAILED(res)) {
             LogError("[D3D9 error] IDirect3DDevice9::Present returned 0x%08X", static_cast<unsigned>(res));
         }
@@ -178,19 +179,7 @@ bool HookD3D9Present(IDirect3DDevice9* device) {
         LogInfo("HookD3D9Present: hooks already installed");
         return true;
     }
-    Microsoft::WRL::ComPtr<IDirect3DDevice9Ex> device9ex;
-    if (FAILED(device->QueryInterface(IID_PPV_ARGS(&device9ex)))) {
-        LogWarn("HookD3D9Present: failed to query IDirect3DDevice9Ex interface from device");
-        return false;
-    }
-
-    // Get the vtable from the device
-    void** vtable = *reinterpret_cast<void***>(device9ex.Get());
-    if (vtable == nullptr) {
-        LogWarn("HookD3D9Present: failed to get vtable from device");
-        return false;
-    }
-
+    void** vtable = *reinterpret_cast<void***>(device);
     // Hook Present (vtable index 17 for IDirect3DDevice9::Present)
     if (!CreateAndEnableHook(vtable[17], &IDirect3DDevice9_Present_Detour,
                              reinterpret_cast<LPVOID*>(&IDirect3DDevice9_Present_Original),
@@ -199,9 +188,29 @@ bool HookD3D9Present(IDirect3DDevice9* device) {
         return false;
     }
 
+    // if not flip ex upgrade enabled
+    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+        g_d3d9_present_hooks_installed.store(true);
+        LogInfo("HookD3D9Present: hooks installed successfully for device: 0x%p", device);
+        return true;
+    }
+
+    Microsoft::WRL::ComPtr<IDirect3DDevice9Ex> device9ex;
+    if (FAILED(device->QueryInterface(IID_PPV_ARGS(&device9ex)))) {
+        LogWarn("HookD3D9Present: failed to query IDirect3DDevice9Ex interface from device");
+        return false;
+    }
+
+    // Get the vtable from the device
+    void** vtable9ex = *reinterpret_cast<void***>(device9ex.Get());
+    if (vtable9ex == nullptr) {
+        LogWarn("HookD3D9Present: failed to get vtable from device");
+        return false;
+    }
+
     // Hook PresentEx (vtable index 121 for IDirect3DDevice9Ex::PresentEx)
     // Note: PresentEx is only available on IDirect3DDevice9Ex, so we need to check if it exists
-    if (!CreateAndEnableHook(vtable[121], &IDirect3DDevice9_PresentEx_Detour,
+    if (!CreateAndEnableHook(vtable9ex[121], &IDirect3DDevice9_PresentEx_Detour,
                              reinterpret_cast<LPVOID*>(&IDirect3DDevice9_PresentEx_Original),
                              "IDirect3DDevice9Ex::PresentEx")) {
         LogWarn("HookD3D9Present: PresentEx hook not available (device may not be IDirect3DDevice9Ex)");

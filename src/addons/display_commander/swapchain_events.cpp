@@ -180,6 +180,7 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
 }
 
 void hookToSwapChain(reshade::api::swapchain* swapchain) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
         return;
@@ -258,8 +259,11 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
                 display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
                 if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device.Get())) {
                     LogInfo("D3D9 Present hooks installed for device 0x%p", d3d9_device.Get());
+                    // Only install device vtable logging when we have Device9Ex and Present hooks;
+                    // on base IDirect3DDevice9 the device from get_native() can be a ReShade proxy
+                    // whose vtable layout may not match, causing crashes (e.g. ACCESS_VIOLATION in game).
+                    display_commanderhooks::d3d9::InstallD3D9DeviceVtableLogging(d3d9_device.Get());
                 }
-                display_commanderhooks::d3d9::InstallD3D9DeviceVtableLogging(d3d9_device.Get());
             }
         }
     } else if (api == reshade::api::device_api::vulkan) {

@@ -15,7 +15,8 @@ using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
 using ui::new_ui::StringSetting;
 
-/** Manual color space when auto_colorspace is off. Index 0 = No changes; 1..MANUAL_COLOR_SPACE_MAX_INDEX = DXGI types (see GetManualColorSpaceDisplayName). */
+/** Manual color space when auto_colorspace is off. Index 0 = No changes; 1..MANUAL_COLOR_SPACE_MAX_INDEX = DXGI types
+ * (see GetManualColorSpaceDisplayName). */
 constexpr int MANUAL_COLOR_SPACE_MAX_INDEX = 22;
 
 // Legacy enum: 0..4 map to first five entries (No changes, sRGB, scRGB, HDR10 ST2084, HDR10 HLG).
@@ -113,7 +114,8 @@ class AdvancedTabSettings {
     // Window management compatibility setting
     BoolSetting suppress_window_changes;
 
-    // Win+Up grace: seconds after leaving foreground when Win+Up (restore) still works. 0=disabled, 1-60=seconds, 61=forever.
+    // Win+Up grace: seconds after leaving foreground when Win+Up (restore) still works. 0=disabled, 1-60=seconds,
+    // 61=forever.
     IntSetting win_up_grace_seconds;
 
     // PresentMon ETW tracing setting

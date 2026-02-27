@@ -1,7 +1,7 @@
 #include "overlay_window_detector.hpp"
-#include "../hooks/api_hooks.hpp"
 #include <algorithm>
 #include <set>
+#include "../hooks/api_hooks.hpp"
 
 namespace display_commander::utils {
 
@@ -270,50 +270,6 @@ std::vector<OverlayWindowInfo> DetectOverlayWindows(HWND game_window) {
     }
 
     return overlays;
-}
-
-bool IsWindowWithTitleVisible(const std::wstring& window_title) {
-    if (window_title.empty()) {
-        return false;
-    }
-
-    struct EnumData {
-        const std::wstring* target_title;
-        bool found;
-    };
-
-    EnumData data = {&window_title, false};
-
-    EnumWindows(
-        [](HWND hWnd, LPARAM lParam) -> BOOL {
-            EnumData* pData = reinterpret_cast<EnumData*>(lParam);
-
-            if (display_commanderhooks::IsWindowVisible_direct(hWnd) == FALSE) {
-                return TRUE;  // Continue enumeration
-            }
-
-            std::wstring title = GetWindowTitle(hWnd);
-
-            // Case-insensitive comparison
-            if (title.length() >= pData->target_title->length()) {
-                std::wstring title_upper = title;
-                std::wstring target_upper = *pData->target_title;
-
-                // Convert to uppercase for comparison
-                std::transform(title_upper.begin(), title_upper.end(), title_upper.begin(), ::towupper);
-                std::transform(target_upper.begin(), target_upper.end(), target_upper.begin(), ::towupper);
-
-                if (title_upper.find(target_upper) != std::wstring::npos) {
-                    pData->found = true;
-                    return FALSE;  // Stop enumeration
-                }
-            }
-
-            return TRUE;  // Continue enumeration
-        },
-        reinterpret_cast<LPARAM>(&data));
-
-    return data.found;
 }
 
 }  // namespace display_commander::utils

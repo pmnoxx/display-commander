@@ -45,6 +45,7 @@
 #include "imgui.h"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
+#include "utils/detour_call_tracker.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
 
@@ -90,6 +91,7 @@ bool DidNativeReflexSleepRecently(uint64_t now_ns) {
 
 void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;  // Phase 1: unused; for future standalone migration
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Get frame time data from the performance ring buffer
     const uint32_t count = ::g_perf_ring.GetCount();
 
@@ -202,6 +204,7 @@ static LONGLONG s_timeline_last_update_ns = 0;
 // Updates timeline cache from g_frame_data (last completed frame). All phase times are computed
 // relative to sim_start_ns. Refreshes at most once per second.
 static void UpdateFrameTimelineCache() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     const uint64_t last_completed_frame_id = (g_global_frame_id.load() > 0) ? (g_global_frame_id.load() - 1) : 0;
     if (last_completed_frame_id == 0) {
         s_timeline_phases.clear();
@@ -313,6 +316,7 @@ static void UpdateFrameTimelineCache() {
 // Uses start/end times (relative to frame start) so bars show when each phase began and ended.
 // Data is cached and refreshed at most once per second to avoid flicker.
 void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (IsNativeReflexActive()) {
         // Not implemented yet
         imgui.TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: not implemented yet for Reflex path.");
@@ -411,6 +415,7 @@ void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
 // Compact frame timeline bar for performance overlay (smaller rows, fixed width).
 void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     UpdateFrameTimelineCache();
     if (s_timeline_phases.empty()) {
         return;
@@ -485,6 +490,7 @@ void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bo
 // Draw DLSS information (same format as performance overlay). Caller must pass pre-fetched summary.
 void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
 
@@ -851,6 +857,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
 // Draw native frame time graph (for frames shown to display via native swapchain Present)
 void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Check if limit real frames is enabled
     if (!settings::g_mainTabSettings.limit_real_frames.GetValue()) {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "Native frame time graph requires limit real frames to be enabled.");
@@ -924,6 +931,7 @@ void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
 // Draw refresh rate frame times graph (actual refresh rate from NVAPI Adaptive Sync)
 void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Use actual refresh rate samples (NVAPI) - lock-free iteration
     static std::vector<float> frame_times;
     frame_times.clear();
@@ -1012,6 +1020,7 @@ void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui,
 // Compact overlay version with fixed width
 void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
         return;
@@ -1099,6 +1108,7 @@ void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool
 // Compact overlay version for native frame times (frames shown to display via native swapchain Present)
 void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::Overlay)) {
         return;
@@ -1169,6 +1179,7 @@ void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui
 }
 
 void InitMainNewTab() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     static bool settings_loaded_once = false;
     if (!settings_loaded_once) {
         // Settings already loaded at startup
@@ -1213,6 +1224,7 @@ void InitMainNewTab() {
 
 void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Advanced Settings Control
     {
         bool advanced_settings = settings::g_mainTabSettings.advanced_settings_enabled.GetValue();
@@ -1376,6 +1388,7 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi() {
 
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     (void)api;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Load saved settings once and sync legacy globals
     g_rendering_ui_section.store("ui:tab:main_new:entry", std::memory_order_release);
 
@@ -2447,6 +2460,7 @@ if (enabled_experimental_features) {
 
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Quick-set buttons based on current monitor refresh rate
     {
         auto window_state = ::g_window_state.load();
@@ -2538,6 +2552,7 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     {
         // Refresh target display from config so hotkey changes (Win+Left/Win+Right) are visible on the UI thread
         settings::g_mainTabSettings.selected_extended_display_device_id.Load();
@@ -2707,6 +2722,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
 
 void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Window Mode dropdown (with persistent setting)
     if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode", imgui)) {
         WindowMode old_mode = s_window_mode.load();
@@ -2777,6 +2793,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
 
 void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     imgui.Spacing();
 
     // FPS Limiter Mode
@@ -3323,6 +3340,7 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
 
 void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (enabled_experimental_features) {
         if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
             imgui.Spacing();
@@ -3401,13 +3419,16 @@ void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& 
 }
 
 // Context for VSync & Tearing swapchain debug tooltip (filled by PresentModeLine, consumed by SwapchainTooltip).
+// desc_holder keeps the swapchain desc alive for the tooltip duration to avoid use-after-free if
+// g_last_swapchain_desc is updated (e.g. swapchain recreated) while the tooltip is open.
 struct VSyncTearingTooltipContext {
+    std::shared_ptr<reshade::api::swapchain_desc> desc_holder;
     const reshade::api::swapchain_desc* desc = nullptr;
     std::string present_mode_name;
 };
 
 static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
                                  && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
                              || ShouldReflexBeEnabled();
@@ -3471,6 +3492,7 @@ static const char* GetPresentModeNameNonDxgi(int device_api_value, uint32_t pres
 }
 
 static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui::IImGuiWrapper& imgui) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc.load();
         bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
@@ -3560,9 +3582,15 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui
         (current_api == reshade::api::device_api::d3d10 || current_api == reshade::api::device_api::d3d11
          || current_api == reshade::api::device_api::d3d12);
     bool enable_flip = settings::g_advancedTabSettings.enable_flip_chain.GetValue();
-    bool is_flip = g_last_swapchain_desc.load()
-                   && (g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
-                       || g_last_swapchain_desc.load()->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
+    bool is_flip = false;
+    if (is_dxgi) {
+        auto desc_for_flip = g_last_swapchain_desc.load();
+        if (desc_for_flip
+            && (desc_for_flip->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
+                || desc_for_flip->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)) {
+            is_flip = true;
+        }
+    }
     static bool has_been_enabled = false;
     has_been_enabled |= is_dxgi && (enable_flip || !is_flip);
 
@@ -3603,6 +3631,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes(display_commander::ui
 
 static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     presentmon::PresentMonFlipState pm_flip_state;
     presentmon::PresentMonDebugInfo pm_debug_info;
     bool has_pm_flip_state = presentmon::g_presentMonManager.GetFlipState(pm_flip_state);
@@ -3789,6 +3818,8 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_
 static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_commander::ui::IImGuiWrapper& imgui,
                                                                  const VSyncTearingTooltipContext& ctx) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (ctx.desc == nullptr) return;
     const auto& desc = *ctx.desc;
     const reshade::api::device_api api_val = g_last_reshade_device_api.load();
 
@@ -3940,6 +3971,7 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
 /// flip-from-surface, and surface tooltip when available (all APIs: DX9, DXGI, Vulkan, OpenGL).
 static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
         && presentmon::g_presentMonManager.IsRunning()) {
         imgui.TextColored(ui::colors::TEXT_SUCCESS, "PresentMon: ON");
@@ -4084,10 +4116,12 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
 
 static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commander::ui::IImGuiWrapper& imgui,
                                                                 VSyncTearingTooltipContext* out_ctx) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     auto desc_ptr = g_last_swapchain_desc.load();
     if (!desc_ptr) {
         return false;
     }
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     const auto& desc = *desc_ptr;
     const reshade::api::device_api current_api = g_last_reshade_device_api.load();
     const bool is_d3d9 = current_api == reshade::api::device_api::d3d9;
@@ -4101,6 +4135,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
     std::string present_mode_name = "Unknown";
 
     if (is_d3d9) {
+        RECORD_DETOUR_CALL(utils::get_now_ns());
         if (desc.present_mode == D3DSWAPEFFECT_FLIPEX) {
             present_mode_name = "FLIPEX (Flip Model)";
             present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -4125,27 +4160,19 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
         }
         imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
         bool status_hovered = imgui.IsItemHovered();
+        RECORD_DETOUR_CALL(utils::get_now_ns());
         static DWORD last_discord_check = 0;
         DWORD current_time = GetTickCount();
-        static bool discord_overlay_visible = false;
         if (current_time - last_discord_check > 1000) {
-            discord_overlay_visible = display_commander::utils::IsWindowWithTitleVisible(L"Discord Overlay");
+            RECORD_DETOUR_CALL(utils::get_now_ns());
             last_discord_check = current_time;
         }
-        if (discord_overlay_visible) {
-            imgui.SameLine();
-            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_WARNING);
-            imgui.Text(ICON_FK_WARNING " Discord Overlay");
-            imgui.PopStyleColor();
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Discord Overlay is visible and may prevent MPO iFlip.\n"
-                    "It can prevent Independent Flip mode and increase latency.\n"
-                    "Consider disabling it or setting AllowWindowedMode=true in Special-K.");
-            }
-        }
+        RECORD_DETOUR_CALL(utils::get_now_ns());
+
         DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
+        RECORD_DETOUR_CALL(utils::get_now_ns());
         if (out_ctx) {
+            out_ctx->desc_holder = desc_ptr;
             out_ctx->desc = desc_ptr.get();
             out_ctx->present_mode_name = std::move(present_mode_name);
         }
@@ -4153,6 +4180,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
     }
 
     if (is_dxgi) {
+        RECORD_DETOUR_CALL(utils::get_now_ns());
         if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD) {
             present_mode_name = "FLIP_DISCARD (Flip Model)";
             present_mode_color = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -4173,6 +4201,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
         bool status_hovered = imgui.IsItemHovered();
         DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
         if (out_ctx) {
+            out_ctx->desc_holder = desc_ptr;
             out_ctx->desc = desc_ptr.get();
             out_ctx->present_mode_name = std::move(present_mode_name);
         }
@@ -4180,12 +4209,14 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
     }
 
     // Vulkan, OpenGL, etc.: show present mode (ReShade: VkPresentModeKHR or WGL)
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     present_mode_name = GetPresentModeNameNonDxgi(static_cast<int>(current_api), desc.present_mode);
     present_mode_color = ui::colors::TEXT_DIMMED;
     imgui.TextColored(present_mode_color, "%s", present_mode_name.c_str());
     bool status_hovered = imgui.IsItemHovered();
     DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(imgui);
     if (out_ctx) {
+        out_ctx->desc_holder = desc_ptr;
         out_ctx->desc = desc_ptr.get();
         out_ctx->present_mode_name = std::move(present_mode_name);
     }
@@ -4194,6 +4225,7 @@ static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commande
 
 void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     DrawDisplaySettings_VSyncAndTearing_FpsSliders(imgui);
     imgui.Spacing();
 
@@ -4203,11 +4235,13 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
 
         VSyncTearingTooltipContext tooltip_ctx;
         bool status_hovered = DrawDisplaySettings_VSyncAndTearing_PresentModeLine(imgui, &tooltip_ctx);
+        g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:present_mode_line", std::memory_order_release);
         if (status_hovered && tooltip_ctx.desc != nullptr) {
             imgui.BeginTooltip();
             DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(imgui, tooltip_ctx);
             imgui.EndTooltip();
         }
+        g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:swapchain_tooltip", std::memory_order_release);
 
         if (!g_last_swapchain_desc.load()) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "No swapchain information available");
@@ -4218,9 +4252,11 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
             }
         }
     }
+    g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:end", std::memory_order_release);
 }
 
 void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     DrawDisplaySettings_DisplayAndTarget(imgui);
     DrawDisplaySettings_WindowModeAndApply(imgui);
     DrawDisplaySettings_FpsLimiterMode(imgui);
@@ -4644,6 +4680,7 @@ static const char* GetAudioChannelLabel(unsigned int channel_index, unsigned int
 
 void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     unsigned int meter_count = 0;
     if (!::GetAudioMeterChannelCount(&meter_count) || meter_count == 0) {
         return;
@@ -4712,6 +4749,7 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
 
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                                    display_commander::ui::GraphicsApi device_api, bool show_tooltips) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     reshade::api::device_api current_api = static_cast<reshade::api::device_api>(0);
     switch (device_api) {
         case display_commander::ui::GraphicsApi::D3D9:   current_api = reshade::api::device_api::d3d9; break;
@@ -5597,6 +5635,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
 void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     g_rendering_ui_section.store("ui:tab:main_new:audio:entry", std::memory_order_release);
     // Default output device format info (channel config, Hz, bits, format, extension, device name)
     g_rendering_ui_section.store("ui:tab:main_new:audio:device_info", std::memory_order_release);
@@ -6022,6 +6061,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     HWND hwnd = g_last_swapchain_hwnd.load();
     if (hwnd == nullptr) {
         LogWarn("Maximize Window: no window handle available");
@@ -6315,6 +6355,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // Test Overlay Control
     {
         bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
@@ -7056,6 +7097,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     // ADHD on game display is shown even with one monitor; Multi-Monitor Mode only when multiple monitors
     bool hasMultipleMonitors = adhd_multi_monitor::api::HasMultipleMonitors();
 

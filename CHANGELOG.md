@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.130 (2026-02-27)
+
+- **Fix DX9 UI crash in Main tab (VSync & Tearing)** - Crash occurred in the present-mode line when calling Discord overlay visibility check (`IsWindowWithTitleVisible`) on the D3D9 path. Discord overlay check and warning are now skipped when the API is D3D9 so the UI no longer crashes or hangs when the overlay is open with a D3D9 game.
+- **VSync & Tearing tooltip and checkboxes** - Tooltip context now keeps the swapchain desc alive (`desc_holder`) to avoid use-after-free if the desc is updated while the tooltip is open. "Enable Flip Chain" / `is_flip` is computed only for DXGI APIs (not D3D9) to avoid comparing D3D9 present_mode to DXGI constants.
+- **Main tab crash diagnosis** - Added `RECORD_DETOUR_CALL` at entry of all main-tab draw functions (DrawMainNewTab, DrawDisplaySettings, DrawDisplaySettings_*, DrawAudioSettings, DrawWindowControls, DrawImportantInfo, frame graphs, overlay, etc.) and granular points inside `DrawDisplaySettings_VSyncAndTearing_PresentModeLine` so crash reports show the last reached call site (function:line).
+
+---
+
 ## v0.12.129 (2026-02-27)
 
 - **D3D9 vtable indices** - Fixed IDirect3DDevice9 vtable indices to match d3d9.h / ReShade declaration order. CreateTexture..CreateDepthStencilSurface are 23-29 (was 21-27); CreateOffscreenPlainSurface is 36 (was 28). Added `d3d9_vtable_indices.hpp` with a full `VTable` enum for all IDirect3DDevice9/IDirect3DDevice9Ex slots; Present and PresentEx hooks now use `VTable::Present` and `VTable::PresentEx` instead of magic 17 and 121.

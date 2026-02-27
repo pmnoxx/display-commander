@@ -21,6 +21,32 @@ std::atomic<std::shared_ptr<const D3D9NoReShadeDeviceSnapshot>> g_last_d3d9_no_r
 
 namespace {
 
+void LogD3D9CreateDeviceArgs(const char* prefix, UINT adapter, D3DDEVTYPE device_type, HWND h_focus_window,
+                             DWORD behavior_flags, void* pp_returned_device) {
+    LogInfo("D3D9 %s args: Adapter=%u DeviceType=%u hFocusWindow=%p BehaviorFlags=0x%08X ppReturnedDeviceInterface=%p",
+            prefix, adapter, device_type, static_cast<void*>(h_focus_window), static_cast<unsigned>(behavior_flags),
+            pp_returned_device);
+}
+
+void LogD3D9PresentParams(const char* prefix, const D3DPRESENT_PARAMETERS& pp) {
+    LogInfo(
+        "D3D9 %s PresentParams: BackBufferWidth=%u BackBufferHeight=%u BackBufferFormat=%u BackBufferCount=%u "
+        "MultiSampleType=%u MultiSampleQuality=%u SwapEffect=%u hDeviceWindow=%p Windowed=%d "
+        "EnableAutoDepthStencil=%d AutoDepthStencilFormat=%u Flags=0x%08X FullScreen_RefreshRateInHz=%u "
+        "PresentationInterval=%u",
+        prefix, pp.BackBufferWidth, pp.BackBufferHeight, static_cast<unsigned>(pp.BackBufferFormat), pp.BackBufferCount,
+        static_cast<unsigned>(pp.MultiSampleType), static_cast<unsigned>(pp.MultiSampleQuality),
+        static_cast<unsigned>(pp.SwapEffect), static_cast<void*>(pp.hDeviceWindow), pp.Windowed != 0 ? 1 : 0,
+        pp.EnableAutoDepthStencil != 0 ? 1 : 0, static_cast<unsigned>(pp.AutoDepthStencilFormat),
+        static_cast<unsigned>(pp.Flags), pp.FullScreen_RefreshRateInHz, pp.PresentationInterval);
+}
+
+void LogD3D9DisplayModeEx(const char* prefix, const D3DDISPLAYMODEEX& mode) {
+    LogInfo("D3D9 %s DisplayModeEx: Size=%u Width=%u Height=%u RefreshRate=%u Format=%u ScanLineOrdering=%u", prefix,
+            mode.Size, mode.Width, mode.Height, mode.RefreshRate, static_cast<unsigned>(mode.Format),
+            static_cast<unsigned>(mode.ScanLineOrdering));
+}
+
 void StoreD3D9NoReShadeDeviceSnapshot(bool created_with_ex, const D3DPRESENT_PARAMETERS& pp) {
     auto s = std::make_shared<D3D9NoReShadeDeviceSnapshot>();
     s->created_with_ex = created_with_ex;
@@ -86,6 +112,12 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
         return D3DERR_NOTAVAILABLE;
     }
 
+    // Log all arguments before we change anything
+    D3DPRESENT_PARAMETERS pp_before = *pPresentationParameters;
+    LogD3D9CreateDeviceArgs("CreateDevice (before)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                            static_cast<void*>(ppReturnedDeviceInterface));
+    LogD3D9PresentParams("CreateDevice (before)", pp_before);
+
     // Upgrade CreateDevice -> CreateDeviceEx when FLIPEX is enabled (mirrors ReShade create_device 0x9100)
     if (settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()
         && Direct3DCreate9Ex_Original != nullptr) {
@@ -93,6 +125,10 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
         HRESULT hrEx = Direct3DCreate9Ex_Original(D3D_SDK_VERSION, &d3dex);
         if (SUCCEEDED(hrEx) && d3dex != nullptr) {
             ApplyD3D9PresentParameterUpgrades(pPresentationParameters, true);
+            LogD3D9CreateDeviceArgs("CreateDevice FLIPEX (after)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                    static_cast<void*>(ppReturnedDeviceInterface));
+            LogD3D9PresentParams("CreateDevice FLIPEX (after)", *pPresentationParameters);
+
             D3DPRESENT_PARAMETERS pp = *pPresentationParameters;
             // ReShade's upgrade path passes nullptr for pFullscreenDisplayMode
             HRESULT hr = d3dex->CreateDeviceEx(Adapter, DeviceType, hFocusWindow, BehaviorFlags, &pp, nullptr,
@@ -107,7 +143,17 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
                 s_d3d9e_upgrade_successful.store(true, std::memory_order_relaxed);
                 StoreD3D9NoReShadeDeviceSnapshot(true, pp);
                 OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
-                LogInfo("D3D9 CreateDevice -> CreateDeviceEx upgrade (FLIPEX) succeeded");
+                LogInfo("D3D9 CreateDevice -> CreateDeviceEx upgrade (FLIPEX) succeeded: hr=0x%08X device=0x%p",
+                        static_cast<unsigned>(hr), static_cast<void*>(*ppReturnedDeviceInterface));
+                LogD3D9CreateDeviceArgs("CreateDevice FLIPEX (result)", Adapter, DeviceType, hFocusWindow,
+                                        BehaviorFlags, static_cast<void*>(*ppReturnedDeviceInterface));
+                LogD3D9PresentParams("CreateDevice FLIPEX (result)", pp);
+            } else {
+                LogInfo("D3D9 CreateDevice -> CreateDeviceEx upgrade (FLIPEX) failed: hr=0x%08X",
+                        static_cast<unsigned>(hr));
+                LogD3D9CreateDeviceArgs("CreateDevice FLIPEX (result)", Adapter, DeviceType, hFocusWindow,
+                                        BehaviorFlags, static_cast<void*>(ppReturnedDeviceInterface));
+                LogD3D9PresentParams("CreateDevice FLIPEX (result)", pp);
             }
             return hr;
         }
@@ -117,14 +163,27 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
         LogInfo("D3D9 CreateDevice -> CreateDeviceEx upgrade skipped (Direct3DCreate9Ex failed), using CreateDevice");
     }
 
-    if (pPresentationParameters != nullptr) {
-        ApplyD3D9PresentParameterUpgrades(pPresentationParameters, false);  // no FLIPEX for non-Ex
-    }
+    ApplyD3D9PresentParameterUpgrades(pPresentationParameters, false);  // no FLIPEX for non-Ex
+    LogD3D9CreateDeviceArgs("CreateDevice (after)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                            static_cast<void*>(ppReturnedDeviceInterface));
+    LogD3D9PresentParams("CreateDevice (after)", *pPresentationParameters);
+
     HRESULT hr = CreateDevice_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters,
                                        ppReturnedDeviceInterface);
+
     if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
         StoreD3D9NoReShadeDeviceSnapshot(false, *pPresentationParameters);
         OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
+        LogInfo("D3D9 CreateDevice (no-ReShade) succeeded: hr=0x%08X device=0x%p", static_cast<unsigned>(hr),
+                static_cast<void*>(*ppReturnedDeviceInterface));
+        LogD3D9CreateDeviceArgs("CreateDevice (result)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                static_cast<void*>(*ppReturnedDeviceInterface));
+        LogD3D9PresentParams("CreateDevice (result)", *pPresentationParameters);
+    } else {
+        LogInfo("D3D9 CreateDevice (no-ReShade) failed: hr=0x%08X", static_cast<unsigned>(hr));
+        LogD3D9CreateDeviceArgs("CreateDevice (result)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                static_cast<void*>(ppReturnedDeviceInterface));
+        LogD3D9PresentParams("CreateDevice (result)", *pPresentationParameters);
     }
     return hr;
 }
@@ -140,16 +199,57 @@ HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter
         return D3DERR_INVALIDCALL;
     }
     s_d3d9e_upgrade_successful.store(true, std::memory_order_relaxed);
+
+    // Log all arguments before we change anything
+    LogD3D9CreateDeviceArgs("CreateDeviceEx (before)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                            static_cast<void*>(ppReturnedDeviceInterface));
+    if (pPresentationParameters != nullptr) {
+        LogD3D9PresentParams("CreateDeviceEx (before)", *pPresentationParameters);
+    }
+    if (pFullscreenDisplayMode != nullptr) {
+        LogD3D9DisplayModeEx("CreateDeviceEx (before)", *pFullscreenDisplayMode);
+    }
+
     if (pPresentationParameters != nullptr) {
         ApplyD3D9PresentParameterUpgrades(pPresentationParameters, true);  // full FLIPEX/VSync upgrades for Ex
     }
+    LogD3D9CreateDeviceArgs("CreateDeviceEx (after)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                            static_cast<void*>(ppReturnedDeviceInterface));
+    if (pPresentationParameters != nullptr) {
+        LogD3D9PresentParams("CreateDeviceEx (after)", *pPresentationParameters);
+    }
+    if (pFullscreenDisplayMode != nullptr) {
+        LogD3D9DisplayModeEx("CreateDeviceEx (after)", *pFullscreenDisplayMode);
+    }
+
     HRESULT hr = CreateDeviceEx_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
                                          pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
+
     if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
         if (pPresentationParameters != nullptr) {
             StoreD3D9NoReShadeDeviceSnapshot(true, *pPresentationParameters);
         }
         OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
+        LogInfo("D3D9 CreateDeviceEx (no-ReShade) succeeded: hr=0x%08X device=0x%p", static_cast<unsigned>(hr),
+                static_cast<void*>(*ppReturnedDeviceInterface));
+        LogD3D9CreateDeviceArgs("CreateDeviceEx (result)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                static_cast<void*>(*ppReturnedDeviceInterface));
+        if (pPresentationParameters != nullptr) {
+            LogD3D9PresentParams("CreateDeviceEx (result)", *pPresentationParameters);
+        }
+        if (pFullscreenDisplayMode != nullptr) {
+            LogD3D9DisplayModeEx("CreateDeviceEx (result)", *pFullscreenDisplayMode);
+        }
+    } else {
+        LogInfo("D3D9 CreateDeviceEx (no-ReShade) failed: hr=0x%08X", static_cast<unsigned>(hr));
+        LogD3D9CreateDeviceArgs("CreateDeviceEx (result)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                static_cast<void*>(ppReturnedDeviceInterface));
+        if (pPresentationParameters != nullptr) {
+            LogD3D9PresentParams("CreateDeviceEx (result)", *pPresentationParameters);
+        }
+        if (pFullscreenDisplayMode != nullptr) {
+            LogD3D9DisplayModeEx("CreateDeviceEx (result)", *pFullscreenDisplayMode);
+        }
     }
     return hr;
 }

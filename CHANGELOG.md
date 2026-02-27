@@ -2,9 +2,15 @@
 
 ---
 
+## v0.12.122 (2026-02-27)
+
+- **D3D9 proxy (Wine d3d9.spec parity)** - Added missing d3d9.dll exports: `Direct3DShaderValidatorCreate9` and `DebugSetMute`, with forwarding to the real system d3d9.dll. Fixed exports.def typo (`EXPORTS` was written as `` `XPORTS ``), which caused linker failures when building the addon as a proxy DLL.
+
+---
+
 ## v0.12.121 (2026-02-27)
 
-- **Background FPS** - Default background FPS limit changed from 30 to 60. Added "Background FPS" checkbox (default off): when off, the game uses the same FPS limit in background as in foreground (Special K–style); when on, the background limit slider applies. Checkbox and limit slider are on the same line; slider is greyed out when the checkbox is off.
+- **Background FPS** - Default background FPS limit changed from 30 to 60. Added "Background FPS" checkbox (default off): when off, the game uses the same FPS limit in background as in foreground; when on, the background limit slider applies. Checkbox and limit slider are on the same line; slider is greyed out when the checkbox is off.
 
 ---
 

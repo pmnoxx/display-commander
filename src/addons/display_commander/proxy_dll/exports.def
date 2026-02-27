@@ -1,9 +1,12 @@
 EXPORTS
 	; d3d9.dll exports (ordinals match ReShade/d3d9.lib where specified)
+	; https://github.com/wine-mirror/wine/blob/master/dlls/d3d9/d3d9.spec
 	Direct3DCreate9 PRIVATE
 	Direct3DCreate9Ex PRIVATE
 	Direct3DCreate9On12 @20 PRIVATE
 	Direct3DCreate9On12Ex @21 PRIVATE
+	Direct3DShaderValidatorCreate9 PRIVATE
+	DebugSetMute PRIVATE
 	D3DPERF_BeginEvent PRIVATE
 	D3DPERF_EndEvent PRIVATE
 	D3DPERF_GetStatus PRIVATE

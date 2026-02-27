@@ -27,6 +27,9 @@ typedef IDirect3D9*(WINAPI* PFN_Direct3DCreate9On12)(UINT SDKVersion, D3D9ON12_A
                                                      UINT NumOverrideEntries);
 typedef HRESULT(WINAPI* PFN_Direct3DCreate9On12Ex)(UINT SDKVersion, D3D9ON12_ARGS_PROXY* pOverrideList,
                                                    UINT NumOverrideEntries, IDirect3D9Ex** ppOutputInterface);
+// IDirect3DShaderValidator9 not always in d3d9.h; forward as opaque pointer
+typedef void*(WINAPI* PFN_Direct3DShaderValidatorCreate9)(void);
+typedef void(WINAPI* PFN_DebugSetMute)(DWORD dwFlags);
 typedef int(WINAPI* PFN_D3DPERF_BeginEvent)(D3DCOLOR col, LPCWSTR wszName);
 typedef int(WINAPI* PFN_D3DPERF_EndEvent)(void);
 typedef DWORD(WINAPI* PFN_D3DPERF_GetStatus)(void);
@@ -94,6 +97,20 @@ extern "C" HRESULT WINAPI Direct3DCreate9On12Ex(UINT SDKVersion, void* pOverride
     auto func = reinterpret_cast<PFN_Direct3DCreate9On12Ex>(GetProcAddress(g_d3d9_module, "Direct3DCreate9On12Ex"));
     if (func == nullptr) return E_FAIL;
     return func(SDKVersion, static_cast<D3D9ON12_ARGS_PROXY*>(pOverrideList), NumOverrideEntries, ppOutputInterface);
+}
+
+extern "C" void* WINAPI Direct3DShaderValidatorCreate9(void) {
+    if (!LoadRealD3D9()) return nullptr;
+    auto func = reinterpret_cast<PFN_Direct3DShaderValidatorCreate9>(
+        GetProcAddress(g_d3d9_module, "Direct3DShaderValidatorCreate9"));
+    if (func == nullptr) return nullptr;
+    return func();
+}
+
+extern "C" void WINAPI DebugSetMute(DWORD dwFlags) {
+    if (!LoadRealD3D9()) return;
+    auto func = reinterpret_cast<PFN_DebugSetMute>(GetProcAddress(g_d3d9_module, "DebugSetMute"));
+    if (func != nullptr) func(dwFlags);
 }
 
 extern "C" int WINAPI D3DPERF_BeginEvent(D3DCOLOR col, LPCWSTR wszName) {

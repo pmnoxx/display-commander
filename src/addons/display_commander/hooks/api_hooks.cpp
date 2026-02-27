@@ -502,6 +502,9 @@ HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFacto
     HRESULT hr = CreateDXGIFactory2_Original ? CreateDXGIFactory2_Original(Flags, rrid_override, ppFactory)
                                              : CreateDXGIFactory2(Flags, rrid_override, ppFactory);
 
+    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
+        display_commanderhooks::dxgi::HookFactory(static_cast<IDXGIFactory*>(*ppFactory));
+    }
     return hr;
 }
 
@@ -593,6 +596,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
                      : E_FAIL;  // D3D11CreateDeviceAndSwapChain not available
 
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
+    if (FAILED(hr)) {
+        LogError("[D3D11 error] D3D11CreateDeviceAndSwapChain returned 0x%08X", static_cast<unsigned>(hr));
+    }
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
@@ -682,6 +688,9 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
                                             : E_FAIL;  // D3D11CreateDevice not available
 
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
+    if (FAILED(hr)) {
+        LogError("[D3D11 error] D3D11CreateDevice returned 0x%08X", static_cast<unsigned>(hr));
+    }
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
@@ -918,9 +927,6 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
 }
 
 bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
-    if (!enabled_experimental_features) {
-        return true;
-    }
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(d3d11_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(d3d11_module, "ReShadeUnregisterAddon");
@@ -1195,7 +1201,8 @@ bool InstallApiHooks() {
     // Install LoadLibrary hooks
     InstallLoadLibraryHooks();
 
-    // DirectInput and OpenGL hooks are installed via OnModuleLoaded when dinput8.dll, dinput.dll, or opengl32.dll is loaded
+    // DirectInput and OpenGL hooks are installed via OnModuleLoaded when dinput8.dll, dinput.dll, or opengl32.dll is
+    // loaded
 
     // Install display settings hooks
     InstallDisplaySettingsHooks();

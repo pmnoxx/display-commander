@@ -56,6 +56,17 @@ using IDXGIFactory_CreateSwapChain_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIFactor
                                                                      DXGI_SWAP_CHAIN_DESC* pDesc,
                                                                      IDXGISwapChain** ppSwapChain);
 
+// IDXGIFactory1 CreateSwapChainForHwnd / CreateSwapChainForCoreWindow (vtable indices 14, 15)
+using IDXGIFactory1_CreateSwapChainForHwnd_pfn =
+    HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd,
+                                const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+                                IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain);
+using IDXGIFactory1_CreateSwapChainForCoreWindow_pfn =
+    HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow,
+                                const DXGI_SWAP_CHAIN_DESC1* pDesc, IDXGIOutput* pRestrictToOutput,
+                                IDXGISwapChain1** ppSwapChain);
+
 // Additional function pointer types for DXGI methods
 using IDXGISwapChain_GetBuffer_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT Buffer, REFIID riid,
                                                                  void** ppSurface);
@@ -134,6 +145,8 @@ extern IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original;
 extern IDXGISwapChain_GetDesc1_pfn IDXGISwapChain_GetDesc1_Original;
 extern IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceSupport_Original;
 extern IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original;
+extern IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Original;
+extern IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Original;
 
 // Additional original function pointers
 extern IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original;
@@ -207,6 +220,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetHDRMetaData_Detour(IDXGISwapChain4* 
 HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory* This, IUnknown* pDevice,
                                                               DXGI_SWAP_CHAIN_DESC* pDesc,
                                                               IDXGISwapChain** ppSwapChain);
+HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Detour(
+    IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
+    IDXGISwapChain1** ppSwapChain);
+HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(
+    IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain);
 
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain* swapchain);

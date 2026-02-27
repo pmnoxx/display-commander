@@ -105,6 +105,14 @@ void TrackPresentStatistics(SwapChainWrapperStats* stats, std::atomic<uint64_t>&
         }
     }
 }
+// Log DXGI factory/swapchain creation errors (up to 10 per method to avoid spam).
+inline void LogDxgiFactoryErrorUpTo10(const char* method, HRESULT hr, int* pCount) {
+    if (SUCCEEDED(hr) || pCount == nullptr || *pCount >= 10)
+        return;
+    LogError("[DXGI error] %s returned 0x%08X", method, static_cast<unsigned>(hr));
+    (*pCount)++;
+}
+
 }  // anonymous namespace
 
 // Helper function to create a swapchain wrapper from any swapchain interface
@@ -545,6 +553,10 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CH
     }
 
     auto result = m_originalFactory->CreateSwapChain(pDevice, pDesc, ppSwapChain);
+    {
+        static int s_err_count = 0;
+        LogDxgiFactoryErrorUpTo10("IDXGIFactory::CreateSwapChain", result, &s_err_count);
+    }
     if (SUCCEEDED(result)) {
         auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {
@@ -605,6 +617,10 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForHwnd(IUnknown* pDevice, HWND 
 
     auto result = m_originalFactory->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
                                                             ppSwapChain);
+    {
+        static int s_err_count = 0;
+        LogDxgiFactoryErrorUpTo10("IDXGIFactory1::CreateSwapChainForHwnd", result, &s_err_count);
+    }
     if (SUCCEEDED(result)) {
         auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {
@@ -646,6 +662,10 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForCoreWindow(IUnknown* pDevice,
 
     auto result =
         m_originalFactory->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
+    {
+        static int s_err_count = 0;
+        LogDxgiFactoryErrorUpTo10("IDXGIFactory1::CreateSwapChainForCoreWindow", result, &s_err_count);
+    }
     if (SUCCEEDED(result)) {
         auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {
@@ -713,6 +733,10 @@ STDMETHODIMP DXGIFactoryWrapper::CreateSwapChainForComposition(IUnknown* pDevice
     }
 
     auto result = m_originalFactory->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
+    {
+        static int s_err_count = 0;
+        LogDxgiFactoryErrorUpTo10("IDXGIFactory2::CreateSwapChainForComposition", result, &s_err_count);
+    }
     if (SUCCEEDED(result)) {
         auto* swapchain = *ppSwapChain;
         if (swapchain != nullptr) {

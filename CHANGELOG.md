@@ -2,9 +2,16 @@
 
 ---
 
+## v0.12.142 (2026-02-27)
+
+- **D3D11 and DXGI error logging** - When D3D11CreateDevice or D3D11CreateDeviceAndSwapChain fails, the addon now logs `[D3D11 error] <api> returned 0x<hr>` so failures appear in the log. DXGI factory swapchain creation (CreateSwapChain, CreateSwapChainForHwnd, CreateSwapChainForCoreWindow, CreateSwapChainForComposition) in the factory wrapper now logs `[DXGI error] <method> returned 0x<hr>` on failure (up to 10 times per method to avoid spam).
+- **DXGI factory swapchain hooks (CreateSwapChainForHwnd, CreateSwapChainForCoreWindow)** - Added vtable detours for IDXGIFactory1::CreateSwapChainForHwnd and CreateSwapChainForCoreWindow (indices 14 and 15) with the same error logging and swapchain hooking as the existing CreateSwapChain path. Implemented `HookFactory`: when a factory is created via CreateDXGIFactory2, the addon now hooks the factory vtable at CreateSwapChain (10), CreateSwapChainForHwnd (14), and CreateSwapChainForCoreWindow (15). New swapchains created via any of these paths are hooked and get the same DXGI error logging for subsequent calls.
+
+---
+
 ## v0.12.141 (2026-02-27)
 
-- **D3D9 CreateTexture experimental fix** - Experimental fix for CreateTexture (D3D9 pool upgrade / D3D9Ex path). See Experimental tab for related options.
+- **D3D9 CreateTexture experimental fix** - Experimental fix for CreateTexture (D3D9 pool upgrade / D3D9Ex path).
 
 ---
 

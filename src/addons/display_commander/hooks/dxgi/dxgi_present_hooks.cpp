@@ -320,6 +320,8 @@ IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original = nullptr;
 IDXGISwapChain_GetDesc1_pfn IDXGISwapChain_GetDesc1_Original = nullptr;
 IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceSupport_Original = nullptr;
 IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original = nullptr;
+IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Original = nullptr;
+IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Original = nullptr;
 
 // Additional original function pointers
 IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original = nullptr;
@@ -371,6 +373,11 @@ IDXGIOutput6_GetDesc1_pfn IDXGIOutput6_GetDesc1_Original = nullptr;
 namespace {
 std::atomic<bool> g_dxgi_present_hooks_installed{false};
 std::atomic<bool> g_createswapchain_vtable_hooked{false};
+
+// Factory vtable hooks (idempotent per process - all IDXGIFactory1 share same vtable)
+std::atomic<bool> g_factory_create_swapchain_hooked{false};
+std::atomic<bool> g_factory_create_swapchain_for_hwnd_hooked{false};
+std::atomic<bool> g_factory_create_swapchain_for_core_window_hooked{false};
 
 // Track the last native swapchain used in OnPresentUpdateBefore
 std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
@@ -750,6 +757,135 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Detour(IDXGIFactory* This
 
     // Fallback to direct call if hook failed
     return This->CreateSwapChain(pDevice, pDesc, ppSwapChain);
+}
+
+// IDXGIFactory1::CreateSwapChainForHwnd (vtable index 14). Log errors and hook new swapchain on success.
+HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Detour(
+    IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
+    IDXGISwapChain1** ppSwapChain) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    if (IDXGIFactory1_CreateSwapChainForHwnd_Original == nullptr) {
+        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
+        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
+            return factory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+        return E_NOINTERFACE;
+    }
+    HRESULT hr =
+        IDXGIFactory1_CreateSwapChainForHwnd_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                                      ppSwapChain);
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForHwnd", hr, &s_err_count);
+    }
+    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
+        LogInfo("IDXGIFactory1::CreateSwapChainForHwnd succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
+        HookSwapchain(*ppSwapChain);
+    }
+    return hr;
+}
+
+// IDXGIFactory1::CreateSwapChainForCoreWindow (vtable index 15). Log errors and hook new swapchain on success.
+HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(
+    IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
+
+    if (IDXGIFactory1_CreateSwapChainForCoreWindow_Original == nullptr) {
+        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
+        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
+            return factory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
+        return E_NOINTERFACE;
+    }
+    HRESULT hr = IDXGIFactory1_CreateSwapChainForCoreWindow_Original(This, pDevice, pWindow, pDesc, pRestrictToOutput,
+                                                                     ppSwapChain);
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForCoreWindow", hr, &s_err_count);
+    }
+    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
+        LogInfo("IDXGIFactory1::CreateSwapChainForCoreWindow succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
+        HookSwapchain(*ppSwapChain);
+    }
+    return hr;
+}
+
+// IDXGIFactory vtable indices (IDXGIFactory base: 10=CreateSwapChain; IDXGIFactory1: 14=CreateSwapChainForHwnd,
+// 15=CreateSwapChainForCoreWindow)
+static constexpr int kIDXGIFactory_CreateSwapChain = 10;
+static constexpr int kIDXGIFactory1_CreateSwapChainForHwnd = 14;
+static constexpr int kIDXGIFactory1_CreateSwapChainForCoreWindow = 15;
+
+bool HookFactory(IDXGIFactory* factory) {
+    if (factory == nullptr) {
+        return false;
+    }
+    if (g_dx9_swapchain_detected.load()) {
+        return false;
+    }
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::DXGI_SWAPCHAIN)) {
+        return false;
+    }
+    IDXGIFactory1* factory1 = nullptr;
+    HRESULT hr = factory->QueryInterface(IID_PPV_ARGS(&factory1));
+    if (FAILED(hr) || factory1 == nullptr) {
+        LogInfo("HookFactory: factory does not support IDXGIFactory1, hooking CreateSwapChain only");
+    }
+    void** vtable = *reinterpret_cast<void***>(factory);
+
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("HookFactory: MinHook init failed: %d", init_status);
+        return false;
+    }
+
+    bool any_hooked = false;
+
+    if (!g_factory_create_swapchain_hooked.load(std::memory_order_relaxed)) {
+        if (IsVTableEntryValid(vtable, kIDXGIFactory_CreateSwapChain)) {
+            if (CreateAndEnableHook(vtable[kIDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Detour,
+                                    reinterpret_cast<LPVOID*>(&IDXGIFactory_CreateSwapChain_Original),
+                                    "IDXGIFactory::CreateSwapChain")) {
+                g_factory_create_swapchain_hooked.store(true, std::memory_order_relaxed);
+                LogInfo("HookFactory: IDXGIFactory::CreateSwapChain hooked");
+                any_hooked = true;
+            }
+        }
+    }
+
+    if (factory1 != nullptr) {
+        if (!g_factory_create_swapchain_for_hwnd_hooked.load(std::memory_order_relaxed)
+            && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForHwnd)) {
+            if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForHwnd],
+                                    IDXGIFactory1_CreateSwapChainForHwnd_Detour,
+                                    reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Original),
+                                    "IDXGIFactory1::CreateSwapChainForHwnd")) {
+                g_factory_create_swapchain_for_hwnd_hooked.store(true, std::memory_order_relaxed);
+                LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
+                any_hooked = true;
+            }
+        }
+        if (!g_factory_create_swapchain_for_core_window_hooked.load(std::memory_order_relaxed)
+            && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForCoreWindow)) {
+            if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForCoreWindow],
+                                    IDXGIFactory1_CreateSwapChainForCoreWindow_Detour,
+                                    reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Original),
+                                    "IDXGIFactory1::CreateSwapChainForCoreWindow")) {
+                g_factory_create_swapchain_for_core_window_hooked.store(true, std::memory_order_relaxed);
+                LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
+                any_hooked = true;
+            }
+        }
+        factory1->Release();
+    }
+
+    return any_hooked;
 }
 
 // Additional DXGI detour functions

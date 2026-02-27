@@ -1,5 +1,18 @@
 #pragma once
 
+// IDirect3D9 / IDirect3D9Ex vtable indices (factory; used to hook CreateDevice/CreateDeviceEx).
+// Order matches Windows d3d9.h: IUnknown 0-2, then IDirect3D9 methods, then IDirect3D9Ex::CreateDeviceEx.
+namespace display_commanderhooks::d3d9 {
+
+enum D3D9FactoryVTable : unsigned int {
+    // IDirect3D9 ends at CreateDevice = 16
+    CreateDevice = 16,
+    // IDirect3D9Ex adds CreateDeviceEx at 17
+    CreateDeviceEx = 17,
+};
+
+}  // namespace display_commanderhooks::d3d9
+
 // IDirect3DDevice9 / IDirect3DDevice9Ex vtable indices.
 // Order matches Windows d3d9.h and ReShade's declaration order.
 // ReShade does not use numeric indices for D3D9; it wraps the device (Direct3DDevice9 : IDirect3DDevice9Ex).

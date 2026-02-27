@@ -2,6 +2,18 @@
 
 ---
 
+## v0.12.135 (2026-02-27)
+
+- **D3D9 FPS limiter in no-ReShade mode** - When the addon is used without ReShade (e.g. standalone or proxy d3d9), D3D9 device creation is now hooked via Direct3DCreate9/Direct3DCreate9Ex and IDirect3D9::CreateDevice / IDirect3D9Ex::CreateDeviceEx. The first created device gets Present/PresentEx and vtable hooks, so the FPS limiter works for D3D9 games even when ReShade is not loaded. The FPS counter does not work in this mode (it relies on ReShade swapchain/overlay); only the limiter is active.
+
+---
+
+## v0.12.134 (2026-02-27)
+
+- **VRAM info: create DXGI factory and adapter once** - `GetVramInfo` (used by Main tab and overlay for VRAM used/total) no longer calls `CreateDXGIFactory1` and `EnumAdapters1` every frame. It now uses the shared DXGI factory and caches the first adapter (IDXGIAdapter3); only `QueryVideoMemoryInfo` runs per query. Cache is thread-safe (SRWLOCK) and is cleared on query failure (e.g. device removed) so the next call re-creates the adapter.
+
+---
+
 ## v0.12.133 (2026-02-27)
 
 - **D3D9 device error logging (59 methods)** - Hook all HRESULT-returning IDirect3DDevice9/IDirect3DDevice9Ex methods and log every failure; on first failure per method also log full arguments and HRESULT name (e.g. D3DERR_INVALIDCALL). Covers Reset, BeginScene, EndScene, Clear, TestCooperativeLevel, CreateAdditionalSwapChain, GetBackBuffer, GetSwapChain, all Create* (texture, VB, IB, render target, depth stencil, offscreen surface, state block, vertex declaration, vertex/pixel shader, query), UpdateSurface, UpdateTexture, GetRenderTargetData, GetFrontBufferData, StretchRect, ColorFill, SetRenderTarget, GetRenderTarget, SetDepthStencilSurface, GetDepthStencilSurface, CreateStateBlock, BeginStateBlock, EndStateBlock, SetStreamSource, SetIndices, SetVertexDeclaration, SetFVF, SetStreamSourceFreq, DrawPrimitive, DrawIndexedPrimitive, DrawPrimitiveUP, DrawIndexedPrimitiveUP, ProcessVertices, SetViewport, SetTransform, SetRenderState, GetTexture, SetTexture, SetVertexShader, SetPixelShader, and Device9Ex: CheckDeviceState, CreateRenderTargetEx, CreateOffscreenPlainSurfaceEx, CreateDepthStencilSurfaceEx, ResetEx, GetDisplayModeEx. Plan and optional future methods documented in `docs/tasks/d3d9_error_logging_plan.md`.

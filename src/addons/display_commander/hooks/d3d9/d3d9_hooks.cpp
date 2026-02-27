@@ -1,19 +1,144 @@
 #include "d3d9_hooks.hpp"
+#include "d3d9_present_hooks.hpp"
+#include "d3d9_device_vtable_logging.hpp"
+#include "d3d9_vtable_indices.hpp"
 #include "../../globals.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 
+#include <d3d9.h>
+#include <MinHook.h>
 #include <atomic>
 
 namespace display_commanderhooks::d3d9 {
 
 std::atomic<bool> g_dx9_hooks_installed{false};
 
-bool InstallDX9Hooks(HMODULE hModule) {
-    if (true) {
-        // disabled for now
-        LogInfo("InstallDX9Hooks: D3D9 hooks disabled for now");
-        return true;
+namespace {
+
+// Direct3DCreate9 / Direct3DCreate9Ex export types
+using Direct3DCreate9_pfn = IDirect3D9*(WINAPI*)(UINT SDKVersion);
+using Direct3DCreate9Ex_pfn = HRESULT(WINAPI*)(UINT SDKVersion, IDirect3D9Ex** ppD3D);
+
+// IDirect3D9::CreateDevice and IDirect3D9Ex::CreateDeviceEx (STDMETHODCALLTYPE = __stdcall)
+using CreateDevice_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3D9* This, UINT Adapter, D3DDEVTYPE DeviceType,
+                                                     HWND hFocusWindow, DWORD BehaviorFlags,
+                                                     D3DPRESENT_PARAMETERS* pPresentationParameters,
+                                                     IDirect3DDevice9** ppReturnedDeviceInterface);
+using CreateDeviceEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType,
+                                                      HWND hFocusWindow, DWORD BehaviorFlags,
+                                                      D3DPRESENT_PARAMETERS* pPresentationParameters,
+                                                      D3DDISPLAYMODEEX* pFullscreenDisplayMode,
+                                                      IDirect3DDevice9Ex** ppReturnedDeviceInterface);
+
+Direct3DCreate9_pfn Direct3DCreate9_Original = nullptr;
+Direct3DCreate9Ex_pfn Direct3DCreate9Ex_Original = nullptr;
+CreateDevice_pfn CreateDevice_Original = nullptr;
+CreateDeviceEx_pfn CreateDeviceEx_Original = nullptr;
+
+std::atomic<bool> g_d3d9_factory_create_device_hooked{false};
+std::atomic<bool> g_d3d9_factory_create_device_ex_hooked{false};
+
+void OnD3D9DeviceCreated(IDirect3DDevice9* device) {
+    if (device == nullptr) {
+        return;
     }
+    RecordPresentUpdateDevice(device);
+    if (HookD3D9Present(device)) {
+        LogInfo("InstallDX9Hooks: D3D9 Present hooks installed for device 0x%p", static_cast<void*>(device));
+    }
+    InstallD3D9DeviceVtableLogging(device);
+}
+
+// Detour for IDirect3D9::CreateDevice - after successful device creation, hook the device
+HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3DDEVTYPE DeviceType,
+                                              HWND hFocusWindow, DWORD BehaviorFlags,
+                                              D3DPRESENT_PARAMETERS* pPresentationParameters,
+                                              IDirect3DDevice9** ppReturnedDeviceInterface) {
+    if (CreateDevice_Original == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+    HRESULT hr = CreateDevice_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                      pPresentationParameters, ppReturnedDeviceInterface);
+    if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
+        OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
+    }
+    return hr;
+}
+
+// Detour for IDirect3D9Ex::CreateDeviceEx - after successful device creation, hook the device
+HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType,
+                                                HWND hFocusWindow, DWORD BehaviorFlags,
+                                                D3DPRESENT_PARAMETERS* pPresentationParameters,
+                                                D3DDISPLAYMODEEX* pFullscreenDisplayMode,
+                                                IDirect3DDevice9Ex** ppReturnedDeviceInterface) {
+    if (CreateDeviceEx_Original == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+    HRESULT hr = CreateDeviceEx_Original(This, Adapter, DeviceType, hFocusWindow, BehaviorFlags,
+                                         pPresentationParameters, pFullscreenDisplayMode,
+                                         ppReturnedDeviceInterface);
+    if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
+        OnD3D9DeviceCreated(*ppReturnedDeviceInterface);
+    }
+    return hr;
+}
+
+// Hook the factory's CreateDevice (and optionally CreateDeviceEx) vtable slots. Idempotent per vtable.
+void HookD3D9FactoryVtable(IDirect3D9* d3d9, bool isEx) {
+    if (d3d9 == nullptr) {
+        return;
+    }
+    void** vtable = *reinterpret_cast<void***>(d3d9);
+
+    if (!g_d3d9_factory_create_device_hooked.load(std::memory_order_relaxed)) {
+        void* createDeviceTarget = vtable[D3D9FactoryVTable::CreateDevice];
+        if (createDeviceTarget != nullptr &&
+            CreateAndEnableHook(createDeviceTarget, reinterpret_cast<LPVOID>(&CreateDevice_Detour),
+                                reinterpret_cast<LPVOID*>(&CreateDevice_Original),
+                                "IDirect3D9::CreateDevice")) {
+            g_d3d9_factory_create_device_hooked.store(true, std::memory_order_relaxed);
+            LogInfo("InstallDX9Hooks: IDirect3D9::CreateDevice hooked");
+        }
+    }
+
+    if (isEx && !g_d3d9_factory_create_device_ex_hooked.load(std::memory_order_relaxed)) {
+        void* createDeviceExTarget = vtable[D3D9FactoryVTable::CreateDeviceEx];
+        if (createDeviceExTarget != nullptr &&
+            CreateAndEnableHook(createDeviceExTarget, reinterpret_cast<LPVOID>(&CreateDeviceEx_Detour),
+                                reinterpret_cast<LPVOID*>(&CreateDeviceEx_Original),
+                                "IDirect3D9Ex::CreateDeviceEx")) {
+            g_d3d9_factory_create_device_ex_hooked.store(true, std::memory_order_relaxed);
+            LogInfo("InstallDX9Hooks: IDirect3D9Ex::CreateDeviceEx hooked");
+        }
+    }
+}
+
+IDirect3D9* WINAPI Direct3DCreate9_Detour(UINT SDKVersion) {
+    if (Direct3DCreate9_Original == nullptr) {
+        return nullptr;
+    }
+    IDirect3D9* d3d9 = Direct3DCreate9_Original(SDKVersion);
+    if (d3d9 != nullptr) {
+        HookD3D9FactoryVtable(d3d9, false);
+    }
+    return d3d9;
+}
+
+HRESULT WINAPI Direct3DCreate9Ex_Detour(UINT SDKVersion, IDirect3D9Ex** ppD3D) {
+    if (Direct3DCreate9Ex_Original == nullptr || ppD3D == nullptr) {
+        return E_FAIL;
+    }
+    HRESULT hr = Direct3DCreate9Ex_Original(SDKVersion, ppD3D);
+    if (SUCCEEDED(hr) && *ppD3D != nullptr) {
+        HookD3D9FactoryVtable(*ppD3D, true);
+    }
+    return hr;
+}
+
+}  // namespace
+
+bool InstallDX9Hooks(HMODULE hModule) {
     if (g_dx9_hooks_installed.load(std::memory_order_relaxed)) {
         LogInfo("InstallDX9Hooks: D3D9 hooks already installed");
         return true;
@@ -29,7 +154,31 @@ bool InstallDX9Hooks(HMODULE hModule) {
         return false;
     }
 
-    LogInfo("InstallDX9Hooks: d3d9.dll loaded (0x%p), D3D9 hook state ready", hModule);
+    auto* pDirect3DCreate9 =
+        reinterpret_cast<LPVOID>(GetProcAddress(hModule, "Direct3DCreate9"));
+    if (pDirect3DCreate9 == nullptr) {
+        LogWarn("InstallDX9Hooks: Direct3DCreate9 not found in d3d9.dll");
+        return false;
+    }
+
+    if (!CreateAndEnableHook(pDirect3DCreate9, reinterpret_cast<LPVOID>(&Direct3DCreate9_Detour),
+                            reinterpret_cast<LPVOID*>(&Direct3DCreate9_Original), "Direct3DCreate9")) {
+        LogWarn("InstallDX9Hooks: Direct3DCreate9 hook failed");
+        return false;
+    }
+
+    auto* pDirect3DCreate9Ex =
+        reinterpret_cast<LPVOID>(GetProcAddress(hModule, "Direct3DCreate9Ex"));
+    if (pDirect3DCreate9Ex != nullptr) {
+        if (CreateAndEnableHook(pDirect3DCreate9Ex, reinterpret_cast<LPVOID>(&Direct3DCreate9Ex_Detour),
+                               reinterpret_cast<LPVOID*>(&Direct3DCreate9Ex_Original), "Direct3DCreate9Ex")) {
+            LogInfo("InstallDX9Hooks: Direct3DCreate9Ex hooked");
+        }
+    } else {
+        LogInfo("InstallDX9Hooks: Direct3DCreate9Ex not present (optional, Vista+)");
+    }
+
+    LogInfo("InstallDX9Hooks: d3d9.dll hooked (CreateDevice/CreateDeviceEx will hook on first factory)");
     g_dx9_hooks_installed.store(true, std::memory_order_relaxed);
     return true;
 }
@@ -39,6 +188,12 @@ void UninstallDX9Hooks() {
         return;
     }
     g_dx9_hooks_installed.store(false, std::memory_order_relaxed);
+    g_d3d9_factory_create_device_hooked.store(false, std::memory_order_relaxed);
+    g_d3d9_factory_create_device_ex_hooked.store(false, std::memory_order_relaxed);
+    Direct3DCreate9_Original = nullptr;
+    Direct3DCreate9Ex_Original = nullptr;
+    CreateDevice_Original = nullptr;
+    CreateDeviceEx_Original = nullptr;
     LogInfo("UninstallDX9Hooks: D3D9 hook state cleared");
 }
 

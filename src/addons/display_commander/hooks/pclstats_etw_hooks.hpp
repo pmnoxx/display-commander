@@ -1,11 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include <windows.h>
 
 /** Install hooks on advapi32 EventRegister + EventWriteTransfer to count PCLStats ETW events
  *  (PCLStatsEvent, PCLStatsEventV2, PCLStatsEventV3) from any caller (game or Display Commander).
  */
-bool InstallPCLStatsEtwHooks();
+bool InstallPCLStatsEtwHooks(HMODULE hModule);
 
 void UninstallPCLStatsEtwHooks();
 

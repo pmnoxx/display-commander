@@ -41,7 +41,7 @@ extern wglSwapIntervalEXT_pfn wglSwapIntervalEXT_Original;
 extern wglGetSwapIntervalEXT_pfn wglGetSwapIntervalEXT_Original;
 
 // Hook installation/uninstallation functions
-bool InstallOpenGLHooks();
+bool InstallOpenGLHooks(HMODULE hModule);
 void UninstallOpenGLHooks();
 bool AreOpenGLHooksInstalled();
 

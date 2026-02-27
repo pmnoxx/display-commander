@@ -187,17 +187,16 @@ ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle, PCEVENT_DESCRIPTOR E
 
 }  // namespace
 
-bool InstallPCLStatsEtwHooks() {
+bool InstallPCLStatsEtwHooks(HMODULE hModule) {
     if (g_pclstats_etw_hooks_installed.load(std::memory_order_acquire)) {
         return true;
     }
-    HMODULE advapi = GetModuleHandleW(L"advapi32.dll");
-    if (advapi == nullptr) {
-        LogInfo("PCLStats ETW: advapi32.dll not loaded");
+    if (hModule == nullptr) {
+        LogInfo("PCLStats ETW: null module handle");
         return false;
     }
-    auto* pEventRegister = reinterpret_cast<EventRegister_pfn>(GetProcAddress(advapi, "EventRegister"));
-    auto* pEventWriteTransfer = reinterpret_cast<EventWriteTransfer_pfn>(GetProcAddress(advapi, "EventWriteTransfer"));
+    auto* pEventRegister = reinterpret_cast<EventRegister_pfn>(GetProcAddress(hModule, "EventRegister"));
+    auto* pEventWriteTransfer = reinterpret_cast<EventWriteTransfer_pfn>(GetProcAddress(hModule, "EventWriteTransfer"));
     if (pEventRegister == nullptr || pEventWriteTransfer == nullptr) {
         LogInfo("PCLStats ETW: EventRegister or EventWriteTransfer not found");
         return false;

@@ -23,13 +23,9 @@ bool SetMuteForCurrentProcess(bool mute, bool trigger_notification);
 bool SetVolumeForCurrentProcess(float volume_0_100);
 void RunBackgroundAudioMonitor();
 
-// Forward declarations that depend on enums
-DxgiBypassMode GetIndependentFlipState(IDXGISwapChain* dxgi_swapchain);
-
 // Command list and queue lifecycle hooks (declared in swapchain_events.hpp)
 
 // Function declarations
-const char* DxgiBypassModeToString(DxgiBypassMode mode);
 void ApplyWindowChange(HWND hwnd, const char* reason = "unknown", bool force_apply = false);
 bool ShouldApplyWindowedForBackbuffer(int desired_w, int desired_h);
 
@@ -43,8 +39,6 @@ bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks
 
 // Swapchain event handlers (declared in swapchain_events.hpp)
-
-// Note: GetIndependentFlipState is implemented in the .cpp file as it's complex
 
 // Power saving settings and swapchain utilities (declared in swapchain_events.hpp)
 

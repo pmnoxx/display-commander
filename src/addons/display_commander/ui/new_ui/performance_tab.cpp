@@ -142,11 +142,6 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
             settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled,
             "##perf_enqueue_gpu_completion", settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion,
             "##suppress_enqueue_gpu_completion");
-        row("GetIndependentFlipState", perf_measurement::Metric::GetIndependentFlipState,
-            settings::g_experimentalTabSettings.perf_measure_get_independent_flip_state_enabled,
-            "##perf_get_independent_flip_state",
-            settings::g_experimentalTabSettings.perf_suppress_get_independent_flip_state,
-            "##suppress_get_independent_flip_state");
 
         imgui.EndTable();
     }

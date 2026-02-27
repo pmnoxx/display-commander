@@ -1279,23 +1279,6 @@ void DrawDLSSGSummaryContent(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DrawDxgiCompositionInfo(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.CollapsingHeader("DXGI Composition Information", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
-        const char* mode_str = "Unknown";
-        const reshade::api::device_api current_api = g_last_reshade_device_api.load();
-        DxgiBypassMode flip_state = GetFlipStateForAPI(current_api);
-
-        switch (flip_state) {
-            case DxgiBypassMode::kUnset:                    mode_str = "Unset"; break;
-            case DxgiBypassMode::kComposed:                 mode_str = "Composed Flip"; break;
-            case DxgiBypassMode::kOverlay:                  mode_str = "Modern Independent Flip"; break;
-            case DxgiBypassMode::kIndependentFlip:          mode_str = "Legacy Independent Flip"; break;
-            case DxgiBypassMode::kQueryFailedSwapchainNull: mode_str = "Query Failed: Swapchain Null"; break;
-            case DxgiBypassMode::kQueryFailedNoMedia:       mode_str = "Query Failed: No Media Interface"; break;
-            case DxgiBypassMode::kQueryFailedNoSwapchain1:  mode_str = "Query Failed: No Swapchain1"; break;
-            case DxgiBypassMode::kQueryFailedNoStats:       mode_str = "Query Failed: No Statistics"; break;
-            case DxgiBypassMode::kUnknown:
-            default:                                        mode_str = "Unknown"; break;
-        }
-
         // Get backbuffer format
         std::string format_str = "Unknown";
 
@@ -1315,7 +1298,6 @@ void DrawDxgiCompositionInfo(display_commander::ui::IImGuiWrapper& imgui) {
               }
           }*/
 
-        imgui.Text("DXGI Composition: %s", mode_str);
         imgui.Text("Backbuffer: %dx%d", g_last_backbuffer_width.load(), g_last_backbuffer_height.load());
         imgui.Text("Format: %s", format_str.c_str());
         // imgui.Text("Colorspace: %s", colorspace_str.c_str());

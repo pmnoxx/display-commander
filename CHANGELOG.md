@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.128 (2026-02-27)
+
+- **DXGI flip state removal** - Removed `GetIndependentFlipState`, `DxgiBypassMode`, and `GetFlipStateForAPI`. DXGI flip state is no longer queried or shown in the main tab, swapchain tab, overlay, or Reflex section. PresentMon still reports flip state from ETW using a simpler `PresentMonFlipMode` enum (Unset, Composed, Overlay, IndependentFlip, Unknown) in the PresentMon ETW subsection only.
+
+---
+
 ## v0.12.127 (2026-02-27)
 
 - **Fix D3D9 device vtable logging crash** - Install D3D9 device vtable logging (CreateTexture, CreateRenderTarget, etc.) only when Present hooks were installed successfully (i.e. when the device is IDirect3DDevice9Ex). On base IDirect3DDevice9 the device from ReShade's get_native() can be a proxy whose vtable layout may not match, causing ACCESS_VIOLATION in the game (e.g. Assassin's Creed Brotherhood). Vtable logging is now skipped for non-Ex D3D9 devices.

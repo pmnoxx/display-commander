@@ -152,7 +152,6 @@ class ExperimentalTabSettings {
     BoolSetting perf_measure_handle_present_after_enabled;
     BoolSetting perf_measure_flush_command_queue_from_swapchain_enabled;
     BoolSetting perf_measure_enqueue_gpu_completion_enabled;
-    BoolSetting perf_measure_get_independent_flip_state_enabled;
     BoolSetting perf_measure_on_present_update_before_enabled;
 
     // Performance suppression (debug) - default off
@@ -171,7 +170,6 @@ class ExperimentalTabSettings {
     BoolSetting perf_suppress_handle_present_after;
     BoolSetting perf_suppress_flush_command_queue_from_swapchain;
     BoolSetting perf_suppress_enqueue_gpu_completion;
-    BoolSetting perf_suppress_get_independent_flip_state;
     BoolSetting perf_suppress_on_present_update_before;
 
     // Show volume overlay setting

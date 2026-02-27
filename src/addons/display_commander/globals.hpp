@@ -294,17 +294,6 @@ extern std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory
 Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 
 // Enums
-enum class DxgiBypassMode : std::uint8_t {
-    kUnset,                     // Initial state, not yet queried
-    kUnknown,                   // Query succeeded but unknown composition mode
-    kComposed,                  // Composed presentation mode
-    kOverlay,                   // Hardware overlay (MPO) presentation mode
-    kIndependentFlip,           // Independent flip presentation mode
-    kQueryFailedSwapchainNull,  // Query failed: swapchain is null
-    kQueryFailedNoSwapchain1,   // Query failed: IDXGISwapChain1 not available
-    kQueryFailedNoMedia,        // Query failed: IDXGISwapChainMedia not available
-    kQueryFailedNoStats         // Query failed: GetFrameStatisticsMedia failed
-};
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
 enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kDisabled = 2, kLatentSync = 3 };
 enum class WindowMode : std::uint8_t { kNoChanges = 0, kFullscreen = 1, kAspectRatio = 2 };
@@ -543,8 +532,6 @@ extern std::atomic<bool> g_dx9_swapchain_detected;
 
 // Window Management Settings
 extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment when repositioning is needed
-extern std::atomic<DxgiBypassMode> s_dxgi_composition_state;
-
 // Mouse position spoofing for auto-click sequences
 extern std::atomic<bool> s_spoof_mouse_position;
 extern std::atomic<int> s_spoofed_mouse_x;
@@ -606,7 +593,6 @@ void EnumerateReShadeRuntimes(EnumerateReShadeRuntimesCallback callback, void* u
 
 // Atomic variables
 extern std::atomic<int> g_comp_query_counter;
-extern std::atomic<DxgiBypassMode> g_comp_last_logged;
 extern std::atomic<void*>
     g_last_swapchain_ptr_unsafe;  // Using void* to avoid reshade dependency // TODO: unsafe remove later
 extern std::atomic<reshade::api::device_api> g_last_reshade_device_api;
@@ -872,9 +858,6 @@ void UpdateHdr10OverrideStatus(const std::string& status);
 
 // Helper function for updating HDR10 override timestamp atomically
 void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
-
-// Helper function to get flip state based on API type
-DxgiBypassMode GetFlipStateForAPI(reshade::api::device_api api);
 
 // Performance optimization settings
 extern std::atomic<LONGLONG> g_flush_before_present_time_ns;

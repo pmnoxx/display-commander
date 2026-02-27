@@ -2,12 +2,12 @@
 
 #include "../globals.hpp"
 
-#include <atomic>
-#include <thread>
-#include <windows.h>
 #include <evntrace.h>
-#include <string>
+#include <windows.h>
+#include <atomic>
 #include <cstdint>
+#include <string>
+#include <thread>
 #include <vector>
 
 namespace presentmon {
@@ -22,7 +22,7 @@ struct PresentMonEventTypeSummary {
     uint8_t level;
     uint64_t keyword;
     std::string event_name;
-    std::string props; // comma-separated property names (or name=? markers)
+    std::string props;  // comma-separated property names (or name=? markers)
     uint64_t count;
 };
 
@@ -50,7 +50,7 @@ struct PresentMonSurfaceCompatibilitySummary {
     uint64_t surface_luid = 0;
     uint64_t last_update_time_ns = 0;
     uint64_t count = 0;
-    uint64_t hwnd = 0; // 0 if unknown
+    uint64_t hwnd = 0;  // 0 if unknown
 
     uint32_t surface_width = 0;
     uint32_t surface_height = 0;
@@ -65,13 +65,24 @@ struct PresentMonSurfaceCompatibilitySummary {
     bool no_overlapping_content = false;
 };
 
+// Simpler flip mode for PresentMon (no DXGI query-failure variants)
+enum class PresentMonFlipMode : std::uint8_t {
+    Unset,
+    Composed,
+    Overlay,
+    IndependentFlip,
+    Unknown
+};
+
+const char* PresentMonFlipModeToString(PresentMonFlipMode mode);
+
 // PresentMon flip state information
 struct PresentMonFlipState {
-    DxgiBypassMode flip_mode;
+    PresentMonFlipMode flip_mode;
     bool is_valid;
-    uint64_t last_update_time;  // QPC timestamp
+    uint64_t last_update_time;     // QPC timestamp
     std::string present_mode_str;  // e.g., "Hardware Independent Flip", "Composed Flip"
-    std::string debug_info;  // Additional debug information
+    std::string debug_info;        // Additional debug information
 };
 
 // PresentMon debug information
@@ -115,7 +126,7 @@ struct PresentMonDebugInfo {
 // PresentMon manager for ETW-based presentation tracking
 // Similar to Special-K's PresentMon integration
 class PresentMonManager {
-public:
+   public:
     PresentMonManager();
     ~PresentMonManager();
 
@@ -145,7 +156,8 @@ public:
     bool GetFlipCompatibility(PresentMonFlipCompatibility& out) const;
 
     // Recent DWM flip-compatibility surfaces (best-effort)
-    void GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out, uint64_t within_ms) const;
+    void GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out,
+                                            uint64_t within_ms) const;
 
     // Get list of ETW sessions starting with specified prefix (e.g., "DC_")
     static void GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names);
@@ -156,18 +168,19 @@ public:
     // Stop all ETW sessions starting with DC_ (used at start to clear the deck before creating ours)
     static void StopAllDcEtwSessions();
 
-    // Stop all DC_ ETW sessions except the one with the given name (used when no events for 10s to clear conflicting sessions)
+    // Stop all DC_ ETW sessions except the one with the given name (used when no events for 10s to clear conflicting
+    // sessions)
     static void StopOtherDcEtwSessions(const wchar_t* our_session_name);
 
     // Update flip state (called from ETW consumer thread when implemented)
-    void UpdateFlipState(DxgiBypassMode mode, const std::string& present_mode_str, const std::string& debug_info = "");
+    void UpdateFlipState(PresentMonFlipMode mode, const std::string& present_mode_str,
+                         const std::string& debug_info = "");
 
     // Update debug information
-    void UpdateDebugInfo(const std::string& thread_status, const std::string& etw_status,
-                        const std::string& error = "", uint64_t events_processed = 0,
-                        uint64_t events_lost = 0);
+    void UpdateDebugInfo(const std::string& thread_status, const std::string& etw_status, const std::string& error = "",
+                         uint64_t events_processed = 0, uint64_t events_lost = 0);
 
-private:
+   private:
     // Worker thread function
     static void WorkerThread(PresentMonManager* manager);
 
@@ -192,7 +205,7 @@ private:
 
     // Event type cache (fixed-size, lock-free-ish; updated from ETW thread)
     struct EventTypeEntry {
-        std::atomic<uint64_t> key_hash{0}; // 0 = empty
+        std::atomic<uint64_t> key_hash{0};  // 0 = empty
         std::atomic<uint64_t> count{0};
         uint16_t event_id{0};
         uint16_t task{0};
@@ -222,7 +235,7 @@ private:
     std::atomic<bool> m_should_stop;
 
     // Flip state tracking (thread-safe)
-    mutable std::atomic<DxgiBypassMode> m_flip_mode;
+    mutable std::atomic<PresentMonFlipMode> m_flip_mode;
     mutable std::atomic<bool> m_flip_state_valid;
     mutable std::atomic<uint64_t> m_flip_state_update_time;
     mutable std::atomic<std::string*> m_present_mode_str;
@@ -280,7 +293,7 @@ private:
 
     // Recent surface cache (fixed-size, lock-free-ish)
     struct SurfaceEntry {
-        std::atomic<uint64_t> key_hash{0}; // 0 = empty
+        std::atomic<uint64_t> key_hash{0};  // 0 = empty
         std::atomic<uint64_t> surface_luid{0};
         std::atomic<uint64_t> last_update_ns{0};
         std::atomic<uint64_t> count{0};
@@ -322,4 +335,3 @@ private:
 extern PresentMonManager g_presentMonManager;
 
 }  // namespace presentmon
-

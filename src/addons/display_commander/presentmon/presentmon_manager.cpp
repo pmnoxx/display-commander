@@ -3,7 +3,6 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 
-
 #include <evntrace.h>
 #include <strsafe.h>
 #include <tdh.h>
@@ -11,7 +10,6 @@
 #include <cctype>
 #include <cstdlib>
 #include <memory>
-
 
 namespace presentmon {
 
@@ -88,17 +86,17 @@ bool StringContainsI(const std::string& haystack, const char* needle) {
     return h.find(n) != std::string::npos;
 }
 
-DxgiBypassMode MapPresentModeStringToFlip(const std::string& s) {
+PresentMonFlipMode MapPresentModeStringToFlip(const std::string& s) {
     if (StringContainsI(s, "overlay") || StringContainsI(s, "mpo")) {
-        return DxgiBypassMode::kOverlay;
+        return PresentMonFlipMode::Overlay;
     }
     if (StringContainsI(s, "independent")) {
-        return DxgiBypassMode::kIndependentFlip;
+        return PresentMonFlipMode::IndependentFlip;
     }
     if (StringContainsI(s, "composed")) {
-        return DxgiBypassMode::kComposed;
+        return PresentMonFlipMode::Composed;
     }
-    return DxgiBypassMode::kUnknown;
+    return PresentMonFlipMode::Unknown;
 }
 
 // Extract property value as UTF-8 string using TDH, if present.
@@ -277,10 +275,21 @@ static ULONGLONG GetProviderKeywordMaskBestEffort(const GUID& provider_guid) {
 
 }  // namespace
 
+const char* PresentMonFlipModeToString(PresentMonFlipMode mode) {
+    switch (mode) {
+        case PresentMonFlipMode::Unset: return "Unset";
+        case PresentMonFlipMode::Composed: return "Composed";
+        case PresentMonFlipMode::Overlay: return "Hardware Overlay (MPO)";
+        case PresentMonFlipMode::IndependentFlip: return "Independent Flip";
+        case PresentMonFlipMode::Unknown: return "Unknown";
+        default: return "Unknown";
+    }
+}
+
 PresentMonManager::PresentMonManager()
     : m_running(false),
       m_should_stop(false),
-      m_flip_mode(DxgiBypassMode::kUnset),
+      m_flip_mode(PresentMonFlipMode::Unset),
       m_flip_state_valid(false),
       m_flip_state_update_time(0),
       m_present_mode_str(new std::string("Unknown")),
@@ -567,7 +576,7 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
     GetEtwSessionsWithPrefix(L"DC_", debug_info.dc_etw_sessions);
 }
 
-void PresentMonManager::UpdateFlipState(DxgiBypassMode mode, const std::string& present_mode_str,
+void PresentMonManager::UpdateFlipState(PresentMonFlipMode mode, const std::string& present_mode_str,
                                         const std::string& debug_info) {
     m_flip_mode.store(mode);
     m_flip_state_valid.store(true);
@@ -981,16 +990,16 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                         if (TryGetEventPropertyU64(event_record, L"IndependentFlip", u)
                             || TryGetEventPropertyU64(event_record, L"IsIndependentFlip", u)) {
                             if (u != 0)
-                                UpdateFlipState(DxgiBypassMode::kIndependentFlip, "IndependentFlip=1",
+                                UpdateFlipState(PresentMonFlipMode::IndependentFlip, "IndependentFlip=1",
                                                 "ETW bool field");
                         }
                         if (TryGetEventPropertyU64(event_record, L"Overlay", u)
                             || TryGetEventPropertyU64(event_record, L"IsOverlay", u)) {
-                            if (u != 0) UpdateFlipState(DxgiBypassMode::kOverlay, "Overlay=1", "ETW bool field");
+                            if (u != 0) UpdateFlipState(PresentMonFlipMode::Overlay, "Overlay=1", "ETW bool field");
                         }
                         if (TryGetEventPropertyU64(event_record, L"Composed", u)
                             || TryGetEventPropertyU64(event_record, L"IsComposed", u)) {
-                            if (u != 0) UpdateFlipState(DxgiBypassMode::kComposed, "Composed=1", "ETW bool field");
+                            if (u != 0) UpdateFlipState(PresentMonFlipMode::Composed, "Composed=1", "ETW bool field");
                         }
 
                         // PresentMode numeric mapping (best-effort)
@@ -1000,11 +1009,11 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                                              static_cast<unsigned long long>(u));
                             delete m_last_present_mode_value.exchange(new std::string(buf));
                             if (u == 0)
-                                UpdateFlipState(DxgiBypassMode::kComposed, buf, "ETW PresentMode numeric");
+                                UpdateFlipState(PresentMonFlipMode::Composed, buf, "ETW PresentMode numeric");
                             else if (u == 1)
-                                UpdateFlipState(DxgiBypassMode::kOverlay, buf, "ETW PresentMode numeric");
+                                UpdateFlipState(PresentMonFlipMode::Overlay, buf, "ETW PresentMode numeric");
                             else if (u == 2)
-                                UpdateFlipState(DxgiBypassMode::kIndependentFlip, buf, "ETW PresentMode numeric");
+                                UpdateFlipState(PresentMonFlipMode::IndependentFlip, buf, "ETW PresentMode numeric");
                         }
                     }
                 }
@@ -1027,8 +1036,8 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
             delete m_last_present_mode_value.exchange(v);
         }
 
-        DxgiBypassMode mode = MapPresentModeStringToFlip(present_mode);
-        if (mode != DxgiBypassMode::kUnknown) {
+        PresentMonFlipMode mode = MapPresentModeStringToFlip(present_mode);
+        if (mode != PresentMonFlipMode::Unknown) {
             UpdateFlipState(mode, present_mode, "ETW property match");
         }
     }

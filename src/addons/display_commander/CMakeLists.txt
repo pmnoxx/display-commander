@@ -85,18 +85,11 @@ if(MSVC)
   )
 
   # Ensure PDB file is placed alongside the DLL for easier debugging and crash analysis.
-  # After build, zzz_display_commander.pdb is next to zzz_display_commander.addon64; copy both
-  # when deploying to ReShade if you need symbol resolution for crash dumps.
+  # PDB_OUTPUT_DIRECTORY + PDB_NAME put the PDB next to the addon DLL; no copy step needed
+  # (copying to the same path caused CI failure when generator already emits PDB there).
   set_target_properties(zzz_display_commander PROPERTIES
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     PDB_NAME "zzz_display_commander"
-  )
-  # Copy PDB next to the DLL so it is in the same folder regardless of generator layout
-  add_custom_command(TARGET zzz_display_commander POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-      "$<TARGET_PDB_FILE:zzz_display_commander>"
-      "$<TARGET_FILE_DIR:zzz_display_commander>/zzz_display_commander.pdb"
-    COMMENT "Copy PDB next to addon DLL for debug symbols"
   )
 endif()
 

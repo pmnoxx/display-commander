@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.120 (2026-02-27)
+
+- **Frame timeline (Reflex path)** - Added placeholder UI message when native Reflex is active: "Frame timeline: not implemented yet for Reflex path." in the performance overlay section.
+
+---
+
 ## v0.12.119 (2026-02-27)
 
 - **Crash handler refactor** - Removed duplication between `VectoredExceptionHandler` and `UnhandledExceptionHandler`. Shared logic moved into `LogCrashReport(PEXCEPTION_POINTERS, header_line, log_section_context)` and `WriteMultiLineToDebugLog`; both handlers now call `LogCrashReport` with the appropriate header and section-context flag. Unhandled report now also logs system memory load (aligned with VEH).

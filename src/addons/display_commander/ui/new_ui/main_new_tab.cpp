@@ -313,6 +313,11 @@ static void UpdateFrameTimelineCache() {
 // Uses start/end times (relative to frame start) so bars show when each phase began and ended.
 // Data is cached and refreshed at most once per second to avoid flicker.
 void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
+    if (IsNativeReflexActive()) {
+        // Not implemented yet
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Frame timeline: not implemented yet for Reflex path.");
+        return;
+    }
     (void)imgui;
     UpdateFrameTimelineCache();
     if (s_timeline_phases.empty()) {

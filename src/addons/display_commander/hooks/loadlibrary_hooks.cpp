@@ -24,6 +24,7 @@
 #include "../utils/timing.hpp"
 #include "api_hooks.hpp"
 #include "d3d9/d3d9_hooks.hpp"
+#include "ddraw/ddraw_present_hooks.hpp"
 #include "dbghelp_hooks.hpp"
 #include "dinput_hooks.hpp"
 #include "hook_suppression_manager.hpp"
@@ -1660,6 +1661,15 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("OpenGL hooks installed successfully");
         } else {
             LogInfo("OpenGL hooks not installed (e.g. suppressed, already installed, or opengl32 not ready)");
+        }
+    }
+    // ddraw.dll – DirectDraw present (Flip) and FPS limiter
+    else if (lowerModuleName.find(L"ddraw.dll") != std::wstring::npos) {
+        LogInfo("Installing DDraw hooks for module: %ws", moduleName.c_str());
+        if (display_commanderhooks::ddraw::InstallDDrawHooks(hModule)) {
+            LogInfo("DDraw hooks installed successfully");
+        } else {
+            LogInfo("DDraw hooks not installed (e.g. already installed, shutdown, or proxy mode)");
         }
     }
     // dinput8.dll – DirectInput 8 create hook

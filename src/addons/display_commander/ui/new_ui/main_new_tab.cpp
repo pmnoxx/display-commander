@@ -4396,7 +4396,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 imgui.SetTooltip(
                     "Graphics APIs where we observed present/swap traffic in the last 1 second (our hooks were "
                     "called).\n"
-                    "DXGI = IDXGISwapChain::Present, D3D9 = IDirect3DDevice9::Present, OpenGL32 = wglSwapBuffers.");
+                    "DXGI = IDXGISwapChain::Present, D3D9 = IDirect3DDevice9::Present, OpenGL32 = wglSwapBuffers, "
+                    "DDraw = IDirectDrawSurface::Flip.");
             }
         }
     }

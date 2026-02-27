@@ -78,7 +78,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       dlls_to_load_before("DllsToLoadBefore", "", "DisplayCommander"),
       fake_nvapi_enabled("FakeNvapiEnabled", false, "DisplayCommander"),
       suppress_minhook("SuppressMinhook", false, "DisplayCommander.Safemode"),
-      suppress_windows_gaming_input("SuppressWindowsGamingInput", true, "DisplayCommander"),
+      suppress_windows_gaming_input("SuppressWindowsGamingInput2", false, "DisplayCommander"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),

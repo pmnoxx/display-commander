@@ -11,6 +11,7 @@ namespace display_commanderhooks {
 extern std::atomic<uint64_t> g_last_dxgi_present_time_ns;
 extern std::atomic<uint64_t> g_last_d3d9_present_time_ns;
 extern std::atomic<uint64_t> g_last_opengl_swapbuffers_time_ns;
+extern std::atomic<uint64_t> g_last_ddraw_flip_time_ns;
 
 // Returns comma-separated list of API names that had present traffic in the last 1 second
 // (e.g. "DXGI", "D3D9", "OpenGL32"). Empty string if none.

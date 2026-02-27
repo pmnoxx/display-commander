@@ -2,10 +2,15 @@
 
 ---
 
+## v0.12.126 (2026-02-27)
+
+- **Fix controller support in Death Stranding** - Default for "Suppress Windows.Gaming.Input" (Advanced tab) changed to off; setting key renamed to SuppressWindowsGamingInput2 so existing configs pick up the new default. Restores controller input when using the addon with Death Stranding.
+
+---
+
 ## v0.12.125 (2026-02-27)
 
 - **OpenGL FPS limiter** - Use **wglSwapBuffers** as an FPS limiter call site (same pattern as D3D9 Present). Added `FpsLimiterCallSite::opengl_swapbuffers`; when chosen, custom FPS limiter and frame-time recording run from the OpenGL present path (ChooseFpsLimiter, OnPresentFlags2, RecordNativeFrameTime, RecordFrameTime, HandlePresentAfter). OpenGL games can use the same FPS limiter as D3D9/DXGI with automatic source selection.
-- **OpenGL hooks task doc** - Added `docs/tasks/opengl_hooks_and_fps_limiter.md` documenting that we hook all OpenGL create-context entry points (wglCreateContext, wglCreateContextAttribsARB when available) and present (wglSwapBuffers), installed when opengl32.dll is loaded.
 
 ---
 

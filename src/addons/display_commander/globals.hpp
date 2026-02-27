@@ -684,6 +684,7 @@ enum class FpsLimiterCallSite {
     dx9_present,                 // D3D9 IDirect3DDevice9::Present detour
     dx9_presentex,               // D3D9 IDirect3DDevice9Ex::PresentEx detour
     opengl_swapbuffers,          // OpenGL wglSwapBuffers detour
+    ddraw_flip,                  // DirectDraw IDirectDrawSurface::Flip detour
     reshade_addon_event,         // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
     dxgi_factory_wrapper,        // Currently unused in practice
     kFpsLimiterCallSiteCount     // count of call sites above (use for array size / iteration)

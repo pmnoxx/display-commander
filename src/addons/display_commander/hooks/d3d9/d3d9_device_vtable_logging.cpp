@@ -1,10 +1,10 @@
 #include "d3d9_device_vtable_logging.hpp"
-#include "d3d9_pool_upgrade.hpp"
-#include "d3d9_vtable_indices.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "d3d9_pool_upgrade.hpp"
+#include "d3d9_vtable_indices.hpp"
 
 #include <d3d9.h>
 #include <MinHook.h>
@@ -61,8 +61,7 @@ using CreateDepthStencilSurface_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevic
                                                                   IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
 CreateDepthStencilSurface_pfn CreateDepthStencilSurface_Original = nullptr;
 
-using Reset_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                             D3DPRESENT_PARAMETERS* pPresentationParameters);
+using Reset_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D3DPRESENT_PARAMETERS* pPresentationParameters);
 Reset_pfn Reset_Original = nullptr;
 
 using BeginScene_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This);
@@ -71,13 +70,13 @@ BeginScene_pfn BeginScene_Original = nullptr;
 using EndScene_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This);
 EndScene_pfn EndScene_Original = nullptr;
 
-using Clear_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, DWORD Count, const D3DRECT* pRects,
-                                              DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil);
+using Clear_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, DWORD Count, const D3DRECT* pRects, DWORD Flags,
+                                              D3DCOLOR Color, float Z, DWORD Stencil);
 Clear_pfn Clear_Original = nullptr;
 
 using CreateAdditionalSwapChain_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                                   D3DPRESENT_PARAMETERS* pPresentationParameters,
-                                                                   IDirect3DSwapChain9** ppSwapChain);
+                                                                  D3DPRESENT_PARAMETERS* pPresentationParameters,
+                                                                  IDirect3DSwapChain9** ppSwapChain);
 CreateAdditionalSwapChain_pfn CreateAdditionalSwapChain_Original = nullptr;
 
 using GetBackBuffer_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT iSwapChain, UINT iBackBuffer,
@@ -88,8 +87,7 @@ using SetRenderTarget_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, 
                                                         IDirect3DSurface9* pRenderTarget);
 SetRenderTarget_pfn SetRenderTarget_Original = nullptr;
 
-using SetDepthStencilSurface_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                               IDirect3DSurface9* pNewZStencil);
+using SetDepthStencilSurface_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DSurface9* pNewZStencil);
 SetDepthStencilSurface_pfn SetDepthStencilSurface_Original = nullptr;
 
 using CreateStateBlock_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D3DSTATEBLOCKTYPE Type,
@@ -100,32 +98,31 @@ using EndStateBlock_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, ID
 EndStateBlock_pfn EndStateBlock_Original = nullptr;
 
 using CreateVertexDeclaration_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                                 const D3DVERTEXELEMENT9* pVertexElements,
-                                                                 IDirect3DVertexDeclaration9** ppDecl);
+                                                                const D3DVERTEXELEMENT9* pVertexElements,
+                                                                IDirect3DVertexDeclaration9** ppDecl);
 CreateVertexDeclaration_pfn CreateVertexDeclaration_Original = nullptr;
 
 using CreateVertexShader_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, const DWORD* pFunction,
-                                                            IDirect3DVertexShader9** ppShader);
+                                                           IDirect3DVertexShader9** ppShader);
 CreateVertexShader_pfn CreateVertexShader_Original = nullptr;
 
 using SetStreamSource_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT StreamNumber,
-                                                         IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes,
-                                                         UINT Stride);
+                                                        IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes,
+                                                        UINT Stride);
 SetStreamSource_pfn SetStreamSource_Original = nullptr;
 
-using SetIndices_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                   IDirect3DIndexBuffer9* pIndexData);
+using SetIndices_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DIndexBuffer9* pIndexData);
 SetIndices_pfn SetIndices_Original = nullptr;
 
 using CreatePixelShader_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, const DWORD* pFunction,
-                                                           IDirect3DPixelShader9** ppShader);
+                                                          IDirect3DPixelShader9** ppShader);
 CreatePixelShader_pfn CreatePixelShader_Original = nullptr;
 
 using TestCooperativeLevel_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This);
 TestCooperativeLevel_pfn TestCooperativeLevel_Original = nullptr;
 
 using GetSwapChain_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT iSwapChain,
-                                                      IDirect3DSwapChain9** ppSwapChain);
+                                                     IDirect3DSwapChain9** ppSwapChain);
 GetSwapChain_pfn GetSwapChain_Original = nullptr;
 
 using UpdateSurface_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DSurface9* pSourceSurface,
@@ -133,18 +130,16 @@ using UpdateSurface_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, ID
                                                       const POINT* pDestPoint);
 UpdateSurface_pfn UpdateSurface_Original = nullptr;
 
-using UpdateTexture_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                       IDirect3DBaseTexture9* pSourceTexture,
-                                                       IDirect3DBaseTexture9* pDestinationTexture);
+using UpdateTexture_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DBaseTexture9* pSourceTexture,
+                                                      IDirect3DBaseTexture9* pDestinationTexture);
 UpdateTexture_pfn UpdateTexture_Original = nullptr;
 
-using GetRenderTargetData_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                             IDirect3DSurface9* pRenderTarget,
-                                                             IDirect3DSurface9* pDestSurface);
+using GetRenderTargetData_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DSurface9* pRenderTarget,
+                                                            IDirect3DSurface9* pDestSurface);
 GetRenderTargetData_pfn GetRenderTargetData_Original = nullptr;
 
 using GetFrontBufferData_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT iSwapChain,
-                                                            IDirect3DSurface9* pDestSurface);
+                                                           IDirect3DSurface9* pDestSurface);
 GetFrontBufferData_pfn GetFrontBufferData_Original = nullptr;
 
 using StretchRect_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DSurface9* pSourceSurface,
@@ -153,44 +148,38 @@ using StretchRect_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDir
 StretchRect_pfn StretchRect_Original = nullptr;
 
 using ColorFill_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DSurface9* pSurface,
-                                                   const RECT* pRect, D3DCOLOR color);
+                                                  const RECT* pRect, D3DCOLOR color);
 ColorFill_pfn ColorFill_Original = nullptr;
 
 using BeginStateBlock_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This);
 BeginStateBlock_pfn BeginStateBlock_Original = nullptr;
 
 using CreateQuery_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D3DQUERYTYPE Type,
-                                                     IDirect3DQuery9** ppQuery);
+                                                    IDirect3DQuery9** ppQuery);
 CreateQuery_pfn CreateQuery_Original = nullptr;
 
-using DrawPrimitive_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                       D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex,
-                                                       UINT PrimitiveCount);
+using DrawPrimitive_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
+                                                      UINT StartVertex, UINT PrimitiveCount);
 DrawPrimitive_pfn DrawPrimitive_Original = nullptr;
 
-using DrawIndexedPrimitive_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                              D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex,
-                                                              UINT MinVertexIndex, UINT NumVertices, UINT startIndex,
-                                                              UINT primCount);
+using DrawIndexedPrimitive_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
+                                                             INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices,
+                                                             UINT startIndex, UINT primCount);
 DrawIndexedPrimitive_pfn DrawIndexedPrimitive_Original = nullptr;
 
-using DrawPrimitiveUP_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                         D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount,
-                                                         const void* pVertexStreamZeroData,
-                                                         UINT VertexStreamZeroStride);
+using DrawPrimitiveUP_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
+                                                        UINT PrimitiveCount, const void* pVertexStreamZeroData,
+                                                        UINT VertexStreamZeroStride);
 DrawPrimitiveUP_pfn DrawPrimitiveUP_Original = nullptr;
 
-using DrawIndexedPrimitiveUP_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                               D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex,
-                                                               UINT NumVertices, UINT PrimitiveCount,
-                                                               const void* pIndexData, D3DFORMAT IndexDataFormat,
-                                                               const void* pVertexStreamZeroData,
-                                                               UINT VertexStreamZeroStride);
+using DrawIndexedPrimitiveUP_pfn = HRESULT(STDMETHODCALLTYPE*)(
+    IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount,
+    const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride);
 DrawIndexedPrimitiveUP_pfn DrawIndexedPrimitiveUP_Original = nullptr;
 
 using ProcessVertices_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT SrcStartIndex, UINT DestIndex,
-                                                         UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer,
-                                                         IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags);
+                                                        UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer,
+                                                        IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags);
 ProcessVertices_pfn ProcessVertices_Original = nullptr;
 
 using SetVertexDeclaration_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
@@ -208,7 +197,7 @@ using GetRenderTarget_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, 
 GetRenderTarget_pfn GetRenderTarget_Original = nullptr;
 
 using GetDepthStencilSurface_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                                IDirect3DSurface9** ppZStencilSurface);
+                                                               IDirect3DSurface9** ppZStencilSurface);
 GetDepthStencilSurface_pfn GetDepthStencilSurface_Original = nullptr;
 
 using SetViewport_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, const D3DVIEWPORT9* pViewport);
@@ -222,15 +211,14 @@ using SetRenderState_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D
 SetRenderState_pfn SetRenderState_Original = nullptr;
 
 using GetTexture_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, DWORD Stage,
-                                                    IDirect3DBaseTexture9** ppTexture);
+                                                   IDirect3DBaseTexture9** ppTexture);
 GetTexture_pfn GetTexture_Original = nullptr;
 
 using SetTexture_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, DWORD Stage,
-                                                    IDirect3DBaseTexture9* pTexture);
+                                                   IDirect3DBaseTexture9* pTexture);
 SetTexture_pfn SetTexture_Original = nullptr;
 
-using SetVertexShader_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                         IDirect3DVertexShader9* pShader);
+using SetVertexShader_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DVertexShader9* pShader);
 SetVertexShader_pfn SetVertexShader_Original = nullptr;
 
 using SetPixelShader_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, IDirect3DPixelShader9* pShader);
@@ -238,53 +226,50 @@ SetPixelShader_pfn SetPixelShader_Original = nullptr;
 
 // IDirect3DDevice9Ex (vtable 119+)
 using CreateRenderTargetEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT Width, UINT Height,
-                                                              D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
-                                                              DWORD MultisampleQuality, BOOL Lockable,
-                                                              IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle,
-                                                              DWORD Usage);
+                                                             D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
+                                                             DWORD MultisampleQuality, BOOL Lockable,
+                                                             IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle,
+                                                             DWORD Usage);
 CreateRenderTargetEx_pfn CreateRenderTargetEx_Original = nullptr;
 
 using CreateOffscreenPlainSurfaceEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT Width, UINT Height,
-                                                                       D3DFORMAT Format, D3DPOOL Pool,
-                                                                       IDirect3DSurface9** ppSurface,
-                                                                       HANDLE* pSharedHandle, DWORD Usage);
+                                                                      D3DFORMAT Format, D3DPOOL Pool,
+                                                                      IDirect3DSurface9** ppSurface,
+                                                                      HANDLE* pSharedHandle, DWORD Usage);
 CreateOffscreenPlainSurfaceEx_pfn CreateOffscreenPlainSurfaceEx_Original = nullptr;
 
 using CreateDepthStencilSurfaceEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT Width, UINT Height,
-                                                                     D3DFORMAT Format,
-                                                                     D3DMULTISAMPLE_TYPE MultiSample,
-                                                                     DWORD MultisampleQuality, BOOL Discard,
-                                                                     IDirect3DSurface9** ppSurface,
-                                                                     HANDLE* pSharedHandle, DWORD Usage);
+                                                                    D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
+                                                                    DWORD MultisampleQuality, BOOL Discard,
+                                                                    IDirect3DSurface9** ppSurface,
+                                                                    HANDLE* pSharedHandle, DWORD Usage);
 CreateDepthStencilSurfaceEx_pfn CreateDepthStencilSurfaceEx_Original = nullptr;
 
-using ResetEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This,
-                                                D3DPRESENT_PARAMETERS* pPresentationParameters,
+using ResetEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, D3DPRESENT_PARAMETERS* pPresentationParameters,
                                                 D3DDISPLAYMODEEX* pFullscreenDisplayMode);
 ResetEx_pfn ResetEx_Original = nullptr;
 
 using GetDisplayModeEx_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, UINT iSwapChain,
-                                                          D3DDISPLAYMODEEX* pMode,
-                                                          D3DDISPLAYROTATION* pRotation);
+                                                         D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation);
 GetDisplayModeEx_pfn GetDisplayModeEx_Original = nullptr;
 
 using CheckDeviceState_pfn = HRESULT(STDMETHODCALLTYPE*)(IDirect3DDevice9* This, HWND hDestinationWindow);
 CheckDeviceState_pfn CheckDeviceState_Original = nullptr;
 
-void LogD3D9Error(const char* method, HRESULT hr) {
-    LogError("[D3D9 error] %s returned 0x%08X", method, static_cast<unsigned>(hr));
-}
+// D3DERR_NOTAVAILABLE (0x88760866): returned by GetRenderTarget(n) when no RT at slot n,
+// and by GetDepthStencilSurface when no depth-stencil is set. Expected, not a creation failure.
+constexpr unsigned kD3DERR_NOTAVAILABLE = 0x88760866u;
 
 // Returns a known D3D9 HRESULT name or nullptr (caller can fall back to hex).
 static const char* D3D9HResultName(HRESULT hr) {
     switch (static_cast<unsigned>(hr)) {
         case 0x8876017C: return "D3DERR_OUTOFVIDEOMEMORY";
         case 0x88760868: return "D3DERR_DEVICELOST";
-        case 0x8876086A: return "D3DERR_NOTAVAILABLE";
+        case 0x88760866: return "D3DERR_NOTAVAILABLE";
         case 0x8876086C: return "D3DERR_INVALIDCALL";
         case 0x88760870: return "D3DERR_DEVICEREMOVED";
         case 0x88760874: return "D3DERR_DEVICEHUNG";
-        default: return nullptr;
+        default:         return nullptr;
     }
 }
 
@@ -374,18 +359,20 @@ static HRESULT STDMETHODCALLTYPE CreateTexture_Detour(IDirect3DDevice9* This, UI
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateTexture");
     }
     const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
-    HRESULT hr = CreateTexture_Original(This, Width, Height, Levels, Usage, Format, poolToUse, ppTexture, pSharedHandle);
+    HRESULT hr =
+        CreateTexture_Original(This, Width, Height, Levels, Usage, Format, poolToUse, ppTexture, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateTexture", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateTexture_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateTexture first failure — full arguments: This=%p Width=%u Height=%u Levels=%u "
-                     "Usage=0x%X Format=%u Pool=%u ppTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), Width, Height, Levels, static_cast<unsigned>(Usage),
-                     static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppTexture),
-                     static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
-                     has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateTexture first failure — full arguments: This=%p Width=%u Height=%u Levels=%u "
+                "Usage=0x%X Format=%u Pool=%u ppTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), Width, Height, Levels, static_cast<unsigned>(Usage),
+                static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppTexture),
+                static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr), has_hr_name ? " (" : "",
+                has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
@@ -403,16 +390,17 @@ static HRESULT STDMETHODCALLTYPE CreateVolumeTexture_Detour(IDirect3DDevice9* Th
     HRESULT hr = CreateVolumeTexture_Original(This, Width, Height, Depth, Levels, Usage, Format, poolToUse,
                                               ppVolumeTexture, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateVolumeTexture", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateVolumeTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateVolumeTexture_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateVolumeTexture first failure — This=%p Width=%u Height=%u Depth=%u Levels=%u "
-                     "Usage=0x%X Format=%u Pool=%u ppVolumeTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), Width, Height, Depth, Levels, static_cast<unsigned>(Usage),
-                     static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppVolumeTexture),
-                     static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
-                     has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateVolumeTexture first failure — This=%p Width=%u Height=%u Depth=%u Levels=%u "
+                "Usage=0x%X Format=%u Pool=%u ppVolumeTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), Width, Height, Depth, Levels, static_cast<unsigned>(Usage),
+                static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppVolumeTexture),
+                static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr), has_hr_name ? " (" : "",
+                has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
@@ -430,16 +418,17 @@ static HRESULT STDMETHODCALLTYPE CreateCubeTexture_Detour(IDirect3DDevice9* This
     HRESULT hr =
         CreateCubeTexture_Original(This, EdgeLength, Levels, Usage, Format, poolToUse, ppCubeTexture, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateCubeTexture", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateCubeTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateCubeTexture_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateCubeTexture first failure — This=%p EdgeLength=%u Levels=%u Usage=0x%X "
-                     "Format=%u Pool=%u ppCubeTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), EdgeLength, Levels, static_cast<unsigned>(Usage),
-                     static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppCubeTexture),
-                     static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
-                     has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateCubeTexture first failure — This=%p EdgeLength=%u Levels=%u Usage=0x%X "
+                "Format=%u Pool=%u ppCubeTexture=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), EdgeLength, Levels, static_cast<unsigned>(Usage),
+                static_cast<unsigned>(Format), static_cast<unsigned>(Pool), static_cast<void*>(ppCubeTexture),
+                static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr), has_hr_name ? " (" : "",
+                has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
@@ -455,16 +444,16 @@ static HRESULT STDMETHODCALLTYPE CreateVertexBuffer_Detour(IDirect3DDevice9* Thi
     const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
     HRESULT hr = CreateVertexBuffer_Original(This, Length, Usage, FVF, poolToUse, ppVertexBuffer, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateVertexBuffer", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateVertexBuffer returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateVertexBuffer_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateVertexBuffer first failure — This=%p Length=%u Usage=0x%X FVF=0x%lX Pool=%u "
-                     "ppVertexBuffer=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), Length, static_cast<unsigned>(Usage), static_cast<unsigned long>(FVF),
-                     static_cast<unsigned>(Pool), static_cast<void*>(ppVertexBuffer), static_cast<void*>(pSharedHandle),
-                     static_cast<unsigned>(hr), has_hr_name ? " (" : "", has_hr_name ? hr_name : "",
-                     has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateVertexBuffer first failure — This=%p Length=%u Usage=0x%X FVF=0x%lX Pool=%u "
+                "ppVertexBuffer=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), Length, static_cast<unsigned>(Usage), static_cast<unsigned long>(FVF),
+                static_cast<unsigned>(Pool), static_cast<void*>(ppVertexBuffer), static_cast<void*>(pSharedHandle),
+                static_cast<unsigned>(hr), has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
@@ -481,16 +470,16 @@ static HRESULT STDMETHODCALLTYPE CreateIndexBuffer_Detour(IDirect3DDevice9* This
     const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
     HRESULT hr = CreateIndexBuffer_Original(This, Length, Usage, Format, poolToUse, ppIndexBuffer, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateIndexBuffer", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateIndexBuffer returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateIndexBuffer_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateIndexBuffer first failure — This=%p Length=%u Usage=0x%X Format=%u Pool=%u "
-                     "ppIndexBuffer=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), Length, static_cast<unsigned>(Usage), static_cast<unsigned>(Format),
-                     static_cast<unsigned>(Pool), static_cast<void*>(ppIndexBuffer), static_cast<void*>(pSharedHandle),
-                     static_cast<unsigned>(hr), has_hr_name ? " (" : "", has_hr_name ? hr_name : "",
-                     has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateIndexBuffer first failure — This=%p Length=%u Usage=0x%X Format=%u Pool=%u "
+                "ppIndexBuffer=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), Length, static_cast<unsigned>(Usage), static_cast<unsigned>(Format),
+                static_cast<unsigned>(Pool), static_cast<void*>(ppIndexBuffer), static_cast<void*>(pSharedHandle),
+                static_cast<unsigned>(hr), has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
@@ -509,16 +498,16 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface_Detour(IDirect3DDev
     const D3DPOOL poolToUse = UpgradePoolForDevice9Ex(This, Pool);
     HRESULT hr = CreateOffscreenPlainSurface_Original(This, Width, Height, Format, poolToUse, ppSurface, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateOffscreenPlainSurface", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateOffscreenPlainSurface returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateOffscreenPlainSurface_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateOffscreenPlainSurface first failure — This=%p Width=%u Height=%u Format=%u "
-                     "Pool=%u ppSurface=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), Width, Height, static_cast<unsigned>(Format),
-                     static_cast<unsigned>(Pool), static_cast<void*>(ppSurface), static_cast<void*>(pSharedHandle),
-                     static_cast<unsigned>(hr), has_hr_name ? " (" : "", has_hr_name ? hr_name : "",
-                     has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateOffscreenPlainSurface first failure — This=%p Width=%u Height=%u Format=%u "
+                "Pool=%u ppSurface=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), Width, Height, static_cast<unsigned>(Format), static_cast<unsigned>(Pool),
+                static_cast<void*>(ppSurface), static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
+                has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
@@ -537,16 +526,17 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTarget_Detour(IDirect3DDevice9* Thi
     HRESULT hr = CreateRenderTarget_Original(This, Width, Height, Format, MultiSample, MultisampleQuality, Lockable,
                                              ppSurface, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateRenderTarget", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateRenderTarget returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateRenderTarget_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateRenderTarget first failure — This=%p Width=%u Height=%u Format=%u "
-                     "MultiSample=%u MultisampleQuality=%u Lockable=%d ppSurface=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), Width, Height, static_cast<unsigned>(Format),
-                     static_cast<unsigned>(MultiSample), MultisampleQuality, static_cast<int>(Lockable),
-                     static_cast<void*>(ppSurface), static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
-                     has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateRenderTarget first failure — This=%p Width=%u Height=%u Format=%u "
+                "MultiSample=%u MultisampleQuality=%u Lockable=%d ppSurface=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), Width, Height, static_cast<unsigned>(Format),
+                static_cast<unsigned>(MultiSample), MultisampleQuality, static_cast<int>(Lockable),
+                static_cast<void*>(ppSurface), static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
+                has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
@@ -566,27 +556,27 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface_Detour(IDirect3DDevic
     HRESULT hr = CreateDepthStencilSurface_Original(This, Width, Height, Format, MultiSample, MultisampleQuality,
                                                     Discard, ppSurface, pSharedHandle);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateDepthStencilSurface", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateDepthStencilSurface returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateDepthStencilSurface_error.exchange(false)) {
             const char* hr_name = D3D9HResultName(hr);
             const bool has_hr_name = (hr_name != nullptr);
-            LogError("[D3D9 error] CreateDepthStencilSurface first failure — This=%p Width=%u Height=%u Format=%u "
-                     "MultiSample=%u MultisampleQuality=%u Discard=%d ppSurface=%p pSharedHandle=%p hr=0x%08X%s%s%s",
-                     static_cast<void*>(This), Width, Height, static_cast<unsigned>(Format),
-                     static_cast<unsigned>(MultiSample), MultisampleQuality, static_cast<int>(Discard),
-                     static_cast<void*>(ppSurface), static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
-                     has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
+            LogError(
+                "[D3D9 error] CreateDepthStencilSurface first failure — This=%p Width=%u Height=%u Format=%u "
+                "MultiSample=%u MultisampleQuality=%u Discard=%d ppSurface=%p pSharedHandle=%p hr=0x%08X%s%s%s",
+                static_cast<void*>(This), Width, Height, static_cast<unsigned>(Format),
+                static_cast<unsigned>(MultiSample), MultisampleQuality, static_cast<int>(Discard),
+                static_cast<void*>(ppSurface), static_cast<void*>(pSharedHandle), static_cast<unsigned>(hr),
+                has_hr_name ? " (" : "", has_hr_name ? hr_name : "", has_hr_name ? ")" : "");
         }
     }
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE Reset_Detour(IDirect3DDevice9* This,
-                                             D3DPRESENT_PARAMETERS* pPresentationParameters) {
+static HRESULT STDMETHODCALLTYPE Reset_Detour(IDirect3DDevice9* This, D3DPRESENT_PARAMETERS* pPresentationParameters) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = Reset_Original(This, pPresentationParameters);
     if (FAILED(hr)) {
-        LogD3D9Error("Reset", hr);
+        LogErrorThrottled(10, "[D3D9 error] Reset returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_Reset_error.exchange(false)) {
             LogD3D9FirstFailure("Reset", This, hr);
             LogError("[D3D9 error] Reset first failure — pPresentationParameters=%p",
@@ -600,7 +590,7 @@ static HRESULT STDMETHODCALLTYPE BeginScene_Detour(IDirect3DDevice9* This) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = BeginScene_Original(This);
     if (FAILED(hr)) {
-        LogD3D9Error("BeginScene", hr);
+        LogErrorThrottled(10, "[D3D9 error] BeginScene returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_BeginScene_error.exchange(false)) {
             LogD3D9FirstFailure("BeginScene", This, hr);
         }
@@ -612,7 +602,7 @@ static HRESULT STDMETHODCALLTYPE EndScene_Detour(IDirect3DDevice9* This) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = EndScene_Original(This);
     if (FAILED(hr)) {
-        LogD3D9Error("EndScene", hr);
+        LogErrorThrottled(10, "[D3D9 error] EndScene returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_EndScene_error.exchange(false)) {
             LogD3D9FirstFailure("EndScene", This, hr);
         }
@@ -620,12 +610,12 @@ static HRESULT STDMETHODCALLTYPE EndScene_Detour(IDirect3DDevice9* This) {
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE Clear_Detour(IDirect3DDevice9* This, DWORD Count, const D3DRECT* pRects,
-                                              DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil) {
+static HRESULT STDMETHODCALLTYPE Clear_Detour(IDirect3DDevice9* This, DWORD Count, const D3DRECT* pRects, DWORD Flags,
+                                              D3DCOLOR Color, float Z, DWORD Stencil) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = Clear_Original(This, Count, pRects, Flags, Color, Z, Stencil);
     if (FAILED(hr)) {
-        LogD3D9Error("Clear", hr);
+        LogErrorThrottled(10, "[D3D9 error] Clear returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_Clear_error.exchange(false)) {
             LogD3D9FirstFailure("Clear", This, hr);
             LogError("[D3D9 error] Clear first failure — Count=%lu Flags=0x%lX", static_cast<unsigned long>(Count),
@@ -635,12 +625,13 @@ static HRESULT STDMETHODCALLTYPE Clear_Detour(IDirect3DDevice9* This, DWORD Coun
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain_Detour(
-    IDirect3DDevice9* This, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** ppSwapChain) {
+static HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain_Detour(IDirect3DDevice9* This,
+                                                                  D3DPRESENT_PARAMETERS* pPresentationParameters,
+                                                                  IDirect3DSwapChain9** ppSwapChain) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreateAdditionalSwapChain_Original(This, pPresentationParameters, ppSwapChain);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateAdditionalSwapChain", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateAdditionalSwapChain returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateAdditionalSwapChain_error.exchange(false)) {
             LogD3D9FirstFailure("CreateAdditionalSwapChain", This, hr);
             LogError("[D3D9 error] CreateAdditionalSwapChain first failure — pPresentationParameters=%p ppSwapChain=%p",
@@ -655,11 +646,11 @@ static HRESULT STDMETHODCALLTYPE GetBackBuffer_Detour(IDirect3DDevice9* This, UI
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetBackBuffer_Original(This, iSwapChain, iBackBuffer, Type, ppBackBuffer);
     if (FAILED(hr)) {
-        LogD3D9Error("GetBackBuffer", hr);
+        LogErrorThrottled(10, "[D3D9 error] GetBackBuffer returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetBackBuffer_error.exchange(false)) {
             LogD3D9FirstFailure("GetBackBuffer", This, hr);
-            LogError("[D3D9 error] GetBackBuffer first failure — iSwapChain=%u iBackBuffer=%u Type=%u",
-                     iSwapChain, iBackBuffer, static_cast<unsigned>(Type));
+            LogError("[D3D9 error] GetBackBuffer first failure — iSwapChain=%u iBackBuffer=%u Type=%u", iSwapChain,
+                     iBackBuffer, static_cast<unsigned>(Type));
         }
     }
     return hr;
@@ -670,7 +661,7 @@ static HRESULT STDMETHODCALLTYPE SetRenderTarget_Detour(IDirect3DDevice9* This, 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetRenderTarget_Original(This, RenderTargetIndex, pRenderTarget);
     if (FAILED(hr)) {
-        LogD3D9Error("SetRenderTarget", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetRenderTarget returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetRenderTarget_error.exchange(false)) {
             LogD3D9FirstFailure("SetRenderTarget", This, hr);
             LogError("[D3D9 error] SetRenderTarget first failure — RenderTargetIndex=%lu pRenderTarget=%p",
@@ -681,11 +672,11 @@ static HRESULT STDMETHODCALLTYPE SetRenderTarget_Detour(IDirect3DDevice9* This, 
 }
 
 static HRESULT STDMETHODCALLTYPE SetDepthStencilSurface_Detour(IDirect3DDevice9* This,
-                                                              IDirect3DSurface9* pNewZStencil) {
+                                                               IDirect3DSurface9* pNewZStencil) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetDepthStencilSurface_Original(This, pNewZStencil);
     if (FAILED(hr)) {
-        LogD3D9Error("SetDepthStencilSurface", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetDepthStencilSurface returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetDepthStencilSurface_error.exchange(false)) {
             LogD3D9FirstFailure("SetDepthStencilSurface", This, hr);
             LogError("[D3D9 error] SetDepthStencilSurface first failure — pNewZStencil=%p",
@@ -700,11 +691,11 @@ static HRESULT STDMETHODCALLTYPE CreateStateBlock_Detour(IDirect3DDevice9* This,
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreateStateBlock_Original(This, Type, ppSB);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateStateBlock", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateStateBlock returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateStateBlock_error.exchange(false)) {
             LogD3D9FirstFailure("CreateStateBlock", This, hr);
-            LogError("[D3D9 error] CreateStateBlock first failure — Type=%u ppSB=%p",
-                     static_cast<unsigned>(Type), static_cast<void*>(ppSB));
+            LogError("[D3D9 error] CreateStateBlock first failure — Type=%u ppSB=%p", static_cast<unsigned>(Type),
+                     static_cast<void*>(ppSB));
         }
     }
     return hr;
@@ -714,7 +705,7 @@ static HRESULT STDMETHODCALLTYPE EndStateBlock_Detour(IDirect3DDevice9* This, ID
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = EndStateBlock_Original(This, ppSB);
     if (FAILED(hr)) {
-        LogD3D9Error("EndStateBlock", hr);
+        LogErrorThrottled(10, "[D3D9 error] EndStateBlock returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_EndStateBlock_error.exchange(false)) {
             LogD3D9FirstFailure("EndStateBlock", This, hr);
             LogError("[D3D9 error] EndStateBlock first failure — ppSB=%p", static_cast<void*>(ppSB));
@@ -729,28 +720,26 @@ static HRESULT STDMETHODCALLTYPE CreateVertexDeclaration_Detour(IDirect3DDevice9
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreateVertexDeclaration_Original(This, pVertexElements, ppDecl);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateVertexDeclaration", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateVertexDeclaration returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateVertexDeclaration_error.exchange(false)) {
             LogD3D9FirstFailure("CreateVertexDeclaration", This, hr);
             LogError("[D3D9 error] CreateVertexDeclaration first failure — pVertexElements=%p ppDecl=%p",
-                     reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pVertexElements)),
-                     static_cast<void*>(ppDecl));
+                     reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pVertexElements)), static_cast<void*>(ppDecl));
         }
     }
     return hr;
 }
 
 static HRESULT STDMETHODCALLTYPE CreateVertexShader_Detour(IDirect3DDevice9* This, const DWORD* pFunction,
-                                                            IDirect3DVertexShader9** ppShader) {
+                                                           IDirect3DVertexShader9** ppShader) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreateVertexShader_Original(This, pFunction, ppShader);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateVertexShader", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateVertexShader returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateVertexShader_error.exchange(false)) {
             LogD3D9FirstFailure("CreateVertexShader", This, hr);
             LogError("[D3D9 error] CreateVertexShader first failure — pFunction=%p ppShader=%p",
-                     reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pFunction)),
-                     static_cast<void*>(ppShader));
+                     reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pFunction)), static_cast<void*>(ppShader));
         }
     }
     return hr;
@@ -762,7 +751,7 @@ static HRESULT STDMETHODCALLTYPE SetStreamSource_Detour(IDirect3DDevice9* This, 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetStreamSource_Original(This, StreamNumber, pStreamData, OffsetInBytes, Stride);
     if (FAILED(hr)) {
-        LogD3D9Error("SetStreamSource", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetStreamSource returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetStreamSource_error.exchange(false)) {
             LogD3D9FirstFailure("SetStreamSource", This, hr);
             LogError("[D3D9 error] SetStreamSource first failure — StreamNumber=%u OffsetInBytes=%u Stride=%u",
@@ -776,7 +765,7 @@ static HRESULT STDMETHODCALLTYPE SetIndices_Detour(IDirect3DDevice9* This, IDire
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetIndices_Original(This, pIndexData);
     if (FAILED(hr)) {
-        LogD3D9Error("SetIndices", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetIndices returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetIndices_error.exchange(false)) {
             LogD3D9FirstFailure("SetIndices", This, hr);
             LogError("[D3D9 error] SetIndices first failure — pIndexData=%p", static_cast<void*>(pIndexData));
@@ -790,12 +779,11 @@ static HRESULT STDMETHODCALLTYPE CreatePixelShader_Detour(IDirect3DDevice9* This
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreatePixelShader_Original(This, pFunction, ppShader);
     if (FAILED(hr)) {
-        LogD3D9Error("CreatePixelShader", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreatePixelShader returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreatePixelShader_error.exchange(false)) {
             LogD3D9FirstFailure("CreatePixelShader", This, hr);
             LogError("[D3D9 error] CreatePixelShader first failure — pFunction=%p ppShader=%p",
-                     reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pFunction)),
-                     static_cast<void*>(ppShader));
+                     reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pFunction)), static_cast<void*>(ppShader));
         }
     }
     return hr;
@@ -805,7 +793,7 @@ static HRESULT STDMETHODCALLTYPE TestCooperativeLevel_Detour(IDirect3DDevice9* T
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = TestCooperativeLevel_Original(This);
     if (FAILED(hr)) {
-        LogD3D9Error("TestCooperativeLevel", hr);
+        LogErrorThrottled(10, "[D3D9 error] TestCooperativeLevel returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_TestCooperativeLevel_error.exchange(false)) {
             LogD3D9FirstFailure("TestCooperativeLevel", This, hr);
         }
@@ -814,11 +802,11 @@ static HRESULT STDMETHODCALLTYPE TestCooperativeLevel_Detour(IDirect3DDevice9* T
 }
 
 static HRESULT STDMETHODCALLTYPE GetSwapChain_Detour(IDirect3DDevice9* This, UINT iSwapChain,
-                                                      IDirect3DSwapChain9** ppSwapChain) {
+                                                     IDirect3DSwapChain9** ppSwapChain) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetSwapChain_Original(This, iSwapChain, ppSwapChain);
     if (FAILED(hr)) {
-        LogD3D9Error("GetSwapChain", hr);
+        LogErrorThrottled(10, "[D3D9 error] GetSwapChain returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetSwapChain_error.exchange(false)) {
             LogD3D9FirstFailure("GetSwapChain", This, hr);
             LogError("[D3D9 error] GetSwapChain first failure — iSwapChain=%u ppSwapChain=%p", iSwapChain,
@@ -829,13 +817,12 @@ static HRESULT STDMETHODCALLTYPE GetSwapChain_Detour(IDirect3DDevice9* This, UIN
 }
 
 static HRESULT STDMETHODCALLTYPE UpdateSurface_Detour(IDirect3DDevice9* This, IDirect3DSurface9* pSourceSurface,
-                                                      const RECT* pSourceRect,
-                                                      IDirect3DSurface9* pDestinationSurface,
+                                                      const RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface,
                                                       const POINT* pDestPoint) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = UpdateSurface_Original(This, pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
     if (FAILED(hr)) {
-        LogD3D9Error("UpdateSurface", hr);
+        LogErrorThrottled(10, "[D3D9 error] UpdateSurface returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_UpdateSurface_error.exchange(false)) {
             LogD3D9FirstFailure("UpdateSurface", This, hr);
             LogError("[D3D9 error] UpdateSurface first failure — pSourceSurface=%p pDestinationSurface=%p",
@@ -845,13 +832,12 @@ static HRESULT STDMETHODCALLTYPE UpdateSurface_Detour(IDirect3DDevice9* This, ID
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE UpdateTexture_Detour(IDirect3DDevice9* This,
-                                                       IDirect3DBaseTexture9* pSourceTexture,
-                                                       IDirect3DBaseTexture9* pDestinationTexture) {
+static HRESULT STDMETHODCALLTYPE UpdateTexture_Detour(IDirect3DDevice9* This, IDirect3DBaseTexture9* pSourceTexture,
+                                                      IDirect3DBaseTexture9* pDestinationTexture) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = UpdateTexture_Original(This, pSourceTexture, pDestinationTexture);
     if (FAILED(hr)) {
-        LogD3D9Error("UpdateTexture", hr);
+        LogErrorThrottled(10, "[D3D9 error] UpdateTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_UpdateTexture_error.exchange(false)) {
             LogD3D9FirstFailure("UpdateTexture", This, hr);
             LogError("[D3D9 error] UpdateTexture first failure — pSourceTexture=%p pDestinationTexture=%p",
@@ -861,13 +847,12 @@ static HRESULT STDMETHODCALLTYPE UpdateTexture_Detour(IDirect3DDevice9* This,
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE GetRenderTargetData_Detour(IDirect3DDevice9* This,
-                                                             IDirect3DSurface9* pRenderTarget,
-                                                             IDirect3DSurface9* pDestSurface) {
+static HRESULT STDMETHODCALLTYPE GetRenderTargetData_Detour(IDirect3DDevice9* This, IDirect3DSurface9* pRenderTarget,
+                                                            IDirect3DSurface9* pDestSurface) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetRenderTargetData_Original(This, pRenderTarget, pDestSurface);
     if (FAILED(hr)) {
-        LogD3D9Error("GetRenderTargetData", hr);
+        LogErrorThrottled(10, "[D3D9 error] GetRenderTargetData returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetRenderTargetData_error.exchange(false)) {
             LogD3D9FirstFailure("GetRenderTargetData", This, hr);
             LogError("[D3D9 error] GetRenderTargetData first failure — pRenderTarget=%p pDestSurface=%p",
@@ -878,11 +863,11 @@ static HRESULT STDMETHODCALLTYPE GetRenderTargetData_Detour(IDirect3DDevice9* Th
 }
 
 static HRESULT STDMETHODCALLTYPE GetFrontBufferData_Detour(IDirect3DDevice9* This, UINT iSwapChain,
-                                                            IDirect3DSurface9* pDestSurface) {
+                                                           IDirect3DSurface9* pDestSurface) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetFrontBufferData_Original(This, iSwapChain, pDestSurface);
     if (FAILED(hr)) {
-        LogD3D9Error("GetFrontBufferData", hr);
+        LogErrorThrottled(10, "[D3D9 error] GetFrontBufferData returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetFrontBufferData_error.exchange(false)) {
             LogD3D9FirstFailure("GetFrontBufferData", This, hr);
             LogError("[D3D9 error] GetFrontBufferData first failure — iSwapChain=%u pDestSurface=%p", iSwapChain,
@@ -898,7 +883,7 @@ static HRESULT STDMETHODCALLTYPE StretchRect_Detour(IDirect3DDevice9* This, IDir
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = StretchRect_Original(This, pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter);
     if (FAILED(hr)) {
-        LogD3D9Error("StretchRect", hr);
+        LogErrorThrottled(10, "[D3D9 error] StretchRect returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_StretchRect_error.exchange(false)) {
             LogD3D9FirstFailure("StretchRect", This, hr);
             LogError("[D3D9 error] StretchRect first failure — pSourceSurface=%p pDestSurface=%p Filter=%u",
@@ -910,15 +895,15 @@ static HRESULT STDMETHODCALLTYPE StretchRect_Detour(IDirect3DDevice9* This, IDir
 }
 
 static HRESULT STDMETHODCALLTYPE ColorFill_Detour(IDirect3DDevice9* This, IDirect3DSurface9* pSurface,
-                                                   const RECT* pRect, D3DCOLOR color) {
+                                                  const RECT* pRect, D3DCOLOR color) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = ColorFill_Original(This, pSurface, pRect, color);
     if (FAILED(hr)) {
-        LogD3D9Error("ColorFill", hr);
+        LogErrorThrottled(10, "[D3D9 error] ColorFill returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_ColorFill_error.exchange(false)) {
             LogD3D9FirstFailure("ColorFill", This, hr);
-            LogError("[D3D9 error] ColorFill first failure — pSurface=%p color=0x%08X",
-                     static_cast<void*>(pSurface), static_cast<unsigned>(color));
+            LogError("[D3D9 error] ColorFill first failure — pSurface=%p color=0x%08X", static_cast<void*>(pSurface),
+                     static_cast<unsigned>(color));
         }
     }
     return hr;
@@ -928,7 +913,7 @@ static HRESULT STDMETHODCALLTYPE BeginStateBlock_Detour(IDirect3DDevice9* This) 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = BeginStateBlock_Original(This);
     if (FAILED(hr)) {
-        LogD3D9Error("BeginStateBlock", hr);
+        LogErrorThrottled(10, "[D3D9 error] BeginStateBlock returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_BeginStateBlock_error.exchange(false)) {
             LogD3D9FirstFailure("BeginStateBlock", This, hr);
         }
@@ -937,11 +922,11 @@ static HRESULT STDMETHODCALLTYPE BeginStateBlock_Detour(IDirect3DDevice9* This) 
 }
 
 static HRESULT STDMETHODCALLTYPE CreateQuery_Detour(IDirect3DDevice9* This, D3DQUERYTYPE Type,
-                                                     IDirect3DQuery9** ppQuery) {
+                                                    IDirect3DQuery9** ppQuery) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreateQuery_Original(This, Type, ppQuery);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateQuery", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateQuery returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateQuery_error.exchange(false)) {
             LogD3D9FirstFailure("CreateQuery", This, hr);
             LogError("[D3D9 error] CreateQuery first failure — Type=%u ppQuery=%p", static_cast<unsigned>(Type),
@@ -951,13 +936,12 @@ static HRESULT STDMETHODCALLTYPE CreateQuery_Detour(IDirect3DDevice9* This, D3DQ
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE DrawPrimitive_Detour(IDirect3DDevice9* This,
-                                                       D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex,
-                                                       UINT PrimitiveCount) {
+static HRESULT STDMETHODCALLTYPE DrawPrimitive_Detour(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
+                                                      UINT StartVertex, UINT PrimitiveCount) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = DrawPrimitive_Original(This, PrimitiveType, StartVertex, PrimitiveCount);
     if (FAILED(hr)) {
-        LogD3D9Error("DrawPrimitive", hr);
+        LogErrorThrottled(10, "[D3D9 error] DrawPrimitive returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_DrawPrimitive_error.exchange(false)) {
             LogD3D9FirstFailure("DrawPrimitive", This, hr);
             LogError("[D3D9 error] DrawPrimitive first failure — PrimitiveType=%u StartVertex=%u PrimitiveCount=%u",
@@ -967,15 +951,14 @@ static HRESULT STDMETHODCALLTYPE DrawPrimitive_Detour(IDirect3DDevice9* This,
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive_Detour(IDirect3DDevice9* This,
-                                                              D3DPRIMITIVETYPE PrimitiveType, INT BaseVertexIndex,
-                                                              UINT MinVertexIndex, UINT NumVertices, UINT startIndex,
-                                                              UINT primCount) {
+static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive_Detour(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
+                                                             INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices,
+                                                             UINT startIndex, UINT primCount) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = DrawIndexedPrimitive_Original(This, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices,
                                                startIndex, primCount);
     if (FAILED(hr)) {
-        LogD3D9Error("DrawIndexedPrimitive", hr);
+        LogErrorThrottled(10, "[D3D9 error] DrawIndexedPrimitive returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_DrawIndexedPrimitive_error.exchange(false)) {
             LogD3D9FirstFailure("DrawIndexedPrimitive", This, hr);
             LogError("[D3D9 error] DrawIndexedPrimitive first failure — PrimitiveType=%u startIndex=%u primCount=%u",
@@ -985,15 +968,14 @@ static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive_Detour(IDirect3DDevice9* T
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE DrawPrimitiveUP_Detour(IDirect3DDevice9* This,
-                                                         D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount,
-                                                         const void* pVertexStreamZeroData,
-                                                         UINT VertexStreamZeroStride) {
+static HRESULT STDMETHODCALLTYPE DrawPrimitiveUP_Detour(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
+                                                        UINT PrimitiveCount, const void* pVertexStreamZeroData,
+                                                        UINT VertexStreamZeroStride) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    HRESULT hr = DrawPrimitiveUP_Original(This, PrimitiveType, PrimitiveCount, pVertexStreamZeroData,
-                                          VertexStreamZeroStride);
+    HRESULT hr =
+        DrawPrimitiveUP_Original(This, PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
     if (FAILED(hr)) {
-        LogD3D9Error("DrawPrimitiveUP", hr);
+        LogErrorThrottled(10, "[D3D9 error] DrawPrimitiveUP returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_DrawPrimitiveUP_error.exchange(false)) {
             LogD3D9FirstFailure("DrawPrimitiveUP", This, hr);
             LogError("[D3D9 error] DrawPrimitiveUP first failure — PrimitiveType=%u PrimitiveCount=%u Stride=%u",
@@ -1004,15 +986,14 @@ static HRESULT STDMETHODCALLTYPE DrawPrimitiveUP_Detour(IDirect3DDevice9* This,
 }
 
 static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP_Detour(
-    IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices,
-    UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData,
-    UINT VertexStreamZeroStride) {
+    IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount,
+    const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    HRESULT hr = DrawIndexedPrimitiveUP_Original(This, PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount,
-                                                 pIndexData, IndexDataFormat, pVertexStreamZeroData,
-                                                 VertexStreamZeroStride);
+    HRESULT hr =
+        DrawIndexedPrimitiveUP_Original(This, PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData,
+                                        IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
     if (FAILED(hr)) {
-        LogD3D9Error("DrawIndexedPrimitiveUP", hr);
+        LogErrorThrottled(10, "[D3D9 error] DrawIndexedPrimitiveUP returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_DrawIndexedPrimitiveUP_error.exchange(false)) {
             LogD3D9FirstFailure("DrawIndexedPrimitiveUP", This, hr);
             LogError("[D3D9 error] DrawIndexedPrimitiveUP first failure — PrimitiveType=%u PrimitiveCount=%u",
@@ -1023,12 +1004,12 @@ static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP_Detour(
 }
 
 static HRESULT STDMETHODCALLTYPE ProcessVertices_Detour(IDirect3DDevice9* This, UINT SrcStartIndex, UINT DestIndex,
-                                                         UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer,
-                                                         IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) {
+                                                        UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer,
+                                                        IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = ProcessVertices_Original(This, SrcStartIndex, DestIndex, VertexCount, pDestBuffer, pVertexDecl, Flags);
     if (FAILED(hr)) {
-        LogD3D9Error("ProcessVertices", hr);
+        LogErrorThrottled(10, "[D3D9 error] ProcessVertices returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_ProcessVertices_error.exchange(false)) {
             LogD3D9FirstFailure("ProcessVertices", This, hr);
             LogError("[D3D9 error] ProcessVertices first failure — VertexCount=%u pDestBuffer=%p", VertexCount,
@@ -1043,7 +1024,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexDeclaration_Detour(IDirect3DDevice9* T
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetVertexDeclaration_Original(This, pDecl);
     if (FAILED(hr)) {
-        LogD3D9Error("SetVertexDeclaration", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetVertexDeclaration returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetVertexDeclaration_error.exchange(false)) {
             LogD3D9FirstFailure("SetVertexDeclaration", This, hr);
             LogError("[D3D9 error] SetVertexDeclaration first failure — pDecl=%p", static_cast<void*>(pDecl));
@@ -1056,7 +1037,7 @@ static HRESULT STDMETHODCALLTYPE SetFVF_Detour(IDirect3DDevice9* This, DWORD FVF
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetFVF_Original(This, FVF);
     if (FAILED(hr)) {
-        LogD3D9Error("SetFVF", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetFVF returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetFVF_error.exchange(false)) {
             LogD3D9FirstFailure("SetFVF", This, hr);
             LogError("[D3D9 error] SetFVF first failure — FVF=0x%lX", static_cast<unsigned long>(FVF));
@@ -1069,7 +1050,7 @@ static HRESULT STDMETHODCALLTYPE SetStreamSourceFreq_Detour(IDirect3DDevice9* Th
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetStreamSourceFreq_Original(This, StreamNumber, Divider);
     if (FAILED(hr)) {
-        LogD3D9Error("SetStreamSourceFreq", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetStreamSourceFreq returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetStreamSourceFreq_error.exchange(false)) {
             LogD3D9FirstFailure("SetStreamSourceFreq", This, hr);
             LogError("[D3D9 error] SetStreamSourceFreq first failure — StreamNumber=%u Divider=%u", StreamNumber,
@@ -1083,22 +1064,25 @@ static HRESULT STDMETHODCALLTYPE GetRenderTarget_Detour(IDirect3DDevice9* This, 
                                                         IDirect3DSurface9** ppRenderTarget) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetRenderTarget_Original(This, RenderTargetIndex, ppRenderTarget);
-    if (FAILED(hr)) {
-        LogD3D9Error("GetRenderTarget", hr);
+    // D3DERR_NOTAVAILABLE is expected when no render target is set at this slot (e.g. index 1+).
+    if (FAILED(hr) && static_cast<unsigned>(hr) != kD3DERR_NOTAVAILABLE) {
+        LogErrorThrottled(10, "[D3D9 error] GetRenderTarget returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetRenderTarget_error.exchange(false)) {
             LogD3D9FirstFailure("GetRenderTarget", This, hr);
-            LogError("[D3D9 error] GetRenderTarget first failure — RenderTargetIndex=%lu", static_cast<unsigned long>(RenderTargetIndex));
+            LogError("[D3D9 error] GetRenderTarget first failure — RenderTargetIndex=%lu",
+                     static_cast<unsigned long>(RenderTargetIndex));
         }
     }
     return hr;
 }
 
 static HRESULT STDMETHODCALLTYPE GetDepthStencilSurface_Detour(IDirect3DDevice9* This,
-                                                                IDirect3DSurface9** ppZStencilSurface) {
+                                                               IDirect3DSurface9** ppZStencilSurface) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetDepthStencilSurface_Original(This, ppZStencilSurface);
-    if (FAILED(hr)) {
-        LogD3D9Error("GetDepthStencilSurface", hr);
+    // D3DERR_NOTAVAILABLE is expected when no depth-stencil surface is set.
+    if (FAILED(hr) && static_cast<unsigned>(hr) != kD3DERR_NOTAVAILABLE) {
+        LogErrorThrottled(10, "[D3D9 error] GetDepthStencilSurface returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetDepthStencilSurface_error.exchange(false)) {
             LogD3D9FirstFailure("GetDepthStencilSurface", This, hr);
         }
@@ -1110,10 +1094,11 @@ static HRESULT STDMETHODCALLTYPE SetViewport_Detour(IDirect3DDevice9* This, cons
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetViewport_Original(This, pViewport);
     if (FAILED(hr)) {
-        LogD3D9Error("SetViewport", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetViewport returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetViewport_error.exchange(false)) {
             LogD3D9FirstFailure("SetViewport", This, hr);
-            LogError("[D3D9 error] SetViewport first failure — pViewport=%p", reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pViewport)));
+            LogError("[D3D9 error] SetViewport first failure — pViewport=%p",
+                     reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(pViewport)));
         }
     }
     return hr;
@@ -1124,7 +1109,7 @@ static HRESULT STDMETHODCALLTYPE SetTransform_Detour(IDirect3DDevice9* This, D3D
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetTransform_Original(This, State, pMatrix);
     if (FAILED(hr)) {
-        LogD3D9Error("SetTransform", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetTransform returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetTransform_error.exchange(false)) {
             LogD3D9FirstFailure("SetTransform", This, hr);
             LogError("[D3D9 error] SetTransform first failure — State=%u", static_cast<unsigned>(State));
@@ -1137,21 +1122,22 @@ static HRESULT STDMETHODCALLTYPE SetRenderState_Detour(IDirect3DDevice9* This, D
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetRenderState_Original(This, State, Value);
     if (FAILED(hr)) {
-        LogD3D9Error("SetRenderState", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetRenderState returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetRenderState_error.exchange(false)) {
             LogD3D9FirstFailure("SetRenderState", This, hr);
-            LogError("[D3D9 error] SetRenderState first failure — State=%u Value=%lu", static_cast<unsigned>(State), static_cast<unsigned long>(Value));
+            LogError("[D3D9 error] SetRenderState first failure — State=%u Value=%lu", static_cast<unsigned>(State),
+                     static_cast<unsigned long>(Value));
         }
     }
     return hr;
 }
 
 static HRESULT STDMETHODCALLTYPE GetTexture_Detour(IDirect3DDevice9* This, DWORD Stage,
-                                                    IDirect3DBaseTexture9** ppTexture) {
+                                                   IDirect3DBaseTexture9** ppTexture) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetTexture_Original(This, Stage, ppTexture);
     if (FAILED(hr)) {
-        LogD3D9Error("GetTexture", hr);
+        LogErrorThrottled(10, "[D3D9 error] GetTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetTexture_error.exchange(false)) {
             LogD3D9FirstFailure("GetTexture", This, hr);
             LogError("[D3D9 error] GetTexture first failure — Stage=%lu", static_cast<unsigned long>(Stage));
@@ -1161,14 +1147,15 @@ static HRESULT STDMETHODCALLTYPE GetTexture_Detour(IDirect3DDevice9* This, DWORD
 }
 
 static HRESULT STDMETHODCALLTYPE SetTexture_Detour(IDirect3DDevice9* This, DWORD Stage,
-                                                    IDirect3DBaseTexture9* pTexture) {
+                                                   IDirect3DBaseTexture9* pTexture) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetTexture_Original(This, Stage, pTexture);
     if (FAILED(hr)) {
-        LogD3D9Error("SetTexture", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetTexture returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetTexture_error.exchange(false)) {
             LogD3D9FirstFailure("SetTexture", This, hr);
-            LogError("[D3D9 error] SetTexture first failure — Stage=%lu pTexture=%p", static_cast<unsigned long>(Stage), static_cast<void*>(pTexture));
+            LogError("[D3D9 error] SetTexture first failure — Stage=%lu pTexture=%p", static_cast<unsigned long>(Stage),
+                     static_cast<void*>(pTexture));
         }
     }
     return hr;
@@ -1178,7 +1165,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexShader_Detour(IDirect3DDevice9* This, 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetVertexShader_Original(This, pShader);
     if (FAILED(hr)) {
-        LogD3D9Error("SetVertexShader", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetVertexShader returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetVertexShader_error.exchange(false)) {
             LogD3D9FirstFailure("SetVertexShader", This, hr);
             LogError("[D3D9 error] SetVertexShader first failure — pShader=%p", static_cast<void*>(pShader));
@@ -1191,7 +1178,7 @@ static HRESULT STDMETHODCALLTYPE SetPixelShader_Detour(IDirect3DDevice9* This, I
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = SetPixelShader_Original(This, pShader);
     if (FAILED(hr)) {
-        LogD3D9Error("SetPixelShader", hr);
+        LogErrorThrottled(10, "[D3D9 error] SetPixelShader returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_SetPixelShader_error.exchange(false)) {
             LogD3D9FirstFailure("SetPixelShader", This, hr);
             LogError("[D3D9 error] SetPixelShader first failure — pShader=%p", static_cast<void*>(pShader));
@@ -1200,14 +1187,16 @@ static HRESULT STDMETHODCALLTYPE SetPixelShader_Detour(IDirect3DDevice9* This, I
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE CreateRenderTargetEx_Detour(
-    IDirect3DDevice9* This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
-    DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, DWORD Usage) {
+static HRESULT STDMETHODCALLTYPE CreateRenderTargetEx_Detour(IDirect3DDevice9* This, UINT Width, UINT Height,
+                                                             D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
+                                                             DWORD MultisampleQuality, BOOL Lockable,
+                                                             IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle,
+                                                             DWORD Usage) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreateRenderTargetEx_Original(This, Width, Height, Format, MultiSample, MultisampleQuality, Lockable,
                                                ppSurface, pSharedHandle, Usage);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateRenderTargetEx", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateRenderTargetEx returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateRenderTargetEx_error.exchange(false)) {
             LogD3D9FirstFailure("CreateRenderTargetEx", This, hr);
             LogError("[D3D9 error] CreateRenderTargetEx first failure — Width=%u Height=%u Format=%u Usage=0x%lX",
@@ -1217,14 +1206,15 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTargetEx_Detour(
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx_Detour(
-    IDirect3DDevice9* This, UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface,
-    HANDLE* pSharedHandle, DWORD Usage) {
+static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx_Detour(IDirect3DDevice9* This, UINT Width, UINT Height,
+                                                                      D3DFORMAT Format, D3DPOOL Pool,
+                                                                      IDirect3DSurface9** ppSurface,
+                                                                      HANDLE* pSharedHandle, DWORD Usage) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    HRESULT hr = CreateOffscreenPlainSurfaceEx_Original(This, Width, Height, Format, Pool, ppSurface, pSharedHandle,
-                                                         Usage);
+    HRESULT hr =
+        CreateOffscreenPlainSurfaceEx_Original(This, Width, Height, Format, Pool, ppSurface, pSharedHandle, Usage);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateOffscreenPlainSurfaceEx", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateOffscreenPlainSurfaceEx returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateOffscreenPlainSurfaceEx_error.exchange(false)) {
             LogD3D9FirstFailure("CreateOffscreenPlainSurfaceEx", This, hr);
             LogError("[D3D9 error] CreateOffscreenPlainSurfaceEx first failure — Width=%u Height=%u Format=%u", Width,
@@ -1234,14 +1224,16 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx_Detour(
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx_Detour(
-    IDirect3DDevice9* This, UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
-    DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, DWORD Usage) {
+static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx_Detour(IDirect3DDevice9* This, UINT Width, UINT Height,
+                                                                    D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
+                                                                    DWORD MultisampleQuality, BOOL Discard,
+                                                                    IDirect3DSurface9** ppSurface,
+                                                                    HANDLE* pSharedHandle, DWORD Usage) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CreateDepthStencilSurfaceEx_Original(This, Width, Height, Format, MultiSample, MultisampleQuality,
-                                                       Discard, ppSurface, pSharedHandle, Usage);
+                                                      Discard, ppSurface, pSharedHandle, Usage);
     if (FAILED(hr)) {
-        LogD3D9Error("CreateDepthStencilSurfaceEx", hr);
+        LogErrorThrottled(10, "[D3D9 error] CreateDepthStencilSurfaceEx returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CreateDepthStencilSurfaceEx_error.exchange(false)) {
             LogD3D9FirstFailure("CreateDepthStencilSurfaceEx", This, hr);
             LogError("[D3D9 error] CreateDepthStencilSurfaceEx first failure — Width=%u Height=%u", Width, Height);
@@ -1250,30 +1242,27 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx_Detour(
     return hr;
 }
 
-static HRESULT STDMETHODCALLTYPE ResetEx_Detour(IDirect3DDevice9* This,
-                                                D3DPRESENT_PARAMETERS* pPresentationParameters,
+static HRESULT STDMETHODCALLTYPE ResetEx_Detour(IDirect3DDevice9* This, D3DPRESENT_PARAMETERS* pPresentationParameters,
                                                 D3DDISPLAYMODEEX* pFullscreenDisplayMode) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = ResetEx_Original(This, pPresentationParameters, pFullscreenDisplayMode);
     if (FAILED(hr)) {
-        LogD3D9Error("ResetEx", hr);
+        LogErrorThrottled(10, "[D3D9 error] ResetEx returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_ResetEx_error.exchange(false)) {
             LogD3D9FirstFailure("ResetEx", This, hr);
             LogError("[D3D9 error] ResetEx first failure — pPresentationParameters=%p pFullscreenDisplayMode=%p",
-                     static_cast<void*>(pPresentationParameters),
-                     static_cast<void*>(pFullscreenDisplayMode));
+                     static_cast<void*>(pPresentationParameters), static_cast<void*>(pFullscreenDisplayMode));
         }
     }
     return hr;
 }
 
 static HRESULT STDMETHODCALLTYPE GetDisplayModeEx_Detour(IDirect3DDevice9* This, UINT iSwapChain,
-                                                          D3DDISPLAYMODEEX* pMode,
-                                                          D3DDISPLAYROTATION* pRotation) {
+                                                         D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = GetDisplayModeEx_Original(This, iSwapChain, pMode, pRotation);
     if (FAILED(hr)) {
-        LogD3D9Error("GetDisplayModeEx", hr);
+        LogErrorThrottled(10, "[D3D9 error] GetDisplayModeEx returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_GetDisplayModeEx_error.exchange(false)) {
             LogD3D9FirstFailure("GetDisplayModeEx", This, hr);
             LogError("[D3D9 error] GetDisplayModeEx first failure — iSwapChain=%u", iSwapChain);
@@ -1286,7 +1275,7 @@ static HRESULT STDMETHODCALLTYPE CheckDeviceState_Detour(IDirect3DDevice9* This,
     RECORD_DETOUR_CALL(utils::get_now_ns());
     HRESULT hr = CheckDeviceState_Original(This, hDestinationWindow);
     if (FAILED(hr)) {
-        LogD3D9Error("CheckDeviceState", hr);
+        LogErrorThrottled(10, "[D3D9 error] CheckDeviceState returned 0x%08X", static_cast<unsigned>(hr));
         if (g_first_CheckDeviceState_error.exchange(false)) {
             LogD3D9FirstFailure("CheckDeviceState", This, hr);
             LogError("[D3D9 error] CheckDeviceState first failure — hDestinationWindow=%p",
@@ -1335,10 +1324,9 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         LogWarn("InstallD3D9DeviceVtableLogging: Clear hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::TestCooperativeLevel],
-                             reinterpret_cast<LPVOID>(&TestCooperativeLevel_Detour),
-                             reinterpret_cast<LPVOID*>(&TestCooperativeLevel_Original),
-                             "IDirect3DDevice9::TestCooperativeLevel")) {
+    if (!CreateAndEnableHook(
+            vtable[VTable::TestCooperativeLevel], reinterpret_cast<LPVOID>(&TestCooperativeLevel_Detour),
+            reinterpret_cast<LPVOID*>(&TestCooperativeLevel_Original), "IDirect3DDevice9::TestCooperativeLevel")) {
         LogWarn("InstallD3D9DeviceVtableLogging: TestCooperativeLevel hook failed");
         ok = false;
     }
@@ -1355,8 +1343,7 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::GetSwapChain], reinterpret_cast<LPVOID>(&GetSwapChain_Detour),
-                             reinterpret_cast<LPVOID*>(&GetSwapChain_Original),
-                             "IDirect3DDevice9::GetSwapChain")) {
+                             reinterpret_cast<LPVOID*>(&GetSwapChain_Original), "IDirect3DDevice9::GetSwapChain")) {
         LogWarn("InstallD3D9DeviceVtableLogging: GetSwapChain hook failed");
         ok = false;
     }
@@ -1410,26 +1397,22 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::UpdateSurface], reinterpret_cast<LPVOID>(&UpdateSurface_Detour),
-                             reinterpret_cast<LPVOID*>(&UpdateSurface_Original),
-                             "IDirect3DDevice9::UpdateSurface")) {
+                             reinterpret_cast<LPVOID*>(&UpdateSurface_Original), "IDirect3DDevice9::UpdateSurface")) {
         LogWarn("InstallD3D9DeviceVtableLogging: UpdateSurface hook failed");
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::UpdateTexture], reinterpret_cast<LPVOID>(&UpdateTexture_Detour),
-                             reinterpret_cast<LPVOID*>(&UpdateTexture_Original),
-                             "IDirect3DDevice9::UpdateTexture")) {
+                             reinterpret_cast<LPVOID*>(&UpdateTexture_Original), "IDirect3DDevice9::UpdateTexture")) {
         LogWarn("InstallD3D9DeviceVtableLogging: UpdateTexture hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::GetRenderTargetData],
-                             reinterpret_cast<LPVOID>(&GetRenderTargetData_Detour),
+    if (!CreateAndEnableHook(vtable[VTable::GetRenderTargetData], reinterpret_cast<LPVOID>(&GetRenderTargetData_Detour),
                              reinterpret_cast<LPVOID*>(&GetRenderTargetData_Original),
                              "IDirect3DDevice9::GetRenderTargetData")) {
         LogWarn("InstallD3D9DeviceVtableLogging: GetRenderTargetData hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::GetFrontBufferData],
-                             reinterpret_cast<LPVOID>(&GetFrontBufferData_Detour),
+    if (!CreateAndEnableHook(vtable[VTable::GetFrontBufferData], reinterpret_cast<LPVOID>(&GetFrontBufferData_Detour),
                              reinterpret_cast<LPVOID*>(&GetFrontBufferData_Original),
                              "IDirect3DDevice9::GetFrontBufferData")) {
         LogWarn("InstallD3D9DeviceVtableLogging: GetFrontBufferData hook failed");
@@ -1451,10 +1434,9 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetRenderTarget hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::SetDepthStencilSurface],
-                             reinterpret_cast<LPVOID>(&SetDepthStencilSurface_Detour),
-                             reinterpret_cast<LPVOID*>(&SetDepthStencilSurface_Original),
-                             "IDirect3DDevice9::SetDepthStencilSurface")) {
+    if (!CreateAndEnableHook(
+            vtable[VTable::SetDepthStencilSurface], reinterpret_cast<LPVOID>(&SetDepthStencilSurface_Detour),
+            reinterpret_cast<LPVOID*>(&SetDepthStencilSurface_Original), "IDirect3DDevice9::SetDepthStencilSurface")) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetDepthStencilSurface hook failed");
         ok = false;
     }
@@ -1465,8 +1447,7 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::EndStateBlock], reinterpret_cast<LPVOID>(&EndStateBlock_Detour),
-                             reinterpret_cast<LPVOID*>(&EndStateBlock_Original),
-                             "IDirect3DDevice9::EndStateBlock")) {
+                             reinterpret_cast<LPVOID*>(&EndStateBlock_Original), "IDirect3DDevice9::EndStateBlock")) {
         LogWarn("InstallD3D9DeviceVtableLogging: EndStateBlock hook failed");
         ok = false;
     }
@@ -1507,21 +1488,18 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::CreateQuery], reinterpret_cast<LPVOID>(&CreateQuery_Detour),
-                             reinterpret_cast<LPVOID*>(&CreateQuery_Original),
-                             "IDirect3DDevice9::CreateQuery")) {
+                             reinterpret_cast<LPVOID*>(&CreateQuery_Original), "IDirect3DDevice9::CreateQuery")) {
         LogWarn("InstallD3D9DeviceVtableLogging: CreateQuery hook failed");
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::DrawPrimitive], reinterpret_cast<LPVOID>(&DrawPrimitive_Detour),
-                             reinterpret_cast<LPVOID*>(&DrawPrimitive_Original),
-                             "IDirect3DDevice9::DrawPrimitive")) {
+                             reinterpret_cast<LPVOID*>(&DrawPrimitive_Original), "IDirect3DDevice9::DrawPrimitive")) {
         LogWarn("InstallD3D9DeviceVtableLogging: DrawPrimitive hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::DrawIndexedPrimitive],
-                             reinterpret_cast<LPVOID>(&DrawIndexedPrimitive_Detour),
-                             reinterpret_cast<LPVOID*>(&DrawIndexedPrimitive_Original),
-                             "IDirect3DDevice9::DrawIndexedPrimitive")) {
+    if (!CreateAndEnableHook(
+            vtable[VTable::DrawIndexedPrimitive], reinterpret_cast<LPVOID>(&DrawIndexedPrimitive_Detour),
+            reinterpret_cast<LPVOID*>(&DrawIndexedPrimitive_Original), "IDirect3DDevice9::DrawIndexedPrimitive")) {
         LogWarn("InstallD3D9DeviceVtableLogging: DrawIndexedPrimitive hook failed");
         ok = false;
     }
@@ -1531,10 +1509,9 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         LogWarn("InstallD3D9DeviceVtableLogging: DrawPrimitiveUP hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::DrawIndexedPrimitiveUP],
-                             reinterpret_cast<LPVOID>(&DrawIndexedPrimitiveUP_Detour),
-                             reinterpret_cast<LPVOID*>(&DrawIndexedPrimitiveUP_Original),
-                             "IDirect3DDevice9::DrawIndexedPrimitiveUP")) {
+    if (!CreateAndEnableHook(
+            vtable[VTable::DrawIndexedPrimitiveUP], reinterpret_cast<LPVOID>(&DrawIndexedPrimitiveUP_Detour),
+            reinterpret_cast<LPVOID*>(&DrawIndexedPrimitiveUP_Original), "IDirect3DDevice9::DrawIndexedPrimitiveUP")) {
         LogWarn("InstallD3D9DeviceVtableLogging: DrawIndexedPrimitiveUP hook failed");
         ok = false;
     }
@@ -1544,10 +1521,9 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         LogWarn("InstallD3D9DeviceVtableLogging: ProcessVertices hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::SetVertexDeclaration],
-                             reinterpret_cast<LPVOID>(&SetVertexDeclaration_Detour),
-                             reinterpret_cast<LPVOID*>(&SetVertexDeclaration_Original),
-                             "IDirect3DDevice9::SetVertexDeclaration")) {
+    if (!CreateAndEnableHook(
+            vtable[VTable::SetVertexDeclaration], reinterpret_cast<LPVOID>(&SetVertexDeclaration_Detour),
+            reinterpret_cast<LPVOID*>(&SetVertexDeclaration_Original), "IDirect3DDevice9::SetVertexDeclaration")) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetVertexDeclaration hook failed");
         ok = false;
     }
@@ -1556,8 +1532,7 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetFVF hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::SetStreamSourceFreq],
-                             reinterpret_cast<LPVOID>(&SetStreamSourceFreq_Detour),
+    if (!CreateAndEnableHook(vtable[VTable::SetStreamSourceFreq], reinterpret_cast<LPVOID>(&SetStreamSourceFreq_Detour),
                              reinterpret_cast<LPVOID*>(&SetStreamSourceFreq_Original),
                              "IDirect3DDevice9::SetStreamSourceFreq")) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetStreamSourceFreq hook failed");
@@ -1569,34 +1544,29 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         LogWarn("InstallD3D9DeviceVtableLogging: GetRenderTarget hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::GetDepthStencilSurface],
-                             reinterpret_cast<LPVOID>(&GetDepthStencilSurface_Detour),
-                             reinterpret_cast<LPVOID*>(&GetDepthStencilSurface_Original),
-                             "IDirect3DDevice9::GetDepthStencilSurface")) {
+    if (!CreateAndEnableHook(
+            vtable[VTable::GetDepthStencilSurface], reinterpret_cast<LPVOID>(&GetDepthStencilSurface_Detour),
+            reinterpret_cast<LPVOID*>(&GetDepthStencilSurface_Original), "IDirect3DDevice9::GetDepthStencilSurface")) {
         LogWarn("InstallD3D9DeviceVtableLogging: GetDepthStencilSurface hook failed");
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::SetViewport], reinterpret_cast<LPVOID>(&SetViewport_Detour),
-                             reinterpret_cast<LPVOID*>(&SetViewport_Original),
-                             "IDirect3DDevice9::SetViewport")) {
+                             reinterpret_cast<LPVOID*>(&SetViewport_Original), "IDirect3DDevice9::SetViewport")) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetViewport hook failed");
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::SetTransform], reinterpret_cast<LPVOID>(&SetTransform_Detour),
-                             reinterpret_cast<LPVOID*>(&SetTransform_Original),
-                             "IDirect3DDevice9::SetTransform")) {
+                             reinterpret_cast<LPVOID*>(&SetTransform_Original), "IDirect3DDevice9::SetTransform")) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetTransform hook failed");
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::SetRenderState], reinterpret_cast<LPVOID>(&SetRenderState_Detour),
-                             reinterpret_cast<LPVOID*>(&SetRenderState_Original),
-                             "IDirect3DDevice9::SetRenderState")) {
+                             reinterpret_cast<LPVOID*>(&SetRenderState_Original), "IDirect3DDevice9::SetRenderState")) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetRenderState hook failed");
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::GetTexture], reinterpret_cast<LPVOID>(&GetTexture_Detour),
-                             reinterpret_cast<LPVOID*>(&GetTexture_Original),
-                             "IDirect3DDevice9::GetTexture")) {
+                             reinterpret_cast<LPVOID*>(&GetTexture_Original), "IDirect3DDevice9::GetTexture")) {
         LogWarn("InstallD3D9DeviceVtableLogging: GetTexture hook failed");
         ok = false;
     }
@@ -1612,8 +1582,7 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         ok = false;
     }
     if (!CreateAndEnableHook(vtable[VTable::SetPixelShader], reinterpret_cast<LPVOID>(&SetPixelShader_Detour),
-                             reinterpret_cast<LPVOID*>(&SetPixelShader_Original),
-                             "IDirect3DDevice9::SetPixelShader")) {
+                             reinterpret_cast<LPVOID*>(&SetPixelShader_Original), "IDirect3DDevice9::SetPixelShader")) {
         LogWarn("InstallD3D9DeviceVtableLogging: SetPixelShader hook failed");
         ok = false;
     }
@@ -1623,10 +1592,9 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
         LogWarn("InstallD3D9DeviceVtableLogging: CheckDeviceState hook failed");
         ok = false;
     }
-    if (!CreateAndEnableHook(vtable[VTable::CreateRenderTargetEx],
-                             reinterpret_cast<LPVOID>(&CreateRenderTargetEx_Detour),
-                             reinterpret_cast<LPVOID*>(&CreateRenderTargetEx_Original),
-                             "IDirect3DDevice9Ex::CreateRenderTargetEx")) {
+    if (!CreateAndEnableHook(
+            vtable[VTable::CreateRenderTargetEx], reinterpret_cast<LPVOID>(&CreateRenderTargetEx_Detour),
+            reinterpret_cast<LPVOID*>(&CreateRenderTargetEx_Original), "IDirect3DDevice9Ex::CreateRenderTargetEx")) {
         LogWarn("InstallD3D9DeviceVtableLogging: CreateRenderTargetEx hook failed");
         ok = false;
     }
@@ -1661,7 +1629,8 @@ void InstallD3D9DeviceVtableLogging(IDirect3DDevice9* device) {
             "InstallD3D9DeviceVtableLogging: device vtable logging installed (59 methods: Reset, BeginScene, EndScene, "
             "Clear, TestCooperativeLevel, CreateAdditionalSwapChain, GetBackBuffer, GetSwapChain, CreateTexture, "
             "CreateVolumeTexture, CreateCubeTexture, CreateVertexBuffer, CreateIndexBuffer, CreateRenderTarget, "
-            "CreateDepthStencilSurface, CreateOffscreenPlainSurface, UpdateSurface, UpdateTexture, GetRenderTargetData, "
+            "CreateDepthStencilSurface, CreateOffscreenPlainSurface, UpdateSurface, UpdateTexture, "
+            "GetRenderTargetData, "
             "GetFrontBufferData, StretchRect, ColorFill, SetRenderTarget, GetRenderTarget, SetDepthStencilSurface, "
             "GetDepthStencilSurface, CreateStateBlock, BeginStateBlock, EndStateBlock, CreateVertexDeclaration, "
             "CreateVertexShader, SetStreamSource, SetIndices, CreatePixelShader, CreateQuery, DrawPrimitive, "

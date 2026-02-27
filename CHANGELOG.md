@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.125 (2026-02-27)
+
+- **OpenGL FPS limiter** - Use **wglSwapBuffers** as an FPS limiter call site (same pattern as D3D9 Present). Added `FpsLimiterCallSite::opengl_swapbuffers`; when chosen, custom FPS limiter and frame-time recording run from the OpenGL present path (ChooseFpsLimiter, OnPresentFlags2, RecordNativeFrameTime, RecordFrameTime, HandlePresentAfter). OpenGL games can use the same FPS limiter as D3D9/DXGI with automatic source selection.
+- **OpenGL hooks task doc** - Added `docs/tasks/opengl_hooks_and_fps_limiter.md` documenting that we hook all OpenGL create-context entry points (wglCreateContext, wglCreateContextAttribsARB when available) and present (wglSwapBuffers), installed when opengl32.dll is loaded.
+
+---
+
 ## v0.12.124 (2026-02-27)
 
 - **D3D9 device vtable logging** - Hook all IDirect3DDevice9 resource-creation methods that ReShade wraps: CreateTexture, CreateVolumeTexture, CreateCubeTexture, CreateVertexBuffer, CreateIndexBuffer (in addition to existing CreateRenderTarget, CreateDepthStencilSurface, CreateOffscreenPlainSurface). Each detour uses RECORD_DETOUR_CALL and logs on FAILED(hr).

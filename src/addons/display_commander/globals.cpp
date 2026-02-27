@@ -228,13 +228,14 @@ std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
 
 namespace {
 // Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dx9_present, dx9_presentex,
-// dxgi_factory_wrapper, reshade_addon_event.
+// opengl_swapbuffers, dxgi_factory_wrapper, reshade_addon_event.
 constexpr std::array<FpsLimiterCallSite, kFpsLimiterCallSiteCount> kFpsLimiterPriorityOrder = {
     FpsLimiterCallSite::reflex_marker,           FpsLimiterCallSite::reflex_marker_vk_nvll,
     FpsLimiterCallSite::reflex_marker_vk_loader,  FpsLimiterCallSite::reflex_marker_pclstats_etw,
     FpsLimiterCallSite::dxgi_swapchain1,          FpsLimiterCallSite::dxgi_swapchain,
     FpsLimiterCallSite::dx9_present,              FpsLimiterCallSite::dx9_presentex,
-    FpsLimiterCallSite::dxgi_factory_wrapper,     FpsLimiterCallSite::reshade_addon_event,
+    FpsLimiterCallSite::opengl_swapbuffers,       FpsLimiterCallSite::dxgi_factory_wrapper,
+    FpsLimiterCallSite::reshade_addon_event,
 };
 
 bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
@@ -258,6 +259,7 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
         case FpsLimiterCallSite::dx9_present:                 return "dx9_present";
         case FpsLimiterCallSite::dx9_presentex:              return "dx9_presentex";
+        case FpsLimiterCallSite::opengl_swapbuffers:         return "opengl_swapbuffers";
         case FpsLimiterCallSite::reshade_addon_event:        return "reshade_addon_event";
         case FpsLimiterCallSite::dxgi_factory_wrapper:       return "dxgi_factory_wrapper";
         default:                                             return "?";
@@ -272,7 +274,7 @@ FpsLimiterCallSite GetChosenFrameTimeLocation() {
     const FpsLimiterCallSite site = static_cast<FpsLimiterCallSite>(chosen);
     if (site == FpsLimiterCallSite::dxgi_swapchain1 || site == FpsLimiterCallSite::dxgi_swapchain
         || site == FpsLimiterCallSite::dx9_present || site == FpsLimiterCallSite::dx9_presentex
-        || site == FpsLimiterCallSite::reshade_addon_event) {
+        || site == FpsLimiterCallSite::opengl_swapbuffers || site == FpsLimiterCallSite::reshade_addon_event) {
         return site;
     }
     return FpsLimiterCallSite::reshade_addon_event;

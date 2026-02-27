@@ -11,6 +11,7 @@
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
+#include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "present_traffic_tracking.hpp"
 
@@ -53,18 +54,24 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     RECORD_DETOUR_CALL(now_ns);
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SWAPBUFFERS].fetch_add(1);
     g_opengl_hook_total_count.fetch_add(1);
+    g_swapchain_event_total_count.fetch_add(1);
 
-    // Call OnPresentFlags2 with flags = 0 (no flags for OpenGL)
-    OnPresentFlags2(true);  // Called from present_detour
-
-    RecordNativeFrameTime();
-
-    // Record per-frame FPS sample for background aggregation
-    // RecordFrameTime(FrameTimeMode::kPresent);
+    ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::opengl_swapbuffers);
+    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::opengl_swapbuffers);
+    if (use_fps_limiter) {
+        OnPresentFlags2(true, false);  // Called from present_detour
+        RecordNativeFrameTime();
+    }
+    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::opengl_swapbuffers) {
+        RecordFrameTime(FrameTimeMode::kPresent);
+    }
 
     // Call original function
     BOOL result = wglSwapBuffers_Original(hdc);
 
+    if (use_fps_limiter) {
+        display_commanderhooks::dxgi::HandlePresentAfter(false);
+    }
     // Handle GPU completion for OpenGL (assumes immediate completion)
     HandleOpenGLGPUCompletion();
 

@@ -227,7 +227,8 @@ std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount] 
 std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
 
 namespace {
-// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dxgi_factory_wrapper, reshade_addon_event.
+// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dxgi_factory_wrapper,
+// reshade_addon_event.
 constexpr std::array<FpsLimiterCallSite, 8> kFpsLimiterPriorityOrder = {
     FpsLimiterCallSite::reflex_marker,           FpsLimiterCallSite::reflex_marker_vk_nvll,
     FpsLimiterCallSite::reflex_marker_vk_loader, FpsLimiterCallSite::reflex_marker_pclstats_etw,
@@ -252,7 +253,7 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::reflex_marker_vk_nvll:      return "reflex_marker_vk_nvll";
         case FpsLimiterCallSite::reflex_marker_vk_loader:    return "reflex_marker_vk_loader";
         case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
-        case FpsLimiterCallSite::dxgi_swapchain1:             return "dxgi_swapchain1";
+        case FpsLimiterCallSite::dxgi_swapchain1:            return "dxgi_swapchain1";
         case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
         case FpsLimiterCallSite::reshade_addon_event:        return "reshade_addon_event";
         case FpsLimiterCallSite::dxgi_factory_wrapper:       return "dxgi_factory_wrapper";

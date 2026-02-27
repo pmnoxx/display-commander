@@ -31,6 +31,7 @@ class HookSuppressionSettings {
     BoolSetting suppress_d3d12_device_hooks;
     BoolSetting suppress_xinput_hooks;
     BoolSetting suppress_dinput_hooks;
+    BoolSetting suppress_dinput8_hooks;
     BoolSetting suppress_streamline_hooks;
     BoolSetting suppress_ngx_hooks;
     BoolSetting suppress_windows_gaming_input_hooks;
@@ -57,6 +58,7 @@ class HookSuppressionSettings {
     BoolSetting d3d12_device_hooks_installed;
     BoolSetting xinput_hooks_installed;
     BoolSetting dinput_hooks_installed;
+    BoolSetting dinput8_hooks_installed;
     BoolSetting streamline_hooks_installed;
     BoolSetting ngx_hooks_installed;
     BoolSetting windows_gaming_input_hooks_installed;

@@ -174,85 +174,87 @@ HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
     return result;
 }
 
-// Install DirectInput hooks
-bool InstallDirectInputHooks() {
-    if (g_dinput_hooks_installed.load()) {
-        LogInfo("DirectInput hooks already installed");
-        return true;
-    }
-
-    // Check if DirectInput hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DINPUT)) {
-        LogInfo("DirectInput hooks installation suppressed by user setting");
+// Install DirectInput 8 hooks for the given dinput8.dll module. Called from OnModuleLoaded.
+bool InstallDirectInput8Hooks(HMODULE hModule) {
+    if (!hModule) {
         return false;
     }
+    if (DirectInput8Create_Original) {
+        return true;  // already hooked
+    }
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DINPUT8)) {
+        LogInfo("DirectInput 8 hooks installation suppressed by user setting");
+        return false;
+    }
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DINPUT8);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("Failed to initialize MinHook for DirectInput 8 hooks - Status: %d", init_status);
+        return false;
+    }
+    auto DirectInput8Create_sys = reinterpret_cast<DirectInput8Create_pfn>(GetProcAddress(hModule, "DirectInput8Create"));
+    if (!DirectInput8Create_sys) {
+        LogWarn("DirectInput8Create not found in dinput8.dll");
+        return false;
+    }
+    if (!CreateAndEnableHook(DirectInput8Create_sys, DirectInput8Create_Detour, (LPVOID*)&DirectInput8Create_Original, "DirectInput8Create")) {
+        LogError("Failed to create and enable DirectInput8Create hook");
+        return false;
+    }
+    LogInfo("DirectInput8Create hook installed successfully");
+    g_dinput_hooks_installed.store(true);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DINPUT8);
+    return true;
+}
 
-    // Initialize MinHook (only if not already initialized)
+// Install legacy DirectInput hooks (DirectInputCreateA/W) for the given dinput.dll module. Called from OnModuleLoaded.
+bool InstallDirectInputHooks(HMODULE hModule) {
+    if (!hModule) {
+        return false;
+    }
+    if (DirectInputCreateA_Original && DirectInputCreateW_Original) {
+        return true;  // already hooked
+    }
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DINPUT)) {
+        LogInfo("DirectInput (legacy) hooks installation suppressed by user setting");
+        return false;
+    }
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DINPUT);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("Failed to initialize MinHook for DirectInput hooks - Status: %d", init_status);
+        LogError("Failed to initialize MinHook for DirectInput (legacy) hooks - Status: %d", init_status);
         return false;
     }
-
-    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
-        LogInfo("MinHook already initialized, proceeding with DirectInput hooks");
-    } else {
-        LogInfo("MinHook initialized successfully for DirectInput hooks");
-    }
-
-    // Hook DirectInput8Create
-    HMODULE dinput8_module = GetModuleHandleW(L"dinput8.dll");
-    if (dinput8_module) {
-        auto DirectInput8Create_sys = reinterpret_cast<DirectInput8Create_pfn>(GetProcAddress(dinput8_module, "DirectInput8Create"));
-        if (DirectInput8Create_sys) {
-            if (CreateAndEnableHook(DirectInput8Create_sys, DirectInput8Create_Detour, (LPVOID*)&DirectInput8Create_Original, "DirectInput8Create")) {
-                LogInfo("DirectInput8Create hook installed successfully");
-            } else {
-                LogError("Failed to create and enable DirectInput8Create hook");
-            }
-        } else {
-            LogWarn("DirectInput8Create not found in dinput8.dll");
-        }
-    } else {
-        LogWarn("dinput8.dll not loaded, skipping DirectInput8Create hook");
-    }
-
-    // Hook DirectInputCreateA
-    HMODULE dinput_module = GetModuleHandleW(L"dinput.dll");
-    if (dinput_module) {
-        auto DirectInputCreateA_sys = reinterpret_cast<DirectInputCreateA_pfn>(GetProcAddress(dinput_module, "DirectInputCreateA"));
+    bool any_installed = false;
+    if (!DirectInputCreateA_Original) {
+        auto DirectInputCreateA_sys = reinterpret_cast<DirectInputCreateA_pfn>(GetProcAddress(hModule, "DirectInputCreateA"));
         if (DirectInputCreateA_sys) {
             if (CreateAndEnableHook(DirectInputCreateA_sys, DirectInputCreateA_Detour, (LPVOID*)&DirectInputCreateA_Original, "DirectInputCreateA")) {
                 LogInfo("DirectInputCreateA hook installed successfully");
+                any_installed = true;
             } else {
                 LogError("Failed to create and enable DirectInputCreateA hook");
             }
         } else {
             LogWarn("DirectInputCreateA not found in dinput.dll");
         }
-
-        // Hook DirectInputCreateW
-        auto DirectInputCreateW_sys = reinterpret_cast<DirectInputCreateW_pfn>(GetProcAddress(dinput_module, "DirectInputCreateW"));
+    }
+    if (!DirectInputCreateW_Original) {
+        auto DirectInputCreateW_sys = reinterpret_cast<DirectInputCreateW_pfn>(GetProcAddress(hModule, "DirectInputCreateW"));
         if (DirectInputCreateW_sys) {
             if (CreateAndEnableHook(DirectInputCreateW_sys, DirectInputCreateW_Detour, (LPVOID*)&DirectInputCreateW_Original, "DirectInputCreateW")) {
                 LogInfo("DirectInputCreateW hook installed successfully");
+                any_installed = true;
             } else {
                 LogError("Failed to create and enable DirectInputCreateW hook");
             }
         } else {
             LogWarn("DirectInputCreateW not found in dinput.dll");
         }
-    } else {
-        LogWarn("dinput.dll not loaded, skipping DirectInputCreate hooks");
     }
-
-    g_dinput_hooks_installed.store(true);
-    LogInfo("DirectInput hooks installation completed");
-
-    // Mark DirectInput hooks as installed
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DINPUT);
-
-    return true;
+    if (any_installed) {
+        g_dinput_hooks_installed.store(true);
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DINPUT);
+    }
+    return any_installed;
 }
 
 // Uninstall DirectInput hooks

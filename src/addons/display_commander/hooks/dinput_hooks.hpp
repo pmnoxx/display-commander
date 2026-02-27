@@ -31,8 +31,9 @@ HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, LPVOID lpvData);
 HRESULT WINAPI DInputDevice_GetDeviceData_Detour(LPVOID pDevice, DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags);
 
-// Hook management
-bool InstallDirectInputHooks();
+// Hook management (call from OnModuleLoaded with the loaded module handle)
+bool InstallDirectInput8Hooks(HMODULE hModule);
+bool InstallDirectInputHooks(HMODULE hModule);  // dinput.dll (DirectInputCreateA/W)
 void UninstallDirectInputHooks();
 
 // Device creation tracking

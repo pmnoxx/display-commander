@@ -1195,11 +1195,7 @@ bool InstallApiHooks() {
     // Install LoadLibrary hooks
     InstallLoadLibraryHooks();
 
-    // Install DirectInput hooks
-    InstallDirectInputHooks();
-
-    // Install OpenGL hooks
-    InstallOpenGLHooks();
+    // DirectInput and OpenGL hooks are installed via OnModuleLoaded when dinput8.dll, dinput.dll, or opengl32.dll is loaded
 
     // Install display settings hooks
     InstallDisplaySettingsHooks();
@@ -1210,8 +1206,7 @@ bool InstallApiHooks() {
     // Install debug output hooks
     debug_output::InstallDebugOutputHooks();
 
-    // Install PCLStats ETW hooks (EventRegister + EventWriteTransfer) to count game/DC PCLStatsEvent / V2 / V3
-    InstallPCLStatsEtwHooks();
+    // PCLStats ETW hooks are installed via OnModuleLoaded when advapi32.dll is loaded
 
     // D3D device creation hooks are now installed via OnModuleLoaded when d3d11.dll or d3d12.dll is loaded
 
@@ -1262,6 +1257,9 @@ void UninstallApiHooks() {
 
     // Uninstall debug output hooks
     debug_output::UninstallDebugOutputHooks();
+
+    // Uninstall PCLStats ETW hooks (installed via OnModuleLoaded when advapi32.dll loaded)
+    UninstallPCLStatsEtwHooks();
 
     // Uninstall DPI hooks
     display_commanderhooks::dpi::UninstallDpiHooks();

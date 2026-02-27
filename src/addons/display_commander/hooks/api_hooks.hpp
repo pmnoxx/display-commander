@@ -1,10 +1,11 @@
 #pragma once
 
-#include <cstdint>
 #include <d3d11.h>
 #include <d3d12.h>
 #include <dxgi.h>
 #include <windows.h>
+#include <cstdint>
+
 
 // Forward declarations for DXGI hooks
 namespace display_commanderhooks::dxgi {
@@ -28,7 +29,8 @@ using SetWindowLongA_pfn = LONG(WINAPI*)(HWND, int, LONG);
 using SetWindowLongW_pfn = LONG(WINAPI*)(HWND, int, LONG);
 using SetWindowLongPtrA_pfn = LONG_PTR(WINAPI*)(HWND, int, LONG_PTR);
 using SetWindowPos_pfn = BOOL(WINAPI*)(HWND, HWND, int, int, int, int, UINT);
-using CreateWindowExW_pfn = HWND(WINAPI*)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE, LPVOID);
+using CreateWindowExW_pfn = HWND(WINAPI*)(DWORD, LPCWSTR, LPCWSTR, DWORD, int, int, int, int, HWND, HMENU, HINSTANCE,
+                                          LPVOID);
 using SetCursor_pfn = HCURSOR(WINAPI*)(HCURSOR);
 using ShowCursor_pfn = int(WINAPI*)(BOOL);
 using AddVectoredExceptionHandler_pfn = PVOID(WINAPI*)(ULONG, PVECTORED_EXCEPTION_HANDLER);
@@ -76,7 +78,8 @@ extern D3D12CreateDevice_pfn D3D12CreateDevice_Original;
 
 // True minimized state, bypassing IsIconic detour (e.g. for ApplyWindowChange - do not move/resize minimized windows).
 bool IsIconic_direct(HWND hwnd);
-// True visibility state, bypassing IsWindowVisible detour (e.g. when code needs real visibility, not Continue Rendering spoof).
+// True visibility state, bypassing IsWindowVisible detour (e.g. when code needs real visibility, not Continue Rendering
+// spoof).
 bool IsWindowVisible_direct(HWND hwnd);
 
 // Hooked API functions
@@ -94,8 +97,8 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong);
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 HWND WINAPI CreateWindowExW_Detour(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X,
-                                    int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
-                                    LPVOID lpParam);
+                                   int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
+                                   LPVOID lpParam);
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor);
 int WINAPI ShowCursor_Detour(BOOL bShow);
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
@@ -119,7 +122,7 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 // Hook management
 bool InstallApiHooks();
 bool InstallWindowsApiHooks();
-bool InstallDxgiFactoryHooks(HMODULE dxgi_module = nullptr);
+bool InstallDxgiFactoryHooks(HMODULE dxgi_module);
 bool InstallD3D11DeviceHooks(HMODULE d3d11_module);
 bool InstallD3D12DeviceHooks(HMODULE d3d12_module);
 void UninstallApiHooks();
@@ -143,7 +146,7 @@ BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 
 // CreateWindowW direct access (bypasses hook; use from standalone UI or when real window creation is needed)
 HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
-                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
+                                 int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
 
 // Restore cursor function
 void RestoreSetCursor();
@@ -156,10 +159,10 @@ bool ShouldBlockKeyboardInput(bool assume_foreground = false);
 // Continue Rendering API debug: snapshot of what each focus/visibility API last returned (for Window Info tab).
 struct ContinueRenderingApiDebugSnapshot {
     const char* api_name;
-    uintptr_t last_value;       // HWND as uintptr_t, or 0/1 for BOOL (when value_is_bool)
-    uint64_t last_call_time_ns; // from utils::get_now_ns()
-    bool did_override;          // true if we spoofed the return value
-    bool value_is_bool;         // true for IsIconic/IsWindowVisible (last_value 0 or 1)
+    uintptr_t last_value;        // HWND as uintptr_t, or 0/1 for BOOL (when value_is_bool)
+    uint64_t last_call_time_ns;  // from utils::get_now_ns()
+    bool did_override;           // true if we spoofed the return value
+    bool value_is_bool;          // true for IsIconic/IsWindowVisible (last_value 0 or 1)
 };
 constexpr int CR_DEBUG_API_COUNT = 6;
 void GetContinueRenderingApiDebugSnapshots(ContinueRenderingApiDebugSnapshot* out);

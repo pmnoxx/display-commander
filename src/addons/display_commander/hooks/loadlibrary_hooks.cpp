@@ -24,9 +24,12 @@
 #include "../utils/timing.hpp"
 #include "api_hooks.hpp"
 #include "dbghelp_hooks.hpp"
+#include "dinput_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "ngx_hooks.hpp"
 #include "nvapi_hooks.hpp"
+#include "opengl_hooks.hpp"
+#include "pclstats_etw_hooks.hpp"
 #include "streamline_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
@@ -1630,6 +1633,41 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("DbgHelp hooks installed successfully");
         } else {
             LogInfo("DbgHelp hooks not installed (e.g. already installed or symbol not found)");
+        }
+    }
+    // advapi32.dll – PCLStats ETW (EventRegister + EventWriteTransfer) for Reflex/PCLStats event counting
+    else if (lowerModuleName.find(L"advapi32.dll") != std::wstring::npos) {
+        if (InstallPCLStatsEtwHooks()) {
+            LogInfo("PCLStats ETW hooks installed (advapi32.dll)");
+        } else {
+            LogInfo("PCLStats ETW hooks not installed (e.g. already installed or advapi32 not ready)");
+        }
+    }
+    // opengl32.dll – WGL / OpenGL present and context hooks
+    else if (lowerModuleName.find(L"opengl32.dll") != std::wstring::npos) {
+        LogInfo("Installing OpenGL hooks for module: %ws", moduleName.c_str());
+        if (InstallOpenGLHooks()) {
+            LogInfo("OpenGL hooks installed successfully");
+        } else {
+            LogInfo("OpenGL hooks not installed (e.g. suppressed, already installed, or opengl32 not ready)");
+        }
+    }
+    // dinput8.dll – DirectInput 8 create hook
+    else if (lowerModuleName.find(L"dinput8.dll") != std::wstring::npos) {
+        LogInfo("Installing DirectInput 8 hooks for module: %ws", moduleName.c_str());
+        if (InstallDirectInput8Hooks(hModule)) {
+            LogInfo("DirectInput 8 hooks installed");
+        } else {
+            LogInfo("DirectInput 8 hooks not installed (e.g. suppressed or already installed)");
+        }
+    }
+    // dinput.dll – legacy DirectInput create hooks (DirectInputCreateA/W)
+    else if (lowerModuleName.find(L"dinput.dll") != std::wstring::npos) {
+        LogInfo("Installing DirectInput hooks for module: %ws", moduleName.c_str());
+        if (InstallDirectInputHooks(hModule)) {
+            LogInfo("DirectInput hooks installed");
+        } else {
+            LogInfo("DirectInput hooks not installed (e.g. suppressed or already installed)");
         }
     }
 

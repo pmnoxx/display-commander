@@ -20,6 +20,7 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::D3D12_DEVICE:   return &settings::g_hook_suppression_settings.suppress_d3d12_device_hooks;
         case HookType::XINPUT:         return &settings::g_hook_suppression_settings.suppress_xinput_hooks;
         case HookType::DINPUT:         return &settings::g_hook_suppression_settings.suppress_dinput_hooks;
+        case HookType::DINPUT8:        return &settings::g_hook_suppression_settings.suppress_dinput8_hooks;
         case HookType::STREAMLINE:     return &settings::g_hook_suppression_settings.suppress_streamline_hooks;
         case HookType::NGX:            return &settings::g_hook_suppression_settings.suppress_ngx_hooks;
         case HookType::WINDOWS_GAMING_INPUT:
@@ -70,6 +71,9 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                     break;
                 case HookType::DINPUT:
                     current_value = settings::g_hook_suppression_settings.suppress_dinput_hooks.GetValue();
+                    break;
+                case HookType::DINPUT8:
+                    current_value = settings::g_hook_suppression_settings.suppress_dinput8_hooks.GetValue();
                     break;
                 case HookType::STREAMLINE:
                     current_value = settings::g_hook_suppression_settings.suppress_streamline_hooks.GetValue();
@@ -148,6 +152,7 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.GetValue();
         case HookType::XINPUT:     return settings::g_hook_suppression_settings.suppress_xinput_hooks.GetValue();
         case HookType::DINPUT:     return settings::g_hook_suppression_settings.suppress_dinput_hooks.GetValue();
+        case HookType::DINPUT8:    return settings::g_hook_suppression_settings.suppress_dinput8_hooks.GetValue();
         case HookType::STREAMLINE: return settings::g_hook_suppression_settings.suppress_streamline_hooks.GetValue();
         case HookType::NGX:        return settings::g_hook_suppression_settings.suppress_ngx_hooks.GetValue();
         case HookType::WINDOWS_GAMING_INPUT:
@@ -215,6 +220,12 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
             if (!settings::g_hook_suppression_settings.dinput_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.dinput_hooks_installed.SetValue(true);
                 settings::g_hook_suppression_settings.suppress_dinput_hooks.SetValue(false);
+            }
+            break;
+        case HookType::DINPUT8:
+            if (!settings::g_hook_suppression_settings.dinput8_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.dinput8_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_dinput8_hooks.SetValue(false);
             }
             break;
         case HookType::STREAMLINE:
@@ -344,6 +355,7 @@ std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType)
         case HookType::D3D12_DEVICE:         return "SuppressD3D12DeviceHooks";
         case HookType::XINPUT:               return "SuppressXInputHooks";
         case HookType::DINPUT:               return "SuppressDInputHooks";
+        case HookType::DINPUT8:              return "SuppressDInput8Hooks";
         case HookType::STREAMLINE:           return "SuppressStreamlineHooks";
         case HookType::NGX:                  return "SuppressNGXHooks";
         case HookType::WINDOWS_GAMING_INPUT: return "SuppressWindowsGamingInputHooks";
@@ -377,6 +389,7 @@ std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType
         case HookType::D3D12_DEVICE:         return "D3D12DeviceHooksInstalled";
         case HookType::XINPUT:               return "XInputHooksInstalled";
         case HookType::DINPUT:               return "DInputHooksInstalled";
+        case HookType::DINPUT8:              return "DInput8HooksInstalled";
         case HookType::STREAMLINE:           return "StreamlineHooksInstalled";
         case HookType::NGX:                  return "NGXHooksInstalled";
         case HookType::WINDOWS_GAMING_INPUT: return "WindowsGamingInputHooksInstalled";
@@ -414,6 +427,7 @@ bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
             return settings::g_hook_suppression_settings.d3d12_device_hooks_installed.GetValue();
         case HookType::XINPUT:     return settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue();
         case HookType::DINPUT:     return settings::g_hook_suppression_settings.dinput_hooks_installed.GetValue();
+        case HookType::DINPUT8:    return settings::g_hook_suppression_settings.dinput8_hooks_installed.GetValue();
         case HookType::STREAMLINE: return settings::g_hook_suppression_settings.streamline_hooks_installed.GetValue();
         case HookType::NGX:        return settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue();
         case HookType::WINDOWS_GAMING_INPUT:
@@ -453,6 +467,7 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::D3D12_DEVICE:         return "D3D12 Device";
         case HookType::XINPUT:               return "XInput";
         case HookType::DINPUT:               return "DirectInput";
+        case HookType::DINPUT8:              return "DirectInput 8";
         case HookType::STREAMLINE:           return "Streamline";
         case HookType::NGX:                  return "NGX";
         case HookType::WINDOWS_GAMING_INPUT: return "Windows Gaming Input";

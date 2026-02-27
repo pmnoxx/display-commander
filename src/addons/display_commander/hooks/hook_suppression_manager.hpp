@@ -11,7 +11,8 @@ enum class HookType {
     D3D11_DEVICE,
     D3D12_DEVICE,
     XINPUT,
-    DINPUT,
+    DINPUT,   // dinput.dll (DirectInputCreateA/W)
+    DINPUT8,  // dinput8.dll (DirectInput8Create)
     STREAMLINE,
     NGX,
     WINDOWS_GAMING_INPUT,

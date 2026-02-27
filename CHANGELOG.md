@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.115 (2026-02-26)
+
+- **DirectInput and OpenGL hooks via OnModuleLoaded** - Fixed creating hooks when Display Commnader is used as dll proxy.
+- **PCLStats ETW hooks via OnModuleLoaded** - Fixed creating hooks when Display Commander is used as dll proxy.
+
+---
+
 ## v0.12.114 (2026-02-26)
 
 - **Suppress Windows.Gaming.Input UI** - "Suppress Windows.Gaming.Input" checkbox moved from Advanced tab to Main tab (Window Control), shown directly below "Continue Rendering in Background". Checkbox is only visible when Windows.Gaming.Input hooks are installed for the current process (`g_windows_gaming_input` / WGI hooks active). Added global atomic `g_windows_gaming_input` (set on hook install/uninstall and when a suppressible WGI factory request is seen).

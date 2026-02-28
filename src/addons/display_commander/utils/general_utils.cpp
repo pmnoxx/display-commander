@@ -169,83 +169,49 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam
 }
 
 // XInput processing functions
-// Process stick input with radial deadzone (preserves direction)
-void ProcessStickInputRadial(float& x, float& y, float deadzone, float max_input, float min_output) {
-    // Calculate magnitude (distance from center)
-    float magnitude = std::sqrt(x * x + y * y);
+// Map one signed axis: input [min_input, max_input] -> output [min_output, max_output]; below min_input -> 0
+float MapStickAxisValue(float value, float min_input, float max_input, float min_output, float max_output) {
+    float abs_val = std::abs(value);
+    float sign_val = (value >= 0.0f) ? 1.0f : -1.0f;
+    if (abs_val <= min_input) return 0.0f;
+    if (max_input <= min_input) return 0.0f;  // avoid div by zero
+    if (abs_val >= max_input) return sign_val * max_output;
+    float t = (abs_val - min_input) / (max_input - min_input);
+    return sign_val * (min_output + t * (max_output - min_output));
+}
 
-    // If magnitude is zero, nothing to process
+// Process stick input with radial mapping (one mapping applied to magnitude)
+void ProcessStickInputRadial(float& x, float& y, float min_input, float max_input, float min_output,
+                             float max_output) {
+    float magnitude = std::sqrt(x * x + y * y);
     if (magnitude < 0.0001f) {
         x = 0.0f;
         y = 0.0f;
         return;
     }
-
-    // Calculate normalized direction
-    // Step 1: Apply radial deadzone
-    if (magnitude < deadzone) {
-        // Within deadzone - zero out
-        x = 0.0f;
-        y = 0.0f;
-        return;
+    // Map magnitude [min_input, max_input] -> [min_output, max_output]
+    float out_mag;
+    if (magnitude <= min_input) {
+        out_mag = 0.0f;
+    } else if (max_input <= min_input) {
+        out_mag = 0.0f;
+    } else if (magnitude >= max_input) {
+        out_mag = max_output;
+    } else {
+        float t = (magnitude - min_input) / (max_input - min_input);
+        out_mag = min_output + t * (max_output - min_output);
     }
-
-    // Step 2: Apply max_input scaling (e.g., 0.7 max input maps to 1.0 max output)
-    // Scale magnitude from [deadzone, max_input] to [0, 1]
-    float scaled_magnitude = (std::min)(1.0f, max(0.0f, magnitude - deadzone) / (max_input - deadzone));
-
-    // Step 3: Apply min_output mapping (e.g., 0.3 min output maps 0.0-1.0 to 0.3-1.0)
-    float output_magnitude = min_output + (scaled_magnitude * (1.0f - min_output));
-
-    // Step 4: Clamp to valid range [0.0, 1.0]
-    output_magnitude = std::clamp(output_magnitude, 0.0f, 1.0f);
-
-    // Reconstruct x and y with original direction but new magnitude
-    x = x * output_magnitude / magnitude;
-    y = y * output_magnitude / magnitude;
+    out_mag = std::clamp(out_mag, 0.0f, 1.0f);
+    float scale = out_mag / magnitude;
+    x = x * scale;
+    y = y * scale;
 }
 
-// Process stick input with square deadzone (processes X and Y axes separately)
-void ProcessStickInputSquare(float& x, float& y, float deadzone, float max_input, float min_output) {
-    // Process X axis independently
-    float abs_x = std::abs(x);
-    float sign_x = (x >= 0.0f) ? 1.0f : -1.0f;
-
-    // Step 1: Apply square deadzone to X axis
-    if (abs_x < deadzone) {
-        x = 0.0f;
-    } else {
-        // Step 2: Apply max_input scaling to X axis
-        // Scale from [deadzone, max_input] to [0, 1]
-        float scaled_x = (std::min)(1.0f, max(0.0f, (abs_x - deadzone) / (max_input - deadzone)));
-
-        // Step 3: Apply min_output mapping to X axis
-        float output_x = min_output + (scaled_x * (1.0f - min_output));
-
-        // Step 4: Clamp and restore sign
-        output_x = std::clamp(output_x, 0.0f, 1.0f);
-        x = sign_x * output_x;
-    }
-
-    // Process Y axis independently
-    float abs_y = std::abs(y);
-    float sign_y = (y >= 0.0f) ? 1.0f : -1.0f;
-
-    // Step 1: Apply square deadzone to Y axis
-    if (abs_y < deadzone) {
-        y = 0.0f;
-    } else {
-        // Step 2: Apply max_input scaling to Y axis
-        // Scale from [deadzone, max_input] to [0, 1]
-        float scaled_y = (std::min)(1.0f, max(0.0f, (abs_y - deadzone) / (max_input - deadzone)));
-
-        // Step 3: Apply min_output mapping to Y axis
-        float output_y = min_output + (scaled_y * (1.0f - min_output));
-
-        // Step 4: Clamp and restore sign
-        output_y = std::clamp(output_y, 0.0f, 1.0f);
-        y = sign_y * output_y;
-    }
+// Process stick input with square mapping (separate min/max input and min/max output per axis)
+void ProcessStickInputSquare(float& x, float& y, float min_in_x, float max_in_x, float min_out_x, float max_out_x,
+                            float min_in_y, float max_in_y, float min_out_y, float max_out_y) {
+    x = MapStickAxisValue(x, min_in_x, max_in_x, min_out_x, max_out_x);
+    y = MapStickAxisValue(y, min_in_y, max_in_y, min_out_y, max_out_y);
 }
 
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)

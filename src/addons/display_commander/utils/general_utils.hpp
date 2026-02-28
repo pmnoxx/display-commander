@@ -134,6 +134,9 @@ inline T UpdateRollingAverage(T new_value, T old_value, int alpha = 64) {
 
 // MinHook wrapper functions
 bool CreateAndEnableHook(LPVOID pTarget, LPVOID pDetour, LPVOID* ppOriginal, const char* hookName);
+// Create and enable hook by resolving proc from the given module (uses GetProcAddress + CreateAndEnableHook).
+bool CreateAndEnableHookFromModule(HMODULE hModule, const char* procName, LPVOID pDetour, LPVOID* ppOriginal,
+                                   const char* hookName);
 MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType);
 
 // D3D9 present mode and flags string conversion functions

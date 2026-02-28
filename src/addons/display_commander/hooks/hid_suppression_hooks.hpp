@@ -1,8 +1,13 @@
 #pragma once
 
 #include <windows.h>
+// Clang does not parse MSVC SAL _Return_type_success_(...) in ntdef.h (pulled in by hidsdi.h); neutralize it.
+#if defined(__clang__)
+#define _Return_type_success_(x)
+#endif
 #include <hidsdi.h>
 #include <string>
+
 
 namespace renodx::hooks {
 
@@ -21,21 +26,31 @@ extern CreateFileA_pfn CreateFileA_Original;
 extern CreateFileW_pfn CreateFileW_Original;
 
 // Hooked HID functions
-BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped);
-BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped);
+BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
+                            LPOVERLAPPED lpOverlapped);
+BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
+                            LPOVERLAPPED lpOverlapped);
 BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
 BOOLEAN __stdcall HidD_GetInputReport_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
 BOOLEAN __stdcall HidD_GetAttributes_Direct(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes);
 BOOLEAN __stdcall HidD_GetAttributes_Detour(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes);
-HANDLE WINAPI CreateFileA_Direct(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
-HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
-HANDLE WINAPI CreateFileW_Direct(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
-HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+HANDLE WINAPI CreateFileA_Direct(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
+                                 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+                                 DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
+                                 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+                                 DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+HANDLE WINAPI CreateFileW_Direct(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
+                                 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+                                 DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
+HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
+                                 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+                                 DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
 
 // Hook management
-bool InstallHIDSuppressionHooks();
 void UninstallHIDSuppressionHooks();
 bool AreHIDSuppressionHooksInstalled();
+void MarkHIDSuppressionHooksInstalled(bool installed);
 
 // Helper functions
 bool IsDualSenseDevice(USHORT vendorId, USHORT productId);
@@ -47,5 +62,4 @@ bool ShouldSuppressHIDInput();
 void SetHIDSuppressionEnabled(bool enabled);
 bool IsHIDSuppressionEnabled();
 
-} // namespace renodx::hooks
-
+}  // namespace renodx::hooks

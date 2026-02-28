@@ -5,52 +5,15 @@
 
 namespace display_commanderhooks {
 
-// Global HID statistics
-std::array<HIDCallStats, HID_COUNT> g_hid_api_stats;
+// Global HID device type statistics
 HIDDeviceStats g_hid_device_stats;
-
-// HID API names
-const char* HID_API_NAMES[HID_COUNT] = {
-    "CreateFileA",
-    "CreateFileW",
-    "ReadFile",
-    "WriteFile",
-    "DeviceIoControl",
-    "HidD_GetInputReport",
-    "HidD_GetAttributes",
-    "HidD_GetPreparsedData",
-    "HidD_FreePreparsedData",
-    "HidP_GetCaps",
-    "HidD_GetManufacturerString",
-    "HidD_GetProductString",
-    "HidD_GetSerialNumberString",
-    "HidD_GetNumInputBuffers",
-    "HidD_SetNumInputBuffers",
-    "HidD_GetFeature",
-    "HidD_SetFeature"
-};
-
-const HIDCallStats& GetHIDAPIStats(HIDAPIType api_type) {
-    return g_hid_api_stats[api_type];
-}
 
 const HIDDeviceStats& GetHIDDeviceStats() {
     return g_hid_device_stats;
 }
 
 void ResetAllHIDStats() {
-    for (auto& stats : g_hid_api_stats) {
-        stats.reset();
-    }
     g_hid_device_stats.reset();
-}
-
-int GetHIDAPICount() {
-    return HID_COUNT;
-}
-
-const char* GetHIDAPIName(HIDAPIType api_type) {
-    return HID_API_NAMES[api_type];
 }
 
 bool IsDualSenseDevice(const std::string& device_path) {

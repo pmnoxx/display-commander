@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.151 (2026-02-28)
+
+- **Hook statistics cleanup** - Removed duplicate `g_hid_api_stats`; HID hooks now use only `g_hook_stats` (Hook Stats tab). Kept `g_hid_device_stats` for HID device-type counts (DualSense/Xbox/generic). Display Settings hooks (ChangeDisplaySettings*, ShowWindow, SetWindowPos, SetWindowLong*) now update `g_hook_stats` so they appear in Hook Stats. Added `HookIndex hook_index` to `HookInfo` and a compile-time `static_assert` so `g_hook_info` array order stays aligned with the `HookIndex` enum.
+
+---
+
 ## v0.12.150 (2026-02-28)
 
 - **Controller tab added** - New Controller tab (XInput monitoring, remapping, HID devices, Battery Status, DualSense Input Report, etc.). Collapsible sections use indent/unindent at call site so the ImGui stack stays balanced and early returns cannot leave indent unmatched.

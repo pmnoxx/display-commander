@@ -1,51 +1,9 @@
 #pragma once
 
 #include <atomic>
-#include <array>
 #include <string>
 
 namespace display_commanderhooks {
-
-// HID API call statistics structure
-struct HIDCallStats {
-    std::atomic<uint64_t> total_calls{0};
-    std::atomic<uint64_t> successful_calls{0};
-    std::atomic<uint64_t> failed_calls{0};
-    std::atomic<uint64_t> blocked_calls{0};
-
-    void increment_total() { total_calls.fetch_add(1); }
-    void increment_successful() { successful_calls.fetch_add(1); }
-    void increment_failed() { failed_calls.fetch_add(1); }
-    void increment_blocked() { blocked_calls.fetch_add(1); }
-    void reset() {
-        total_calls.store(0);
-        successful_calls.store(0);
-        failed_calls.store(0);
-        blocked_calls.store(0);
-    }
-};
-
-// HID API types
-enum HIDAPIType {
-    HID_CREATEFILE_A = 0,
-    HID_CREATEFILE_W,
-    HID_READFILE,
-    HID_WRITEFILE,
-    HID_DEVICEIOCONTROL,
-    HID_HIDD_GETINPUTREPORT,
-    HID_HIDD_GETATTRIBUTES,
-    HID_HIDD_GETPREPARSEDDATA,
-    HID_HIDD_FREEPREPARSEDDATA,
-    HID_HIDD_GETCAPS,
-    HID_HIDD_GETMANUFACTURERSTRING,
-    HID_HIDD_GETPRODUCTSTRING,
-    HID_HIDD_GETSERIALNUMBERSTRING,
-    HID_HIDD_GETNUMINPUTBUFFERS,
-    HID_HIDD_SETNUMINPUTBUFFERS,
-    HID_HIDD_GETFEATURE,
-    HID_HIDD_SETFEATURE,
-    HID_COUNT
-};
 
 // HID device type statistics
 struct HIDDeviceStats {
@@ -69,16 +27,12 @@ struct HIDDeviceStats {
     }
 };
 
-// Global HID statistics
-extern std::array<HIDCallStats, HID_COUNT> g_hid_api_stats;
+// Global HID device type statistics (call counts use g_hook_stats in windows_message_hooks)
 extern HIDDeviceStats g_hid_device_stats;
 
 // HID statistics access functions
-const HIDCallStats& GetHIDAPIStats(HIDAPIType api_type);
 const HIDDeviceStats& GetHIDDeviceStats();
 void ResetAllHIDStats();
-int GetHIDAPICount();
-const char* GetHIDAPIName(HIDAPIType api_type);
 
 // Helper functions for device type detection
 bool IsDualSenseDevice(const std::string& device_path);

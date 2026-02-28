@@ -383,6 +383,24 @@ bool CreateAndEnableHook(LPVOID ptarget, LPVOID pdetour, LPVOID* ppOriginal, con
     return true;
 }
 
+// Create and enable hook by resolving proc from the given module
+bool CreateAndEnableHookFromModule(HMODULE hModule, const char* procName, LPVOID pDetour, LPVOID* ppOriginal,
+                                   const char* hookName) {
+    if (hModule == nullptr || procName == nullptr) {
+        LogError("CreateAndEnableHookFromModule: Invalid module or procName for hook '%s'",
+                 hookName != nullptr ? hookName : "Unknown");
+        return false;
+    }
+    FARPROC pTarget = GetProcAddress(hModule, procName);
+    if (pTarget == nullptr) {
+        LogError("CreateAndEnableHookFromModule: GetProcAddress(%s) failed for hook '%s'", procName,
+                 hookName != nullptr ? hookName : "Unknown");
+        return false;
+    }
+    return CreateAndEnableHook(reinterpret_cast<LPVOID>(pTarget), pDetour, ppOriginal,
+                              hookName != nullptr ? hookName : procName);
+}
+
 // MinHook initialization wrapper that checks suppress_minhook setting
 MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
     // Check if MinHook initialization is suppressed

@@ -1,6 +1,9 @@
 #pragma once
 
 #include <windows.h>
+#if defined(__clang__)
+#define _Return_type_success_(x)
+#endif
 #include <hidsdi.h>
 
 namespace display_commanderhooks {
@@ -50,5 +53,6 @@ BOOLEAN __stdcall HidD_SetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuf
 // Hook management
 bool InstallAdditionalHIDHooks();
 void UninstallAdditionalHIDHooks();
+void MarkAdditionalHIDHooksInstalled(bool installed);
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

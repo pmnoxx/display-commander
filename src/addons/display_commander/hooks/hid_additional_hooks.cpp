@@ -1,10 +1,11 @@
 #include "hid_additional_hooks.hpp"
-#include "hook_suppression_manager.hpp"
-#include "hid_statistics.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
 #include <MinHook.h>
 #include <atomic>
+#include "../utils/logging.hpp"
+#include "hid_hooks_install.hpp"
+#include "hook_suppression_manager.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
+
 
 namespace display_commanderhooks {
 
@@ -25,391 +26,148 @@ HidD_SetFeature_pfn HidD_SetFeature_Original = nullptr;
 // Hook installation status
 static std::atomic<bool> g_additional_hid_hooks_installed{false};
 
-
 // Hooked WriteFile function
-BOOL WINAPI WriteFile_Detour(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_WRITEFILE];
-    stats.increment_total();
+BOOL WINAPI WriteFile_Detour(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite,
+                             LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped) {
+    g_hook_stats[HOOK_HID_WriteFile].increment_total();
 
-    // Call original function
-    BOOL result = WriteFile_Original ?
-        WriteFile_Original(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped) :
-        WriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
+    BOOL result = WriteFile_Original
+                      ? WriteFile_Original(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped)
+                      : WriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HID_WriteFile].increment_unsuppressed();
     return result;
 }
 
 // Hooked DeviceIoControl function
-BOOL WINAPI DeviceIoControl_Detour(HANDLE hDevice, DWORD dwIoControlCode, LPVOID lpInBuffer, DWORD nInBufferSize, LPVOID lpOutBuffer, DWORD nOutBufferSize, LPDWORD lpBytesReturned, LPOVERLAPPED lpOverlapped) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_DEVICEIOCONTROL];
-    stats.increment_total();
+BOOL WINAPI DeviceIoControl_Detour(HANDLE hDevice, DWORD dwIoControlCode, LPVOID lpInBuffer, DWORD nInBufferSize,
+                                   LPVOID lpOutBuffer, DWORD nOutBufferSize, LPDWORD lpBytesReturned,
+                                   LPOVERLAPPED lpOverlapped) {
+    g_hook_stats[HOOK_HID_DeviceIoControl].increment_total();
 
-    // Call original function
-    BOOL result = DeviceIoControl_Original ?
-        DeviceIoControl_Original(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped) :
-        DeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer, nOutBufferSize, lpBytesReturned, lpOverlapped);
+    BOOL result = DeviceIoControl_Original
+                      ? DeviceIoControl_Original(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer,
+                                                 nOutBufferSize, lpBytesReturned, lpOverlapped)
+                      : DeviceIoControl(hDevice, dwIoControlCode, lpInBuffer, nInBufferSize, lpOutBuffer,
+                                        nOutBufferSize, lpBytesReturned, lpOverlapped);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HID_DeviceIoControl].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_GetPreparsedData function
 BOOLEAN __stdcall HidD_GetPreparsedData_Detour(HANDLE HidDeviceObject, PHIDP_PREPARSED_DATA* PreparsedData) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_GETPREPARSEDDATA];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_GetPreparsedData].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_GetPreparsedData_Original ?
-        HidD_GetPreparsedData_Original(HidDeviceObject, PreparsedData) :
-        HidD_GetPreparsedData(HidDeviceObject, PreparsedData);
+    BOOLEAN result = HidD_GetPreparsedData_Original ? HidD_GetPreparsedData_Original(HidDeviceObject, PreparsedData)
+                                                    : HidD_GetPreparsedData(HidDeviceObject, PreparsedData);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_GetPreparsedData].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_FreePreparsedData function
 BOOLEAN __stdcall HidD_FreePreparsedData_Detour(PHIDP_PREPARSED_DATA PreparsedData) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_FREEPREPARSEDDATA];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_FreePreparsedData].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_FreePreparsedData_Original ?
-        HidD_FreePreparsedData_Original(PreparsedData) :
-        HidD_FreePreparsedData(PreparsedData);
+    BOOLEAN result = HidD_FreePreparsedData_Original ? HidD_FreePreparsedData_Original(PreparsedData)
+                                                     : HidD_FreePreparsedData(PreparsedData);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_FreePreparsedData].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidP_GetCaps function
 BOOLEAN __stdcall HidP_GetCaps_Detour(PHIDP_PREPARSED_DATA PreparsedData, PHIDP_CAPS Capabilities) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_GETCAPS];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_GetCaps].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidP_GetCaps_Original ?
-        HidP_GetCaps_Original(PreparsedData, Capabilities) :
-        HidP_GetCaps(PreparsedData, Capabilities);
+    BOOLEAN result = HidP_GetCaps_Original ? HidP_GetCaps_Original(PreparsedData, Capabilities)
+                                           : HidP_GetCaps(PreparsedData, Capabilities);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_GetCaps].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_GetManufacturerString function
 BOOLEAN __stdcall HidD_GetManufacturerString_Detour(HANDLE HidDeviceObject, PVOID Buffer, ULONG BufferLength) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_GETMANUFACTURERSTRING];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_GetManufacturerString].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_GetManufacturerString_Original ?
-        HidD_GetManufacturerString_Original(HidDeviceObject, Buffer, BufferLength) :
-        HidD_GetManufacturerString(HidDeviceObject, Buffer, BufferLength);
+    BOOLEAN result = HidD_GetManufacturerString_Original
+                         ? HidD_GetManufacturerString_Original(HidDeviceObject, Buffer, BufferLength)
+                         : HidD_GetManufacturerString(HidDeviceObject, Buffer, BufferLength);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_GetManufacturerString].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_GetProductString function
 BOOLEAN __stdcall HidD_GetProductString_Detour(HANDLE HidDeviceObject, PVOID Buffer, ULONG BufferLength) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_GETPRODUCTSTRING];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_GetProductString].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_GetProductString_Original ?
-        HidD_GetProductString_Original(HidDeviceObject, Buffer, BufferLength) :
-        HidD_GetProductString(HidDeviceObject, Buffer, BufferLength);
+    BOOLEAN result = HidD_GetProductString_Original
+                         ? HidD_GetProductString_Original(HidDeviceObject, Buffer, BufferLength)
+                         : HidD_GetProductString(HidDeviceObject, Buffer, BufferLength);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_GetProductString].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_GetSerialNumberString function
 BOOLEAN __stdcall HidD_GetSerialNumberString_Detour(HANDLE HidDeviceObject, PVOID Buffer, ULONG BufferLength) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_GETSERIALNUMBERSTRING];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_GetSerialNumberString].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_GetSerialNumberString_Original ?
-        HidD_GetSerialNumberString_Original(HidDeviceObject, Buffer, BufferLength) :
-        HidD_GetSerialNumberString(HidDeviceObject, Buffer, BufferLength);
+    BOOLEAN result = HidD_GetSerialNumberString_Original
+                         ? HidD_GetSerialNumberString_Original(HidDeviceObject, Buffer, BufferLength)
+                         : HidD_GetSerialNumberString(HidDeviceObject, Buffer, BufferLength);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_GetSerialNumberString].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_GetNumInputBuffers function
 BOOLEAN __stdcall HidD_GetNumInputBuffers_Detour(HANDLE HidDeviceObject, PULONG NumberBuffers) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_GETNUMINPUTBUFFERS];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_GetNumInputBuffers].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_GetNumInputBuffers_Original ?
-        HidD_GetNumInputBuffers_Original(HidDeviceObject, NumberBuffers) :
-        HidD_GetNumInputBuffers(HidDeviceObject, NumberBuffers);
+    BOOLEAN result = HidD_GetNumInputBuffers_Original ? HidD_GetNumInputBuffers_Original(HidDeviceObject, NumberBuffers)
+                                                      : HidD_GetNumInputBuffers(HidDeviceObject, NumberBuffers);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_GetNumInputBuffers].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_SetNumInputBuffers function
 BOOLEAN __stdcall HidD_SetNumInputBuffers_Detour(HANDLE HidDeviceObject, ULONG NumberBuffers) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_SETNUMINPUTBUFFERS];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_SetNumInputBuffers].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_SetNumInputBuffers_Original ?
-        HidD_SetNumInputBuffers_Original(HidDeviceObject, NumberBuffers) :
-        HidD_SetNumInputBuffers(HidDeviceObject, NumberBuffers);
+    BOOLEAN result = HidD_SetNumInputBuffers_Original ? HidD_SetNumInputBuffers_Original(HidDeviceObject, NumberBuffers)
+                                                      : HidD_SetNumInputBuffers(HidDeviceObject, NumberBuffers);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_SetNumInputBuffers].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_GetFeature function
 BOOLEAN __stdcall HidD_GetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_GETFEATURE];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_GetFeature].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_GetFeature_Original ?
-        HidD_GetFeature_Original(HidDeviceObject, ReportBuffer, ReportBufferLength) :
-        HidD_GetFeature(HidDeviceObject, ReportBuffer, ReportBufferLength);
+    BOOLEAN result = HidD_GetFeature_Original
+                         ? HidD_GetFeature_Original(HidDeviceObject, ReportBuffer, ReportBufferLength)
+                         : HidD_GetFeature(HidDeviceObject, ReportBuffer, ReportBufferLength);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_GetFeature].increment_unsuppressed();
     return result;
 }
 
 // Hooked HidD_SetFeature function
 BOOLEAN __stdcall HidD_SetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
-    // Increment HID statistics
-    auto& stats = g_hid_api_stats[HID_HIDD_SETFEATURE];
-    stats.increment_total();
+    g_hook_stats[HOOK_HIDD_SetFeature].increment_total();
 
-    // Call original function
-    BOOLEAN result = HidD_SetFeature_Original ?
-        HidD_SetFeature_Original(HidDeviceObject, ReportBuffer, ReportBufferLength) :
-        HidD_SetFeature(HidDeviceObject, ReportBuffer, ReportBufferLength);
+    BOOLEAN result = HidD_SetFeature_Original
+                         ? HidD_SetFeature_Original(HidDeviceObject, ReportBuffer, ReportBufferLength)
+                         : HidD_SetFeature(HidDeviceObject, ReportBuffer, ReportBufferLength);
 
-    // Update statistics based on result
-    if (result) {
-        stats.increment_successful();
-    } else {
-        stats.increment_failed();
-    }
-
+    g_hook_stats[HOOK_HIDD_SetFeature].increment_unsuppressed();
     return result;
-}
-
-bool InstallAdditionalHIDHooks() {
-    if (g_additional_hid_hooks_installed.load()) {
-        LogInfo("Additional HID hooks already installed");
-        return true;
-    }
-
-    // Check if HID hooks should be suppressed
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::HID)) {
-        LogInfo("HID hooks installation suppressed by user setting");
-        return false;
-    }
-
-    // Initialize MinHook (only if not already initialized)
-    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::HID);
-    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
-        LogError("Failed to initialize MinHook for additional HID hooks - Status: %d", init_status);
-        return false;
-    }
-
-    if (init_status == MH_ERROR_ALREADY_INITIALIZED) {
-        LogInfo("MinHook already initialized, proceeding with additional HID hooks");
-    } else {
-        LogInfo("MinHook initialized successfully for additional HID hooks");
-    }
-
-    // Track hook installation success/failure
-    int successful_hooks = 0;
-    int total_hooks = 0;
-
-    // Hook WriteFile
-    total_hooks++;
-    if (CreateAndEnableHook(WriteFile, WriteFile_Detour, (LPVOID*)&WriteFile_Original, "WriteFile")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install WriteFile hook, continuing with other hooks");
-    }
-
-    // Hook DeviceIoControl
-    total_hooks++;
-    if (CreateAndEnableHook(DeviceIoControl, DeviceIoControl_Detour, (LPVOID*)&DeviceIoControl_Original, "DeviceIoControl")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install DeviceIoControl hook, continuing with other hooks");
-    }
-
-    // Hook HidD functions using CreateAndEnableHook for consistency
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_GetPreparsedData, HidD_GetPreparsedData_Detour, (LPVOID*)&HidD_GetPreparsedData_Original, "HidD_GetPreparsedData")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_GetPreparsedData hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_FreePreparsedData, HidD_FreePreparsedData_Detour, (LPVOID*)&HidD_FreePreparsedData_Original, "HidD_FreePreparsedData")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_FreePreparsedData hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidP_GetCaps, HidP_GetCaps_Detour, (LPVOID*)&HidP_GetCaps_Original, "HidP_GetCaps")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidP_GetCaps hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_GetManufacturerString, HidD_GetManufacturerString_Detour, (LPVOID*)&HidD_GetManufacturerString_Original, "HidD_GetManufacturerString")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_GetManufacturerString hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_GetProductString, HidD_GetProductString_Detour, (LPVOID*)&HidD_GetProductString_Original, "HidD_GetProductString")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_GetProductString hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_GetSerialNumberString, HidD_GetSerialNumberString_Detour, (LPVOID*)&HidD_GetSerialNumberString_Original, "HidD_GetSerialNumberString")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_GetSerialNumberString hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_GetNumInputBuffers, HidD_GetNumInputBuffers_Detour, (LPVOID*)&HidD_GetNumInputBuffers_Original, "HidD_GetNumInputBuffers")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_GetNumInputBuffers hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_SetNumInputBuffers, HidD_SetNumInputBuffers_Detour, (LPVOID*)&HidD_SetNumInputBuffers_Original, "HidD_SetNumInputBuffers")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_SetNumInputBuffers hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_GetFeature, HidD_GetFeature_Detour, (LPVOID*)&HidD_GetFeature_Original, "HidD_GetFeature")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_GetFeature hook, continuing with other hooks");
-    }
-
-    total_hooks++;
-    if (CreateAndEnableHook(HidD_SetFeature, HidD_SetFeature_Detour, (LPVOID*)&HidD_SetFeature_Original, "HidD_SetFeature")) {
-        successful_hooks++;
-    } else {
-        LogWarn("Failed to install HidD_SetFeature hook, continuing with other hooks");
-    }
-
-    // Mark as installed if at least one hook succeeded
-    if (successful_hooks > 0) {
-        g_additional_hid_hooks_installed.store(true);
-        LogInfo("Successfully installed %d/%d additional HID hooks", successful_hooks, total_hooks);
-        if (successful_hooks < total_hooks) {
-            LogWarn("Some HID hooks failed to install, but continuing with available functionality");
-        }
-
-        // Mark HID hooks as installed
-        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::HID);
-
-        return true;
-    } else {
-        LogError("Failed to install any additional HID hooks");
-        return false;
-    }
 }
 
 void UninstallAdditionalHIDHooks() {
@@ -485,4 +243,6 @@ void UninstallAdditionalHIDHooks() {
     LogInfo("Successfully uninstalled additional HID hooks");
 }
 
-} // namespace display_commanderhooks
+void MarkAdditionalHIDHooksInstalled(bool installed) { g_additional_hid_hooks_installed.store(installed); }
+
+}  // namespace display_commanderhooks

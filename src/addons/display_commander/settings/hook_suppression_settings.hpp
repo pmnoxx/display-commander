@@ -35,7 +35,8 @@ class HookSuppressionSettings {
     BoolSetting suppress_streamline_hooks;
     BoolSetting suppress_ngx_hooks;
     BoolSetting suppress_windows_gaming_input_hooks;
-    BoolSetting suppress_hid_hooks;
+    BoolSetting suppress_hid_kernel32_hooks;
+    BoolSetting suppress_hid_hid_dll_hooks;
     BoolSetting suppress_api_hooks;
     BoolSetting suppress_window_api_hooks;
     BoolSetting suppress_sleep_hooks;
@@ -62,7 +63,8 @@ class HookSuppressionSettings {
     BoolSetting streamline_hooks_installed;
     BoolSetting ngx_hooks_installed;
     BoolSetting windows_gaming_input_hooks_installed;
-    BoolSetting hid_hooks_installed;
+    BoolSetting hid_kernel32_hooks_installed;
+    BoolSetting hid_hid_dll_hooks_installed;
     BoolSetting api_hooks_installed;
     BoolSetting window_api_hooks_installed;
     BoolSetting sleep_hooks_installed;

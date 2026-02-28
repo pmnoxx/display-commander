@@ -302,11 +302,13 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 // Hooked SetWindowLongPtrW function
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_hook_stats[HOOK_SetWindowLongPtrW].increment_total();
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
+    g_hook_stats[HOOK_SetWindowLongPtrW].increment_unsuppressed();
     // Call original function with unmodified value
     return SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong);
 }
@@ -314,6 +316,7 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 // Hooked SetWindowLongA function
 LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_hook_stats[HOOK_SetWindowLongA].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -322,6 +325,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
+    g_hook_stats[HOOK_SetWindowLongA].increment_unsuppressed();
     // Call original function with unmodified value
     return SetWindowLongA_Original(hWnd, nIndex, dwNewLong);
 }
@@ -329,6 +333,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 // Hooked SetWindowLongW function
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_hook_stats[HOOK_SetWindowLongW].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
     // Check if fullscreen prevention is enabled
@@ -336,12 +341,14 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
+    g_hook_stats[HOOK_SetWindowLongW].increment_unsuppressed();
     return SetWindowLongW_Original(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongPtrA function
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_hook_stats[HOOK_SetWindowLongPtrA].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -353,12 +360,14 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     }
     // }
 
+    g_hook_stats[HOOK_SetWindowLongPtrA].increment_unsuppressed();
     return SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    g_hook_stats[HOOK_SetWindowPos].increment_total();
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
         && hWndInsertAfter != HWND_NOTOPMOST) {
@@ -378,6 +387,7 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
         }*/
     }
 
+    g_hook_stats[HOOK_SetWindowPos].increment_unsuppressed();
     // Call original function with unmodified parameters
     return SetWindowPos_Original ? SetWindowPos_Original(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags)
                                  : SetWindowPos(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);

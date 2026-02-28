@@ -1779,13 +1779,6 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     // Initialize DualSense support
     display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
 
-    // Install HID suppression hooks if enabled
-    if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
-        renodx::hooks::InstallHIDSuppressionHooks();
-    }
-
-    // Install additional HID hooks for statistics tracking
-    display_commanderhooks::InstallAdditionalHIDHooks();
     // Initialize keyboard tracking system
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");

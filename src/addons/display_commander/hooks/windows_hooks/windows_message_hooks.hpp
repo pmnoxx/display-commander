@@ -24,123 +24,123 @@ struct HookCallStats {
 // DLL group enumeration
 enum class DllGroup { USER32, XINPUT1_4, KERNEL32, DINPUT8, DINPUT, OPENGL, DISPLAY_SETTINGS, HID_API, COUNT };
 
-// Hook information structure
+// Hook index enumeration (order must match g_hook_info array in .cpp)
+// Note: "// ok" = g_hook_stats counter updated in detour; "// no counter" = not updated
+enum HookIndex {
+    // user32.dll hooks (0-34)
+    HOOK_GetMessageA = 0,             // ok
+    HOOK_GetMessageW,                 // ok
+    HOOK_PeekMessageA,                // ok
+    HOOK_PeekMessageW,                // ok
+    HOOK_PostMessageA,                // ok
+    HOOK_PostMessageW,                // ok
+    HOOK_GetKeyboardState,            // ok
+    HOOK_ClipCursor,                  // ok
+    HOOK_GetCursorPos,                // ok
+    HOOK_SetCursorPos,                // ok
+    HOOK_GetKeyState,                 // ok
+    HOOK_GetAsyncKeyState,            // ok
+    HOOK_SetWindowsHookExA,           // ok
+    HOOK_SetWindowsHookExW,           // ok
+    HOOK_UnhookWindowsHookEx,         // ok
+    HOOK_GetRawInputBuffer,           // ok
+    HOOK_TranslateMessage,            // ok
+    HOOK_DispatchMessageA,            // ok
+    HOOK_DispatchMessageW,            // ok
+    HOOK_GetRawInputData,             // ok
+    HOOK_DefRawInputProc,             // ok
+    HOOK_VkKeyScan,                   // ok
+    HOOK_VkKeyScanEx,                 // ok
+    HOOK_ToAscii,                     // ok
+    HOOK_ToAsciiEx,                   // ok
+    HOOK_ToUnicode,                   // ok
+    HOOK_ToUnicodeEx,                 // ok
+    HOOK_GetKeyNameTextA,             // ok
+    HOOK_GetKeyNameTextW,             // ok
+    HOOK_SendInput,                   // ok
+    HOOK_keybd_event,                 // ok
+    HOOK_mouse_event,                 // ok
+    HOOK_SetCapture,                  // ok
+    HOOK_ReleaseCapture,              // ok
+    HOOK_MapVirtualKey,               // ok
+    HOOK_MapVirtualKeyEx,             // ok
+    HOOK_DisplayConfigGetDeviceInfo,  // ok
+
+    // xinput1_4.dll hooks
+    HOOK_XInputGetState,         // ok
+    HOOK_XInputGetStateEx,       // ok
+    HOOK_XInputSetState,         // ok
+    HOOK_XInputGetCapabilities,  // ok
+
+    // kernel32.dll hooks (39-45)
+    HOOK_Sleep,                        // ok
+    HOOK_SleepEx,                      // ok
+    HOOK_WaitForSingleObject,          // ok
+    HOOK_WaitForMultipleObjects,       // ok
+    HOOK_SetUnhandledExceptionFilter,  // ok
+    HOOK_IsDebuggerPresent,            // ok
+    HOOK_SetThreadExecutionState,      // ok
+
+    // dinput8.dll / dinput.dll hooks (46-47)
+    HOOK_DInput8CreateDevice,  // ok
+    HOOK_DInputCreateDevice,   // ok
+
+    // OpenGL/WGL hooks (48-62)
+    HOOK_wglSwapBuffers,                // no counter
+    HOOK_wglMakeCurrent,                // no counter
+    HOOK_wglCreateContext,              // no counter
+    HOOK_wglDeleteContext,              // no counter
+    HOOK_wglChoosePixelFormat,          // no counter
+    HOOK_wglSetPixelFormat,             // no counter
+    HOOK_wglGetPixelFormat,             // no counter
+    HOOK_wglDescribePixelFormat,        // no counter
+    HOOK_wglCreateContextAttribsARB,    // no counter
+    HOOK_wglChoosePixelFormatARB,       // no counter
+    HOOK_wglGetPixelFormatAttribivARB,  // no counter
+    HOOK_wglGetPixelFormatAttribfvARB,  // no counter
+    HOOK_wglGetProcAddress,             // no counter
+    HOOK_wglSwapIntervalEXT,            // no counter
+    HOOK_wglGetSwapIntervalEXT,         // no counter
+
+    // Display Settings hooks (63-70)
+    HOOK_ChangeDisplaySettingsA,    // ok
+    HOOK_ChangeDisplaySettingsW,    // ok
+    HOOK_ChangeDisplaySettingsExA,  // ok
+    HOOK_ChangeDisplaySettingsExW,  // ok
+    HOOK_SetWindowPos,              // ok
+    HOOK_ShowWindow,                // ok
+    HOOK_SetWindowLongA,            // ok
+    HOOK_SetWindowLongW,            // ok
+    HOOK_SetWindowLongPtrA,         // ok
+    HOOK_SetWindowLongPtrW,         // ok
+
+    // HID API hooks (71-87)
+    HOOK_HID_CreateFileA,             // ok
+    HOOK_HID_CreateFileW,             // ok
+    HOOK_HID_ReadFile,                // ok
+    HOOK_HID_WriteFile,               // ok
+    HOOK_HID_DeviceIoControl,         // ok
+    HOOK_HIDD_GetInputReport,         // ok
+    HOOK_HIDD_GetAttributes,          // ok
+    HOOK_HIDD_GetPreparsedData,       // ok
+    HOOK_HIDD_FreePreparsedData,      // ok
+    HOOK_HIDD_GetCaps,                // ok
+    HOOK_HIDD_GetManufacturerString,  // ok
+    HOOK_HIDD_GetProductString,       // ok
+    HOOK_HIDD_GetSerialNumberString,  // ok
+    HOOK_HIDD_GetNumInputBuffers,     // ok
+    HOOK_HIDD_SetNumInputBuffers,     // ok
+    HOOK_HIDD_GetFeature,             // ok
+    HOOK_HIDD_SetFeature,             // ok
+
+    HOOK_COUNT
+};
+
+// Hook information structure (hook_index must match array position in g_hook_info)
 struct HookInfo {
     const char* name;
     DllGroup dll_group;
-};
-
-// Hook call statistics
-enum HookIndex {
-    // user32.dll hooks (0-34)
-    HOOK_GetMessageA = 0,
-    HOOK_GetMessageW,
-    HOOK_PeekMessageA,
-    HOOK_PeekMessageW,
-    HOOK_PostMessageA,
-    HOOK_PostMessageW,
-    HOOK_GetKeyboardState,
-    HOOK_ClipCursor,
-    HOOK_GetCursorPos,
-    HOOK_SetCursorPos,
-    HOOK_GetKeyState,
-    HOOK_GetAsyncKeyState,
-    HOOK_SetWindowsHookExA,
-    HOOK_SetWindowsHookExW,
-    HOOK_UnhookWindowsHookEx,
-    HOOK_GetRawInputBuffer,
-    HOOK_TranslateMessage,
-    HOOK_DispatchMessageA,
-    HOOK_DispatchMessageW,
-    HOOK_GetRawInputData,
-    HOOK_DefRawInputProc,
-    HOOK_VkKeyScan,
-    HOOK_VkKeyScanEx,
-    HOOK_ToAscii,
-    HOOK_ToAsciiEx,
-    HOOK_ToUnicode,
-    HOOK_ToUnicodeEx,
-    HOOK_GetKeyNameTextA,
-    HOOK_GetKeyNameTextW,
-    HOOK_SendInput,
-    HOOK_keybd_event,
-    HOOK_mouse_event,
-    HOOK_SetCapture,
-    HOOK_ReleaseCapture,
-    HOOK_MapVirtualKey,
-    HOOK_MapVirtualKeyEx,
-    HOOK_DisplayConfigGetDeviceInfo,
-
-    // xinput1_4.dll hooks (35-37)
-    HOOK_XInputGetState,
-    HOOK_XInputGetStateEx,
-    HOOK_XInputSetState,
-    HOOK_XInputGetCapabilities,
-
-    // kernel32.dll hooks (38-44)
-    HOOK_Sleep,
-    HOOK_SleepEx,
-    HOOK_WaitForSingleObject,
-    HOOK_WaitForMultipleObjects,
-    HOOK_SetUnhandledExceptionFilter,
-    HOOK_IsDebuggerPresent,
-    HOOK_SetThreadExecutionState,
-
-    // dinput8.dll hooks (44)
-    HOOK_DInput8CreateDevice,
-
-    // dinput.dll hooks (45)
-    HOOK_DInputCreateDevice,
-
-    // OpenGL/WGL hooks (46-60)
-    HOOK_wglSwapBuffers,
-    HOOK_wglMakeCurrent,
-    HOOK_wglCreateContext,
-    HOOK_wglDeleteContext,
-    HOOK_wglChoosePixelFormat,
-    HOOK_wglSetPixelFormat,
-    HOOK_wglGetPixelFormat,
-    HOOK_wglDescribePixelFormat,
-    HOOK_wglCreateContextAttribsARB,
-    HOOK_wglChoosePixelFormatARB,
-    HOOK_wglGetPixelFormatAttribivARB,
-    HOOK_wglGetPixelFormatAttribfvARB,
-    HOOK_wglGetProcAddress,
-    HOOK_wglSwapIntervalEXT,
-    HOOK_wglGetSwapIntervalEXT,
-
-    // Display Settings hooks (61-70)
-    HOOK_ChangeDisplaySettingsA,
-    HOOK_ChangeDisplaySettingsW,
-    HOOK_ChangeDisplaySettingsExA,
-    HOOK_ChangeDisplaySettingsExW,
-    HOOK_SetWindowPos,
-    HOOK_ShowWindow,
-    HOOK_SetWindowLongA,
-    HOOK_SetWindowLongW,
-    HOOK_SetWindowLongPtrA,
-    HOOK_SetWindowLongPtrW,
-
-    // HID API hooks (71-87)
-    HOOK_HID_CreateFileA,
-    HOOK_HID_CreateFileW,
-    HOOK_HID_ReadFile,
-    HOOK_HID_WriteFile,
-    HOOK_HID_DeviceIoControl,
-    HOOK_HIDD_GetInputReport,
-    HOOK_HIDD_GetAttributes,
-    HOOK_HIDD_GetPreparsedData,
-    HOOK_HIDD_FreePreparsedData,
-    HOOK_HIDD_GetCaps,
-    HOOK_HIDD_GetManufacturerString,
-    HOOK_HIDD_GetProductString,
-    HOOK_HIDD_GetSerialNumberString,
-    HOOK_HIDD_GetNumInputBuffers,
-    HOOK_HIDD_SetNumInputBuffers,
-    HOOK_HIDD_GetFeature,
-    HOOK_HIDD_SetFeature,
-
-    HOOK_COUNT
+    HookIndex hook_index;
 };
 
 // Function pointer types for Windows message functions
@@ -284,7 +284,8 @@ void UninstallWindowsMessageHooks();
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
 void SuppressMessage(LPMSG lpMsg);
 
-// Debug: suppress all GetMessage/PeekMessage (default off, not saved). Use to test if we forgot to spoof some message type for continue rendering.
+// Debug: suppress all GetMessage/PeekMessage (default off, not saved). Use to test if we forgot to spoof some message
+// type for continue rendering.
 bool GetDebugSuppressAllGetMessage();
 void SetDebugSuppressAllGetMessage(bool enable);
 

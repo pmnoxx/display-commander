@@ -1,4 +1,5 @@
 #include "display_settings_hooks.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
 #include <windows.h>
 #include <wingdi.h>
@@ -28,6 +29,7 @@ static std::atomic<bool> g_display_settings_hooks_installed{false};
 // Hook detour functions
 LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsA].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -37,11 +39,13 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsA].increment_unsuppressed();
     return ChangeDisplaySettingsA_Original(lpDevMode, dwFlags);
 }
 
 LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsW].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -51,12 +55,14 @@ LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsW].increment_unsuppressed();
     return ChangeDisplaySettingsW_Original(lpDevMode, dwFlags);
 }
 
 LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXA].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -66,12 +72,14 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA].increment_unsuppressed();
     return ChangeDisplaySettingsExA_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
 }
 
 LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -81,6 +89,7 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
 
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW].increment_unsuppressed();
     return ChangeDisplaySettingsExW_Original(lpszDeviceName, lpDevMode, hWnd, dwFlags, lParam);
 }
 
@@ -88,6 +97,7 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
 
 BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_total();
     g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SHOWWINDOW].fetch_add(1);
     g_display_settings_hook_total_count.fetch_add(1);
 
@@ -96,6 +106,7 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
         // Prevent maximize operations that could lead to fullscreen
         if (nCmdShow == SW_MAXIMIZE || nCmdShow == SW_SHOWMAXIMIZED) {
             LogInfo("ShowWindow blocked maximize attempt - forcing normal window");
+            display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_unsuppressed();
             return ShowWindow_Original(hWnd, SW_SHOWNORMAL);
         }
     }
@@ -107,9 +118,11 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
     if (hWnd == display_commanderhooks::GetGameWindow() && (prevent_minimize || continue_rendering)
         && display_commanderhooks::WindowHasBorder(hWnd) && (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED)) {
         LogInfo("ShowWindow blocked minimize - HWND: 0x%p", hWnd);
+        display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_unsuppressed();
         return ShowWindow_Original(hWnd, SW_SHOW);  // Keep window visible
     }
 
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_unsuppressed();
     return ShowWindow_Original(hWnd, nCmdShow);
 }
 

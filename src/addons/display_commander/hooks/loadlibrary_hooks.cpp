@@ -27,6 +27,7 @@
 #include "dbghelp_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
 #include "dinput_hooks.hpp"
+#include "hid_hooks_install.hpp"
 #include "hook_suppression_manager.hpp"
 #include "ngx_hooks.hpp"
 #include "nvapi_hooks.hpp"
@@ -1688,6 +1689,24 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("DirectInput hooks installed");
         } else {
             LogInfo("DirectInput hooks not installed (e.g. suppressed or already installed)");
+        }
+    }
+    // kernel32.dll – HID-related hooks (ReadFile, CreateFileA/W, WriteFile, DeviceIoControl)
+    else if (lowerModuleName.find(L"kernel32.dll") != std::wstring::npos) {
+        LogInfo("Installing HID kernel32 hooks for module: %ws", moduleName.c_str());
+        if (InstallHIDKernel32Hooks(hModule)) {
+            LogInfo("HID kernel32 hooks installed successfully");
+        } else {
+            LogInfo("HID kernel32 hooks not installed (suppressed or already installed)");
+        }
+    }
+    // hid.dll – HID API hooks (HidD_*, HidP_*)
+    else if (lowerModuleName.find(L"hid.dll") != std::wstring::npos) {
+        LogInfo("Installing HID (hid.dll) hooks for module: %ws", moduleName.c_str());
+        if (InstallHIDDHooks(hModule)) {
+            LogInfo("HID (hid.dll) hooks installed successfully");
+        } else {
+            LogInfo("HID (hid.dll) hooks not installed (suppressed or already installed)");
         }
     }
 

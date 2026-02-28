@@ -25,7 +25,10 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::NGX:            return &settings::g_hook_suppression_settings.suppress_ngx_hooks;
         case HookType::WINDOWS_GAMING_INPUT:
             return &settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks;
-        case HookType::HID:              return &settings::g_hook_suppression_settings.suppress_hid_hooks;
+        case HookType::HID_KERNEL32:
+            return &settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks;
+        case HookType::HID_HID_DLL:
+            return &settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks;
         case HookType::API:              return &settings::g_hook_suppression_settings.suppress_api_hooks;
         case HookType::WINDOW_API:       return &settings::g_hook_suppression_settings.suppress_window_api_hooks;
         case HookType::SLEEP:            return &settings::g_hook_suppression_settings.suppress_sleep_hooks;
@@ -85,8 +88,11 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                     current_value =
                         settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.GetValue();
                     break;
-                case HookType::HID:
-                    current_value = settings::g_hook_suppression_settings.suppress_hid_hooks.GetValue();
+                case HookType::HID_KERNEL32:
+                    current_value = settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks.GetValue();
+                    break;
+                case HookType::HID_HID_DLL:
+                    current_value = settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks.GetValue();
                     break;
                 case HookType::API:
                     current_value = settings::g_hook_suppression_settings.suppress_api_hooks.GetValue();
@@ -157,7 +163,10 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::NGX:        return settings::g_hook_suppression_settings.suppress_ngx_hooks.GetValue();
         case HookType::WINDOWS_GAMING_INPUT:
             return settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.GetValue();
-        case HookType::HID:        return settings::g_hook_suppression_settings.suppress_hid_hooks.GetValue();
+        case HookType::HID_KERNEL32:
+            return settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks.GetValue();
+        case HookType::HID_HID_DLL:
+            return settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks.GetValue();
         case HookType::API:        return settings::g_hook_suppression_settings.suppress_api_hooks.GetValue();
         case HookType::WINDOW_API: return settings::g_hook_suppression_settings.suppress_window_api_hooks.GetValue();
         case HookType::SLEEP:      return settings::g_hook_suppression_settings.suppress_sleep_hooks.GetValue();
@@ -246,10 +255,16 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.SetValue(false);
             }
             break;
-        case HookType::HID:
-            if (!settings::g_hook_suppression_settings.hid_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.hid_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_hid_hooks.SetValue(false);
+        case HookType::HID_KERNEL32:
+            if (!settings::g_hook_suppression_settings.hid_kernel32_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.hid_kernel32_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks.SetValue(false);
+            }
+            break;
+        case HookType::HID_HID_DLL:
+            if (!settings::g_hook_suppression_settings.hid_hid_dll_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.hid_hid_dll_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks.SetValue(false);
             }
             break;
         case HookType::API:
@@ -359,7 +374,8 @@ std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType)
         case HookType::STREAMLINE:           return "SuppressStreamlineHooks";
         case HookType::NGX:                  return "SuppressNGXHooks";
         case HookType::WINDOWS_GAMING_INPUT: return "SuppressWindowsGamingInputHooks";
-        case HookType::HID:                  return "SuppressHidHooks";
+        case HookType::HID_KERNEL32:         return "SuppressHidKernel32Hooks";
+        case HookType::HID_HID_DLL:         return "SuppressHidHidDllHooks";
         case HookType::API:                  return "SuppressApiHooks";
         case HookType::WINDOW_API:           return "SuppressWindowApiHooks";
         case HookType::SLEEP:                return "SuppressSleepHooks";
@@ -393,7 +409,8 @@ std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType
         case HookType::STREAMLINE:           return "StreamlineHooksInstalled";
         case HookType::NGX:                  return "NGXHooksInstalled";
         case HookType::WINDOWS_GAMING_INPUT: return "WindowsGamingInputHooksInstalled";
-        case HookType::HID:                  return "HidHooksInstalled";
+        case HookType::HID_KERNEL32:         return "HidKernel32HooksInstalled";
+        case HookType::HID_HID_DLL:         return "HidHidDllHooksInstalled";
         case HookType::API:                  return "ApiHooksInstalled";
         case HookType::WINDOW_API:           return "WindowApiHooksInstalled";
         case HookType::SLEEP:                return "SleepHooksInstalled";
@@ -432,7 +449,10 @@ bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
         case HookType::NGX:        return settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue();
         case HookType::WINDOWS_GAMING_INPUT:
             return settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.GetValue();
-        case HookType::HID:        return settings::g_hook_suppression_settings.hid_hooks_installed.GetValue();
+        case HookType::HID_KERNEL32:
+            return settings::g_hook_suppression_settings.hid_kernel32_hooks_installed.GetValue();
+        case HookType::HID_HID_DLL:
+            return settings::g_hook_suppression_settings.hid_hid_dll_hooks_installed.GetValue();
         case HookType::API:        return settings::g_hook_suppression_settings.api_hooks_installed.GetValue();
         case HookType::WINDOW_API: return settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue();
         case HookType::SLEEP:      return settings::g_hook_suppression_settings.sleep_hooks_installed.GetValue();
@@ -471,7 +491,8 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::STREAMLINE:           return "Streamline";
         case HookType::NGX:                  return "NGX";
         case HookType::WINDOWS_GAMING_INPUT: return "Windows Gaming Input";
-        case HookType::HID:                  return "HID";
+        case HookType::HID_KERNEL32:         return "HID (kernel32)";
+        case HookType::HID_HID_DLL:         return "HID (hid.dll)";
         case HookType::API:                  return "API";
         case HookType::WINDOW_API:           return "Window API";
         case HookType::SLEEP:                return "Sleep";

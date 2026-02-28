@@ -333,16 +333,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
     LogInfo("[DoInit] after InitializeDualSenseWidget");
 
-    // Install HID suppression hooks if enabled
-    LogInfo("[DoInit] before HID hooks");
-    if (settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue()) {
-        renodx::hooks::InstallHIDSuppressionHooks();
-    }
-
-    // Install additional HID hooks for statistics tracking
-    display_commanderhooks::InstallAdditionalHIDHooks();
-    LogInfo("[DoInit] after HID hooks");
-
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {
         LogInfo("[DoInit]: Setting up window hooks for HWND: 0x%p", hwnd);

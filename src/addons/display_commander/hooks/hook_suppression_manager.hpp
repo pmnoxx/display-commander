@@ -16,7 +16,8 @@ enum class HookType {
     STREAMLINE,
     NGX,
     WINDOWS_GAMING_INPUT,
-    HID,
+    HID_KERNEL32,   // kernel32 ReadFile/CreateFile/WriteFile/DeviceIoControl (InstallHIDKernel32Hooks)
+    HID_HID_DLL,    // hid.dll HidD_*/HidP_* (InstallHIDDHooks)
     API,
     WINDOW_API,
     SLEEP,

@@ -100,16 +100,32 @@ void XInputWidget::OnDraw(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    DrawSettings(imgui);
+    if (imgui.CollapsingHeader("Settings", 0)) {
+        imgui.Indent();
+        DrawSettings(imgui);
+        imgui.Unindent();
+    }
     imgui.Spacing();
 
-    DrawEventCounters(imgui);
+    if (imgui.CollapsingHeader("Event Counters", 0)) {
+        imgui.Indent();
+        DrawEventCounters(imgui);
+        imgui.Unindent();
+    }
     imgui.Spacing();
 
-    DrawVibrationTest(imgui);
+    if (imgui.CollapsingHeader("Vibration Test", 0)) {
+        imgui.Indent();
+        DrawVibrationTest(imgui);
+        imgui.Unindent();
+    }
     imgui.Spacing();
 
-    DrawAutofireSettings(imgui);
+    if (imgui.CollapsingHeader("Autofire Settings", 0)) {
+        imgui.Indent();
+        DrawAutofireSettings(imgui);
+        imgui.Unindent();
+    }
     imgui.Spacing();
 
     DrawControllerSelector(imgui);
@@ -119,9 +135,7 @@ void XInputWidget::OnDraw(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
-    if (imgui.CollapsingHeader("Settings", 0)) {
-        imgui.Indent();
-        // Enable XInput hooks (using HookSuppressionManager)
+    // Enable XInput hooks (using HookSuppressionManager)
         bool suppress_hooks = display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::XINPUT);
         bool enable_hooks = !suppress_hooks;
@@ -419,19 +433,15 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Reset vibration amplification to 100%% (normal)");
         }
-        imgui.Unindent();
-    }
 }
 
 void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
-    if (imgui.CollapsingHeader("Event Counters", 0)) {
-        imgui.Indent();
-        uint64_t total_events = g_shared_state->total_events.load();
-        uint64_t button_events = g_shared_state->button_events.load();
-        uint64_t stick_events = g_shared_state->stick_events.load();
-        uint64_t trigger_events = g_shared_state->trigger_events.load();
+    uint64_t total_events = g_shared_state->total_events.load();
+    uint64_t button_events = g_shared_state->button_events.load();
+    uint64_t stick_events = g_shared_state->stick_events.load();
+    uint64_t trigger_events = g_shared_state->trigger_events.load();
 
-        imgui.Text("Total Events: %llu", total_events);
+    imgui.Text("Total Events: %llu", total_events);
         imgui.Text("Button Events: %llu", button_events);
         imgui.Text("Stick Events: %llu", stick_events);
         imgui.Text("Trigger Events: %llu", trigger_events);
@@ -488,14 +498,10 @@ void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui
             g_shared_state->hid_createfile_total.store(0);
             g_shared_state->hid_createfile_dualsense.store(0);
         }
-        imgui.Unindent();
-    }
 }
 
 void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui) {
-    if (imgui.CollapsingHeader("Vibration Test", 0)) {
-        imgui.Indent();
-        imgui.Text("Test controller vibration motors:");
+    imgui.Text("Test controller vibration motors:");
         imgui.Spacing();
 
         // Auto-stop after 10s and show timer
@@ -558,8 +564,6 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_DIMMED,
                           "Note: Vibration auto-stops after 10 s, or use Stop to end early.");
-        imgui.Unindent();
-    }
 }
 
 void XInputWidget::DrawControllerSelector(display_commander::ui::IImGuiWrapper& imgui) {
@@ -659,32 +663,50 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
     imgui.Spacing();
 
     // Draw button states
-    DrawButtonStates(imgui, state.Gamepad);
+    if (imgui.CollapsingHeader("Buttons", 0)) {
+        imgui.Indent();
+        DrawButtonStates(imgui, state.Gamepad);
+        imgui.Unindent();
+    }
     imgui.Spacing();
 
     // Draw stick states
-    DrawStickStates(imgui, state.Gamepad);
+    if (imgui.CollapsingHeader("Analog Sticks", 0)) {
+        imgui.Indent();
+        DrawStickStates(imgui, state.Gamepad);
+        imgui.Unindent();
+    }
     imgui.Spacing();
 
     // Draw trigger states
-    DrawTriggerStates(imgui, state.Gamepad);
+    if (imgui.CollapsingHeader("Triggers", 0)) {
+        imgui.Indent();
+        DrawTriggerStates(imgui, state.Gamepad);
+        imgui.Unindent();
+    }
     imgui.Spacing();
 
     // Draw battery status
-    DrawBatteryStatus(imgui, selected_controller_);
+    if (imgui.CollapsingHeader("Battery Status", 0)) {
+        imgui.Indent();
+        DrawBatteryStatus(imgui, selected_controller_);
+        imgui.Unindent();
+    }
 
     // Draw DualSense report if dualsense_to_xinput is enabled
     if (g_shared_state->enable_dualsense_xinput.load()) {
         imgui.Spacing();
-        DrawDualSenseReport(imgui, selected_controller_);
+        if (imgui.CollapsingHeader("DualSense Input Report", 0)) {
+            imgui.Indent();
+            DrawDualSenseReport(imgui, selected_controller_);
+            imgui.Unindent();
+        }
     }
 }
 
 void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
-    if (imgui.CollapsingHeader("Buttons", 0)) {
-        imgui.Indent();
-        // Create a grid of buttons
-        const struct {
+    // Create a grid of buttons
+    const struct {
             WORD mask;
             const char* name;
         } buttons[] = {
@@ -750,14 +772,10 @@ void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.PopStyleColor();
             }
         }
-        imgui.Unindent();
-    }
 }
 
 void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
-    if (imgui.CollapsingHeader("Analog Sticks", 0)) {
-        imgui.Indent();
-        float lmin_in_x = g_shared_state->left_stick_x_min_input.load();
+    float lmin_in_x = g_shared_state->left_stick_x_min_input.load();
         float lmax_in_x = g_shared_state->left_stick_x_max_input.load();
         float lmin_out_x = g_shared_state->left_stick_x_min_output.load();
         float lmax_out_x = g_shared_state->left_stick_x_max_output.load();
@@ -882,18 +900,18 @@ void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, 
         imgui.Dummy(canvas_size);
 
         // Draw extended visualization with input/output curves
-        DrawStickStatesExtended(imgui, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, rmin_in_x, rmax_in_x, rmin_out_x,
-                                rmax_out_x);
-        imgui.Unindent();
-    }
+        if (imgui.CollapsingHeader("Input/Output Curves", 0)) {
+            imgui.Indent();
+            DrawStickStatesExtended(imgui, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, rmin_in_x, rmax_in_x,
+                                    rmin_out_x, rmax_out_x);
+            imgui.Unindent();
+        }
 }
 
 void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_min_in,
                                            float left_max_in, float left_min_out, float left_max_out, float right_min_in,
                                            float right_max_in, float right_min_out, float right_max_out) {
-    if (imgui.CollapsingHeader("Input/Output Curves", 0)) {
-        imgui.Indent();
-        imgui.TextColored(::ui::colors::TEXT_DEFAULT, "Visual representation of how stick input is processed");
+    imgui.TextColored(::ui::colors::TEXT_DEFAULT, "Visual representation of how stick input is processed");
         imgui.Spacing();
 
         // Generate curve data for both sticks
@@ -1016,14 +1034,10 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");
-        imgui.Unindent();
-    }
 }
 
 void XInputWidget::DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
-    if (imgui.CollapsingHeader("Triggers", 0)) {
-        imgui.Indent();
-        // Left trigger
+    // Left trigger
         imgui.Text("Left Trigger: %u/255 (%.1f%%)", gamepad.bLeftTrigger,
                    (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
 
@@ -1038,8 +1052,6 @@ void XInputWidget::DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui
         // Visual bar for right trigger
         float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
         imgui.ProgressBar(right_trigger_norm, ImVec2(-1, 0), "");
-        imgui.Unindent();
-    }
 }
 
 void XInputWidget::DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui, int controller_index) {
@@ -1047,16 +1059,13 @@ void XInputWidget::DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui
         return;
     }
 
-    if (imgui.CollapsingHeader("Battery Status", 0)) {
-        imgui.Indent();
-        bool battery_valid = g_shared_state->battery_info_valid[controller_index].load();
+    bool battery_valid = g_shared_state->battery_info_valid[controller_index].load();
+    if (!battery_valid) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Battery information not available");
+        return;
+    }
 
-        if (!battery_valid) {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "Battery information not available");
-            return;
-        }
-
-        const XINPUT_BATTERY_INFORMATION& battery = g_shared_state->battery_info[controller_index];
+    const XINPUT_BATTERY_INFORMATION& battery = g_shared_state->battery_info[controller_index];
 
         // Battery type
         std::string battery_type_str;
@@ -1138,8 +1147,6 @@ void XInputWidget::DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui
         } else {
             imgui.TextColored(::ui::colors::TEXT_DIMMED, "Battery level not available");
         }
-        imgui.Unindent();
-    }
 }
 
 std::string XInputWidget::GetButtonName(WORD button) const {
@@ -1790,72 +1797,67 @@ void UpdateBatteryStatus(DWORD user_index) {
 }
 
 void XInputWidget::DrawDualSenseReport(display_commander::ui::IImGuiWrapper& imgui, int controller_index) {
-    if (imgui.CollapsingHeader("DualSense Input Report", 0)) {
-        imgui.Indent();
-        // Check if DualSense HID wrapper is available
-        if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID wrapper not available");
-            return;
+    (void)controller_index;
+    // Check if DualSense HID wrapper is available
+    if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID wrapper not available");
+        return;
+    }
+
+    // Get devices from HID wrapper
+    const auto& devices = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevices();
+    if (devices.empty()) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "No DualSense devices detected");
+        return;
+    }
+
+    // Find the device that corresponds to the selected controller
+    const auto& device = devices[0];
+    if (!device.is_connected) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense device not connected");
+        return;
+    }
+
+    // Display basic device info
+    imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Device: %s",
+                      device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
+    imgui.Text("Connection: %s", device.connection_type.c_str());
+    imgui.Text("Vendor ID: 0x%04X", device.vendor_id);
+    imgui.Text("Product ID: 0x%04X", device.product_id);
+
+    // Display last update time
+    if (device.last_update_time > 0) {
+        DWORD now = GetTickCount();
+        DWORD age_ms = now - device.last_update_time;
+        imgui.Text("Last Update: %lu ms ago", age_ms);
+    }
+
+    imgui.Spacing();
+
+    // Display input report size and first few bytes
+    if (device.hid_device && device.hid_device->input_report.size() > 0) {
+        imgui.Text("Input Report Size: %zu bytes", device.hid_device->input_report.size());
+
+        // Show first 16 bytes in hex format
+        const auto& inputReport = device.hid_device->input_report;
+        std::string hex_string = "";
+        for (size_t i = 0; i < (inputReport.size() < 16 ? inputReport.size() : 16); ++i) {
+            char hex_byte[4];
+            sprintf_s(hex_byte, "%02X ", inputReport[i]);
+            hex_string += hex_byte;
         }
-
-        // Get devices from HID wrapper
-        const auto& devices = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevices();
-
-        if (devices.empty()) {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "No DualSense devices detected");
-            return;
-        }
-
-        // Find the device that corresponds to the selected controller
-        // For now, we'll use the first available device
-        // In a more sophisticated implementation, we'd map controller indices to device indices
-        const auto& device = devices[0];
-
-        if (!device.is_connected) {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense device not connected");
-            return;
-        }
-
-        // Display basic device info
-        imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Device: %s",
-                          device.device_name.empty() ? "DualSense Controller" : device.device_name.c_str());
-        imgui.Text("Connection: %s", device.connection_type.c_str());
-        imgui.Text("Vendor ID: 0x%04X", device.vendor_id);
-        imgui.Text("Product ID: 0x%04X", device.product_id);
-
-        // Display last update time
-        if (device.last_update_time > 0) {
-            DWORD now = GetTickCount();
-            DWORD age_ms = now - device.last_update_time;
-            imgui.Text("Last Update: %lu ms ago", age_ms);
-        }
+        imgui.Text("First 16 bytes: %s", hex_string.c_str());
 
         imgui.Spacing();
 
-        // Display input report size and first few bytes
-        if (device.hid_device && device.hid_device->input_report.size() > 0) {
-            imgui.Text("Input Report Size: %zu bytes", device.hid_device->input_report.size());
+        // Display Special-K DualSense data if available
+        if (imgui.CollapsingHeader("Special-K DualSense Data", 0)) {
+            imgui.Indent();
+            const auto& sk_data = device.sk_dualsense_data;
 
-            // Show first 16 bytes in hex format
-            const auto& inputReport = device.hid_device->input_report;
-            std::string hex_string = "";
-            for (size_t i = 0; i < (inputReport.size() < 16 ? inputReport.size() : 16); ++i) {
-                char hex_byte[4];
-                sprintf_s(hex_byte, "%02X ", inputReport[i]);
-                hex_string += hex_byte;
-            }
-            imgui.Text("First 16 bytes: %s", hex_string.c_str());
-
-            imgui.Spacing();
-
-            // Display Special-K DualSense data if available
-            if (imgui.CollapsingHeader("Special-K DualSense Data", 0)) {
+            // Basic input data
+            if (imgui.CollapsingHeader("Input Data", 0)) {
                 imgui.Indent();
-                const auto& sk_data = device.sk_dualsense_data;
-
-                // Basic input data
-                if (imgui.CollapsingHeader("Input Data", 0)) {
-                    imgui.Indent();
                     imgui.Columns(2, "SKInputColumns", false);
 
                     // Sticks
@@ -2030,21 +2032,16 @@ void XInputWidget::DrawDualSenseReport(display_commander::ui::IImGuiWrapper& img
         } else {
             imgui.TextColored(::ui::colors::TEXT_DIMMED, "No input report data available");
         }
-        imgui.Unindent();
-    }
 }
 
 // Autofire functions
 void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& imgui) {
-    if (imgui.CollapsingHeader("Autofire Settings", 0)) {
-        imgui.Indent();
-        auto shared_state = GetSharedState();
-        if (!shared_state) {
-            imgui.Unindent();
-            return;
-        }
+    auto shared_state = GetSharedState();
+    if (!shared_state) {
+        return;
+    }
 
-        // Master enable/disable
+    // Master enable/disable
         bool autofire_enabled = shared_state->autofire_enabled.load();
         if (imgui.Checkbox("Enable Autofire", &autofire_enabled)) {
             shared_state->autofire_enabled.store(autofire_enabled);
@@ -2335,8 +2332,6 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
                 SaveSettings();
             }
         }
-        imgui.Unindent();
-    }
 }
 
 void XInputWidget::AddAutofireButton(WORD button_mask) {

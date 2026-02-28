@@ -36,6 +36,8 @@
 #include "ui/new_ui/vulkan_tab.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/nvidia_profile_tab_shared.hpp"
+#include "widgets/remapping_widget/remapping_widget.hpp"
+#include "widgets/xinput_widget/xinput_widget.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
 #include "utils/reshade_sha256_database.hpp"
@@ -781,6 +783,15 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                 if (ImGui::BeginTabItem("Hotkeys")) {
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
                     ui::new_ui::DrawHotkeysTab(wrapper);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Controller")) {
+                    display_commander::widgets::xinput_widget::InitializeXInputWidget();
+                    display_commander::widgets::remapping_widget::InitializeRemappingWidget();
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    display_commander::widgets::xinput_widget::DrawXInputWidget(wrapper);
+                    ImGui::Spacing();
+                    display_commander::widgets::remapping_widget::DrawRemappingWidget(wrapper);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Performance")) {

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.150 (2026-02-28)
+
+- **Controller tab added** - New Controller tab (XInput monitoring, remapping, HID devices, Battery Status, DualSense Input Report, etc.). Collapsible sections use indent/unindent at call site so the ImGui stack stays balanced and early returns cannot leave indent unmatched.
+
+---
+
 ## v0.12.149 (2026-02-27)
 
 - **Fix DX11 games not working with ReShade loaded** - DX11 games now work correctly when ReShade is loaded (addressing CreateDXGIFactory/CreateDXGIFactory1/CreateDXGIFactory2 hook resolution and DX11 device/swapchain creation with ReShade in the chain).

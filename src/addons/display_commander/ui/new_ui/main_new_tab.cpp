@@ -2166,7 +2166,6 @@ if (enabled_experimental_features) {
 
         // Continue Rendering in Background
         static bool continue_rendering_changed = false;
-        static bool suppress_windows_gaming_input_changed = false;
         if (CheckboxSetting(settings::g_advancedTabSettings.continue_rendering, "Continue Rendering in Background",
                             imgui)) {
             continue_rendering_changed = true;
@@ -2198,31 +2197,9 @@ if (enabled_experimental_features) {
                 "messages to keep games running in background.");
         }
 
-        if (display_commanderhooks::g_wgi_state.wgi_called.load()) {
-            if ((settings::g_advancedTabSettings.continue_rendering.GetValue()
-                 || settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue())) {
-                imgui.Spacing();
-                imgui.Indent();
-                if (CheckboxSetting(settings::g_advancedTabSettings.suppress_windows_gaming_input,
-                                    "Suppress Windows.Gaming.Input (use XInput)", imgui)) {
-                    suppress_windows_gaming_input_changed = true;
-                    LogInfo("Suppress Windows.Gaming.Input setting changed to: %s",
-                            settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue() ? "enabled"
-                                                                                                     : "disabled");
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
-                        "Suppress Windows.Gaming.Input.dll so the game uses XInput instead.\n"
-                        "Disable if causes issues (e.g. gamepad not working).\n"
-                        "Default: on.");
-                }
-                imgui.Unindent();
-            }
-            if (continue_rendering_changed || suppress_windows_gaming_input_changed) {
-                // Show restart required message
-                imgui.TextColored(ui::colors::TEXT_WARNING,
-                                  ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
-            }
+        if (display_commanderhooks::g_wgi_state.wgi_called.load() && continue_rendering_changed) {
+            imgui.TextColored(ui::colors::TEXT_WARNING,
+                              ICON_FK_WARNING " Game restart may be required for changes to take full effect.");
         }
         imgui.Spacing();
 
@@ -3728,11 +3705,11 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
             const char* api_str = snap->created_with_ex ? "CreateDeviceEx (D3D9Ex)" : "CreateDevice (D3D9)";
             const char* swap_str = "?";
             switch (snap->swap_effect) {
-                case 1: swap_str = "DISCARD"; break;
-                case 2: swap_str = "FLIP"; break;
-                case 3: swap_str = "COPY"; break;
-                case 4: swap_str = "OVERLAY"; break;
-                case 5: swap_str = "FLIPEX"; break;
+                case 1:  swap_str = "DISCARD"; break;
+                case 2:  swap_str = "FLIP"; break;
+                case 3:  swap_str = "COPY"; break;
+                case 4:  swap_str = "OVERLAY"; break;
+                case 5:  swap_str = "FLIPEX"; break;
                 default: break;
             }
             const char* interval_str = "?";
@@ -3743,13 +3720,13 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
             } else if (snap->presentation_interval >= 1 && snap->presentation_interval <= 4) {
                 interval_str = (snap->presentation_interval == 1) ? "VSync 1" : "VSync";
             }
-            imgui.TextColored(ui::colors::TEXT_DIMMED,
-                              "Last D3D9 (no-ReShade): %s, %s, %u back buffer(s), %s, %s",
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Last D3D9 (no-ReShade): %s, %s, %u back buffer(s), %s, %s",
                               api_str, swap_str, snap->back_buffer_count, interval_str,
                               snap->windowed ? "windowed" : "fullscreen");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "State of the last D3D9 device created via our CreateDevice/CreateDeviceEx hooks (no-ReShade path).");
+                    "State of the last D3D9 device created via our CreateDevice/CreateDeviceEx hooks (no-ReShade "
+                    "path).");
             }
         }
     }

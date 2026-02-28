@@ -40,13 +40,13 @@ So suppression is **purely** via the per-game “blackout” setting; no separat
 ### Display Commander
 
 - **First block (three IIDs only):**  
-  If `iid` is one of the three and `suppress_windows_gaming_input` **and** `continue_rendering` → `return E_NOTIMPL`.
+  If `iid` is one of the three and the relevant WGI suppression setting **and** `continue_rendering` → `return E_NOTIMPL`. (Relevant = `suppress_wgi_for_unity` when Unity, `suppress_wgi_for_non_unity_games` otherwise.)
 - **Second block (Unity):**  
-  If `UnityPlayer.dll` is loaded **and** `suppress_windows_gaming_input` → `return E_NOTIMPL` **for any `iid`** (any RoGetActivationFactory call).
+  If `UnityPlayer.dll` is loaded **and** `suppress_wgi_for_unity` → `return E_NOTIMPL` **for any `iid`** (any RoGetActivationFactory call).
 - **Otherwise:**  
   `return RoGetActivationFactory_Original(activatableClassId, iid, factory);`
 
-So we have two ways to suppress: (1) three IIDs + suppress + continue_rendering, (2) Unity loaded + suppress (all IIDs). See §4 for the implication of (2).
+So we have two ways to suppress: (1) three IIDs + per-game-type WGI suppress + continue_rendering, (2) Unity loaded + suppress_wgi_for_unity (all IIDs). See §4 for the implication of (2).
 
 ---
 

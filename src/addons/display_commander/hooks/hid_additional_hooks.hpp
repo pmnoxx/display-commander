@@ -10,6 +10,7 @@ namespace display_commanderhooks {
 
 // Function pointer types for additional HID functions
 using WriteFile_pfn = BOOL(WINAPI*)(HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED);
+using WriteFileEx_pfn = BOOL(WINAPI*)(HANDLE, LPCVOID, DWORD, LPOVERLAPPED, LPOVERLAPPED_COMPLETION_ROUTINE);
 using DeviceIoControl_pfn = BOOL(WINAPI*)(HANDLE, DWORD, LPVOID, DWORD, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);
 using HidD_GetPreparsedData_pfn = BOOLEAN(__stdcall*)(HANDLE, PHIDP_PREPARSED_DATA*);
 using HidD_FreePreparsedData_pfn = BOOLEAN(__stdcall*)(PHIDP_PREPARSED_DATA);
@@ -24,6 +25,7 @@ using HidD_SetFeature_pfn = BOOLEAN(__stdcall*)(HANDLE, PVOID, ULONG);
 
 // Additional HID hook function pointers
 extern WriteFile_pfn WriteFile_Original;
+extern WriteFileEx_pfn WriteFileEx_Original;
 extern DeviceIoControl_pfn DeviceIoControl_Original;
 extern HidD_GetPreparsedData_pfn HidD_GetPreparsedData_Original;
 extern HidD_FreePreparsedData_pfn HidD_FreePreparsedData_Original;
@@ -38,6 +40,7 @@ extern HidD_SetFeature_pfn HidD_SetFeature_Original;
 
 // Hooked additional HID functions
 BOOL WINAPI WriteFile_Detour(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
+BOOL WINAPI WriteFileEx_Detour(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPOVERLAPPED lpOverlapped, LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
 BOOL WINAPI DeviceIoControl_Detour(HANDLE hDevice, DWORD dwIoControlCode, LPVOID lpInBuffer, DWORD nInBufferSize, LPVOID lpOutBuffer, DWORD nOutBufferSize, LPDWORD lpBytesReturned, LPOVERLAPPED lpOverlapped);
 BOOLEAN __stdcall HidD_GetPreparsedData_Detour(HANDLE HidDeviceObject, PHIDP_PREPARSED_DATA* PreparsedData);
 BOOLEAN __stdcall HidD_FreePreparsedData_Detour(PHIDP_PREPARSED_DATA PreparsedData);

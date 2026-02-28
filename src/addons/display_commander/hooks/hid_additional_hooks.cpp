@@ -10,6 +10,7 @@ namespace display_commanderhooks {
 
 // Additional HID hook function pointers
 WriteFile_pfn WriteFile_Original = nullptr;
+WriteFileEx_pfn WriteFileEx_Original = nullptr;
 DeviceIoControl_pfn DeviceIoControl_Original = nullptr;
 HidD_GetPreparsedData_pfn HidD_GetPreparsedData_Original = nullptr;
 HidD_FreePreparsedData_pfn HidD_FreePreparsedData_Original = nullptr;
@@ -35,6 +36,19 @@ BOOL WINAPI WriteFile_Detour(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfByte
                       : WriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
 
     g_hook_stats[HOOK_HID_WriteFile].increment_unsuppressed();
+    return result;
+}
+
+// Hooked WriteFileEx function
+BOOL WINAPI WriteFileEx_Detour(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPOVERLAPPED lpOverlapped,
+                               LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine) {
+    g_hook_stats[HOOK_HID_WriteFileEx].increment_total();
+
+    BOOL result = WriteFileEx_Original
+                      ? WriteFileEx_Original(hFile, lpBuffer, nNumberOfBytesToWrite, lpOverlapped, lpCompletionRoutine)
+                      : WriteFileEx(hFile, lpBuffer, nNumberOfBytesToWrite, lpOverlapped, lpCompletionRoutine);
+
+    g_hook_stats[HOOK_HID_WriteFileEx].increment_unsuppressed();
     return result;
 }
 
@@ -181,6 +195,11 @@ void UninstallAdditionalHIDHooks() {
     if (WriteFile_Original) {
         MH_DisableHook(WriteFile);
         WriteFile_Original = nullptr;
+    }
+
+    if (WriteFileEx_Original) {
+        MH_DisableHook(WriteFileEx);
+        WriteFileEx_Original = nullptr;
     }
 
     if (DeviceIoControl_Original) {

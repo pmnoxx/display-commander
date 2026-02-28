@@ -124,6 +124,7 @@ enum HookIndex {
     HOOK_HID_ReadFileEx,              // ok
     HOOK_HID_ReadFileScatter,         // ok
     HOOK_HID_WriteFile,               // ok
+    HOOK_HID_WriteFileEx,             // ok
     HOOK_HID_DeviceIoControl,         // ok
     HOOK_HIDD_GetInputReport,         // ok
     HOOK_HIDD_GetAttributes,          // ok

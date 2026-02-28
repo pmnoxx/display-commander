@@ -240,6 +240,7 @@ constexpr std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"ReadFileEx", DllGroup::HID_API, HOOK_HID_ReadFileEx},
     {"ReadFileScatter", DllGroup::HID_API, HOOK_HID_ReadFileScatter},
     {"WriteFile", DllGroup::HID_API, HOOK_HID_WriteFile},
+    {"WriteFileEx", DllGroup::HID_API, HOOK_HID_WriteFileEx},
     {"DeviceIoControl", DllGroup::HID_API, HOOK_HID_DeviceIoControl},
 
     // HID API hooks

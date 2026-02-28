@@ -84,6 +84,13 @@ bool InstallHIDKernel32Hooks(HMODULE hModule) {
         } else {
             LogWarn("Failed to install WriteFile hook (kernel32), continuing");
         }
+        if (CreateAndEnableHookFromModule(
+                hModule, "WriteFileEx", reinterpret_cast<LPVOID>(WriteFileEx_Detour),
+                reinterpret_cast<LPVOID*>(&WriteFileEx_Original), "WriteFileEx")) {
+            installed++;
+        } else {
+            LogWarn("Failed to install WriteFileEx hook (kernel32), continuing");
+        }
         if (CreateAndEnableHookFromModule(hModule, "DeviceIoControl", reinterpret_cast<LPVOID>(DeviceIoControl_Detour),
                                           reinterpret_cast<LPVOID*>(&DeviceIoControl_Original), "DeviceIoControl")) {
             installed++;
@@ -99,7 +106,7 @@ bool InstallHIDKernel32Hooks(HMODULE hModule) {
             HookSuppressionManager::GetInstance().MarkHookInstalled(HookType::HID_SUPPRESSION);
             renodx::hooks::MarkHIDSuppressionHooksInstalled(true);
         }
-        if (!suppress_hid && (WriteFile_Original != nullptr || DeviceIoControl_Original != nullptr)) {
+        if (!suppress_hid && (WriteFile_Original != nullptr || WriteFileEx_Original != nullptr || DeviceIoControl_Original != nullptr)) {
             HookSuppressionManager::GetInstance().MarkHookInstalled(HookType::HID_KERNEL32);
             MarkAdditionalHIDHooksInstalled(true);
         }

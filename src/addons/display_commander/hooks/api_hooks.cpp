@@ -946,6 +946,9 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
 }
 
 bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
+    if (g_reshade_loaded.load()) {
+        return true;
+    }
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(d3d11_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(d3d11_module, "ReShadeUnregisterAddon");

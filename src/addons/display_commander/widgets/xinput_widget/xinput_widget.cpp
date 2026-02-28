@@ -179,6 +179,18 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltip("Convert DualSense controller input to XInput format");
         }
 
+        // Test gamepad suppression (zero XInputGetState output to game)
+        bool test_suppression = g_shared_state->test_gamepad_suppression.load();
+        if (imgui.Checkbox("Test gamepad suppression", &test_suppression)) {
+            g_shared_state->test_gamepad_suppression.store(test_suppression);
+            SaveSettings();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled, zeroes all gamepad output (buttons, sticks, triggers) returned to the game by "
+                "XInputGetState/XInputGetStateEx. Use to test that suppression works; the game will see no input.");
+        }
+
         // HID suppression enable
         bool hid_suppression = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
         if (imgui.Checkbox("Enable HID Suppression", &hid_suppression)) {
@@ -1183,6 +1195,13 @@ void XInputWidget::LoadSettings() {
         g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
     }
 
+    // Load test gamepad suppression setting
+    bool test_gamepad_suppression;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "TestGamepadSuppression",
+                                                    test_gamepad_suppression)) {
+        g_shared_state->test_gamepad_suppression.store(test_gamepad_suppression);
+    }
+
     // Load stick mapping (new 4 params per axis). Backward compat: migrate old 3 params to new 4.
     float left_min_in, left_max_in, left_min_out, left_max_out;
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMinInput",
@@ -1423,6 +1442,10 @@ void XInputWidget::SaveSettings() {
     // Save DualSense to XInput conversion setting
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput",
                                                 g_shared_state->enable_dualsense_xinput.load());
+
+    // Save test gamepad suppression setting
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "TestGamepadSuppression",
+                                                g_shared_state->test_gamepad_suppression.load());
 
     // Save stick mapping (4 params per axis × 2 axes × 2 sticks)
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickXMinInput",

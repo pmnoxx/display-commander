@@ -55,6 +55,7 @@ struct XInputSharedState {
     std::atomic<bool> enable_xinput_hooks{true}; // Enable XInput hooks (off by default)
     std::atomic<bool> swap_a_b_buttons{false};
     std::atomic<bool> enable_dualsense_xinput{false}; // Enable DualSense to XInput conversion
+    std::atomic<bool> test_gamepad_suppression{false}; // When true, zero XInputGetState output to game (for testing)
     // Stick input->output mapping per axis: input [min_input, max_input] -> output [min_output, max_output] (0-1)
     // Left stick X axis
     std::atomic<float> left_stick_x_min_input{0.0f};

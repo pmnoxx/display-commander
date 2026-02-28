@@ -210,48 +210,74 @@ float recenter(float value, float center) {
     return new_value / (1 + abs(center));
 }
 
-// Helper function to apply max input, min output, deadzone, and center calibration to thumbstick values
-void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float right_max_input, float left_min_output,
-                               float right_min_output, float left_deadzone, float right_deadzone, float left_center_x,
-                               float left_center_y, float right_center_x, float right_center_y, bool left_circular,
-                               bool right_circular) {
-    if (!pState) return;
+// Helper function to apply stick mapping and center calibration (reads params from shared_state)
+void ApplyThumbstickProcessing(
+    XINPUT_STATE* pState,
+    const std::shared_ptr<display_commander::widgets::xinput_widget::XInputSharedState>& shared_state) {
+    if (!pState || !shared_state) return;
 
-    // Process left stick
-    float lx = ShortToFloat(pState->Gamepad.sThumbLX);
-    float ly = ShortToFloat(pState->Gamepad.sThumbLY);
+    float left_center_x = shared_state->left_stick_center_x.load();
+    float left_center_y = shared_state->left_stick_center_y.load();
+    float right_center_x = shared_state->right_stick_center_x.load();
+    float right_center_y = shared_state->right_stick_center_y.load();
+    bool left_circular = shared_state->left_stick_circular.load();
+    bool right_circular = shared_state->right_stick_circular.load();
+    bool left_same_axes = shared_state->left_stick_same_axes.load();
+    bool right_same_axes = shared_state->right_stick_same_axes.load();
 
-    // Apply center calibration (recenter the stick)
-    lx = recenter(lx, left_center_x);
-    ly = recenter(ly, left_center_y);
-
-    // Use circular or square processing based on toggle
-    if (left_circular) {
-        ProcessStickInputRadial(lx, ly, left_deadzone, left_max_input, left_min_output);
-    } else {
-        ProcessStickInputSquare(lx, ly, left_deadzone, left_max_input, left_min_output);
+    float lmin_in_x = shared_state->left_stick_x_min_input.load();
+    float lmax_in_x = shared_state->left_stick_x_max_input.load();
+    float lmin_out_x = shared_state->left_stick_x_min_output.load();
+    float lmax_out_x = shared_state->left_stick_x_max_output.load();
+    float lmin_in_y = shared_state->left_stick_y_min_input.load();
+    float lmax_in_y = shared_state->left_stick_y_max_input.load();
+    float lmin_out_y = shared_state->left_stick_y_min_output.load();
+    float lmax_out_y = shared_state->left_stick_y_max_output.load();
+    if (left_same_axes) {
+        lmin_in_y = lmin_in_x;
+        lmax_in_y = lmax_in_x;
+        lmin_out_y = lmin_out_x;
+        lmax_out_y = lmax_out_x;
     }
 
-    // Convert back to SHORT with correct scaling
+    float rmin_in_x = shared_state->right_stick_x_min_input.load();
+    float rmax_in_x = shared_state->right_stick_x_max_input.load();
+    float rmin_out_x = shared_state->right_stick_x_min_output.load();
+    float rmax_out_x = shared_state->right_stick_x_max_output.load();
+    float rmin_in_y = shared_state->right_stick_y_min_input.load();
+    float rmax_in_y = shared_state->right_stick_y_max_input.load();
+    float rmin_out_y = shared_state->right_stick_y_min_output.load();
+    float rmax_out_y = shared_state->right_stick_y_max_output.load();
+    if (right_same_axes) {
+        rmin_in_y = rmin_in_x;
+        rmax_in_y = rmax_in_x;
+        rmin_out_y = rmin_out_x;
+        rmax_out_y = rmax_out_x;
+    }
+
+    float lx = ShortToFloat(pState->Gamepad.sThumbLX);
+    float ly = ShortToFloat(pState->Gamepad.sThumbLY);
+    lx = recenter(lx, left_center_x);
+    ly = recenter(ly, left_center_y);
+    if (left_circular) {
+        ProcessStickInputRadial(lx, ly, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x);
+    } else {
+        ProcessStickInputSquare(lx, ly, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, lmin_in_y, lmax_in_y, lmin_out_y,
+                               lmax_out_y);
+    }
     pState->Gamepad.sThumbLX = FloatToShort(lx);
     pState->Gamepad.sThumbLY = FloatToShort(ly);
 
-    // Process right stick
     float rx = ShortToFloat(pState->Gamepad.sThumbRX);
     float ry = ShortToFloat(pState->Gamepad.sThumbRY);
-
-    // Apply center calibration (recenter the stick)
     rx = recenter(rx, right_center_x);
     ry = recenter(ry, right_center_y);
-
-    // Use circular or square processing based on toggle
     if (right_circular) {
-        ProcessStickInputRadial(rx, ry, right_deadzone, right_max_input, right_min_output);
+        ProcessStickInputRadial(rx, ry, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x);
     } else {
-        ProcessStickInputSquare(rx, ry, right_deadzone, right_max_input, right_min_output);
+        ProcessStickInputSquare(rx, ry, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x, rmin_in_y, rmax_in_y, rmin_out_y,
+                               rmax_out_y);
     }
-
-    // Convert back to SHORT with correct scaling
     pState->Gamepad.sThumbRX = FloatToShort(rx);
     pState->Gamepad.sThumbRY = FloatToShort(ry);
 }
@@ -386,26 +412,9 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
             pState->Gamepad.wButtons = swapped_buttons;
         }
 
-        // Apply max input, min output, deadzone, and center calibration processing
+        // Apply stick mapping and center calibration
         if (shared_state) {
-            float left_max_input = shared_state->left_stick_max_input.load();
-            float right_max_input = shared_state->right_stick_max_input.load();
-            float left_min_output = shared_state->left_stick_min_output.load();
-            float right_min_output = shared_state->right_stick_min_output.load();
-            float left_deadzone = shared_state->left_stick_deadzone.load() / 100.0f;    // Convert percentage to decimal
-            float right_deadzone = shared_state->right_stick_deadzone.load() / 100.0f;  // Convert percentage to decimal
-
-            float left_center_x = shared_state->left_stick_center_x.load();
-            float left_center_y = shared_state->left_stick_center_y.load();
-            float right_center_x = shared_state->right_stick_center_x.load();
-            float right_center_y = shared_state->right_stick_center_y.load();
-
-            bool left_circular = shared_state->left_stick_circular.load();
-            bool right_circular = shared_state->right_stick_circular.load();
-
-            ApplyThumbstickProcessing(pState, left_max_input, right_max_input, left_min_output, right_min_output,
-                                      left_deadzone, right_deadzone, left_center_x, left_center_y, right_center_x,
-                                      right_center_y, left_circular, right_circular);
+            ApplyThumbstickProcessing(pState, shared_state);
         }
 
         // Process input remapping before updating state

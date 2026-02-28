@@ -47,8 +47,13 @@ int GetAspectWidthValue(int display_width);
 BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);
 
 // XInput processing functions
-void ProcessStickInputRadial(float& x, float& y, float deadzone, float max_input, float min_output);
-void ProcessStickInputSquare(float& x, float& y, float deadzone, float max_input, float min_output);
+// Map one signed axis: input [min_input, max_input] -> output [min_output, max_output] (0-1 ranges)
+float MapStickAxisValue(float value, float min_input, float max_input, float min_output, float max_output);
+// Radial: one mapping applied to magnitude
+void ProcessStickInputRadial(float& x, float& y, float min_input, float max_input, float min_output, float max_output);
+// Square: separate mapping per axis
+void ProcessStickInputSquare(float& x, float& y, float min_in_x, float max_in_x, float min_out_x, float max_out_x,
+                             float min_in_y, float max_in_y, float min_out_y, float max_out_y);
 float ProcessStickInput(float value, float deadzone, float max_input, float min_output);
 
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)

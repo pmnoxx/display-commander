@@ -55,18 +55,30 @@ struct XInputSharedState {
     std::atomic<bool> enable_xinput_hooks{true}; // Enable XInput hooks (off by default)
     std::atomic<bool> swap_a_b_buttons{false};
     std::atomic<bool> enable_dualsense_xinput{false}; // Enable DualSense to XInput conversion
-    std::atomic<float> left_stick_max_input{
-        1.0f}; // Left stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
-    std::atomic<float> right_stick_max_input{
-        1.0f}; // Right stick sensitivity (max input) - 0.7 = 70% stick movement = 100% output
-    std::atomic<float> left_stick_min_output{
-        0.0f}; // Left stick remove game's deadzone (min output) - 0.3 = eliminates small movements
-    std::atomic<float> right_stick_min_output{
-        0.0f}; // Right stick remove game's deadzone (min output) - 0.3 = eliminates small movements
-    std::atomic<float> left_stick_deadzone{
-        0.0f}; // Left stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
-    std::atomic<float> right_stick_deadzone{
-        0.0f}; // Right stick dead zone (min input) - 0.0 = no deadzone, 15.0 = ignores small movements
+    // Stick input->output mapping per axis: input [min_input, max_input] -> output [min_output, max_output] (0-1)
+    // Left stick X axis
+    std::atomic<float> left_stick_x_min_input{0.0f};
+    std::atomic<float> left_stick_x_max_input{1.0f};
+    std::atomic<float> left_stick_x_min_output{0.0f};  // anti-deadzone
+    std::atomic<float> left_stick_x_max_output{1.0f};
+    // Left stick Y axis
+    std::atomic<float> left_stick_y_min_input{0.0f};
+    std::atomic<float> left_stick_y_max_input{1.0f};
+    std::atomic<float> left_stick_y_min_output{0.0f};
+    std::atomic<float> left_stick_y_max_output{1.0f};
+    // Right stick X axis
+    std::atomic<float> right_stick_x_min_input{0.0f};
+    std::atomic<float> right_stick_x_max_input{1.0f};
+    std::atomic<float> right_stick_x_min_output{0.0f};
+    std::atomic<float> right_stick_x_max_output{1.0f};
+    // Right stick Y axis
+    std::atomic<float> right_stick_y_min_input{0.0f};
+    std::atomic<float> right_stick_y_max_input{1.0f};
+    std::atomic<float> right_stick_y_min_output{0.0f};
+    std::atomic<float> right_stick_y_max_output{1.0f};
+    // When true, use X axis values for both X and Y of that stick (4 sliders instead of 8)
+    std::atomic<bool> left_stick_same_axes{true};
+    std::atomic<bool> right_stick_same_axes{true};
     std::atomic<bool> left_stick_circular{true};  // Left stick processing mode: true = circular (radial), false = square (separate axes)
     std::atomic<bool> right_stick_circular{true}; // Right stick processing mode: true = circular (radial), false = square (separate axes)
 
@@ -233,9 +245,9 @@ class XInputWidget {
     void DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui);
     void DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
     void DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
-    void DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_deadzone, float left_max_input,
-                                 float left_min_output, float right_deadzone, float right_max_input,
-                                 float right_min_output);
+    void DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_min_in, float left_max_in,
+                                 float left_min_out, float left_max_out, float right_min_in, float right_max_in,
+                                 float right_min_out, float right_max_out);
     void DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad);
     void DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui, int controller_index);
     void DrawDualSenseReport(display_commander::ui::IImGuiWrapper& imgui, int controller_index);

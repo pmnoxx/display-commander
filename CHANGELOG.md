@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.146 (unreleased)
+
+- **XInput stick mapping: 8 sliders + same-axes** - Stick mapping now uses four parameters per axis: Min Input, Max Input, Min Output (anti-deadzone), Max Output. Input range [min%, max%] is mapped to output [min%, max%] (e.g. 30%-70% → 10%-80%). Left and right stick each have 4 sliders when "Same for both axes" is on (default), or 8 sliders (4 for X, 4 for Y) when off. Radial and square processing modes both use the new mapping. Settings and curve view updated; config backward compatible with previous deadzone/sensitivity/min-output keys.
+
+---
+
 ## v0.12.145 (unreleased)
 
 - **Block WGI for Unity only** - Windows.Gaming.Input (WGI) factory suppression now applies only when the game is Unity. Unity is detected by the presence of UnityPlayer.dll only (same as Special K; no other Unity DLLs are checked). When "Suppress Windows.Gaming.Input" and "Continue rendering when unfocused" are on, RoGetActivationFactory requests for the three same IIDs as Special K (IGamepadStatics, IGamepadStatics2, IRawGameControllerStatics) are failed with E_NOTIMPL using hardcoded GUIDs, so Unity games (e.g. Hollow Knight) fall back to XInput. Non-Unity games are unaffected and keep full WGI support.

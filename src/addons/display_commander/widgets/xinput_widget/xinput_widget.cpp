@@ -204,80 +204,91 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 "specifically DualSense controller access attempts.");
         }
 
-        // Left stick deadzone setting
-        float left_deadzone = g_shared_state->left_stick_deadzone.load();
-        if (imgui.SliderFloat("Left Stick Dead Zone (Min Input)", &left_deadzone, 0.0f, 50.0f, "%.0f%%")) {
-            g_shared_state->left_stick_deadzone.store(left_deadzone);
-            SaveSettings();
-        }
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stick mapping: input range [min%%, max%%] -> output [min%%, max%%]");
+        imgui.SameLine();
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
+            imgui.SetTooltip("Example: input 30%%-70%% mapped to 10%%-80%%");
         }
 
-        // Right stick deadzone setting
-        float right_deadzone = g_shared_state->right_stick_deadzone.load();
-        if (imgui.SliderFloat("Right Stick Dead Zone (Min Input)", &right_deadzone, 0.0f, 50.0f, "%.0f%%")) {
-            g_shared_state->right_stick_deadzone.store(right_deadzone);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Ignores stick movement below this threshold (0%% = no deadzone, 15%% = ignores small movements)");
-        }
+        auto DrawStickMappingSliders = [this, &imgui](const char* stick_name, bool* same_axes,
+                                                     std::atomic<bool>& same_axes_atomic,
+                                                     std::atomic<float>& min_in_x, std::atomic<float>& max_in_x,
+                                                     std::atomic<float>& min_out_x, std::atomic<float>& max_out_x,
+                                                     std::atomic<float>& min_in_y, std::atomic<float>& max_in_y,
+                                                     std::atomic<float>& min_out_y, std::atomic<float>& max_out_y) {
+            if (imgui.Checkbox((std::string("Same for both axes (") + stick_name + ")").c_str(), same_axes)) {
+                same_axes_atomic.store(*same_axes);
+                if (*same_axes) {
+                    min_in_y.store(min_in_x.load());
+                    max_in_y.store(max_in_x.load());
+                    min_out_y.store(min_out_x.load());
+                    max_out_y.store(max_out_x.load());
+                }
+                SaveSettings();
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("When on: one set of 4 sliders for X and Y. When off: 8 sliders (4 per axis).");
+            }
 
-        // Left stick sensitivity setting
-        float left_max_input = g_shared_state->left_stick_max_input.load();
-        float left_max_input_percent = left_max_input * 100.0f;
-        if (imgui.SliderFloat("Left Stick Sensitivity (Max Input)", &left_max_input_percent, 10.0f, 100.0f, "%.0f%%")) {
-            g_shared_state->left_stick_max_input.store(left_max_input_percent / 100.0f);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
-                "output, 100%% = normal)");
-        }
+            auto Slider4 = [&imgui, this](const char* label, float* v, float v_min, float v_max, const char* fmt,
+                                          std::atomic<float>& store) {
+                if (imgui.SliderFloat(label, v, v_min, v_max, fmt)) {
+                    store.store(*v / 100.0f);
+                    SaveSettings();
+                }
+            };
 
-        // Right stick sensitivity setting
-        float right_max_input = g_shared_state->right_stick_max_input.load();
-        float right_max_input_percent = right_max_input * 100.0f;
-        if (imgui.SliderFloat("Right Stick Sensitivity (Max Input)", &right_max_input_percent, 10.0f, 100.0f,
-                              "%.0f%%")) {
-            g_shared_state->right_stick_max_input.store(right_max_input_percent / 100.0f);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "How much stick movement is needed for full output (70%% = 70%% stick movement = 100%% "
-                "output, 100%% = normal)");
-        }
+            if (*same_axes) {
+                float mi = min_in_x.load() * 100.0f;
+                float ma = max_in_x.load() * 100.0f;
+                float mo = min_out_x.load() * 100.0f;
+                float mx = max_out_x.load() * 100.0f;
+                Slider4("Min Input %", &mi, 0.0f, 100.0f, "%.0f%%", min_in_x);
+                if (imgui.IsItemHovered()) imgui.SetTooltip("Input below this is zero (deadzone)");
+                Slider4("Max Input %", &ma, 0.0f, 100.0f, "%.0f%%", max_in_x);
+                if (imgui.IsItemHovered()) imgui.SetTooltip("Input at/above this maps to Max Output");
+                Slider4("Min Output (anti-deadzone) %", &mo, 0.0f, 100.0f, "%.0f%%", min_out_x);
+                if (imgui.IsItemHovered()) imgui.SetTooltip("Output at Min Input threshold");
+                Slider4("Max Output %", &mx, 0.0f, 100.0f, "%.0f%%", max_out_x);
+                if (imgui.IsItemHovered()) imgui.SetTooltip("Output at Max Input");
+                min_in_y.store(min_in_x.load());
+                max_in_y.store(max_in_x.load());
+                min_out_y.store(min_out_x.load());
+                max_out_y.store(max_out_x.load());
+            } else {
+                imgui.Text("X axis:");
+                float mix = min_in_x.load() * 100.0f, maxx = max_in_x.load() * 100.0f, mox = min_out_x.load() * 100.0f,
+                       mxx = max_out_x.load() * 100.0f;
+                Slider4("X Min Input %", &mix, 0.0f, 100.0f, "%.0f%%", min_in_x);
+                Slider4("X Max Input %", &maxx, 0.0f, 100.0f, "%.0f%%", max_in_x);
+                Slider4("X Min Output %", &mox, 0.0f, 100.0f, "%.0f%%", min_out_x);
+                Slider4("X Max Output %", &mxx, 0.0f, 100.0f, "%.0f%%", max_out_x);
+                imgui.Text("Y axis:");
+                float miy = min_in_y.load() * 100.0f, may = max_in_y.load() * 100.0f, moy = min_out_y.load() * 100.0f,
+                       mxy = max_out_y.load() * 100.0f;
+                Slider4("Y Min Input %", &miy, 0.0f, 100.0f, "%.0f%%", min_in_y);
+                Slider4("Y Max Input %", &may, 0.0f, 100.0f, "%.0f%%", max_in_y);
+                Slider4("Y Min Output %", &moy, 0.0f, 100.0f, "%.0f%%", min_out_y);
+                Slider4("Y Max Output %", &mxy, 0.0f, 100.0f, "%.0f%%", max_out_y);
+            }
+        };
 
-        // Left stick remove game's deadzone setting
-        float left_min_output = g_shared_state->left_stick_min_output.load();
-        float left_min_output_percent = left_min_output * 100.0f;
-        if (imgui.SliderFloat("Left Stick Remove Game's Deadzone (Min Output)", &left_min_output_percent, 0.0f, 90.0f,
-                              "%.0f%%")) {
-            g_shared_state->left_stick_min_output.store(left_min_output_percent / 100.0f);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
-        }
+        imgui.Text("Left Stick");
+        bool left_same = g_shared_state->left_stick_same_axes.load();
+        DrawStickMappingSliders("left", &left_same, g_shared_state->left_stick_same_axes,
+                               g_shared_state->left_stick_x_min_input, g_shared_state->left_stick_x_max_input,
+                               g_shared_state->left_stick_x_min_output, g_shared_state->left_stick_x_max_output,
+                               g_shared_state->left_stick_y_min_input, g_shared_state->left_stick_y_max_input,
+                               g_shared_state->left_stick_y_min_output, g_shared_state->left_stick_y_max_output);
 
-        // Right stick remove game's deadzone setting
-        float right_min_output = g_shared_state->right_stick_min_output.load();
-        float right_min_output_percent = right_min_output * 100.0f;
-        if (imgui.SliderFloat("Right Stick Remove Game's Deadzone (Min Output)", &right_min_output_percent, 0.0f, 90.0f,
-                              "%.0f%%")) {
-            g_shared_state->right_stick_min_output.store(right_min_output_percent / 100.0f);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Removes game's deadzone by setting minimum output (30%% = eliminates small movements, 0%% = normal)");
-        }
+        imgui.Spacing();
+        imgui.Text("Right Stick");
+        bool right_same = g_shared_state->right_stick_same_axes.load();
+        DrawStickMappingSliders("right", &right_same, g_shared_state->right_stick_same_axes,
+                                g_shared_state->right_stick_x_min_input, g_shared_state->right_stick_x_max_input,
+                                g_shared_state->right_stick_x_min_output, g_shared_state->right_stick_x_max_output,
+                                g_shared_state->right_stick_y_min_input, g_shared_state->right_stick_y_max_input,
+                                g_shared_state->right_stick_y_min_output, g_shared_state->right_stick_y_max_output);
 
         imgui.Separator();
         imgui.Text("Stick Processing Mode");
@@ -734,32 +745,53 @@ void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui,
 void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
     if (imgui.CollapsingHeader("Analog Sticks", 0)) {
         imgui.Indent();
-        float left_max_input = g_shared_state->left_stick_max_input.load();
-        float right_max_input = g_shared_state->right_stick_max_input.load();
-        float left_min_output = g_shared_state->left_stick_min_output.load();
-        float right_min_output = g_shared_state->right_stick_min_output.load();
-        float left_deadzone = g_shared_state->left_stick_deadzone.load() / 100.0f;    // Convert percentage to decimal
-        float right_deadzone = g_shared_state->right_stick_deadzone.load() / 100.0f;  // Convert percentage to decimal
+        float lmin_in_x = g_shared_state->left_stick_x_min_input.load();
+        float lmax_in_x = g_shared_state->left_stick_x_max_input.load();
+        float lmin_out_x = g_shared_state->left_stick_x_min_output.load();
+        float lmax_out_x = g_shared_state->left_stick_x_max_output.load();
+        float lmin_in_y = g_shared_state->left_stick_y_min_input.load();
+        float lmax_in_y = g_shared_state->left_stick_y_max_input.load();
+        float lmin_out_y = g_shared_state->left_stick_y_min_output.load();
+        float lmax_out_y = g_shared_state->left_stick_y_max_output.load();
+        if (g_shared_state->left_stick_same_axes.load()) {
+            lmin_in_y = lmin_in_x;
+            lmax_in_y = lmax_in_x;
+            lmin_out_y = lmin_out_x;
+            lmax_out_y = lmax_out_x;
+        }
+        float rmin_in_x = g_shared_state->right_stick_x_min_input.load();
+        float rmax_in_x = g_shared_state->right_stick_x_max_input.load();
+        float rmin_out_x = g_shared_state->right_stick_x_min_output.load();
+        float rmax_out_x = g_shared_state->right_stick_x_max_output.load();
+        float rmin_in_y = g_shared_state->right_stick_y_min_input.load();
+        float rmax_in_y = g_shared_state->right_stick_y_max_input.load();
+        float rmin_out_y = g_shared_state->right_stick_y_min_output.load();
+        float rmax_out_y = g_shared_state->right_stick_y_max_output.load();
+        if (g_shared_state->right_stick_same_axes.load()) {
+            rmin_in_y = rmin_in_x;
+            rmax_in_y = rmax_in_x;
+            rmin_out_y = rmin_out_x;
+            rmax_out_y = rmax_out_x;
+        }
 
         // Left stick
         imgui.Text("Left Stick:");
         float lx = ShortToFloat(gamepad.sThumbLX);
         float ly = ShortToFloat(gamepad.sThumbLY);
 
-        // Apply center calibration (recenter the stick)
         float left_center_x = g_shared_state->left_stick_center_x.load();
         float left_center_y = g_shared_state->left_stick_center_y.load();
         float lx_recentered = lx - left_center_x;
         float ly_recentered = ly - left_center_y;
 
-        // Apply final processing (use appropriate mode based on toggle)
         float lx_final = lx_recentered;
         float ly_final = ly_recentered;
         bool left_circular = g_shared_state->left_stick_circular.load();
         if (left_circular) {
-            ProcessStickInputRadial(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
+            ProcessStickInputRadial(lx_final, ly_final, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x);
         } else {
-            ProcessStickInputSquare(lx_final, ly_final, left_deadzone, left_max_input, left_min_output);
+            ProcessStickInputSquare(lx_final, ly_final, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, lmin_in_y,
+                                   lmax_in_y, lmin_out_y, lmax_out_y);
         }
 
         imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final,
@@ -801,14 +833,14 @@ void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, 
         float rx_recentered = rx - right_center_x;
         float ry_recentered = ry - right_center_y;
 
-        // Apply final processing (use appropriate mode based on toggle)
         float rx_final = rx_recentered;
         float ry_final = ry_recentered;
         bool right_circular = g_shared_state->right_stick_circular.load();
         if (right_circular) {
-            ProcessStickInputRadial(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
+            ProcessStickInputRadial(rx_final, ry_final, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x);
         } else {
-            ProcessStickInputSquare(rx_final, ry_final, right_deadzone, right_max_input, right_min_output);
+            ProcessStickInputSquare(rx_final, ry_final, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x, rmin_in_y,
+                                   rmax_in_y, rmin_out_y, rmax_out_y);
         }
 
         imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final,
@@ -838,15 +870,15 @@ void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, 
         imgui.Dummy(canvas_size);
 
         // Draw extended visualization with input/output curves
-        DrawStickStatesExtended(imgui, left_deadzone, left_max_input, left_min_output, right_deadzone, right_max_input,
-                                right_min_output);
+        DrawStickStatesExtended(imgui, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, rmin_in_x, rmax_in_x, rmin_out_x,
+                                rmax_out_x);
         imgui.Unindent();
     }
 }
 
-void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_deadzone,
-                                           float left_max_input, float left_min_output, float right_deadzone,
-                                           float right_max_input, float right_min_output) {
+void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_min_in,
+                                           float left_max_in, float left_min_out, float left_max_out, float right_min_in,
+                                           float right_max_in, float right_min_out, float right_max_out) {
     if (imgui.CollapsingHeader("Input/Output Curves", 0)) {
         imgui.Indent();
         imgui.TextColored(::ui::colors::TEXT_DEFAULT, "Visual representation of how stick input is processed");
@@ -869,25 +901,27 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
             float x = input_values[i];
             float y = 0.0f;  // Move along X axis for simplicity
 
-            // Left stick - apply processing based on mode
+            // Left stick - apply processing based on mode (use shared/X params for curve)
             float lx_test = x;
             float ly_test = y;
             bool left_circular = g_shared_state->left_stick_circular.load();
             if (left_circular) {
-                ProcessStickInputRadial(lx_test, ly_test, left_deadzone, left_max_input, left_min_output);
+                ProcessStickInputRadial(lx_test, ly_test, left_min_in, left_max_in, left_min_out, left_max_out);
             } else {
-                ProcessStickInputSquare(lx_test, ly_test, left_deadzone, left_max_input, left_min_output);
+                ProcessStickInputSquare(lx_test, ly_test, left_min_in, left_max_in, left_min_out, left_max_out,
+                                        left_min_in, left_max_in, left_min_out, left_max_out);
             }
             left_curve_y[i] = std::sqrt(lx_test * lx_test + ly_test * ly_test);  // Show output magnitude
 
-            // Right stick - apply processing based on mode
+            // Right stick
             float rx_test = x;
             float ry_test = y;
             bool right_circular = g_shared_state->right_stick_circular.load();
             if (right_circular) {
-                ProcessStickInputRadial(rx_test, ry_test, right_deadzone, right_max_input, right_min_output);
+                ProcessStickInputRadial(rx_test, ry_test, right_min_in, right_max_in, right_min_out, right_max_out);
             } else {
-                ProcessStickInputSquare(rx_test, ry_test, right_deadzone, right_max_input, right_min_output);
+                ProcessStickInputSquare(rx_test, ry_test, right_min_in, right_max_in, right_min_out, right_max_out,
+                                        right_min_in, right_max_in, right_min_out, right_max_out);
             }
             right_curve_y[i] = std::sqrt(rx_test * rx_test + ry_test * ry_test);  // Show output magnitude
 
@@ -897,8 +931,8 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
 
         // Left stick curve
         imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Left Stick Input/Output Curve");
-        imgui.Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", left_deadzone * 100.0f,
-                   left_max_input * 100.0f, left_min_output * 100.0f);
+        imgui.Text("Input %.0f%%-%.0f%% -> Output %.0f%%-%.0f%%", left_min_in * 100.0f, left_max_in * 100.0f,
+                   left_min_out * 100.0f, left_max_out * 100.0f);
 
         // Create plot for left stick (0.0 to 1.0 input range)
         imgui.PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0, "Left Stick Output", 0.0f, 1.0f,
@@ -909,27 +943,27 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
         ImVec2 plot_pos = imgui.GetItemRectMin();
         ImVec2 plot_size = imgui.GetItemRectSize();
 
-        // Draw deadzone reference line (vertical)
-        float deadzone_x = plot_pos.x + left_deadzone * plot_size.x;
-        draw_list->AddLine(ImVec2(deadzone_x, plot_pos.y), ImVec2(deadzone_x, plot_pos.y + plot_size.y),
+        // Draw min input reference line (vertical)
+        float min_in_x = plot_pos.x + left_min_in * plot_size.x;
+        draw_list->AddLine(ImVec2(min_in_x, plot_pos.y), ImVec2(min_in_x, plot_pos.y + plot_size.y),
                            ImColor(255, 255, 0, 128), 2.0f);
 
         // Draw max input reference line (vertical)
-        float max_input_x = plot_pos.x + left_max_input * plot_size.x;
-        draw_list->AddLine(ImVec2(max_input_x, plot_pos.y), ImVec2(max_input_x, plot_pos.y + plot_size.y),
+        float max_in_x = plot_pos.x + left_max_in * plot_size.x;
+        draw_list->AddLine(ImVec2(max_in_x, plot_pos.y), ImVec2(max_in_x, plot_pos.y + plot_size.y),
                            ImColor(255, 0, 255, 128), 2.0f);
 
         // Draw min output reference line (horizontal)
-        float min_output_y = plot_pos.y + plot_size.y - left_min_output * plot_size.y;
-        draw_list->AddLine(ImVec2(plot_pos.x, min_output_y), ImVec2(plot_pos.x + plot_size.x, min_output_y),
+        float min_out_y = plot_pos.y + plot_size.y - left_min_out * plot_size.y;
+        draw_list->AddLine(ImVec2(plot_pos.x, min_out_y), ImVec2(plot_pos.x + plot_size.x, min_out_y),
                            ImColor(0, 255, 255, 128), 2.0f);
 
         imgui.Spacing();
 
         // Right stick curve
         imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Right Stick Input/Output Curve");
-        imgui.Text("Deadzone: %.1f%%, Max Input: %.1f%%, Min Output: %.1f%%", right_deadzone * 100.0f,
-                   right_max_input * 100.0f, right_min_output * 100.0f);
+        imgui.Text("Input %.0f%%-%.0f%% -> Output %.0f%%-%.0f%%", right_min_in * 100.0f, right_max_in * 100.0f,
+                   right_min_out * 100.0f, right_max_out * 100.0f);
 
         // Create plot for right stick (0.0 to 1.0 input range)
         imgui.PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0, "Right Stick Output", 0.0f, 1.0f,
@@ -939,19 +973,19 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
         plot_pos = imgui.GetItemRectMin();
         plot_size = imgui.GetItemRectSize();
 
-        // Draw deadzone reference line (vertical)
-        float right_deadzone_x = plot_pos.x + right_deadzone * plot_size.x;
-        draw_list->AddLine(ImVec2(right_deadzone_x, plot_pos.y), ImVec2(right_deadzone_x, plot_pos.y + plot_size.y),
+        // Draw min input reference line (vertical)
+        float right_min_in_x = plot_pos.x + right_min_in * plot_size.x;
+        draw_list->AddLine(ImVec2(right_min_in_x, plot_pos.y), ImVec2(right_min_in_x, plot_pos.y + plot_size.y),
                            ImColor(255, 255, 0, 128), 2.0f);
 
         // Draw max input reference line (vertical)
-        float right_max_input_x = plot_pos.x + right_max_input * plot_size.x;
-        draw_list->AddLine(ImVec2(right_max_input_x, plot_pos.y), ImVec2(right_max_input_x, plot_pos.y + plot_size.y),
+        float right_max_in_x = plot_pos.x + right_max_in * plot_size.x;
+        draw_list->AddLine(ImVec2(right_max_in_x, plot_pos.y), ImVec2(right_max_in_x, plot_pos.y + plot_size.y),
                            ImColor(255, 0, 255, 128), 2.0f);
 
         // Draw min output reference line (horizontal)
-        float right_min_output_y = plot_pos.y + plot_size.y - right_min_output * plot_size.y;
-        draw_list->AddLine(ImVec2(plot_pos.x, right_min_output_y), ImVec2(plot_pos.x + plot_size.x, right_min_output_y),
+        float right_min_out_y = plot_pos.y + plot_size.y - right_min_out * plot_size.y;
+        draw_list->AddLine(ImVec2(plot_pos.x, right_min_out_y), ImVec2(plot_pos.x + plot_size.x, right_min_out_y),
                            ImColor(0, 255, 255, 128), 2.0f);
 
         imgui.Spacing();
@@ -959,7 +993,7 @@ void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper&
         // Legend
         imgui.TextColored(::ui::colors::TEXT_VALUE, "Legend:");
         imgui.SameLine();
-        imgui.TextColored(::ui::colors::TEXT_VALUE, "Yellow = Radial Deadzone (Vertical)");
+        imgui.TextColored(::ui::colors::TEXT_VALUE, "Yellow = Min Input (Vertical)");
         imgui.SameLine();
         imgui.TextColored(::ui::colors::ICON_SPECIAL, "Magenta = Max Input (Vertical)");
         imgui.SameLine();
@@ -1149,46 +1183,122 @@ void XInputWidget::LoadSettings() {
         g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
     }
 
-    // Load left stick sensitivity setting
-    float left_max_input;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",
-                                                    left_max_input)) {
-        g_shared_state->left_stick_max_input.store(left_max_input);
+    // Load stick mapping (new 4 params per axis). Backward compat: migrate old 3 params to new 4.
+    float left_min_in, left_max_in, left_min_out, left_max_out;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMinInput",
+                                                    left_min_in) &&
+        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxInput",
+                                                  left_max_in) &&
+        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMinOutput",
+                                                  left_min_out) &&
+        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxOutput",
+                                                  left_max_out)) {
+        g_shared_state->left_stick_x_min_input.store(left_min_in);
+        g_shared_state->left_stick_x_max_input.store(left_max_in);
+        g_shared_state->left_stick_x_min_output.store(left_min_out);
+        g_shared_state->left_stick_x_max_output.store(left_max_out);
+        float ly_min_in, ly_max_in, ly_min_out, ly_max_out;
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMinInput",
+                                                        ly_min_in) &&
+            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxInput",
+                                                      ly_max_in) &&
+            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMinOutput",
+                                                      ly_min_out) &&
+            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxOutput",
+                                                      ly_max_out)) {
+            g_shared_state->left_stick_y_min_input.store(ly_min_in);
+            g_shared_state->left_stick_y_max_input.store(ly_max_in);
+            g_shared_state->left_stick_y_min_output.store(ly_min_out);
+            g_shared_state->left_stick_y_max_output.store(ly_max_out);
+        } else {
+            g_shared_state->left_stick_y_min_input.store(left_min_in);
+            g_shared_state->left_stick_y_max_input.store(left_max_in);
+            g_shared_state->left_stick_y_min_output.store(left_min_out);
+            g_shared_state->left_stick_y_max_output.store(left_max_out);
+        }
+    } else {
+        // Backward compat: old keys (deadzone %, sensitivity 0-1, min_output 0-1) -> new (min_in, max_in=1, min_out, max_out=1)
+        float old_deadzone_pct, old_sensitivity, old_min_out;
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput",
+                                                      old_deadzone_pct)) {
+            g_shared_state->left_stick_x_min_input.store(old_deadzone_pct / 100.0f);
+            g_shared_state->left_stick_y_min_input.store(old_deadzone_pct / 100.0f);
+        }
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",
+                                                      old_sensitivity)) {
+            g_shared_state->left_stick_x_max_input.store(old_sensitivity);
+            g_shared_state->left_stick_y_max_input.store(old_sensitivity);
+        }
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput",
+                                                      old_min_out)) {
+            g_shared_state->left_stick_x_min_output.store(old_min_out);
+            g_shared_state->left_stick_y_min_output.store(old_min_out);
+        }
+        g_shared_state->left_stick_x_max_output.store(1.0f);
+        g_shared_state->left_stick_y_max_output.store(1.0f);
     }
 
-    // Load right stick sensitivity setting
-    float right_max_input;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity",
-                                                    right_max_input)) {
-        g_shared_state->right_stick_max_input.store(right_max_input);
+    float right_min_in, right_max_in, right_min_out, right_max_out;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMinInput",
+                                                    right_min_in) &&
+        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMaxInput",
+                                                  right_max_in) &&
+        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMinOutput",
+                                                  right_min_out) &&
+        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMaxOutput",
+                                                  right_max_out)) {
+        g_shared_state->right_stick_x_min_input.store(right_min_in);
+        g_shared_state->right_stick_x_max_input.store(right_max_in);
+        g_shared_state->right_stick_x_min_output.store(right_min_out);
+        g_shared_state->right_stick_x_max_output.store(right_max_out);
+        float ry_min_in, ry_max_in, ry_min_out, ry_max_out;
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMinInput",
+                                                        ry_min_in) &&
+            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMaxInput",
+                                                      ry_max_in) &&
+            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMinOutput",
+                                                      ry_min_out) &&
+            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMaxOutput",
+                                                      ry_max_out)) {
+            g_shared_state->right_stick_y_min_input.store(ry_min_in);
+            g_shared_state->right_stick_y_max_input.store(ry_max_in);
+            g_shared_state->right_stick_y_min_output.store(ry_min_out);
+            g_shared_state->right_stick_y_max_output.store(ry_max_out);
+        } else {
+            g_shared_state->right_stick_y_min_input.store(right_min_in);
+            g_shared_state->right_stick_y_max_input.store(right_max_in);
+            g_shared_state->right_stick_y_min_output.store(right_min_out);
+            g_shared_state->right_stick_y_max_output.store(right_max_out);
+        }
+    } else {
+        float old_deadzone_pct, old_sensitivity, old_min_out;
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMinInput",
+                                                      old_deadzone_pct)) {
+            g_shared_state->right_stick_x_min_input.store(old_deadzone_pct / 100.0f);
+            g_shared_state->right_stick_y_min_input.store(old_deadzone_pct / 100.0f);
+        }
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity",
+                                                      old_sensitivity)) {
+            g_shared_state->right_stick_x_max_input.store(old_sensitivity);
+            g_shared_state->right_stick_y_max_input.store(old_sensitivity);
+        }
+        if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
+                                                      old_min_out)) {
+            g_shared_state->right_stick_x_min_output.store(old_min_out);
+            g_shared_state->right_stick_y_min_output.store(old_min_out);
+        }
+        g_shared_state->right_stick_x_max_output.store(1.0f);
+        g_shared_state->right_stick_y_max_output.store(1.0f);
     }
 
-    // Load left stick min input setting
-    float left_deadzone;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput",
-                                                    left_deadzone)) {
-        g_shared_state->left_stick_deadzone.store(left_deadzone);
+    bool left_same_axes, right_same_axes;
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSameAxes",
+                                                    left_same_axes)) {
+        g_shared_state->left_stick_same_axes.store(left_same_axes);
     }
-
-    // Load right stick min input setting
-    float right_deadzone;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMinInput",
-                                                    right_deadzone)) {
-        g_shared_state->right_stick_deadzone.store(right_deadzone);
-    }
-
-    // Load left stick max output setting
-    float left_min_output;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput",
-                                                    left_min_output)) {
-        g_shared_state->left_stick_min_output.store(left_min_output);
-    }
-
-    // Load right stick max output setting
-    float right_min_output;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
-                                                    right_min_output)) {
-        g_shared_state->right_stick_min_output.store(right_min_output);
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickSameAxes",
+                                                    right_same_axes)) {
+        g_shared_state->right_stick_same_axes.store(right_same_axes);
     }
 
     // Load stick center calibration settings
@@ -1314,29 +1424,43 @@ void XInputWidget::SaveSettings() {
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "EnableDualSenseXInput",
                                                 g_shared_state->enable_dualsense_xinput.load());
 
-    // Save left stick sensitivity setting
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",
-                                                g_shared_state->left_stick_max_input.load());
-
-    // Save right stick sensitivity setting
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity",
-                                                g_shared_state->right_stick_max_input.load());
-
-    // Save left stick min input setting
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput",
-                                                g_shared_state->left_stick_deadzone.load());
-
-    // Save right stick min input setting
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickMinInput",
-                                                g_shared_state->right_stick_deadzone.load());
-
-    // Save left stick max output setting
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput",
-                                                g_shared_state->left_stick_min_output.load());
-
-    // Save right stick max output setting
-    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
-                                                g_shared_state->right_stick_min_output.load());
+    // Save stick mapping (4 params per axis × 2 axes × 2 sticks)
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickXMinInput",
+                                                g_shared_state->left_stick_x_min_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxInput",
+                                                g_shared_state->left_stick_x_max_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickXMinOutput",
+                                                g_shared_state->left_stick_x_min_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxOutput",
+                                                g_shared_state->left_stick_x_max_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickYMinInput",
+                                                g_shared_state->left_stick_y_min_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxInput",
+                                                g_shared_state->left_stick_y_max_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickYMinOutput",
+                                                g_shared_state->left_stick_y_min_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxOutput",
+                                                g_shared_state->left_stick_y_max_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickXMinInput",
+                                                g_shared_state->right_stick_x_min_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickXMaxInput",
+                                                g_shared_state->right_stick_x_max_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickXMinOutput",
+                                                g_shared_state->right_stick_x_min_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickXMaxOutput",
+                                                g_shared_state->right_stick_x_max_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickYMinInput",
+                                                g_shared_state->right_stick_y_min_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickYMaxInput",
+                                                g_shared_state->right_stick_y_max_input.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickYMinOutput",
+                                                g_shared_state->right_stick_y_min_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickYMaxOutput",
+                                                g_shared_state->right_stick_y_max_output.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickSameAxes",
+                                                g_shared_state->left_stick_same_axes.load());
+    display_commander::config::set_config_value("DisplayCommander.XInputWidget", "RightStickSameAxes",
+                                                g_shared_state->right_stick_same_axes.load());
 
     // Save stick center calibration settings
     display_commander::config::set_config_value("DisplayCommander.XInputWidget", "LeftStickCenterX",

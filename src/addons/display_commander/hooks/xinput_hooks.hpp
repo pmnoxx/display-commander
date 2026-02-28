@@ -2,9 +2,17 @@
 
 #include <windows.h>
 #include <cstdint>
-
+#include <memory>
 
 #include <XInput.h>
+
+namespace display_commander {
+namespace widgets {
+namespace xinput_widget {
+struct XInputSharedState;
+}
+}
+}
 
 namespace display_commanderhooks {
 
@@ -40,10 +48,9 @@ bool IsXInputHooksInstalled();
 // Number of game calls to XInputGetState(dwUserIndex=0) seen by the detour (0 = game may use WGI/other API)
 std::uint64_t GetXInputGetStateUserIndexZeroCallCount();
 
-// Helper functions for thumbstick processing
-void ApplyThumbstickProcessing(XINPUT_STATE* pState, float left_max_input, float right_max_input, float left_min_output,
-                               float right_min_output, float left_deadzone, float right_deadzone, float left_center_x,
-                               float left_center_y, float right_center_x, float right_center_y, bool left_circular,
-                               bool right_circular);
+// Helper: apply stick mapping and center calibration (reads all params from shared_state)
+void ApplyThumbstickProcessing(
+    XINPUT_STATE* pState,
+    const std::shared_ptr<display_commander::widgets::xinput_widget::XInputSharedState>& shared_state);
 
 }  // namespace display_commanderhooks

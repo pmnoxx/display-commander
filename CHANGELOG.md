@@ -2,6 +2,19 @@
 
 ---
 
+## v0.12.148 (unreleased)
+
+- **D3D11 DXGI factory hooking in no-ReShade mode** - When the game calls D3D11CreateDevice (and never CreateDXGIFactory1/2), the addon now obtains the DXGI factory from the device (device → IDXGIDevice → GetAdapter → GetParent(IDXGIFactory), same path as ReShade) and installs the IDXGIFactory/CreateSwapChain and CreateSwapChainForHwnd/ForCoreWindow vtable hooks. This allows swapchain and present hooking to work when running without ReShade and the game only uses D3D11CreateDevice.
+
+---
+
+## v0.12.147 (unreleased)
+
+- **DXGI proxy: factory vtable hooking from CreateDXGIFactory1/2** - When a factory is returned from CreateDXGIFactory1 or CreateDXGIFactory2, the proxy now installs the IDXGIFactory::CreateSwapChain (vtable+10) hook on that factory before returning. Added `TryHookFactoryVtableFromPointer` and shared `InstallFactoryCreateSwapChainVtableHook`; hooking runs only when experimental features are enabled and skips if the vtable is already hooked.
+- **DXGI proxy: IDXGIFactory4–7 includes** - Added includes for `<dxgi1_4.h>`, `<dxgi1_5.h>`, and `<dxgi1_6.h>` so `__uuidof(IDXGIFactory4)` through `IDXGIFactory7` are declared. Fixed CreateDXGIFactory2 call to pass all three arguments (Flags, riid, ppFactory).
+
+---
+
 ## v0.12.146 (unreleased)
 
 - **XInput stick mapping: 8 sliders + same-axes** - Stick mapping now uses four parameters per axis: Min Input, Max Input, Min Output (anti-deadzone), Max Output. Input range [min%, max%] is mapped to output [min%, max%] (e.g. 30%-70% → 10%-80%). Left and right stick each have 4 sliders when "Same for both axes" is on (default), or 8 sliders (4 for X, 4 for Y) when off. Radial and square processing modes both use the new mapping. Settings and curve view updated; config backward compatible with previous deadzone/sensitivity/min-output keys.

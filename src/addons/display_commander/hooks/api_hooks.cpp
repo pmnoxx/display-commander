@@ -724,6 +724,25 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
     if (SUCCEEDED(hr)) {
         if (ppDevice && *ppDevice) {
             LogInfo("  Created Device: 0x%p", *ppDevice);
+            // Get DXGI factory from device (same path as ReShade d3d11.cpp: device -> IDXGIDevice -> GetAdapter ->
+            // GetParent) so that IDXGIFactory::CreateSwapChain (and ForHwnd/ForCoreWindow) vtable hooks are installed
+            // when the app never calls CreateDXGIFactory1/2 and only uses D3D11CreateDevice.
+            IDXGIDevice* dxgi_device = nullptr;
+            HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
+            if (SUCCEEDED(qhr) && dxgi_device != nullptr) {
+                IDXGIAdapter* adapter = nullptr;
+                qhr = dxgi_device->GetAdapter(&adapter);
+                dxgi_device->Release();
+                if (SUCCEEDED(qhr) && adapter != nullptr) {
+                    IDXGIFactory* factory = nullptr;
+                    qhr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
+                    adapter->Release();
+                    if (SUCCEEDED(qhr) && factory != nullptr) {
+                        display_commanderhooks::dxgi::HookFactory(factory);
+                        factory->Release();
+                    }
+                }
+            }
         }
         if (ppImmediateContext && *ppImmediateContext) {
             LogInfo("  Created Context: 0x%p", *ppImmediateContext);

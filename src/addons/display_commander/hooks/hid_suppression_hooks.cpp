@@ -18,6 +18,8 @@ namespace renodx::hooks {
 
 // Original function pointers
 ReadFile_pfn ReadFile_Original = nullptr;
+ReadFileEx_pfn ReadFileEx_Original = nullptr;
+ReadFileScatter_pfn ReadFileScatter_Original = nullptr;
 HidD_GetInputReport_pfn HidD_GetInputReport_Original = nullptr;
 HidD_GetAttributes_pfn HidD_GetAttributes_Original = nullptr;
 CreateFileA_pfn CreateFileA_Original = nullptr;
@@ -54,27 +56,24 @@ BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
                : ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 }
 
+static bool LooksLikeHIDRead(HANDLE hFile, DWORD nNumberOfBytesToRead) {
+    return nNumberOfBytesToRead > 0 && nNumberOfBytesToRead <= 100 && GetFileType(hFile) == FILE_TYPE_UNKNOWN;
+}
+
 // Hooked ReadFile function - suppresses HID input reading for games
 BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
                             LPOVERLAPPED lpOverlapped) {
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFile].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_ReadFile);
 
-    // Check if HID suppression is enabled and ReadFile blocking is enabled
     if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue()) {
-        // Check if this looks like a HID device read operation
-        // HID input reports are typically small (1-78 bytes for DualSense)
-        if (nNumberOfBytesToRead > 0 && nNumberOfBytesToRead <= 100) {
-            // Get file type to determine if this is a HID device
-            DWORD fileType = GetFileType(hFile);
-            if (fileType == FILE_TYPE_UNKNOWN) {
-                // This could be a HID device, suppress the read
-                if (lpNumberOfBytesRead) {
-                    *lpNumberOfBytesRead = 0;
-                }
-                SetLastError(ERROR_DEVICE_NOT_CONNECTED);
-                LogInfo("HID suppression: Blocked ReadFile operation on potential HID device");
-                return FALSE;
+        if (LooksLikeHIDRead(hFile, nNumberOfBytesToRead)) {
+            if (lpNumberOfBytesRead) {
+                *lpNumberOfBytesRead = 0;
             }
+            SetLastError(ERROR_DEVICE_NOT_CONNECTED);
+            LogInfo("HID suppression: Blocked ReadFile operation on potential HID device");
+            return FALSE;
         }
     }
 
@@ -83,6 +82,44 @@ BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
     return ReadFile_Original
                ? ReadFile_Original(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped)
                : ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+}
+
+BOOL WINAPI ReadFileEx_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverlapped,
+                              LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine) {
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFileEx].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_ReadFileEx);
+
+    if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue()) {
+        if (LooksLikeHIDRead(hFile, nNumberOfBytesToRead)) {
+            SetLastError(ERROR_DEVICE_NOT_CONNECTED);
+            LogInfo("HID suppression: Blocked ReadFileEx operation on potential HID device");
+            return FALSE;
+        }
+    }
+
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFileEx].increment_unsuppressed();
+    return ReadFileEx_Original
+               ? ReadFileEx_Original(hFile, lpBuffer, nNumberOfBytesToRead, lpOverlapped, lpCompletionRoutine)
+               : ReadFileEx(hFile, lpBuffer, nNumberOfBytesToRead, lpOverlapped, lpCompletionRoutine);
+}
+
+BOOL WINAPI ReadFileScatter_Detour(HANDLE hFile, FILE_SEGMENT_ELEMENT aSegmentArray[], DWORD nNumberOfBytesToRead,
+                                   LPDWORD lpReserved, LPOVERLAPPED lpOverlapped) {
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFileScatter].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_ReadFileScatter);
+
+    if (ShouldSuppressHIDInput() && settings::g_experimentalTabSettings.hid_suppression_block_readfile.GetValue()) {
+        if (LooksLikeHIDRead(hFile, nNumberOfBytesToRead)) {
+            SetLastError(ERROR_DEVICE_NOT_CONNECTED);
+            LogInfo("HID suppression: Blocked ReadFileScatter operation on potential HID device");
+            return FALSE;
+        }
+    }
+
+    display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_ReadFileScatter].increment_unsuppressed();
+    return ReadFileScatter_Original
+               ? ReadFileScatter_Original(hFile, aSegmentArray, nNumberOfBytesToRead, lpReserved, lpOverlapped)
+               : ReadFileScatter(hFile, aSegmentArray, nNumberOfBytesToRead, lpReserved, lpOverlapped);
 }
 
 BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
@@ -94,7 +131,7 @@ BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID Repor
 // Hooked HidD_GetInputReport function - suppresses HID input report reading
 BOOLEAN __stdcall HidD_GetInputReport_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength) {
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HIDD_GetInputReport].increment_total();
-    LogInfo("XXX123");
+    display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HIDD_GetInputReport);
     // Check if HID suppression is enabled and GetInputReport blocking is enabled
     if (ShouldSuppressHIDInput()
         && settings::g_experimentalTabSettings.hid_suppression_block_getinputreport.GetValue()) {
@@ -121,6 +158,7 @@ BOOLEAN __stdcall HidD_GetAttributes_Direct(HANDLE HidDeviceObject, PHIDD_ATTRIB
 // Hooked HidD_GetAttributes function - returns error when detecting DualSense
 BOOLEAN __stdcall HidD_GetAttributes_Detour(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes) {
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HIDD_GetAttributes].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HIDD_GetAttributes);
     // Call original function first to get the actual attributes
     BOOLEAN result = HidD_GetAttributes_Original ? HidD_GetAttributes_Original(HidDeviceObject, Attributes)
                                                  : HidD_GetAttributes(HidDeviceObject, Attributes);
@@ -208,6 +246,7 @@ HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD
                                  LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
                                  DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_CreateFileA].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_CreateFileA);
 
     // Check if this is a HID device access and increment device type counters
     if (lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
@@ -269,6 +308,7 @@ HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWOR
                                  LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
                                  DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) {
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_HID_CreateFileW].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_CreateFileW);
 
     // Check if this is a HID device access and increment device type counters
     if (lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
@@ -323,6 +363,8 @@ void UninstallHIDSuppressionHooks() {
 
     // Disable individual hooks
     MH_DisableHook(ReadFile);
+    MH_DisableHook(ReadFileEx);
+    MH_DisableHook(ReadFileScatter);
     MH_DisableHook(HidD_GetInputReport);
     MH_DisableHook(HidD_GetAttributes);
     MH_DisableHook(CreateFileA);
@@ -330,6 +372,8 @@ void UninstallHIDSuppressionHooks() {
 
     // Remove individual hooks
     MH_RemoveHook(ReadFile);
+    MH_RemoveHook(ReadFileEx);
+    MH_RemoveHook(ReadFileScatter);
     MH_RemoveHook(HidD_GetInputReport);
     MH_RemoveHook(HidD_GetAttributes);
     MH_RemoveHook(CreateFileA);
@@ -337,6 +381,8 @@ void UninstallHIDSuppressionHooks() {
 
     // Clean up
     ReadFile_Original = nullptr;
+    ReadFileEx_Original = nullptr;
+    ReadFileScatter_Original = nullptr;
     HidD_GetInputReport_Original = nullptr;
     HidD_GetAttributes_Original = nullptr;
     CreateFileA_Original = nullptr;

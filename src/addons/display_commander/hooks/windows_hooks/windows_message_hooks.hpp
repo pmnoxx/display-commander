@@ -12,17 +12,20 @@ namespace display_commanderhooks {
 struct HookCallStats {
     std::atomic<uint64_t> total_calls{0};
     std::atomic<uint64_t> unsuppressed_calls{0};
+    /** Last call time in nanoseconds (utils::get_now_ns()). Used for "active input API" display (last 10s). */
+    std::atomic<uint64_t> last_call_time_ns{0};
 
     void increment_total() { total_calls.fetch_add(1); }
     void increment_unsuppressed() { unsuppressed_calls.fetch_add(1); }
     void reset() {
         total_calls.store(0);
         unsuppressed_calls.store(0);
+        last_call_time_ns.store(0);
     }
 };
 
-// DLL group enumeration
-enum class DllGroup { USER32, XINPUT1_4, KERNEL32, DINPUT8, DINPUT, OPENGL, DISPLAY_SETTINGS, HID_API, COUNT };
+// DLL group enumeration (HID_API = kernel32.dll + hid.dll)
+enum class DllGroup { USER32, XINPUT1_4, KERNEL32, DINPUT8, DINPUT, OPENGL, DISPLAY_SETTINGS, HID_API, WINMM_JOYSTICK, COUNT };
 
 // Hook index enumeration (order must match g_hook_info array in .cpp)
 // Note: "// ok" = g_hook_stats counter updated in detour; "// no counter" = not updated
@@ -118,6 +121,8 @@ enum HookIndex {
     HOOK_HID_CreateFileA,             // ok
     HOOK_HID_CreateFileW,             // ok
     HOOK_HID_ReadFile,                // ok
+    HOOK_HID_ReadFileEx,              // ok
+    HOOK_HID_ReadFileScatter,         // ok
     HOOK_HID_WriteFile,               // ok
     HOOK_HID_DeviceIoControl,         // ok
     HOOK_HIDD_GetInputReport,         // ok
@@ -132,6 +137,10 @@ enum HookIndex {
     HOOK_HIDD_SetNumInputBuffers,     // ok
     HOOK_HIDD_GetFeature,             // ok
     HOOK_HIDD_SetFeature,             // ok
+
+    // winmm.dll joystick hooks
+    HOOK_joyGetPos,     // ok
+    HOOK_joyGetPosEx,   // ok
 
     HOOK_COUNT
 };
@@ -299,6 +308,8 @@ extern std::array<HookCallStats, HOOK_COUNT> g_hook_stats;
 
 // Hook statistics access functions
 const HookCallStats& GetHookStats(int hook_index);
+/** Update last-call timestamp for a hook (for "active input API" display). */
+void UpdateHookLastCallTime(int hook_index);
 void ResetAllHookStats();
 int GetHookCount();
 const char* GetHookName(int hook_index);

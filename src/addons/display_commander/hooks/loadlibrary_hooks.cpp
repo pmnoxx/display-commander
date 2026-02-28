@@ -27,6 +27,7 @@
 #include "dbghelp_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
 #include "dinput_hooks.hpp"
+#include "game_input_hooks.hpp"
 #include "hid_hooks_install.hpp"
 #include "hook_suppression_manager.hpp"
 #include "ngx_hooks.hpp"
@@ -38,6 +39,7 @@
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
 #include "vulkan/vulkan_loader_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
+#include "winmm_joystick_hooks.hpp"
 #include "xinput_hooks.hpp"
 
 // Declare K32EnumProcessModules (kernel32 variant, safe from DllMain)
@@ -1580,9 +1582,17 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
 
-    // Windows.Gaming.Input hooks
-    else if (lowerModuleName.find(L"windows.gaming.input") != std::wstring::npos
-             || lowerModuleName.find(L"gameinput") != std::wstring::npos) {
+    // GameInput (IGameInput) hooks – GameInput.dll exports GameInputCreate
+    else if (lowerModuleName.find(L"gameinput.dll") != std::wstring::npos) {
+        LogInfo("Installing GameInput hooks for module: %ws", moduleName.c_str());
+        if (InstallGameInputHooks(hModule)) {
+            LogInfo("GameInput hooks installed successfully");
+        } else {
+            LogInfo("GameInput hooks not installed (export not found or already installed)");
+        }
+    }
+    // Windows.Gaming.Input (WinRT) hooks – RoGetActivationFactory from combase
+    else if (lowerModuleName.find(L"windows.gaming.input.dll") != std::wstring::npos) {
         LogInfo("Installing Windows.Gaming.Input hooks for module: %ws", moduleName.c_str());
         if (InstallWindowsGamingInputHooks(hModule)) {
             LogInfo("Windows.Gaming.Input hooks installed successfully");
@@ -1707,6 +1717,15 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("HID (hid.dll) hooks installed successfully");
         } else {
             LogInfo("HID (hid.dll) hooks not installed (suppressed or already installed)");
+        }
+    }
+    // winmm.dll – WinMM joystick API (joyGetPos, joyGetPosEx)
+    else if (lowerModuleName.find(L"winmm.dll") != std::wstring::npos) {
+        LogInfo("Installing WinMM joystick hooks for module: %ws", moduleName.c_str());
+        if (InstallWinMMJoystickHooks(hModule)) {
+            LogInfo("WinMM joystick hooks installed successfully");
+        } else {
+            LogInfo("WinMM joystick hooks not installed (suppressed or already installed)");
         }
     }
 

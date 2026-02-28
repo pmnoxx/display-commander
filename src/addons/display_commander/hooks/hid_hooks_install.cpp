@@ -27,8 +27,7 @@ bool InstallHIDKernel32Hooks(HMODULE hModule) {
 
     // const bool suppress_suppression =
     //     HookSuppressionManager::GetInstance().ShouldSuppressHook(HookType::HID_SUPPRESSION);
-    const bool suppress_hid =
-        HookSuppressionManager::GetInstance().ShouldSuppressHook(HookType::HID_KERNEL32);
+    const bool suppress_hid = HookSuppressionManager::GetInstance().ShouldSuppressHook(HookType::HID_KERNEL32);
 
     MH_STATUS init_status = SafeInitializeMinHook(HookType::HID_SUPPRESSION);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
@@ -45,6 +44,20 @@ bool InstallHIDKernel32Hooks(HMODULE hModule) {
         } else {
             LogError("Failed to install ReadFile hook (kernel32)");
             return false;
+        }
+        if (CreateAndEnableHookFromModule(
+                hModule, "ReadFileEx", reinterpret_cast<LPVOID>(renodx::hooks::ReadFileEx_Detour),
+                reinterpret_cast<LPVOID*>(&renodx::hooks::ReadFileEx_Original), "ReadFileEx")) {
+            installed++;
+        } else {
+            LogWarn("Failed to install ReadFileEx hook (kernel32), continuing");
+        }
+        if (CreateAndEnableHookFromModule(
+                hModule, "ReadFileScatter", reinterpret_cast<LPVOID>(renodx::hooks::ReadFileScatter_Detour),
+                reinterpret_cast<LPVOID*>(&renodx::hooks::ReadFileScatter_Original), "ReadFileScatter")) {
+            installed++;
+        } else {
+            LogWarn("Failed to install ReadFileScatter hook (kernel32), continuing");
         }
         if (CreateAndEnableHookFromModule(
                 hModule, "CreateFileA", reinterpret_cast<LPVOID>(renodx::hooks::CreateFileA_Detour),
@@ -105,8 +118,7 @@ bool InstallHIDDHooks(HMODULE hModule) {
         return true;
     }
 
-    const bool suppress_hid =
-        HookSuppressionManager::GetInstance().ShouldSuppressHook(HookType::HID_HID_DLL);
+    const bool suppress_hid = HookSuppressionManager::GetInstance().ShouldSuppressHook(HookType::HID_HID_DLL);
 
     MH_STATUS init_status = SafeInitializeMinHook(HookType::HID_HID_DLL);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {

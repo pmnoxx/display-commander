@@ -13,6 +13,8 @@ namespace renodx::hooks {
 
 // Function pointer types for HID functions
 using ReadFile_pfn = BOOL(WINAPI*)(HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED);
+using ReadFileEx_pfn = BOOL(WINAPI*)(HANDLE, LPVOID, DWORD, LPOVERLAPPED, LPOVERLAPPED_COMPLETION_ROUTINE);
+using ReadFileScatter_pfn = BOOL(WINAPI*)(HANDLE, FILE_SEGMENT_ELEMENT*, DWORD, LPDWORD, LPOVERLAPPED);
 using HidD_GetInputReport_pfn = BOOLEAN(__stdcall*)(HANDLE, PVOID, ULONG);
 using HidD_GetAttributes_pfn = BOOLEAN(__stdcall*)(HANDLE, PHIDD_ATTRIBUTES);
 using CreateFileA_pfn = HANDLE(WINAPI*)(LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
@@ -20,6 +22,8 @@ using CreateFileW_pfn = HANDLE(WINAPI*)(LPCWSTR, DWORD, DWORD, LPSECURITY_ATTRIB
 
 // HID suppression hook function pointers
 extern ReadFile_pfn ReadFile_Original;
+extern ReadFileEx_pfn ReadFileEx_Original;
+extern ReadFileScatter_pfn ReadFileScatter_Original;
 extern HidD_GetInputReport_pfn HidD_GetInputReport_Original;
 extern HidD_GetAttributes_pfn HidD_GetAttributes_Original;
 extern CreateFileA_pfn CreateFileA_Original;
@@ -30,6 +34,10 @@ BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesT
                             LPOVERLAPPED lpOverlapped);
 BOOL WINAPI ReadFile_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
                             LPOVERLAPPED lpOverlapped);
+BOOL WINAPI ReadFileEx_Detour(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPOVERLAPPED lpOverlapped,
+                              LPOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+BOOL WINAPI ReadFileScatter_Detour(HANDLE hFile, FILE_SEGMENT_ELEMENT aSegmentArray[], DWORD nNumberOfBytesToRead,
+                                   LPDWORD lpReserved, LPOVERLAPPED lpOverlapped);
 BOOLEAN __stdcall HidD_GetInputReport_Direct(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
 BOOLEAN __stdcall HidD_GetInputReport_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
 BOOLEAN __stdcall HidD_GetAttributes_Direct(HANDLE HidDeviceObject, PHIDD_ATTRIBUTES Attributes);

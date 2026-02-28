@@ -254,6 +254,8 @@ void InitializeNewUI() {
         [](reshade::api::effect_runtime* runtime) {
             try {
                 display_commander::ui::ImGuiWrapperReshade wrapper;
+                display_commander::widgets::xinput_widget::DrawActiveInputApisSection(wrapper);
+                ImGui::Spacing();
                 display_commander::widgets::xinput_widget::DrawXInputWidget(wrapper);
 
                 ImGui::Spacing();

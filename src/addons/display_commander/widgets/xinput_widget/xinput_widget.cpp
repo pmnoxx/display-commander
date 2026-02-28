@@ -8,6 +8,7 @@
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../hooks/input_activity_stats.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../res/ui_colors.hpp"
@@ -1585,6 +1586,38 @@ void CleanupXInputWidget() {
 void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui) {
     if (g_xinput_widget) {
         g_xinput_widget->OnDraw(imgui);
+    }
+}
+
+namespace {
+constexpr uint64_t kActiveInputApiWindowNs = 10ULL * 1000000000ULL;  // 10 seconds
+}  // namespace
+
+void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui) {
+    const uint64_t now_ns = utils::get_now_ns();
+    const uint64_t window_ns = kActiveInputApiWindowNs;
+    std::vector<std::string> active_names =
+        display_commanderhooks::InputActivityStats::GetInstance().GetActiveApiNames(now_ns, window_ns);
+
+    if (imgui.CollapsingHeader("Active input APIs (last 10s)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        imgui.Indent();
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("APIs the game has used recently (at least one call in the last 10 seconds). "
+                             "Similar to Special K input API display.");
+        }
+        if (active_names.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "None (no input API calls in the last 10 seconds)");
+        } else {
+            for (size_t i = 0; i < active_names.size(); ++i) {
+                if (i > 0) {
+                    imgui.SameLine();
+                    imgui.TextColored(::ui::colors::TEXT_SUBTLE, " | ");
+                    imgui.SameLine();
+                }
+                imgui.TextColored(::ui::colors::TEXT_DEFAULT, "%s", active_names[i].c_str());
+            }
+        }
+        imgui.Unindent();
     }
 }
 

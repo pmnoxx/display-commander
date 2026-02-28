@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.152 (2026-02-28)
+
+- **Active input APIs (Controller tab)** - Controller tab now shows "Active input APIs (last 10s)" derived from a single `InputActivityStats` class: XInput, DirectInput 8/7, Raw Input, HID, Windows.Gaming.Input, winmm joystick, and **GameInput (IGameInput)**. All existing input hooks update activity via `MarkActiveByHookIndex`; WGI and GameInput have dedicated hooks that call `MarkActive`. GameInput is detected by hooking `GameInputCreate` when the game loads **GameInput.dll** (Microsoft Game Input redist); LoadLibrary handling now installs GameInput hooks for `gameinput.dll` and WGI hooks only for `windows.gaming.input` modules.
+
+---
+
 ## v0.12.151 (2026-02-28)
 
 - **Hook statistics cleanup** - Removed duplicate `g_hid_api_stats`; HID hooks now use only `g_hook_stats` (Hook Stats tab). Kept `g_hid_device_stats` for HID device-type counts (DualSense/Xbox/generic). Display Settings hooks (ChangeDisplaySettings*, ShowWindow, SetWindowPos, SetWindowLong*) now update `g_hook_stats` so they appear in Hook Stats. Added `HookIndex hook_index` to `HookInfo` and a compile-time `static_assert` so `g_hook_info` array order stays aligned with the `HookIndex` enum.

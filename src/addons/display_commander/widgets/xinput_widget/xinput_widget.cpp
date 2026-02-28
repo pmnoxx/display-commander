@@ -22,7 +22,6 @@
 #include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
 
-
 namespace display_commander::widgets::xinput_widget {
 
 namespace {
@@ -167,12 +166,14 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     // Per-game-type WGI suppression (only one visible depending on UnityPlayer)
+    static bool restart_needed_to_apply_settings = false;
     if (is_unity_player) {
         bool suppress_wgi_unity = settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue();
         if (imgui.Checkbox("Suppress WGI for Unity games", &suppress_wgi_unity)) {
             settings::g_advancedTabSettings.suppress_wgi_for_unity.SetValue(suppress_wgi_unity);
             settings::g_advancedTabSettings.suppress_wgi_for_unity.Save();
             LogInfo("Suppress WGI for Unity games: %s", suppress_wgi_unity ? "enabled" : "disabled");
+            restart_needed_to_apply_settings = true;
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
@@ -184,10 +185,15 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.SetValue(suppress_wgi_non_unity);
             settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.Save();
             LogInfo("Suppress WGI for non-Unity games: %s", suppress_wgi_non_unity ? "enabled" : "disabled");
+            restart_needed_to_apply_settings = true;
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("When enabled, block Windows.Gaming.Input factory requests so the game uses XInput.");
         }
+    }
+
+    if (restart_needed_to_apply_settings) {
+        imgui.TextColored(::ui::colors::TEXT_ERROR, "Restart needed to apply settings");
     }
 
     imgui.Spacing();

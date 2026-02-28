@@ -101,8 +101,10 @@ class AdvancedTabSettings {
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 
-    // Windows.Gaming.Input suppression (force XInput fallback for continue rendering with gamepad)
-    BoolSetting suppress_windows_gaming_input;
+    /** Only visible when UnityPlayer.dll is loaded. When true, suppress WGI for Unity games. Default false. */
+    BoolSetting suppress_wgi_for_unity;
+    /** Only visible when UnityPlayer.dll is not loaded. When true, suppress WGI for non-Unity games. Default true. */
+    BoolSetting suppress_wgi_for_non_unity_games;
 
     // Debug Layer setting
     BoolSetting debug_layer_enabled;

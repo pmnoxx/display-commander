@@ -7,8 +7,9 @@
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
-#include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/input_activity_stats.hpp"
+#include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../hooks/windows_gaming_input_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../res/ui_colors.hpp"
@@ -20,6 +21,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
+
 
 namespace display_commander::widgets::xinput_widget {
 
@@ -137,112 +139,127 @@ void XInputWidget::OnDraw(display_commander::ui::IImGuiWrapper& imgui) {
 
 void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     // Enable XInput hooks (using HookSuppressionManager)
-        bool suppress_hooks = display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
-            display_commanderhooks::HookType::XINPUT);
-        bool enable_hooks = !suppress_hooks;
-        if (imgui.Checkbox("Enable XInput Hooks", &enable_hooks)) {
-            settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(!enable_hooks);
-            display_commanderhooks::InstallXInputHooks(nullptr);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Enable XInput API hooks for input processing and remapping");
-        }
+    bool suppress_hooks = display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+        display_commanderhooks::HookType::XINPUT);
+    bool enable_hooks = !suppress_hooks;
+    if (imgui.Checkbox("Enable XInput Hooks", &enable_hooks)) {
+        settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(!enable_hooks);
+        display_commanderhooks::InstallXInputHooks(nullptr);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Enable XInput API hooks for input processing and remapping");
+    }
 
-        // Suppress Windows.Gaming.Input (use XInput)
-        bool suppress_wgi = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
-        if (imgui.Checkbox("Suppress Windows.Gaming.Input (use XInput)", &suppress_wgi)) {
-            settings::g_advancedTabSettings.suppress_windows_gaming_input.SetValue(suppress_wgi);
-            settings::g_advancedTabSettings.suppress_windows_gaming_input.Save();
-            LogInfo("Suppress Windows.Gaming.Input setting changed to: %s", suppress_wgi ? "enabled" : "disabled");
+    const bool is_unity_player = (GetModuleHandleA("UnityPlayer.dll") != nullptr);
+    const bool wgi_suppressed = is_unity_player
+                                    ? settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue()
+                                    : settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue();
+    if (enable_hooks && !wgi_suppressed) {
+        imgui.TextColored(
+            ::ui::colors::ICON_WARNING,
+            "Warning: XInput is enabled but Windows.Gaming.Input is not suppressed. Games that use "
+            "WGI may not call XInput; enable the WGI suppression option below for XInput features to work.");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Enable \"Suppress WGI for Unity games\" or \"Suppress WGI for non-Unity games\" so the game falls "
+                "back to XInput instead of WGI.");
+        }
+    }
+
+    // Per-game-type WGI suppression (only one visible depending on UnityPlayer)
+    if (is_unity_player) {
+        bool suppress_wgi_unity = settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue();
+        if (imgui.Checkbox("Suppress WGI for Unity games", &suppress_wgi_unity)) {
+            settings::g_advancedTabSettings.suppress_wgi_for_unity.SetValue(suppress_wgi_unity);
+            settings::g_advancedTabSettings.suppress_wgi_for_unity.Save();
+            LogInfo("Suppress WGI for Unity games: %s", suppress_wgi_unity ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Suppress Windows.Gaming.Input.dll so the game uses XInput instead.\n"
-                "Disable if it causes issues (e.g. gamepad not working).\n"
-                "Game restart may be required for changes to take effect.");
+                "When enabled, block Windows.Gaming.Input factory requests so this Unity game uses XInput.");
         }
-
-        if (enable_hooks && !suppress_wgi) {
-            imgui.TextColored(::ui::colors::ICON_WARNING,
-                              "Warning: XInput is enabled but Windows.Gaming.Input is not suppressed. Games that use "
-                              "WGI may not call XInput; enable suppression above for XInput features to work.");
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Enable \"Suppress Windows.Gaming.Input\" so the game falls back to XInput instead of WGI.");
-            }
-        }
-
-        imgui.Spacing();
-
-        // Swap A/B buttons
-        bool swap_buttons = g_shared_state->swap_a_b_buttons.load();
-        if (imgui.Checkbox("Swap A/B Buttons", &swap_buttons)) {
-            g_shared_state->swap_a_b_buttons.store(swap_buttons);
-            SaveSettings();
+    } else {
+        bool suppress_wgi_non_unity = settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue();
+        if (imgui.Checkbox("Suppress WGI for non-Unity games (may cause crashes)", &suppress_wgi_non_unity)) {
+            settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.SetValue(suppress_wgi_non_unity);
+            settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.Save();
+            LogInfo("Suppress WGI for non-Unity games: %s", suppress_wgi_non_unity ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Swap the A and B button mappings");
+            imgui.SetTooltip("When enabled, block Windows.Gaming.Input factory requests so the game uses XInput.");
         }
+    }
 
-        // DualSense to XInput conversion
-        bool dualsense_xinput = g_shared_state->enable_dualsense_xinput.load();
-        if (imgui.Checkbox("DualSense to XInput", &dualsense_xinput)) {
-            g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Convert DualSense controller input to XInput format");
-        }
+    imgui.Spacing();
 
-        // Test gamepad suppression (zero XInputGetState output to game)
-        bool test_suppression = g_shared_state->test_gamepad_suppression.load();
-        if (imgui.Checkbox("Test gamepad suppression", &test_suppression)) {
-            g_shared_state->test_gamepad_suppression.store(test_suppression);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "When enabled, zeroes all gamepad output (buttons, sticks, triggers) returned to the game by "
-                "XInputGetState/XInputGetStateEx. Use to test that suppression works; the game will see no input.");
-        }
+    // Swap A/B buttons
+    bool swap_buttons = g_shared_state->swap_a_b_buttons.load();
+    if (imgui.Checkbox("Swap A/B Buttons", &swap_buttons)) {
+        g_shared_state->swap_a_b_buttons.store(swap_buttons);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Swap the A and B button mappings");
+    }
 
-        // HID suppression enable
-        bool hid_suppression = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
-        if (imgui.Checkbox("Enable HID Suppression", &hid_suppression)) {
-            settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(hid_suppression);
-            LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for "
-                "preventing games from interfering with controller input handling.");
-        }
+    // DualSense to XInput conversion
+    bool dualsense_xinput = g_shared_state->enable_dualsense_xinput.load();
+    if (imgui.Checkbox("DualSense to XInput", &dualsense_xinput)) {
+        g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Convert DualSense controller input to XInput format");
+    }
 
-        // HID CreateFile counters
-        imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_DEFAULT, "HID CreateFile Detection:");
-        uint64_t hid_total = g_shared_state->hid_createfile_total.load();
-        uint64_t hid_dualsense = g_shared_state->hid_createfile_dualsense.load();
-        imgui.Text("HID CreateFile Total: %llu", hid_total);
-        imgui.Text("HID CreateFile DualSense: %llu", hid_dualsense);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows "
-                "specifically DualSense controller access attempts.");
-        }
+    // Test gamepad suppression (zero XInputGetState output to game)
+    bool test_suppression = g_shared_state->test_gamepad_suppression.load();
+    if (imgui.Checkbox("Test gamepad suppression", &test_suppression)) {
+        g_shared_state->test_gamepad_suppression.store(test_suppression);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, zeroes all gamepad output (buttons, sticks, triggers) returned to the game by "
+            "XInputGetState/XInputGetStateEx. Use to test that suppression works; the game will see no input.");
+    }
 
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stick mapping: input range [min%%, max%%] -> output [min%%, max%%]");
-        imgui.SameLine();
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Example: input 30%%-70%% mapped to 10%%-80%%");
-        }
+    // HID suppression enable
+    bool hid_suppression = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
+    if (imgui.Checkbox("Enable HID Suppression", &hid_suppression)) {
+        settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(hid_suppression);
+        LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for "
+            "preventing games from interfering with controller input handling.");
+    }
 
-        auto DrawStickMappingSliders = [this, &imgui](const char* stick_name, bool* same_axes,
-                                                     std::atomic<bool>& same_axes_atomic,
-                                                     std::atomic<float>& min_in_x, std::atomic<float>& max_in_x,
-                                                     std::atomic<float>& min_out_x, std::atomic<float>& max_out_x,
-                                                     std::atomic<float>& min_in_y, std::atomic<float>& max_in_y,
-                                                     std::atomic<float>& min_out_y, std::atomic<float>& max_out_y) {
+    // HID CreateFile counters
+    imgui.Spacing();
+    imgui.TextColored(::ui::colors::TEXT_DEFAULT, "HID CreateFile Detection:");
+    uint64_t hid_total = g_shared_state->hid_createfile_total.load();
+    uint64_t hid_dualsense = g_shared_state->hid_createfile_dualsense.load();
+    imgui.Text("HID CreateFile Total: %llu", hid_total);
+    imgui.Text("HID CreateFile DualSense: %llu", hid_dualsense);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows "
+            "specifically DualSense controller access attempts.");
+    }
+
+    imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stick mapping: input range [min%%, max%%] -> output [min%%, max%%]");
+    imgui.SameLine();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Example: input 30%%-70%% mapped to 10%%-80%%");
+    }
+
+    auto DrawStickMappingSliders =
+        [this, &imgui](const char* stick_name, bool* same_axes, std::atomic<bool>& same_axes_atomic,
+                       std::atomic<float>& min_in_x, std::atomic<float>& max_in_x, std::atomic<float>& min_out_x,
+                       std::atomic<float>& max_out_x, std::atomic<float>& min_in_y, std::atomic<float>& max_in_y,
+                       std::atomic<float>& min_out_y, std::atomic<float>& max_out_y) {
             if (imgui.Checkbox((std::string("Same for both axes (") + stick_name + ")").c_str(), same_axes)) {
                 same_axes_atomic.store(*same_axes);
                 if (*same_axes) {
@@ -285,14 +302,14 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             } else {
                 imgui.Text("X axis:");
                 float mix = min_in_x.load() * 100.0f, maxx = max_in_x.load() * 100.0f, mox = min_out_x.load() * 100.0f,
-                       mxx = max_out_x.load() * 100.0f;
+                      mxx = max_out_x.load() * 100.0f;
                 Slider4("X Min Input %", &mix, 0.0f, 100.0f, "%.0f%%", min_in_x);
                 Slider4("X Max Input %", &maxx, 0.0f, 100.0f, "%.0f%%", max_in_x);
                 Slider4("X Min Output %", &mox, 0.0f, 100.0f, "%.0f%%", min_out_x);
                 Slider4("X Max Output %", &mxx, 0.0f, 100.0f, "%.0f%%", max_out_x);
                 imgui.Text("Y axis:");
                 float miy = min_in_y.load() * 100.0f, may = max_in_y.load() * 100.0f, moy = min_out_y.load() * 100.0f,
-                       mxy = max_out_y.load() * 100.0f;
+                      mxy = max_out_y.load() * 100.0f;
                 Slider4("Y Min Input %", &miy, 0.0f, 100.0f, "%.0f%%", min_in_y);
                 Slider4("Y Max Input %", &may, 0.0f, 100.0f, "%.0f%%", max_in_y);
                 Slider4("Y Min Output %", &moy, 0.0f, 100.0f, "%.0f%%", min_out_y);
@@ -300,140 +317,140 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             }
         };
 
-        imgui.Text("Left Stick");
-        bool left_same = g_shared_state->left_stick_same_axes.load();
-        DrawStickMappingSliders("left", &left_same, g_shared_state->left_stick_same_axes,
-                               g_shared_state->left_stick_x_min_input, g_shared_state->left_stick_x_max_input,
-                               g_shared_state->left_stick_x_min_output, g_shared_state->left_stick_x_max_output,
-                               g_shared_state->left_stick_y_min_input, g_shared_state->left_stick_y_max_input,
-                               g_shared_state->left_stick_y_min_output, g_shared_state->left_stick_y_max_output);
+    imgui.Text("Left Stick");
+    bool left_same = g_shared_state->left_stick_same_axes.load();
+    DrawStickMappingSliders("left", &left_same, g_shared_state->left_stick_same_axes,
+                            g_shared_state->left_stick_x_min_input, g_shared_state->left_stick_x_max_input,
+                            g_shared_state->left_stick_x_min_output, g_shared_state->left_stick_x_max_output,
+                            g_shared_state->left_stick_y_min_input, g_shared_state->left_stick_y_max_input,
+                            g_shared_state->left_stick_y_min_output, g_shared_state->left_stick_y_max_output);
 
-        imgui.Spacing();
-        imgui.Text("Right Stick");
-        bool right_same = g_shared_state->right_stick_same_axes.load();
-        DrawStickMappingSliders("right", &right_same, g_shared_state->right_stick_same_axes,
-                                g_shared_state->right_stick_x_min_input, g_shared_state->right_stick_x_max_input,
-                                g_shared_state->right_stick_x_min_output, g_shared_state->right_stick_x_max_output,
-                                g_shared_state->right_stick_y_min_input, g_shared_state->right_stick_y_max_input,
-                                g_shared_state->right_stick_y_min_output, g_shared_state->right_stick_y_max_output);
+    imgui.Spacing();
+    imgui.Text("Right Stick");
+    bool right_same = g_shared_state->right_stick_same_axes.load();
+    DrawStickMappingSliders("right", &right_same, g_shared_state->right_stick_same_axes,
+                            g_shared_state->right_stick_x_min_input, g_shared_state->right_stick_x_max_input,
+                            g_shared_state->right_stick_x_min_output, g_shared_state->right_stick_x_max_output,
+                            g_shared_state->right_stick_y_min_input, g_shared_state->right_stick_y_max_input,
+                            g_shared_state->right_stick_y_min_output, g_shared_state->right_stick_y_max_output);
 
-        imgui.Separator();
-        imgui.Text("Stick Processing Mode");
-        imgui.Text("Choose how X/Y axes are processed together (circular) or separately (square):");
+    imgui.Separator();
+    imgui.Text("Stick Processing Mode");
+    imgui.Text("Choose how X/Y axes are processed together (circular) or separately (square):");
 
-        // Left stick processing mode toggle
-        bool left_circular = g_shared_state->left_stick_circular.load();
-        const char* left_mode_text = left_circular ? "Circular (Default)" : "Square";
-        if (imgui.Checkbox("Left Stick: Circular Processing", &left_circular)) {
-            g_shared_state->left_stick_circular.store(left_circular);
-            SaveSettings();
-        }
-        imgui.SameLine();
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "(%s)", left_mode_text);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
-                "Square: X/Y axes processed separately (independent deadzone per axis)\n"
-                "Affects deadzone, anti-deadzone, and sensitivity settings");
-        }
+    // Left stick processing mode toggle
+    bool left_circular = g_shared_state->left_stick_circular.load();
+    const char* left_mode_text = left_circular ? "Circular (Default)" : "Square";
+    if (imgui.Checkbox("Left Stick: Circular Processing", &left_circular)) {
+        g_shared_state->left_stick_circular.store(left_circular);
+        SaveSettings();
+    }
+    imgui.SameLine();
+    imgui.TextColored(::ui::colors::TEXT_DIMMED, "(%s)", left_mode_text);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
+            "Square: X/Y axes processed separately (independent deadzone per axis)\n"
+            "Affects deadzone, anti-deadzone, and sensitivity settings");
+    }
 
-        // Right stick processing mode toggle
-        bool right_circular = g_shared_state->right_stick_circular.load();
-        const char* right_mode_text = right_circular ? "Circular (Default)" : "Square";
-        if (imgui.Checkbox("Right Stick: Circular Processing", &right_circular)) {
-            g_shared_state->right_stick_circular.store(right_circular);
-            SaveSettings();
-        }
-        imgui.SameLine();
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "(%s)", right_mode_text);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
-                "Square: X/Y axes processed separately (independent deadzone per axis)\n"
-                "Affects deadzone, anti-deadzone, and sensitivity settings");
-        }
+    // Right stick processing mode toggle
+    bool right_circular = g_shared_state->right_stick_circular.load();
+    const char* right_mode_text = right_circular ? "Circular (Default)" : "Square";
+    if (imgui.Checkbox("Right Stick: Circular Processing", &right_circular)) {
+        g_shared_state->right_stick_circular.store(right_circular);
+        SaveSettings();
+    }
+    imgui.SameLine();
+    imgui.TextColored(::ui::colors::TEXT_DIMMED, "(%s)", right_mode_text);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
+            "Square: X/Y axes processed separately (independent deadzone per axis)\n"
+            "Affects deadzone, anti-deadzone, and sensitivity settings");
+    }
 
-        imgui.Separator();
-        imgui.Text("Stick Center Calibration");
-        imgui.Text("Adjust these values to recenter your analog sticks if they drift:");
+    imgui.Separator();
+    imgui.Text("Stick Center Calibration");
+    imgui.Text("Adjust these values to recenter your analog sticks if they drift:");
 
-        // Left stick center X setting
-        float left_center_x = g_shared_state->left_stick_center_x.load();
-        if (imgui.SliderFloat("Left Stick Center X", &left_center_x, -1.0f, 1.0f, "%.3f")) {
-            g_shared_state->left_stick_center_x.store(left_center_x);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("X-axis center offset for left stick (-1.0 to 1.0)");
-        }
+    // Left stick center X setting
+    float left_center_x = g_shared_state->left_stick_center_x.load();
+    if (imgui.SliderFloat("Left Stick Center X", &left_center_x, -1.0f, 1.0f, "%.3f")) {
+        g_shared_state->left_stick_center_x.store(left_center_x);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("X-axis center offset for left stick (-1.0 to 1.0)");
+    }
 
-        // Left stick center Y setting
-        float left_center_y = g_shared_state->left_stick_center_y.load();
-        if (imgui.SliderFloat("Left Stick Center Y", &left_center_y, -1.0f, 1.0f, "%.3f")) {
-            g_shared_state->left_stick_center_y.store(left_center_y);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Y-axis center offset for left stick (-1.0 to 1.0)");
-        }
+    // Left stick center Y setting
+    float left_center_y = g_shared_state->left_stick_center_y.load();
+    if (imgui.SliderFloat("Left Stick Center Y", &left_center_y, -1.0f, 1.0f, "%.3f")) {
+        g_shared_state->left_stick_center_y.store(left_center_y);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Y-axis center offset for left stick (-1.0 to 1.0)");
+    }
 
-        // Right stick center X setting
-        float right_center_x = g_shared_state->right_stick_center_x.load();
-        if (imgui.SliderFloat("Right Stick Center X", &right_center_x, -1.0f, 1.0f, "%.3f")) {
-            g_shared_state->right_stick_center_x.store(right_center_x);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("X-axis center offset for right stick (-1.0 to 1.0)");
-        }
+    // Right stick center X setting
+    float right_center_x = g_shared_state->right_stick_center_x.load();
+    if (imgui.SliderFloat("Right Stick Center X", &right_center_x, -1.0f, 1.0f, "%.3f")) {
+        g_shared_state->right_stick_center_x.store(right_center_x);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("X-axis center offset for right stick (-1.0 to 1.0)");
+    }
 
-        // Right stick center Y setting
-        float right_center_y = g_shared_state->right_stick_center_y.load();
-        if (imgui.SliderFloat("Right Stick Center Y", &right_center_y, -1.0f, 1.0f, "%.3f")) {
-            g_shared_state->right_stick_center_y.store(right_center_y);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Y-axis center offset for right stick (-1.0 to 1.0)");
-        }
+    // Right stick center Y setting
+    float right_center_y = g_shared_state->right_stick_center_y.load();
+    if (imgui.SliderFloat("Right Stick Center Y", &right_center_y, -1.0f, 1.0f, "%.3f")) {
+        g_shared_state->right_stick_center_y.store(right_center_y);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Y-axis center offset for right stick (-1.0 to 1.0)");
+    }
 
-        // Reset centers button
-        if (imgui.Button("Reset Stick Centers")) {
-            g_shared_state->left_stick_center_x.store(0.0f);
-            g_shared_state->left_stick_center_y.store(0.0f);
-            g_shared_state->right_stick_center_x.store(0.0f);
-            g_shared_state->right_stick_center_y.store(0.0f);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset all stick center offsets to 0.0");
-        }
+    // Reset centers button
+    if (imgui.Button("Reset Stick Centers")) {
+        g_shared_state->left_stick_center_x.store(0.0f);
+        g_shared_state->left_stick_center_y.store(0.0f);
+        g_shared_state->right_stick_center_x.store(0.0f);
+        g_shared_state->right_stick_center_y.store(0.0f);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Reset all stick center offsets to 0.0");
+    }
 
-        imgui.Separator();
-        imgui.Text("Vibration Amplification");
-        imgui.Text("Amplify controller vibration/rumble intensity:");
+    imgui.Separator();
+    imgui.Text("Vibration Amplification");
+    imgui.Text("Amplify controller vibration/rumble intensity:");
 
-        // Vibration amplification setting
-        float vibration_amp = g_shared_state->vibration_amplification.load();
-        float vibration_amp_percent = vibration_amp * 100.0f;
-        if (imgui.SliderFloat("Vibration Amplification", &vibration_amp_percent, 0.0f, 1000.0f, "%.0f%%")) {
-            g_shared_state->vibration_amplification.store(vibration_amp_percent / 100.0f);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Amplify controller vibration intensity (100%% = normal, 200%% = double, 500%% = maximum).\n"
-                "This affects all vibration commands from the game.");
-        }
+    // Vibration amplification setting
+    float vibration_amp = g_shared_state->vibration_amplification.load();
+    float vibration_amp_percent = vibration_amp * 100.0f;
+    if (imgui.SliderFloat("Vibration Amplification", &vibration_amp_percent, 0.0f, 1000.0f, "%.0f%%")) {
+        g_shared_state->vibration_amplification.store(vibration_amp_percent / 100.0f);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Amplify controller vibration intensity (100%% = normal, 200%% = double, 500%% = maximum).\n"
+            "This affects all vibration commands from the game.");
+    }
 
-        // Reset vibration amplification button
-        if (imgui.Button("Reset Vibration Amplification")) {
-            g_shared_state->vibration_amplification.store(1.0f);
-            SaveSettings();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset vibration amplification to 100%% (normal)");
-        }
+    // Reset vibration amplification button
+    if (imgui.Button("Reset Vibration Amplification")) {
+        g_shared_state->vibration_amplification.store(1.0f);
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Reset vibration amplification to 100%% (normal)");
+    }
 }
 
 void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
@@ -443,128 +460,126 @@ void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui
     uint64_t trigger_events = g_shared_state->trigger_events.load();
 
     imgui.Text("Total Events: %llu", total_events);
-        imgui.Text("Button Events: %llu", button_events);
-        imgui.Text("Stick Events: %llu", stick_events);
-        imgui.Text("Trigger Events: %llu", trigger_events);
+    imgui.Text("Button Events: %llu", button_events);
+    imgui.Text("Stick Events: %llu", stick_events);
+    imgui.Text("Trigger Events: %llu", trigger_events);
 
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.TextColored(::ui::colors::TEXT_DEFAULT, "XInput Call Rate (Smooth)");
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.TextColored(::ui::colors::TEXT_DEFAULT, "XInput Call Rate (Smooth)");
 
-        // Display smooth call rate for XInputGetState
-        uint64_t getstate_update_ns = g_shared_state->xinput_getstate_update_ns.load();
-        if (getstate_update_ns > 0) {
-            double getstate_rate_hz = 1000000000.0 / getstate_update_ns;  // Convert ns to Hz
-            imgui.Text("XInputGetState Rate: %.1f Hz (%.2f ms)", getstate_rate_hz, getstate_update_ns / 1000000.0);
-        } else {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "XInputGetState Rate: No data");
-        }
+    // Display smooth call rate for XInputGetState
+    uint64_t getstate_update_ns = g_shared_state->xinput_getstate_update_ns.load();
+    if (getstate_update_ns > 0) {
+        double getstate_rate_hz = 1000000000.0 / getstate_update_ns;  // Convert ns to Hz
+        imgui.Text("XInputGetState Rate: %.1f Hz (%.2f ms)", getstate_rate_hz, getstate_update_ns / 1000000.0);
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "XInputGetState Rate: No data");
+    }
 
-        // Display smooth call rate for XInputGetStateEx
-        uint64_t getstateex_update_ns = g_shared_state->xinput_getstateex_update_ns.load();
-        if (getstateex_update_ns > 0) {
-            double getstateex_rate_hz = 1000000000.0 / getstateex_update_ns;  // Convert ns to Hz
-            imgui.Text("XInputGetStateEx Rate: %.1f Hz (%.2f ms)", getstateex_rate_hz,
-                       getstateex_update_ns / 1000000.0);
-        } else {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "XInputGetStateEx Rate: No data");
-        }
+    // Display smooth call rate for XInputGetStateEx
+    uint64_t getstateex_update_ns = g_shared_state->xinput_getstateex_update_ns.load();
+    if (getstateex_update_ns > 0) {
+        double getstateex_rate_hz = 1000000000.0 / getstateex_update_ns;  // Convert ns to Hz
+        imgui.Text("XInputGetStateEx Rate: %.1f Hz (%.2f ms)", getstateex_rate_hz, getstateex_update_ns / 1000000.0);
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "XInputGetStateEx Rate: No data");
+    }
 
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.TextColored(::ui::colors::TEXT_DEFAULT, "XInputGetCapabilities Hook Statistics");
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.TextColored(::ui::colors::TEXT_DEFAULT, "XInputGetCapabilities Hook Statistics");
 
-        // Display hook statistics for XInputGetCapabilities
-        const auto& capabilities_stats =
-            display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_XInputGetCapabilities);
-        uint64_t capabilities_total_calls = capabilities_stats.total_calls.load();
-        uint64_t capabilities_unsuppressed_calls = capabilities_stats.unsuppressed_calls.load();
-        uint64_t capabilities_suppressed_calls = capabilities_total_calls - capabilities_unsuppressed_calls;
+    // Display hook statistics for XInputGetCapabilities
+    const auto& capabilities_stats =
+        display_commanderhooks::GetHookStats(display_commanderhooks::HOOK_XInputGetCapabilities);
+    uint64_t capabilities_total_calls = capabilities_stats.total_calls.load();
+    uint64_t capabilities_unsuppressed_calls = capabilities_stats.unsuppressed_calls.load();
+    uint64_t capabilities_suppressed_calls = capabilities_total_calls - capabilities_unsuppressed_calls;
 
-        imgui.Text("XInputGetCapabilities_Detour Calls: %llu", capabilities_total_calls);
-        imgui.Text("XInputGetCapabilities_Original Calls: %llu", capabilities_unsuppressed_calls);
-        if (capabilities_suppressed_calls > 0) {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "Suppressed Calls: %llu", capabilities_suppressed_calls);
-        }
+    imgui.Text("XInputGetCapabilities_Detour Calls: %llu", capabilities_total_calls);
+    imgui.Text("XInputGetCapabilities_Original Calls: %llu", capabilities_unsuppressed_calls);
+    if (capabilities_suppressed_calls > 0) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Suppressed Calls: %llu", capabilities_suppressed_calls);
+    }
 
-        // Reset button
-        if (imgui.Button("Reset Counters")) {
-            g_shared_state->total_events.store(0);
-            g_shared_state->button_events.store(0);
-            g_shared_state->stick_events.store(0);
-            g_shared_state->trigger_events.store(0);
-            g_shared_state->xinput_getstate_update_ns.store(0);
-            g_shared_state->xinput_getstateex_update_ns.store(0);
-            g_shared_state->last_xinput_call_time_ns.store(0);
-            g_shared_state->hid_createfile_total.store(0);
-            g_shared_state->hid_createfile_dualsense.store(0);
-        }
+    // Reset button
+    if (imgui.Button("Reset Counters")) {
+        g_shared_state->total_events.store(0);
+        g_shared_state->button_events.store(0);
+        g_shared_state->stick_events.store(0);
+        g_shared_state->trigger_events.store(0);
+        g_shared_state->xinput_getstate_update_ns.store(0);
+        g_shared_state->xinput_getstateex_update_ns.store(0);
+        g_shared_state->last_xinput_call_time_ns.store(0);
+        g_shared_state->hid_createfile_total.store(0);
+        g_shared_state->hid_createfile_dualsense.store(0);
+    }
 }
 
 void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("Test controller vibration motors:");
-        imgui.Spacing();
+    imgui.Spacing();
 
-        // Auto-stop after 10s and show timer
-        if (vibration_test_start_ns_ != 0) {
-            const uint64_t now_ns = utils::get_now_ns();
-            const uint64_t elapsed_ns = now_ns - vibration_test_start_ns_;
-            if (elapsed_ns >= VIBRATION_TEST_DURATION_NS) {
-                StopVibration();
-                vibration_test_start_ns_ = 0;
-            } else {
-                const float remaining_s = static_cast<float>(VIBRATION_TEST_DURATION_NS - elapsed_ns) / 1e9f;
-                imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stopping in %.1f s (auto-stop)", remaining_s);
-                imgui.Spacing();
-            }
-        }
-
-        // Show current controller selection
-        imgui.Text("Testing Controller: %d", selected_controller_);
-        imgui.Spacing();
-
-        // Left motor test
-        if (imgui.Button("Test Left Motor", ImVec2(120, 30))) {
-            TestLeftMotor();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Test the left (low-frequency) vibration motor");
-        }
-
-        imgui.SameLine();
-
-        // Right motor test
-        if (imgui.Button("Test Right Motor", ImVec2(120, 30))) {
-            TestRightMotor();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Test the right (high-frequency) vibration motor");
-        }
-
-        imgui.Spacing();
-
-        // Stop vibration
-        if (imgui.Button("Stop Vibration", ImVec2(120, 30))) {
+    // Auto-stop after 10s and show timer
+    if (vibration_test_start_ns_ != 0) {
+        const uint64_t now_ns = utils::get_now_ns();
+        const uint64_t elapsed_ns = now_ns - vibration_test_start_ns_;
+        if (elapsed_ns >= VIBRATION_TEST_DURATION_NS) {
             StopVibration();
+            vibration_test_start_ns_ = 0;
+        } else {
+            const float remaining_s = static_cast<float>(VIBRATION_TEST_DURATION_NS - elapsed_ns) / 1e9f;
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stopping in %.1f s (auto-stop)", remaining_s);
+            imgui.Spacing();
         }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Stop all vibration on the selected controller");
-        }
+    }
 
-        imgui.SameLine();
+    // Show current controller selection
+    imgui.Text("Testing Controller: %d", selected_controller_);
+    imgui.Spacing();
 
-        // Test both motors
-        if (imgui.Button("Test Both Motors", ImVec2(120, 30))) {
-            TestLeftMotor();
-            TestRightMotor();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Test both vibration motors simultaneously");
-        }
+    // Left motor test
+    if (imgui.Button("Test Left Motor", ImVec2(120, 30))) {
+        TestLeftMotor();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Test the left (low-frequency) vibration motor");
+    }
 
-        imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_DIMMED,
-                          "Note: Vibration auto-stops after 10 s, or use Stop to end early.");
+    imgui.SameLine();
+
+    // Right motor test
+    if (imgui.Button("Test Right Motor", ImVec2(120, 30))) {
+        TestRightMotor();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Test the right (high-frequency) vibration motor");
+    }
+
+    imgui.Spacing();
+
+    // Stop vibration
+    if (imgui.Button("Stop Vibration", ImVec2(120, 30))) {
+        StopVibration();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Stop all vibration on the selected controller");
+    }
+
+    imgui.SameLine();
+
+    // Test both motors
+    if (imgui.Button("Test Both Motors", ImVec2(120, 30))) {
+        TestLeftMotor();
+        TestRightMotor();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Test both vibration motors simultaneously");
+    }
+
+    imgui.Spacing();
+    imgui.TextColored(::ui::colors::TEXT_DIMMED, "Note: Vibration auto-stops after 10 s, or use Stop to end early.");
 }
 
 void XInputWidget::DrawControllerSelector(display_commander::ui::IImGuiWrapper& imgui) {
@@ -622,8 +637,8 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
         const std::uint64_t getstate0_calls = display_commanderhooks::GetXInputGetStateUserIndexZeroCallCount();
         if (getstate0_calls == 0 && hooks_installed) {
             imgui.TextColored(::ui::colors::ICON_CRITICAL,
-                             "No game calls to XInputGetState(0) yet. Game may use Windows.Gaming.Input or "
-                             "DirectInput instead of XInput.");
+                              "No game calls to XInputGetState(0) yet. Game may use Windows.Gaming.Input or "
+                              "DirectInput instead of XInput.");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
                     "Hollow Knight and some other games use Windows.Gaming.Input for controllers, so XInput is never "
@@ -708,351 +723,350 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
 void XInputWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
     // Create a grid of buttons
     const struct {
-            WORD mask;
-            const char* name;
-        } buttons[] = {
-            {XINPUT_GAMEPAD_A, "A"},
-            {XINPUT_GAMEPAD_B, "B"},
-            {XINPUT_GAMEPAD_X, "X"},
-            {XINPUT_GAMEPAD_Y, "Y"},
-            {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
-            {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
-            {XINPUT_GAMEPAD_BACK, "View"},
-            {XINPUT_GAMEPAD_START, "Menu"},
-            {XINPUT_GAMEPAD_GUIDE, "Home"},
-            {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
-            {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
-            {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},
-            {XINPUT_GAMEPAD_DPAD_DOWN, "D-Down"},
-            {XINPUT_GAMEPAD_DPAD_LEFT, "D-Left"},
-            {XINPUT_GAMEPAD_DPAD_RIGHT, "D-Right"},
-        };
+        WORD mask;
+        const char* name;
+    } buttons[] = {
+        {XINPUT_GAMEPAD_A, "A"},
+        {XINPUT_GAMEPAD_B, "B"},
+        {XINPUT_GAMEPAD_X, "X"},
+        {XINPUT_GAMEPAD_Y, "Y"},
+        {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
+        {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
+        {XINPUT_GAMEPAD_BACK, "View"},
+        {XINPUT_GAMEPAD_START, "Menu"},
+        {XINPUT_GAMEPAD_GUIDE, "Home"},
+        {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
+        {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
+        {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},
+        {XINPUT_GAMEPAD_DPAD_DOWN, "D-Down"},
+        {XINPUT_GAMEPAD_DPAD_LEFT, "D-Left"},
+        {XINPUT_GAMEPAD_DPAD_RIGHT, "D-Right"},
+    };
 
-        for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i += 2) {
-            if (i + 1 < sizeof(buttons) / sizeof(buttons[0])) {
-                // Draw two buttons per row
-                bool pressed1 = IsButtonPressed(gamepad.wButtons, buttons[i].mask);
-                bool pressed2 = IsButtonPressed(gamepad.wButtons, buttons[i + 1].mask);
+    for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i += 2) {
+        if (i + 1 < sizeof(buttons) / sizeof(buttons[0])) {
+            // Draw two buttons per row
+            bool pressed1 = IsButtonPressed(gamepad.wButtons, buttons[i].mask);
+            bool pressed2 = IsButtonPressed(gamepad.wButtons, buttons[i + 1].mask);
 
-                // Special styling for Home button
-                if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
-                    imgui.PushStyleColor(ImGuiCol_Button,
-                                         pressed1 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
-                } else {
-                    imgui.PushStyleColor(ImGuiCol_Button,
-                                         pressed1 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
-                }
-                imgui.Button(buttons[i].name, ImVec2(60, 30));
-                imgui.PopStyleColor();
-
-                imgui.SameLine();
-
-                // Special styling for Home button
-                if (buttons[i + 1].mask == XINPUT_GAMEPAD_GUIDE) {
-                    imgui.PushStyleColor(ImGuiCol_Button,
-                                         pressed2 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
-                } else {
-                    imgui.PushStyleColor(ImGuiCol_Button,
-                                         pressed2 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
-                }
-                imgui.Button(buttons[i + 1].name, ImVec2(60, 30));
-                imgui.PopStyleColor();
+            // Special styling for Home button
+            if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
+                imgui.PushStyleColor(ImGuiCol_Button,
+                                     pressed1 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
             } else {
-                // Single button on last row
-                bool pressed = IsButtonPressed(gamepad.wButtons, buttons[i].mask);
-
-                // Special styling for Home button
-                if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
-                    imgui.PushStyleColor(ImGuiCol_Button,
-                                         pressed ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
-                } else {
-                    imgui.PushStyleColor(ImGuiCol_Button,
-                                         pressed ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
-                }
-                imgui.Button(buttons[i].name, ImVec2(60, 30));
-                imgui.PopStyleColor();
+                imgui.PushStyleColor(ImGuiCol_Button,
+                                     pressed1 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
             }
+            imgui.Button(buttons[i].name, ImVec2(60, 30));
+            imgui.PopStyleColor();
+
+            imgui.SameLine();
+
+            // Special styling for Home button
+            if (buttons[i + 1].mask == XINPUT_GAMEPAD_GUIDE) {
+                imgui.PushStyleColor(ImGuiCol_Button,
+                                     pressed2 ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
+            } else {
+                imgui.PushStyleColor(ImGuiCol_Button,
+                                     pressed2 ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
+            }
+            imgui.Button(buttons[i + 1].name, ImVec2(60, 30));
+            imgui.PopStyleColor();
+        } else {
+            // Single button on last row
+            bool pressed = IsButtonPressed(gamepad.wButtons, buttons[i].mask);
+
+            // Special styling for Home button
+            if (buttons[i].mask == XINPUT_GAMEPAD_GUIDE) {
+                imgui.PushStyleColor(ImGuiCol_Button,
+                                     pressed ? ::ui::colors::ICON_WARNING : ::ui::colors::ICON_DARK_ORANGE);
+            } else {
+                imgui.PushStyleColor(ImGuiCol_Button,
+                                     pressed ? ::ui::colors::STATUS_ACTIVE : ::ui::colors::ICON_DARK_GRAY);
+            }
+            imgui.Button(buttons[i].name, ImVec2(60, 30));
+            imgui.PopStyleColor();
         }
+    }
 }
 
 void XInputWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
     float lmin_in_x = g_shared_state->left_stick_x_min_input.load();
-        float lmax_in_x = g_shared_state->left_stick_x_max_input.load();
-        float lmin_out_x = g_shared_state->left_stick_x_min_output.load();
-        float lmax_out_x = g_shared_state->left_stick_x_max_output.load();
-        float lmin_in_y = g_shared_state->left_stick_y_min_input.load();
-        float lmax_in_y = g_shared_state->left_stick_y_max_input.load();
-        float lmin_out_y = g_shared_state->left_stick_y_min_output.load();
-        float lmax_out_y = g_shared_state->left_stick_y_max_output.load();
-        if (g_shared_state->left_stick_same_axes.load()) {
-            lmin_in_y = lmin_in_x;
-            lmax_in_y = lmax_in_x;
-            lmin_out_y = lmin_out_x;
-            lmax_out_y = lmax_out_x;
-        }
-        float rmin_in_x = g_shared_state->right_stick_x_min_input.load();
-        float rmax_in_x = g_shared_state->right_stick_x_max_input.load();
-        float rmin_out_x = g_shared_state->right_stick_x_min_output.load();
-        float rmax_out_x = g_shared_state->right_stick_x_max_output.load();
-        float rmin_in_y = g_shared_state->right_stick_y_min_input.load();
-        float rmax_in_y = g_shared_state->right_stick_y_max_input.load();
-        float rmin_out_y = g_shared_state->right_stick_y_min_output.load();
-        float rmax_out_y = g_shared_state->right_stick_y_max_output.load();
-        if (g_shared_state->right_stick_same_axes.load()) {
-            rmin_in_y = rmin_in_x;
-            rmax_in_y = rmax_in_x;
-            rmin_out_y = rmin_out_x;
-            rmax_out_y = rmax_out_x;
-        }
+    float lmax_in_x = g_shared_state->left_stick_x_max_input.load();
+    float lmin_out_x = g_shared_state->left_stick_x_min_output.load();
+    float lmax_out_x = g_shared_state->left_stick_x_max_output.load();
+    float lmin_in_y = g_shared_state->left_stick_y_min_input.load();
+    float lmax_in_y = g_shared_state->left_stick_y_max_input.load();
+    float lmin_out_y = g_shared_state->left_stick_y_min_output.load();
+    float lmax_out_y = g_shared_state->left_stick_y_max_output.load();
+    if (g_shared_state->left_stick_same_axes.load()) {
+        lmin_in_y = lmin_in_x;
+        lmax_in_y = lmax_in_x;
+        lmin_out_y = lmin_out_x;
+        lmax_out_y = lmax_out_x;
+    }
+    float rmin_in_x = g_shared_state->right_stick_x_min_input.load();
+    float rmax_in_x = g_shared_state->right_stick_x_max_input.load();
+    float rmin_out_x = g_shared_state->right_stick_x_min_output.load();
+    float rmax_out_x = g_shared_state->right_stick_x_max_output.load();
+    float rmin_in_y = g_shared_state->right_stick_y_min_input.load();
+    float rmax_in_y = g_shared_state->right_stick_y_max_input.load();
+    float rmin_out_y = g_shared_state->right_stick_y_min_output.load();
+    float rmax_out_y = g_shared_state->right_stick_y_max_output.load();
+    if (g_shared_state->right_stick_same_axes.load()) {
+        rmin_in_y = rmin_in_x;
+        rmax_in_y = rmax_in_x;
+        rmin_out_y = rmin_out_x;
+        rmax_out_y = rmax_out_x;
+    }
 
-        // Left stick
-        imgui.Text("Left Stick:");
-        float lx = ShortToFloat(gamepad.sThumbLX);
-        float ly = ShortToFloat(gamepad.sThumbLY);
+    // Left stick
+    imgui.Text("Left Stick:");
+    float lx = ShortToFloat(gamepad.sThumbLX);
+    float ly = ShortToFloat(gamepad.sThumbLY);
 
-        float left_center_x = g_shared_state->left_stick_center_x.load();
-        float left_center_y = g_shared_state->left_stick_center_y.load();
-        float lx_recentered = lx - left_center_x;
-        float ly_recentered = ly - left_center_y;
+    float left_center_x = g_shared_state->left_stick_center_x.load();
+    float left_center_y = g_shared_state->left_stick_center_y.load();
+    float lx_recentered = lx - left_center_x;
+    float ly_recentered = ly - left_center_y;
 
-        float lx_final = lx_recentered;
-        float ly_final = ly_recentered;
-        bool left_circular = g_shared_state->left_stick_circular.load();
-        if (left_circular) {
-            ProcessStickInputRadial(lx_final, ly_final, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x);
-        } else {
-            ProcessStickInputSquare(lx_final, ly_final, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, lmin_in_y,
-                                   lmax_in_y, lmin_out_y, lmax_out_y);
-        }
+    float lx_final = lx_recentered;
+    float ly_final = ly_recentered;
+    bool left_circular = g_shared_state->left_stick_circular.load();
+    if (left_circular) {
+        ProcessStickInputRadial(lx_final, ly_final, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x);
+    } else {
+        ProcessStickInputSquare(lx_final, ly_final, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, lmin_in_y, lmax_in_y,
+                                lmin_out_y, lmax_out_y);
+    }
 
-        imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final,
-                   gamepad.sThumbLX);
-        imgui.Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ly, ly_recentered, ly_final,
-                   gamepad.sThumbLY);
+    imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", lx, lx_recentered, lx_final,
+               gamepad.sThumbLX);
+    imgui.Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ly, ly_recentered, ly_final,
+               gamepad.sThumbLY);
 
-        // Visual representation
-        imgui.Text("Position:");
-        ImVec2 canvas_pos = imgui.GetCursorScreenPos();
-        ImVec2 canvas_size = ImVec2(100, 100);
-        display_commander::ui::IImDrawList* draw_list = imgui.GetWindowDrawList();
+    // Visual representation
+    imgui.Text("Position:");
+    ImVec2 canvas_pos = imgui.GetCursorScreenPos();
+    ImVec2 canvas_size = ImVec2(100, 100);
+    display_commander::ui::IImDrawList* draw_list = imgui.GetWindowDrawList();
 
-        // Draw circle
-        ImVec2 center = ImVec2(canvas_pos.x + canvas_size.x * 0.5f, canvas_pos.y + canvas_size.y * 0.5f);
-        draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
+    // Draw circle
+    ImVec2 center = ImVec2(canvas_pos.x + canvas_size.x * 0.5f, canvas_pos.y + canvas_size.y * 0.5f);
+    draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
-        // Draw crosshairs
-        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
-                           ImColor(100, 100, 100, 255), 1.0f);
-        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
-                           ImColor(100, 100, 100, 255), 1.0f);
+    // Draw crosshairs
+    draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
+    draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
 
-        // Draw stick position (using final processed values for visual representation)
-        ImVec2 stick_pos =
-            ImVec2(center.x + lx_final * canvas_size.x * 0.4f, center.y - ly_final * canvas_size.y * 0.4f);
-        draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
+    // Draw stick position (using final processed values for visual representation)
+    ImVec2 stick_pos = ImVec2(center.x + lx_final * canvas_size.x * 0.4f, center.y - ly_final * canvas_size.y * 0.4f);
+    draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
-        imgui.Dummy(canvas_size);
+    imgui.Dummy(canvas_size);
 
-        // Right stick
-        imgui.Text("Right Stick:");
-        float rx = ShortToFloat(gamepad.sThumbRX);
-        float ry = ShortToFloat(gamepad.sThumbRY);
+    // Right stick
+    imgui.Text("Right Stick:");
+    float rx = ShortToFloat(gamepad.sThumbRX);
+    float ry = ShortToFloat(gamepad.sThumbRY);
 
-        // Apply center calibration (recenter the stick)
-        float right_center_x = g_shared_state->right_stick_center_x.load();
-        float right_center_y = g_shared_state->right_stick_center_y.load();
-        float rx_recentered = rx - right_center_x;
-        float ry_recentered = ry - right_center_y;
+    // Apply center calibration (recenter the stick)
+    float right_center_x = g_shared_state->right_stick_center_x.load();
+    float right_center_y = g_shared_state->right_stick_center_y.load();
+    float rx_recentered = rx - right_center_x;
+    float ry_recentered = ry - right_center_y;
 
-        float rx_final = rx_recentered;
-        float ry_final = ry_recentered;
-        bool right_circular = g_shared_state->right_stick_circular.load();
-        if (right_circular) {
-            ProcessStickInputRadial(rx_final, ry_final, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x);
-        } else {
-            ProcessStickInputSquare(rx_final, ry_final, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x, rmin_in_y,
-                                   rmax_in_y, rmin_out_y, rmax_out_y);
-        }
+    float rx_final = rx_recentered;
+    float ry_final = ry_recentered;
+    bool right_circular = g_shared_state->right_stick_circular.load();
+    if (right_circular) {
+        ProcessStickInputRadial(rx_final, ry_final, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x);
+    } else {
+        ProcessStickInputSquare(rx_final, ry_final, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x, rmin_in_y, rmax_in_y,
+                                rmin_out_y, rmax_out_y);
+    }
 
-        imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final,
-                   gamepad.sThumbRX);
-        imgui.Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ry, ry_recentered, ry_final,
-                   gamepad.sThumbRY);
+    imgui.Text("X: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", rx, rx_recentered, rx_final,
+               gamepad.sThumbRX);
+    imgui.Text("Y: %.3f (Raw) -> %.3f (Recentered) -> %.3f (Final) [Raw: %d]", ry, ry_recentered, ry_final,
+               gamepad.sThumbRY);
 
-        // Visual representation for right stick
-        imgui.Text("Position:");
-        canvas_pos = imgui.GetCursorScreenPos();
-        draw_list = imgui.GetWindowDrawList();
+    // Visual representation for right stick
+    imgui.Text("Position:");
+    canvas_pos = imgui.GetCursorScreenPos();
+    draw_list = imgui.GetWindowDrawList();
 
-        // Draw circle
-        center = ImVec2(canvas_pos.x + canvas_size.x * 0.5f, canvas_pos.y + canvas_size.y * 0.5f);
-        draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
+    // Draw circle
+    center = ImVec2(canvas_pos.x + canvas_size.x * 0.5f, canvas_pos.y + canvas_size.y * 0.5f);
+    draw_list->AddCircle(center, canvas_size.x * 0.4f, ImColor(100, 100, 100, 255), 32, 2.0f);
 
-        // Draw crosshairs
-        draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
-                           ImColor(100, 100, 100, 255), 1.0f);
-        draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
-                           ImColor(100, 100, 100, 255), 1.0f);
+    // Draw crosshairs
+    draw_list->AddLine(ImVec2(canvas_pos.x, center.y), ImVec2(canvas_pos.x + canvas_size.x, center.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
+    draw_list->AddLine(ImVec2(center.x, canvas_pos.y), ImVec2(center.x, canvas_pos.y + canvas_size.y),
+                       ImColor(100, 100, 100, 255), 1.0f);
 
-        // Draw stick position (using final processed values for visual representation)
-        stick_pos = ImVec2(center.x + rx_final * canvas_size.x * 0.4f, center.y - ry_final * canvas_size.y * 0.4f);
-        draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
+    // Draw stick position (using final processed values for visual representation)
+    stick_pos = ImVec2(center.x + rx_final * canvas_size.x * 0.4f, center.y - ry_final * canvas_size.y * 0.4f);
+    draw_list->AddCircleFilled(stick_pos, 5.0f, ImColor(0, 255, 0, 255));
 
-        imgui.Dummy(canvas_size);
+    imgui.Dummy(canvas_size);
 
-        // Draw extended visualization with input/output curves
-        if (imgui.CollapsingHeader("Input/Output Curves", 0)) {
-            imgui.Indent();
-            DrawStickStatesExtended(imgui, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, rmin_in_x, rmax_in_x,
-                                    rmin_out_x, rmax_out_x);
-            imgui.Unindent();
-        }
+    // Draw extended visualization with input/output curves
+    if (imgui.CollapsingHeader("Input/Output Curves", 0)) {
+        imgui.Indent();
+        DrawStickStatesExtended(imgui, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, rmin_in_x, rmax_in_x, rmin_out_x,
+                                rmax_out_x);
+        imgui.Unindent();
+    }
 }
 
 void XInputWidget::DrawStickStatesExtended(display_commander::ui::IImGuiWrapper& imgui, float left_min_in,
-                                           float left_max_in, float left_min_out, float left_max_out, float right_min_in,
-                                           float right_max_in, float right_min_out, float right_max_out) {
+                                           float left_max_in, float left_min_out, float left_max_out,
+                                           float right_min_in, float right_max_in, float right_min_out,
+                                           float right_max_out) {
     imgui.TextColored(::ui::colors::TEXT_DEFAULT, "Visual representation of how stick input is processed");
-        imgui.Spacing();
+    imgui.Spacing();
 
-        // Generate curve data for both sticks
-        const int curve_points = 400;
-        std::vector<float> left_curve_x(curve_points);
-        std::vector<float> left_curve_y(curve_points);
-        std::vector<float> right_curve_x(curve_points);
-        std::vector<float> right_curve_y(curve_points);
-        std::vector<float> input_values(curve_points);
+    // Generate curve data for both sticks
+    const int curve_points = 400;
+    std::vector<float> left_curve_x(curve_points);
+    std::vector<float> left_curve_y(curve_points);
+    std::vector<float> right_curve_x(curve_points);
+    std::vector<float> right_curve_y(curve_points);
+    std::vector<float> input_values(curve_points);
 
-        // Generate input values from 0.0 to 1.0 (positive side only for clarity)
-        for (int i = 0; i < curve_points; ++i) {
-            input_values[i] = static_cast<float>(i) / (curve_points - 1);
+    // Generate input values from 0.0 to 1.0 (positive side only for clarity)
+    for (int i = 0; i < curve_points; ++i) {
+        input_values[i] = static_cast<float>(i) / (curve_points - 1);
 
-            // For radial deadzone visualization, simulate moving stick from center to edge
-            // This shows the magnitude transformation (radial deadzone preserves direction)
-            float x = input_values[i];
-            float y = 0.0f;  // Move along X axis for simplicity
+        // For radial deadzone visualization, simulate moving stick from center to edge
+        // This shows the magnitude transformation (radial deadzone preserves direction)
+        float x = input_values[i];
+        float y = 0.0f;  // Move along X axis for simplicity
 
-            // Left stick - apply processing based on mode (use shared/X params for curve)
-            float lx_test = x;
-            float ly_test = y;
-            bool left_circular = g_shared_state->left_stick_circular.load();
-            if (left_circular) {
-                ProcessStickInputRadial(lx_test, ly_test, left_min_in, left_max_in, left_min_out, left_max_out);
-            } else {
-                ProcessStickInputSquare(lx_test, ly_test, left_min_in, left_max_in, left_min_out, left_max_out,
-                                        left_min_in, left_max_in, left_min_out, left_max_out);
-            }
-            left_curve_y[i] = std::sqrt(lx_test * lx_test + ly_test * ly_test);  // Show output magnitude
-
-            // Right stick
-            float rx_test = x;
-            float ry_test = y;
-            bool right_circular = g_shared_state->right_stick_circular.load();
-            if (right_circular) {
-                ProcessStickInputRadial(rx_test, ry_test, right_min_in, right_max_in, right_min_out, right_max_out);
-            } else {
-                ProcessStickInputSquare(rx_test, ry_test, right_min_in, right_max_in, right_min_out, right_max_out,
-                                        right_min_in, right_max_in, right_min_out, right_max_out);
-            }
-            right_curve_y[i] = std::sqrt(rx_test * rx_test + ry_test * ry_test);  // Show output magnitude
-
-            left_curve_x[i] = static_cast<float>(i);
-            right_curve_x[i] = static_cast<float>(i);
+        // Left stick - apply processing based on mode (use shared/X params for curve)
+        float lx_test = x;
+        float ly_test = y;
+        bool left_circular = g_shared_state->left_stick_circular.load();
+        if (left_circular) {
+            ProcessStickInputRadial(lx_test, ly_test, left_min_in, left_max_in, left_min_out, left_max_out);
+        } else {
+            ProcessStickInputSquare(lx_test, ly_test, left_min_in, left_max_in, left_min_out, left_max_out, left_min_in,
+                                    left_max_in, left_min_out, left_max_out);
         }
+        left_curve_y[i] = std::sqrt(lx_test * lx_test + ly_test * ly_test);  // Show output magnitude
 
-        // Left stick curve
-        imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Left Stick Input/Output Curve");
-        imgui.Text("Input %.0f%%-%.0f%% -> Output %.0f%%-%.0f%%", left_min_in * 100.0f, left_max_in * 100.0f,
-                   left_min_out * 100.0f, left_max_out * 100.0f);
+        // Right stick
+        float rx_test = x;
+        float ry_test = y;
+        bool right_circular = g_shared_state->right_stick_circular.load();
+        if (right_circular) {
+            ProcessStickInputRadial(rx_test, ry_test, right_min_in, right_max_in, right_min_out, right_max_out);
+        } else {
+            ProcessStickInputSquare(rx_test, ry_test, right_min_in, right_max_in, right_min_out, right_max_out,
+                                    right_min_in, right_max_in, right_min_out, right_max_out);
+        }
+        right_curve_y[i] = std::sqrt(rx_test * rx_test + ry_test * ry_test);  // Show output magnitude
 
-        // Create plot for left stick (0.0 to 1.0 input range)
-        imgui.PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0, "Left Stick Output", 0.0f, 1.0f,
-                        ImVec2(-1, 150));
+        left_curve_x[i] = static_cast<float>(i);
+        right_curve_x[i] = static_cast<float>(i);
+    }
 
-        // Add reference lines
-        display_commander::ui::IImDrawList* draw_list = imgui.GetWindowDrawList();
-        ImVec2 plot_pos = imgui.GetItemRectMin();
-        ImVec2 plot_size = imgui.GetItemRectSize();
+    // Left stick curve
+    imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Left Stick Input/Output Curve");
+    imgui.Text("Input %.0f%%-%.0f%% -> Output %.0f%%-%.0f%%", left_min_in * 100.0f, left_max_in * 100.0f,
+               left_min_out * 100.0f, left_max_out * 100.0f);
 
-        // Draw min input reference line (vertical)
-        float min_in_x = plot_pos.x + left_min_in * plot_size.x;
-        draw_list->AddLine(ImVec2(min_in_x, plot_pos.y), ImVec2(min_in_x, plot_pos.y + plot_size.y),
-                           ImColor(255, 255, 0, 128), 2.0f);
+    // Create plot for left stick (0.0 to 1.0 input range)
+    imgui.PlotLines("##LeftStickCurve", left_curve_y.data(), curve_points, 0, "Left Stick Output", 0.0f, 1.0f,
+                    ImVec2(-1, 150));
 
-        // Draw max input reference line (vertical)
-        float max_in_x = plot_pos.x + left_max_in * plot_size.x;
-        draw_list->AddLine(ImVec2(max_in_x, plot_pos.y), ImVec2(max_in_x, plot_pos.y + plot_size.y),
-                           ImColor(255, 0, 255, 128), 2.0f);
+    // Add reference lines
+    display_commander::ui::IImDrawList* draw_list = imgui.GetWindowDrawList();
+    ImVec2 plot_pos = imgui.GetItemRectMin();
+    ImVec2 plot_size = imgui.GetItemRectSize();
 
-        // Draw min output reference line (horizontal)
-        float min_out_y = plot_pos.y + plot_size.y - left_min_out * plot_size.y;
-        draw_list->AddLine(ImVec2(plot_pos.x, min_out_y), ImVec2(plot_pos.x + plot_size.x, min_out_y),
-                           ImColor(0, 255, 255, 128), 2.0f);
+    // Draw min input reference line (vertical)
+    float min_in_x = plot_pos.x + left_min_in * plot_size.x;
+    draw_list->AddLine(ImVec2(min_in_x, plot_pos.y), ImVec2(min_in_x, plot_pos.y + plot_size.y),
+                       ImColor(255, 255, 0, 128), 2.0f);
 
-        imgui.Spacing();
+    // Draw max input reference line (vertical)
+    float max_in_x = plot_pos.x + left_max_in * plot_size.x;
+    draw_list->AddLine(ImVec2(max_in_x, plot_pos.y), ImVec2(max_in_x, plot_pos.y + plot_size.y),
+                       ImColor(255, 0, 255, 128), 2.0f);
 
-        // Right stick curve
-        imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Right Stick Input/Output Curve");
-        imgui.Text("Input %.0f%%-%.0f%% -> Output %.0f%%-%.0f%%", right_min_in * 100.0f, right_max_in * 100.0f,
-                   right_min_out * 100.0f, right_max_out * 100.0f);
+    // Draw min output reference line (horizontal)
+    float min_out_y = plot_pos.y + plot_size.y - left_min_out * plot_size.y;
+    draw_list->AddLine(ImVec2(plot_pos.x, min_out_y), ImVec2(plot_pos.x + plot_size.x, min_out_y),
+                       ImColor(0, 255, 255, 128), 2.0f);
 
-        // Create plot for right stick (0.0 to 1.0 input range)
-        imgui.PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0, "Right Stick Output", 0.0f, 1.0f,
-                        ImVec2(-1, 150));
+    imgui.Spacing();
 
-        // Add reference lines for right stick
-        plot_pos = imgui.GetItemRectMin();
-        plot_size = imgui.GetItemRectSize();
+    // Right stick curve
+    imgui.TextColored(::ui::colors::STATUS_ACTIVE, "Right Stick Input/Output Curve");
+    imgui.Text("Input %.0f%%-%.0f%% -> Output %.0f%%-%.0f%%", right_min_in * 100.0f, right_max_in * 100.0f,
+               right_min_out * 100.0f, right_max_out * 100.0f);
 
-        // Draw min input reference line (vertical)
-        float right_min_in_x = plot_pos.x + right_min_in * plot_size.x;
-        draw_list->AddLine(ImVec2(right_min_in_x, plot_pos.y), ImVec2(right_min_in_x, plot_pos.y + plot_size.y),
-                           ImColor(255, 255, 0, 128), 2.0f);
+    // Create plot for right stick (0.0 to 1.0 input range)
+    imgui.PlotLines("##RightStickCurve", right_curve_y.data(), curve_points, 0, "Right Stick Output", 0.0f, 1.0f,
+                    ImVec2(-1, 150));
 
-        // Draw max input reference line (vertical)
-        float right_max_in_x = plot_pos.x + right_max_in * plot_size.x;
-        draw_list->AddLine(ImVec2(right_max_in_x, plot_pos.y), ImVec2(right_max_in_x, plot_pos.y + plot_size.y),
-                           ImColor(255, 0, 255, 128), 2.0f);
+    // Add reference lines for right stick
+    plot_pos = imgui.GetItemRectMin();
+    plot_size = imgui.GetItemRectSize();
 
-        // Draw min output reference line (horizontal)
-        float right_min_out_y = plot_pos.y + plot_size.y - right_min_out * plot_size.y;
-        draw_list->AddLine(ImVec2(plot_pos.x, right_min_out_y), ImVec2(plot_pos.x + plot_size.x, right_min_out_y),
-                           ImColor(0, 255, 255, 128), 2.0f);
+    // Draw min input reference line (vertical)
+    float right_min_in_x = plot_pos.x + right_min_in * plot_size.x;
+    draw_list->AddLine(ImVec2(right_min_in_x, plot_pos.y), ImVec2(right_min_in_x, plot_pos.y + plot_size.y),
+                       ImColor(255, 255, 0, 128), 2.0f);
 
-        imgui.Spacing();
+    // Draw max input reference line (vertical)
+    float right_max_in_x = plot_pos.x + right_max_in * plot_size.x;
+    draw_list->AddLine(ImVec2(right_max_in_x, plot_pos.y), ImVec2(right_max_in_x, plot_pos.y + plot_size.y),
+                       ImColor(255, 0, 255, 128), 2.0f);
 
-        // Legend
-        imgui.TextColored(::ui::colors::TEXT_VALUE, "Legend:");
-        imgui.SameLine();
-        imgui.TextColored(::ui::colors::TEXT_VALUE, "Yellow = Min Input (Vertical)");
-        imgui.SameLine();
-        imgui.TextColored(::ui::colors::ICON_SPECIAL, "Magenta = Max Input (Vertical)");
-        imgui.SameLine();
-        imgui.TextColored(::ui::colors::ICON_ANALYSIS, "Cyan = Min Output (Horizontal)");
-        imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_DIMMED,
-                          "Note: Radial deadzone preserves stick direction (circular deadzone)");
-        imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");
+    // Draw min output reference line (horizontal)
+    float right_min_out_y = plot_pos.y + plot_size.y - right_min_out * plot_size.y;
+    draw_list->AddLine(ImVec2(plot_pos.x, right_min_out_y), ImVec2(plot_pos.x + plot_size.x, right_min_out_y),
+                       ImColor(0, 255, 255, 128), 2.0f);
+
+    imgui.Spacing();
+
+    // Legend
+    imgui.TextColored(::ui::colors::TEXT_VALUE, "Legend:");
+    imgui.SameLine();
+    imgui.TextColored(::ui::colors::TEXT_VALUE, "Yellow = Min Input (Vertical)");
+    imgui.SameLine();
+    imgui.TextColored(::ui::colors::ICON_SPECIAL, "Magenta = Max Input (Vertical)");
+    imgui.SameLine();
+    imgui.TextColored(::ui::colors::ICON_ANALYSIS, "Cyan = Min Output (Horizontal)");
+    imgui.Spacing();
+    imgui.TextColored(::ui::colors::TEXT_DIMMED, "Note: Radial deadzone preserves stick direction (circular deadzone)");
+    imgui.Spacing();
+    imgui.TextColored(::ui::colors::TEXT_DIMMED, "X-axis: Input (0.0 to 1.0) - Positive side only");
+    imgui.TextColored(::ui::colors::TEXT_DIMMED, "Y-axis: Output (-1.0 to 1.0)");
 }
 
 void XInputWidget::DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui, const XINPUT_GAMEPAD& gamepad) {
     // Left trigger
-        imgui.Text("Left Trigger: %u/255 (%.1f%%)", gamepad.bLeftTrigger,
-                   (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
+    imgui.Text("Left Trigger: %u/255 (%.1f%%)", gamepad.bLeftTrigger,
+               (static_cast<float>(gamepad.bLeftTrigger) / 255.0f) * 100.0f);
 
-        // Visual bar for left trigger
-        float left_trigger_norm = static_cast<float>(gamepad.bLeftTrigger) / 255.0f;
-        imgui.ProgressBar(left_trigger_norm, ImVec2(-1, 0), "");
+    // Visual bar for left trigger
+    float left_trigger_norm = static_cast<float>(gamepad.bLeftTrigger) / 255.0f;
+    imgui.ProgressBar(left_trigger_norm, ImVec2(-1, 0), "");
 
-        // Right trigger
-        imgui.Text("Right Trigger: %u/255 (%.1f%%)", gamepad.bRightTrigger,
-                   (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
+    // Right trigger
+    imgui.Text("Right Trigger: %u/255 (%.1f%%)", gamepad.bRightTrigger,
+               (static_cast<float>(gamepad.bRightTrigger) / 255.0f) * 100.0f);
 
-        // Visual bar for right trigger
-        float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
-        imgui.ProgressBar(right_trigger_norm, ImVec2(-1, 0), "");
+    // Visual bar for right trigger
+    float right_trigger_norm = static_cast<float>(gamepad.bRightTrigger) / 255.0f;
+    imgui.ProgressBar(right_trigger_norm, ImVec2(-1, 0), "");
 }
 
 void XInputWidget::DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui, int controller_index) {
@@ -1068,86 +1082,86 @@ void XInputWidget::DrawBatteryStatus(display_commander::ui::IImGuiWrapper& imgui
 
     const XINPUT_BATTERY_INFORMATION& battery = g_shared_state->battery_info[controller_index];
 
-        // Battery type
-        std::string battery_type_str;
-        ImVec4 type_color(1.0f, 1.0f, 1.0f, 1.0f);
+    // Battery type
+    std::string battery_type_str;
+    ImVec4 type_color(1.0f, 1.0f, 1.0f, 1.0f);
 
-        switch (battery.BatteryType) {
-            case BATTERY_TYPE_DISCONNECTED:
-                battery_type_str = "Disconnected";
-                type_color = ::ui::colors::TEXT_DIMMED;
+    switch (battery.BatteryType) {
+        case BATTERY_TYPE_DISCONNECTED:
+            battery_type_str = "Disconnected";
+            type_color = ::ui::colors::TEXT_DIMMED;
+            break;
+        case BATTERY_TYPE_WIRED:
+            battery_type_str = "Wired (No Battery)";
+            type_color = ::ui::colors::TEXT_INFO;
+            break;
+        case BATTERY_TYPE_ALKALINE:
+            battery_type_str = "Alkaline Battery";
+            type_color = ::ui::colors::TEXT_VALUE;
+            break;
+        case BATTERY_TYPE_NIMH:
+            battery_type_str = "NiMH Battery";
+            type_color = ::ui::colors::STATUS_ACTIVE;
+            break;
+        case BATTERY_TYPE_UNKNOWN:
+            battery_type_str = "Unknown Battery Type";
+            type_color = ::ui::colors::TEXT_DIMMED;
+            break;
+        default:
+            battery_type_str = "Unknown";
+            type_color = ::ui::colors::TEXT_DIMMED;
+            break;
+    }
+
+    imgui.TextColored(type_color, "Type: %s", battery_type_str.c_str());
+
+    // Battery level (only show for devices with actual batteries)
+    if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED && battery.BatteryType != BATTERY_TYPE_UNKNOWN
+        && battery.BatteryType != BATTERY_TYPE_WIRED) {
+        std::string level_str;
+        ImVec4 level_color(1.0f, 1.0f, 1.0f, 1.0f);
+        float level_progress = 0.0f;
+
+        switch (battery.BatteryLevel) {
+            case BATTERY_LEVEL_EMPTY:
+                level_str = "Empty";
+                level_color = ::ui::colors::ICON_CRITICAL;
+                level_progress = 0.0f;
                 break;
-            case BATTERY_TYPE_WIRED:
-                battery_type_str = "Wired (No Battery)";
-                type_color = ::ui::colors::TEXT_INFO;
+            case BATTERY_LEVEL_LOW:
+                level_str = "Low";
+                level_color = ::ui::colors::ICON_ORANGE;
+                level_progress = 0.25f;
                 break;
-            case BATTERY_TYPE_ALKALINE:
-                battery_type_str = "Alkaline Battery";
-                type_color = ::ui::colors::TEXT_VALUE;
+            case BATTERY_LEVEL_MEDIUM:
+                level_str = "Medium";
+                level_color = ::ui::colors::TEXT_VALUE;
+                level_progress = 0.5f;
                 break;
-            case BATTERY_TYPE_NIMH:
-                battery_type_str = "NiMH Battery";
-                type_color = ::ui::colors::STATUS_ACTIVE;
-                break;
-            case BATTERY_TYPE_UNKNOWN:
-                battery_type_str = "Unknown Battery Type";
-                type_color = ::ui::colors::TEXT_DIMMED;
+            case BATTERY_LEVEL_FULL:
+                level_str = "Full";
+                level_color = ::ui::colors::STATUS_ACTIVE;
+                level_progress = 1.0f;
                 break;
             default:
-                battery_type_str = "Unknown";
-                type_color = ::ui::colors::TEXT_DIMMED;
+                level_str = "Unknown";
+                level_color = ::ui::colors::TEXT_DIMMED;
+                level_progress = 0.0f;
                 break;
         }
 
-        imgui.TextColored(type_color, "Type: %s", battery_type_str.c_str());
+        imgui.TextColored(level_color, "Level: %s", level_str.c_str());
 
-        // Battery level (only show for devices with actual batteries)
-        if (battery.BatteryType != BATTERY_TYPE_DISCONNECTED && battery.BatteryType != BATTERY_TYPE_UNKNOWN
-            && battery.BatteryType != BATTERY_TYPE_WIRED) {
-            std::string level_str;
-            ImVec4 level_color(1.0f, 1.0f, 1.0f, 1.0f);
-            float level_progress = 0.0f;
-
-            switch (battery.BatteryLevel) {
-                case BATTERY_LEVEL_EMPTY:
-                    level_str = "Empty";
-                    level_color = ::ui::colors::ICON_CRITICAL;
-                    level_progress = 0.0f;
-                    break;
-                case BATTERY_LEVEL_LOW:
-                    level_str = "Low";
-                    level_color = ::ui::colors::ICON_ORANGE;
-                    level_progress = 0.25f;
-                    break;
-                case BATTERY_LEVEL_MEDIUM:
-                    level_str = "Medium";
-                    level_color = ::ui::colors::TEXT_VALUE;
-                    level_progress = 0.5f;
-                    break;
-                case BATTERY_LEVEL_FULL:
-                    level_str = "Full";
-                    level_color = ::ui::colors::STATUS_ACTIVE;
-                    level_progress = 1.0f;
-                    break;
-                default:
-                    level_str = "Unknown";
-                    level_color = ::ui::colors::TEXT_DIMMED;
-                    level_progress = 0.0f;
-                    break;
-            }
-
-            imgui.TextColored(level_color, "Level: %s", level_str.c_str());
-
-            // Visual battery level bar
-            imgui.PushStyleColor(ImGuiCol_PlotHistogram, level_color);
-            imgui.ProgressBar(level_progress, ImVec2(-1, 0), "");
-            imgui.PopStyleColor();
-        } else if (battery.BatteryType == BATTERY_TYPE_WIRED) {
-            // For wired devices, show a simple message that no battery level is available
-            imgui.TextColored(::ui::colors::TEXT_INFO, "No battery level (Wired device)");
-        } else {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "Battery level not available");
-        }
+        // Visual battery level bar
+        imgui.PushStyleColor(ImGuiCol_PlotHistogram, level_color);
+        imgui.ProgressBar(level_progress, ImVec2(-1, 0), "");
+        imgui.PopStyleColor();
+    } else if (battery.BatteryType == BATTERY_TYPE_WIRED) {
+        // For wired devices, show a simple message that no battery level is available
+        imgui.TextColored(::ui::colors::TEXT_INFO, "No battery level (Wired device)");
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Battery level not available");
+    }
 }
 
 std::string XInputWidget::GetButtonName(WORD button) const {
@@ -1212,27 +1226,26 @@ void XInputWidget::LoadSettings() {
 
     // Load stick mapping (new 4 params per axis). Backward compat: migrate old 3 params to new 4.
     float left_min_in, left_max_in, left_min_out, left_max_out;
-    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMinInput",
-                                                    left_min_in) &&
-        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxInput",
-                                                  left_max_in) &&
-        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMinOutput",
-                                                  left_min_out) &&
-        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxOutput",
-                                                  left_max_out)) {
+    if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMinInput", left_min_in)
+        && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxInput",
+                                                       left_max_in)
+        && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMinOutput",
+                                                       left_min_out)
+        && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickXMaxOutput",
+                                                       left_max_out)) {
         g_shared_state->left_stick_x_min_input.store(left_min_in);
         g_shared_state->left_stick_x_max_input.store(left_max_in);
         g_shared_state->left_stick_x_min_output.store(left_min_out);
         g_shared_state->left_stick_x_max_output.store(left_max_out);
         float ly_min_in, ly_max_in, ly_min_out, ly_max_out;
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMinInput",
-                                                        ly_min_in) &&
-            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxInput",
-                                                      ly_max_in) &&
-            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMinOutput",
-                                                      ly_min_out) &&
-            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxOutput",
-                                                      ly_max_out)) {
+                                                        ly_min_in)
+            && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxInput",
+                                                           ly_max_in)
+            && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMinOutput",
+                                                           ly_min_out)
+            && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickYMaxOutput",
+                                                           ly_max_out)) {
             g_shared_state->left_stick_y_min_input.store(ly_min_in);
             g_shared_state->left_stick_y_max_input.store(ly_max_in);
             g_shared_state->left_stick_y_min_output.store(ly_min_out);
@@ -1244,20 +1257,21 @@ void XInputWidget::LoadSettings() {
             g_shared_state->left_stick_y_max_output.store(left_max_out);
         }
     } else {
-        // Backward compat: old keys (deadzone %, sensitivity 0-1, min_output 0-1) -> new (min_in, max_in=1, min_out, max_out=1)
+        // Backward compat: old keys (deadzone %, sensitivity 0-1, min_output 0-1) -> new (min_in, max_in=1, min_out,
+        // max_out=1)
         float old_deadzone_pct, old_sensitivity, old_min_out;
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMinInput",
-                                                      old_deadzone_pct)) {
+                                                        old_deadzone_pct)) {
             g_shared_state->left_stick_x_min_input.store(old_deadzone_pct / 100.0f);
             g_shared_state->left_stick_y_min_input.store(old_deadzone_pct / 100.0f);
         }
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickSensitivity",
-                                                      old_sensitivity)) {
+                                                        old_sensitivity)) {
             g_shared_state->left_stick_x_max_input.store(old_sensitivity);
             g_shared_state->left_stick_y_max_input.store(old_sensitivity);
         }
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "LeftStickMaxOutput",
-                                                      old_min_out)) {
+                                                        old_min_out)) {
             g_shared_state->left_stick_x_min_output.store(old_min_out);
             g_shared_state->left_stick_y_min_output.store(old_min_out);
         }
@@ -1267,26 +1281,26 @@ void XInputWidget::LoadSettings() {
 
     float right_min_in, right_max_in, right_min_out, right_max_out;
     if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMinInput",
-                                                    right_min_in) &&
-        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMaxInput",
-                                                  right_max_in) &&
-        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMinOutput",
-                                                  right_min_out) &&
-        display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMaxOutput",
-                                                  right_max_out)) {
+                                                    right_min_in)
+        && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMaxInput",
+                                                       right_max_in)
+        && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMinOutput",
+                                                       right_min_out)
+        && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickXMaxOutput",
+                                                       right_max_out)) {
         g_shared_state->right_stick_x_min_input.store(right_min_in);
         g_shared_state->right_stick_x_max_input.store(right_max_in);
         g_shared_state->right_stick_x_min_output.store(right_min_out);
         g_shared_state->right_stick_x_max_output.store(right_max_out);
         float ry_min_in, ry_max_in, ry_min_out, ry_max_out;
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMinInput",
-                                                        ry_min_in) &&
-            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMaxInput",
-                                                      ry_max_in) &&
-            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMinOutput",
-                                                      ry_min_out) &&
-            display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMaxOutput",
-                                                      ry_max_out)) {
+                                                        ry_min_in)
+            && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMaxInput",
+                                                           ry_max_in)
+            && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMinOutput",
+                                                           ry_min_out)
+            && display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickYMaxOutput",
+                                                           ry_max_out)) {
             g_shared_state->right_stick_y_min_input.store(ry_min_in);
             g_shared_state->right_stick_y_max_input.store(ry_max_in);
             g_shared_state->right_stick_y_min_output.store(ry_min_out);
@@ -1300,17 +1314,17 @@ void XInputWidget::LoadSettings() {
     } else {
         float old_deadzone_pct, old_sensitivity, old_min_out;
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMinInput",
-                                                      old_deadzone_pct)) {
+                                                        old_deadzone_pct)) {
             g_shared_state->right_stick_x_min_input.store(old_deadzone_pct / 100.0f);
             g_shared_state->right_stick_y_min_input.store(old_deadzone_pct / 100.0f);
         }
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickSensitivity",
-                                                      old_sensitivity)) {
+                                                        old_sensitivity)) {
             g_shared_state->right_stick_x_max_input.store(old_sensitivity);
             g_shared_state->right_stick_y_max_input.store(old_sensitivity);
         }
         if (display_commander::config::get_config_value("DisplayCommander.XInputWidget", "RightStickMaxOutput",
-                                                      old_min_out)) {
+                                                        old_min_out)) {
             g_shared_state->right_stick_x_min_output.store(old_min_out);
             g_shared_state->right_stick_y_min_output.store(old_min_out);
         }
@@ -1602,8 +1616,9 @@ void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.CollapsingHeader("Active input APIs (last 10s)", ImGuiTreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("APIs the game has used recently (at least one call in the last 10 seconds). "
-                             "Similar to Special K input API display.");
+            imgui.SetTooltip(
+                "APIs the game has used recently (at least one call in the last 10 seconds). "
+                "Similar to Special K input API display.");
         }
         if (active_names.empty()) {
             imgui.TextColored(::ui::colors::TEXT_DIMMED, "None (no input API calls in the last 10 seconds)");
@@ -1615,6 +1630,15 @@ void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui) {
                     imgui.SameLine();
                 }
                 imgui.TextColored(::ui::colors::TEXT_DEFAULT, "%s", active_names[i].c_str());
+            }
+        }
+        if (display_commanderhooks::g_wgi_state.wgi_suppressed_ever.load()) {
+            imgui.Spacing();
+            imgui.TextColored(::ui::colors::ICON_WARNING, "WindowsGamingInput was suppressed");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "The game requested Windows.Gaming.Input but it was blocked (E_NOTIMPL). Game may use XInput "
+                    "instead.");
             }
         }
         imgui.Unindent();
@@ -1891,180 +1915,180 @@ void XInputWidget::DrawDualSenseReport(display_commander::ui::IImGuiWrapper& img
             // Basic input data
             if (imgui.CollapsingHeader("Input Data", 0)) {
                 imgui.Indent();
-                    imgui.Columns(2, "SKInputColumns", false);
+                imgui.Columns(2, "SKInputColumns", false);
 
-                    // Sticks
-                    imgui.Text("Left Stick: X=%d, Y=%d", sk_data.LeftStickX, sk_data.LeftStickY);
-                    imgui.NextColumn();
-                    imgui.Text("Right Stick: X=%d, Y=%d", sk_data.RightStickX, sk_data.RightStickY);
-                    imgui.NextColumn();
+                // Sticks
+                imgui.Text("Left Stick: X=%d, Y=%d", sk_data.LeftStickX, sk_data.LeftStickY);
+                imgui.NextColumn();
+                imgui.Text("Right Stick: X=%d, Y=%d", sk_data.RightStickX, sk_data.RightStickY);
+                imgui.NextColumn();
 
-                    // Triggers
-                    imgui.Text("Left Trigger: %d", sk_data.TriggerLeft);
-                    imgui.NextColumn();
-                    imgui.Text("Right Trigger: %d", sk_data.TriggerRight);
-                    imgui.NextColumn();
+                // Triggers
+                imgui.Text("Left Trigger: %d", sk_data.TriggerLeft);
+                imgui.NextColumn();
+                imgui.Text("Right Trigger: %d", sk_data.TriggerRight);
+                imgui.NextColumn();
 
-                    // D-pad
-                    const char* dpad_names[] = {"Up",        "Up-Right", "Right",   "Down-Right", "Down",
-                                                "Down-Left", "Left",     "Up-Left", "None"};
-                    imgui.Text("D-Pad: %s", dpad_names[static_cast<int>(sk_data.DPad)]);
-                    imgui.NextColumn();
-                    imgui.Text("Sequence: %d", sk_data.SeqNo);
-                    imgui.NextColumn();
+                // D-pad
+                const char* dpad_names[] = {"Up",        "Up-Right", "Right",   "Down-Right", "Down",
+                                            "Down-Left", "Left",     "Up-Left", "None"};
+                imgui.Text("D-Pad: %s", dpad_names[static_cast<int>(sk_data.DPad)]);
+                imgui.NextColumn();
+                imgui.Text("Sequence: %d", sk_data.SeqNo);
+                imgui.NextColumn();
 
-                    imgui.Columns(1);
-                    imgui.Unindent();
-                }
-
-                // Button states
-                if (imgui.CollapsingHeader("Button States", 0)) {
-                    imgui.Indent();
-                    imgui.Columns(3, "SKButtonColumns", false);
-
-                    // Face buttons
-                    imgui.Text("Square: %s", sk_data.ButtonSquare ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Cross: %s", sk_data.ButtonCross ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Circle: %s", sk_data.ButtonCircle ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Triangle: %s", sk_data.ButtonTriangle ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-
-                    // Shoulder buttons
-                    imgui.Text("L1: %s", sk_data.ButtonL1 ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("R1: %s", sk_data.ButtonR1 ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("L2: %s", sk_data.ButtonL2 ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("R2: %s", sk_data.ButtonR2 ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-
-                    // System buttons
-                    imgui.Text("Create: %s", sk_data.ButtonCreate ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Options: %s", sk_data.ButtonOptions ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("L3: %s", sk_data.ButtonL3 ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("R3: %s", sk_data.ButtonR3 ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Home: %s", sk_data.ButtonHome ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Touchpad: %s", sk_data.ButtonPad ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-                    imgui.Text("Mute: %s", sk_data.ButtonMute ? "PRESSED" : "Released");
-                    imgui.NextColumn();
-
-                    // Edge controller buttons
-                    if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle
-                        || sk_data.ButtonRightPaddle) {
-                        imgui.Text("Left Function: %s", sk_data.ButtonLeftFunction ? "PRESSED" : "Released");
-                        imgui.NextColumn();
-                        imgui.Text("Right Function: %s", sk_data.ButtonRightFunction ? "PRESSED" : "Released");
-                        imgui.NextColumn();
-                        imgui.Text("Left Paddle: %s", sk_data.ButtonLeftPaddle ? "PRESSED" : "Released");
-                        imgui.NextColumn();
-                        imgui.Text("Right Paddle: %s", sk_data.ButtonRightPaddle ? "PRESSED" : "Released");
-                        imgui.NextColumn();
-                    }
-
-                    imgui.Columns(1);
-                    imgui.Unindent();
-                }
-
-                // Battery and power
-                if (imgui.CollapsingHeader("Battery & Power")) {
-                    imgui.Indent();
-                    imgui.Columns(2, "SKPowerColumns", false);
-
-                    imgui.Text("Battery: %d%%", sk_data.PowerPercent * 10);
-                    imgui.NextColumn();
-                    const char* power_state_names[] = {"Unknown", "Charging", "Discharging", "Not Charging", "Full"};
-                    imgui.Text("Power State: %s", power_state_names[static_cast<int>(sk_data.PowerState)]);
-                    imgui.NextColumn();
-                    imgui.Text("USB Data: %s", sk_data.PluggedUsbData ? "Yes" : "No");
-                    imgui.NextColumn();
-                    imgui.Text("USB Power: %s", sk_data.PluggedUsbPower ? "Yes" : "No");
-                    imgui.NextColumn();
-                    imgui.Text("Headphones: %s", sk_data.PluggedHeadphones ? "Yes" : "No");
-                    imgui.NextColumn();
-                    imgui.Text("Microphone: %s", sk_data.PluggedMic ? "Yes" : "No");
-                    imgui.NextColumn();
-                    imgui.Text("External Mic: %s", sk_data.PluggedExternalMic ? "Yes" : "No");
-                    imgui.NextColumn();
-                    imgui.Text("Mic Muted: %s", sk_data.MicMuted ? "Yes" : "No");
-                    imgui.NextColumn();
-                    imgui.Text("Haptic Filter: %s", sk_data.HapticLowPassFilter ? "On" : "Off");
-                    imgui.NextColumn();
-
-                    imgui.Columns(1);
-                    imgui.Unindent();
-                }
-
-                // Motion sensors
-                if (imgui.CollapsingHeader("Motion Sensors")) {
-                    imgui.Indent();
-                    imgui.Columns(2, "SKMotionColumns", false);
-
-                    imgui.Text("Angular Velocity X: %d", sk_data.AngularVelocityX);
-                    imgui.NextColumn();
-                    imgui.Text("Angular Velocity Y: %d", sk_data.AngularVelocityY);
-                    imgui.NextColumn();
-                    imgui.Text("Angular Velocity Z: %d", sk_data.AngularVelocityZ);
-                    imgui.NextColumn();
-                    imgui.Text("Accelerometer X: %d", sk_data.AccelerometerX);
-                    imgui.NextColumn();
-                    imgui.Text("Accelerometer Y: %d", sk_data.AccelerometerY);
-                    imgui.NextColumn();
-                    imgui.Text("Accelerometer Z: %d", sk_data.AccelerometerZ);
-                    imgui.NextColumn();
-                    imgui.Text("Temperature: %d°C", sk_data.Temperature);
-                    imgui.NextColumn();
-                    imgui.Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
-                    imgui.NextColumn();
-
-                    imgui.Columns(1);
-                    imgui.Unindent();
-                }
-
-                // Adaptive triggers
-                if (imgui.CollapsingHeader("Adaptive Triggers")) {
-                    imgui.Indent();
-                    imgui.Columns(2, "SKTriggerColumns", false);
-
-                    imgui.Text("Left Trigger Status: %d", sk_data.TriggerLeftStatus);
-                    imgui.NextColumn();
-                    imgui.Text("Right Trigger Status: %d", sk_data.TriggerRightStatus);
-                    imgui.NextColumn();
-                    imgui.Text("Left Stop Location: %d", sk_data.TriggerLeftStopLocation);
-                    imgui.NextColumn();
-                    imgui.Text("Right Stop Location: %d", sk_data.TriggerRightStopLocation);
-                    imgui.NextColumn();
-                    imgui.Text("Left Effect: %d", sk_data.TriggerLeftEffect);
-                    imgui.NextColumn();
-                    imgui.Text("Right Effect: %d", sk_data.TriggerRightEffect);
-                    imgui.NextColumn();
-
-                    imgui.Columns(1);
-                    imgui.Unindent();
-                }
-
-                // Timestamps
-                if (imgui.CollapsingHeader("Timestamps")) {
-                    imgui.Indent();
-                    imgui.Text("Host Timestamp: %u", sk_data.HostTimestamp);
-                    imgui.Text("Device Timestamp: %u", sk_data.DeviceTimeStamp);
-                    imgui.Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
-                    imgui.Unindent();
-                }
+                imgui.Columns(1);
                 imgui.Unindent();
             }
-        } else {
-            imgui.TextColored(::ui::colors::TEXT_DIMMED, "No input report data available");
+
+            // Button states
+            if (imgui.CollapsingHeader("Button States", 0)) {
+                imgui.Indent();
+                imgui.Columns(3, "SKButtonColumns", false);
+
+                // Face buttons
+                imgui.Text("Square: %s", sk_data.ButtonSquare ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("Cross: %s", sk_data.ButtonCross ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("Circle: %s", sk_data.ButtonCircle ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("Triangle: %s", sk_data.ButtonTriangle ? "PRESSED" : "Released");
+                imgui.NextColumn();
+
+                // Shoulder buttons
+                imgui.Text("L1: %s", sk_data.ButtonL1 ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("R1: %s", sk_data.ButtonR1 ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("L2: %s", sk_data.ButtonL2 ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("R2: %s", sk_data.ButtonR2 ? "PRESSED" : "Released");
+                imgui.NextColumn();
+
+                // System buttons
+                imgui.Text("Create: %s", sk_data.ButtonCreate ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("Options: %s", sk_data.ButtonOptions ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("L3: %s", sk_data.ButtonL3 ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("R3: %s", sk_data.ButtonR3 ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("Home: %s", sk_data.ButtonHome ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("Touchpad: %s", sk_data.ButtonPad ? "PRESSED" : "Released");
+                imgui.NextColumn();
+                imgui.Text("Mute: %s", sk_data.ButtonMute ? "PRESSED" : "Released");
+                imgui.NextColumn();
+
+                // Edge controller buttons
+                if (sk_data.ButtonLeftFunction || sk_data.ButtonRightFunction || sk_data.ButtonLeftPaddle
+                    || sk_data.ButtonRightPaddle) {
+                    imgui.Text("Left Function: %s", sk_data.ButtonLeftFunction ? "PRESSED" : "Released");
+                    imgui.NextColumn();
+                    imgui.Text("Right Function: %s", sk_data.ButtonRightFunction ? "PRESSED" : "Released");
+                    imgui.NextColumn();
+                    imgui.Text("Left Paddle: %s", sk_data.ButtonLeftPaddle ? "PRESSED" : "Released");
+                    imgui.NextColumn();
+                    imgui.Text("Right Paddle: %s", sk_data.ButtonRightPaddle ? "PRESSED" : "Released");
+                    imgui.NextColumn();
+                }
+
+                imgui.Columns(1);
+                imgui.Unindent();
+            }
+
+            // Battery and power
+            if (imgui.CollapsingHeader("Battery & Power")) {
+                imgui.Indent();
+                imgui.Columns(2, "SKPowerColumns", false);
+
+                imgui.Text("Battery: %d%%", sk_data.PowerPercent * 10);
+                imgui.NextColumn();
+                const char* power_state_names[] = {"Unknown", "Charging", "Discharging", "Not Charging", "Full"};
+                imgui.Text("Power State: %s", power_state_names[static_cast<int>(sk_data.PowerState)]);
+                imgui.NextColumn();
+                imgui.Text("USB Data: %s", sk_data.PluggedUsbData ? "Yes" : "No");
+                imgui.NextColumn();
+                imgui.Text("USB Power: %s", sk_data.PluggedUsbPower ? "Yes" : "No");
+                imgui.NextColumn();
+                imgui.Text("Headphones: %s", sk_data.PluggedHeadphones ? "Yes" : "No");
+                imgui.NextColumn();
+                imgui.Text("Microphone: %s", sk_data.PluggedMic ? "Yes" : "No");
+                imgui.NextColumn();
+                imgui.Text("External Mic: %s", sk_data.PluggedExternalMic ? "Yes" : "No");
+                imgui.NextColumn();
+                imgui.Text("Mic Muted: %s", sk_data.MicMuted ? "Yes" : "No");
+                imgui.NextColumn();
+                imgui.Text("Haptic Filter: %s", sk_data.HapticLowPassFilter ? "On" : "Off");
+                imgui.NextColumn();
+
+                imgui.Columns(1);
+                imgui.Unindent();
+            }
+
+            // Motion sensors
+            if (imgui.CollapsingHeader("Motion Sensors")) {
+                imgui.Indent();
+                imgui.Columns(2, "SKMotionColumns", false);
+
+                imgui.Text("Angular Velocity X: %d", sk_data.AngularVelocityX);
+                imgui.NextColumn();
+                imgui.Text("Angular Velocity Y: %d", sk_data.AngularVelocityY);
+                imgui.NextColumn();
+                imgui.Text("Angular Velocity Z: %d", sk_data.AngularVelocityZ);
+                imgui.NextColumn();
+                imgui.Text("Accelerometer X: %d", sk_data.AccelerometerX);
+                imgui.NextColumn();
+                imgui.Text("Accelerometer Y: %d", sk_data.AccelerometerY);
+                imgui.NextColumn();
+                imgui.Text("Accelerometer Z: %d", sk_data.AccelerometerZ);
+                imgui.NextColumn();
+                imgui.Text("Temperature: %d°C", sk_data.Temperature);
+                imgui.NextColumn();
+                imgui.Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
+                imgui.NextColumn();
+
+                imgui.Columns(1);
+                imgui.Unindent();
+            }
+
+            // Adaptive triggers
+            if (imgui.CollapsingHeader("Adaptive Triggers")) {
+                imgui.Indent();
+                imgui.Columns(2, "SKTriggerColumns", false);
+
+                imgui.Text("Left Trigger Status: %d", sk_data.TriggerLeftStatus);
+                imgui.NextColumn();
+                imgui.Text("Right Trigger Status: %d", sk_data.TriggerRightStatus);
+                imgui.NextColumn();
+                imgui.Text("Left Stop Location: %d", sk_data.TriggerLeftStopLocation);
+                imgui.NextColumn();
+                imgui.Text("Right Stop Location: %d", sk_data.TriggerRightStopLocation);
+                imgui.NextColumn();
+                imgui.Text("Left Effect: %d", sk_data.TriggerLeftEffect);
+                imgui.NextColumn();
+                imgui.Text("Right Effect: %d", sk_data.TriggerRightEffect);
+                imgui.NextColumn();
+
+                imgui.Columns(1);
+                imgui.Unindent();
+            }
+
+            // Timestamps
+            if (imgui.CollapsingHeader("Timestamps")) {
+                imgui.Indent();
+                imgui.Text("Host Timestamp: %u", sk_data.HostTimestamp);
+                imgui.Text("Device Timestamp: %u", sk_data.DeviceTimeStamp);
+                imgui.Text("Sensor Timestamp: %u", sk_data.SensorTimestamp);
+                imgui.Unindent();
+            }
+            imgui.Unindent();
         }
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "No input report data available");
+    }
 }
 
 // Autofire functions
@@ -2075,296 +2099,294 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
     }
 
     // Master enable/disable
-        bool autofire_enabled = shared_state->autofire_enabled.load();
-        if (imgui.Checkbox("Enable Autofire", &autofire_enabled)) {
-            shared_state->autofire_enabled.store(autofire_enabled);
+    bool autofire_enabled = shared_state->autofire_enabled.load();
+    if (imgui.Checkbox("Enable Autofire", &autofire_enabled)) {
+        shared_state->autofire_enabled.store(autofire_enabled);
 
-            // When disabling autofire, reset all autofire button and trigger states
-            if (!autofire_enabled) {
-                utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                for (auto& af_button : shared_state->autofire_buttons) {
-                    af_button.is_holding_down.store(true);
-                    af_button.phase_start_frame_id.store(0);
-                }
-                for (auto& af_trigger : shared_state->autofire_triggers) {
-                    af_trigger.is_holding_down.store(true);
-                    af_trigger.phase_start_frame_id.store(0);
-                }
+        // When disabling autofire, reset all autofire button and trigger states
+        if (!autofire_enabled) {
+            utils::SRWLockExclusive lock(shared_state->autofire_lock);
+            for (auto& af_button : shared_state->autofire_buttons) {
+                af_button.is_holding_down.store(true);
+                af_button.phase_start_frame_id.store(0);
             }
+            for (auto& af_trigger : shared_state->autofire_triggers) {
+                af_trigger.is_holding_down.store(true);
+                af_trigger.phase_start_frame_id.store(0);
+            }
+        }
 
+        SaveSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Enable autofire for selected buttons. When a button is held, it will cycle between hold down and hold "
+            "up phases.");
+    }
+
+    if (autofire_enabled) {
+        imgui.Spacing();
+
+        // Hold down frames setting
+        uint32_t hold_down_frames = shared_state->autofire_hold_down_frames.load();
+        int hold_down_frames_int = static_cast<int>(hold_down_frames);
+
+        imgui.Text("Hold Down (frames): %d", hold_down_frames_int);
+        imgui.SameLine();
+
+        // Input field for precise control
+        imgui.SetNextItemWidth(80);
+        if (imgui.InputInt("##HoldDownFramesInput", &hold_down_frames_int, 1, 5,
+                           ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (hold_down_frames_int < 1) {
+                hold_down_frames_int = 1;
+            } else if (hold_down_frames_int > 1000) {
+                hold_down_frames_int = 1000;
+            }
+            shared_state->autofire_hold_down_frames.store(static_cast<uint32_t>(hold_down_frames_int));
             SaveSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Enable autofire for selected buttons. When a button is held, it will cycle between hold down and hold "
-                "up phases.");
+            imgui.SetTooltip("Number of frames to hold button down (1-1000). Enter a value or use slider below.");
         }
 
-        if (autofire_enabled) {
-            imgui.Spacing();
+        // Slider for quick adjustment (1-60 range for common use)
+        int slider_value_down = hold_down_frames_int;
+        if (slider_value_down > 60) slider_value_down = 60;  // Clamp for slider display
+        if (imgui.SliderInt("##HoldDownFramesSlider", &slider_value_down, 1, 60, "%d frames")) {
+            shared_state->autofire_hold_down_frames.store(static_cast<uint32_t>(slider_value_down));
+            SaveSettings();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
+        }
 
-            // Hold down frames setting
-            uint32_t hold_down_frames = shared_state->autofire_hold_down_frames.load();
-            int hold_down_frames_int = static_cast<int>(hold_down_frames);
+        imgui.Spacing();
 
-            imgui.Text("Hold Down (frames): %d", hold_down_frames_int);
-            imgui.SameLine();
+        // Hold up frames setting
+        uint32_t hold_up_frames = shared_state->autofire_hold_up_frames.load();
+        int hold_up_frames_int = static_cast<int>(hold_up_frames);
 
-            // Input field for precise control
-            imgui.SetNextItemWidth(80);
-            if (imgui.InputInt("##HoldDownFramesInput", &hold_down_frames_int, 1, 5,
-                               ImGuiInputTextFlags_EnterReturnsTrue)) {
-                if (hold_down_frames_int < 1) {
-                    hold_down_frames_int = 1;
-                } else if (hold_down_frames_int > 1000) {
-                    hold_down_frames_int = 1000;
+        imgui.Text("Hold Up (frames): %d", hold_up_frames_int);
+        imgui.SameLine();
+
+        // Input field for precise control
+        imgui.SetNextItemWidth(80);
+        if (imgui.InputInt("##HoldUpFramesInput", &hold_up_frames_int, 1, 5, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (hold_up_frames_int < 1) {
+                hold_up_frames_int = 1;
+            } else if (hold_up_frames_int > 1000) {
+                hold_up_frames_int = 1000;
+            }
+            shared_state->autofire_hold_up_frames.store(static_cast<uint32_t>(hold_up_frames_int));
+            SaveSettings();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Number of frames to hold button up (1-1000). Enter a value or use slider below.");
+        }
+
+        // Slider for quick adjustment (1-60 range for common use)
+        int slider_value_up = hold_up_frames_int;
+        if (slider_value_up > 60) slider_value_up = 60;  // Clamp for slider display
+        if (imgui.SliderInt("##HoldUpFramesSlider", &slider_value_up, 1, 60, "%d frames")) {
+            shared_state->autofire_hold_up_frames.store(static_cast<uint32_t>(slider_value_up));
+            SaveSettings();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
+        }
+
+        // Show effective rate information
+        uint32_t total_cycle_frames = hold_down_frames + hold_up_frames;
+        if (total_cycle_frames > 0) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED,
+                              "  Cycle: %u frames total | At 60 FPS: ~%.1f cycles/sec | At 120 FPS: ~%.1f cycles/sec",
+                              total_cycle_frames, 60.0f / total_cycle_frames, 120.0f / total_cycle_frames);
+        }
+
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Text("Select buttons for autofire:");
+
+        // Button selection checkboxes
+        const struct {
+            WORD mask;
+            const char* name;
+        } buttons[] = {
+            {XINPUT_GAMEPAD_A, "A"},
+            {XINPUT_GAMEPAD_B, "B"},
+            {XINPUT_GAMEPAD_X, "X"},
+            {XINPUT_GAMEPAD_Y, "Y"},
+            {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
+            {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
+            {XINPUT_GAMEPAD_BACK, "View"},
+            {XINPUT_GAMEPAD_START, "Menu"},
+            {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
+            {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
+            {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},
+            {XINPUT_GAMEPAD_DPAD_DOWN, "D-Down"},
+            {XINPUT_GAMEPAD_DPAD_LEFT, "D-Left"},
+            {XINPUT_GAMEPAD_DPAD_RIGHT, "D-Right"},
+        };
+
+        // Helper lambda to check if button exists (thread-safe)
+        auto is_autofire_button = [&shared_state](WORD button_mask) -> bool {
+            utils::SRWLockShared lock(shared_state->autofire_lock);
+            for (const auto& af_button : shared_state->autofire_buttons) {
+                if (af_button.button_mask == button_mask) {
+                    return true;
                 }
-                shared_state->autofire_hold_down_frames.store(static_cast<uint32_t>(hold_down_frames_int));
-                SaveSettings();
             }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Number of frames to hold button down (1-1000). Enter a value or use slider below.");
-            }
+            return false;
+        };
 
-            // Slider for quick adjustment (1-60 range for common use)
-            int slider_value_down = hold_down_frames_int;
-            if (slider_value_down > 60) slider_value_down = 60;  // Clamp for slider display
-            if (imgui.SliderInt("##HoldDownFramesSlider", &slider_value_down, 1, 60, "%d frames")) {
-                shared_state->autofire_hold_down_frames.store(static_cast<uint32_t>(slider_value_down));
-                SaveSettings();
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
-            }
+        // Display checkboxes in a grid
+        for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i += 2) {
+            if (i + 1 < sizeof(buttons) / sizeof(buttons[0])) {
+                // Two buttons per row
+                bool is_enabled1 = is_autofire_button(buttons[i].mask);
+                bool is_enabled2 = is_autofire_button(buttons[i + 1].mask);
 
-            imgui.Spacing();
-
-            // Hold up frames setting
-            uint32_t hold_up_frames = shared_state->autofire_hold_up_frames.load();
-            int hold_up_frames_int = static_cast<int>(hold_up_frames);
-
-            imgui.Text("Hold Up (frames): %d", hold_up_frames_int);
-            imgui.SameLine();
-
-            // Input field for precise control
-            imgui.SetNextItemWidth(80);
-            if (imgui.InputInt("##HoldUpFramesInput", &hold_up_frames_int, 1, 5,
-                               ImGuiInputTextFlags_EnterReturnsTrue)) {
-                if (hold_up_frames_int < 1) {
-                    hold_up_frames_int = 1;
-                } else if (hold_up_frames_int > 1000) {
-                    hold_up_frames_int = 1000;
-                }
-                shared_state->autofire_hold_up_frames.store(static_cast<uint32_t>(hold_up_frames_int));
-                SaveSettings();
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Number of frames to hold button up (1-1000). Enter a value or use slider below.");
-            }
-
-            // Slider for quick adjustment (1-60 range for common use)
-            int slider_value_up = hold_up_frames_int;
-            if (slider_value_up > 60) slider_value_up = 60;  // Clamp for slider display
-            if (imgui.SliderInt("##HoldUpFramesSlider", &slider_value_up, 1, 60, "%d frames")) {
-                shared_state->autofire_hold_up_frames.store(static_cast<uint32_t>(slider_value_up));
-                SaveSettings();
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
-            }
-
-            // Show effective rate information
-            uint32_t total_cycle_frames = hold_down_frames + hold_up_frames;
-            if (total_cycle_frames > 0) {
-                imgui.TextColored(
-                    ::ui::colors::TEXT_DIMMED,
-                    "  Cycle: %u frames total | At 60 FPS: ~%.1f cycles/sec | At 120 FPS: ~%.1f cycles/sec",
-                    total_cycle_frames, 60.0f / total_cycle_frames, 120.0f / total_cycle_frames);
-            }
-
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Text("Select buttons for autofire:");
-
-            // Button selection checkboxes
-            const struct {
-                WORD mask;
-                const char* name;
-            } buttons[] = {
-                {XINPUT_GAMEPAD_A, "A"},
-                {XINPUT_GAMEPAD_B, "B"},
-                {XINPUT_GAMEPAD_X, "X"},
-                {XINPUT_GAMEPAD_Y, "Y"},
-                {XINPUT_GAMEPAD_LEFT_SHOULDER, "LB"},
-                {XINPUT_GAMEPAD_RIGHT_SHOULDER, "RB"},
-                {XINPUT_GAMEPAD_BACK, "View"},
-                {XINPUT_GAMEPAD_START, "Menu"},
-                {XINPUT_GAMEPAD_LEFT_THUMB, "LS"},
-                {XINPUT_GAMEPAD_RIGHT_THUMB, "RS"},
-                {XINPUT_GAMEPAD_DPAD_UP, "D-Up"},
-                {XINPUT_GAMEPAD_DPAD_DOWN, "D-Down"},
-                {XINPUT_GAMEPAD_DPAD_LEFT, "D-Left"},
-                {XINPUT_GAMEPAD_DPAD_RIGHT, "D-Right"},
-            };
-
-            // Helper lambda to check if button exists (thread-safe)
-            auto is_autofire_button = [&shared_state](WORD button_mask) -> bool {
-                utils::SRWLockShared lock(shared_state->autofire_lock);
-                for (const auto& af_button : shared_state->autofire_buttons) {
-                    if (af_button.button_mask == button_mask) {
-                        return true;
-                    }
-                }
-                return false;
-            };
-
-            // Display checkboxes in a grid
-            for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); i += 2) {
-                if (i + 1 < sizeof(buttons) / sizeof(buttons[0])) {
-                    // Two buttons per row
-                    bool is_enabled1 = is_autofire_button(buttons[i].mask);
-                    bool is_enabled2 = is_autofire_button(buttons[i + 1].mask);
-
-                    if (imgui.Checkbox(buttons[i].name, &is_enabled1)) {
-                        {
-                            // Acquire lock only for modification
-                            utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                            if (is_enabled1) {
-                                // Add button
-                                bool exists = false;
-                                for (const auto& af_button : shared_state->autofire_buttons) {
-                                    if (af_button.button_mask == buttons[i].mask) {
-                                        exists = true;
-                                        break;
-                                    }
+                if (imgui.Checkbox(buttons[i].name, &is_enabled1)) {
+                    {
+                        // Acquire lock only for modification
+                        utils::SRWLockExclusive lock(shared_state->autofire_lock);
+                        if (is_enabled1) {
+                            // Add button
+                            bool exists = false;
+                            for (const auto& af_button : shared_state->autofire_buttons) {
+                                if (af_button.button_mask == buttons[i].mask) {
+                                    exists = true;
+                                    break;
                                 }
-                                if (!exists) {
-                                    shared_state->autofire_buttons.push_back(
-                                        XInputSharedState::AutofireButton(buttons[i].mask));
-                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
-                                            buttons[i].mask);
-                                }
-                            } else {
-                                // Remove button
-                                auto it = std::remove_if(
-                                    shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                    [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
-                                        return af_button.button_mask == buttons[i].mask;
-                                    });
-                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                            }
+                            if (!exists) {
+                                shared_state->autofire_buttons.push_back(
+                                    XInputSharedState::AutofireButton(buttons[i].mask));
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
                                         buttons[i].mask);
                             }
-                        }  // Lock released here
-                        SaveSettings();
-                    }
+                        } else {
+                            // Remove button
+                            auto it = std::remove_if(shared_state->autofire_buttons.begin(),
+                                                     shared_state->autofire_buttons.end(),
+                                                     [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
+                                                         return af_button.button_mask == buttons[i].mask;
+                                                     });
+                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                                    buttons[i].mask);
+                        }
+                    }  // Lock released here
+                    SaveSettings();
+                }
 
-                    imgui.SameLine();
+                imgui.SameLine();
 
-                    if (imgui.Checkbox(buttons[i + 1].name, &is_enabled2)) {
-                        {
-                            // Acquire lock only for modification
-                            utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                            if (is_enabled2) {
-                                // Add button
-                                bool exists = false;
-                                for (const auto& af_button : shared_state->autofire_buttons) {
-                                    if (af_button.button_mask == buttons[i + 1].mask) {
-                                        exists = true;
-                                        break;
-                                    }
+                if (imgui.Checkbox(buttons[i + 1].name, &is_enabled2)) {
+                    {
+                        // Acquire lock only for modification
+                        utils::SRWLockExclusive lock(shared_state->autofire_lock);
+                        if (is_enabled2) {
+                            // Add button
+                            bool exists = false;
+                            for (const auto& af_button : shared_state->autofire_buttons) {
+                                if (af_button.button_mask == buttons[i + 1].mask) {
+                                    exists = true;
+                                    break;
                                 }
-                                if (!exists) {
-                                    shared_state->autofire_buttons.push_back(
-                                        XInputSharedState::AutofireButton(buttons[i + 1].mask));
-                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
-                                            buttons[i + 1].mask);
-                                }
-                            } else {
-                                // Remove button
-                                auto it = std::remove_if(
-                                    shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                    [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
-                                        return af_button.button_mask == buttons[i + 1].mask;
-                                    });
-                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                            }
+                            if (!exists) {
+                                shared_state->autofire_buttons.push_back(
+                                    XInputSharedState::AutofireButton(buttons[i + 1].mask));
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
                                         buttons[i + 1].mask);
                             }
-                        }  // Lock released here
-                        SaveSettings();
-                    }
-                } else {
-                    // Single button on last row
-                    bool is_enabled = is_autofire_button(buttons[i].mask);
-                    if (imgui.Checkbox(buttons[i].name, &is_enabled)) {
-                        {
-                            // Acquire lock only for modification
-                            utils::SRWLockExclusive lock(shared_state->autofire_lock);
-                            if (is_enabled) {
-                                // Add button
-                                bool exists = false;
-                                for (const auto& af_button : shared_state->autofire_buttons) {
-                                    if (af_button.button_mask == buttons[i].mask) {
-                                        exists = true;
-                                        break;
-                                    }
+                        } else {
+                            // Remove button
+                            auto it = std::remove_if(shared_state->autofire_buttons.begin(),
+                                                     shared_state->autofire_buttons.end(),
+                                                     [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
+                                                         return af_button.button_mask == buttons[i + 1].mask;
+                                                     });
+                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                                    buttons[i + 1].mask);
+                        }
+                    }  // Lock released here
+                    SaveSettings();
+                }
+            } else {
+                // Single button on last row
+                bool is_enabled = is_autofire_button(buttons[i].mask);
+                if (imgui.Checkbox(buttons[i].name, &is_enabled)) {
+                    {
+                        // Acquire lock only for modification
+                        utils::SRWLockExclusive lock(shared_state->autofire_lock);
+                        if (is_enabled) {
+                            // Add button
+                            bool exists = false;
+                            for (const auto& af_button : shared_state->autofire_buttons) {
+                                if (af_button.button_mask == buttons[i].mask) {
+                                    exists = true;
+                                    break;
                                 }
-                                if (!exists) {
-                                    shared_state->autofire_buttons.push_back(
-                                        XInputSharedState::AutofireButton(buttons[i].mask));
-                                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
-                                            buttons[i].mask);
-                                }
-                            } else {
-                                // Remove button
-                                auto it = std::remove_if(
-                                    shared_state->autofire_buttons.begin(), shared_state->autofire_buttons.end(),
-                                    [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
-                                        return af_button.button_mask == buttons[i].mask;
-                                    });
-                                shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
-                                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                            }
+                            if (!exists) {
+                                shared_state->autofire_buttons.push_back(
+                                    XInputSharedState::AutofireButton(buttons[i].mask));
+                                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for button 0x%04X",
                                         buttons[i].mask);
                             }
-                        }  // Lock released here
-                        SaveSettings();
-                    }
+                        } else {
+                            // Remove button
+                            auto it = std::remove_if(shared_state->autofire_buttons.begin(),
+                                                     shared_state->autofire_buttons.end(),
+                                                     [&buttons, i](const XInputSharedState::AutofireButton& af_button) {
+                                                         return af_button.button_mask == buttons[i].mask;
+                                                     });
+                            shared_state->autofire_buttons.erase(it, shared_state->autofire_buttons.end());
+                            LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for button 0x%04X",
+                                    buttons[i].mask);
+                        }
+                    }  // Lock released here
+                    SaveSettings();
                 }
-            }
-
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Text("Select triggers for autofire:");
-
-            // Trigger selection checkboxes
-            bool is_lt_enabled = IsAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
-            bool is_rt_enabled = IsAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
-
-            if (imgui.Checkbox("LT (Left Trigger)", &is_lt_enabled)) {
-                if (is_lt_enabled) {
-                    AddAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
-                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for LT");
-                } else {
-                    RemoveAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
-                    LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for LT");
-                }
-                SaveSettings();
-            }
-
-            imgui.SameLine();
-
-            if (imgui.Checkbox("RT (Right Trigger)", &is_rt_enabled)) {
-                if (is_rt_enabled) {
-                    AddAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
-                    LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for RT");
-                } else {
-                    RemoveAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
-                    LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for RT");
-                }
-                SaveSettings();
             }
         }
+
+        imgui.Spacing();
+        imgui.Separator();
+        imgui.Text("Select triggers for autofire:");
+
+        // Trigger selection checkboxes
+        bool is_lt_enabled = IsAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
+        bool is_rt_enabled = IsAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
+
+        if (imgui.Checkbox("LT (Left Trigger)", &is_lt_enabled)) {
+            if (is_lt_enabled) {
+                AddAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
+                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for LT");
+            } else {
+                RemoveAutofireTrigger(XInputSharedState::TriggerType::LeftTrigger);
+                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for LT");
+            }
+            SaveSettings();
+        }
+
+        imgui.SameLine();
+
+        if (imgui.Checkbox("RT (Right Trigger)", &is_rt_enabled)) {
+            if (is_rt_enabled) {
+                AddAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
+                LogInfo("XInputWidget::DrawAutofireSettings() - Added autofire for RT");
+            } else {
+                RemoveAutofireTrigger(XInputSharedState::TriggerType::RightTrigger);
+                LogInfo("XInputWidget::DrawAutofireSettings() - Removed autofire for RT");
+            }
+            SaveSettings();
+        }
+    }
 }
 
 void XInputWidget::AddAutofireButton(WORD button_mask) {

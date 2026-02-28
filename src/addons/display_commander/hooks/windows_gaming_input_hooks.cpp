@@ -1,5 +1,4 @@
 #include "windows_gaming_input_hooks.hpp"
-#include "input_activity_stats.hpp"
 #include <MinHook.h>
 #include <windows.gaming.input.h>
 #include <atomic>
@@ -10,6 +9,7 @@
 #include "../utils/logging.hpp"
 #include "globals.hpp"
 #include "hook_suppression_manager.hpp"
+#include "input_activity_stats.hpp"
 
 namespace display_commanderhooks {
 
@@ -45,33 +45,29 @@ WindowsGamingInputState g_wgi_state;
 // ABI::Windows::UI::Core::IID_ICoreWindow
 
 HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void** factory) {
-    // Block WGI for Unity only: when UnityPlayer.dll is loaded, fail the same three WGI factory
-    // requests that Special K suppresses (IGamepadStatics, IGamepadStatics2, IRawGameControllerStatics)
-    // so Unity games (e.g. Hollow Knight) fall back to XInput. Non-Unity games keep full WGI.
+    // Always block those iids.
     const bool is_blocked_iid = (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics
                                  || iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2
                                  || iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics);
 
-    const bool suppress = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
     if (is_blocked_iid) {
-        g_wgi_state.wgi_called.store(true);
-        InputActivityStats::GetInstance().MarkActive(InputApiId::WindowsGamingInput);
-        if (suppress && settings::g_advancedTabSettings.continue_rendering.GetValue()) {
-            LogInfo("Suppressing WGI factory request (Unity): %s", IIDToGUIDString(iid).c_str());
-            // if (!enabled_experimental_features) {
-            return E_NOTIMPL;
-            //   }
-        }
+        return RoGetActivationFactory_Original(activatableClassId, iid, factory);
     }
 
-    bool iUnityPlayer = GetModuleHandleA("UnityPlayer.dll") != nullptr;
-    if (iUnityPlayer && suppress) {
-        LogInfo("Suppressing WGI factory request (Unity): %s", IIDToGUIDString(iid).c_str());
-        //  if (!enabled_experimental_features) {
+    static bool is_unity_player = GetModuleHandleA("UnityPlayer.dll") != nullptr;
+    const bool suppress_for_unity = settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue();
+    const bool suppress_for_non_unity = settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue();
+    const bool should_suppress =
+        (is_unity_player && suppress_for_unity) || (!is_unity_player && suppress_for_non_unity);
+
+    if (should_suppress) {
+        g_wgi_state.wgi_suppressed_ever.store(true);
+        LogInfo("Suppressing WGI factory request: %s", IIDToGUIDString(iid).c_str());
         return E_NOTIMPL;
-        // }
     }
 
+    // Game is using WGI; show in Active inputs and forward to original.
+    InputActivityStats::GetInstance().MarkActive(InputApiId::WindowsGamingInput);
     return RoGetActivationFactory_Original(activatableClassId, iid, factory);
 }
 
@@ -81,11 +77,6 @@ bool InstallWindowsGamingInputHooks(HMODULE module) {
         return true;
     }
 
-    // Only install when user has "Suppress Windows.Gaming.Input" enabled in Advanced tab (default on).
-    if (!settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue()) {
-        LogInfo("Windows Gaming Input hooks not installed (Suppress Windows.Gaming.Input is off in Advanced tab)");
-        return false;
-    }
     if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
             display_commanderhooks::HookType::WINDOWS_GAMING_INPUT)) {
         LogInfo("Windows Gaming Input hooks installation suppressed by user setting");
@@ -149,6 +140,7 @@ void UninstallWindowsGamingInputHooks() {
     RoGetActivationFactory_Original = nullptr;
     g_wgi_state.hooks_installed.store(false);
     g_wgi_state.wgi_called.store(false);
+    g_wgi_state.wgi_suppressed_ever.store(false);
     LogInfo("Windows.Gaming.Input hooks uninstalled successfully");
 }
 

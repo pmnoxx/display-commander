@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.153 (2026-02-28)
+
+- **Removed global "Suppress Windows.Gaming.Input" setting** - The single global `suppress_windows_gaming_input` option was removed from Advanced tab and XInput widget. WGI suppression is now controlled only by the per-game-type options ("Suppress WGI for Unity games" / "Suppress WGI for non-Unity games") and by the hook suppression setting (Windows.Gaming.Input in Hook Stats / Advanced). WGI hook installation no longer checks the removed setting; only `HookSuppressionManager` and the per-game-type logic apply. Doc `RoGetActivationFactory_SpecialK_Comparison.md` updated accordingly.
+
+---
+
 ## v0.12.152 (2026-02-28)
 
 - **Active input APIs (Controller tab)** - Controller tab now shows "Active input APIs (last 10s)" derived from a single `InputActivityStats` class: XInput, DirectInput 8/7, Raw Input, HID, Windows.Gaming.Input, winmm joystick, and **GameInput (IGameInput)**. All existing input hooks update activity via `MarkActiveByHookIndex`; WGI and GameInput have dedicated hooks that call `MarkActive`. GameInput is detected by hooking `GameInputCreate` when the game loads **GameInput.dll** (Microsoft Game Input redist); LoadLibrary handling now installs GameInput hooks for `gameinput.dll` and WGI hooks only for `windows.gaming.input` modules.

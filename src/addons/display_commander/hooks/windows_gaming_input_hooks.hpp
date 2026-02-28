@@ -17,6 +17,8 @@ extern RoGetActivationFactory_pfn RoGetActivationFactory_Original;
 struct WindowsGamingInputState {
     std::atomic<bool> hooks_installed{false};
     std::atomic<bool> wgi_called{false};
+    /** Set to true whenever we return E_NOTIMPL (suppressed a WGI factory request). Used by UI to show "WindowsGamingInput was suppressed". */
+    std::atomic<bool> wgi_suppressed_ever{false};
 };
 extern WindowsGamingInputState g_wgi_state;
 

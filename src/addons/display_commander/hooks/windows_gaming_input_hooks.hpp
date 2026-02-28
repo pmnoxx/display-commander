@@ -1,7 +1,6 @@
 #pragma once
 
 #include <roapi.h>
-#include <windows.gaming.input.h>
 #include <windows.h>
 #include <wrl.h>
 #include <atomic>

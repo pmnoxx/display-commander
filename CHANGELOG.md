@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.145 (unreleased)
+
+- **Block WGI for Unity only** - Windows.Gaming.Input (WGI) factory suppression now applies only when the game is Unity. Unity is detected by the presence of UnityPlayer.dll only (same as Special K; no other Unity DLLs are checked). When "Suppress Windows.Gaming.Input" and "Continue rendering when unfocused" are on, RoGetActivationFactory requests for the three same IIDs as Special K (IGamepadStatics, IGamepadStatics2, IRawGameControllerStatics) are failed with E_NOTIMPL using hardcoded GUIDs, so Unity games (e.g. Hollow Knight) fall back to XInput. Non-Unity games are unaffected and keep full WGI support.
+
+---
+
 ## v0.12.144 (2026-02-27)
 
 - **XInput vibration test: auto-stop and timer** - Vibration test (Left/Right/Both motors) now auto-stops after 10 s. While running, the UI shows a countdown ("Stopping in X.X s"). The 10 s check runs whenever the XInput tab is visible; Stop button still ends vibration immediately.

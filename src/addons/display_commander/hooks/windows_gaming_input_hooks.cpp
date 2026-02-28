@@ -1,6 +1,5 @@
 #include "windows_gaming_input_hooks.hpp"
 #include <MinHook.h>
-#include <windows.gaming.input.h>
 #include <atomic>
 #include <string>
 #include "../settings/advanced_tab_settings.hpp"
@@ -13,6 +12,17 @@ namespace display_commanderhooks {
 
 // Original function pointer
 RoGetActivationFactory_pfn RoGetActivationFactory_Original = nullptr;
+
+// Hardcoded IIDs for the three WGI factory interfaces that Special K suppresses (same values as
+// Windows SDK / windows-rs / Special K). Avoids depending on windows.gaming.input.h.
+// See: https://github.com/SpecialKO/SpecialK/blob/main/src/input/windows.gaming.input.cpp
+// See: https://github.com/microsoft/windows-rs/blob/master/crates/libs/windows/src/Windows/Gaming/Input/mod.rs
+static const IID IID_IGamepadStatics_SK = {
+    0x8BBCE529, 0xD49C, 0x39E9, {0x95, 0x60, 0xE4, 0x7D, 0xDE, 0x96, 0xB7, 0xC8}};
+static const IID IID_IGamepadStatics2_SK = {
+    0x42676DC5, 0x0856, 0x47C4, {0x92, 0x13, 0xB3, 0x95, 0x50, 0x4C, 0x3A, 0x3C}};
+static const IID IID_IRawGameControllerStatics_SK = {
+    0xEB8D0792, 0xE95A, 0x4B19, {0xAF, 0xC7, 0x0A, 0x59, 0xF8, 0xBF, 0x75, 0x9E}};
 
 // Helper function to convert IID to GUID string format
 std::string IIDToGUIDString(const IID& iid) {
@@ -43,20 +53,28 @@ WindowsGamingInputState g_wgi_state;
 // ABI::Windows::UI::Core::IID_ICoreWindow
 
 HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void** factory) {
-    // When "Suppress Windows.Gaming.Input" is on (Advanced tab), fail only the same three WGI factory
-    // requests that Special K suppresses (blackout_api): IGamepadStatics, IGamepadStatics2,
-    // IRawGameControllerStatics. That makes the game fall back to XInput for gamepad; other WGI
-    // interfaces (racing wheel, arcade stick, etc.) are left intact. Example: Hollow Knight
-    if ((iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics
-         || iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2
-         || iid == ABI::Windows::Gaming::Input::IID_IRawGameControllerStatics)) {
+    // Block WGI for Unity only: when UnityPlayer.dll is loaded, fail the same three WGI factory
+    // requests that Special K suppresses (IGamepadStatics, IGamepadStatics2, IRawGameControllerStatics)
+    // so Unity games (e.g. Hollow Knight) fall back to XInput. Non-Unity games keep full WGI.
+    const bool is_blocked_iid =
+        (IsEqualGUID(iid, IID_IGamepadStatics_SK) != 0 || IsEqualGUID(iid, IID_IGamepadStatics2_SK) != 0
+         || IsEqualGUID(iid, IID_IRawGameControllerStatics_SK) != 0);
+
+    const bool suppress = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
+    if (is_blocked_iid) {
         g_wgi_state.wgi_called.store(true);
-        const bool suppress = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
         if (suppress && settings::g_advancedTabSettings.continue_rendering.GetValue()) {
-            LogInfo("Suppressing WGI factory request: %s", IIDToGUIDString(iid).c_str());
+            LogInfo("Suppressing WGI factory request (Unity): %s", IIDToGUIDString(iid).c_str());
             return E_NOTIMPL;
         }
     }
+
+    bool iUnityPlayer = GetModuleHandleA("UnityPlayer.dll") != nullptr;
+    if (iUnityPlayer && suppress) {
+        LogInfo("Suppressing WGI factory request (Unity): %s", IIDToGUIDString(iid).c_str());
+        return E_NOTIMPL;
+    }
+
     return RoGetActivationFactory_Original(activatableClassId, iid, factory);
 }
 

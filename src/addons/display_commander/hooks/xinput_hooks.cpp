@@ -263,7 +263,7 @@ void ApplyThumbstickProcessing(
         ProcessStickInputRadial(lx, ly, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x);
     } else {
         ProcessStickInputSquare(lx, ly, lmin_in_x, lmax_in_x, lmin_out_x, lmax_out_x, lmin_in_y, lmax_in_y, lmin_out_y,
-                               lmax_out_y);
+                                lmax_out_y);
     }
     pState->Gamepad.sThumbLX = FloatToShort(lx);
     pState->Gamepad.sThumbLY = FloatToShort(ly);
@@ -276,7 +276,7 @@ void ApplyThumbstickProcessing(
         ProcessStickInputRadial(rx, ry, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x);
     } else {
         ProcessStickInputSquare(rx, ry, rmin_in_x, rmax_in_x, rmin_out_x, rmax_out_x, rmin_in_y, rmax_in_y, rmin_out_y,
-                               rmax_out_y);
+                                rmax_out_y);
     }
     pState->Gamepad.sThumbRX = FloatToShort(rx);
     pState->Gamepad.sThumbRY = FloatToShort(ry);
@@ -443,7 +443,10 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
         display_commander::widgets::xinput_widget::ProcessAutofire(dwUserIndex, pState);
 
         // Check if gamepad input should be suppressed - zero out all input if so
-        if (display_commanderhooks::ShouldBlockGamepadInput()) {
+        // (includes test checkbox: zeroes output for XInputGetState detours)
+        bool suppress_output = display_commanderhooks::ShouldBlockGamepadInput()
+                               || (shared_state && shared_state->test_gamepad_suppression.load());
+        if (suppress_output) {
             // Clear all buttons
             pState->Gamepad.wButtons = 0;
             // Clear stick inputs
@@ -692,9 +695,7 @@ std::uint64_t GetXInputGetStateUserIndexZeroCallCount() {
     return g_getstate_userindex0_calls.load(std::memory_order_relaxed);
 }
 
-bool IsXInputHooksInstalled() {
-    return g_xinput_hooks_installed.load(std::memory_order_relaxed);
-}
+bool IsXInputHooksInstalled() { return g_xinput_hooks_installed.load(std::memory_order_relaxed); }
 
 bool InstallXInputHooks(HMODULE xinput_module) {
     // Check if XInput hooks should be suppressed
@@ -704,10 +705,11 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         return false;
     }
 
+    /*
     if (!g_initialized_with_hwnd.load()) {
         LogInfo("Skipping XInput hooks installation until display commander is initialized");
         return true;
-    }
+    }*/
 
     // Initialize DualSense support if needed
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();

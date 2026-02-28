@@ -5,6 +5,9 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
+#include <dxgi1_4.h>
+#include <dxgi1_5.h>
+#include <dxgi1_6.h>
 #include <MinHook.h>
 #include <Windows.h>
 #include <string>
@@ -97,40 +100,10 @@ static HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_TestingDetour(IDXG
     return res;
 }
 
-// Get factory from device (device -> IDXGIDevice -> GetAdapter -> GetParent), then hook vtable+10 if not already
-// hooked. Same path as ReShade d3d11.cpp (109-129).
-static void TryHookFactoryCreateSwapChainVtable(ID3D11Device* device) {
-    if (device == nullptr) {
-        return;
-    }
-    IDXGIDevice* dxgi_device = nullptr;
-    HRESULT hr = device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
-    if (FAILED(hr) || dxgi_device == nullptr) {
-        return;
-    }
-    IDXGIAdapter* adapter = nullptr;
-    hr = dxgi_device->GetAdapter(&adapter);
-    dxgi_device->Release();
-    if (FAILED(hr) || adapter == nullptr) {
-        return;
-    }
-    IDXGIFactory* factory = nullptr;
-    hr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
-    adapter->Release();
-    if (FAILED(hr) || factory == nullptr) {
-        return;
-    }
-    // Vtable layout: first pointer in object is vtable; CreateSwapChain is at index 10 (ReShade, Special K)
-    void** vtable = *reinterpret_cast<void***>(factory);
-    void* target = vtable[10];
-    factory->Release();
-
-    if (target == nullptr) {
-        return;
-    }
-    if (target == g_IDXGIFactory_CreateSwapChain_hooked_target) {
-        return;  // already hooked this vtable
-    }
+// Install MinHook on factory vtable slot 10 (CreateSwapChain). Shared by device path and CreateDXGIFactory1/2 path.
+static void InstallFactoryCreateSwapChainVtableHook(void* target, const char* context) {
+    if (target == nullptr) return;
+    if (target == g_IDXGIFactory_CreateSwapChain_hooked_target) return;  // already hooked this vtable
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_FACTORY);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
         LogWarn("[dxgi_proxy testing] MinHook init for vtable+10 failed: %d", init_status);
@@ -143,7 +116,36 @@ static void TryHookFactoryCreateSwapChainVtable(ID3D11Device* device) {
         return;
     }
     g_IDXGIFactory_CreateSwapChain_hooked_target = target;
-    LogInfo("[dxgi_proxy testing] IDXGIFactory::CreateSwapChain vtable+10 hook installed (factory from device)");
+    LogInfo("[dxgi_proxy testing] IDXGIFactory::CreateSwapChain vtable+10 hook installed (%s)", context);
+}
+
+// Hook factory vtable when we have a direct factory pointer (e.g. returned from CreateDXGIFactory1/2).
+static void TryHookFactoryVtableFromPointer(void* pFactory) {
+    if (pFactory == nullptr) return;
+    void** vtable = *reinterpret_cast<void***>(pFactory);
+    void* target = vtable[10];  // CreateSwapChain (ReShade, Special K)
+    InstallFactoryCreateSwapChainVtableHook(target, "factory from CreateDXGIFactory");
+}
+
+// Get factory from device (device -> IDXGIDevice -> GetAdapter -> GetParent), then hook vtable+10 if not already
+// hooked. Same path as ReShade d3d11.cpp (109-129).
+static void TryHookFactoryCreateSwapChainVtable(ID3D11Device* device) {
+    if (device == nullptr) return;
+    IDXGIDevice* dxgi_device = nullptr;
+    HRESULT hr = device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
+    if (FAILED(hr) || dxgi_device == nullptr) return;
+    IDXGIAdapter* adapter = nullptr;
+    hr = dxgi_device->GetAdapter(&adapter);
+    dxgi_device->Release();
+    if (FAILED(hr) || adapter == nullptr) return;
+    IDXGIFactory* factory = nullptr;
+    hr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
+    adapter->Release();
+    if (FAILED(hr) || factory == nullptr) return;
+    void** vtable = *reinterpret_cast<void***>(factory);
+    void* target = vtable[10];
+    factory->Release();
+    InstallFactoryCreateSwapChainVtableHook(target, "factory from device");
 }
 
 static HRESULT WINAPI D3D11CreateDeviceAndSwapChain_TestingDetour(
@@ -233,10 +235,16 @@ void InstallRealDXGIMinHookHooks() {
 extern "C" HRESULT WINAPI CreateDXGIFactory(REFIID riid, void** ppFactory) {
     if (!LoadRealDXGI()) return E_FAIL;
 
+    // redirecting to CreateDXGIFactory1
+
+    return CreateDXGIFactory1(riid, ppFactory);
+
+    /*
     auto func = reinterpret_cast<PFN_CreateDXGIFactory>(GetProcAddress(g_dxgi_module, "CreateDXGIFactory"));
     if (func == nullptr) return E_FAIL;
 
     return func(riid, ppFactory);
+    */
 }
 
 extern "C" HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void** ppFactory) {
@@ -245,7 +253,24 @@ extern "C" HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void** ppFactory) {
     auto func = reinterpret_cast<PFN_CreateDXGIFactory1>(GetProcAddress(g_dxgi_module, "CreateDXGIFactory1"));
     if (func == nullptr) return E_FAIL;
 
-    return func(riid, ppFactory);
+    // upgrading to IDXGIFactory7
+
+    std::array<const GUID, 8> rrids = {
+        __uuidof(IDXGIFactory),  __uuidof(IDXGIFactory1), __uuidof(IDXGIFactory2), __uuidof(IDXGIFactory3),
+        __uuidof(IDXGIFactory4), __uuidof(IDXGIFactory5), __uuidof(IDXGIFactory6), __uuidof(IDXGIFactory7),
+    };
+    GUID rrid_override = riid;
+
+    if (std::find(rrids.begin(), rrids.end(), riid) != rrids.end()) {
+        LogInfo("CreateDXGIFactory1: Upgrading to IDXGIFactory7: %s", riid);
+        rrid_override = __uuidof(IDXGIFactory7);
+    }
+
+    HRESULT hr = func(rrid_override, ppFactory);
+    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr && enabled_experimental_features) {
+        TryHookFactoryVtableFromPointer(*ppFactory);
+    }
+    return hr;
 }
 
 extern "C" HRESULT WINAPI CreateDXGIFactory2(UINT Flags, REFIID riid, void** ppFactory) {
@@ -254,7 +279,22 @@ extern "C" HRESULT WINAPI CreateDXGIFactory2(UINT Flags, REFIID riid, void** ppF
     auto func = reinterpret_cast<PFN_CreateDXGIFactory2>(GetProcAddress(g_dxgi_module, "CreateDXGIFactory2"));
     if (func == nullptr) return E_FAIL;
 
-    return func(Flags, riid, ppFactory);
+    std::array<const GUID, 8> rrids = {
+        __uuidof(IDXGIFactory),  __uuidof(IDXGIFactory1), __uuidof(IDXGIFactory2), __uuidof(IDXGIFactory3),
+        __uuidof(IDXGIFactory4), __uuidof(IDXGIFactory5), __uuidof(IDXGIFactory6), __uuidof(IDXGIFactory7),
+    };
+    GUID rrid_override = riid;
+
+    if (std::find(rrids.begin(), rrids.end(), riid) != rrids.end()) {
+        LogInfo("CreateDXGIFactory2: Upgrading to IDXGIFactory7: %s", riid);
+        rrid_override = __uuidof(IDXGIFactory7);
+    }
+
+    HRESULT hr = func(Flags, rrid_override, ppFactory);
+    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr && enabled_experimental_features) {
+        TryHookFactoryVtableFromPointer(*ppFactory);
+    }
+    return hr;
 }
 
 extern "C" HRESULT WINAPI DXGIGetDebugInterface1(UINT Flags, REFIID riid, void** pDebug) {

@@ -31,7 +31,8 @@ enum class HookType {
     NVAPI,
     PROCESS_EXIT,
     WINDOW_PROC,
-    DBGHELP
+    DBGHELP,
+    WINMM_JOYSTICK  // winmm.dll joyGetPos / joyGetPosEx
 };
 
 // Hook suppression manager

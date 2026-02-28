@@ -97,6 +97,7 @@ HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFII
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInput8CreateDevice].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(HOOK_DInput8CreateDevice);
 
     // Call original function
     HRESULT result = DirectInput8Create_Original(hinst, dwVersion, riidltf, ppvOut, punkOuter);
@@ -125,6 +126,7 @@ HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(HOOK_DInputCreateDevice);
 
     // Call original function
     HRESULT result = DirectInputCreateA_Original(hinst, dwVersion, ppDI, punkOuter);
@@ -152,6 +154,7 @@ HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(HOOK_DInputCreateDevice);
 
     // Call original function
     HRESULT result = DirectInputCreateW_Original(hinst, dwVersion, ppDI, punkOuter);

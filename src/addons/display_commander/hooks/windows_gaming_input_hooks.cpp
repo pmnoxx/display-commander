@@ -1,4 +1,5 @@
 #include "windows_gaming_input_hooks.hpp"
+#include "input_activity_stats.hpp"
 #include <MinHook.h>
 #include <windows.gaming.input.h>
 #include <atomic>
@@ -54,9 +55,10 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
     const bool suppress = settings::g_advancedTabSettings.suppress_windows_gaming_input.GetValue();
     if (is_blocked_iid) {
         g_wgi_state.wgi_called.store(true);
+        InputActivityStats::GetInstance().MarkActive(InputApiId::WindowsGamingInput);
         if (suppress && settings::g_advancedTabSettings.continue_rendering.GetValue()) {
             LogInfo("Suppressing WGI factory request (Unity): %s", IIDToGUIDString(iid).c_str());
-            //      if (!enabled_experimental_features) {
+            // if (!enabled_experimental_features) {
             return E_NOTIMPL;
             //   }
         }
@@ -67,7 +69,7 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
         LogInfo("Suppressing WGI factory request (Unity): %s", IIDToGUIDString(iid).c_str());
         //  if (!enabled_experimental_features) {
         return E_NOTIMPL;
-        //  }
+        // }
     }
 
     return RoGetActivationFactory_Original(activatableClassId, iid, factory);

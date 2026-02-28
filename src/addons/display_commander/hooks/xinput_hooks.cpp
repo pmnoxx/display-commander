@@ -288,6 +288,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
                                    const std::function<DWORD(DWORD, XINPUT_STATE*)>& call_original_func) {
     // Track hook call statistics
     g_hook_stats[hook_index].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(hook_index);
     // Measure timing for smooth call rate calculation
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     if (shared_state && dwUserIndex == 0) {
@@ -572,6 +573,7 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
 
     // Track hook call statistics
     g_hook_stats[HOOK_XInputSetState].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(HOOK_XInputSetState);
 
     // Check if gamepad input should be suppressed - suppress vibration if so
     if (display_commanderhooks::ShouldBlockGamepadInput()) {
@@ -628,6 +630,7 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track hook statistics (do this first to verify hook is being called)
     g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
+    display_commanderhooks::UpdateHookLastCallTime(HOOK_XInputGetCapabilities);
 
     if (pCapabilities == nullptr) {
         return ERROR_INVALID_PARAMETER;

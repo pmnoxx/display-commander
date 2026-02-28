@@ -1,7 +1,7 @@
 #pragma once
 
-#include <windows.h>
 #include <dinput.h>
+#include <windows.h>
 #include <string>
 #include <vector>
 
@@ -12,10 +12,10 @@ namespace display_commanderhooks {
 // HOOK_DInputCreateDevice = 42
 
 // Function pointer types for DirectInput functions
-using DirectInput8Create_pfn = HRESULT(WINAPI *)(HINSTANCE, DWORD, REFIID, LPVOID *, LPUNKNOWN);
-using DirectInputCreateA_pfn = HRESULT(WINAPI *)(HINSTANCE, DWORD, LPDIRECTINPUTA *, LPUNKNOWN);
-using DirectInputCreateW_pfn = HRESULT(WINAPI *)(HINSTANCE, DWORD, LPDIRECTINPUTW *, LPUNKNOWN);
-using DirectInputCreateDevice_pfn = HRESULT(STDMETHODCALLTYPE *)(LPVOID, REFGUID, LPVOID *, LPUNKNOWN);
+using DirectInput8Create_pfn = HRESULT(WINAPI*)(HINSTANCE, DWORD, REFIID, LPVOID*, LPUNKNOWN);
+using DirectInputCreateA_pfn = HRESULT(WINAPI*)(HINSTANCE, DWORD, LPDIRECTINPUTA*, LPUNKNOWN);
+using DirectInputCreateW_pfn = HRESULT(WINAPI*)(HINSTANCE, DWORD, LPDIRECTINPUTW*, LPUNKNOWN);
+using DirectInputCreateDevice_pfn = HRESULT(STDMETHODCALLTYPE*)(LPVOID, REFGUID, LPVOID*, LPUNKNOWN);
 
 // Original function pointers
 extern DirectInput8Create_pfn DirectInput8Create_Original;
@@ -23,13 +23,15 @@ extern DirectInputCreateA_pfn DirectInputCreateA_Original;
 extern DirectInputCreateW_pfn DirectInputCreateW_Original;
 
 // Hooked DirectInput functions
-HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter);
-HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA *ppDI, LPUNKNOWN punkOuter);
-HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW *ppDI, LPUNKNOWN punkOuter);
+HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut,
+                                         LPUNKNOWN punkOuter);
+HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA* ppDI, LPUNKNOWN punkOuter);
+HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW* ppDI, LPUNKNOWN punkOuter);
 
 // DirectInput device state hook functions
 HRESULT WINAPI DInputDevice_GetDeviceState_Detour(LPVOID pDevice, DWORD cbData, LPVOID lpvData);
-HRESULT WINAPI DInputDevice_GetDeviceData_Detour(LPVOID pDevice, DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod, LPDWORD pdwInOut, DWORD dwFlags);
+HRESULT WINAPI DInputDevice_GetDeviceData_Detour(LPVOID pDevice, DWORD cbObjectData, LPDIDEVICEOBJECTDATA rgdod,
+                                                 LPDWORD pdwInOut, DWORD dwFlags);
 
 // Hook management (call from OnModuleLoaded with the loaded module handle)
 bool InstallDirectInput8Hooks(HMODULE hModule);
@@ -41,7 +43,7 @@ struct DInputDeviceInfo {
     std::string device_name;
     DWORD device_type;
     std::string interface_name;
-    LONGLONG creation_time; // Time in nanoseconds from get_now_ns()
+    LONGLONG creation_time;  // Time in nanoseconds from get_now_ns()
 };
 
 // Device tracking functions
@@ -56,4 +58,4 @@ void ClearAllDirectInputDeviceHooks();
 void HookAllDirectInputDevices();
 int GetDirectInputDeviceHookCount();
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

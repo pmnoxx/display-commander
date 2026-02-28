@@ -6,7 +6,6 @@
 #include "hook_suppression_manager.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 
-
 namespace display_commanderhooks {
 
 // Additional HID hook function pointers

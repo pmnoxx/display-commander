@@ -1,4 +1,5 @@
 #include "windows_message_hooks.hpp"
+#include "../input_activity_stats.hpp"
 #include <MinHook.h>
 #include <algorithm>
 #include <array>
@@ -236,6 +237,8 @@ constexpr std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"CreateFileA", DllGroup::HID_API, HOOK_HID_CreateFileA},
     {"CreateFileW", DllGroup::HID_API, HOOK_HID_CreateFileW},
     {"ReadFile", DllGroup::HID_API, HOOK_HID_ReadFile},
+    {"ReadFileEx", DllGroup::HID_API, HOOK_HID_ReadFileEx},
+    {"ReadFileScatter", DllGroup::HID_API, HOOK_HID_ReadFileScatter},
     {"WriteFile", DllGroup::HID_API, HOOK_HID_WriteFile},
     {"DeviceIoControl", DllGroup::HID_API, HOOK_HID_DeviceIoControl},
 
@@ -252,6 +255,10 @@ constexpr std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"HIDD_SetNumInputBuffers", DllGroup::HID_API, HOOK_HIDD_SetNumInputBuffers},
     {"HIDD_GetFeature", DllGroup::HID_API, HOOK_HIDD_GetFeature},
     {"HIDD_SetFeature", DllGroup::HID_API, HOOK_HIDD_SetFeature},
+
+    // winmm.dll joystick
+    {"joyGetPos", DllGroup::WINMM_JOYSTICK, HOOK_joyGetPos},
+    {"joyGetPosEx", DllGroup::WINMM_JOYSTICK, HOOK_joyGetPosEx},
 }};
 
 namespace {
@@ -1173,6 +1180,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetRawInputBuffer].increment_total();
+    UpdateHookLastCallTime(HOOK_GetRawInputBuffer);
 
     // Call original function first
     UINT result = GetRawInputBuffer_Original ? GetRawInputBuffer_Original(pData, pcbSize, cbSizeHeader)
@@ -1400,6 +1408,7 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetRawInputData].increment_total();
+    UpdateHookLastCallTime(HOOK_GetRawInputData);
 
     // Call original function first
     UINT result = GetRawInputData_Original
@@ -2371,10 +2380,18 @@ const HookCallStats& GetHookStats(int hook_index) {
     return empty_stats;
 }
 
+void UpdateHookLastCallTime(int hook_index) {
+    if (hook_index >= 0 && hook_index < HOOK_COUNT) {
+        g_hook_stats[hook_index].last_call_time_ns.store(utils::get_now_ns(), std::memory_order_relaxed);
+        InputActivityStats::GetInstance().MarkActiveByHookIndex(hook_index);
+    }
+}
+
 void ResetAllHookStats() {
     for (int i = 0; i < HOOK_COUNT; ++i) {
         g_hook_stats[i].reset();
     }
+    InputActivityStats::GetInstance().Reset();
 }
 
 int GetHookCount() { return HOOK_COUNT; }
@@ -2396,7 +2413,8 @@ const char* GetDllGroupName(DllGroup group) {
         case DllGroup::DINPUT:           return "dinput.dll";
         case DllGroup::OPENGL:           return "opengl32.dll";
         case DllGroup::DISPLAY_SETTINGS: return "user32.dll (display_settings)";
-        case DllGroup::HID_API:          return "kernel32.dll (hid_api)";
+        case DllGroup::HID_API:          return "HID API (kernel32.dll + hid.dll)";
+        case DllGroup::WINMM_JOYSTICK:   return "winmm.dll (joystick)";
         default:                         return "Unknown";
     }
 }

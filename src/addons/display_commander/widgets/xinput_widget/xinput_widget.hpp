@@ -295,6 +295,8 @@ extern std::unique_ptr<XInputWidget> g_xinput_widget;
 void InitializeXInputWidget();
 void CleanupXInputWidget();
 void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui);
+/** Draw "Active input APIs (last 10s)" section for Controller tab (Special K-style). */
+void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui);
 
 // Global functions for hooks to use
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state);

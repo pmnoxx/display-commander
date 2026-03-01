@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.200 (2026-03-01)
+
+- **Display Commander selector and upgrades** - New source selector: Local (injection DLL), Global (base path), Debug (Debug\X.Y.Z), Stable (Dll\X.Y.Z). Config: `dc_selector_mode`, `dc_version_for_debug`, `dc_version_for_stable`; legacy `DcSelectedVersion` is migrated once to stable mode + version. Debug builds install to `Debug\X.Y.Z` via "Download to Debug"; stable to `Dll\X.Y.Z`. Loader skips central load when mode is Local; treats runs under both Dll\ and Debug\ as versioned (no double load). UI: mode combo, per-mode version combos (Latest + installed), "Set as global" (copy running addon to base), "Copy current to Dll", Fetch/Download for stable, Check/Download for debug. Fallbacks when selected version is missing: latest in same folder, then base.
+
+---
+
 ## v0.12.199 (2026-03-01)
 
 - **Unified ReShade load path** - Single list of all ReShade locations (`GetReshadeLocations`) with type enum: Local (game folder), Global (fixed base), SpecificVersion (Dll\X.Y.Z). Selection via `ChooseReshadeVersion` so override (e.g. 6.7.3) is always respected even when the game folder has a different version (e.g. 6.7.2). Removed "try CWD first" load; ReShade is loaded only from the chosen directory.

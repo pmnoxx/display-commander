@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.189 (2026-03-01)
+
+- **CI: Latest Build / Latest Debug release body** - The GitHub Actions workflow now reads the version (MAJOR.MINOR.PATCH) from `CMakeLists.txt` and writes it into the release body for [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) and [Latest Debug Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_debug). "Version in binaries" and "Commit" on those releases now reflect the built version and the triggering commit instead of a fixed 0.11.0 and stale commit.
+
+---
+
 ## v0.12.188 (2026-03-01)
 
 - **g_reshade_module robustness** - `g_reshade_module` is now `std::atomic<HMODULE>` for thread-safe access. It is set in every ReShade load path (main_entry, addon Init, proxy LoadReShadeDll, LoadLibrary hooks) and never overwritten when already set (compare_exchange_strong). When ReShade is loaded via LoadLibrary (e.g. by the game), `OnModuleLoaded` detects ReShade64/32.dll or the ReShadeRegisterAddon export and sets `g_reshade_module`. Optional clear in `OnReshadeUnload` (commented) uses `.store(nullptr)` when re-enabled.

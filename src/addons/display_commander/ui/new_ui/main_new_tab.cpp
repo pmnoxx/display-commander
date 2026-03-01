@@ -1505,12 +1505,13 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             if (display_commander::utils::GetReshadeLoadFallbackVersionInfo(&fallback_selected, &fallback_loaded)) {
                 imgui.Spacing();
                 imgui.TextColored(ui::colors::TEXT_WARNING,
-                                 ICON_FK_WARNING " Loaded ReShade %s (selected %s was not installed).",
-                                 fallback_loaded.c_str(), fallback_selected.c_str());
+                                  ICON_FK_WARNING " Loaded ReShade %s (selected %s was not installed).",
+                                  fallback_loaded.c_str(), fallback_selected.c_str());
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("The selected version was not found. Display Commander loaded the highest "
-                                    "available version instead. Download the selected version or choose it after "
-                                    "installing.");
+                    imgui.SetTooltip(
+                        "The selected version was not found. Display Commander loaded the highest "
+                        "available version instead. Download the selected version or choose it after "
+                        "installing.");
                 }
             }
         }

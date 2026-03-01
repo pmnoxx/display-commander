@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.199 (2026-03-01)
+
+- **Unified ReShade load path** - Single list of all ReShade locations (`GetReshadeLocations`) with type enum: Local (game folder), Global (fixed base), SpecificVersion (Dll\X.Y.Z). Selection via `ChooseReshadeVersion` so override (e.g. 6.7.3) is always respected even when the game folder has a different version (e.g. 6.7.2). Removed "try CWD first" load; ReShade is loaded only from the chosen directory.
+- **ReShade config: "global" and "local"** - Config now uses keyword `"global"` for the fixed base folder (replaces empty string); added `"local"` (prefer game-folder ReShade, else global, else latest). Legacy empty config is migrated to `"global"`.
+- **ReShade version display** - Strip trailing dot from versions parsed from reshade.me (e.g. "6.7.3." → "6.7.3") so the download-another-version list and UI show clean version strings.
+
+---
+
 ## v0.12.198 (2026-03-01)
 
 - **RenoDX: disable and hide Swapchain HDR Upgrade** - When a ReShade addon whose name contains "renodx" (e.g. renodx-hollowknight.addon64, rennodx-silenthill2remake.addon64) is loaded, Display Commander sets `g_is_renodx_loaded`, auto-disables the Swapchain HDR Upgrade setting, skips HDR upgrade logic in create/init swapchain and create_resource_view, and hides the "Swapchain HDR Upgrade" checkbox and HDR mode combo in the Main tab so the option is not shown when RenoDX is loaded.

@@ -1797,36 +1797,6 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
     }
 }
 
-void ProcessAttach_TryLoadReShadeFromCwd() {
-    const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
-    if (!dc_config_dir.empty()) {
-        SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
-    }
-    SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-#ifdef _WIN64
-    HMODULE cwd_module = LoadLibraryA("Reshade64.dll");
-    if (cwd_module != nullptr) {
-        HMODULE expected = nullptr;
-        if (g_reshade_module.compare_exchange_strong(expected, cwd_module))
-            OutputDebugStringA("Reshade64.dll loaded successfully");
-    }
-    if (cwd_module == nullptr && std::filesystem::exists("Reshade64.dll")) {
-        DWORD error = GetLastError();
-        OutputDebugStringA("Reshade64.dll could not be loaded");
-        OutputDebugStringA(std::to_string(error).c_str());
-        std::string error_msg = "Reshade64.dll could not be loaded: Error code: " + std::to_string(error);
-        MessageBoxA(nullptr, error_msg.c_str(), error_msg.c_str(), MB_OK | MB_ICONWARNING | MB_TOPMOST);
-    }
-#else
-    HMODULE cwd_module = LoadLibraryA("Reshade32.dll");
-    if (cwd_module != nullptr) {
-        HMODULE expected = nullptr;
-        if (g_reshade_module.compare_exchange_strong(expected, cwd_module))
-            OutputDebugStringA("Reshade32.dll loaded successfully");
-    }
-#endif
-}
-
 void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point, bool& found_proxy) {
     entry_point = L"addon";
     found_proxy = false;
@@ -1916,7 +1886,8 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
         g_process_attached.store(true);
         return false;
     }
-    std::filesystem::path dc_reshade_dir = display_commander::utils::GetReshadeDirectoryForLoading();
+    std::filesystem::path game_directory = std::filesystem::path(executable_path).parent_path();
+    std::filesystem::path dc_reshade_dir = display_commander::utils::GetReshadeDirectoryForLoading(game_directory);
     if (dc_reshade_dir.empty()) {
         g_process_attached.store(true);
         return true;
@@ -2148,8 +2119,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttach_DetectEntryPoint(h_module, entry_point, found_proxy);
 
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
-                ProcessAttach_TryLoadReShadeFromCwd();
-                if ((g_reshade_module == nullptr) && !ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy))
+                if (!ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy))
                     return TRUE;
             }
 

@@ -44,6 +44,9 @@ int CompareVersions(const std::string& v1, const std::string& v2);
 // Parse version string (handles formats like "0.10.0" or "v0.10.0")
 std::string ParseVersionString(const std::string& version_str);
 
+// Normalize version to X.Y.Z (strip fourth component if present, e.g. 6.7.3.12345 -> 6.7.3).
+std::string NormalizeVersionToXyz(const std::string& version_str);
+
 // Get the Display Commander base directory (%localappdata%\Programs\Display_Commander)
 std::filesystem::path GetDownloadDirectory();
 
@@ -64,7 +67,8 @@ std::string ExtractBuildNumber(const std::string& version_str);
 // Format build number as 6 digits with leading zeros
 std::string FormatBuildNumber(const std::string& build_str);
 
-// Fetch Display Commander release versions from GitHub (pmnoxx/display-commander). Returns tag names, sorted descending.
+// Fetch Display Commander release versions from GitHub (pmnoxx/display-commander). Returns tag names, sorted
+// descending.
 bool FetchDisplayCommanderReleasesFromGitHub(std::vector<std::string>& out_versions, std::string* out_error = nullptr);
 
 // Download a specific DC version to %localappdata%\Programs\Display_Commander\Dll\<version>\. Returns true on success.
@@ -74,7 +78,8 @@ bool DownloadDcVersionToDll(const std::string& version, std::string* out_error =
 // Returns true if the release exists and has addon64/addon32 assets.
 bool FetchLatestDebugRelease(std::string* out_error = nullptr);
 
-// Download latest_debug release to Dll\X.Y.Z (version read from downloaded binaries). Call after FetchLatestDebugRelease (or any time).
+// Download latest_debug release to Dll\X.Y.Z (version read from downloaded binaries). Call after
+// FetchLatestDebugRelease (or any time).
 bool DownloadDcLatestDebugToDll(std::string* out_error = nullptr);
 
 // Copy the given DC addon file to Dll\X.Y.Z (version read from the file) if that folder does not already exist.

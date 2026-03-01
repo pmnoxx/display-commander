@@ -1992,8 +1992,8 @@ void XInputWidget::DrawDualSenseReport(display_commander::ui::IImGuiWrapper& img
 
         imgui.Spacing();
 
-        // Display Special-K DualSense data if available
-        if (imgui.CollapsingHeader("Special-K DualSense Data", 0)) {
+        // Display DualSense data if available
+        if (imgui.CollapsingHeader("DualSense Data", 0)) {
             imgui.Indent();
             const auto& sk_data = device.sk_dualsense_data;
 
@@ -2079,35 +2079,6 @@ void XInputWidget::DrawDualSenseReport(display_commander::ui::IImGuiWrapper& img
                     imgui.Text("Right Paddle: %s", sk_data.ButtonRightPaddle ? "PRESSED" : "Released");
                     imgui.NextColumn();
                 }
-
-                imgui.Columns(1);
-                imgui.Unindent();
-            }
-
-            // Battery and power
-            if (imgui.CollapsingHeader("Battery & Power")) {
-                imgui.Indent();
-                imgui.Columns(2, "SKPowerColumns", false);
-
-                imgui.Text("Battery: %d%%", sk_data.PowerPercent * 10);
-                imgui.NextColumn();
-                const char* power_state_names[] = {"Unknown", "Charging", "Discharging", "Not Charging", "Full"};
-                imgui.Text("Power State: %s", power_state_names[static_cast<int>(sk_data.PowerState)]);
-                imgui.NextColumn();
-                imgui.Text("USB Data: %s", sk_data.PluggedUsbData ? "Yes" : "No");
-                imgui.NextColumn();
-                imgui.Text("USB Power: %s", sk_data.PluggedUsbPower ? "Yes" : "No");
-                imgui.NextColumn();
-                imgui.Text("Headphones: %s", sk_data.PluggedHeadphones ? "Yes" : "No");
-                imgui.NextColumn();
-                imgui.Text("Microphone: %s", sk_data.PluggedMic ? "Yes" : "No");
-                imgui.NextColumn();
-                imgui.Text("External Mic: %s", sk_data.PluggedExternalMic ? "Yes" : "No");
-                imgui.NextColumn();
-                imgui.Text("Mic Muted: %s", sk_data.MicMuted ? "Yes" : "No");
-                imgui.NextColumn();
-                imgui.Text("Haptic Filter: %s", sk_data.HapticLowPassFilter ? "On" : "Off");
-                imgui.NextColumn();
 
                 imgui.Columns(1);
                 imgui.Unindent();

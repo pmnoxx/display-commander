@@ -374,7 +374,7 @@ void DualSenseWidget::DrawDeviceDetails(display_commander::ui::IImGuiWrapper& im
 void DualSenseWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& imgui,
                                         const DualSenseDeviceInfo& device) {
     if (imgui.CollapsingHeader("Buttons", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
-        // Use XInput state (converted from Special-K DualSense data)
+        // Use XInput state (converted from DualSense HID data)
         WORD buttons = device.current_state.Gamepad.wButtons;
 
         // Create a grid of buttons
@@ -431,7 +431,7 @@ void DualSenseWidget::DrawButtonStates(display_commander::ui::IImGuiWrapper& img
 void DualSenseWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgui,
                                        const DualSenseDeviceInfo& device) {
     if (imgui.CollapsingHeader("Analog Sticks", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
-        // Use XInput state (converted from Special-K DualSense data)
+        // Use XInput state (converted from DualSense HID data)
         SHORT leftX = device.current_state.Gamepad.sThumbLX;
         SHORT leftY = device.current_state.Gamepad.sThumbLY;
         SHORT rightX = device.current_state.Gamepad.sThumbRX;
@@ -499,7 +499,7 @@ void DualSenseWidget::DrawStickStates(display_commander::ui::IImGuiWrapper& imgu
 void DualSenseWidget::DrawTriggerStates(display_commander::ui::IImGuiWrapper& imgui,
                                          const DualSenseDeviceInfo& device) {
     if (imgui.CollapsingHeader("Triggers", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
-        // Use XInput state (converted from Special-K DualSense data)
+        // Use XInput state (converted from DualSense HID data)
         USHORT leftTrigger = device.current_state.Gamepad.bLeftTrigger;
         USHORT rightTrigger = device.current_state.Gamepad.bRightTrigger;
 
@@ -735,7 +735,7 @@ void DrawDualSenseWidget(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DualSenseWidget::DrawInputReport(display_commander::ui::IImGuiWrapper& imgui,
                                       const DualSenseDeviceInfo& device) {
-    if (!imgui.CollapsingHeader("Input Report Debug (Special-K Format)",
+    if (!imgui.CollapsingHeader("Input Report Debug (HID Format)",
                                 display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         return;
     }
@@ -747,17 +747,17 @@ void DualSenseWidget::DrawInputReport(display_commander::ui::IImGuiWrapper& imgu
 
         imgui.Text("Report Size: %d bytes", reportSize);
         imgui.Text("Connection: %s", device.connection_type.c_str());
-        imgui.Text("Special-K Data Size: %zu bytes", sizeof(SK_HID_DualSense_GetStateData));
+        imgui.Text("HID Data Size: %zu bytes", sizeof(SK_HID_DualSense_GetStateData));
 
         // Determine data offset based on connection type
         int dataOffset = device.is_wireless ? 2 : 1;  // Skip report ID and sequence for BT
-        int dataSize = device.is_wireless ? 63 : 63;  // Special-K data is always 63 bytes
+        int dataSize = device.is_wireless ? 63 : 63;  // HID report is always 63 bytes
 
         if (reportSize >= dataOffset + dataSize) {
-            imgui.Text("Special-K Data Offset: %d", dataOffset);
+            imgui.Text("HID Data Offset: %d", dataOffset);
             imgui.Spacing();
 
-            // Show Special-K fields in a table format
+            // Show DualSense fields in a table format
             if (imgui.BeginTable("SpecialKReport", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
                 imgui.TableSetupColumn("Field Name");
                 imgui.TableSetupColumn("Offset");
@@ -767,7 +767,7 @@ void DualSenseWidget::DrawInputReport(display_commander::ui::IImGuiWrapper& imgu
                 imgui.TableSetupColumn("Description");
                 imgui.TableHeadersRow();
 
-                // Display Special-K fields
+                // Display DualSense fields
                 DrawSpecialKFieldRow(imgui, "LeftStickX", dataOffset + 0, 1, inputReport, device);
                 DrawSpecialKFieldRow(imgui, "LeftStickY", dataOffset + 1, 1, inputReport, device);
                 DrawSpecialKFieldRow(imgui, "RightStickX", dataOffset + 2, 1, inputReport, device);
@@ -875,7 +875,7 @@ void DualSenseWidget::DrawInputReport(display_commander::ui::IImGuiWrapper& imgu
                 imgui.EndTable();
             }
         } else {
-            imgui.TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Insufficient data for Special-K format");
+            imgui.TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Insufficient data for HID format");
         }
 
     } else {
@@ -1094,7 +1094,7 @@ std::string DualSenseWidget::GetByteNotes(int offset, const std::string& connect
 
 void DualSenseWidget::DrawRawButtonStates(display_commander::ui::IImGuiWrapper& imgui,
                                            const DualSenseDeviceInfo& device) {
-    if (!imgui.CollapsingHeader("Raw Buttons (Special-K Format)", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (!imgui.CollapsingHeader("Raw Buttons (HID Format)", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         return;
     }
 
@@ -1103,7 +1103,7 @@ void DualSenseWidget::DrawRawButtonStates(display_commander::ui::IImGuiWrapper& 
         return;
     }
 
-    // Use XInput state (converted from Special-K DualSense data)
+    // Use XInput state (converted from DualSense HID data)
     WORD buttons = device.current_state.Gamepad.wButtons;
 
     // Display buttons
@@ -1142,7 +1142,7 @@ void DualSenseWidget::DrawRawButtonStates(display_commander::ui::IImGuiWrapper& 
 
 void DualSenseWidget::DrawRawStickStates(display_commander::ui::IImGuiWrapper& imgui,
                                           const DualSenseDeviceInfo& device) {
-    if (!imgui.CollapsingHeader("Raw Analog Sticks (Special-K Format)", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (!imgui.CollapsingHeader("Raw Analog Sticks (HID Format)", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         return;
     }
 
@@ -1151,7 +1151,7 @@ void DualSenseWidget::DrawRawStickStates(display_commander::ui::IImGuiWrapper& i
         return;
     }
 
-    // Use XInput state (converted from Special-K DualSense data)
+    // Use XInput state (converted from DualSense HID data)
     SHORT leftX = device.current_state.Gamepad.sThumbLX;
     SHORT leftY = device.current_state.Gamepad.sThumbLY;
 
@@ -1219,7 +1219,7 @@ void DualSenseWidget::DrawRawStickStates(display_commander::ui::IImGuiWrapper& i
 
 void DualSenseWidget::DrawRawTriggerStates(display_commander::ui::IImGuiWrapper& imgui,
                                            const DualSenseDeviceInfo& device) {
-    if (!imgui.CollapsingHeader("Raw Triggers (Special-K Format)", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (!imgui.CollapsingHeader("Raw Triggers (HID Format)", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         return;
     }
 
@@ -1228,7 +1228,7 @@ void DualSenseWidget::DrawRawTriggerStates(display_commander::ui::IImGuiWrapper&
         return;
     }
 
-    // Use XInput state (converted from Special-K DualSense data)
+    // Use XInput state (converted from DualSense HID data)
     USHORT leftTrigger = device.current_state.Gamepad.bLeftTrigger;
 
     imgui.Text("Left Trigger: %u/65535 (%.1f%%)", leftTrigger, (static_cast<float>(leftTrigger) / 65535.0f) * 100.0f);
@@ -1242,7 +1242,7 @@ void DualSenseWidget::DrawRawTriggerStates(display_commander::ui::IImGuiWrapper&
 
 void DualSenseWidget::DrawSpecialKData(display_commander::ui::IImGuiWrapper& imgui,
                                         const DualSenseDeviceInfo& device) {
-    if (!imgui.CollapsingHeader("Special-K DualSense Data", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (!imgui.CollapsingHeader("DualSense Data", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         return;
     }
 
@@ -1355,33 +1355,6 @@ void DualSenseWidget::DrawSpecialKData(display_commander::ui::IImGuiWrapper& img
         imgui.Columns(1);
     }
 
-    // Battery and power
-    if (imgui.CollapsingHeader("Battery & Power")) {
-        imgui.Columns(2, "SKPowerColumns", false);
-
-        imgui.Text("Battery: %d%%", sk_data.PowerPercent * 10);
-        imgui.NextColumn();
-        const char* power_state_names[] = {"Unknown", "Charging", "Discharging", "Not Charging", "Full"};
-        imgui.Text("Power State: %s", power_state_names[static_cast<int>(sk_data.PowerState)]);
-        imgui.NextColumn();
-        imgui.Text("USB Data: %s", sk_data.PluggedUsbData ? "Yes" : "No");
-        imgui.NextColumn();
-        imgui.Text("USB Power: %s", sk_data.PluggedUsbPower ? "Yes" : "No");
-        imgui.NextColumn();
-        imgui.Text("Headphones: %s", sk_data.PluggedHeadphones ? "Yes" : "No");
-        imgui.NextColumn();
-        imgui.Text("Microphone: %s", sk_data.PluggedMic ? "Yes" : "No");
-        imgui.NextColumn();
-        imgui.Text("External Mic: %s", sk_data.PluggedExternalMic ? "Yes" : "No");
-        imgui.NextColumn();
-        imgui.Text("Mic Muted: %s", sk_data.MicMuted ? "Yes" : "No");
-        imgui.NextColumn();
-        imgui.Text("Haptic Filter: %s", sk_data.HapticLowPassFilter ? "On" : "Off");
-        imgui.NextColumn();
-
-        imgui.Columns(1);
-    }
-
     // Adaptive triggers
     if (imgui.CollapsingHeader("Adaptive Triggers")) {
         imgui.Columns(2, "SKTriggerColumns", false);
@@ -1434,7 +1407,7 @@ void DualSenseWidget::DrawSpecialKData(display_commander::ui::IImGuiWrapper& img
     }
 }
 
-// Special-K debug helper functions
+// DualSense HID debug helper functions
 void DualSenseWidget::DrawSpecialKFieldRow(display_commander::ui::IImGuiWrapper& imgui, const char* fieldName,
                                            int offset, int size, const std::vector<BYTE>& inputReport,
                                            const DualSenseDeviceInfo& device, const char* description) {
@@ -1486,7 +1459,7 @@ void DualSenseWidget::DrawSpecialKFieldRow(display_commander::ui::IImGuiWrapper&
 
     // Description
     imgui.TableSetColumnIndex(5);
-    imgui.Text("%s", description ? description : "Special-K field");
+    imgui.Text("%s", description ? description : "DualSense field");
 }
 
 void DualSenseWidget::DrawSpecialKBitFieldRow(display_commander::ui::IImGuiWrapper& imgui, const char* fieldName,
@@ -1528,7 +1501,7 @@ void DualSenseWidget::DrawSpecialKBitFieldRow(display_commander::ui::IImGuiWrapp
 
     // Description
     imgui.TableSetColumnIndex(5);
-    imgui.Text("%s", description ? description : "Special-K bit field");
+    imgui.Text("%s", description ? description : "DualSense bit field");
 }
 
 // Global functions for device enumeration

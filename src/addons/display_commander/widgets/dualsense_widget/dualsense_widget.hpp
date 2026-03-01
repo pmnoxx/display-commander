@@ -98,7 +98,7 @@ private:
     std::string GetDeviceStatus(const DualSenseDeviceInfo& device) const;
     bool IsButtonPressed(WORD buttons, WORD button) const;
 
-    // Special-K debug helper functions
+    // DualSense HID debug helper functions
     void DrawSpecialKFieldRow(display_commander::ui::IImGuiWrapper& imgui, const char* fieldName, int offset, int size,
                               const std::vector<BYTE>& inputReport, const DualSenseDeviceInfo& device,
                               const char* description = nullptr);

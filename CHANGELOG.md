@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.162 (2026-02-28)
+
+- **DualSense: remove Battery & Power subsection** - Removed the "Battery & Power" collapsing section from DualSense Data in both the DualSense widget (Input Report) and the XInput widget to fix a crash-to-desktop when expanding that section. The subsection displayed battery percent, power state, USB/headphones/mic flags, etc.; the crash was likely from invalid or uninitialized data when opening it.
+
+---
+
 ## v0.12.161 (2026-02-28)
 
 - **DualSense HID: background poll thread** - ReadFile_Direct for DualSense now runs on a dedicated background thread instead of the game thread. The thread starts when DualSensePollingOnce (or UpdateDeviceStates) is called at least once. XInputGetState path reads cached state via RunWithDevicesSharedLock; no ReadFile on the game thread after the thread is running. Reduces input latency by moving HID I/O off the critical path.

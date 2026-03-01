@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.155 (2026-02-28)
+
+- **RoGetActivationFactory: log all classes** - The Windows.Gaming.Input hook now logs every distinct (IID, activatableClassId) pair seen from RoGetActivationFactory once (e.g. "RoGetActivationFactory new pair: riid=... activatableClassId=..."). HSTRING is read via crash-safe HStringToNarrowSafe (SEH and WindowsGetStringRawBuffer from combase.dll) so invalid HSTRINGs do not cause AVs. Helps diagnose which WinRT classes games request.
+
+---
+
 ## v0.12.154 (2026-02-28)
 
 - **HID suppression: crash fix in CreateFile detours** - CreateFileA/CreateFileW detours no longer update HID device stats or call XInputWidget shared state when HID suppression is disabled. Previously the stats block ran for any HID device path, which could run before the XInput widget was initialized and cause a crash. The block is now gated with `ShouldSuppressHIDInput()` so it only runs when HID suppression is enabled.

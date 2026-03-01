@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.185 (2026-03-01)
+
+- **ReShade load source** - Add feature to download reshade / choose local / shared reshade folder.
+
+---
+
 ## v0.12.184 (2026-03-01)
 
 - **Skip loading ReShade and Display Commander from addon directory when already loaded** - When loading .dc/.dc64/.dc32/.asi DLLs from the addon directory (`ProcessAttach_LoadLocalAddonDlls`), skip `LoadLibrary` for files whose version resource ProductName is "ReShade" (if ReShade is already loaded) or "Display Commander" (avoid loading ourselves or a second copy). Uses `GetFileProductNameW` (version info API) to read ProductName; comparisons are case-insensitive.

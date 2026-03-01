@@ -39,7 +39,7 @@ To help us help you more effectively, please include:
 
 1. **Version Information**:
    - Display Commander version
-   - **ReShade version (must be 6.5.1+ nightly)**
+   - **ReShade version (must be 6.6.2)**
    - Game name and version
    - Windows version
 
@@ -62,7 +62,7 @@ To help us help you more effectively, please include:
 ## Common Issues
 
 ### Installation Problems
-- **Ensure you have ReShade 6.5.1+ (nightly version) installed** - stable releases are not compatible
+- **Ensure you have ReShade 6.6.2 installed** - stable releases are not compatible
 - Check that the addon files are in the correct directory
 - Verify game compatibility
 - If using stable ReShade, download a nightly build from [GitHub Actions](https://github.com/crosire/reshade/actions)

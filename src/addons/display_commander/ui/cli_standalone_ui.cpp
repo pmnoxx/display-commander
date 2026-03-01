@@ -2,11 +2,38 @@
 // (default "."). Uses a second ImGui build in namespace ImGuiStandalone (via compile define ImGui=ImGuiStandalone) and
 // ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used in-game.
 
-#define ImGui      ImGuiStandalone
-#define ImDrawList ImDrawListStandalone
+#include "config/display_commander_config.hpp"
+#include "display/display_cache.hpp"
+#include "standalone_ui_settings_bridge.hpp"
+#include "ui/cli_detect_exe.hpp"
+#include "ui/imgui_wrapper_standalone.hpp"
+#include "ui/new_ui/advanced_tab.hpp"
+#include "ui/new_ui/experimental_tab.hpp"
+#include "ui/new_ui/hotkeys_tab.hpp"
+#include "ui/new_ui/main_new_tab_standalone.hpp"
+#include "ui/new_ui/performance_tab.hpp"
+#include "ui/new_ui/vulkan_tab.hpp"
+#include "ui/nvidia_profile_tab_shared.hpp"
+#include "utils/file_sha256.hpp"
+#include "utils/game_launcher_registry.hpp"
+#include "utils/reshade_sha256_database.hpp"
+#include "utils/steam_library.hpp"
+#include "utils/version_check.hpp"
+#include "version.hpp"
+#include "widgets/remapping_widget/remapping_widget.hpp"
+#include "widgets/xinput_widget/xinput_widget.hpp"
+
 #include <windows.h>
-#include <shellapi.h>
+
 #include <GL/gl.h>
+#include <shellapi.h>
+#include <tlhelp32.h>
+
+// reshade
+#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_win32.h"
+#include "imgui.h"
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -19,33 +46,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#include "backends/imgui_impl_opengl3.h"
-#include "backends/imgui_impl_win32.h"
-#include "imgui.h"
-
-#include "config/display_commander_config.hpp"
-#include "display/display_cache.hpp"
-#include "standalone_ui_settings_bridge.hpp"
-#include "ui/cli_detect_exe.hpp"
-#include "ui/imgui_wrapper_standalone.hpp"
-#include "ui/new_ui/advanced_tab.hpp"
-#include "ui/new_ui/main_new_tab_standalone.hpp"
-#include "ui/new_ui/hotkeys_tab.hpp"
-#include "ui/new_ui/performance_tab.hpp"
-#include "ui/new_ui/vulkan_tab.hpp"
-#include "ui/new_ui/experimental_tab.hpp"
-#include "ui/nvidia_profile_tab_shared.hpp"
-#include "widgets/remapping_widget/remapping_widget.hpp"
-#include "widgets/xinput_widget/xinput_widget.hpp"
-#include "utils/file_sha256.hpp"
-#include "utils/game_launcher_registry.hpp"
-#include "utils/reshade_sha256_database.hpp"
-#include "utils/steam_library.hpp"
-#include "utils/version_check.hpp"
-#include "version.hpp"
-
-#include <tlhelp32.h>
 
 #ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
 #define IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
@@ -802,7 +802,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                 if (ImGui::BeginTabItem("Performance Overlay")) {
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
                     ui::new_ui::DrawPerformanceOverlayContent(wrapper, ui::new_ui::GetGraphicsApiFromLastDeviceApi(),
-                                                             true);
+                                                              true);
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Vulkan (Experimental)")) {
@@ -1937,17 +1937,15 @@ static bool CreateContextOpenGL(HWND hWnd) {
         return false;
     }
 
-    typedef HGLRC(WINAPI* PFN_wglCreateContextAttribsARB)(HDC, HGLRC, const int*);
+    typedef HGLRC(WINAPI * PFN_wglCreateContextAttribsARB)(HDC, HGLRC, const int*);
     PFN_wglCreateContextAttribsARB wglCreateContextAttribsARB =
         (PFN_wglCreateContextAttribsARB)wglGetProcAddress("wglCreateContextAttribsARB");
 
     if (wglCreateContextAttribsARB) {
-        int attribs[] = {
-            0x2091, 3,  // WGL_CONTEXT_MAJOR_VERSION_ARB = 3
-            0x2092, 0,  // WGL_CONTEXT_MINOR_VERSION_ARB = 0
-            0x2094, 0x0002,  // WGL_CONTEXT_PROFILE_MASK_ARB = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB
-            0
-        };
+        int attribs[] = {0x2091, 3,       // WGL_CONTEXT_MAJOR_VERSION_ARB = 3
+                         0x2092, 0,       // WGL_CONTEXT_MINOR_VERSION_ARB = 0
+                         0x2094, 0x0002,  // WGL_CONTEXT_PROFILE_MASK_ARB = WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB
+                         0};
         g_hGLRC = wglCreateContextAttribsARB(g_hDC, nullptr, attribs);
     }
     wglMakeCurrent(nullptr, nullptr);

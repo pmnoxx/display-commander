@@ -1,8 +1,4 @@
-#include <array>
-#include <filesystem>
-#include <iostream>
-#include <set>
-#include <thread>
+// Source Code <Display Commander>
 #include "addon.hpp"
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
@@ -40,14 +36,19 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
+#include "widgets/dualsense_widget/dualsense_widget.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
+#include "utils/reshade_load_path.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
-#include "widgets/dualsense_widget/dualsense_widget.hpp"
 
+// Libraries <Windows.h>
+#include <windows.h>
+
+// Libraries <Windows>
 #include <d3d11.h>
 #include <dxgi1_6.h>
 #include <psapi.h>
@@ -55,16 +56,22 @@
 #include <shlobj.h>
 #include <sysinfoapi.h>
 #include <tlhelp32.h>
-#include <windows.h>
 #include <winver.h>
 #include <wrl/client.h>
+
+// Libraries <standard C++>
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <reshade.hpp>
+#include <set>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 // Forward declarations for ReShade event handlers
@@ -1836,15 +1843,13 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
         g_process_attached.store(true);
         return false;
     }
-    wchar_t localappdata_path[MAX_PATH];
-    if (!SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
-        MessageBoxA(nullptr, "ReShade not found in Documents folder", "Display Commander - ReShade Not Found",
-                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
+    std::filesystem::path dc_reshade_dir = display_commander::utils::GetReshadeDirectoryForLoading();
+    if (dc_reshade_dir.empty()) {
+        MessageBoxA(nullptr, "ReShade load path could not be determined (LocalAppData unavailable).",
+                    "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
         g_process_attached.store(true);
         return false;
     }
-    std::filesystem::path localappdata_dir(localappdata_path);
-    std::filesystem::path dc_reshade_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
 #ifdef _WIN64
     std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
     const char* dll_name = "Reshade64.dll";
@@ -1863,21 +1868,16 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
 #else
         const char* dll_name_msg = "Reshade32.dll";
 #endif
-        std::string localappdata_path_str = "%localappdata%\\Programs\\Display_Commander\\Reshade";
-        wchar_t lap_path[MAX_PATH];
-        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, lap_path))) {
-            std::filesystem::path lap_dir(lap_path);
-            std::filesystem::path dc_rd = lap_dir / L"Programs" / L"Display_Commander" / L"Reshade";
-            char lap_narrow[MAX_PATH];
-            WideCharToMultiByte(CP_ACP, 0, dc_rd.c_str(), -1, lap_narrow, MAX_PATH, nullptr, nullptr);
-            localappdata_path_str = lap_narrow;
-        }
+        std::string tried_path_str = dc_reshade_dir.string();
         std::string message =
             "Display Commander detected a game platform (" + platform_names + ") but ReShade was not found.\n\n";
         message += "ReShade is required for Display Commander to function.\n\n";
         message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
         message += "1. In the game's installation folder, or\n";
-        message += "2. In " + localappdata_path_str + "\n\n";
+        message += "2. In " + tried_path_str + "\n\n";
+        message +=
+            "You can use the ReShade tab (Display Commander UI) to choose a load source (Local / Shared path / "
+            "Specific version) or download a specific ReShade version.\n\n";
         message += "Download ReShade from: https://reshade.me/";
         MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
                     MB_OK | MB_ICONWARNING | MB_TOPMOST);

@@ -221,6 +221,8 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **platform_api_detector.cpp**, **.hpp**
 - **process_window_enumerator.cpp**, **.hpp**
 - **reshade_sha256_database.cpp**, **.hpp**
+- **reshade_load_path.cpp**, **.hpp**: ReShade load source (Local / Shared path / Specific version), path resolution from DC config, used at ProcessAttach and ReShade tab
+- **reshade_version_download.cpp**, **.hpp**: Download ReShade Addon by version (tar.exe extract), status for ReShade tab
 - **stack_trace.cpp**, **.hpp**
 - **steam_library.cpp**, **.hpp**
 - **version_check.cpp**, **.hpp**

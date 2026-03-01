@@ -23,6 +23,9 @@ DEFINE_GUID(GUID_DEVINTERFACE_HID, 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00,
 #define HID_BUFFER_CTL_CODE(id) CTL_CODE(FILE_DEVICE_KEYBOARD, (id), METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_HID_SET_POLL_FREQUENCY_MSEC HID_BUFFER_CTL_CODE(103)
 #endif
+#ifndef IOCTL_SET_NUM_DEVICE_INPUT_BUFFERS
+#define IOCTL_SET_NUM_DEVICE_INPUT_BUFFERS HID_BUFFER_CTL_CODE(105)
+#endif
 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "hid.lib")
@@ -225,6 +228,20 @@ bool DualSenseHIDWrapper::CreateHIDDevice(const std::string& device_path, DualSe
         }
     }
 
+    // Cap HID input queue to 2 buffers (same as Special K setBufferCount(2)); keeps "latest" report fresher.
+    {
+        DWORD numBuffers = 2;
+        auto* deviceIoControl = display_commanderhooks::DeviceIoControl_Original != nullptr
+                                    ? display_commanderhooks::DeviceIoControl_Original
+                                    : &DeviceIoControl;
+        BOOL ok = deviceIoControl(hid_device->hDeviceFile, IOCTL_SET_NUM_DEVICE_INPUT_BUFFERS,
+                                  &numBuffers, sizeof(numBuffers), nullptr, 0, nullptr, nullptr);
+        if (!ok) {
+            LogInfo("DualSenseHIDWrapper::CreateHIDDevice() - SetNumInputBuffers(2) failed (last error %lu), continuing",
+                    GetLastError());
+        }
+    }
+
     // Set up input report buffer
     hid_device->input_report.resize(64);  // Standard HID report size
 
@@ -317,7 +334,7 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
             // Check for state changes (true on every successful read since we just incremented packet number)
             if (device.current_state.dwPacketNumber != device.previous_state.dwPacketNumber) {
                 device.packet_rate_ever_called = true;
-                // Rate: how many times per second we see a new report
+                // Rate: reports per second over a fixed 1s window; counter reset every 1s
                 DWORD now = GetTickCount();
                 if (device.packet_rate_window_start_tick == 0) {
                     device.packet_rate_window_start_tick = now;
@@ -325,12 +342,8 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
                 device.packet_change_count_this_second++;
                 DWORD elapsed_ms = now - device.packet_rate_window_start_tick;
                 if (elapsed_ms >= 1000) {
-                    device.last_packet_rate_hz =
-                        (elapsed_ms > 0)
-                            ? (1000.0f * static_cast<float>(device.packet_change_count_this_second) /
-                               static_cast<float>(elapsed_ms))
-                            : 0.0f;
-                    LogInfo("DualSense %s: %.1f reports/sec (packet-number-changed)",
+                    device.last_packet_rate_hz = static_cast<float>(device.packet_change_count_this_second);
+                    LogInfo("DualSense %s: %.1f reports/sec (1s window)",
                             device.device_name.c_str(), device.last_packet_rate_hz);
                     device.packet_change_count_this_second = 0;
                     device.packet_rate_window_start_tick = now;

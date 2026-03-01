@@ -164,7 +164,7 @@ struct DualSenseDevice {
     std::shared_ptr<hid_device_file_s> hid_device;
     GetInputReport_pfn get_input_report;
 
-    // Packet-number-changed rate (reports per second); updated every ~1s window
+    // HID report rate: count over a fixed 1s window, reset every 1s
     DWORD packet_change_count_this_second;
     DWORD packet_rate_window_start_tick;
     float last_packet_rate_hz;

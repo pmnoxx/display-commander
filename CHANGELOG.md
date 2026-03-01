@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.154 (2026-02-28)
+
+- **HID suppression: crash fix in CreateFile detours** - CreateFileA/CreateFileW detours no longer update HID device stats or call XInputWidget shared state when HID suppression is disabled. Previously the stats block ran for any HID device path, which could run before the XInput widget was initialized and cause a crash. The block is now gated with `ShouldSuppressHIDInput()` so it only runs when HID suppression is enabled.
+
+---
+
 ## v0.12.153 (2026-02-28)
 
 - **Removed global "Suppress Windows.Gaming.Input" setting** - The single global `suppress_windows_gaming_input` option was removed from Advanced tab and XInput widget. WGI suppression is now controlled only by the per-game-type options ("Suppress WGI for Unity games" / "Suppress WGI for non-Unity games") and by the hook suppression setting (Windows.Gaming.Input in Hook Stats / Advanced). WGI hook installation no longer checks the removed setting; only `HookSuppressionManager` and the per-game-type logic apply. Doc `RoGetActivationFactory_SpecialK_Comparison.md` updated accordingly.

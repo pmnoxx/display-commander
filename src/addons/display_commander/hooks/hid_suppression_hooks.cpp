@@ -249,7 +249,7 @@ HANDLE WINAPI CreateFileA_Detour(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_CreateFileA);
 
     // Check if this is a HID device access and increment device type counters
-    if (lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
+    if (ShouldSuppressHIDInput() && lpFileName && IsHIDDevicePath(std::string(lpFileName))) {
         auto& device_stats = display_commanderhooks::g_hid_device_stats;
         device_stats.increment_total();
 
@@ -311,7 +311,7 @@ HANDLE WINAPI CreateFileW_Detour(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWOR
     display_commanderhooks::UpdateHookLastCallTime(display_commanderhooks::HOOK_HID_CreateFileW);
 
     // Check if this is a HID device access and increment device type counters
-    if (lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
+    if (ShouldSuppressHIDInput() && lpFileName && IsHIDDevicePath(std::wstring(lpFileName))) {
         auto& device_stats = display_commanderhooks::g_hid_device_stats;
         device_stats.increment_total();
 

@@ -1,4 +1,5 @@
 #include "globals.hpp"
+#include <psapi.h>
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -119,7 +120,24 @@ std::atomic<bool> g_dx9_swapchain_detected{false};    // Set when D3D9 swapchain
 // 3. Reshade Unloads - needs to clean up OnReshadeUnload
 // 4. Reshade loads again without unloading Display Commander
 std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
-HMODULE g_reshade_module = nullptr;
+std::atomic<HMODULE> g_reshade_module{nullptr};
+
+void RefreshReShadeModuleIfNeeded() {
+    if (g_reshade_module.load() != nullptr) return;
+    HMODULE modules[1024];
+    DWORD num_modules_bytes = 0;
+    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) == 0) return;
+    DWORD num_modules =
+        (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE), static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
+    for (DWORD i = 0; i < num_modules; i++) {
+        if (modules[i] == nullptr) continue;
+        FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
+        if (register_func != nullptr) {
+            HMODULE expected = nullptr;
+            if (g_reshade_module.compare_exchange_strong(expected, modules[i])) break;
+        }
+    }
+}
 
 // Prevent always on top behavior
 
@@ -1132,7 +1150,8 @@ size_t GetReShadeRuntimeCount() {
 void OnReshadeUnload() {
     utils::SRWLockExclusive lock(utils::g_reshade_runtimes_lock);
     g_reshade_runtimes.clear();
-    LogInfo("OnReshadeUnload: Cleared all ReShade runtimes");
+    // g_reshade_module = nullptr;  // module unloaded; avoid using stale handle
+    LogInfo("OnReshadeUnload: Cleared all ReShade runtimes and g_reshade_module");
 }
 
 bool SwapchainTrackingManager::IsLockHeldForDiagnostics() const {

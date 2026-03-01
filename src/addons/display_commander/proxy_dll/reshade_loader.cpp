@@ -5,11 +5,15 @@
 
 #include "reshade_loader.hpp"
 #include <windows.h>
+#include <atomic>
+
+
+// Defined in globals.cpp; set when ReShade is loaded so UI and other code can detect it.
+extern std::atomic<HMODULE> g_reshade_module;
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
-
 
 // Helper function to write to DisplayCommander.log before the logger is initialized
 namespace {
@@ -89,6 +93,9 @@ HMODULE LoadReShadeDll() {
         WriteToLogFile(msg.str(), "ERROR");
         return nullptr;
     }
+
+    HMODULE expected = nullptr;
+    (void)g_reshade_module.compare_exchange_strong(expected, reshade_module);
 
     std::ostringstream msg;
     msg << "Successfully loaded ReShade DLL from: " << reshade_path.string();

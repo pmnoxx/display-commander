@@ -36,7 +36,6 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
-#include "widgets/dualsense_widget/dualsense_widget.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
@@ -44,6 +43,7 @@
 #include "utils/reshade_load_path.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
+#include "widgets/dualsense_widget/dualsense_widget.hpp"
 
 // Libraries <Windows.h>
 #include <windows.h>
@@ -1659,8 +1659,9 @@ void ProcessAttach_DetectReShadeInModules() {
         if (modules[i] == nullptr) continue;
         FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
         if (register_func != nullptr) {
-            g_reshade_module = modules[i];
-            OutputDebugStringA("ReShadeRegisterAddon found");
+            HMODULE expected = nullptr;
+            if (g_reshade_module.compare_exchange_strong(expected, modules[i]))
+                OutputDebugStringA("ReShadeRegisterAddon found");
             break;
         }
     }
@@ -1736,9 +1737,11 @@ void ProcessAttach_TryLoadReShadeFromCwd() {
 #ifdef _WIN64
     HMODULE cwd_module = LoadLibraryA("Reshade64.dll");
     if (cwd_module != nullptr) {
-        g_reshade_module = cwd_module;
-        OutputDebugStringA("Reshade64.dll loaded successfully");
-    } else if (std::filesystem::exists("Reshade64.dll")) {
+        HMODULE expected = nullptr;
+        if (g_reshade_module.compare_exchange_strong(expected, cwd_module))
+            OutputDebugStringA("Reshade64.dll loaded successfully");
+    }
+    if (cwd_module == nullptr && std::filesystem::exists("Reshade64.dll")) {
         DWORD error = GetLastError();
         OutputDebugStringA("Reshade64.dll could not be loaded");
         OutputDebugStringA(std::to_string(error).c_str());
@@ -1748,8 +1751,9 @@ void ProcessAttach_TryLoadReShadeFromCwd() {
 #else
     HMODULE cwd_module = LoadLibraryA("Reshade32.dll");
     if (cwd_module != nullptr) {
-        g_reshade_module = cwd_module;
-        OutputDebugStringA("Reshade32.dll loaded successfully");
+        HMODULE expected = nullptr;
+        if (g_reshade_module.compare_exchange_strong(expected, cwd_module))
+            OutputDebugStringA("Reshade32.dll loaded successfully");
     }
 #endif
 }
@@ -1845,10 +1849,8 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     }
     std::filesystem::path dc_reshade_dir = display_commander::utils::GetReshadeDirectoryForLoading();
     if (dc_reshade_dir.empty()) {
-        MessageBoxA(nullptr, "ReShade load path could not be determined (LocalAppData unavailable).",
-                    "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
         g_process_attached.store(true);
-        return false;
+        return true;
     }
 #ifdef _WIN64
     std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
@@ -1858,31 +1860,8 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     const char* dll_name = "Reshade32.dll";
 #endif
     if (!std::filesystem::exists(reshade_path)) {
-        std::string platform_names;
-        for (size_t i = 0; i < detected_platforms.size(); ++i) {
-            if (i > 0) platform_names += ", ";
-            platform_names += display_commander::utils::GetPlatformAPIName(detected_platforms[i]);
-        }
-#ifdef _WIN64
-        const char* dll_name_msg = "ReShade64.dll";
-#else
-        const char* dll_name_msg = "Reshade32.dll";
-#endif
-        std::string tried_path_str = dc_reshade_dir.string();
-        std::string message =
-            "Display Commander detected a game platform (" + platform_names + ") but ReShade was not found.\n\n";
-        message += "ReShade is required for Display Commander to function.\n\n";
-        message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
-        message += "1. In the game's installation folder, or\n";
-        message += "2. In " + tried_path_str + "\n\n";
-        message +=
-            "You can use the ReShade tab (Display Commander UI) to choose a load source (Local / Shared path / "
-            "Specific version) or download a specific ReShade version.\n\n";
-        message += "Download ReShade from: https://reshade.me/";
-        MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
-                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
         g_process_attached.store(true);
-        return false;
+        return true;
     }
     std::error_code ec;
     std::filesystem::path absolute_path = std::filesystem::canonical(reshade_path, ec);
@@ -1893,26 +1872,30 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     std::wstring dll_filename = absolute_path.filename().wstring();
     HMODULE already_loaded = GetModuleHandleW(dll_filename.c_str());
     if (already_loaded != nullptr) {
-        g_reshade_module = already_loaded;
-        char path_narrow[MAX_PATH];
-        WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
-        char msg[512];
-        snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s", dll_name, path_narrow);
-        OutputDebugStringA(msg);
-        return true;
+        HMODULE expected = nullptr;
+        if (g_reshade_module.compare_exchange_strong(expected, already_loaded)) {
+            char path_narrow[MAX_PATH];
+            WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+            char msg[512];
+            snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s", dll_name, path_narrow);
+            OutputDebugStringA(msg);
+            return true;
+        }
     }
     const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
     if (!dc_config_dir.empty()) SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
     SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
     HMODULE reshade_module = LoadLibraryW(absolute_path.c_str());
     if (reshade_module != nullptr) {
-        g_reshade_module = reshade_module;
-        char path_narrow[MAX_PATH];
-        WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
-        char msg[512];
-        snprintf(msg, sizeof(msg), "%s loaded successfully from Documents folder: %s", dll_name, path_narrow);
-        OutputDebugStringA(msg);
-        return true;
+        HMODULE expected = nullptr;
+        if (g_reshade_module.compare_exchange_strong(expected, reshade_module)) {
+            char path_narrow[MAX_PATH];
+            WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+            char msg[512];
+            snprintf(msg, sizeof(msg), "%s loaded successfully from Documents folder: %s", dll_name, path_narrow);
+            OutputDebugStringA(msg);
+            return true;
+        }
     }
     DWORD error = GetLastError();
     wchar_t error_msg[512] = {0};

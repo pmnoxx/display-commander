@@ -8,7 +8,8 @@ namespace display_commander::utils {
 enum class ReshadeLoadSource : int {
     Local = 0,           // %localappdata%\Programs\Display_Commander\Reshade (flat)
     SharedPath = 1,      // User-provided directory
-    SpecificVersion = 2  // e.g. .../Reshade/Dll/6.7.3/
+    SpecificVersion = 2,  // e.g. .../Reshade/Dll/6.7.3/
+    NoReshade = 3        // Do not load ReShade (DC runs without ReShade when used as proxy)
 };
 
 // Returns the directory that should contain Reshade64.dll / Reshade32.dll for the
@@ -29,6 +30,9 @@ std::string GetSharedReshadeVersion();
 // Used by ReShade tab UI and by GetReshadeDirectoryForLoading().
 ReshadeLoadSource GetReshadeLoadSourceFromConfig();
 void SetReshadeLoadSourceInConfig(ReshadeLoadSource value);
+
+// True when load source is NoReshade (user chose not to load ReShade). Used to skip load without showing an error.
+bool IsReshadeLoadDisabledByConfig();
 std::string GetReshadeSharedPathFromConfig();
 void SetReshadeSharedPathInConfig(const std::string& path);
 std::string GetReshadeSelectedVersionFromConfig();

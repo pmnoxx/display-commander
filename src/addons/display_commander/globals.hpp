@@ -543,7 +543,11 @@ extern std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 
 // SRWLOCK diagnostics for stuck-detection reporting (returns true if lock is currently held)
 bool IsSwapchainTrackingLockHeld();
-extern HMODULE g_reshade_module;
+extern std::atomic<HMODULE> g_reshade_module;
+
+// If g_reshade_module is null, scan the process for ReShade (ReShadeRegisterAddon export) and set it.
+// Use when ReShade may have been loaded after we attached (e.g. we started in no-ReShade mode).
+void RefreshReShadeModuleIfNeeded();
 
 // ReShade runtime management functions
 void AddReShadeRuntime(reshade::api::effect_runtime* runtime);

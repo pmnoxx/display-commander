@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.174 (2026-03-01)
+
+- **32-bit build: Ninja preset and parallel builds** - Added `CMakePresets.json` with single-config Ninja preset for 32-bit (`ninja-x86`). `bd32.ps1` / `bd32_core.ps1` now prefer Ninja when `vcvars32.bat` is available (via vswhere), running configure and build in a 32-bit environment for full parallel compilation. Fallback remains Visual Studio generator with MSBuild intra-project parallelism (`CL_MPCount`). Switched from Ninja Multi-Config to single-config Ninja to avoid object-order dependency errors with generated `.rc` files; build type is passed as `CMAKE_BUILD_TYPE` at configure time.
+
+---
+
 ## v0.12.173 (2026-03-01)
 
 - **dc_service: ReShade download and DLL in script folder** - `download_dc32_winmm.bat` and `download_dc64_winmm.bat` now download ReShade Addon installer (ReShade_Setup_6.7.3_Addon.exe) to shared folder `Display_Commander/Reshade_Setup` when missing, and ensure `Reshade32.dll` / `Reshade64.dll` are present in the script folder (extracted from the installer when needed). Shared folder avoids redownload when running either script.

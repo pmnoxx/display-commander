@@ -50,40 +50,67 @@ if ($Experimental) {
     Write-Host "Experimental features: DISABLED" -ForegroundColor Gray
 }
 
-# Build the project with the specified configuration for 32-bit
-# cmake -S . -B build32 -G "Visual Studio 17 2022" -A Win32 -DCMAKE_BUILD_TYPE=$BuildType -DEXPERIMENTAL_TAB=ON
-# cmake --build build32 --config $BuildType
-
-# Configure for 32-bit using Visual Studio 2022 generator
-# Unset cached EXPERIMENTAL_FEATURES first to force update
-$cmakeArgs = @("-S", ".", "-B", "build32", "-G", "Visual Studio 17 2022", "-A", "Win32", "-DCMAKE_BUILD_TYPE=$BuildType", "-DEXPERIMENTAL_TAB=ON", "-UEXPERIMENTAL_FEATURES")
-if ($Experimental) {
-    $cmakeArgs += "-DEXPERIMENTAL_FEATURES=ON"
-} else {
-    $cmakeArgs += "-DEXPERIMENTAL_FEATURES=OFF"
-}
-cmake @cmakeArgs
-
-# Build in parallel (use all logical CPUs unless CMAKE_BUILD_PARALLEL_LEVEL is set)
 $parallelJobs = if ($env:CMAKE_BUILD_PARALLEL_LEVEL) { $env:CMAKE_BUILD_PARALLEL_LEVEL } else { $env:NUMBER_OF_PROCESSORS }
 if (-not $parallelJobs) { $parallelJobs = 32 }
 Write-Host "Building with $parallelJobs parallel job(s)" -ForegroundColor Gray
-cmake --build build32 --config "$BuildType" --parallel $parallelJobs
 
+# Prefer Ninja preset (parallel per .cpp like renodx2) when CMakePresets.json exists and we can run 32-bit env
+$useNinjaPreset = $false
+$vcvars32 = $null
+if (Test-Path "$PSScriptRoot\CMakePresets.json") {
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath 2>$null
+        if ($vsPath) {
+            $vcvars32 = Join-Path $vsPath "VC\Auxiliary\Build\vcvars32.bat"
+            if (Test-Path $vcvars32) { $useNinjaPreset = $true }
+        }
+    }
+}
+
+if ($useNinjaPreset) {
+    Write-Host "Using Ninja preset (parallel build)" -ForegroundColor Cyan
+    $experimentalFlag = if ($Experimental) { "-DEXPERIMENTAL_FEATURES=ON" } else { "-DEXPERIMENTAL_FEATURES=OFF" }
+    $configureCmd = "cmake --preset ninja-x86 -DCMAKE_BUILD_TYPE=$BuildType $experimentalFlag"
+    $buildCmd = "cmake --build build32 --parallel $parallelJobs"
+    $batchCmd = "call `"$vcvars32`" && cd /d `"$PSScriptRoot`" && $configureCmd && $buildCmd"
+    cmd /c $batchCmd
+} else {
+    # Fallback: Visual Studio 2022 generator (enable intra-project parallelism via CL_MPCount)
+    if (-not $useNinjaPreset -and (Test-Path "$PSScriptRoot\CMakePresets.json")) {
+        Write-Host "Ninja preset available but vcvars32.bat not found; using Visual Studio generator" -ForegroundColor Gray
+    }
+    $build32Dir = Join-Path $PSScriptRoot "build32"
+    $cmakeArgs = @("-S", $PSScriptRoot, "-B", $build32Dir, "-G", "Visual Studio 17 2022", "-A", "Win32", "-DCMAKE_BUILD_TYPE=$BuildType", "-DEXPERIMENTAL_TAB=ON", "-UEXPERIMENTAL_FEATURES")
+    if ($Experimental) {
+        $cmakeArgs += "-DEXPERIMENTAL_FEATURES=ON"
+    } else {
+        $cmakeArgs += "-DEXPERIMENTAL_FEATURES=OFF"
+    }
+    cmake @cmakeArgs
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    cmake --build $build32Dir --config "$BuildType" --parallel $parallelJobs -- /p:CL_MPCount=$parallelJobs
+}
+
+$build32Dir = Join-Path $PSScriptRoot "build32"
 # Check if build was successful
 if ($LASTEXITCODE -eq 0) {
     Write-Host "32-bit build completed successfully!" -ForegroundColor Green
 
-    # Find the 32-bit addon file
-    $addon32File = Get-ChildItem -Path "build32\src" -Recurse -Name "zzz_display_commander.addon32" | Select-Object -First 1
-    if ($addon32File) {
-        $sourcePath = "build32\src\$addon32File"
-        Copy-Item $sourcePath "build32\zzz_display_commander.addon32" -Force
-        Write-Host "Copied 32-bit addon to: build32\zzz_display_commander.addon32" -ForegroundColor Cyan
-
-        #$fileSize = (Get-Item "build32\zzz_display_commander.addon32").Length
-        #Write-Host "File size: $([math]::Round($fileSize / 1KB, 2)) KB" -ForegroundColor Cyan
-    } else {
+    # Find the 32-bit addon (Ninja: build32\... or build32\src\...; VS: build32\src\...)
+    $addonPath = Get-ChildItem -Path $build32Dir -Recurse -Filter "zzz_display_commander.addon32" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    if ($addonPath) {
+        $destPath = Join-Path $build32Dir "zzz_display_commander.addon32"
+        Copy-Item $addonPath $destPath -Force
+        Write-Host "Copied 32-bit addon to: $destPath" -ForegroundColor Cyan
+    }
+    # Copy PDB from build32\src\addons\display_commander to build32 so debugger finds symbols
+    $pdbSource = Join-Path $build32Dir "src\addons\display_commander\zzz_display_commander.pdb"
+    if (Test-Path $pdbSource) {
+        Copy-Item $pdbSource (Join-Path $build32Dir "zzz_display_commander.pdb") -Force
+        Write-Host "Copied PDB to: build32\zzz_display_commander.pdb" -ForegroundColor Cyan
+    }
+    if (-not $addonPath) {
         Write-Warning "32-bit addon file not found in build32 directory"
     }
 } else {

@@ -1,0 +1,31 @@
+{
+  "version": 8,
+  "cmakeMinimumRequired": { "major": 3, "minor": 23, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": { "CMAKE_SYSTEM_VERSION": "10.0.26100.0" }
+    },
+    {
+      "name": "ninja-x86",
+      "inherits": "base",
+      "displayName": "Ninja x86 (32-bit)",
+      "generator": "Ninja",
+      "binaryDir": "build32",
+      "architecture": { "value": "x86", "strategy": "external" },
+      "toolset": { "value": "v143,host=x64", "strategy": "external" },
+      "environment": { "CMAKE_EXPORT_COMPILE_COMMANDS": "ON" },
+      "cacheVariables": {
+        "MSVC": "true",
+        "MSVC_TOOLSET_VERSION": "143",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /EHsc",
+        "CMAKE_EXE_LINKER_FLAGS": "/machine:X86",
+        "CMAKE_MODULE_LINKER_FLAGS": "/machine:X86",
+        "EXPERIMENTAL_TAB": "ON"
+      }
+    }
+  ]
+}

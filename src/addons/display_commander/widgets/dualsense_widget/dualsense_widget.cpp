@@ -311,6 +311,19 @@ void DualSenseWidget::DrawDeviceDetails(display_commander::ui::IImGuiWrapper& im
         imgui.Text("Last Update: %lu ms ago", age_ms);
     }
 
+    // HID report rate (packet-number-changed path ever called?)
+    if (device.packet_rate_ever_called) {
+        imgui.Text("HID reports: %.1f/sec", device.last_packet_rate_hz);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Input report rate (ReadFile succeeded; packet-number-changed branch has run)");
+        }
+    } else {
+        imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "HID reports: never");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("No successful HID read yet; packet-number-changed branch has not run");
+        }
+    }
+
     imgui.Spacing();
 
     // Controller state (if connected)

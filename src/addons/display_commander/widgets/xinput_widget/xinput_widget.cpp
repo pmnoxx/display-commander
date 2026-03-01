@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include "../../config/display_commander_config.hpp"
+#include "../../dualsense/dualsense_hid_wrapper.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/input_activity_stats.hpp"
@@ -14,6 +15,7 @@
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
+#include "../remapping_widget/remapping_widget.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/hook_suppression_settings.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
@@ -1657,6 +1659,75 @@ void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.Unindent();
     }
+}
+
+namespace {
+// For GetState(0) polling rate: rolling 1s window
+uint64_t g_last_getstate0_count = 0;
+uint64_t g_last_getstate0_tick_ms = 0;
+float g_getstate0_rate_hz = 0.0f;
+}  // namespace
+
+void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& imgui) {
+    if (!imgui.CollapsingHeader("Input polling rates", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+    imgui.Indent();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("XInput GetState(0) calls/sec (game polling) and DualSense HID report rate (addon reading).");
+    }
+
+    // XInput GetState(0) rate (use original tick so time-slowdown doesn't skew rate)
+    const uint64_t getstate0_calls = display_commanderhooks::GetXInputGetStateUserIndexZeroCallCount();
+    const uint64_t now_ms = GetOriginalTickCount64();
+    if (g_last_getstate0_tick_ms == 0) {
+        g_last_getstate0_tick_ms = now_ms;
+        g_last_getstate0_count = getstate0_calls;
+    }
+    const uint64_t elapsed_ms = now_ms - g_last_getstate0_tick_ms;
+    if (elapsed_ms >= 1000) {
+        const uint64_t delta = (getstate0_calls >= g_last_getstate0_count) ? (getstate0_calls - g_last_getstate0_count) : 0;
+        g_getstate0_rate_hz = (elapsed_ms > 0) ? (1000.0f * static_cast<float>(delta) / static_cast<float>(elapsed_ms)) : 0.0f;
+        g_last_getstate0_count = getstate0_calls;
+        g_last_getstate0_tick_ms = now_ms;
+    }
+    imgui.Text("XInput GetState(0): %.1f/sec (total: %llu)", g_getstate0_rate_hz,
+               static_cast<unsigned long long>(getstate0_calls));
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Game (or addon) calls to XInputGetState(0) per second.");
+    }
+
+    // DualSense HID report rate (first device if any)
+    if (display_commander::dualsense::g_dualsense_hid_wrapper) {
+        const auto& devices = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevices();
+        if (devices.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID: no devices");
+        } else {
+            const auto& dev = devices[0];
+            if (dev.packet_rate_ever_called) {
+                imgui.Text("DualSense HID: %.1f reports/sec", dev.last_packet_rate_hz);
+            } else {
+                imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID: never");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Addon ReadFile rate for first DualSense (packet-number-changed branch).");
+            }
+        }
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID: not initialized");
+    }
+
+    imgui.Unindent();
+}
+
+void DrawControllerTab(display_commander::ui::IImGuiWrapper& imgui) {
+    DrawActiveInputApisSection(imgui);
+    ImGui::Spacing();
+    DrawControllerPollingRatesSection(imgui);
+    ImGui::Spacing();
+    DrawXInputWidget(imgui);
+    ImGui::Spacing();
+    display_commander::widgets::remapping_widget::DrawRemappingWidget(imgui);
 }
 
 // Global functions for hooks to use

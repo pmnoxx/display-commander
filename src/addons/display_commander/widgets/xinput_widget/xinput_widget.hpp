@@ -297,6 +297,10 @@ void CleanupXInputWidget();
 void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui);
 /** Draw "Active input APIs (last 10s)" section for Controller tab (Special K-style). */
 void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui);
+/** Draw GetState(0) and DualSense HID report polling rates for Controller tab. */
+void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& imgui);
+/** Draw full Controller tab (all sections in order). Call this from both UIs so widgets stay in sync. */
+void DrawControllerTab(display_commander::ui::IImGuiWrapper& imgui);
 
 // Global functions for hooks to use
 void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state);

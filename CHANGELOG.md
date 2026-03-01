@@ -2,6 +2,15 @@
 
 ---
 
+## v0.12.159 (2026-02-28)
+
+- **DualSense HID: setPollingFrequency(0)** - After opening a DualSense HID device we now call `DeviceIoControl(IOCTL_HID_SET_POLL_FREQUENCY_MSEC, 0)` (same as Special K). Poll interval 0 means irregular reads: each ReadFile returns the latest report without waiting for a fixed interval, reducing latency when we poll at our own rate.
+- **DualSense: HID report rate and "ever called"** - Per-device rate (reports/sec) for the packet-number-changed path; `packet_rate_ever_called` records whether that path has run at least once. DualSense widget device details show "HID reports: X.X/sec" or "HID reports: never" with tooltips.
+- **Controller tab: Input polling rates** - New "Input polling rates" section shows XInput GetState(0) calls/sec (rolling 1s) and DualSense HID reports/sec (first device). Uses GetOriginalTickCount64 so time-slowdown does not skew rates.
+- **Controller tab: single entry point** - Full Controller tab content is drawn by `DrawControllerTab()` in the XInput widget (Active input APIs, Input polling rates, XInput widget, Remapping widget). New UI calls only this so adding widgets in one place keeps both UIs in sync.
+
+---
+
 ## v0.12.157 (2026-02-28)
 
 - **XInputGetState(0) last duration (Event Counters)** - Controller tab → Event Counters now shows "XInputGetState(0) last duration: X.XXX ms" for the most recent call when the game polls controller 0. A RAII scoped timer runs only when `dwUserIndex == 0`; on scope exit a lambda records the elapsed time so the UI can display it. Helps gauge detour overhead.

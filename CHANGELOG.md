@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.170 (2026-02-28)
+
+- **Windows Gaming Input: remove __try/__except** - Removed MSVC SEH from `HStringToNarrowSafe` in `windows_gaming_input_hooks.cpp` so the addon builds on toolchains that do not support `__try`/`__except`. HSTRING-to-UTF-8 conversion for RoGetActivationFactory logging is unchanged; invalid HSTRING is no longer caught (defensive only).
+
+---
+
 ## v0.12.169 (2026-02-28)
 
 - **AutoHDR UI warning and RenoDX link** - Main tab Brightness and AutoHDR: added visible warning that AutoHDR only applies the Perceptual Boost shader and requires an external addon (e.g. RenoDX) to upgrade swapchain from SDR to HDR; updated checkbox tooltip; added "RenoDX (open in browser)" button linking to recommended addon (https://github.com/clshortfuse/renodx). Future: autodownload option for addon.

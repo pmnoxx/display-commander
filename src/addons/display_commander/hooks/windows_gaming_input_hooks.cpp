@@ -30,7 +30,7 @@ WindowsGetStringRawBuffer_pfn GetWindowsGetStringRawBuffer() {
     return s_fn;
 }
 
-// Crash-safe: reading activatableClassId can AV if the HSTRING is invalid. Use SEH so we never crash.
+// Converts HSTRING to UTF-8 for logging. If hstr is invalid, the Windows API may raise; we do not use SEH.
 std::string HStringToNarrowSafe(HSTRING hstr) {
     if (hstr == nullptr) {
         return "(null)";
@@ -39,22 +39,18 @@ std::string HStringToNarrowSafe(HSTRING hstr) {
     if (get_string_raw_buffer == nullptr) {
         return "(no WindowsGetStringRawBuffer)";
     }
-    __try {
-        UINT32 len = 0;
-        PCWSTR raw = get_string_raw_buffer(hstr, &len);
-        if (raw == nullptr || len == 0) {
-            return "(empty)";
-        }
-        int need = WideCharToMultiByte(CP_UTF8, 0, raw, static_cast<int>(len), nullptr, 0, nullptr, nullptr);
-        if (need <= 0) {
-            return "(convert failed)";
-        }
-        std::string out(static_cast<size_t>(need), '\0');
-        WideCharToMultiByte(CP_UTF8, 0, raw, static_cast<int>(len), out.data(), need, nullptr, nullptr);
-        return out;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return "(invalid HSTRING)";
+    UINT32 len = 0;
+    PCWSTR raw = get_string_raw_buffer(hstr, &len);
+    if (raw == nullptr || len == 0) {
+        return "(empty)";
     }
+    int need = WideCharToMultiByte(CP_UTF8, 0, raw, static_cast<int>(len), nullptr, 0, nullptr, nullptr);
+    if (need <= 0) {
+        return "(convert failed)";
+    }
+    std::string out(static_cast<size_t>(need), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, raw, static_cast<int>(len), out.data(), need, nullptr, nullptr);
+    return out;
 }
 
 SRWLOCK g_seen_riid_class_lock = SRWLOCK_INIT;

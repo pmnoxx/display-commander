@@ -130,8 +130,8 @@ bool FetchReShadeTagsFromGitHubImpl(std::vector<std::string>& out_versions, std:
     return !out_versions.empty();
 }
 
-// Parse latest ReShade version from reshade.me HTML (e.g. href="/downloads/ReShade_Setup_6.7.3.exe" or "ReShade 6.7.3").
-// Returns first X.Y.Z found that is >= 6.6.2, or empty.
+// Parse latest ReShade version from reshade.me HTML (e.g. href="/downloads/ReShade_Setup_6.7.3.exe" or
+// "ReShade 6.7.3"). Returns first X.Y.Z found that is >= 6.6.2, or empty.
 static std::string ParseReShadeLatestFromReshadeMeHtml(const std::string& html) {
     const std::string prefix = "ReShade_Setup_";
     const std::string min_version("6.6.2");
@@ -144,7 +144,10 @@ static std::string ParseReShadeLatestFromReshadeMeHtml(const std::string& html) 
         }
         if (end > start) {
             std::string ver = html.substr(start, end - start);
-            if (display_commander::utils::version_check::CompareVersions(ver, min_version) >= 0) {
+            while (!ver.empty() && ver.back() == '.') {
+                ver.pop_back();
+            }
+            if (!ver.empty() && display_commander::utils::version_check::CompareVersions(ver, min_version) >= 0) {
                 return ver;
             }
         }
@@ -392,6 +395,20 @@ std::string ParseVersionString(const std::string& version_str) {
         result = result.substr(1);
     }
     return result;
+}
+
+std::string NormalizeVersionToXyz(const std::string& version_str) {
+    std::string s = ParseVersionString(version_str);
+    size_t dot_count = 0;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '.') {
+            ++dot_count;
+            if (dot_count == 3) {
+                return s.substr(0, i);
+            }
+        }
+    }
+    return s;
 }
 
 std::filesystem::path GetDownloadDirectory() {

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.167 (2026-02-28)
+
+- **Reflex-only latency** - Removed the LatencyManager abstraction; latency is now Reflex-only. Replaced `g_latencyManager` with `g_reflexProvider` (ReflexProvider). Deleted `latency_manager.cpp` and `latency_manager.hpp` (ILatencyProvider, LatencyTechnology, LatencyConfig). ReflexProvider is the single public API: Initialize, InitializeNative, Shutdown, SetMarker, ApplySleepMode, Sleep, UpdateCachedSleepStatus, GetSleepStatus; marker counting and sleep/ApplySleepMode stats moved into ReflexProvider. SleepStatusUnavailableReason simplified (kNoReflex, kReflexNotInitialized); SleepStatusUnavailableReasonToString moved to globals.hpp. PCLSTATS_DEFINE() moved to reflex_provider.cpp.
+
+---
+
 ## v0.12.166 (2026-02-28)
 
 - **Dead code removal** - Removed unused/orphaned API and declarations: GetQPCallingModules(), GetHookIdentifierByName() (timeslowdown_hooks); LatencyManager::GetCurrentTechnology(), GetCurrentTechnologyName(), SetConfig(), GetConfig(), IncreaseFrameId() (latency_manager); ReflexManager::IncreaseFrameId() (reflex_manager); extern GetTargetFps() from latency_manager. Audit and checklist updated (runs 68–78).

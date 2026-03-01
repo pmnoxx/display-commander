@@ -2,7 +2,7 @@
 #include "../../display/dpi_management.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
-#include "../../latency/latency_manager.hpp"
+#include "../../latency/reflex_provider.hpp"
 #include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
@@ -1201,12 +1201,12 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             bool status_available = false;
             SleepStatusUnavailableReason unavailable_reason = SleepStatusUnavailableReason::kNone;
 
-            if (!g_latencyManager) {
-                unavailable_reason = SleepStatusUnavailableReason::kNoLatencyManager;
-            } else if (!g_latencyManager->IsInitialized()) {
-                unavailable_reason = SleepStatusUnavailableReason::kLatencyManagerNotInitialized;
+            if (!g_reflexProvider) {
+                unavailable_reason = SleepStatusUnavailableReason::kNoReflex;
+            } else if (!g_reflexProvider->IsInitialized()) {
+                unavailable_reason = SleepStatusUnavailableReason::kReflexNotInitialized;
             } else {
-                status_available = g_latencyManager->GetSleepStatus(&sleep_status, &unavailable_reason);
+                status_available = g_reflexProvider->GetSleepStatus(&sleep_status, &unavailable_reason);
             }
 
             if (status_available) {

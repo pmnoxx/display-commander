@@ -59,7 +59,7 @@ enum class LogLevel {
 class SpinLock;
 class BackgroundWindowManager;
 class LatentSyncManager;
-class LatencyManager;
+class ReflexProvider;
 class SwapchainTrackingManager;
 
 // Unified parameter value that can hold multiple types
@@ -336,15 +336,36 @@ enum class InputBlockingMode : std::uint8_t {
 
 // Why Reflex Sleep Status is not available (for UI and diagnostics)
 enum class SleepStatusUnavailableReason : std::uint8_t {
-    kNone = 0,                      // Status is available
-    kNoLatencyManager,              // Latency manager not created
-    kLatencyManagerNotInitialized,  // Latency manager exists but not initialized (no D3D device yet)
-    kProviderDoesNotSupport,        // Current latency provider does not support sleep status
-    kReflexNotInitialized,          // Reflex manager not initialized
-    kNoD3DDevice,                   // Reflex has no D3D device (device lost or not set)
-    kNvApiFunctionUnavailable,      // NvAPI_D3D_GetSleepStatus not found in nvapi64
-    kNvApiError                     // NvAPI_D3D_GetSleepStatus returned an error
+    kNone = 0,                 // Status is available
+    kNoReflex,                 // Reflex provider not created
+    kReflexNotInitialized,     // Reflex provider exists but not initialized (no D3D device yet)
+    kProviderDoesNotSupport,   // Current provider does not support sleep status
+    kNoD3DDevice,              // Reflex has no D3D device (device lost or not set)
+    kNvApiFunctionUnavailable,  // NvAPI_D3D_GetSleepStatus not found in nvapi64
+    kNvApiError                // NvAPI_D3D_GetSleepStatus returned an error
 };
+
+// Human-readable reason for sleep status being unavailable (for UI)
+inline const char* SleepStatusUnavailableReasonToString(SleepStatusUnavailableReason r) {
+    switch (r) {
+        case SleepStatusUnavailableReason::kNone:
+            return "Available";
+        case SleepStatusUnavailableReason::kNoReflex:
+            return "Reflex provider not created";
+        case SleepStatusUnavailableReason::kReflexNotInitialized:
+            return "Reflex not initialized (no D3D device yet)";
+        case SleepStatusUnavailableReason::kProviderDoesNotSupport:
+            return "Current provider does not support sleep status";
+        case SleepStatusUnavailableReason::kNoD3DDevice:
+            return "No D3D device (device lost or not set)";
+        case SleepStatusUnavailableReason::kNvApiFunctionUnavailable:
+            return "NvAPI_D3D_GetSleepStatus not found in nvapi64";
+        case SleepStatusUnavailableReason::kNvApiError:
+            return "NvAPI GetSleepStatus returned an error";
+        default:
+            return "Unknown";
+    }
+}
 
 // Structures
 struct GlobalWindowState {
@@ -571,8 +592,8 @@ namespace dxgi::latent_sync {
 extern std::unique_ptr<LatentSyncManager> g_latentSyncManager;
 }
 
-// Latency Manager
-extern std::unique_ptr<LatencyManager> g_latencyManager;
+// Reflex (latency) provider
+extern std::unique_ptr<ReflexProvider> g_reflexProvider;
 
 // Global frame ID for latency management
 extern std::atomic<uint64_t> g_global_frame_id;

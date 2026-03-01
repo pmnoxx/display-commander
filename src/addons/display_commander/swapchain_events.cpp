@@ -20,7 +20,7 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
-#include "latency/latency_manager.hpp"
+#include "latency/reflex_provider.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
@@ -428,9 +428,9 @@ void HandleRenderStartAndEndTimes() {
 
             if (s_reflex_enable_current_frame.load()) {
                 if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
-                    if (g_latencyManager->IsInitialized()) {
-                        g_latencyManager->SetMarker(SIMULATION_END);
-                        g_latencyManager->SetMarker(RENDERSUBMIT_START);
+                    if (g_reflexProvider->IsInitialized()) {
+                        g_reflexProvider->SetMarker(SIMULATION_END);
+                        g_reflexProvider->SetMarker(RENDERSUBMIT_START);
                     }
                 }
             }
@@ -1257,8 +1257,8 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
-            if (g_latencyManager->IsInitialized()) {
-                g_latencyManager->SetMarker(PRESENT_END);
+            if (g_reflexProvider->IsInitialized()) {
+                g_reflexProvider->SetMarker(PRESENT_END);
             }
         }
     }
@@ -1335,7 +1335,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     HandleFpsLimiterPost(false, from_wrapper);
     const LONGLONG end_ns = TimerPresentPacingDelayEnd(start_ns);
     g_frame_data[present_slot].sleep_post_present_end_time_ns.store(end_ns);
-    if (g_latencyManager->IsInitialized()) {
+    if (g_reflexProvider->IsInitialized()) {
         if (!override_game_reflex_settings) {
             auto params = g_last_nvapi_sleep_mode_params.load();
             ReflexManager::RestoreSleepMode(g_last_nvapi_sleep_mode_dev_ptr.load(), params ? params.get() : nullptr);
@@ -1352,12 +1352,12 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
             bool boost;
             low_latency = GetReflexLowLatency();
             boost = GetReflexBoost();
-            g_latencyManager->ApplySleepMode(low_latency, boost,
+            g_reflexProvider->ApplySleepMode(low_latency, boost,
                                              settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
             if (settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()
                 && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 perf_timer.pause();
-                g_latencyManager->Sleep();
+                g_reflexProvider->Sleep();
                 perf_timer.resume();
             }
         }
@@ -1389,10 +1389,10 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
-            g_latencyManager->SetMarker(SIMULATION_START);
+            g_reflexProvider->SetMarker(SIMULATION_START);
             if (g_pclstats_ping_signal.exchange(false, std::memory_order_acq_rel)) {
                 // Inject ping marker through the provider (which will emit both NVAPI and ETW markers)
-                // g_latencyManager->SetMarker(PC_LATENCY_PING);
+                // g_reflexProvider->SetMarker(PC_LATENCY_PING);
             }
         }
     }
@@ -1929,7 +1929,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     // NVIDIA Reflex: RENDERSUBMIT_END marker (minimal)
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
-            g_latencyManager->SetMarker(RENDERSUBMIT_END);
+            g_reflexProvider->SetMarker(RENDERSUBMIT_END);
         }
     }
 
@@ -1938,8 +1938,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     const LONGLONG sleep_status_update_interval_ns = 500 * utils::NS_TO_MS;  // 500ms
     LONGLONG now_ns = utils::get_now_ns();
     if (now_ns - last_sleep_status_update_ns >= sleep_status_update_interval_ns) {
-        if (g_latencyManager && g_latencyManager->IsInitialized()) {
-            g_latencyManager->UpdateCachedSleepStatus();
+        if (g_reflexProvider && g_reflexProvider->IsInitialized()) {
+            g_reflexProvider->UpdateCachedSleepStatus();
         }
         last_sleep_status_update_ns = now_ns;
     }
@@ -2005,11 +2005,11 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     auto ok_to_initialize_reflex = IsNativeReflexActive(utils::get_now_ns()) || IsInjectedReflexEnabled();
     if (ok_to_initialize_reflex) {
         if (api == reshade::api::device_api::d3d12) {
-            g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);
+            g_reflexProvider->InitializeNative((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX12);
         } else if (api == reshade::api::device_api::d3d11) {
-            g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX11);
+            g_reflexProvider->InitializeNative((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX11);
         } else if (api == reshade::api::device_api::d3d10) {
-            g_latencyManager->Initialize((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX10);
+            g_reflexProvider->InitializeNative((void*)swapchain->get_device()->get_native(), DeviceTypeDC::DX10);
         }
     }
 
@@ -2081,8 +2081,8 @@ void OnPresentFlags2(bool from_present_detour, bool from_wrapper) {
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
-            if (g_latencyManager->IsInitialized()) {
-                g_latencyManager->SetMarker(PRESENT_START);
+            if (g_reflexProvider->IsInitialized()) {
+                g_reflexProvider->SetMarker(PRESENT_START);
             }
         }
     }

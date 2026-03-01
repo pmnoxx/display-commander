@@ -3,7 +3,7 @@
 #include <cctype>
 #include <filesystem>
 #include "../../../external/nvapi/nvapi.h"
-#include "latency/latency_manager.hpp"
+#include "latency/reflex_provider.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
@@ -175,7 +175,7 @@ std::unique_ptr<LatentSyncManager> g_latentSyncManager = std::make_unique<Latent
 // std::unique_ptr<DXGIDeviceInfoManager> g_dxgiDeviceInfoManager = std::make_unique<DXGIDeviceInfoManager>();
 
 // Global Latency Manager instance
-std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManager>();
+std::unique_ptr<ReflexProvider> g_reflexProvider = std::make_unique<ReflexProvider>();
 
 // Global frame ID for latency management
 std::atomic<uint64_t> g_global_frame_id{1};

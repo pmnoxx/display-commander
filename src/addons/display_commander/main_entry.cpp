@@ -23,7 +23,7 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
-#include "latency/latency_manager.hpp"
+#include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
@@ -2466,8 +2466,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             renodx::hooks::UninstallHIDSuppressionHooks();
 
             // Clean up NVAPI instances before shutdown
-            if (g_latencyManager) {
-                g_latencyManager->Shutdown();
+            if (g_reflexProvider) {
+                g_reflexProvider->Shutdown();
             }
 
             // Clean up NVAPI fullscreen prevention

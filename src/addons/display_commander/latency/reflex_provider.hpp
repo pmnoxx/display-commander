@@ -1,32 +1,27 @@
 #pragma once
 
 #include "../nvapi/reflex_manager.hpp"
-#include "latency_manager.hpp"
 
-// NVIDIA Reflex implementation of ILatencyProvider
-class ReflexProvider : public ILatencyProvider {
+// NVIDIA Reflex provider (single-technology; no LatencyManager abstraction).
+class ReflexProvider {
    public:
     ReflexProvider();
-    ~ReflexProvider() override;
+    ~ReflexProvider();
 
-    // ILatencyProvider interface
-    bool Initialize(reshade::api::device* device) override;
-    bool InitializeNative(void* native_device, DeviceTypeDC device_type) override;
-    void Shutdown() override;
-    bool IsInitialized() const override;
+    bool Initialize(reshade::api::device* device);
+    bool InitializeNative(void* native_device, DeviceTypeDC device_type);
+    void Shutdown();
+    bool IsInitialized() const;
 
-    bool SetMarker(LatencyMarkerType marker) override;
-    bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit) override;
-    bool Sleep() override;
+    bool SetMarker(NV_LATENCY_MARKER_TYPE marker);
+    bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit);
+    bool Sleep();
+
+    void UpdateCachedSleepStatus();
     bool GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
-                        SleepStatusUnavailableReason* out_reason) override;
+                       SleepStatusUnavailableReason* out_reason = nullptr);
 
-    LatencyTechnology GetTechnology() const override { return LatencyTechnology::NVIDIA_Reflex; }
-    const char* GetTechnologyName() const override { return "NVIDIA Reflex"; }
-
-    // PCLStats initialization helper (lazy initialization)
     static void EnsurePCLStatsInitialized();
-    /** True if PCLSTATS_INIT was called and not yet shut down. */
     static bool IsPCLStatsInitialized();
 
    private:

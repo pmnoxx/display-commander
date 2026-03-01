@@ -2,14 +2,65 @@
 #include <MinHook.h>
 #include <windows.gaming.input.h>
 #include <atomic>
+#include <set>
 #include <string>
+#include <utility>
 #include "../settings/advanced_tab_settings.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 #include "globals.hpp"
 #include "hook_suppression_manager.hpp"
 #include "input_activity_stats.hpp"
+
+namespace {
+
+using WindowsGetStringRawBuffer_pfn = PCWSTR(WINAPI*)(HSTRING string, UINT32* length);
+
+WindowsGetStringRawBuffer_pfn GetWindowsGetStringRawBuffer() {
+    static WindowsGetStringRawBuffer_pfn s_fn = nullptr;
+    if (s_fn != nullptr) {
+        return s_fn;
+    }
+    HMODULE combase = GetModuleHandleA("combase.dll");
+    if (combase != nullptr) {
+        s_fn = reinterpret_cast<WindowsGetStringRawBuffer_pfn>(GetProcAddress(combase, "WindowsGetStringRawBuffer"));
+    }
+    return s_fn;
+}
+
+// Crash-safe: reading activatableClassId can AV if the HSTRING is invalid. Use SEH so we never crash.
+std::string HStringToNarrowSafe(HSTRING hstr) {
+    if (hstr == nullptr) {
+        return "(null)";
+    }
+    WindowsGetStringRawBuffer_pfn get_string_raw_buffer = GetWindowsGetStringRawBuffer();
+    if (get_string_raw_buffer == nullptr) {
+        return "(no WindowsGetStringRawBuffer)";
+    }
+    __try {
+        UINT32 len = 0;
+        PCWSTR raw = get_string_raw_buffer(hstr, &len);
+        if (raw == nullptr || len == 0) {
+            return "(empty)";
+        }
+        int need = WideCharToMultiByte(CP_UTF8, 0, raw, static_cast<int>(len), nullptr, 0, nullptr, nullptr);
+        if (need <= 0) {
+            return "(convert failed)";
+        }
+        std::string out(static_cast<size_t>(need), '\0');
+        WideCharToMultiByte(CP_UTF8, 0, raw, static_cast<int>(len), out.data(), need, nullptr, nullptr);
+        return out;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return "(invalid HSTRING)";
+    }
+}
+
+SRWLOCK g_seen_riid_class_lock = SRWLOCK_INIT;
+std::set<std::pair<std::string, std::string>> g_seen_riid_class_pairs;
+
+}  // namespace
 
 namespace display_commanderhooks {
 
@@ -45,6 +96,17 @@ WindowsGamingInputState g_wgi_state;
 // ABI::Windows::UI::Core::IID_ICoreWindow
 
 HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID iid, void** factory) {
+    // Log each new (iid, activatableClassId) pair once. HStringToNarrowSafe is crash-safe (invalid HSTRING → no AV).
+    const std::string iid_str = IIDToGUIDString(iid);
+    const std::string class_str = HStringToNarrowSafe(activatableClassId);
+    {
+        utils::SRWLockExclusive lock(g_seen_riid_class_lock);
+        if (g_seen_riid_class_pairs.insert({iid_str, class_str}).second) {
+            LogInfo("RoGetActivationFactory new pair: riid=%s activatableClassId=%s", iid_str.c_str(),
+                    class_str.c_str());
+        }
+    }
+
     // Always block those iids.
     const bool is_blocked_iid = (iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics
                                  || iid == ABI::Windows::Gaming::Input::IID_IGamepadStatics2
@@ -62,7 +124,7 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
 
     if (should_suppress) {
         g_wgi_state.wgi_suppressed_ever.store(true);
-        LogInfo("Suppressing WGI factory request: %s", IIDToGUIDString(iid).c_str());
+        LogInfo("Suppressing WGI factory request: %s", iid_str.c_str());
         return E_NOTIMPL;
     }
 

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.156 (2026-02-28)
+
+- **Dead code removal** - Removed unused/orphaned code: (1) Display Settings Debug tab (`display_settings_debug_tab.cpp`/`.hpp`, never wired into UI). (2) `#if 0` block in `dinput_hooks.cpp` (~165 lines of disabled DirectInput device-state detours). (3) `#ifdef TRY_CATCH_BLOCKS` blocks in `main_entry.cpp` and `continuous_monitoring.cpp` (macro never defined). (4) Unused `ParseDisplayNumberFromDeviceIdUtf8()` in `display_cache.cpp`. Audit doc `docs/tasks/dead_code_and_unused_files_audit.md` updated.
+
+---
+
 ## v0.12.155 (2026-02-28)
 
 - **RoGetActivationFactory: log all classes** - The Windows.Gaming.Input hook now logs every distinct (IID, activatableClassId) pair seen from RoGetActivationFactory once (e.g. "RoGetActivationFactory new pair: riid=... activatableClassId=..."). HSTRING is read via crash-safe HStringToNarrowSafe (SEH and WindowsGetStringRawBuffer from combase.dll) so invalid HSTRINGs do not cause AVs. Helps diagnose which WinRT classes games request.

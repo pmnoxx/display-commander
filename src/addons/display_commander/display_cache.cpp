@@ -715,26 +715,6 @@ static int ParseDisplayNumberFromDeviceName(const std::wstring& device_name) {
     return num > 0 ? num : 9999;
 }
 
-// Parse display number from UTF-8 device ID (e.g. "DISPLAY1", "\\.\DISPLAY1", "\\\\.\\DISPLAY4").
-// Used as fallback when matching current_device_id in GetAdjacentDisplayDeviceId. Returns -1 if not parseable.
-static int ParseDisplayNumberFromDeviceIdUtf8(const std::string& device_id_utf8) {
-    const std::string prefix = "DISPLAY";
-    size_t pos = device_id_utf8.find(prefix);
-    if (pos == std::string::npos) {
-        return -1;
-    }
-    pos += prefix.size();
-    if (pos >= device_id_utf8.size()) {
-        return -1;
-    }
-    int num = 0;
-    while (pos < device_id_utf8.size() && device_id_utf8[pos] >= '0' && device_id_utf8[pos] <= '9') {
-        num = num * 10 + static_cast<int>(device_id_utf8[pos] - '0');
-        ++pos;
-    }
-    return num > 0 ? num : -1;
-}
-
 // Normalize extended device ID by stripping the UID number (e.g. &UID4357 -> &UID) so IDs that refer to the
 // same display but were returned with different UIDs (e.g. from different API paths) compare equal.
 static std::string NormalizeExtendedIdForMatch(const std::string& device_id) {

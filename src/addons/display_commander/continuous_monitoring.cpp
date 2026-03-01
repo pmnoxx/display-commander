@@ -716,10 +716,7 @@ void StuckCheckWatchdogThread() {
 
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
-#ifdef TRY_CATCH_BLOCKS
-    __try {
-#endif
-        RECORD_DETOUR_CALL(utils::get_now_ns());
+    RECORD_DETOUR_CALL(utils::get_now_ns());
         LogInfo("Continuous monitoring thread started");
 
         auto start_time = utils::get_now_ns();
@@ -953,11 +950,6 @@ void ContinuousMonitoringThread() {
             }
             g_continuous_monitoring_section.store("end_of_loop", std::memory_order_release);
         }
-#ifdef TRY_CATCH_BLOCKS
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
-    }
-#endif
 
     LogInfo("Continuous monitoring thread stopped");
 }

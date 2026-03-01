@@ -178,34 +178,26 @@ static std::string g_entry_point_to_save;
 
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-#ifdef TRY_CATCH_BLOCKS
-    __try {
-#endif
-        const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-        // Avoid displaying UI twice
-        if (show_display_commander_ui) {
-            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
-        }
-        // Update UI draw time for auto-click optimization
-        if (enabled_experimental_features) {
-            autoclick::UpdateLastUIDrawTime();
-        }
-
-        ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
-
-        // Periodically save config to ensure settings are persisted
-        static LONGLONG last_save_time = utils::get_now_ns();
-        LONGLONG now = utils::get_now_ns();
-        if ((now - last_save_time) >= 5 * utils::SEC_TO_NS) {
-            display_commander::config::save_config("periodic save (every 5 seconds)");
-            last_save_time = now;
-        }
-#ifdef TRY_CATCH_BLOCKS
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        LogError("Exception occurred during Continuous Monitoring: 0x%x", GetExceptionCode());
+    const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
+    // Avoid displaying UI twice
+    if (show_display_commander_ui) {
+        settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
     }
-#endif
-}  // namespace
+    // Update UI draw time for auto-click optimization
+    if (enabled_experimental_features) {
+        autoclick::UpdateLastUIDrawTime();
+    }
+
+    ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
+
+    // Periodically save config to ensure settings are persisted
+    static LONGLONG last_save_time = utils::get_now_ns();
+    LONGLONG now = utils::get_now_ns();
+    if ((now - last_save_time) >= 5 * utils::SEC_TO_NS) {
+        display_commander::config::save_config("periodic save (every 5 seconds)");
+        last_save_time = now;
+    }
+}
 
 // ReShade effect runtime event handler for input blocking
 void OnInitCommandList(reshade::api::command_list* cmd_list) {
@@ -391,135 +383,126 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     LogInfo("[OnInitEffectRuntime] entry");
     RECORD_DETOUR_CALL(utils::get_now_ns());
-#ifdef TRY_CATCH_BLOCKS
-    __try {
-#endif
-        if (runtime == nullptr) {
-            LogInfo("[OnInitEffectRuntime] runtime is null, returning");
-            return;
-        }
-        AddReShadeRuntime(runtime);
-        LogInfo("[OnInitEffectRuntime] after AddReShadeRuntime");
+    if (runtime == nullptr) {
+        LogInfo("[OnInitEffectRuntime] runtime is null, returning");
+        return;
+    }
+    AddReShadeRuntime(runtime);
+    LogInfo("[OnInitEffectRuntime] after AddReShadeRuntime");
 
-        // One-time: extract DisplayCommander shaders from DLL (embedded RCDATA) to Reshade\Shaders\DisplayCommander:
-        // - %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
-        // - addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
-        // - ReShade's Shaders\DisplayCommander folder (so the effect loads after reload/restart)
-        // Only the DLL is shipped; .fx and .fxh are embedded in the binary.
-        {
-            RECORD_DETOUR_CALL(utils::get_now_ns());
-            static std::atomic<bool> shader_extract_done{false};
-            if (!shader_extract_done.exchange(true)) {
-                constexpr int IDR_CONTROL_FX = 300;
-                constexpr int IDR_COLOR_FXH = 301;
-                constexpr int IDR_RESHADE_FXH = 302;
-                constexpr int IDR_PERCEPTUALBOOST_FX = 303;
+    // One-time: extract DisplayCommander shaders from DLL (embedded RCDATA) to Reshade\Shaders\DisplayCommander:
+    // - %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
+    // - addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
+    // - ReShade's Shaders\DisplayCommander folder (so the effect loads after reload/restart)
+    // Only the DLL is shipped; .fx and .fxh are embedded in the binary.
+    {
+        RECORD_DETOUR_CALL(utils::get_now_ns());
+        static std::atomic<bool> shader_extract_done{false};
+        if (!shader_extract_done.exchange(true)) {
+            constexpr int IDR_CONTROL_FX = 300;
+            constexpr int IDR_COLOR_FXH = 301;
+            constexpr int IDR_RESHADE_FXH = 302;
+            constexpr int IDR_PERCEPTUALBOOST_FX = 303;
 
-                auto extract_resource = [](int res_id, const wchar_t* filename_wide,
-                                           const char* filename_utf8) -> bool {
-                    HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
-                    if (hRes == nullptr) return false;
-                    HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
-                    if (hLoaded == nullptr) return false;
-                    const void* pData = LockResource(hLoaded);
-                    const DWORD size = SizeofResource(g_hmodule, hRes);
-                    if (pData == nullptr || size == 0) return false;
+            auto extract_resource = [](int res_id, const wchar_t* filename_wide, const char* filename_utf8) -> bool {
+                HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
+                if (hRes == nullptr) return false;
+                HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
+                if (hLoaded == nullptr) return false;
+                const void* pData = LockResource(hLoaded);
+                const DWORD size = SizeofResource(g_hmodule, hRes);
+                if (pData == nullptr || size == 0) return false;
 
-                    auto write_to = [&pData, size](const std::filesystem::path& dest_path) -> bool {
-                        std::error_code ec2;
-                        std::filesystem::create_directories(dest_path.parent_path(), ec2);
-                        if (ec2) return false;
-                        std::ofstream of(dest_path, std::ios::binary);
-                        if (!of) return false;
-                        of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
-                        return of.good();
-                    };
-
-                    wchar_t addon_path[MAX_PATH] = {};
-                    if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) == 0) return false;
-                    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
-
-                    bool any_written = false;
-
-                    // %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
-                    wchar_t localappdata_path[MAX_PATH] = {};
-                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
-                                                   localappdata_path))) {
-                        std::filesystem::path la_dest = std::filesystem::path(localappdata_path) / L"Programs"
-                                                        / L"Display_Commander" / L"Reshade" / L"Shaders"
-                                                        / L"DisplayCommander" / filename_wide;
-                        if (write_to(la_dest)) any_written = true;
-                    }
-
-                    // addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
-                    std::filesystem::path dc_dest = addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders"
-                                                    / L"DisplayCommander" / filename_wide;
-                    if (write_to(dc_dest)) any_written = true;
-
-                    // ReShade Shaders\DisplayCommander
-                    char base_path[512] = {};
-                    size_t base_size = sizeof(base_path);
-                    reshade::get_reshade_base_path(base_path, &base_size);
-                    std::filesystem::path reshade_base(base_path);
-                    std::filesystem::path reshade_dest = reshade_base / "Shaders" / "DisplayCommander" / filename_utf8;
-                    if (std::filesystem::exists(reshade_base / "Shaders")
-                        && std::filesystem::is_directory(reshade_base / "Shaders") && write_to(reshade_dest)) {
-                        any_written = true;
-                    }
-
-                    return any_written;
+                auto write_to = [&pData, size](const std::filesystem::path& dest_path) -> bool {
+                    std::error_code ec2;
+                    std::filesystem::create_directories(dest_path.parent_path(), ec2);
+                    if (ec2) return false;
+                    std::ofstream of(dest_path, std::ios::binary);
+                    if (!of) return false;
+                    of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
+                    return of.good();
                 };
 
-                if (extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx", "DisplayCommander_Control.fx")) {
-                    LogInfo(
-                        "DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. "
-                        "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
+                wchar_t addon_path[MAX_PATH] = {};
+                if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) == 0) return false;
+                std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
+
+                bool any_written = false;
+
+                // %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
+                wchar_t localappdata_path[MAX_PATH] = {};
+                if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
+                                               localappdata_path))) {
+                    std::filesystem::path la_dest = std::filesystem::path(localappdata_path) / L"Programs"
+                                                    / L"Display_Commander" / L"Reshade" / L"Shaders"
+                                                    / L"DisplayCommander" / filename_wide;
+                    if (write_to(la_dest)) any_written = true;
                 }
-                extract_resource(IDR_COLOR_FXH, L"color.fxh", "color.fxh");
-                extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh", "ReShade.fxh");
-                extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx",
-                                 "DisplayCommander_PerceptualBoost.fx");
+
+                // addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
+                std::filesystem::path dc_dest =
+                    addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders" / L"DisplayCommander" / filename_wide;
+                if (write_to(dc_dest)) any_written = true;
+
+                // ReShade Shaders\DisplayCommander
+                char base_path[512] = {};
+                size_t base_size = sizeof(base_path);
+                reshade::get_reshade_base_path(base_path, &base_size);
+                std::filesystem::path reshade_base(base_path);
+                std::filesystem::path reshade_dest = reshade_base / "Shaders" / "DisplayCommander" / filename_utf8;
+                if (std::filesystem::exists(reshade_base / "Shaders")
+                    && std::filesystem::is_directory(reshade_base / "Shaders") && write_to(reshade_dest)) {
+                    any_written = true;
+                }
+
+                return any_written;
+            };
+
+            if (extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx", "DisplayCommander_Control.fx")) {
+                LogInfo(
+                    "DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. "
+                    "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
             }
+            extract_resource(IDR_COLOR_FXH, L"color.fxh", "color.fxh");
+            extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh", "ReShade.fxh");
+            extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx",
+                             "DisplayCommander_PerceptualBoost.fx");
         }
-        LogInfo("[OnInitEffectRuntime] after shader extract block");
-
-        LogInfo("[OnInitEffectRuntime] ReShade effect runtime initialized - Input blocking now available");
-
-        if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
-            || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-            display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
-        }
-
-        static bool initialized_with_hwnd = false;
-        if (!initialized_with_hwnd) {
-            // Set up window procedure hooks now that we have the runtime
-            HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-            if (game_window != nullptr && IsWindow(game_window) != 0) {
-                LogInfo("[OnInitEffectRuntime] Game window detected - HWND: 0x%p", game_window);
-                LogInfo("[OnInitEffectRuntime] calling DoInitializationWithHwnd...");
-                // Initialize if not already done
-                DoInitializationWithHwnd(game_window);
-                LogInfo("[OnInitEffectRuntime] DoInitializationWithHwnd returned");
-            } else {
-                LogWarn("[OnInitEffectRuntime] ReShade runtime window is not valid - HWND: 0x%p", game_window);
-            }
-            initialized_with_hwnd = true;
-            LogInfo("[OnInitEffectRuntime] before autoclick start (enabled_experimental_features=%d)",
-                    enabled_experimental_features ? 1 : 0);
-
-            // Start the auto-click thread (always running, sleeps when disabled)
-            if (enabled_experimental_features) {
-                autoclick::StartAutoClickThread();
-                autoclick::StartUpDownKeyPressThread();
-                autoclick::StartButtonOnlyPressThread();
-            }
-        }
-        LogInfo("[OnInitEffectRuntime] exit");
-#ifdef TRY_CATCH_BLOCKS
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        LogError("Exception occurred during OnInitEffectRuntime: 0x%x", GetExceptionCode());
     }
-#endif
+    LogInfo("[OnInitEffectRuntime] after shader extract block");
+
+    LogInfo("[OnInitEffectRuntime] ReShade effect runtime initialized - Input blocking now available");
+
+    if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
+        || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
+        display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
+    }
+
+    static bool initialized_with_hwnd = false;
+    if (!initialized_with_hwnd) {
+        // Set up window procedure hooks now that we have the runtime
+        HWND game_window = static_cast<HWND>(runtime->get_hwnd());
+        if (game_window != nullptr && IsWindow(game_window) != 0) {
+            LogInfo("[OnInitEffectRuntime] Game window detected - HWND: 0x%p", game_window);
+            LogInfo("[OnInitEffectRuntime] calling DoInitializationWithHwnd...");
+            // Initialize if not already done
+            DoInitializationWithHwnd(game_window);
+            LogInfo("[OnInitEffectRuntime] DoInitializationWithHwnd returned");
+        } else {
+            LogWarn("[OnInitEffectRuntime] ReShade runtime window is not valid - HWND: 0x%p", game_window);
+        }
+        initialized_with_hwnd = true;
+        LogInfo("[OnInitEffectRuntime] before autoclick start (enabled_experimental_features=%d)",
+                enabled_experimental_features ? 1 : 0);
+
+        // Start the auto-click thread (always running, sleeps when disabled)
+        if (enabled_experimental_features) {
+            autoclick::StartAutoClickThread();
+            autoclick::StartUpDownKeyPressThread();
+            autoclick::StartButtonOnlyPressThread();
+        }
+    }
+    LogInfo("[OnInitEffectRuntime] exit");
 }
 
 // ReShade overlay event handler for input blocking

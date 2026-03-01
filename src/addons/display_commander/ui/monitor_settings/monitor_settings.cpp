@@ -69,7 +69,6 @@ static void EnsurePersistentSettingsLoadedOnce() {
     g_setting_apply_display_settings_at_start.Load();
     s_auto_apply_resolution_change = g_setting_auto_apply_resolution.GetValue();
     s_auto_apply_refresh_rate_change = g_setting_auto_apply_refresh.GetValue();
-    s_apply_display_settings_at_start = g_setting_apply_display_settings_at_start.GetValue();
 
     // Load new format resolution and refresh rate settings
     g_setting_selected_resolution_0.Load();

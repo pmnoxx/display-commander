@@ -508,8 +508,6 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 // ReShade overlay event handler for input blocking
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // store last frame id, when UI was opened
-    g_last_ui_drawn_frame_id.store(g_global_frame_id.load());
 
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");

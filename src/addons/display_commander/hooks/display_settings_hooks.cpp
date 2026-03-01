@@ -30,8 +30,6 @@ static std::atomic<bool> g_display_settings_hooks_installed{false};
 LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsA].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSA].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
     if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
@@ -46,8 +44,6 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
 LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsW].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSW].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
     if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
@@ -63,8 +59,6 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
                                             LPVOID lParam) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXA].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
     if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
@@ -80,8 +74,6 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
                                             LPVOID lParam) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_CHANGEDISPLAYSETTINGSEXW].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
     if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
@@ -98,8 +90,6 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
 BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SHOWWINDOW].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
     if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {

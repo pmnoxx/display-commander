@@ -25,7 +25,7 @@ struct HookCallStats {
 };
 
 // DLL group enumeration (HID_API = kernel32.dll + hid.dll)
-enum class DllGroup { USER32, XINPUT1_4, KERNEL32, DINPUT8, DINPUT, OPENGL, DISPLAY_SETTINGS, HID_API, WINMM_JOYSTICK, COUNT };
+enum class DllGroup { USER32, XINPUT1_4, KERNEL32, DINPUT8, DINPUT, OPENGL, DISPLAY_SETTINGS, HID_API, COUNT };
 
 // Hook index enumeration (order must match g_hook_info array in .cpp)
 // Note: "// ok" = g_hook_stats counter updated in detour; "// no counter" = not updated
@@ -138,10 +138,6 @@ enum HookIndex {
     HOOK_HIDD_SetNumInputBuffers,     // ok
     HOOK_HIDD_GetFeature,             // ok
     HOOK_HIDD_SetFeature,             // ok
-
-    // winmm.dll joystick hooks
-    HOOK_joyGetPos,     // ok
-    HOOK_joyGetPosEx,   // ok
 
     HOOK_COUNT
 };

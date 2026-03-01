@@ -2,6 +2,18 @@
 
 ---
 
+## v0.12.165 (2026-02-28)
+
+- **Dead code removal** - Removed write-only globals: (1) **g_display_settings_hook_counters** — only `fetch_add` in display_settings_hooks and api_hooks; Hook Stats uses `g_hook_stats` instead. (2) **g_gpu_completion_time_ns** and **g_gpu_completion_callback_time_ns** — only `.store()` in gpu_completion_monitoring; never read. Audit doc updated (runs 45 and 47).
+
+---
+
+## v0.12.164 (2026-02-28)
+
+- **Dead code removal** - Removed unused code and one hook module: (1) Orphaned comment `// #define TRY_CATCH_BLOCKS` in `continuous_monitoring.cpp`. (2) `HookSuppressionManager::WasHookInstalled()` (never called). (3) **WinMM joystick hooks** — deleted `hooks/winmm_joystick_hooks.cpp` and `.hpp`; removed WINMM_JOYSTICK from DllGroup, HookType, hook suppression settings, and hook stats UI; removed `InstallWinMMJoystickHooks` call from loadlibrary; removed `HOOK_joyGetPos`/`HOOK_joyGetPosEx` and `InputApiId::WinMmJoystick` from windows_message_hooks and input_activity_stats. WinMM proxy DLL and timeslowdown’s `timeGetTime` (winmm.dll) are unchanged. Audit doc `docs/tasks/dead_code_and_unused_files_audit.md` and checklist updated.
+
+---
+
 ## v0.12.163 (2026-02-28)
 
 - **DualSense HID vibration (rumble)** - When "Use DualSense as XInput" is enabled, XInputSetState(0) now drives the first DualSense via HID output report (USB report ID 0x02, rumble flags + left/right motor 0–255). DualSenseHIDWrapper::SetRumble(device_index, left_speed, right_speed) sends the report; Bluetooth rumble (report 0x31 + CRC) not implemented yet. Vibration amplification applies before sending.

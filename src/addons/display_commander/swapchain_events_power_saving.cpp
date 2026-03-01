@@ -32,7 +32,6 @@ bool OnDispatch(reshade::api::command_list *cmd_list, uint32_t group_count_x, ui
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_DISPATCH].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip compute shader dispatches in background
     if (s_suppress_compute_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -48,7 +47,6 @@ bool OnDispatchMesh(reshade::api::command_list *cmd_list, uint32_t group_count_x
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_DISPATCH_MESH].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip mesh shader dispatches in background
     if (s_suppress_compute_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -68,7 +66,6 @@ bool OnDispatchRays(reshade::api::command_list *cmd_list, reshade::api::resource
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_DISPATCH_RAYS].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip ray tracing dispatches in background
     if (s_suppress_compute_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -83,7 +80,6 @@ bool OnCopyResource(reshade::api::command_list *cmd_list, reshade::api::resource
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_COPY_RESOURCE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip resource copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -99,7 +95,6 @@ bool OnUpdateBufferRegion(reshade::api::device *device, const void *data, reshad
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_UPDATE_BUFFER_REGION].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip buffer updates in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -115,7 +110,6 @@ bool OnUpdateBufferRegionCommand(reshade::api::command_list *cmd_list, const voi
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_UPDATE_BUFFER_REGION_COMMAND].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip command-based buffer updates in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -131,7 +125,6 @@ bool OnBindResource(reshade::api::command_list *cmd_list, reshade::api::shader_s
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_BIND_RESOURCE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip resource binding in background
     if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -147,7 +140,6 @@ bool OnMapResource(reshade::api::device *device, reshade::api::resource resource
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_MAP_RESOURCE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip resource mapping in background
     if (s_suppress_memory_ops_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -171,7 +163,6 @@ bool OnCopyBufferRegion(reshade::api::command_list *cmd_list, reshade::api::reso
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_COPY_BUFFER_REGION].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip buffer region copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -189,7 +180,6 @@ bool OnCopyBufferToTexture(reshade::api::command_list *cmd_list, reshade::api::r
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_COPY_BUFFER_TO_TEXTURE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip buffer to texture copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -207,7 +197,6 @@ bool OnCopyTextureToBuffer(reshade::api::command_list *cmd_list, reshade::api::r
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_COPY_TEXTURE_TO_BUFFER].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip texture to buffer copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -225,7 +214,6 @@ bool OnCopyTextureRegion(reshade::api::command_list *cmd_list, reshade::api::res
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_COPY_TEXTURE_REGION].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip texture region copying in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -244,7 +232,6 @@ bool OnResolveTextureRegion(reshade::api::command_list *cmd_list, reshade::api::
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_RESOLVE_TEXTURE_REGION].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip texture region resolving in background
     if (s_suppress_copy_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -260,7 +247,6 @@ bool OnDraw(reshade::api::command_list *cmd_list, uint32_t vertex_count, uint32_
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_DRAW].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
@@ -278,7 +264,6 @@ bool OnDrawIndexed(reshade::api::command_list *cmd_list, uint32_t index_count, u
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_DRAW_INDEXED].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();
@@ -296,7 +281,6 @@ bool OnDrawOrDispatchIndirect(reshade::api::command_list *cmd_list, reshade::api
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_DRAW_OR_DISPATCH_INDIRECT].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Set render start time if it's 0 (first draw call of the frame)
     HandleRenderStartAndEndTimes();

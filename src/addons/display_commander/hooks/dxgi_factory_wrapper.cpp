@@ -899,7 +899,6 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetDevice(REFIID riid, void** ppDevice) {
 STDMETHODIMP IDXGIOutput6Wrapper::GetDesc(DXGI_OUTPUT_DESC* pDesc) {
     // Increment counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETDESC].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Log the GetDesc call (only on first few calls to avoid spam)
     static int getdesc_log_count = 0;
@@ -936,7 +935,6 @@ STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL
 STDMETHODIMP IDXGIOutput6Wrapper::SetGammaControl(const DXGI_GAMMA_CONTROL* pArray) {
     // Increment counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_SETGAMMACONTROL].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Log the SetGammaControl call (only on first few calls to avoid spam)
     static int setgammacontrol_log_count = 0;
@@ -951,7 +949,6 @@ STDMETHODIMP IDXGIOutput6Wrapper::SetGammaControl(const DXGI_GAMMA_CONTROL* pArr
 STDMETHODIMP IDXGIOutput6Wrapper::GetGammaControl(DXGI_GAMMA_CONTROL* pArray) {
     // Increment counter
     g_dxgi_output_event_counters[DXGI_OUTPUT_EVENT_GETGAMMACONTROL].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Log the GetGammaControl call (only on first few calls to avoid spam)
     static int getgammacontrol_log_count = 0;

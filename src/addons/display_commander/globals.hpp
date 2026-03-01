@@ -37,9 +37,6 @@ struct NVSDK_NGX_Parameter;
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/hotkeys_tab_settings.hpp"
 
-// Constants
-#define DEBUG_LEVEL_0
-
 // Experimental features flag - allows code to compile in both cases
 #ifdef EXPERIMENTAL_FEATURES
 constexpr bool enabled_experimental_features = true;
@@ -511,7 +508,6 @@ extern std::atomic<bool> s_initial_auto_selection_done;
 extern std::atomic<bool> s_auto_restore_resolution_on_close;
 extern std::atomic<bool> s_auto_apply_resolution_change;
 extern std::atomic<bool> s_auto_apply_refresh_rate_change;
-extern std::atomic<bool> s_apply_display_settings_at_start;
 extern std::atomic<bool> s_resolution_applied_at_least_once;
 
 // Window management
@@ -524,7 +520,6 @@ extern std::atomic<int> s_aspect_width;
 // Hide HDR capabilities from applications
 
 // D3D9 to D3D9Ex upgrade
-// extern std::atomic<bool> s_enable_d3d9e_upgrade;
 extern std::atomic<bool> s_d3d9e_upgrade_successful;
 extern std::atomic<bool> g_used_flipex;
 extern std::atomic<bool> g_dx9_swapchain_detected;
@@ -535,12 +530,6 @@ extern std::atomic<WindowAlignment> s_window_alignment;  // Window alignment whe
 extern std::atomic<bool> s_spoof_mouse_position;
 extern std::atomic<int> s_spoofed_mouse_x;
 extern std::atomic<int> s_spoofed_mouse_y;
-
-// SetCursor detour - store last cursor value atomically
-extern std::atomic<HCURSOR> s_last_cursor_value;
-
-// ShowCursor detour - store last show cursor state atomically
-extern std::atomic<BOOL> s_last_show_cursor_arg;
 
 // Render blocking in background
 
@@ -589,14 +578,12 @@ void EnumerateReShadeRuntimes(EnumerateReShadeRuntimesCallback callback, void* u
 // Continuous monitoring and rendering
 
 // Atomic variables
-extern std::atomic<int> g_comp_query_counter;
 extern std::atomic<void*>
     g_last_swapchain_ptr_unsafe;  // Using void* to avoid reshade dependency // TODO: unsafe remove later
 extern std::atomic<reshade::api::device_api> g_last_reshade_device_api;
 extern std::atomic<uint32_t> g_last_api_version;  // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
 extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>>
     g_last_swapchain_desc;  // Store last swapchain description
-extern std::atomic<uint64_t> g_init_apply_generation;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 /** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game
  * window from foreground. */
@@ -606,8 +593,6 @@ extern std::atomic<HWND> g_standalone_ui_hwnd;
 void RequestShowIndependentWindow();
 /** Request close of the independent settings window (posts WM_CLOSE). */
 void CloseIndependentWindow();
-extern std::atomic<IDXGISwapChain*> global_dxgi_swapchain;  // Global reference to DXGI swapchain (experimental)
-extern std::atomic<bool> global_dxgi_swapchain_inuse;
 extern std::atomic<bool> g_shutdown;
 extern std::atomic<bool> g_muted_applied;
 
@@ -626,23 +611,14 @@ extern std::unique_ptr<LatencyManager> g_latencyManager;
 // Global frame ID for latency management
 extern std::atomic<uint64_t> g_global_frame_id;
 
-// FILETIME (as uint64_t: high 32 bits = dwHighDateTime, low 32 bits = dwLowDateTime) when
-// g_global_frame_id was last incremented; 0 = never. Used for stuck-detection log timestamp.
-extern std::atomic<uint64_t> g_global_frame_id_last_updated_filetime;
-// Same moment in QPC ns (get_real_time_ns); for relative "X.Xs ago" in stuck log without system calls.
+// Same moment in QPC ns (get_real_time_ns) when g_global_frame_id was last incremented; for relative "X.Xs ago" in stuck log.
 extern std::atomic<LONGLONG> g_global_frame_id_last_updated_ns;
 
-// FILETIME (as uint64_t) when a Windows message was last processed in the game window's WndProc;
-// 0 = never. Used in stuck-detection log to distinguish "message queue stuck" from other causes.
-extern std::atomic<uint64_t> g_last_window_message_processed_filetime;
-// Same moment in QPC ns; for relative "X.Xs ago" in stuck log without system calls.
+// QPC ns when a Windows message was last processed in the game window's WndProc; for stuck-detection log.
 extern std::atomic<LONGLONG> g_last_window_message_processed_ns;
 
 // Global frame ID for pclstats frame id
 extern std::atomic<uint64_t> g_pclstats_frame_id;
-
-// Global frame ID for UI drawing tracking
-extern std::atomic<uint64_t> g_last_ui_drawn_frame_id;
 
 // Global frame ID when XInput was last successfully detected
 extern std::atomic<uint64_t> g_last_xinput_detected_frame_id;
@@ -699,9 +675,6 @@ const char* GetChosenFpsLimiterSiteName();
 
 /** True when native frame pacing is active and in sync (reflex_marker path hit recently, within 1s). */
 bool IsNativeFramePacingInSync();
-bool IsDxgiSwapChainGettingCalled();
-/** True when native FPS limiter from frame pacing should be used (setting on, and IsNativeFramePacingInSync()). */
-bool ShouldUseNativeFpsLimiterFromFramePacing();
 
 // Thread tracking for frame pacing debug (Experimental tab, default off)
 constexpr size_t kLatencyMarkerTypeCountFirstSix = 6;  // SIMULATION_START..PRESENT_END
@@ -721,7 +694,6 @@ extern SwapchainTrackingManager g_swapchainTrackingManager;
 namespace vrr_status {
 extern std::atomic<bool> cached_nvapi_ok;
 extern std::atomic<std::shared_ptr<nvapi::VrrStatus>> cached_nvapi_vrr;
-extern std::atomic<LONGLONG> last_nvapi_update_ns;
 extern std::atomic<std::shared_ptr<const std::wstring>> cached_output_device_name;
 }  // namespace vrr_status
 
@@ -762,22 +734,6 @@ extern std::atomic<int> g_last_backbuffer_height;
 extern std::atomic<int> g_game_render_width;
 extern std::atomic<int> g_game_render_height;
 
-// Translate-mouse-position debug (recorded in ApplyTranslateMousePositionToCursorPos, read by UI; atomics only)
-extern std::atomic<std::uint64_t> g_translate_mouse_debug_seq;
-extern std::atomic<uintptr_t> g_translate_mouse_debug_hwnd;
-extern std::atomic<int> g_translate_mouse_debug_num_x;
-extern std::atomic<int> g_translate_mouse_debug_denom_x;
-extern std::atomic<int> g_translate_mouse_debug_num_y;
-extern std::atomic<int> g_translate_mouse_debug_denom_y;
-extern std::atomic<int> g_translate_mouse_debug_screen_in_x;
-extern std::atomic<int> g_translate_mouse_debug_screen_in_y;
-extern std::atomic<int> g_translate_mouse_debug_client_x;
-extern std::atomic<int> g_translate_mouse_debug_client_y;
-extern std::atomic<int> g_translate_mouse_debug_render_x;
-extern std::atomic<int> g_translate_mouse_debug_render_y;
-extern std::atomic<int> g_translate_mouse_debug_screen_out_x;
-extern std::atomic<int> g_translate_mouse_debug_screen_out_y;
-
 // Background/foreground state
 extern std::atomic<bool> g_app_in_background;
 // Returns true if the current process is not the foreground process (same logic as g_app_in_background).
@@ -787,12 +743,6 @@ extern std::atomic<LONGLONG> g_last_foreground_background_switch_ns;
 
 // FPS limiter mode: 0 = Disabled, 1 = OnPresentSync, 2 = OnPresentSyncLowLatency, 3 = VBlank Scanline Sync (VBlank)
 extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
-
-// FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2)
-// (Through ReShade)
-#define FPS_LIMITER_INJECTION_DEFAULT   0
-#define FPS_LIMITER_INJECTION_FALLBACK1 1
-#define FPS_LIMITER_INJECTION_FALLBACK2 2
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
 constexpr size_t kPerfRingCapacity = 65536;
@@ -808,10 +758,6 @@ extern std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared;
 // Native frame time ring buffer (for frames shown to display via native swapchain Present)
 // Uses abstracted ring buffer structure
 extern utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_native_frame_time_ring;
-
-// Volume overlay display tracking
-extern std::atomic<LONGLONG> g_volume_change_time_ns;
-extern std::atomic<float> g_volume_display_value;
 
 // Action notification system for overlay display
 enum class ActionNotificationType {
@@ -844,12 +790,6 @@ extern std::atomic<std::shared_ptr<const std::string>> g_config_save_failure_pat
 
 // Multiple Display Commander versions detection
 extern std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detected;
-
-// Helper function for updating HDR10 override status atomically
-void UpdateHdr10OverrideStatus(const std::string& status);
-
-// Helper function for updating HDR10 override timestamp atomically
-void UpdateHdr10OverrideTimestamp(const std::string& timestamp);
 
 // Performance optimization settings
 extern std::atomic<LONGLONG> g_flush_before_present_time_ns;
@@ -888,10 +828,6 @@ extern std::atomic<bool> s_reflex_auto_configure;
 extern std::atomic<bool> s_reflex_enable_current_frame;
 extern std::atomic<bool> s_reflex_supress_native;
 extern std::atomic<bool> s_enable_reflex_logging;
-
-// Reflex state: was enabled last frame (for RestoreSleepMode on disable); true when reflex settings changed (re-apply)
-extern std::atomic<bool> g_reflex_was_enabled_last_frame;
-extern std::atomic<bool> g_reflex_settings_outdated;
 
 // Shortcut settings
 extern std::atomic<bool> s_enable_hotkeys;
@@ -1168,17 +1104,9 @@ extern std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counter
 // NVAPI sleep timestamp tracking
 extern std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns;  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 extern std::atomic<bool> g_native_reflex_detected;             // Native Reflex detected via SetLatencyMarker calls
-extern std::atomic<uint32_t> g_swapchain_event_total_count;    // Total events across all types
 
 // OpenGL hook counters
 extern std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters;  // Array for all OpenGL hook events
-extern std::atomic<uint64_t> g_opengl_hook_total_count;  // Total OpenGL hook events across all types
-
-// Display settings hook counters
-extern std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS>
-    g_display_settings_hook_counters;  // Array for all display settings hook events
-extern std::atomic<uint64_t>
-    g_display_settings_hook_total_count;  // Total display settings hook events across all types
 
 // Unsorted TODO: Add in correct order above
 extern std::atomic<LONGLONG> g_present_start_time_ns;
@@ -1232,7 +1160,6 @@ extern std::atomic<LONGLONG> g_onpresent_sync_post_sleep_ns;      // Actual post
 
 // GPU completion measurement using EnqueueSetEvent
 extern std::atomic<HANDLE> g_gpu_completion_event;      // Event handle for GPU completion measurement
-extern std::atomic<LONGLONG> g_gpu_completion_time_ns;  // Last measured GPU completion time
 extern std::atomic<LONGLONG> g_gpu_duration_ns;         // Last measured GPU duration (smoothed)
 
 // GPU completion failure tracking
@@ -1248,7 +1175,6 @@ extern std::atomic<LONGLONG> g_sim_to_display_latency_ns;     // Measured sim-st
 
 // GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
 extern std::atomic<LONGLONG> g_present_update_after2_time_ns;    // Time when OnPresentUpdateAfter2 was called
-extern std::atomic<LONGLONG> g_gpu_completion_callback_time_ns;  // Time when GPU completion callback finished
 extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls

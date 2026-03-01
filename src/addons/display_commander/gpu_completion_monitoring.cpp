@@ -59,9 +59,8 @@ void GPUCompletionMonitoringThread() {
                 LONGLONG old_duration = g_gpu_duration_ns.load();
                 LONGLONG smoothed_duration = UpdateRollingAverage(gpu_duration_new_ns, old_duration);
 
-                // Store the smoothed duration and exact completion time
+                // Store the smoothed duration
                 g_gpu_duration_ns.store(smoothed_duration);
-                g_gpu_completion_time_ns.store(gpu_completion_time);
 
                 // Write GPU completion time into frame data for the frame this GPU work belongs to
                 // (render thread may have already written the rest of the slot; GPU often completes after Present)
@@ -77,7 +76,6 @@ void GPUCompletionMonitoringThread() {
             LONGLONG sim_start_for_measurement = g_sim_start_ns_for_measurement.load();
             if (sim_start_for_measurement > 0) {
                 g_gpu_completion_callback_finished.store(true);
-                g_gpu_completion_callback_time_ns.store(gpu_completion_time);
 
                 // If OnPresentUpdateAfter2 was already called, we're finishing second
                 if (g_present_update_after2_called.load()) {
@@ -176,9 +174,8 @@ void HandleOpenGLGPUCompletion() {
         LONGLONG old_duration = g_gpu_duration_ns.load();
         LONGLONG smoothed_duration = UpdateRollingAverage(gpu_duration_new_ns, old_duration);
 
-        // Store the smoothed duration and exact completion time
+        // Store the smoothed duration
         g_gpu_duration_ns.store(smoothed_duration);
-        g_gpu_completion_time_ns.store(gpu_completion_time);
 
         // Write GPU completion time into frame data for the frame this GPU work belongs to
         const uint64_t frame_id = g_global_frame_id.load();
@@ -193,7 +190,6 @@ void HandleOpenGLGPUCompletion() {
     LONGLONG sim_start_for_measurement = g_sim_start_ns_for_measurement.load();
     if (sim_start_for_measurement > 0) {
         g_gpu_completion_callback_finished.store(true);
-        g_gpu_completion_callback_time_ns.store(gpu_completion_time);
 
         // If OnPresentUpdateAfter2 was already called, we're finishing second
         if (g_present_update_after2_called.load()) {

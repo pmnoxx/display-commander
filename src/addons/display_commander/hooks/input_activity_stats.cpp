@@ -49,10 +49,6 @@ void InputActivityStats::MarkActiveByHookIndex(int hook_index) {
         case HOOK_HIDD_GetCaps:
             api_id = InputApiId::HID;
             break;
-        case HOOK_joyGetPos:
-        case HOOK_joyGetPosEx:
-            api_id = InputApiId::WinMmJoystick;
-            break;
         default:
             break;
     }
@@ -95,7 +91,6 @@ const char* InputActivityStats::GetApiDisplayName(InputApiId api_id) {
         case InputApiId::RawInput:              return "Raw Input";
         case InputApiId::HID:                   return "HID";
         case InputApiId::WindowsGamingInput:   return "Windows.Gaming.Input";
-        case InputApiId::WinMmJoystick:         return "winmm joystick";
         case InputApiId::GameInput:             return "GameInput";
         default:                                return "Unknown";
     }

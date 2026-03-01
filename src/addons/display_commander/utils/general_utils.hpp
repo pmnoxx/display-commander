@@ -1,7 +1,6 @@
 #pragma once
 
 #define ImTextureID ImU64
-#define DEBUG_LEVEL_0
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>

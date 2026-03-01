@@ -541,10 +541,6 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
         // Update stored value
         s_audio_volume_percent.store(new_volume);
 
-        // Update overlay display tracking (legacy, for backward compatibility)
-        g_volume_change_time_ns.store(utils::get_now_ns());
-        g_volume_display_value.store(new_volume);
-
         // Trigger action notification for overlay display
         ActionNotification notification;
         notification.type = ActionNotificationType::Volume;

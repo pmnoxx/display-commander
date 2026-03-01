@@ -39,7 +39,6 @@
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
 #include "vulkan/vulkan_loader_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
-#include "winmm_joystick_hooks.hpp"
 #include "xinput_hooks.hpp"
 
 // Declare K32EnumProcessModules (kernel32 variant, safe from DllMain)
@@ -1717,15 +1716,6 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogInfo("HID (hid.dll) hooks installed successfully");
         } else {
             LogInfo("HID (hid.dll) hooks not installed (suppressed or already installed)");
-        }
-    }
-    // winmm.dll – WinMM joystick API (joyGetPos, joyGetPosEx)
-    else if (lowerModuleName.find(L"winmm.dll") != std::wstring::npos) {
-        LogInfo("Installing WinMM joystick hooks for module: %ws", moduleName.c_str());
-        if (InstallWinMMJoystickHooks(hModule)) {
-            LogInfo("WinMM joystick hooks installed successfully");
-        } else {
-            LogInfo("WinMM joystick hooks not installed (suppressed or already installed)");
         }
     }
 

@@ -317,8 +317,6 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongA].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGA].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
     if (hWnd == g_last_swapchain_hwnd.load()) {
@@ -334,8 +332,6 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongW].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGW].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
     // Check if fullscreen prevention is enabled
     if (hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
@@ -349,8 +345,6 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongPtrA].increment_total();
-    g_display_settings_hook_counters[DISPLAY_SETTINGS_HOOK_SETWINDOWLONGPTRA].fetch_add(1);
-    g_display_settings_hook_total_count.fetch_add(1);
 
     // Check if fullscreen prevention is enabled
     // if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
@@ -423,8 +417,6 @@ HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Store the cursor value atomically
-    s_last_cursor_value.store(hCursor);
     // if (ShouldBlockMouseInput()) {
     //     hCursor = LoadCursor(nullptr, IDC_ARROW);
     //  }
@@ -442,7 +434,6 @@ int WINAPI ShowCursor_Direct(BOOL bShow) {
 // Hooked ShowCursor function
 int WINAPI ShowCursor_Detour(BOOL bShow) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    s_last_show_cursor_arg.store(bShow);
 
     if (ShouldBlockMouseInput()) {
         bShow = FALSE;
@@ -473,7 +464,6 @@ HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFacto
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY2].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     std::array<const GUID, 8> rrids = {__uuidof(IDXGIFactory),  __uuidof(IDXGIFactory1), __uuidof(IDXGIFactory2),
                                        __uuidof(IDXGIFactory3), __uuidof(IDXGIFactory4), __uuidof(IDXGIFactory5),
@@ -502,7 +492,6 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     LogInfo("Redirecting CreateDXGIFactory to CreateDXGIFactory2");
     return CreateDXGIFactory2(0, riid, ppFactory);
@@ -513,7 +502,6 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     LogInfo("Redirecting CreateDXGIFactory1 to CreateDXGIFactory2");
 

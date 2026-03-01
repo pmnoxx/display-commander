@@ -129,7 +129,6 @@ void UninstallApiHooks();
 
 // Helper functions
 HWND GetGameWindow();
-bool IsGameWindow(HWND hwnd);
 void SetGameWindow(HWND hwnd);
 
 // SetCursor direct access function

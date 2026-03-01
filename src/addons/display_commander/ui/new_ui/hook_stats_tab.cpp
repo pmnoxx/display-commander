@@ -38,8 +38,7 @@ void DrawHookStatsTab(display_commander::ui::IImGuiWrapper& imgui) {
         display_commanderhooks::DllGroup::DINPUT,
         display_commanderhooks::DllGroup::OPENGL,
         display_commanderhooks::DllGroup::DISPLAY_SETTINGS,
-        display_commanderhooks::DllGroup::HID_API,
-        display_commanderhooks::DllGroup::WINMM_JOYSTICK
+        display_commanderhooks::DllGroup::HID_API
     };
 
     int hook_count = display_commanderhooks::GetHookCount();

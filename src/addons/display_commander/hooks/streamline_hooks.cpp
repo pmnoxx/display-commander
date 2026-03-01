@@ -230,7 +230,6 @@ int slInit_Detour(void* pref, uint64_t sdkVersion) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_INIT].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Store the SDK version
     g_last_sdk_version.store(sdkVersion);
@@ -250,7 +249,6 @@ int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     static int log_count = 0;
     if (log_count < 30) {
@@ -271,7 +269,6 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Log the call
     LogInfo("slGetNativeInterface called");
@@ -290,7 +287,6 @@ static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::D
     static bool first_call = true;
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     bool optionsLogged = false;
     if (first_call) {
@@ -528,7 +524,6 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Check config-driven flag
     bool prevent_slupgrade_interface = g_prevent_slupgrade_interface.load();

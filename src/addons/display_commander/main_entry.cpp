@@ -2023,41 +2023,60 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         return ProcessAttachEarlyResult::RefuseLoad;
     }
 
-    // Loader mode: when selected version is "latest" or "X.Y.Z" (not "no override") and we're not under Dll\,
-    // act as loader: load DC from Dll\version and stay quiet.
+    // Loader mode: when selector mode is global/debug/stable and we're not under Dll\ or Debug\, act as loader:
+    // load DC from the resolved path and stay quiet. When mode is "local", GetDcDirectoryForLoading() returns
+    // base so we don't load from central.
     {
         WCHAR module_path_buf[MAX_PATH];
         if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) > 0) {
             std::filesystem::path module_dir = std::filesystem::path(module_path_buf).parent_path();
             std::filesystem::path base = display_commander::utils::GetLocalDcDirectory();
             std::filesystem::path dll_base = base / L"Dll";
+            std::filesystem::path debug_base = base / L"Debug";
             std::error_code ec;
             std::filesystem::path module_canon = std::filesystem::canonical(module_dir, ec);
-            if (!ec && std::filesystem::exists(dll_base, ec)) {
-                std::filesystem::path dll_canon = std::filesystem::canonical(dll_base, ec);
-                if (!ec) {
-                    auto m_it = module_canon.begin();
-                    auto d_it = dll_canon.begin();
-                    while (d_it != dll_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
-                        ++d_it;
-                        ++m_it;
+            if (!ec) {
+                bool we_are_under_dll = false;
+                if (std::filesystem::exists(dll_base, ec)) {
+                    std::filesystem::path dll_canon = std::filesystem::canonical(dll_base, ec);
+                    if (!ec) {
+                        auto m_it = module_canon.begin();
+                        auto d_it = dll_canon.begin();
+                        while (d_it != dll_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
+                            ++d_it;
+                            ++m_it;
+                        }
+                        we_are_under_dll = (d_it == dll_canon.end());
                     }
-                    bool we_are_under_dll = (d_it == dll_canon.end());
-                    if (!we_are_under_dll) {
-                        std::filesystem::path load_path = display_commander::utils::GetDcDirectoryForLoading();
-                        if (load_path != base) {
-                            std::filesystem::path addon_path =
-                                display_commander::utils::GetDcAddonPathInDirectory(load_path);
-                            if (!addon_path.empty()) {
-                                g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
-                                                                std::memory_order_release);
-                                if (LoadLibraryW(addon_path.c_str()) != nullptr) {
-                                    g_process_attached.store(true);
-                                    return ProcessAttachEarlyResult::LoaderOnly;
-                                }
-                                g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,
-                                                                std::memory_order_release);
+                }
+                bool we_are_under_debug = false;
+                if (std::filesystem::exists(debug_base, ec)) {
+                    std::filesystem::path debug_canon = std::filesystem::canonical(debug_base, ec);
+                    if (!ec) {
+                        auto m_it = module_canon.begin();
+                        auto d_it = debug_canon.begin();
+                        while (d_it != debug_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
+                            ++d_it;
+                            ++m_it;
+                        }
+                        we_are_under_debug = (d_it == debug_canon.end());
+                    }
+                }
+                bool we_are_under_versioned = we_are_under_dll || we_are_under_debug;
+                if (!we_are_under_versioned) {
+                    std::filesystem::path load_path = display_commander::utils::GetDcDirectoryForLoading();
+                    if (load_path != base) {
+                        std::filesystem::path addon_path =
+                            display_commander::utils::GetDcAddonPathInDirectory(load_path);
+                        if (!addon_path.empty()) {
+                            g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
+                                                            std::memory_order_release);
+                            if (LoadLibraryW(addon_path.c_str()) != nullptr) {
+                                g_process_attached.store(true);
+                                return ProcessAttachEarlyResult::LoaderOnly;
                             }
+                            g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,
+                                                            std::memory_order_release);
                         }
                     }
                 }

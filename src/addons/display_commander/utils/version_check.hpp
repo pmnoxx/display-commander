@@ -82,8 +82,15 @@ bool FetchLatestDebugRelease(std::string* out_error = nullptr);
 // FetchLatestDebugRelease (or any time).
 bool DownloadDcLatestDebugToDll(std::string* out_error = nullptr);
 
+// Download latest_debug release to Debug\X.Y.Z (version read from downloaded binaries). Use for DC selector
+// debug mode; keeps debug builds separate from stable Dll\.
+bool DownloadDcLatestDebugToDebugFolder(std::string* out_error = nullptr);
+
 // Copy the given DC addon file to Dll\X.Y.Z (version read from the file) if that folder does not already exist.
 // current_addon_path is typically the path to the running addon (e.g. from GetModuleFileNameW(g_hmodule)).
 bool CopyCurrentVersionToDll(const std::filesystem::path& current_addon_path, std::string* out_error = nullptr);
+
+// Copy the given DC addon file to the global base folder so "global" selector mode uses this version.
+bool CopyCurrentVersionToGlobal(const std::filesystem::path& current_addon_path, std::string* out_error = nullptr);
 
 }  // namespace display_commander::utils::version_check

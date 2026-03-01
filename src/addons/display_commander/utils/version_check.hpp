@@ -70,7 +70,11 @@ bool DownloadDcVersionToDll(const std::string& version, std::string* out_error =
 // Returns true if the release exists and has addon64/addon32 assets.
 bool FetchLatestDebugRelease(std::string* out_error = nullptr);
 
-// Download latest_debug release to Dll\latest_debug\. Call after FetchLatestDebugRelease (or any time).
+// Download latest_debug release to Dll\X.Y.Z (version read from downloaded binaries). Call after FetchLatestDebugRelease (or any time).
 bool DownloadDcLatestDebugToDll(std::string* out_error = nullptr);
+
+// Copy the given DC addon file to Dll\X.Y.Z (version read from the file) if that folder does not already exist.
+// current_addon_path is typically the path to the running addon (e.g. from GetModuleFileNameW(g_hmodule)).
+bool CopyCurrentVersionToDll(const std::filesystem::path& current_addon_path, std::string* out_error = nullptr);
 
 }  // namespace display_commander::utils::version_check

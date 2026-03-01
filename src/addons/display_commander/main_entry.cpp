@@ -37,11 +37,13 @@
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/dc_load_path.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/timing.hpp"
+#include "utils/version_check.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
 
@@ -115,7 +117,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst);
 // Export for multi-proxy coordination: other DC instances (dxgi, winmm, version.dll) scan this to decide HOOKED vs
 // PROXY_DLL_ONLY
 extern "C" __declspec(dllexport) int GetDisplayCommanderState() {
-    return g_display_commander_state.load(std::memory_order_acquire);
+    return static_cast<int>(g_display_commander_state.load(std::memory_order_acquire));
 }
 
 // TryGetDxgiOutputDeviceNameFromLastSwapchain removed - VRR status is now updated
@@ -1114,6 +1116,7 @@ struct OtherDcModuleInfo {
     std::string version;
     LONGLONG load_time_ns = 0;
     bool has_load_time = false;
+    int state = -1;  // GetDisplayCommanderState() from that module; -1 if not available
 };
 
 // Enumerate modules and collect other Display Commander instances. Returns false on enum failure.
@@ -1172,6 +1175,12 @@ bool DetectMultipleDisplayCommanderVersions_Collect(std::vector<OtherDcModuleInf
             info.load_time_ns = loaded_ns_func();
             info.has_load_time = (info.load_time_ns > 0);
         }
+        typedef int (*GetDisplayCommanderStateFunc)();
+        GetDisplayCommanderStateFunc state_func =
+            reinterpret_cast<GetDisplayCommanderStateFunc>(GetProcAddress(module, "GetDisplayCommanderState"));
+        if (state_func != nullptr) {
+            info.state = state_func();
+        }
         out.push_back(info);
     }
     return true;
@@ -1195,6 +1204,10 @@ void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcMod
         snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current version: %s\n", current_version);
         OutputDebugStringA(found_msg);
 
+        const bool other_is_loader = (info.state == static_cast<int>(DisplayCommanderState::DC_STATE_DLL_LOADER));
+        if (other_is_loader) {
+            OutputDebugStringA("[DisplayCommander]   Other instance is loader (DLL_LOADER) - not a conflict.\n");
+        }
         if (info.has_load_time) {
             snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other load time: %lld ns\n",
                      info.load_time_ns);
@@ -1202,24 +1215,26 @@ void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcMod
             snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current load time: %lld ns\n",
                      current_load_time_ns);
             OutputDebugStringA(found_msg);
-            if (info.load_time_ns < current_load_time_ns) {
-                snprintf(found_msg, sizeof(found_msg),
-                         "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
-                         "Refusing to load current instance.\n",
-                         current_load_time_ns - info.load_time_ns);
-                OutputDebugStringA(found_msg);
-            } else {
-                snprintf(found_msg, sizeof(found_msg),
-                         "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: %lld "
-                         "ns). Allowing current instance to load.\n",
-                         info.load_time_ns - current_load_time_ns);
-                OutputDebugStringA(found_msg);
+            if (!other_is_loader) {
+                if (info.load_time_ns < current_load_time_ns) {
+                    snprintf(found_msg, sizeof(found_msg),
+                             "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
+                             "Refusing to load current instance.\n",
+                             current_load_time_ns - info.load_time_ns);
+                    OutputDebugStringA(found_msg);
+                } else {
+                    snprintf(found_msg, sizeof(found_msg),
+                             "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: %lld "
+                             "ns). Allowing current instance to load.\n",
+                             info.load_time_ns - current_load_time_ns);
+                    OutputDebugStringA(found_msg);
+                }
             }
         } else {
             OutputDebugStringA("[DisplayCommander]   Load timestamp not available from other instance.\n");
         }
 
-        if (!info.version.empty() && info.version != "(unknown)") {
+        if (!info.version.empty() && info.version != "(unknown)" && !other_is_loader) {
             ::g_other_dc_version_detected.store(std::make_shared<const std::string>(info.version));
 
             NotifyMultipleVersionsFunc notify_func = reinterpret_cast<NotifyMultipleVersionsFunc>(
@@ -1228,7 +1243,9 @@ void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcMod
                 notify_func(current_version);
                 OutputDebugStringA("[DisplayCommander] Notified other instance of multiple versions.\n");
             }
+        }
 
+        if (!info.version.empty() && info.version != "(unknown)" && !other_is_loader) {
             bool instance_should_refuse = false;
             if (info.has_load_time && info.load_time_ns < current_load_time_ns) {
                 instance_should_refuse = true;
@@ -1636,7 +1653,7 @@ constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander
 constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_InjectionStop";
 
 namespace {
-enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess };
+enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly };
 
 std::wstring ProcessAttach_GetConfigDirectoryW() {
     wchar_t exe_path[MAX_PATH];
@@ -1694,13 +1711,19 @@ void ProcessAttach_ScanDisplayCommanderState(bool* another_undecided = nullptr) 
         FARPROC proc = GetProcAddress(modules[i], "GetDisplayCommanderState");
         if (!proc) continue;
         int other = reinterpret_cast<GetDisplayCommanderStateFn>(proc)();
-        if (other == static_cast<int>(DC_STATE_HOOKED)) {
-            g_display_commander_state.store(static_cast<int>(DC_STATE_PROXY_DLL_ONLY), std::memory_order_release);
+        if (other == static_cast<int>(DisplayCommanderState::DC_STATE_HOOKED)) {
+            g_display_commander_state.store(DisplayCommanderState::DC_STATE_PROXY_DLL_ONLY, std::memory_order_release);
             return;
         }
-        if (another_undecided && other == static_cast<int>(DC_STATE_UNDECIDED)) *another_undecided = true;
+        if (other == static_cast<int>(DisplayCommanderState::DC_STATE_DLL_LOADER)) {
+            // We are the addon loaded by the loader; we become the hooking instance.
+            g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
+            return;
+        }
+        if (another_undecided && other == static_cast<int>(DisplayCommanderState::DC_STATE_UNDECIDED))
+            *another_undecided = true;
     }
-    g_display_commander_state.store(static_cast<int>(DC_STATE_HOOKED), std::memory_order_release);
+    g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
 }
 
 // Returns the file's version resource ProductName (wide), or empty if absent. Used to avoid
@@ -1998,12 +2021,69 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     g_process_attached.store(true);
 }
 
+// Minimum Display Commander version allowed to load (below this we refuse).
+static constexpr const char* kDisplayCommanderMinLoadVersion = "0.12.194";
+
 ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
     g_hmodule = h_module;
     g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
-    g_display_commander_state.store(static_cast<int>(DC_STATE_UNDECIDED), std::memory_order_release);
+    g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED, std::memory_order_release);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+
+    if (display_commander::utils::version_check::CompareVersions(DISPLAY_COMMANDER_VERSION_STRING,
+                                                               kDisplayCommanderMinLoadVersion) < 0) {
+        char msg[384];
+        snprintf(msg, sizeof(msg),
+                 "[DisplayCommander] Version %s is below minimum allowed %s - refusing to load.\n",
+                 DISPLAY_COMMANDER_VERSION_STRING, kDisplayCommanderMinLoadVersion);
+        OutputDebugStringA(msg);
+        g_process_attached.store(true);
+        return ProcessAttachEarlyResult::RefuseLoad;
+    }
+
+    // Loader mode: when selected version is "latest" or "X.Y.Z" (not "no override") and we're not under Dll\,
+    // act as loader: load DC from Dll\version and stay quiet.
+    {
+        WCHAR module_path_buf[MAX_PATH];
+        if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) > 0) {
+            std::filesystem::path module_dir = std::filesystem::path(module_path_buf).parent_path();
+            std::filesystem::path base = display_commander::utils::GetLocalDcDirectory();
+            std::filesystem::path dll_base = base / L"Dll";
+            std::error_code ec;
+            std::filesystem::path module_canon = std::filesystem::canonical(module_dir, ec);
+            if (!ec && std::filesystem::exists(dll_base, ec)) {
+                std::filesystem::path dll_canon = std::filesystem::canonical(dll_base, ec);
+                if (!ec) {
+                    auto m_it = module_canon.begin();
+                    auto d_it = dll_canon.begin();
+                    while (d_it != dll_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
+                        ++d_it;
+                        ++m_it;
+                    }
+                    bool we_are_under_dll = (d_it == dll_canon.end());
+                    if (!we_are_under_dll) {
+                        std::filesystem::path load_path = display_commander::utils::GetDcDirectoryForLoading();
+                        if (load_path != base) {
+                            std::filesystem::path addon_path =
+                                display_commander::utils::GetDcAddonPathInDirectory(load_path);
+                            if (!addon_path.empty()) {
+                                g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
+                                                               std::memory_order_release);
+                                if (LoadLibraryW(addon_path.c_str()) != nullptr) {
+                                    g_process_attached.store(true);
+                                    return ProcessAttachEarlyResult::LoaderOnly;
+                                }
+                                g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,
+                                                                std::memory_order_release);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     DetectWine();
     if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
         OutputDebugStringA(
@@ -2047,6 +2127,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) return TRUE;
             if (early == ProcessAttachEarlyResult::EarlySuccess) return TRUE;
+            if (early == ProcessAttachEarlyResult::LoaderOnly) return TRUE;
 
             ProcessAttach_DetectReShadeInModules();
             ProcessAttach_LoadLocalAddonDlls(h_module);

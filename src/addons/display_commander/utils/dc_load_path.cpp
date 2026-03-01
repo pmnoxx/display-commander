@@ -13,12 +13,10 @@ namespace display_commander::utils {
 
 namespace {
 constexpr const char* DC_SECTION = "DisplayCommander.DC";
-constexpr const char* KEY_UPDATE_SOURCE = "DcUpdateSource";
-constexpr const char* KEY_SHARED_PATH = "DcSharedPath";
 constexpr const char* KEY_SELECTED_VERSION = "DcSelectedVersion";
-constexpr int DEFAULT_UPDATE_SOURCE = 0;  // Local
 
-// True if dir contains at least one .addon64 and one .addon32 file whose name contains "display_commander".
+// True if dir contains at least one .addon64 or .addon32 file whose name contains "display_commander".
+// (One arch is enough so that a single-arch copy from e.g. winmm.dll proxy shows up in the version list.)
 static bool DirectoryHasDcAddonDlls(const std::filesystem::path& dir) {
     if (dir.empty()) return false;
     std::error_code ec;
@@ -35,7 +33,7 @@ static bool DirectoryHasDcAddonDlls(const std::filesystem::path& dir) {
         if (name.size() >= 8 && name.compare(name.size() - 8, 8, L".addon64") == 0) has_64 = true;
         if (name.size() >= 8 && name.compare(name.size() - 8, 8, L".addon32") == 0) has_32 = true;
     }
-    return has_64 && has_32;
+    return has_64 || has_32;
 }
 
 static std::filesystem::path GetDcBaseFromLocalAppData() {
@@ -43,36 +41,47 @@ static std::filesystem::path GetDcBaseFromLocalAppData() {
 }
 }  // namespace
 
+// Highest version (by CompareVersions) in Dll\*, or empty if none.
+static std::string GetHighestDcVersionInDll() {
+    std::filesystem::path dll_base = GetDcBaseFromLocalAppData() / L"Dll";
+    std::error_code ec;
+    if (!std::filesystem::exists(dll_base, ec) || !std::filesystem::is_directory(dll_base, ec)) return "";
+    std::vector<std::string> versions;
+    for (const auto& entry : std::filesystem::directory_iterator(dll_base, ec)) {
+        if (ec) continue;
+        if (!entry.is_directory(ec)) continue;
+        std::string name = entry.path().filename().string();
+        if (name.empty() || name == "." || name == "..") continue;
+        if (DirectoryHasDcAddonDlls(entry.path())) versions.push_back(name);
+    }
+    if (versions.empty()) return "";
+    namespace vc = display_commander::utils::version_check;
+    std::sort(versions.begin(), versions.end(),
+              [](const std::string& a, const std::string& b) { return vc::CompareVersions(a, b) > 0; });
+    return versions.front();
+}
+
 std::filesystem::path GetDcDirectoryForLoading() {
     using namespace display_commander::config;
     auto& config = DisplayCommanderConfigManager::GetInstance();
-
-    int source = DEFAULT_UPDATE_SOURCE;
-    config.GetConfigValue(DC_SECTION, KEY_UPDATE_SOURCE, source);
-
-    std::string selected_version;
-    config.GetConfigValue(DC_SECTION, KEY_SELECTED_VERSION, selected_version);
+    std::string override_val;
+    config.GetConfigValue(DC_SECTION, KEY_SELECTED_VERSION, override_val);
 
     std::filesystem::path base = GetDcBaseFromLocalAppData();
+    std::filesystem::path dll_base = base / L"Dll";
 
-    switch (static_cast<DcUpdateSource>(source)) {
-        case DcUpdateSource::Local:
-            return base;
-        case DcUpdateSource::SharedPath:
-            // Fixed path: same as Local (AppData\Local\Programs\Display_Commander)
-            return base;
-        case DcUpdateSource::SpecificVersion: {
-            if (selected_version.empty()) return base;
-            std::filesystem::path dll_base = base / L"Dll";
-            std::filesystem::path selected_dir = dll_base / std::filesystem::path(selected_version);
-            if (DirectoryHasDcAddonDlls(selected_dir)) {
-                return selected_dir;
-            }
-            return selected_dir;
-        }
-        default:
-            return base;
+    if (override_val.empty()) {
+        return base;
     }
+    if (override_val == "latest") {
+        std::string highest = GetHighestDcVersionInDll();
+        if (highest.empty()) return base;
+        return dll_base / std::filesystem::path(highest);
+    }
+    // Specific X.Y.Z: use it if present, else fallback to base (current)
+    std::filesystem::path selected_dir = dll_base / std::filesystem::path(override_val);
+    if (DirectoryHasDcAddonDlls(selected_dir)) return selected_dir;
+    return base;
 }
 
 std::filesystem::path GetLocalDcDirectory() {
@@ -98,36 +107,6 @@ std::string GetLocalDcVersion() {
     return GetDcVersionInDirectory(GetLocalDcDirectory());
 }
 
-std::string GetSharedDcVersion() {
-    // Shared path is fixed to AppData\Local\Programs\Display_Commander (same as Local)
-    return GetDcVersionInDirectory(GetLocalDcDirectory());
-}
-
-DcUpdateSource GetDcUpdateSourceFromConfig() {
-    using namespace display_commander::config;
-    int value = DEFAULT_UPDATE_SOURCE;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(DC_SECTION, KEY_UPDATE_SOURCE, value);
-    if (value < 0 || value > 2) value = DEFAULT_UPDATE_SOURCE;
-    return static_cast<DcUpdateSource>(value);
-}
-
-void SetDcUpdateSourceInConfig(DcUpdateSource value) {
-    using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_UPDATE_SOURCE, static_cast<int>(value));
-}
-
-std::string GetDcSharedPathFromConfig() {
-    using namespace display_commander::config;
-    std::string value;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(DC_SECTION, KEY_SHARED_PATH, value);
-    return value;
-}
-
-void SetDcSharedPathInConfig(const std::string& path) {
-    using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_SHARED_PATH, path);
-}
-
 std::string GetDcSelectedVersionFromConfig() {
     using namespace display_commander::config;
     std::string value;
@@ -138,6 +117,29 @@ std::string GetDcSelectedVersionFromConfig() {
 void SetDcSelectedVersionInConfig(const std::string& version) {
     using namespace display_commander::config;
     DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_SELECTED_VERSION, version);
+}
+
+std::filesystem::path GetDcAddonPathInDirectory(const std::filesystem::path& dir) {
+    if (dir.empty()) return {};
+    std::error_code ec;
+#ifdef _WIN64
+    const std::wstring suffix = L".addon64";
+#else
+    const std::wstring suffix = L".addon32";
+#endif
+    for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+        if (ec) continue;
+        if (!entry.is_regular_file(ec)) continue;
+        std::wstring name = entry.path().filename().wstring();
+        for (auto& c : name) {
+            if (c >= L'A' && c <= L'Z') c += (L'a' - L'A');
+        }
+        if (name.find(L"display_commander") == std::wstring::npos) continue;
+        if (name.size() >= suffix.size() && name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0) {
+            return entry.path();
+        }
+    }
+    return {};
 }
 
 const char* const* GetDcInstalledVersionList(size_t* out_count) {

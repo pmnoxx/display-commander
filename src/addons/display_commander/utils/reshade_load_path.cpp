@@ -17,11 +17,9 @@ namespace display_commander::utils {
 
 namespace {
 constexpr const char* RESHADE_SECTION = "DisplayCommander.ReShade";
-constexpr const char* KEY_LOAD_SOURCE = "ReshadeLoadSource";
-constexpr const char* KEY_SHARED_PATH = "ReshadeSharedPath";
+constexpr const char* KEY_LOAD_SOURCE = "ReshadeLoadSource";      // legacy, for migration only
+constexpr const char* KEY_SHARED_PATH = "ReshadeSharedPath";      // legacy, unused
 constexpr const char* KEY_SELECTED_VERSION = "ReshadeSelectedVersion";
-
-constexpr int DEFAULT_LOAD_SOURCE = 0;  // Local
 constexpr const char* DEFAULT_VERSION = "6.7.3";
 
 // Fallback when GitHub fetch fails or has not run yet.
@@ -106,20 +104,31 @@ static void EnsureReShadeVersionListFetched() {
 }
 }  // namespace
 
-std::filesystem::path GetReshadeDirectoryForLoading() {
+// Effective selected version: read KEY_SELECTED_VERSION; if empty, migrate from legacy KEY_LOAD_SOURCE.
+static std::string GetReshadeSelectedVersionEffective() {
     using namespace display_commander::config;
     auto& config = DisplayCommanderConfigManager::GetInstance();
-
-    int load_source = DEFAULT_LOAD_SOURCE;
+    std::string selected;
+    config.GetConfigValue(RESHADE_SECTION, KEY_SELECTED_VERSION, selected);
+    if (!selected.empty()) {
+        return selected;
+    }
+    int load_source = 0;
     config.GetConfigValue(RESHADE_SECTION, KEY_LOAD_SOURCE, load_source);
+    if (load_source == 3) return "no";
+    if (load_source == 0 || load_source == 1) return "";
+    if (load_source == 2) {
+        config.GetConfigValue(RESHADE_SECTION, KEY_SELECTED_VERSION, selected);
+        if (selected.empty()) selected = DEFAULT_VERSION;
+        return selected;
+    }
+    return "";
+}
 
-    std::string shared_path;
-    config.GetConfigValue(RESHADE_SECTION, KEY_SHARED_PATH, shared_path);
-
-    std::string selected_version;
-    config.GetConfigValue(RESHADE_SECTION, KEY_SELECTED_VERSION, selected_version);
-    if (selected_version.empty()) {
-        selected_version = DEFAULT_VERSION;
+std::filesystem::path GetReshadeDirectoryForLoading() {
+    std::string selected = GetReshadeSelectedVersionEffective();
+    if (selected == "no") {
+        return std::filesystem::path();
     }
 
     wchar_t localappdata_path[MAX_PATH];
@@ -129,79 +138,36 @@ std::filesystem::path GetReshadeDirectoryForLoading() {
     std::filesystem::path base =
         std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander" / L"Reshade";
 
-    switch (static_cast<ReshadeLoadSource>(load_source)) {
-        case ReshadeLoadSource::Local:      return base;
-        case ReshadeLoadSource::SharedPath: {
-            if (shared_path.empty()) {
-                return base;
-            }
-            std::filesystem::path p(shared_path);
-            std::error_code ec;
-            std::filesystem::path abs = std::filesystem::absolute(p, ec);
-            if (ec) {
-                return base;
-            }
-            return abs;
-        }
-        case ReshadeLoadSource::SpecificVersion: {
-            std::filesystem::path dll_base = base / L"Dll";
-            std::filesystem::path selected_dir = dll_base / std::filesystem::path(selected_version);
-            s_fallback_selected_version.clear();
-            s_fallback_loaded_version.clear();
-            if (DirectoryHasReshadeDlls(selected_dir)) {
-                return selected_dir;
-            }
-            std::string fallback_version = GetHighestAvailableVersionInDllDir(dll_base);
-            if (fallback_version.empty()) {
-                return selected_dir;
-            }
-            s_fallback_selected_version = selected_version;
-            s_fallback_loaded_version = fallback_version;
-            return dll_base / std::filesystem::path(fallback_version);
-        }
-        case ReshadeLoadSource::NoReshade: return std::filesystem::path();
-        default:                           return base;
+    if (selected.empty()) {
+        return base;
     }
-}
-
-ReshadeLoadSource GetReshadeLoadSourceFromConfig() {
-    using namespace display_commander::config;
-    int value = DEFAULT_LOAD_SOURCE;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(RESHADE_SECTION, KEY_LOAD_SOURCE, value);
-    if (value < 0 || value > 3) {
-        value = DEFAULT_LOAD_SOURCE;
+    if (selected == "latest") {
+        std::filesystem::path dll_base = base / L"Dll";
+        std::string highest = GetHighestAvailableVersionInDllDir(dll_base);
+        if (highest.empty()) return base;
+        return dll_base / std::filesystem::path(highest);
     }
-    return static_cast<ReshadeLoadSource>(value);
+    // Specific X.Y.Z
+    std::filesystem::path dll_base = base / L"Dll";
+    std::filesystem::path selected_dir = dll_base / std::filesystem::path(selected);
+    s_fallback_selected_version.clear();
+    s_fallback_loaded_version.clear();
+    if (DirectoryHasReshadeDlls(selected_dir)) {
+        return selected_dir;
+    }
+    std::string fallback_version = GetHighestAvailableVersionInDllDir(dll_base);
+    if (fallback_version.empty()) {
+        return selected_dir;
+    }
+    s_fallback_selected_version = selected;
+    s_fallback_loaded_version = fallback_version;
+    return dll_base / std::filesystem::path(fallback_version);
 }
 
-bool IsReshadeLoadDisabledByConfig() { return GetReshadeLoadSourceFromConfig() == ReshadeLoadSource::NoReshade; }
-
-void SetReshadeLoadSourceInConfig(ReshadeLoadSource value) {
-    using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(RESHADE_SECTION, KEY_LOAD_SOURCE,
-                                                                static_cast<int>(value));
-}
-
-std::string GetReshadeSharedPathFromConfig() {
-    using namespace display_commander::config;
-    std::string value;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(RESHADE_SECTION, KEY_SHARED_PATH, value);
-    return value;
-}
-
-void SetReshadeSharedPathInConfig(const std::string& path) {
-    using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(RESHADE_SECTION, KEY_SHARED_PATH, path);
-}
+bool IsReshadeLoadDisabledByConfig() { return GetReshadeSelectedVersionEffective() == "no"; }
 
 std::string GetReshadeSelectedVersionFromConfig() {
-    using namespace display_commander::config;
-    std::string value;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(RESHADE_SECTION, KEY_SELECTED_VERSION, value);
-    if (value.empty()) {
-        value = DEFAULT_VERSION;
-    }
-    return value;
+    return GetReshadeSelectedVersionEffective();
 }
 
 void SetReshadeSelectedVersionInConfig(const std::string& version) {
@@ -278,18 +244,62 @@ static std::string GetReshadeVersionInDirectory(const std::filesystem::path& dir
 
 std::string GetLocalReshadeVersion() { return GetReshadeVersionInDirectory(GetLocalReshadeDirectory()); }
 
-std::string GetSharedReshadeVersion() {
-    std::string shared_path = GetReshadeSharedPathFromConfig();
-    if (shared_path.empty()) {
-        return "";
+// Copy currently loaded ReShade to Reshade\Dll\X.Y.Z if not already there. Version from Reshade64.dll in source dir.
+bool CopyCurrentReshadeToDll(const std::filesystem::path& loaded_reshade_directory, std::string* out_error) {
+    if (loaded_reshade_directory.empty()) {
+        if (out_error) *out_error = "Empty path";
+        return false;
     }
-    std::filesystem::path p(shared_path);
+    std::filesystem::path dll64 = loaded_reshade_directory / L"Reshade64.dll";
     std::error_code ec;
-    std::filesystem::path abs = std::filesystem::absolute(p, ec);
-    if (ec) {
-        return "";
+    if (!std::filesystem::exists(dll64, ec)) {
+        if (out_error) *out_error = "Reshade64.dll not found in source directory";
+        return false;
     }
-    return GetReshadeVersionInDirectory(abs);
+    std::string version = ::GetDLLVersionString(dll64.wstring());
+    if (version.empty()) {
+        if (out_error) *out_error = "Could not read version from Reshade64.dll";
+        return false;
+    }
+    std::filesystem::path base = GetLocalReshadeDirectory();
+    std::filesystem::path dll_base = base / L"Dll";
+    std::filesystem::path target_dir = dll_base / std::filesystem::path(version);
+    std::filesystem::path source_canon = std::filesystem::canonical(loaded_reshade_directory, ec);
+    if (!ec && std::filesystem::exists(dll_base, ec)) {
+        std::filesystem::path dll_canon = std::filesystem::canonical(dll_base, ec);
+        if (!ec) {
+            auto s_it = source_canon.begin();
+            auto d_it = dll_canon.begin();
+            while (d_it != dll_canon.end() && s_it != source_canon.end() && *d_it == *s_it) {
+                ++d_it;
+                ++s_it;
+            }
+            if (d_it == dll_canon.end()) {
+                return true;
+            }
+        }
+    }
+    if (DirectoryHasReshadeDlls(target_dir)) {
+        return true;
+    }
+    if (!std::filesystem::exists(target_dir, ec)) {
+        std::filesystem::create_directories(target_dir, ec);
+        if (ec) {
+            if (out_error) *out_error = "Failed to create directory: " + ec.message();
+            return false;
+        }
+    }
+    auto copy_one = [&](const wchar_t* name) -> bool {
+        std::filesystem::path src = loaded_reshade_directory / name;
+        std::filesystem::path dst = target_dir / name;
+        if (!std::filesystem::exists(src, ec)) return true;
+        std::filesystem::copy_file(src, dst, std::filesystem::copy_options::overwrite_existing, ec);
+        if (ec && out_error) *out_error = "Failed to copy DLL: " + ec.message();
+        return !ec;
+    };
+    if (!copy_one(L"Reshade64.dll")) return false;
+    if (!copy_one(L"Reshade32.dll")) return false;
+    return true;
 }
 
 }  // namespace display_commander::utils

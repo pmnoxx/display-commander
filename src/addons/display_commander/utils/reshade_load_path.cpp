@@ -2,8 +2,11 @@
 #include "../config/display_commander_config.hpp"
 #include "general_utils.hpp"
 #include "version_check.hpp"
-#include <ShlObj.h>
+
 #include <Windows.h>
+
+#include <ShlObj.h>
+
 #include <algorithm>
 #include <atomic>
 #include <filesystem>
@@ -123,12 +126,11 @@ std::filesystem::path GetReshadeDirectoryForLoading() {
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
-    std::filesystem::path base = std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander"
-                                / L"Reshade";
+    std::filesystem::path base =
+        std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander" / L"Reshade";
 
     switch (static_cast<ReshadeLoadSource>(load_source)) {
-        case ReshadeLoadSource::Local:
-            return base;
+        case ReshadeLoadSource::Local:      return base;
         case ReshadeLoadSource::SharedPath: {
             if (shared_path.empty()) {
                 return base;
@@ -157,10 +159,8 @@ std::filesystem::path GetReshadeDirectoryForLoading() {
             s_fallback_loaded_version = fallback_version;
             return dll_base / std::filesystem::path(fallback_version);
         }
-        case ReshadeLoadSource::NoReshade:
-            return std::filesystem::path();
-        default:
-            return base;
+        case ReshadeLoadSource::NoReshade: return std::filesystem::path();
+        default:                           return base;
     }
 }
 
@@ -174,9 +174,7 @@ ReshadeLoadSource GetReshadeLoadSourceFromConfig() {
     return static_cast<ReshadeLoadSource>(value);
 }
 
-bool IsReshadeLoadDisabledByConfig() {
-    return GetReshadeLoadSourceFromConfig() == ReshadeLoadSource::NoReshade;
-}
+bool IsReshadeLoadDisabledByConfig() { return GetReshadeLoadSourceFromConfig() == ReshadeLoadSource::NoReshade; }
 
 void SetReshadeLoadSourceInConfig(ReshadeLoadSource value) {
     using namespace display_commander::config;
@@ -215,6 +213,35 @@ const char* const* GetReshadeVersionList(size_t* out_count) {
     EnsureReShadeVersionListFetched();
     *out_count = s_reshade_version_ptrs.size();
     return s_reshade_version_ptrs.data();
+}
+
+const char* const* GetReshadeInstalledVersionList(size_t* out_count) {
+    static std::vector<std::string> s_installed;
+    static std::vector<const char*> s_installed_ptrs;
+    s_installed.clear();
+    s_installed_ptrs.clear();
+    std::filesystem::path dll_base = GetLocalReshadeDirectory() / L"Dll";
+    std::error_code ec;
+    if (std::filesystem::exists(dll_base, ec) && std::filesystem::is_directory(dll_base, ec)) {
+        for (const auto& entry : std::filesystem::directory_iterator(dll_base, ec)) {
+            if (ec) continue;
+            if (!entry.is_directory(ec)) continue;
+            std::string name = entry.path().filename().string();
+            if (name.empty() || name == "." || name == "..") continue;
+            if (DirectoryHasReshadeDlls(entry.path())) {
+                s_installed.push_back(name);
+            }
+        }
+    }
+    namespace vc = display_commander::utils::version_check;
+    std::sort(s_installed.begin(), s_installed.end(),
+              [](const std::string& a, const std::string& b) { return vc::CompareVersions(a, b) > 0; });
+    s_installed_ptrs.reserve(s_installed.size());
+    for (const auto& s : s_installed) {
+        s_installed_ptrs.push_back(s.c_str());
+    }
+    *out_count = s_installed_ptrs.size();
+    return s_installed_ptrs.empty() ? nullptr : s_installed_ptrs.data();
 }
 
 bool GetReshadeLoadFallbackVersionInfo(std::string* out_selected_version, std::string* out_loaded_version) {

@@ -633,4 +633,111 @@ bool DownloadUpdate(bool is_64bit, const std::string& build_number) {
     return DownloadBinaryFromUrl(url, download_path);
 }
 
+// Fetch all Display Commander release tag names from GitHub, sorted descending.
+bool FetchDisplayCommanderReleasesFromGitHub(std::vector<std::string>& out_versions, std::string* out_error) {
+    out_versions.clear();
+    std::string content;
+    if (!DownloadTextFromUrl("https://api.github.com/repos/pmnoxx/display-commander/releases", content)) {
+        if (out_error) *out_error = "Failed to fetch releases from GitHub";
+        return false;
+    }
+    // Response is a JSON array: [ { "tag_name": "v0.12.189", ... }, ... ]
+    size_t pos = 0;
+    while ((pos = content.find("\"tag_name\"", pos)) != std::string::npos) {
+        size_t colon = content.find(':', pos);
+        if (colon == std::string::npos) break;
+        size_t q1 = content.find('"', colon);
+        if (q1 == std::string::npos) break;
+        size_t q2 = content.find('"', q1 + 1);
+        if (q2 == std::string::npos) break;
+        std::string tag = content.substr(q1 + 1, q2 - q1 - 1);
+        std::string ver = ParseVersionString(tag);
+        if (!ver.empty() && ver.find_first_not_of("0123456789.") == std::string::npos) {
+            out_versions.push_back(ver);
+        }
+        pos = q2 + 1;
+    }
+    std::sort(out_versions.begin(), out_versions.end(),
+              [](const std::string& a, const std::string& b) { return CompareVersions(a, b) > 0; });
+    auto last = std::unique(out_versions.begin(), out_versions.end());
+    out_versions.erase(last, out_versions.end());
+    return !out_versions.empty();
+}
+
+// Fetch a release by exact tag (e.g. "v0.12.189" or "latest_debug"). Fills url_64 and url_32 from assets.
+static bool FetchReleaseByTag(const std::string& tag, std::string* out_url_64, std::string* out_url_32,
+                              std::string* out_error) {
+    std::string url = "https://api.github.com/repos/pmnoxx/display-commander/releases/tags/" + tag;
+    std::string json;
+    if (!DownloadTextFromUrl(url, json)) {
+        if (out_error) *out_error = "Failed to fetch release info";
+        return false;
+    }
+    std::string ver_parsed, url_64, url_32, build_num;
+    if (!ParseGitHubReleaseJson(json, ver_parsed, url_64, url_32, build_num)) {
+        if (out_error) *out_error = "Invalid release JSON";
+        return false;
+    }
+    if (url_64.empty() || url_32.empty()) {
+        if (out_error) *out_error = "Release has no addon64/addon32 assets";
+        return false;
+    }
+    if (out_url_64) *out_url_64 = url_64;
+    if (out_url_32) *out_url_32 = url_32;
+    return true;
+}
+
+static bool DownloadDcReleaseToDll(const std::string& tag, const std::string& folder_name,
+                                   std::string* out_error) {
+    std::string url_64, url_32;
+    if (!FetchReleaseByTag(tag, &url_64, &url_32, out_error)) {
+        return false;
+    }
+    std::filesystem::path base = GetDownloadDirectory() / L"Dll" / std::filesystem::path(folder_name);
+    std::error_code ec;
+    std::filesystem::create_directories(base, ec);
+    if (ec) {
+        if (out_error) *out_error = "Could not create Dll version folder";
+        return false;
+    }
+    auto filenameFromUrl = [](const std::string& u) {
+        size_t last = u.rfind('/');
+        if (last != std::string::npos && last + 1 < u.size()) {
+            return u.substr(last + 1);
+        }
+        return u;
+    };
+    std::string name64 = filenameFromUrl(url_64);
+    std::string name32 = filenameFromUrl(url_32);
+    std::filesystem::path path64 = base / name64;
+    std::filesystem::path path32 = base / name32;
+    if (!DownloadBinaryFromUrl(url_64, path64)) {
+        if (out_error) *out_error = "Failed to download 64-bit addon";
+        return false;
+    }
+    if (!DownloadBinaryFromUrl(url_32, path32)) {
+        if (out_error) *out_error = "Failed to download 32-bit addon";
+        return false;
+    }
+    return true;
+}
+
+// Download a specific DC version to Dll\<version>\ (both addon64 and addon32).
+bool DownloadDcVersionToDll(const std::string& version, std::string* out_error) {
+    std::string tag = version;
+    if (tag.empty() || (tag[0] != 'v' && tag[0] != 'V')) {
+        tag = "v" + tag;
+    }
+    return DownloadDcReleaseToDll(tag, version, out_error);
+}
+
+bool FetchLatestDebugRelease(std::string* out_error) {
+    std::string url_64, url_32;
+    return FetchReleaseByTag("latest_debug", &url_64, &url_32, out_error);
+}
+
+bool DownloadDcLatestDebugToDll(std::string* out_error) {
+    return DownloadDcReleaseToDll("latest_debug", "latest_debug", out_error);
+}
+
 }  // namespace display_commander::utils::version_check

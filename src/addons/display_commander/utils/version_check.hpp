@@ -60,4 +60,17 @@ std::string ExtractBuildNumber(const std::string& version_str);
 // Format build number as 6 digits with leading zeros
 std::string FormatBuildNumber(const std::string& build_str);
 
+// Fetch Display Commander release versions from GitHub (pmnoxx/display-commander). Returns tag names, sorted descending.
+bool FetchDisplayCommanderReleasesFromGitHub(std::vector<std::string>& out_versions, std::string* out_error = nullptr);
+
+// Download a specific DC version to %localappdata%\Programs\Display_Commander\Dll\<version>\. Returns true on success.
+bool DownloadDcVersionToDll(const std::string& version, std::string* out_error = nullptr);
+
+// Fetch the latest_debug release (https://github.com/pmnoxx/display-commander/releases/tag/latest_debug).
+// Returns true if the release exists and has addon64/addon32 assets.
+bool FetchLatestDebugRelease(std::string* out_error = nullptr);
+
+// Download latest_debug release to Dll\latest_debug\. Call after FetchLatestDebugRelease (or any time).
+bool DownloadDcLatestDebugToDll(std::string* out_error = nullptr);
+
 }  // namespace display_commander::utils::version_check

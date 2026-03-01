@@ -38,8 +38,11 @@ void SetReshadeSharedPathInConfig(const std::string& path);
 std::string GetReshadeSelectedVersionFromConfig();
 void SetReshadeSelectedVersionInConfig(const std::string& version);
 
-// Supported ReShade versions for the "Specific version" dropdown.
+// Supported ReShade versions for the "Specific version" dropdown (all known: fallback + GitHub).
 const char* const* GetReshadeVersionList(size_t* out_count);
+
+// Installed ReShade versions only (subdirs of .../Reshade/Dll/ that contain both DLLs). Use for version selector.
+const char* const* GetReshadeInstalledVersionList(size_t* out_count);
 
 // When load source is SpecificVersion but the selected version was not installed, GetReshadeDirectoryForLoading
 // falls back to the highest available version. This returns true in that case and fills the two version strings

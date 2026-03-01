@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.190 (2026-03-01)
+
+- **Main tab Updates: ReShade and Display Commander** - ReShade "Specific version" now shows installed versions only in the version selector; added "Download another version" (list of non-installed versions + Download). Display Commander update source: Local / Shared folder / Specific version (shared path fixed to `%localappdata%\\Programs\\Display_Commander`). Specific version: installed-only version combo, "Download latest" (to root), "Check latest (debug)" from GitHub `latest_debug` release with "Download to Dll" when not installed, and "Fetch available versions" + download selected to `Dll\\X.Y.Z`. Added "Open folder" buttons to open the ReShade and Display Commander containing folders in Explorer.
+
+---
+
 ## v0.12.189 (2026-03-01)
 
 - **CI: Latest Build / Latest Debug release body** - The GitHub Actions workflow now reads the version (MAJOR.MINOR.PATCH) from `CMakeLists.txt` and writes it into the release body for [Latest Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_build) and [Latest Debug Build](https://github.com/pmnoxx/display-commander/releases/tag/latest_debug). "Version in binaries" and "Commit" on those releases now reflect the built version and the triggering commit instead of a fixed 0.11.0 and stale commit.

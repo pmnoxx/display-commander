@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.193 (2026-03-01)
+
+- **Display Commander loads even if loaded multiple times** - Addon initialization and load paths tolerate being invoked multiple times (e.g. dxgi.dll + winmm.dll as proxies, or repeated ReShade load); DC registers and runs correctly instead of failing or crashing when already loaded.
+
+---
+
 ## v0.12.192 (2026-03-01)
 
 - **Main tab FPS limiter quick selector** - When the FPS limiter checkbox is enabled, a quick FPS limit selector is shown just under the FPS limit slider. When monitor refresh rate is known, it shows "No Limit", divisors of refresh (e.g. 72, 48 for 144 Hz), and "VRR Cap"; when refresh rate is unknown, fixed presets only (No Limit, 30, 60, 120, 144) with no fallback.

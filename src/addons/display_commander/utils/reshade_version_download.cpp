@@ -1,13 +1,13 @@
 #include "reshade_version_download.hpp"
-#include "reshade_load_path.hpp"
-#include "../config/display_commander_config.hpp"
-#include "version_check.hpp"
 #include <ShlObj.h>
 #include <Windows.h>
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <thread>
+#include "../config/display_commander_config.hpp"
+#include "reshade_load_path.hpp"
+#include "version_check.hpp"
 
 namespace display_commander::utils {
 
@@ -125,9 +125,7 @@ void ReshadeVersionDownloadWorker(std::string version) {
 
 }  // namespace
 
-ReshadeDownloadStatus GetReshadeDownloadStatus() {
-    return g_status.load(std::memory_order_acquire);
-}
+ReshadeDownloadStatus GetReshadeDownloadStatus() { return g_status.load(std::memory_order_acquire); }
 
 const char* GetReshadeDownloadStatusMessage() {
     std::string* msg = g_last_error.load(std::memory_order_acquire);

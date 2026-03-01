@@ -95,6 +95,13 @@ static void EnsureReShadeVersionListFetched() {
             }
         }
     }
+    std::string reshade_me_version;
+    if (vc::FetchReShadeLatestFromReshadeMe(&reshade_me_version, nullptr)) {
+        if (std::find(s_reshade_versions_combined.begin(), s_reshade_versions_combined.end(), reshade_me_version)
+            == s_reshade_versions_combined.end()) {
+            s_reshade_versions_combined.push_back(reshade_me_version);
+        }
+    }
     std::sort(s_reshade_versions_combined.begin(), s_reshade_versions_combined.end(),
               [](const std::string& a, const std::string& b) { return vc::CompareVersions(a, b) > 0; });
     s_reshade_version_ptrs.resize(s_reshade_versions_combined.size());

@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.197 (2026-03-01)
+
+- **Main tab Updates: DC and ReShade via selectors only** - In the Main tab Updates section, both Display Commander and ReShade are now controlled by a single version selector each (no override, latest installed, or a specific X.Y.Z); load source and DC loader behaviour (load from Dll when Latest or X.Y.Z is selected) follow from that choice.
+- **ReShade version list and auto-backup** - The ReShade version list is supplemented with the latest version from reshade.me (fetched once per session), and the currently loaded ReShade is auto-copied to Reshade\\Dll\\X.Y.Z when the Updates section is opened.
+
+---
+
 ## v0.12.196 (2026-03-01)
 
 - **ReShade version selection simplified** - ReShade load config now uses a single value like Display Commander: `""` (no override / base folder), `"latest"` (Reshade\Dll\highest), `"X.Y.Z"` (Reshade\Dll\X.Y.Z), or `"no"` (do not load ReShade). Removed Local/Shared/Specific version combo and shared path. Main tab ReShade: single combo "No ReShade", "No override", "Latest installed", then installed versions.

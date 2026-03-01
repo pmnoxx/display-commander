@@ -1514,7 +1514,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             } else if (dlls_present) {
                 imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Ready (already installed)");
             } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "Not found. Use \"Download selected\" or \"Download another version\" to install.");
+                imgui.TextColored(ui::colors::TEXT_DIMMED,
+                                  "Not found. Use \"Download selected\" or \"Download another version\" to install.");
             }
 
             const bool can_download = (dl_status != display_commander::utils::ReshadeDownloadStatus::Downloading
@@ -1589,8 +1590,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             if (!s_dc_ensured_current_in_dll) {
                 WCHAR path_buf[MAX_PATH];
                 if (GetModuleFileNameW(g_hmodule, path_buf, MAX_PATH) > 0) {
-                    display_commander::utils::version_check::CopyCurrentVersionToDll(
-                        std::filesystem::path(path_buf), nullptr);
+                    display_commander::utils::version_check::CopyCurrentVersionToDll(std::filesystem::path(path_buf),
+                                                                                     nullptr);
                 }
                 s_dc_ensured_current_in_dll = true;
             }
@@ -1640,7 +1641,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             imgui.SetTooltip(
                 "No override: load current library.\n"
                 "Latest installed: use highest version in Dll\\X.Y.Z.\n"
-                "X.Y.Z: use that version from %%localappdata%%\\Programs\\Display_Commander\\Dll. If missing, current is used.");
+                "X.Y.Z: use that version from %%localappdata%%\\Programs\\Display_Commander\\Dll. If missing, current "
+                "is used.");
         }
         imgui.SameLine();
         std::filesystem::path dc_folder = display_commander::utils::GetDcDirectoryForLoading();
@@ -1689,156 +1691,150 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }
 
         // Latest (debug): check from https://github.com/pmnoxx/display-commander/releases/tag/latest_debug
-            {
-                using namespace display_commander::utils::version_check;
-                enum {
-                    LatestDebugNotChecked = 0,
-                    LatestDebugChecking = 1,
-                    LatestDebugAvailable = 2,
-                    LatestDebugError = 3
-                };
-                static std::atomic<int> s_latest_debug_status{LatestDebugNotChecked};
-                static std::atomic<std::string*> s_latest_debug_error{nullptr};
-                if (imgui.Button(ICON_FK_REFRESH " Check latest (debug)")) {
-                    s_latest_debug_status.store(LatestDebugChecking);
-                    std::string* old_err = s_latest_debug_error.exchange(nullptr);
+        {
+            using namespace display_commander::utils::version_check;
+            enum { LatestDebugNotChecked = 0, LatestDebugChecking = 1, LatestDebugAvailable = 2, LatestDebugError = 3 };
+            static std::atomic<int> s_latest_debug_status{LatestDebugNotChecked};
+            static std::atomic<std::string*> s_latest_debug_error{nullptr};
+            if (imgui.Button(ICON_FK_REFRESH " Check latest (debug)")) {
+                s_latest_debug_status.store(LatestDebugChecking);
+                std::string* old_err = s_latest_debug_error.exchange(nullptr);
+                delete old_err;
+                std::thread([]() {
+                    std::string err;
+                    if (FetchLatestDebugRelease(&err)) {
+                        s_latest_debug_status.store(LatestDebugAvailable);
+                    } else {
+                        s_latest_debug_status.store(LatestDebugError);
+                        s_latest_debug_error.store(new std::string(err.empty() ? "Check failed" : err));
+                    }
+                }).detach();
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Check latest debug build from GitHub releases/tag/latest_debug.");
+            }
+            int status = s_latest_debug_status.load();
+            imgui.SameLine();
+            if (status == LatestDebugChecking) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "Latest (debug): checking...");
+            } else if (status == LatestDebugAvailable) {
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "Latest (debug): available");
+                imgui.SameLine();
+                static std::atomic<std::string*> s_latest_debug_dl_error{nullptr};
+                if (imgui.Button(ICON_FK_FLOPPY " Download to Dll")) {
+                    std::string* old_err = s_latest_debug_dl_error.exchange(nullptr);
                     delete old_err;
                     std::thread([]() {
                         std::string err;
-                        if (FetchLatestDebugRelease(&err)) {
-                            s_latest_debug_status.store(LatestDebugAvailable);
+                        if (DownloadDcLatestDebugToDll(&err)) {
+                            LogInfo("Display Commander latest debug downloaded to Dll\\X.Y.Z");
                         } else {
-                            s_latest_debug_status.store(LatestDebugError);
-                            s_latest_debug_error.store(new std::string(err.empty() ? "Check failed" : err));
+                            s_latest_debug_dl_error.store(new std::string(err.empty() ? "Download failed" : err));
                         }
                     }).detach();
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Check latest debug build from GitHub releases/tag/latest_debug.");
-                }
-                int status = s_latest_debug_status.load();
-                imgui.SameLine();
-                if (status == LatestDebugChecking) {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "Latest (debug): checking...");
-                } else if (status == LatestDebugAvailable) {
-                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "Latest (debug): available");
-                    imgui.SameLine();
-                    static std::atomic<std::string*> s_latest_debug_dl_error{nullptr};
-                    if (imgui.Button(ICON_FK_FLOPPY " Download to Dll")) {
-                        std::string* old_err = s_latest_debug_dl_error.exchange(nullptr);
-                        delete old_err;
-                        std::thread([]() {
-                            std::string err;
-                            if (DownloadDcLatestDebugToDll(&err)) {
-                                LogInfo("Display Commander latest debug downloaded to Dll\\X.Y.Z");
-                            } else {
-                                s_latest_debug_dl_error.store(new std::string(err.empty() ? "Download failed" : err));
-                            }
-                        }).detach();
-                    }
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
-                            "Download latest debug build; files are placed in Dll\\X.Y.Z (version from build).");
-                    }
-                    std::string* dl_err = s_latest_debug_dl_error.load();
-                    if (dl_err != nullptr && !dl_err->empty()) {
-                        imgui.SameLine();
-                        imgui.TextColored(ui::colors::TEXT_ERROR, "%s", dl_err->c_str());
-                    }
-                } else if (status == LatestDebugError) {
-                    std::string* err_ptr = s_latest_debug_error.load();
-                    imgui.TextColored(ui::colors::TEXT_ERROR, "Latest (debug): %s",
-                                      err_ptr && !err_ptr->empty() ? err_ptr->c_str() : "error");
-                } else {
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "Latest (debug): not checked");
-                }
-            }
-
-            // Download latest (to root)
-            {
-                using namespace display_commander::utils::version_check;
-#ifdef _WIN64
-                bool is_64bit = true;
-#else
-                bool is_64bit = false;
-#endif
-                if (imgui.Button(ICON_FK_FLOPPY " Download latest")) {
-                    std::thread(
-                        [](bool is64) {
-                            if (DownloadUpdate(is64)) {
-                                LogInfo("Display Commander latest download OK");
-                            } else {
-                                LogError("Display Commander latest download failed");
-                            }
-                        },
-                        is_64bit)
-                        .detach();
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
-                        "Download latest release to %%localappdata%%\\Programs\\Display_Commander (root).");
+                        "Download latest debug build; files are placed in Dll\\X.Y.Z (version from build).");
                 }
+                std::string* dl_err = s_latest_debug_dl_error.load();
+                if (dl_err != nullptr && !dl_err->empty()) {
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_ERROR, "%s", dl_err->c_str());
+                }
+            } else if (status == LatestDebugError) {
+                std::string* err_ptr = s_latest_debug_error.load();
+                imgui.TextColored(ui::colors::TEXT_ERROR, "Latest (debug): %s",
+                                  err_ptr && !err_ptr->empty() ? err_ptr->c_str() : "error");
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "Latest (debug): not checked");
             }
+        }
 
-            // Download another version (non-installed) to Dll\X.Y.Z
-            static std::vector<std::string> s_dc_available_versions;
-            static std::string s_dc_fetch_error;
-            static int s_dc_download_another_index = 0;
-            if (imgui.Button(ICON_FK_REFRESH " Fetch available versions")) {
-                s_dc_available_versions.clear();
-                s_dc_fetch_error.clear();
-                if (display_commander::utils::version_check::FetchDisplayCommanderReleasesFromGitHub(
-                        s_dc_available_versions, &s_dc_fetch_error)) {
-                    // Filter to not-installed
-                    std::vector<std::string> not_installed;
-                    for (const auto& v : s_dc_available_versions) {
-                        bool found = false;
-                        for (size_t j = 0; j < dc_installed_count && dc_installed != nullptr; ++j) {
-                            if (dc_installed[j] == v) {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) not_installed.push_back(v);
-                    }
-                    s_dc_available_versions = std::move(not_installed);
-                }
-            }
-            if (!s_dc_fetch_error.empty()) {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", s_dc_fetch_error.c_str());
-            }
-            if (!s_dc_available_versions.empty()) {
-                if (s_dc_download_another_index >= static_cast<int>(s_dc_available_versions.size())) {
-                    s_dc_download_another_index = 0;
-                }
-                std::vector<const char*> dc_not_installed_ptrs;
-                for (const auto& s : s_dc_available_versions) dc_not_installed_ptrs.push_back(s.c_str());
-                imgui.Combo("Version to download", &s_dc_download_another_index, dc_not_installed_ptrs.data(),
-                            static_cast<int>(dc_not_installed_ptrs.size()));
-                imgui.SameLine();
-                static std::atomic<std::string*> s_dc_download_error_ptr{nullptr};
-                if (imgui.Button(ICON_FK_FLOPPY " Download to Dll")) {
-                    std::string* old_err = s_dc_download_error_ptr.exchange(nullptr);
-                    delete old_err;
-                    std::string ver = s_dc_available_versions[s_dc_download_another_index];
-                    std::thread([ver]() {
-                        std::string err;
-                        if (display_commander::utils::version_check::DownloadDcVersionToDll(ver, &err)) {
-                            LogInfo("Display Commander %s downloaded to Dll", ver.c_str());
+        // Download latest (to root)
+        {
+            using namespace display_commander::utils::version_check;
+#ifdef _WIN64
+            bool is_64bit = true;
+#else
+            bool is_64bit = false;
+#endif
+            if (imgui.Button(ICON_FK_FLOPPY " Download latest")) {
+                std::thread(
+                    [](bool is64) {
+                        if (DownloadUpdate(is64)) {
+                            LogInfo("Display Commander latest download OK");
                         } else {
-                            s_dc_download_error_ptr.store(new std::string(err.empty() ? "Download failed" : err));
+                            LogError("Display Commander latest download failed");
                         }
-                    }).detach();
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Download selected version to Dll\\X.Y.Z");
-                }
-                std::string* err_ptr = s_dc_download_error_ptr.load();
-                if (err_ptr != nullptr && !err_ptr->empty()) {
-                    imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err_ptr->c_str());
-                }
+                    },
+                    is_64bit)
+                    .detach();
             }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Download latest release to %%localappdata%%\\Programs\\Display_Commander (root).");
+            }
+        }
+
+        // Download another version (non-installed) to Dll\X.Y.Z
+        static std::vector<std::string> s_dc_available_versions;
+        static std::string s_dc_fetch_error;
+        static int s_dc_download_another_index = 0;
+        if (imgui.Button(ICON_FK_REFRESH " Fetch available versions")) {
+            s_dc_available_versions.clear();
+            s_dc_fetch_error.clear();
+            if (display_commander::utils::version_check::FetchDisplayCommanderReleasesFromGitHub(
+                    s_dc_available_versions, &s_dc_fetch_error)) {
+                // Filter to not-installed
+                std::vector<std::string> not_installed;
+                for (const auto& v : s_dc_available_versions) {
+                    bool found = false;
+                    for (size_t j = 0; j < dc_installed_count && dc_installed != nullptr; ++j) {
+                        if (dc_installed[j] == v) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) not_installed.push_back(v);
+                }
+                s_dc_available_versions = std::move(not_installed);
+            }
+        }
+        if (!s_dc_fetch_error.empty()) {
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_ERROR, "%s", s_dc_fetch_error.c_str());
+        }
+        if (!s_dc_available_versions.empty()) {
+            if (s_dc_download_another_index >= static_cast<int>(s_dc_available_versions.size())) {
+                s_dc_download_another_index = 0;
+            }
+            std::vector<const char*> dc_not_installed_ptrs;
+            for (const auto& s : s_dc_available_versions) dc_not_installed_ptrs.push_back(s.c_str());
+            imgui.Combo("Version to download", &s_dc_download_another_index, dc_not_installed_ptrs.data(),
+                        static_cast<int>(dc_not_installed_ptrs.size()));
+            imgui.SameLine();
+            static std::atomic<std::string*> s_dc_download_error_ptr{nullptr};
+            if (imgui.Button(ICON_FK_FLOPPY " Download to Dll")) {
+                std::string* old_err = s_dc_download_error_ptr.exchange(nullptr);
+                delete old_err;
+                std::string ver = s_dc_available_versions[s_dc_download_another_index];
+                std::thread([ver]() {
+                    std::string err;
+                    if (display_commander::utils::version_check::DownloadDcVersionToDll(ver, &err)) {
+                        LogInfo("Display Commander %s downloaded to Dll", ver.c_str());
+                    } else {
+                        s_dc_download_error_ptr.store(new std::string(err.empty() ? "Download failed" : err));
+                    }
+                }).detach();
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Download selected version to Dll\\X.Y.Z");
+            }
+            std::string* err_ptr = s_dc_download_error_ptr.load();
+            if (err_ptr != nullptr && !err_ptr->empty()) {
+                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err_ptr->c_str());
+            }
+        }
         imgui.Unindent();
     }
 

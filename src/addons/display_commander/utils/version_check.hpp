@@ -54,6 +54,10 @@ bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& 
 // Call at most once per app start; on failure returns false and out_versions is empty.
 bool FetchReShadeVersionsFromGitHub(std::vector<std::string>& out_versions, std::string* out_error = nullptr);
 
+// Fetch latest ReShade version from https://reshade.me (once per process, then cached).
+// Parses version from download links e.g. ReShade_Setup_6.7.3.exe. Returns true and sets out_version on success.
+bool FetchReShadeLatestFromReshadeMe(std::string* out_version, std::string* out_error = nullptr);
+
 // Extract build number from version string
 std::string ExtractBuildNumber(const std::string& version_str);
 

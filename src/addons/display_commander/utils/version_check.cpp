@@ -130,6 +130,51 @@ bool FetchReShadeTagsFromGitHubImpl(std::vector<std::string>& out_versions, std:
     return !out_versions.empty();
 }
 
+// Parse latest ReShade version from reshade.me HTML (e.g. href="/downloads/ReShade_Setup_6.7.3.exe" or "ReShade 6.7.3").
+// Returns first X.Y.Z found that is >= 6.6.2, or empty.
+static std::string ParseReShadeLatestFromReshadeMeHtml(const std::string& html) {
+    const std::string prefix = "ReShade_Setup_";
+    const std::string min_version("6.6.2");
+    size_t pos = 0;
+    while ((pos = html.find(prefix, pos)) != std::string::npos) {
+        size_t start = pos + prefix.size();
+        size_t end = start;
+        while (end < html.size() && (std::isdigit(static_cast<unsigned char>(html[end])) || html[end] == '.')) {
+            ++end;
+        }
+        if (end > start) {
+            std::string ver = html.substr(start, end - start);
+            if (display_commander::utils::version_check::CompareVersions(ver, min_version) >= 0) {
+                return ver;
+            }
+        }
+        pos = start;
+    }
+    return "";
+}
+
+// Fetch once and cache. Called from public FetchReShadeLatestFromReshadeMe.
+bool FetchReShadeLatestFromReshadeMeImpl(std::string* out_version, std::string* out_error) {
+    static std::string s_cached;
+    static bool s_done = false;
+    if (s_done) {
+        if (out_version) *out_version = s_cached;
+        if (out_error && s_cached.empty()) *out_error = "No version from reshade.me";
+        return !s_cached.empty();
+    }
+    std::string content;
+    if (!DownloadTextFromUrl("https://reshade.me", content)) {
+        s_done = true;
+        if (out_error) *out_error = "Failed to fetch reshade.me";
+        return false;
+    }
+    s_cached = ParseReShadeLatestFromReshadeMeHtml(content);
+    s_done = true;
+    if (out_version) *out_version = s_cached;
+    if (out_error && s_cached.empty()) *out_error = "Could not parse version from reshade.me";
+    return !s_cached.empty();
+}
+
 }  // namespace
 
 // Download binary file from URL (public for ReShade update, etc.)
@@ -191,6 +236,11 @@ bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& 
 // Call at most once per app start; on failure returns false and out_versions is empty.
 bool FetchReShadeVersionsFromGitHub(std::vector<std::string>& out_versions, std::string* out_error) {
     return FetchReShadeTagsFromGitHubImpl(out_versions, out_error);
+}
+
+// Fetch latest from reshade.me (once per process, then cached).
+bool FetchReShadeLatestFromReshadeMe(std::string* out_version, std::string* out_error) {
+    return FetchReShadeLatestFromReshadeMeImpl(out_version, out_error);
 }
 
 namespace {

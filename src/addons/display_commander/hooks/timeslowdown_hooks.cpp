@@ -101,7 +101,6 @@ std::atomic<TimerHookType> g_nt_query_system_time_hook_type{TimerHookType::None}
 
 // Per-hook call counters
 std::atomic<uint64_t> g_qpc_call_count{0};
-std::atomic<uint64_t> g_qpf_call_count{0};
 std::atomic<uint64_t> g_get_tick_count_call_count{0};
 std::atomic<uint64_t> g_get_tick_count64_call_count{0};
 std::atomic<uint64_t> g_time_get_time_call_count{0};
@@ -150,30 +149,6 @@ std::wstring GetModuleNameFromHandle(HMODULE hModule) {
 }
 }  // anonymous namespace
 
-// Helper function to get hook identifier by name (DLL-safe) - kept for backward compatibility only
-TimerHookIdentifier GetHookIdentifierByName(const char* hook_name) {
-    if (strcmp(hook_name, HOOK_QUERY_PERFORMANCE_COUNTER) == 0) {
-        return TimerHookIdentifier::QueryPerformanceCounter;
-    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT) == 0) {
-        return TimerHookIdentifier::GetTickCount;
-    } else if (strcmp(hook_name, HOOK_GET_TICK_COUNT64) == 0) {
-        return TimerHookIdentifier::GetTickCount64;
-    } else if (strcmp(hook_name, HOOK_TIME_GET_TIME) == 0) {
-        return TimerHookIdentifier::TimeGetTime;
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME) == 0) {
-        return TimerHookIdentifier::GetSystemTime;
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_AS_FILE_TIME) == 0) {
-        return TimerHookIdentifier::GetSystemTimeAsFileTime;
-    } else if (strcmp(hook_name, HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME) == 0) {
-        return TimerHookIdentifier::GetSystemTimePreciseAsFileTime;
-    } else if (strcmp(hook_name, HOOK_GET_LOCAL_TIME) == 0) {
-        return TimerHookIdentifier::GetLocalTime;
-    } else if (strcmp(hook_name, HOOK_NT_QUERY_SYSTEM_TIME) == 0) {
-        return TimerHookIdentifier::NtQuerySystemTime;
-    }
-    return TimerHookIdentifier::Count;  // Invalid identifier
-}
-
 // Helper function to get hook type by identifier (DLL-safe)
 TimerHookType GetHookTypeById(TimerHookIdentifier id) {
     switch (id) {
@@ -189,12 +164,6 @@ TimerHookType GetHookTypeById(TimerHookIdentifier id) {
         case TimerHookIdentifier::NtQuerySystemTime: return g_nt_query_system_time_hook_type.load();
         default:                                     return TimerHookType::None;
     }
-}
-
-// Helper function to get hook type by name (DLL-safe) - kept for backward compatibility
-TimerHookType GetHookTypeByName(const char* hook_name) {
-    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
-    return GetHookTypeById(id);
 }
 
 // Render thread management functions
@@ -242,12 +211,6 @@ bool ShouldApplyHookById(TimerHookIdentifier id) {
     }
 
     return false;
-}
-
-// Helper function to check if a hook should be applied (DLL-safe) - kept for backward compatibility
-bool ShouldApplyHook(const char* hook_name) {
-    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
-    return ShouldApplyHookById(id);
 }
 
 // Apply timeslowdown to a QPC value and return the spoofed value
@@ -390,7 +353,6 @@ BOOL WINAPI QueryPerformanceCounter_Detour(LARGE_INTEGER* lpPerformanceCount) {
 
 // Hooked QueryPerformanceFrequency function
 BOOL WINAPI QueryPerformanceFrequency_Detour(LARGE_INTEGER* lpFrequency) {
-    g_qpf_call_count.fetch_add(1, std::memory_order_relaxed);
     if (!QueryPerformanceFrequency_Original) {
         return QueryPerformanceFrequency(lpFrequency);
     }
@@ -894,15 +856,6 @@ void SetTimerHookTypeById(TimerHookIdentifier id, TimerHookType type) {
     }
 }
 
-// Individual hook type configuration (DLL-safe) - kept for backward compatibility
-void SetTimerHookType(const char* hook_name, TimerHookType type) {
-    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
-    if (id != TimerHookIdentifier::Count) {
-        SetTimerHookTypeById(id, type);
-        LogInfo("Timer hook %s set to %s", hook_name, type == TimerHookType::None ? "None" : "Enabled");
-    }
-}
-
 // Efficient enum-based functions
 TimerHookType GetTimerHookTypeById(TimerHookIdentifier id) { return GetHookTypeById(id); }
 
@@ -929,60 +882,7 @@ uint64_t GetTimerHookCallCountById(TimerHookIdentifier id) {
     }
 }
 
-// Backward compatibility functions
-TimerHookType GetTimerHookType(const char* hook_name) { return GetHookTypeByName(hook_name); }
-
-bool IsTimerHookEnabled(const char* hook_name) {
-    TimerHookType type = GetTimerHookType(hook_name);
-    return type == TimerHookType::Enabled;
-}
-
-uint64_t GetTimerHookCallCount(const char* hook_name) {
-    TimerHookIdentifier id = GetHookIdentifierByName(hook_name);
-    return GetTimerHookCallCountById(id);
-}
-
-// UI helper functions for efficient hook management
-static const TimerHookIdentifier g_all_hook_identifiers[] = {TimerHookIdentifier::QueryPerformanceCounter,
-                                                             TimerHookIdentifier::GetTickCount,
-                                                             TimerHookIdentifier::GetTickCount64,
-                                                             TimerHookIdentifier::TimeGetTime,
-                                                             TimerHookIdentifier::GetSystemTime,
-                                                             TimerHookIdentifier::GetSystemTimeAsFileTime,
-                                                             TimerHookIdentifier::GetSystemTimePreciseAsFileTime,
-                                                             TimerHookIdentifier::GetLocalTime,
-                                                             TimerHookIdentifier::NtQuerySystemTime};
-
-const TimerHookIdentifier* GetAllHookIdentifiers() { return g_all_hook_identifiers; }
-
-const char* GetHookNameById(TimerHookIdentifier id) {
-    switch (id) {
-        case TimerHookIdentifier::QueryPerformanceCounter:        return HOOK_QUERY_PERFORMANCE_COUNTER;
-        case TimerHookIdentifier::GetTickCount:                   return HOOK_GET_TICK_COUNT;
-        case TimerHookIdentifier::GetTickCount64:                 return HOOK_GET_TICK_COUNT64;
-        case TimerHookIdentifier::TimeGetTime:                    return HOOK_TIME_GET_TIME;
-        case TimerHookIdentifier::GetSystemTime:                  return HOOK_GET_SYSTEM_TIME;
-        case TimerHookIdentifier::GetSystemTimeAsFileTime:        return HOOK_GET_SYSTEM_TIME_AS_FILE_TIME;
-        case TimerHookIdentifier::GetSystemTimePreciseAsFileTime: return HOOK_GET_SYSTEM_TIME_PRECISE_AS_FILE_TIME;
-        case TimerHookIdentifier::GetLocalTime:                   return HOOK_GET_LOCAL_TIME;
-        case TimerHookIdentifier::NtQuerySystemTime:              return HOOK_NT_QUERY_SYSTEM_TIME;
-        default:                                                  return nullptr;
-    }
-}
-
 // QPC calling module tracking functions
-std::vector<std::wstring> GetQPCallingModules() {
-    utils::SRWLockShared lock(utils::g_qpc_modules_srwlock);
-    std::vector<std::wstring> module_names;
-    module_names.reserve(g_qpc_calling_modules.size());
-
-    for (HMODULE hModule : g_qpc_calling_modules) {
-        module_names.push_back(GetModuleNameFromHandle(hModule));
-    }
-
-    return module_names;
-}
-
 std::vector<std::pair<HMODULE, std::wstring>> GetQPCallingModulesWithHandles() {
     utils::SRWLockShared lock(utils::g_qpc_modules_srwlock);
     std::vector<std::pair<HMODULE, std::wstring>> modules;

@@ -332,34 +332,6 @@ void SetDebugSuppressAllGetMessage(bool enable) {
     s_debug_suppress_all_getmessage.store(enable, std::memory_order_relaxed);
 }
 
-// Suppress a message by modifying it
-void SuppressMessage(LPMSG lpMsg) {
-    if (lpMsg == nullptr) {
-        return;
-    }
-
-    // Log suppressed input for debugging
-    static std::atomic<int> suppress_counter{0};
-    int count = suppress_counter.fetch_add(1);
-
-    // Only log every 100th suppressed message to avoid spam
-    if (count % 100 == 0) {
-        LogInfo("Suppressed input message: HWND=0x%p, Msg=0x%04X, WParam=0x%08X, LParam=0x%08X", lpMsg->hwnd,
-                lpMsg->message, lpMsg->wParam, lpMsg->lParam);
-    }
-
-    // For input messages, we can either:
-    // 1. Clear the message (set to WM_NULL)
-    // 2. Modify the parameters to make it harmless
-    // 3. Change the message type to something that won't be processed
-
-    // For now, we'll clear the message by setting it to WM_NULL
-    // This effectively removes the input from the message queue
-    lpMsg->message = WM_NULL;
-    lpMsg->wParam = 0;
-    lpMsg->lParam = 0;
-}
-
 // Suppress Microsoft extension warnings for MinHook function pointer conversions
 #pragma warning(push)
 #pragma warning(disable : 4191)  // 'type cast': unsafe conversion from 'function_pointer' to 'data_pointer'
@@ -2377,7 +2349,6 @@ const HookCallStats& GetHookStats(int hook_index) {
 
 void UpdateHookLastCallTime(int hook_index) {
     if (hook_index >= 0 && hook_index < HOOK_COUNT) {
-        g_hook_stats[hook_index].last_call_time_ns.store(utils::get_now_ns(), std::memory_order_relaxed);
         InputActivityStats::GetInstance().MarkActiveByHookIndex(hook_index);
     }
 }
@@ -2418,14 +2389,6 @@ DllGroup GetHookDllGroup(int hook_index) {
         return g_hook_info[hook_index].dll_group;
     }
     return DllGroup::COUNT;
-}
-
-const HookInfo& GetHookInfo(int hook_index) {
-    static const HookInfo empty_info = {"Unknown", DllGroup::COUNT, static_cast<HookIndex>(-1)};
-    if (hook_index >= 0 && hook_index < HOOK_COUNT) {
-        return g_hook_info[hook_index];
-    }
-    return empty_info;
 }
 
 // Keyboard state tracking implementation

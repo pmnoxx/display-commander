@@ -76,23 +76,12 @@ class LatencyManager {
     // Check if any latency technology is active
     bool IsInitialized() const;
 
-    // Frame management
-    uint64_t IncreaseFrameId();
-
     // Marker operations
     bool SetMarker(LatencyMarkerType marker);
 
     // Sleep mode configuration
     bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit);
     bool Sleep();
-
-    // Configuration
-    void SetConfig(const LatencyConfig& config);
-    LatencyConfig GetConfig() const;
-
-    // Technology info
-    LatencyTechnology GetCurrentTechnology() const;
-    const char* GetCurrentTechnologyName() const;
 
     // Update cached sleep status (called periodically)
     void UpdateCachedSleepStatus();

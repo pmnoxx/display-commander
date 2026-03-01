@@ -61,7 +61,7 @@
 - [x] hooks/hook_suppression_manager.cpp — **removed:** WasHookInstalled(); no remaining dead code
 - [x] hooks/input_activity_stats.cpp — no dead code (GetInstance, MarkActive, MarkActiveByHookIndex etc. used)
 - [x] hooks/loadlibrary_hooks.cpp — **removed:** IsModuleSrwlockHeld(), IsBlockedDllsSrwlockHeld(); no remaining dead code
-- [x] hooks/mutually_exclusive_keys.cpp — **removed:** GetPressedKeyInGroup(), GetAllKeyGroups(); no remaining dead code
+- [x] hooks/mutually_exclusive_keys.cpp — **removed:** file deleted (dead module; exclusive_key_groups in windows_message_hooks is used instead)
 - [x] hooks/ngx_hooks.cpp — no dead code (static helpers used internally; InstallNGXHooks, CleanupNGXHooks, AreNGXParameterVTableHooksInstalled, IsDLSS*, ResetNGXPresetInitialization, ApplyNGXParameterOverride used)
 - [x] hooks/nvapi_hooks.cpp — no dead code (Install/Uninstall from loadlibrary; IsNvapiLockHeld from globals/diagnostics)
 - [x] hooks/opengl_hooks.cpp — **removed:** AreOpenGLHooksInstalled(); no remaining dead code
@@ -71,7 +71,7 @@
 - [x] hooks/rand_hooks.cpp — no dead code (Install/Uninstall from api_hooks; AreRandHooksInstalled from experimental_tab)
 - [x] hooks/sleep_hooks.cpp — no dead code (Install/Uninstall from api_hooks)
 - [x] hooks/streamline_hooks.cpp — no dead code (static helpers + detours; InstallStreamlineHooks, InitializePreventSLUpgradeInterface from loadlibrary)
-- [x] hooks/timeslowdown_hooks.cpp — no dead code (Install/Uninstall, Are*Installed, Set*Multiplier, Set*Enabled, timer/QPC APIs used from UI and hooks)
+- [x] hooks/timeslowdown_hooks.cpp — **removed (run 62):** GetHookNameById; **removed (run 65):** SetTimerHookType(name), GetTimerHookType(name), IsTimerHookEnabled(name), GetTimerHookCallCount(name), GetAllHookIdentifiers(), GetHookTypeByName(), ShouldApplyHook(name); **removed (run 66):** write-only g_qpf_call_count; **removed (run 68):** GetQPCallingModules(); **removed (run 69):** GetHookIdentifierByName(); no remaining dead code (Install/Uninstall, Are*Installed, ById APIs, GetQPCallingModulesWithHandles, HOOK_* used from UI and hooks)
 - [x] hooks/window_proc_hooks.cpp — no dead code (Install/Uninstall, ProcessWindowMessage, DetourWindowMessage, IsContinueRenderingEnabled, SendFakeActivationMessages, WindowHasBorder used)
 - [x] hooks/windows_gaming_input_hooks.cpp — no dead code (Install/Uninstall from loadlibrary)
 - [x] hooks/winmm_joystick_hooks.cpp — **removed:** file deleted (WinMM joystick hooks removed)
@@ -170,7 +170,7 @@
 - [x] dlss/dlss_indicator_manager.cpp — no dead code (DLSS indicator; no #if 0)
 - [x] dualsense/dualsense_hid_wrapper.cpp — no dead code (HID wrapper; no #if 0)
 - [x] input_remapping/input_remapping.cpp — **removed:** cleanup_input_remapping(); no remaining dead code
-- [x] latency/latency_manager.cpp — no dead code (latency; no #if 0)
+- [x] latency/latency_manager.cpp — **removed (run 72):** GetCurrentTechnology(), GetCurrentTechnologyName(); **removed (run 74):** SetConfig(), GetConfig(), extern GetTargetFps(); **removed (run 78):** IncreaseFrameId() declaration (no def, no call sites); no remaining dead code (latency; no #if 0)
 - [x] latency/reflex_provider.cpp — no dead code (Reflex; no #if 0)
 - [x] latent_sync/latent_sync_limiter.cpp — no dead code (LimitFrameRate etc.; no #if 0)
 - [x] latent_sync/latent_sync_manager.cpp — no dead code (manager; no #if 0)
@@ -182,7 +182,7 @@
 - [x] nvapi/nvapi_fullscreen_prevention.cpp — no dead code (fullscreen prevention; no #if 0)
 - [x] nvapi/nvidia_profile_search.cpp — no dead code (profile search; no #if 0)
 - [x] nvapi/nvpi_reference.cpp — no dead code (NvPI ref; no #if 0)
-- [x] nvapi/reflex_manager.cpp — no dead code (Reflex; no #if 0)
+- [x] nvapi/reflex_manager.cpp — **removed (run 78):** IncreaseFrameId() declaration (no def, no call sites); no remaining dead code (Reflex; no #if 0)
 - [x] nvapi/vrr_status.cpp — no dead code (VRR; no #if 0)
 - [x] presentmon/presentmon_manager.cpp — no dead code (PresentMon; no #if 0)
 - [x] proxy_dll/d3d11_proxy.cpp — no dead code (proxy; no #if 0)
@@ -212,4 +212,4 @@
 
 ---
 
-**Total:** 151 `.cpp` files (was 152; winmm_joystick_hooks.cpp deleted). One header-only unused module: `hid/hid_enumeration.hpp`. Check one at a time; document findings in this file or in the main audit doc.
+**Total:** 150 `.cpp` files (was 151; mutually_exclusive_keys.cpp deleted; was 152 before winmm_joystick_hooks.cpp deleted). One header-only unused module: `hid/hid_enumeration.hpp`. Check one at a time; document findings in this file or in the main audit doc.

@@ -84,10 +84,6 @@ void SetDLLBlocked(const std::wstring& module_name, bool blocked);
 bool CanBlockDLL(const ModuleInfo& module_info);
 std::vector<std::wstring> GetBlockedDLLs();
 
-// SRWLOCK diagnostics for stuck-detection (returns true if lock is currently held)
-bool IsModuleSrwlockHeld();
-bool IsBlockedDllsSrwlockHeld();
-
 // Host-loaded graphics/API libraries (loaded by game/host, not by Display Commander or ReShade).
 // Returns space-separated list e.g. "dxgi d3d11" or "opengl32" or "dxgi vulkan-1".
 std::string GetHostLoadedGraphicsApisString();

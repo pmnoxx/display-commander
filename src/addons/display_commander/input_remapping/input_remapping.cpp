@@ -897,8 +897,6 @@ void InputRemapper::handle_button_release(WORD gamepad_button, DWORD user_index,
 // Global functions
 void initialize_input_remapping() { InputRemapper::get_instance().initialize(); }
 
-void cleanup_input_remapping() { InputRemapper::get_instance().cleanup(); }
-
 void process_gamepad_input_for_remapping(DWORD user_index, XINPUT_STATE* state) {
     InputRemapper::get_instance().process_gamepad_input(user_index, state);
 }

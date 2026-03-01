@@ -21,7 +21,6 @@ void InitializeDirectHIDFunctions();
 
 // DualSense to XInput conversion functions
 bool InitializeDualSenseSupport();
-void CleanupDualSenseSupport();
 bool IsDualSenseAvailable();
 bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* pState);
 

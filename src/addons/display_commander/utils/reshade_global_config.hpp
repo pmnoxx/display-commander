@@ -28,7 +28,4 @@ bool LoadGlobalSettings(ReShadeGlobalSettings& settings);
 // Save global settings to DisplayCommander.ini in user folder
 bool SaveGlobalSettings(const ReShadeGlobalSettings& settings);
 
-// Set LoadFromDllMain setting in ReShade
-bool SetLoadFromDllMain(bool enabled);
-
 }  // namespace utils

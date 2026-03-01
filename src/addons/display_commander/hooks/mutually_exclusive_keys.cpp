@@ -178,29 +178,6 @@ void ProcessKeyRelease(int vKey) {
     s_currently_pressed_keys.erase(vKey);
 }
 
-int GetPressedKeyInGroup(int vKey) {
-    if (!s_enabled || s_key_groups.empty()) {
-        return 0;
-    }
-
-    // Find which group this key belongs to
-    for (const auto& group : s_key_groups) {
-        if (group.find(vKey) != group.end()) {
-            // Return the first pressed key in this group (excluding the queried key)
-            for (int pressed_key : s_currently_pressed_keys) {
-                if (pressed_key != vKey && group.find(pressed_key) != group.end()) {
-                    return pressed_key;
-                }
-            }
-            break;
-        }
-    }
-
-    return 0;
-}
-
-std::vector<std::set<int>> GetAllKeyGroups() { return s_key_groups; }
-
 }  // namespace mutually_exclusive_keys
 
 }  // namespace display_commanderhooks

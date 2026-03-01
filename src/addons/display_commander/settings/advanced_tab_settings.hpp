@@ -54,8 +54,6 @@ class AdvancedTabSettings {
 
     int GetManualColorSpaceIndex() const;
     void SetManualColorSpaceIndex(int index);
-    ManualColorSpace GetManualColorSpace() const;  // legacy: returns enum for 0..4
-    void SetManualColorSpace(ManualColorSpace value);
 
     // D3D9 to D3D9Ex Upgrade
     // BoolSettingRef enable_d3d9e_upgrade;

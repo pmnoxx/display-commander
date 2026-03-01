@@ -33,9 +33,6 @@ void StopRefreshRateMonitoring() {
     }
 }
 
-// Function to check if monitoring is active
-bool IsRefreshRateMonitoringActive() { return g_refresh_rate_monitor && g_refresh_rate_monitor->IsMonitoring(); }
-
 // Function to get current measured refresh rate
 double GetCurrentMeasuredRefreshRate() {
     if (!g_refresh_rate_monitor) {
@@ -124,30 +121,10 @@ RefreshRateStats GetRefreshRateStats() {
     return stats;
 }
 
-// Function to get status string for UI display
-std::string GetRefreshRateStatusString() {
-    if (!g_refresh_rate_monitor) {
-        return "Not initialized";
-    }
-    return g_refresh_rate_monitor->GetStatusString();
-}
-
 // Signal monitoring thread (called from render thread after Present)
 void SignalRefreshRateMonitor() {
     if (g_refresh_rate_monitor && g_refresh_rate_monitor->IsMonitoring()) {
         g_refresh_rate_monitor->SignalPresent();
-    }
-}
-
-// Process frame statistics (called from render thread after caching stats)
-void ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
-    // Frame statistics are already cached in g_cached_frame_stats by the Present detour
-    // This function can be used for any additional processing needed on the cached stats
-    // Currently, the monitoring thread reads from g_cached_frame_stats directly
-    // This is a placeholder for future processing if needed
-    if (g_refresh_rate_monitor && g_refresh_rate_monitor->IsMonitoring()) {
-        g_refresh_rate_monitor->ProcessFrameStatistics(stats);
-        // Additional processing can be added here if needed
     }
 }
 

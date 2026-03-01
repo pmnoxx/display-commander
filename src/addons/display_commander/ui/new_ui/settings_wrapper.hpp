@@ -430,15 +430,7 @@ template <typename EnumType>
 bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label,
                                 display_commander::ui::IImGuiWrapper& imgui);
 
-bool ButtonSetting(const char* label, display_commander::ui::IImGuiWrapper& imgui,
-                   const ImVec2& size = ImVec2(0, 0));
-void TextSetting(const char* text, display_commander::ui::IImGuiWrapper& imgui);
-void SeparatorSetting(display_commander::ui::IImGuiWrapper& imgui);
-void SpacingSetting(display_commander::ui::IImGuiWrapper& imgui);
-
 // Utility function to load all settings for a tab
-void LoadTabSettings(const std::vector<SettingBase *> &settings);
-
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase *> &settings, const std::string& tab_name);
 

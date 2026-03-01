@@ -3,7 +3,6 @@
 #include <cctype>
 #include <filesystem>
 #include "../../../external/nvapi/nvapi.h"
-#include "dxgi/custom_fps_limiter.hpp"
 #include "latency/latency_manager.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/advanced_tab_settings.hpp"
@@ -178,11 +177,6 @@ std::atomic<DWORD> g_render_thread_id{0};
 
 // Global window state instance
 std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state = std::make_shared<GlobalWindowState>();
-
-// Global Custom FPS Limiter Manager instance
-namespace dxgi::fps_limiter {
-std::unique_ptr<CustomFpsLimiter> g_customFpsLimiter = std::make_unique<CustomFpsLimiter>();
-}
 
 // Global Latent Sync Manager instance
 namespace dxgi::latent_sync {
@@ -1231,8 +1225,6 @@ void OnReshadeUnload() {
 bool SwapchainTrackingManager::IsLockHeldForDiagnostics() const {
     return utils::TryIsSRWLockHeld(const_cast<SRWLOCK&>(lock_));
 }
-
-bool IsReshadeRuntimesLockHeld() { return utils::TryIsSRWLockHeld(utils::g_reshade_runtimes_lock); }
 
 bool IsSwapchainTrackingLockHeld() { return g_swapchainTrackingManager.IsLockHeldForDiagnostics(); }
 

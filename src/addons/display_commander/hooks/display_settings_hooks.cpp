@@ -227,9 +227,6 @@ void UninstallDisplaySettingsHooks() {
     LogInfo("Display settings hooks uninstalled");
 }
 
-// Check if hooks are installed
-bool AreDisplaySettingsHooksInstalled() { return g_display_settings_hooks_installed.load(); }
-
 // Direct function that bypasses hooks - use this when we want to change resolution ourselves
 LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode, HWND hWnd, DWORD dwFlags,
                                      LPVOID lParam) {

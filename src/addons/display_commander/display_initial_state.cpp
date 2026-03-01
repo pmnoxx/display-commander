@@ -96,19 +96,6 @@ const InitialDisplayState *InitialDisplayStateManager::GetInitialStateForDevice(
     return nullptr;
 }
 
-const InitialDisplayState *InitialDisplayStateManager::GetInitialStateForDisplayId(int display_id) const {
-    auto states = initial_states_.load(std::memory_order_acquire);
-    if (!states)
-        return nullptr;
-
-    for (const auto &state : *states) {
-        if (state.display_id == display_id) {
-            return &state;
-        }
-    }
-    return nullptr;
-}
-
 void InitialDisplayStateManager::PrintInitialStates() const {
     auto states = initial_states_.load(std::memory_order_acquire);
     if (!states || states->empty()) {

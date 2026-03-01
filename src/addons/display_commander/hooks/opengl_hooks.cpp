@@ -464,6 +464,3 @@ void UninstallOpenGLHooks() {
     g_opengl_hooks_installed.store(false);
     LogInfo("OpenGL hooks uninstalled successfully");
 }
-
-// Check if hooks are installed
-bool AreOpenGLHooksInstalled() { return g_opengl_hooks_installed.load(); }

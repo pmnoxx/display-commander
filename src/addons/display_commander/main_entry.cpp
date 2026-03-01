@@ -2523,17 +2523,6 @@ constexpr LONGLONG INJECTION_DURATION_NS = 30LL * 1000000000LL;  // 30 seconds i
 HANDLE g_injection_active_event = nullptr;
 HANDLE g_injection_stop_event = nullptr;
 
-// Simple function to check if a PID was injected (by checking for named event)
-bool IsPidInjected(DWORD pid) {
-    wchar_t pid_event_name[64];
-    swprintf_s(pid_event_name, L"Local\\DisplayCommander_Injected_%lu", pid);
-    HANDLE hEvent = OpenEventW(SYNCHRONIZE, FALSE, pid_event_name);
-    if (hEvent != nullptr) {
-        CloseHandle(hEvent);
-        return true;
-    }
-    return false;
-}
 }  // namespace
 
 // CBT Hook procedure - called when windows are created

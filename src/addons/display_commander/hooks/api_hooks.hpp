@@ -148,10 +148,6 @@ BOOL WINAPI SetWindowPos_Direct(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
 HWND WINAPI CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
                                  int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
 
-// Restore cursor function
-void RestoreSetCursor();
-void RestoreShowCursor();
-
 // Input blocking functions (forward declarations)
 bool ShouldBlockMouseInput(bool assume_foreground = false);
 bool ShouldBlockKeyboardInput(bool assume_foreground = false);

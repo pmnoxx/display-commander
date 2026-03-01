@@ -715,26 +715,6 @@ static int ParseDisplayNumberFromDeviceName(const std::wstring& device_name) {
     return num > 0 ? num : 9999;
 }
 
-// Normalize extended device ID by stripping the UID number (e.g. &UID4357 -> &UID) so IDs that refer to the
-// same display but were returned with different UIDs (e.g. from different API paths) compare equal.
-static std::string NormalizeExtendedIdForMatch(const std::string& device_id) {
-    std::string out = device_id;
-    const std::string uid_prefix = "&UID";
-    size_t pos = 0;
-    while ((pos = out.find(uid_prefix, pos)) != std::string::npos) {
-        size_t end = pos + uid_prefix.size();
-        while (end < out.size() && out[end] >= '0' && out[end] <= '9') {
-            ++end;
-        }
-        if (end > pos + uid_prefix.size()) {
-            out.erase(pos + uid_prefix.size(), end - (pos + uid_prefix.size()));
-            break;
-        }
-        pos = end;
-    }
-    return out;
-}
-
 std::string DisplayCache::GetAdjacentDisplayDeviceId(const std::string& current_device_id, bool to_the_left) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     if (!displays_ptr || displays_ptr->empty()) {

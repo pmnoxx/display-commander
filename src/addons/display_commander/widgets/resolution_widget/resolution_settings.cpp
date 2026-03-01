@@ -240,14 +240,6 @@ void ResolutionSettingsManager::SaveAllDirty() {
     }
 }
 
-void ResolutionSettingsManager::ResetAllDirty() {
-    for (auto &settings : display_settings_) {
-        if (settings && settings->IsDirty()) {
-            settings->ResetToLastSaved();
-        }
-    }
-}
-
 void ResolutionSettingsManager::SetAutoApply(bool enabled) {
     auto_apply_.store(enabled);
     // Save to Reshade settings immediately

@@ -24,12 +24,6 @@ void RestoreAll();
 // Restore if the user enabled the setting (idempotent)
 void RestoreAllIfEnabled();
 
-// Clear internal state (for tests or re-init)
-void Clear();
-
-// Whether any changes were tracked
-bool HasAnyChanges();
-
 // Check if a specific device was changed (by device name)
 bool WasDeviceChangedByDeviceName(const std::wstring& device_name);
 

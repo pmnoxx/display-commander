@@ -21,9 +21,6 @@ namespace api {
 // Initialize the ADHD multi-monitor system
 bool Initialize();
 
-// Shutdown the ADHD multi-monitor system
-void Shutdown();
-
 // Update the system (call from main loop)
 void Update();
 

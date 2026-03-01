@@ -245,17 +245,6 @@ HRESULT STDMETHODCALLTYPE IDXGIOutput_GetDesc_Detour(IDXGIOutput* This, DXGI_OUT
 // Hooked IDXGIOutput6 functions
 HRESULT STDMETHODCALLTYPE IDXGIOutput6_GetDesc1_Detour(IDXGIOutput6* This, DXGI_OUTPUT_DESC1* pDesc);
 
-// Swapchain tracking management functions
-bool IsSwapchainTracked(IDXGISwapChain* swapchain);
-bool AddSwapchainToTracking(IDXGISwapChain* swapchain);
-bool RemoveSwapchainFromTracking(IDXGISwapChain* swapchain);
-std::vector<IDXGISwapChain*> GetAllTrackedSwapchains();
-size_t GetTrackedSwapchainCount();
-void ClearAllTrackedSwapchains();
-bool HasTrackedSwapchains();
-
-bool HookSwapchainNative(IDXGISwapChain* swapchain);
-
 // Cleanup GPU measurement fences when device is destroyed
 void CleanupGPUMeasurementFences();
 

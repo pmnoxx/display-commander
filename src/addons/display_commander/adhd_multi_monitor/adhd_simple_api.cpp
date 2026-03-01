@@ -7,8 +7,6 @@ namespace api {
 
 bool Initialize() { return g_adhdManager.Initialize(); }
 
-void Shutdown() { g_adhdManager.Shutdown(); }
-
 void SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays) {
     g_adhdManager.SetEnabled(enabled_for_game_display, enabled_for_other_displays);
 }

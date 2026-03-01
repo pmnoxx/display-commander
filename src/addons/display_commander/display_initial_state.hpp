@@ -67,9 +67,6 @@ class InitialDisplayStateManager {
     // Get initial state for a specific device name
     const InitialDisplayState *GetInitialStateForDevice(const std::wstring &device_name) const;
 
-    // Get initial state for a specific display ID
-    const InitialDisplayState *GetInitialStateForDisplayId(int display_id) const;
-
     // Clear captured state
     void Clear() {
         initial_states_.store(std::make_shared<std::vector<InitialDisplayState>>(), std::memory_order_release);

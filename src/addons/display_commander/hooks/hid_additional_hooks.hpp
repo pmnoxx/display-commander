@@ -55,7 +55,6 @@ BOOLEAN __stdcall HidD_SetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuf
 
 // Hook management
 bool InstallAdditionalHIDHooks();
-void UninstallAdditionalHIDHooks();
 void MarkAdditionalHIDHooksInstalled(bool installed);
 
 }  // namespace display_commanderhooks

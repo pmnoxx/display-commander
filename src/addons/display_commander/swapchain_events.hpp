@@ -59,17 +59,12 @@ int GetManualColorSpaceCount();
 const char* GetManualColorSpaceDisplayName(int index);
 bool GetManualColorSpaceFromIndex(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi,
                                   reshade::api::color_space* out_reshade);
-int GetManualColorSpaceDXGIAsInt(int index);  // -1 if index 0 or invalid; else DXGI_COLOR_SPACE_TYPE as int
 
 // Last applied color space support (for UI). out_dxgi = last DXGI we tried; out_supported = -1 unknown, 0 no, 1 yes.
 void GetLastColorSpaceSupportForUI(int* out_dxgi, int* out_supported);
 
 // Cached support per manual color space index (refreshed when we have a swap chain). -1 unknown, 0 not supported, 1 supported.
 int GetManualColorSpaceSupportCached(int index);
-
-// Apply HDR1000 metadata (Rec. 2020, MaxMDL 1000 nits) to the current swapchain once. Returns true if applied.
-// Does not persist any setting; for one-shot use from UI (e.g. Apply button).
-bool ApplyHdr1000MetadataToCurrentSwapchain();
 
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,

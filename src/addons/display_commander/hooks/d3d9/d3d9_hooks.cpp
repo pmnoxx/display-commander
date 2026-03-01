@@ -364,6 +364,4 @@ void UninstallDX9Hooks() {
     LogInfo("UninstallDX9Hooks: D3D9 hook state cleared");
 }
 
-bool AreDX9HooksInstalled() { return g_dx9_hooks_installed.load(std::memory_order_relaxed); }
-
 }  // namespace display_commanderhooks::d3d9

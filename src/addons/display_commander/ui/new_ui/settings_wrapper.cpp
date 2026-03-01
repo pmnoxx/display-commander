@@ -832,14 +832,6 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
     return changed;
 }
 
-bool ButtonSetting(const char* label, display_commander::ui::IImGuiWrapper& imgui, const ImVec2& size) {
-    return imgui.Button(label, size);
-}
-
-void TextSetting(const char* text, display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Text("%s", text);
-}
-
 // Explicit template instantiations for ComboSettingEnumRefWrapper
 template class ComboSettingEnumRef<ScreensaverMode>;
 template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>&, const char*,
@@ -859,22 +851,6 @@ template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<
 template class ComboSettingEnumRef<LogLevel>;
 template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel>&, const char*,
                                                   display_commander::ui::IImGuiWrapper&);
-
-void SeparatorSetting(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Separator();
-}
-
-void SpacingSetting(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Spacing();
-}
-
-void LoadTabSettings(const std::vector<SettingBase*>& settings) {
-    for (auto* setting : settings) {
-        if (setting != nullptr) {
-            setting->Load();
-        }
-    }
-}
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {

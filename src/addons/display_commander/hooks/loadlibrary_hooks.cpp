@@ -1865,10 +1865,6 @@ bool CanBlockDLL(const ModuleInfo& module_info) {
     return true;
 }
 
-bool IsModuleSrwlockHeld() { return utils::TryIsSRWLockHeld(utils::g_module_srwlock); }
-
-bool IsBlockedDllsSrwlockHeld() { return utils::TryIsSRWLockHeld(utils::g_blocked_dlls_srwlock); }
-
 std::string GetHostLoadedGraphicsApisString() {
     utils::SRWLockShared lock(utils::g_host_loaded_apis_srwlock);
     std::string result;

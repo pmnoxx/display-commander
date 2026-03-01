@@ -43,7 +43,6 @@ extern wglGetSwapIntervalEXT_pfn wglGetSwapIntervalEXT_Original;
 // Hook installation/uninstallation functions
 bool InstallOpenGLHooks(HMODULE hModule);
 void UninstallOpenGLHooks();
-bool AreOpenGLHooksInstalled();
 
 // Hook detour functions
 BOOL WINAPI wglSwapBuffers_Detour(HDC hdc);

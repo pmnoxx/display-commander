@@ -53,7 +53,6 @@ void ClearDInputDevices();
 
 // Device state hooking
 void HookDirectInputDeviceVTable(LPVOID device, const std::string& device_name, DWORD device_type);
-void UnhookDirectInputDeviceVTable(LPVOID device);
 void ClearAllDirectInputDeviceHooks();
 void HookAllDirectInputDevices();
 int GetDirectInputDeviceHookCount();

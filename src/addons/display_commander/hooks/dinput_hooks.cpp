@@ -290,38 +290,6 @@ void UninstallDirectInputHooks() {
     LogInfo("DirectInput hooks uninstalled successfully");
 }
 
-// Unhook DirectInput device vtable
-void UnhookDirectInputDeviceVTable(LPVOID device) {
-    if (device == nullptr) {
-        return;
-    }
-
-    utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);
-
-    auto it = g_dinput_device_hooks.find(device);
-    if (it == g_dinput_device_hooks.end()) {
-        return;
-    }
-
-    DInputDeviceHook& hook = it->second;
-
-    // Disable hooks
-    if (hook.original_getdevicestate != nullptr) {
-        MH_DisableHook(hook.original_getdevicestate);
-        MH_RemoveHook(hook.original_getdevicestate);
-    }
-
-    if (hook.original_getdevicedata != nullptr) {
-        MH_DisableHook(hook.original_getdevicedata);
-        MH_RemoveHook(hook.original_getdevicedata);
-    }
-
-    // Remove from map
-    g_dinput_device_hooks.erase(it);
-
-    LogInfo("UnhookDirectInputDeviceVTable: Device %s vtable unhooked", hook.device_name.c_str());
-}
-
 // Clear all DirectInput device hooks
 void ClearAllDirectInputDeviceHooks() {
     utils::SRWLockExclusive lock(utils::g_dinput_device_hooks_mutex);

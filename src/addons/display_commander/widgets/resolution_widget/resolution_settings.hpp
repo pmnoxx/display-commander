@@ -107,9 +107,6 @@ class ResolutionSettingsManager {
     // Save all dirty settings
     void SaveAllDirty();
 
-    // Reset all dirty settings to last saved
-    void ResetAllDirty();
-
     // Auto-apply setting
     bool GetAutoApply() const { return auto_apply_.load(); }
     void SetAutoApply(bool enabled);

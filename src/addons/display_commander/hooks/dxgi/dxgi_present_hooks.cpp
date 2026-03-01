@@ -1409,12 +1409,6 @@ IDXGISwapChain* g_hooked_swapchain = nullptr;
 std::atomic<bool> g_dxgi_output_hooks_installed{false};
 }  // namespace
 
-bool HookSwapchainNative(IDXGISwapChain* swapchain) {
-    LogInfo("Hooking swapchain native: 0x%p (WIP - Not implemented)", swapchain);
-
-    return true;
-}
-
 // Hook a specific swapchain's vtable
 bool HookSwapchain(IDXGISwapChain* swapchain) {
     if (g_dx9_swapchain_detected.load()) {
@@ -1755,23 +1749,6 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
 
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain) { g_last_present_update_swapchain.store(swapchain); }
-
-// Swapchain tracking management functions
-bool IsSwapchainTracked(IDXGISwapChain* swapchain) { return g_swapchainTrackingManager.IsSwapchainTracked(swapchain); }
-
-bool AddSwapchainToTracking(IDXGISwapChain* swapchain) { return g_swapchainTrackingManager.AddSwapchain(swapchain); }
-
-bool RemoveSwapchainFromTracking(IDXGISwapChain* swapchain) {
-    return g_swapchainTrackingManager.RemoveSwapchain(swapchain);
-}
-
-std::vector<IDXGISwapChain*> GetAllTrackedSwapchains() { return g_swapchainTrackingManager.GetAllTrackedSwapchains(); }
-
-size_t GetTrackedSwapchainCount() { return g_swapchainTrackingManager.GetTrackedSwapchainCount(); }
-
-void ClearAllTrackedSwapchains() { g_swapchainTrackingManager.ClearAll(); }
-
-bool HasTrackedSwapchains() { return g_swapchainTrackingManager.HasTrackedSwapchains(); }
 
 // Cleanup GPU measurement fences when device is destroyed
 void CleanupGPUMeasurementFences() { ::CleanupGPUMeasurementState(); }

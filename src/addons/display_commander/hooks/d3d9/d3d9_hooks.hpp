@@ -10,7 +10,6 @@ namespace display_commanderhooks::d3d9 {
 // are installed when we receive a device from ReShade (init_swapchain / init_device).
 bool InstallDX9Hooks(HMODULE hModule);
 void UninstallDX9Hooks();
-bool AreDX9HooksInstalled();
 
 extern std::atomic<bool> g_dx9_hooks_installed;
 

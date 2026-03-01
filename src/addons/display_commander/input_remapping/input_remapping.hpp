@@ -241,7 +241,6 @@ class InputRemapper {
 
 // Global functions for integration
 void initialize_input_remapping();
-void cleanup_input_remapping();
 void process_gamepad_input_for_remapping(DWORD user_index, XINPUT_STATE *state);
 
 // Utility functions

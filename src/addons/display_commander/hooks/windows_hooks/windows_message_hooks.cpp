@@ -22,8 +22,6 @@
 
 namespace display_commanderhooks {
 
-bool IsUIOpenedRecently() { return g_global_frame_id.load() - g_last_ui_drawn_frame_id.load() < 3; }
-
 // Helper functions for specific input types
 bool ShouldBlockKeyboardInput(bool assume_foreground) {
     // Check if Ctrl+I toggle is active
@@ -2835,13 +2833,6 @@ void MarkKeyUp(int vKey) {
             s_key_needs_simulate_press[most_recent_key].store(true);
         }
     }
-}
-
-bool IsKeyActuallyPressed(int vKey) {
-    if (vKey < 0 || vKey >= 256) {
-        return false;
-    }
-    return s_key_actually_pressed[vKey].load();
 }
 
 void Update() {

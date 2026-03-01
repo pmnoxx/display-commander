@@ -32,7 +32,6 @@ extern HIDDeviceStats g_hid_device_stats;
 
 // HID statistics access functions
 const HIDDeviceStats& GetHIDDeviceStats();
-void ResetAllHIDStats();
 
 // Helper functions for device type detection
 bool IsDualSenseDevice(const std::string& device_path);

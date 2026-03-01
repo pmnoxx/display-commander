@@ -107,14 +107,6 @@ void DisplayCommanderLogger::FlushLogs() {
     }
 }
 
-void DisplayCommanderLogger::IncrementForceAutoFlush() {
-    force_auto_flush_count_.fetch_add(1, std::memory_order_relaxed);
-}
-
-void DisplayCommanderLogger::DecrementForceAutoFlush() {
-    force_auto_flush_count_.fetch_sub(1, std::memory_order_relaxed);
-}
-
 void DisplayCommanderLogger::Shutdown() {
     bool expected = true;
     if (!initialized_.compare_exchange_strong(expected, false)) {

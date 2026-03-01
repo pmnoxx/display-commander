@@ -830,31 +830,6 @@ std::string ConvertRenderPresetToLetter(int preset_value) {
     }
 }
 
-// Test function to demonstrate DLSS preset support (can be called for debugging)
-void TestDLSSPresetSupport() {
-    LogInfo("=== DLSS Preset Support Test ===");
-
-    // Test various versions
-    struct TestVersion {
-        int major, minor, patch;
-        const char* description;
-    };
-
-    TestVersion test_versions[] = {{3, 1, 29, "Before preset E introduction"},   {3, 1, 30, "Preset E introduced"},
-                                   {3, 6, 99, "Before preset F introduction"},   {3, 7, 0, "Preset F introduced"},
-                                   {3, 8, 10, "Special case: only E,F"},         {3, 8, 11, "After special case"},
-                                   {310, 1, 99, "Before preset K introduction"}, {310, 2, 0, "Preset K introduced"},
-                                   {310, 3, 0, "Latest with all presets"}};
-
-    for (const auto& test : test_versions) {
-        std::string presets = GetSupportedDLSSSRPresets(test.major, test.minor, test.patch);
-        LogInfo("Version %d.%d.%d (%s): Presets [%s]", test.major, test.minor, test.patch, test.description,
-                presets.c_str());
-    }
-
-    LogInfo("=== End DLSS Preset Support Test ===");
-}
-
 // D3D9 present mode and flags string conversion functions
 const char* D3DSwapEffectToString(uint32_t swapEffect) {
     switch (swapEffect) {

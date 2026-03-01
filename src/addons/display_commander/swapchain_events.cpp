@@ -1099,23 +1099,6 @@ void ApplyHdr1000MetadataToSwapchain(reshade::api::swapchain* swapchain) {
 
 }  // namespace
 
-bool ApplyHdr1000MetadataToCurrentSwapchain() {
-    reshade::api::effect_runtime* const runtime = GetFirstReShadeRuntime();
-    if (runtime == nullptr) {
-        return false;
-    }
-    const auto api = runtime->get_device()->get_api();
-    if (api != reshade::api::device_api::d3d11 && api != reshade::api::device_api::d3d12) {
-        return false;
-    }
-    IUnknown* const iunknown = reinterpret_cast<IUnknown*>(runtime->get_native());
-    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
-    if (iunknown == nullptr || FAILED(iunknown->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
-        return false;
-    }
-    return ApplyHdr1000MetadataToDxgi(swapchain4.Get());
-}
-
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (swapchain == nullptr) {
@@ -1805,13 +1788,6 @@ bool GetManualColorSpaceFromIndex(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi, re
     *out_reshade = e.reshade_cs;
     LogInfo("GetManualColorSpaceFromIndex: %d -> %s (DXGI 0x%x)", index, e.label, e.dxgi);
     return true;
-}
-
-int GetManualColorSpaceDXGIAsInt(int index) {
-    if (index <= 0 || index >= s_manual_color_space_count) {
-        return -1;
-    }
-    return static_cast<int>(s_manual_color_space_table[index].dxgi);
 }
 
 // Cached support per manual color space index. -1 unknown, 0 not supported, 1 supported. Refreshed when we have

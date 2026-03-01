@@ -208,17 +208,6 @@ void RestoreAllIfEnabled() {
     RestoreAll();
 }
 
-void Clear() {
-    s_data.store(std::make_shared<DisplayRestoreData>());
-    // Also clear the initial display state
-    display_initial_state::g_initialDisplayState.Clear();
-}
-
-bool HasAnyChanges() {
-    auto current_data = s_data.load();
-    return ::s_auto_restore_resolution_on_close && !current_data->devices_changed.empty();
-}
-
 bool WasDeviceChangedByDeviceName(const std::wstring &device_name) {
     auto current_data = s_data.load();
     return current_data->devices_changed.find(device_name) != current_data->devices_changed.end();

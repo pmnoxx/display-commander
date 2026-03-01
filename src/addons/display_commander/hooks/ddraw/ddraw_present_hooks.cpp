@@ -199,6 +199,4 @@ void UninstallDDrawHooks() {
     LogInfo("UninstallDDrawHooks: DDraw hook state cleared");
 }
 
-bool AreDDrawHooksInstalled() { return g_ddraw_present_hooks_installed.load(); }
-
 }  // namespace display_commanderhooks::ddraw

@@ -646,5 +646,3 @@ void UninstallNVAPIHooks() {
         NvAPI_D3D_GetSleepStatus_Original = nullptr;
     }
 }
-
-bool IsNvapiLockHeld() { return utils::TryIsSRWLockHeld(utils::g_nvapi_lock); }

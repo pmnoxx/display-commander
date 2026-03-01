@@ -130,18 +130,6 @@ void AdvancedTabSettings::SetManualColorSpaceIndex(int index) {
     manual_colorspace.SetValue(index);
 }
 
-ManualColorSpace AdvancedTabSettings::GetManualColorSpace() const {
-    int v = GetManualColorSpaceIndex();
-    if (v < static_cast<int>(ManualColorSpace::NoChanges) || v > static_cast<int>(ManualColorSpace::HDR10_HLG)) {
-        return ManualColorSpace::NoChanges;
-    }
-    return static_cast<ManualColorSpace>(v);
-}
-
-void AdvancedTabSettings::SetManualColorSpace(ManualColorSpace value) {
-    manual_colorspace.SetValue(static_cast<int>(value));
-}
-
 void AdvancedTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     prevent_fullscreen.Save();

@@ -420,27 +420,6 @@ HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
     return SetCursor_Original ? SetCursor_Original(hCursor) : SetCursor(hCursor);
 }
 
-void RestoreSetCursor() {
-    // Get the last stored cursor value atomically
-    HCURSOR last_cursor = s_last_cursor_value.load();
-
-    if (last_cursor != nullptr) {
-        // Restore the cursor using the direct function
-        SetCursor_Direct(last_cursor);
-        LogInfo("RestoreSetCursor: Restored cursor to 0x%p", last_cursor);
-    } else {
-        // If no cursor was stored, set to default arrow
-        SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
-        LogInfo("RestoreSetCursor: No previous cursor found, set to default arrow");
-    }
-}
-
-void RestoreShowCursor() {
-    // Get the last stored show cursor count atomically
-    BOOL bShow = s_last_show_cursor_arg.load();
-    ShowCursor_Direct(bShow);
-}
-
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
     RECORD_DETOUR_CALL(utils::get_now_ns());

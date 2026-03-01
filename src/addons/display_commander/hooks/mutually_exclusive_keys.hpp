@@ -26,12 +26,6 @@ bool ProcessKeyPress(int vKey);
 // Process key release - call when a key is detected as released
 void ProcessKeyRelease(int vKey);
 
-// Get currently pressed key in a group (returns 0 if none)
-int GetPressedKeyInGroup(int vKey);
-
-// Get all key groups (for debugging)
-std::vector<std::set<int>> GetAllKeyGroups();
-
 }  // namespace mutually_exclusive_keys
 
 }  // namespace display_commanderhooks

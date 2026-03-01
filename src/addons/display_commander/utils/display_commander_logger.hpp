@@ -40,11 +40,6 @@ class DisplayCommanderLogger {
     // For use from same thread as CheckStuckMethodsAndLogUndestroyedGuards to avoid queue/writer dependency.
     void LogInfoDirectSynchronized(const std::string& message);
 
-    // When > 0, each Log() enqueues a flush sentinel after the message so output is visible immediately (e.g.
-    // stuck-report).
-    void IncrementForceAutoFlush();
-    void DecrementForceAutoFlush();
-
     // Diagnostic: returns true if queue_lock_ is currently held (for stuck-detection reporting)
     bool IsWriteLockHeld();
 
@@ -81,15 +76,6 @@ class DisplayCommanderLogger {
 
     std::atomic<bool> initialized_ = false;
     std::atomic<int> force_auto_flush_count_{0};
-};
-
-// RAII: increment force-auto-flush on construction, decrement on destruction (e.g. in
-// CheckStuckMethodsAndLogUndestroyedGuards).
-struct ScopedForceAutoFlush {
-    ScopedForceAutoFlush() { DisplayCommanderLogger::GetInstance().IncrementForceAutoFlush(); }
-    ~ScopedForceAutoFlush() { DisplayCommanderLogger::GetInstance().DecrementForceAutoFlush(); }
-    ScopedForceAutoFlush(const ScopedForceAutoFlush&) = delete;
-    ScopedForceAutoFlush& operator=(const ScopedForceAutoFlush&) = delete;
 };
 
 // Global convenience functions

@@ -282,17 +282,4 @@ bool SaveGlobalSettings(const ReShadeGlobalSettings& settings) {
     }
 }
 
-bool SetLoadFromDllMain(bool enabled) {
-    const char* value = enabled ? "1" : "0";
-
-    try {
-        // reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", value);
-        LogInfo("Set LoadFromDllMain to %s in ReShade configuration", value);
-        return true;
-    } catch (...) {
-        LogInfo("Failed to set LoadFromDllMain to %s in ReShade configuration", value);
-        return false;
-    }
-}
-
 }  // namespace utils

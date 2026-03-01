@@ -12,10 +12,6 @@ const HIDDeviceStats& GetHIDDeviceStats() {
     return g_hid_device_stats;
 }
 
-void ResetAllHIDStats() {
-    g_hid_device_stats.reset();
-}
-
 bool IsDualSenseDevice(const std::string& device_path) {
     if (device_path.empty()) return false;
 

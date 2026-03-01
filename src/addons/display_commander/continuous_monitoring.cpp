@@ -187,10 +187,6 @@ void check_is_background() {
             } else {
                 display_commanderhooks::RestoreClipCursor();
             }
-
-            // display_commanderhooks::RestoreSetCursor();
-
-            // display_commanderhooks::RestoreShowCursor();
         }
     }
 

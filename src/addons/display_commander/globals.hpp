@@ -1,7 +1,6 @@
 #pragma once
 
 #include "display_cache.hpp"
-#include "dxgi/custom_fps_limiter.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "utils/timing.hpp"
@@ -569,10 +568,8 @@ extern std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 #include "utils/srwlock_registry.hpp"  // g_reshade_runtimes_lock and other global SRWLOCKs
 
 // SRWLOCK diagnostics for stuck-detection reporting (returns true if lock is currently held)
-bool IsReshadeRuntimesLockHeld();
 bool IsSwapchainTrackingLockHeld();
 extern HMODULE g_reshade_module;
-extern void (*g_custom_fps_limiter_callback)();
 
 // ReShade runtime management functions
 void AddReShadeRuntime(reshade::api::effect_runtime* runtime);
@@ -617,11 +614,6 @@ extern std::atomic<bool> g_muted_applied;
 // Global instances
 extern std::atomic<std::shared_ptr<GlobalWindowState>> g_window_state;
 extern BackgroundWindowManager g_backgroundWindowManager;
-
-// Custom FPS Limiter Manager
-namespace dxgi::fps_limiter {
-extern std::unique_ptr<CustomFpsLimiter> g_customFpsLimiter;
-}
 
 // Latent Sync Manager
 namespace dxgi::latent_sync {

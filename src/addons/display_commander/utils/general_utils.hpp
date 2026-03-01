@@ -76,8 +76,7 @@ int GetDLSSPresetValue(const std::string& presetString);
 // override).
 NVSDK_NGX_PerfQuality_Value GetDLSSQualityPresetValue(const std::string& presetString);
 std::string ConvertRenderPresetToLetter(
-    int preset_value);         // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)
-void TestDLSSPresetSupport();  // Test function for debugging
+    int preset_value);  // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)
 
 // Addon directory utilities
 std::filesystem::path GetAddonDirectory();

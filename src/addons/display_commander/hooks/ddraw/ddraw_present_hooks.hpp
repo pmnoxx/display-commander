@@ -17,7 +17,6 @@ HRESULT STDMETHODCALLTYPE IDirectDrawSurface_Flip_Detour(LPDIRECTDRAWSURFACE Thi
 // Skips if hModule is our own (proxy mode).
 bool InstallDDrawHooks(HMODULE hModule);
 void UninstallDDrawHooks();
-bool AreDDrawHooksInstalled();
 
 extern std::atomic<bool> g_ddraw_present_hooks_installed;
 

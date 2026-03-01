@@ -168,28 +168,6 @@ bool InitializeDualSenseSupport() {
     return true;
 }
 
-void CleanupDualSenseSupport() {
-    if (!g_dualsense_initialized.load()) {
-        return;
-    }
-
-    LogInfo("Cleaning up DualSense support...");
-
-    // Stop polling thread
-    g_dualsense_thread_running.store(false);
-    if (g_dualsense_thread.joinable()) {
-        g_dualsense_thread.join();
-    }
-
-    // Cleanup HID wrapper
-    display_commander::dualsense::CleanupDualSenseHID();
-
-    g_dualsense_available.store(false);
-    g_dualsense_initialized.store(false);
-
-    LogInfo("DualSense support cleaned up");
-}
-
 bool IsDualSenseAvailable() { return g_dualsense_available.load(); }
 
 bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {

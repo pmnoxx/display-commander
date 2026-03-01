@@ -355,9 +355,6 @@ void MarkKeyDown(int vKey);
 // When a key is released, checks which keys are still actually pressed and keeps only the most recently pressed one
 void MarkKeyUp(int vKey);
 
-// Check if a key is actually pressed (not simulated)
-bool IsKeyActuallyPressed(int vKey);
-
 // Initialize exclusive key groups system
 void Initialize();
 

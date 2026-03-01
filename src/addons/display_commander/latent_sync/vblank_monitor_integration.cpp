@@ -28,14 +28,6 @@ void StopVBlankMonitoring() {
         LogInfo("VBlank monitoring stopped via integration");
     }
 }
-// Function to bind monitor to a specific window
-bool BindVBlankMonitorToWindow(HWND hwnd) {
-    if (!g_vblank_monitor) {
-        g_vblank_monitor = std::make_unique<VBlankMonitor>();
-    }
-
-    return g_vblank_monitor->BindToDisplay(hwnd);
-}
 
 // Function to check if monitoring is active
 bool IsVBlankMonitoringActive() { return g_vblank_monitor && g_vblank_monitor->IsMonitoring(); }

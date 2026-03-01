@@ -73,45 +73,6 @@ static ZwQueryTimerResolution_t ZwQueryTimerResolution = nullptr;
 static ZwSetTimerResolution_t ZwSetTimerResolution = nullptr;
 static LONGLONG timer_res_qpc_frequency = 0;
 
-// Cached MWAITX support result
-static bool mwaitx_supported_cached = false;
-static bool mwaitx_support_checked = false;
-
-bool supports_mwaitx(void) {
-    if (mwaitx_support_checked) return mwaitx_supported_cached;
-    // Use original function if hook is installed, otherwise use direct call
-    PVECTORED_EXCEPTION_HANDLER handler_func = [](_EXCEPTION_POINTERS* ExceptionInfo) -> LONG {
-        if (ExceptionInfo->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
-            mwaitx_supported_cached = false;
-        }
-
-#ifdef _AMD64_
-        ExceptionInfo->ContextRecord->Rip++;
-#else
-        ExceptionInfo->ContextRecord->Eip++;
-#endif
-
-        return EXCEPTION_CONTINUE_EXECUTION;
-    };
-
-    auto handler = display_commanderhooks::AddVectoredExceptionHandler_Original
-                       ? display_commanderhooks::AddVectoredExceptionHandler_Original(1, handler_func)
-                       : AddVectoredExceptionHandler(1, handler_func);
-    if (handler == nullptr) {
-        LogError("Failed to add vectored exception handler");
-        return false;
-    }
-
-    mwaitx_supported_cached = true;
-    static __declspec(align(64)) uint64_t monitor = 0ULL;
-    _mm_monitorx(&monitor, 0, 0);
-    _mm_mwaitx(0x2, 0, 1);
-
-    RemoveVectoredExceptionHandler(handler);
-
-    return mwaitx_supported_cached;
-}
-
 // Setup high-resolution timer by setting kernel timer resolution to maximum
 bool setup_high_resolution_timer() {
     // Get QPC frequency

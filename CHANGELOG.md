@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.192 (2026-03-01)
+
+- **Main tab FPS limiter quick selector** - When the FPS limiter checkbox is enabled, a quick FPS limit selector is shown just under the FPS limit slider. When monitor refresh rate is known, it shows "No Limit", divisors of refresh (e.g. 72, 48 for 144 Hz), and "VRR Cap"; when refresh rate is unknown, fixed presets only (No Limit, 30, 60, 120, 144) with no fallback.
+
+---
+
 ## v0.12.191 (2026-03-01)
 
 - **Multi-proxy state export** - Added `GetDisplayCommanderState()` export (returns `Undecided`, `PROXY_DLL_ONLY`, `HOOKED`, or `DO_NOTHING`) so multiple Display Commander proxy DLLs (e.g. dxgi.dll + winmm.dll + version.dll) can coexist. On load, each instance scans loaded modules; if another module reports `HOOKED`, this instance becomes `PROXY_DLL_ONLY` (registers as addon but does not install hooks). Only the first instance becomes `HOOKED` and runs multi-version detection and hook installation. Enables using Display Commander as several proxies in the same process without crashing.

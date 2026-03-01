@@ -38,11 +38,11 @@
 #include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
+#include "../../utils/dc_load_path.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/platform_api_detector.hpp"
-#include "../../utils/dc_load_path.hpp"
 #include "../../utils/reshade_load_path.hpp"
 #include "../../utils/reshade_version_download.hpp"
 #include "../../utils/version_check.hpp"
@@ -1440,8 +1440,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         if (reshade_folder.empty()) {
             reshade_folder = display_commander::utils::GetLocalReshadeDirectory();
         }
-        if (!reshade_folder.empty()
-            && imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
+        if (!reshade_folder.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
             std::string folder_str = reshade_folder.string();
             std::thread([folder_str]() {
                 HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
@@ -1563,11 +1562,12 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 imgui.Text("Download another version:");
                 std::vector<const char*> not_installed_ptrs;
                 for (const auto& s : not_installed) not_installed_ptrs.push_back(s.c_str());
-                if (imgui.Combo("Version to download", &s_reshade_download_another_index,
-                                not_installed_ptrs.data(), static_cast<int>(not_installed_ptrs.size()))) {
+                if (imgui.Combo("Version to download", &s_reshade_download_another_index, not_installed_ptrs.data(),
+                                static_cast<int>(not_installed_ptrs.size()))) {
                 }
                 if (can_download && imgui.Button(ICON_FK_FLOPPY " Download")) {
-                    display_commander::utils::StartReshadeVersionDownload(not_installed[s_reshade_download_another_index]);
+                    display_commander::utils::StartReshadeVersionDownload(
+                        not_installed[s_reshade_download_another_index]);
                 }
                 if (imgui.IsItemHovered() && can_download) {
                     imgui.SetTooltip("Download and install a ReShade version that is not yet installed.");
@@ -1642,8 +1642,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
 
         if (dc_source == static_cast<int>(DcUpdateSource::SpecificVersion)) {
             size_t dc_installed_count = 0;
-            const char* const* dc_installed =
-                display_commander::utils::GetDcInstalledVersionList(&dc_installed_count);
+            const char* const* dc_installed = display_commander::utils::GetDcInstalledVersionList(&dc_installed_count);
             int dc_version_index = 0;
             std::vector<std::string> dc_installed_labels;
             std::vector<const char*> dc_installed_ptrs;
@@ -1662,7 +1661,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 if (dc_installed_count > 0) {
                     std::string new_ver(dc_installed[dc_version_index]);
                     display_commander::utils::SetDcSelectedVersionInConfig(new_ver);
-                    display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("DC update source");
+                    display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig(
+                        "DC update source");
                     selected_dc_ver = new_ver;
                 }
             }
@@ -1673,7 +1673,12 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             // Latest (debug): check from https://github.com/pmnoxx/display-commander/releases/tag/latest_debug
             {
                 using namespace display_commander::utils::version_check;
-                enum { LatestDebugNotChecked = 0, LatestDebugChecking = 1, LatestDebugAvailable = 2, LatestDebugError = 3 };
+                enum {
+                    LatestDebugNotChecked = 0,
+                    LatestDebugChecking = 1,
+                    LatestDebugAvailable = 2,
+                    LatestDebugError = 3
+                };
                 static std::atomic<int> s_latest_debug_status{LatestDebugNotChecked};
                 static std::atomic<std::string*> s_latest_debug_error{nullptr};
                 bool latest_debug_installed = false;
@@ -1737,7 +1742,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 } else if (status == LatestDebugError) {
                     std::string* err_ptr = s_latest_debug_error.load();
                     imgui.TextColored(ui::colors::TEXT_ERROR, "Latest (debug): %s",
-                                       err_ptr && !err_ptr->empty() ? err_ptr->c_str() : "error");
+                                      err_ptr && !err_ptr->empty() ? err_ptr->c_str() : "error");
                 } else {
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "Latest (debug): not checked");
                 }
@@ -1752,16 +1757,20 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 bool is_64bit = false;
 #endif
                 if (imgui.Button(ICON_FK_FLOPPY " Download latest")) {
-                    std::thread([](bool is64) {
-                        if (DownloadUpdate(is64)) {
-                            LogInfo("Display Commander latest download OK");
-                        } else {
-                            LogError("Display Commander latest download failed");
-                        }
-                    }, is_64bit).detach();
+                    std::thread(
+                        [](bool is64) {
+                            if (DownloadUpdate(is64)) {
+                                LogInfo("Display Commander latest download OK");
+                            } else {
+                                LogError("Display Commander latest download failed");
+                            }
+                        },
+                        is_64bit)
+                        .detach();
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Download latest release to %%localappdata%%\\Programs\\Display_Commander (root).");
+                    imgui.SetTooltip(
+                        "Download latest release to %%localappdata%%\\Programs\\Display_Commander (root).");
                 }
             }
 
@@ -1772,14 +1781,17 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             if (imgui.Button(ICON_FK_REFRESH " Fetch available versions")) {
                 s_dc_available_versions.clear();
                 s_dc_fetch_error.clear();
-                if (display_commander::utils::version_check::FetchDisplayCommanderReleasesFromGitHub(s_dc_available_versions,
-                                                                                                   &s_dc_fetch_error)) {
+                if (display_commander::utils::version_check::FetchDisplayCommanderReleasesFromGitHub(
+                        s_dc_available_versions, &s_dc_fetch_error)) {
                     // Filter to not-installed
                     std::vector<std::string> not_installed;
                     for (const auto& v : s_dc_available_versions) {
                         bool found = false;
                         for (size_t j = 0; j < dc_installed_count && dc_installed != nullptr; ++j) {
-                            if (dc_installed[j] == v) { found = true; break; }
+                            if (dc_installed[j] == v) {
+                                found = true;
+                                break;
+                            }
                         }
                         if (!found) not_installed.push_back(v);
                     }
@@ -1796,8 +1808,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 }
                 std::vector<const char*> dc_not_installed_ptrs;
                 for (const auto& s : s_dc_available_versions) dc_not_installed_ptrs.push_back(s.c_str());
-                imgui.Combo("Version to download", &s_dc_download_another_index,
-                            dc_not_installed_ptrs.data(), static_cast<int>(dc_not_installed_ptrs.size()));
+                imgui.Combo("Version to download", &s_dc_download_another_index, dc_not_installed_ptrs.data(),
+                            static_cast<int>(dc_not_installed_ptrs.size()));
                 imgui.SameLine();
                 static std::atomic<std::string*> s_dc_download_error_ptr{nullptr};
                 if (imgui.Button(ICON_FK_FLOPPY " Download to Dll")) {
@@ -1809,8 +1821,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                         if (display_commander::utils::version_check::DownloadDcVersionToDll(ver, &err)) {
                             LogInfo("Display Commander %s downloaded to Dll", ver.c_str());
                         } else {
-                            s_dc_download_error_ptr.store(
-                                new std::string(err.empty() ? "Download failed" : err));
+                            s_dc_download_error_ptr.store(new std::string(err.empty() ? "Download failed" : err));
                         }
                     }).detach();
                 }
@@ -2810,17 +2821,33 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const float selected_epsilon = 0.0001f;
+    auto window_state = ::g_window_state.load();
+    double refresh_hz = window_state ? window_state->current_monitor_refresh_rate.ToHz() : 0.0;
+    int y = static_cast<int>(std::round(refresh_hz));
+
+    if (y <= 0) {
+        // Refresh rate unknown: show fixed presets only (no fallback)
+        const float presets[] = {0.0f, 30.0f, 60.0f, 120.0f, 144.0f};
+        const char* labels[] = {"No Limit", "30", "60", "120", "144"};
+        for (size_t i = 0; i < sizeof(presets) / sizeof(presets[0]); ++i) {
+            if (i > 0) imgui.SameLine();
+            bool selected =
+                (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - presets[i]) <= selected_epsilon);
+            if (selected) ui::colors::PushSelectedButtonColors(&imgui);
+            if (imgui.Button(labels[i])) {
+                settings::g_mainTabSettings.fps_limit.SetValue(presets[i]);
+            }
+            if (selected) ui::colors::PopSelectedButtonColors(&imgui);
+        }
+        // Reflex rate not detected error
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Reflex rate not detected: TODO FIXME");
+        return;
+    }
+
     // Quick-set buttons based on current monitor refresh rate
     {
-        auto window_state = ::g_window_state.load();
-        double refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
-        int y = static_cast<int>(std::round(refresh_hz));
-        if (y <= 0) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Quick fps limit changer not working: TODO FIXME");
-            return;
-        }
         bool first = true;
-        const float selected_epsilon = 0.0001f;
         // Add No Limit button at the beginning
         {
             bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - 0.0f) <= selected_epsilon);
@@ -3188,6 +3215,10 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     }
     if (!fps_limit_enabled) {
         imgui.EndDisabled();
+    }
+
+    if (enabled) {
+        DrawQuickFpsLimitChanger(imgui);
     }
 
     // (enable background checkbox) background fps limiter slider
@@ -3800,16 +3831,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                     "This can save GPU power and reduce background processing.");
             }
         }
-
-        // Quick FPS limit changer
-        imgui.Spacing();
-        if (!fps_limit_enabled) {
-            imgui.BeginDisabled();
-        }
-        DrawQuickFpsLimitChanger(imgui);
-        if (!fps_limit_enabled) {
-            imgui.EndDisabled();
-        }
     }
 }
 
@@ -3832,15 +3853,6 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
     RECORD_DETOUR_CALL(utils::get_now_ns());
     bool fps_limit_enabled = (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync)
                              || ShouldReflexBeEnabled();
-    {
-        if (!fps_limit_enabled) {
-            imgui.BeginDisabled();
-        }
-        DrawQuickFpsLimitChanger(imgui);
-        if (!fps_limit_enabled) {
-            imgui.EndDisabled();
-        }
-    }
     imgui.Spacing();
     {
         if (!fps_limit_enabled) {

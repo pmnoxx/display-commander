@@ -7,39 +7,27 @@
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
 #include "config/display_commander_config.hpp"
-#include "display/dpi_management.hpp"
 #include "display/display_initial_state.hpp"
-#include "dxgi/vram_info.hpp"
+#include "display/dpi_management.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
-#include "latency/gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
-#include "hooks/hid_additional_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
-#include "hooks/streamline_hooks.hpp"
-#include "hooks/timeslowdown_hooks.hpp"
 #include "hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
+#include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
-#include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
-#include "proxy_dll/d3d9_proxy_init.hpp"
-#include "proxy_dll/ddraw_proxy_init.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
-#include "proxy_dll/opengl32_proxy_init.hpp"
-#include "proxy_dll/proxy_detection.hpp"
-#include "proxy_dll/winmm_proxy_init.hpp"
-#include "res/forkawesome.h"
-#include "res/ui_colors.hpp"
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/hook_suppression_settings.hpp"
@@ -54,11 +42,8 @@
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
-#include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
-#include "utils/perf_measurement.hpp"
 #include "utils/platform_api_detector.hpp"
-#include "utils/srwlock_wrapper.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
@@ -590,8 +575,7 @@ void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* r
     }
     ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
     bool window_open = true;
-    if (ImGui::Begin("Display Commander", &window_open,
-                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
+    if (ImGui::Begin("Display Commander", &window_open, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
         if (enabled_experimental_features) {
             autoclick::UpdateLastUIDrawTime();
         }
@@ -666,7 +650,8 @@ namespace {
 void OverrideReShadeSettings_WindowConfig() {
     std::string window_config;
     size_t value_size = 0;
-    if ((g_reshade_module != nullptr) && reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
+    if ((g_reshade_module != nullptr)
+        && reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
         window_config.resize(value_size);
         if ((g_reshade_module != nullptr)
             && reshade::get_config_value(nullptr, "OVERLAY", "Window", window_config.data(), &value_size)) {
@@ -1035,7 +1020,8 @@ bool DetectMultipleReShadeVersions_EnumerateModules() {
                     VS_FIXEDFILEINFO* version_info = nullptr;
                     UINT version_info_size = 0;
                     if (VerQueryValueW(version_data.data(), L"\\", reinterpret_cast<LPVOID*>(&version_info),
-                                       &version_info_size) != 0
+                                       &version_info_size)
+                            != 0
                         && version_info != nullptr) {
                         char version_str[64];
                         snprintf(version_str, sizeof(version_str), "%hu.%hu.%hu.%hu",
@@ -1197,7 +1183,8 @@ void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcMod
         OutputDebugStringA(found_msg);
 
         if (info.has_load_time) {
-            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other load time: %lld ns\n", info.load_time_ns);
+            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other load time: %lld ns\n",
+                     info.load_time_ns);
             OutputDebugStringA(found_msg);
             snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current load time: %lld ns\n",
                      current_load_time_ns);
@@ -1236,12 +1223,12 @@ void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcMod
             }
             if (instance_should_refuse) {
                 char error_msg[512];
-                snprintf(
-                    error_msg, sizeof(error_msg),
-                    "[Display Commander] ERROR: Multiple Display Commander instances detected! "
-                    "Other instance: v%s at %s (loaded at %lld ns), Current instance: v%s (loaded at %lld ns). "
-                    "Other instance was loaded first - refusing to load current instance to prevent conflicts.",
-                    info.version.c_str(), info.path.c_str(), info.load_time_ns, current_version, current_load_time_ns);
+                snprintf(error_msg, sizeof(error_msg),
+                         "[Display Commander] ERROR: Multiple Display Commander instances detected! "
+                         "Other instance: v%s at %s (loaded at %lld ns), Current instance: v%s (loaded at %lld ns). "
+                         "Other instance was loaded first - refusing to load current instance to prevent conflicts.",
+                         info.version.c_str(), info.path.c_str(), info.load_time_ns, current_version,
+                         current_load_time_ns);
                 OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
                 snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
                          info.version.c_str(), info.path.c_str());
@@ -1274,8 +1261,7 @@ bool DetectMultipleDisplayCommanderVersions() {
 
     const int dc_module_count = static_cast<int>(others.size());
     char complete_msg[256];
-    snprintf(complete_msg, sizeof(complete_msg),
-             "[DisplayCommander] === Display Commander Detection Complete ===\n");
+    snprintf(complete_msg, sizeof(complete_msg), "[DisplayCommander] === Display Commander Detection Complete ===\n");
     OutputDebugStringA(complete_msg);
     snprintf(complete_msg, sizeof(complete_msg),
              "[DisplayCommander] Total Display Commander modules found: %d (excluding current)\n", dc_module_count);
@@ -1660,8 +1646,8 @@ void ProcessAttach_DetectReShadeInModules() {
     HMODULE modules[1024];
     DWORD num_modules_bytes = 0;
     if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) == 0) return;
-    DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
-                                          static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
+    DWORD num_modules =
+        (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE), static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
     for (DWORD i = 0; i < num_modules; i++) {
         if (modules[i] == nullptr) continue;
         FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
@@ -1671,6 +1657,35 @@ void ProcessAttach_DetectReShadeInModules() {
             break;
         }
     }
+}
+
+// Returns the file's version resource ProductName (wide), or empty if absent. Used to avoid
+// loading ReShade again when already loaded, or loading Display Commander (ourselves) again.
+std::wstring GetFileProductNameW(const std::wstring& path_w) {
+    DWORD ver_handle = 0;
+    const DWORD size = GetFileVersionInfoSizeW(path_w.c_str(), &ver_handle);
+    if (size == 0) return {};
+    std::vector<char> buf(size);
+    if (!GetFileVersionInfoW(path_w.c_str(), 0, size, buf.data())) return {};
+    struct LANGANDCODEPAGE {
+        WORD wLanguage;
+        WORD wCodePage;
+    };
+    LANGANDCODEPAGE* p_trans = nullptr;
+    UINT trans_len = 0;
+    if (!VerQueryValueW(buf.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>(&p_trans), &trans_len)
+        || !p_trans || trans_len < sizeof(LANGANDCODEPAGE))
+        return {};
+    wchar_t sub_block[64];
+    swprintf_s(sub_block, L"\\StringFileInfo\\%04x%04x\\ProductName", p_trans[0].wLanguage, p_trans[0].wCodePage);
+    void* p_block = nullptr;
+    UINT len = 0;
+    if (!VerQueryValueW(buf.data(), sub_block, &p_block, &len) || !p_block || len < sizeof(wchar_t)) return {};
+    const wchar_t* product = static_cast<const wchar_t*>(p_block);
+    size_t max_chars = len / sizeof(wchar_t);
+    size_t str_len = 0;
+    while (str_len < max_chars && product[str_len] != L'\0') ++str_len;
+    return std::wstring(product, str_len);
 }
 
 void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
@@ -1692,6 +1707,9 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
         std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
         if (!ext_match.contains(ext)) continue;
         const std::wstring path_w = entry.path().wstring();
+        const std::wstring product = GetFileProductNameW(path_w);
+        if (!product.empty() && _wcsicmp(product.c_str(), L"ReShade") == 0 && g_reshade_module != nullptr) continue;
+        if (!product.empty() && _wcsicmp(product.c_str(), L"Display Commander") == 0) continue;
         HMODULE mod = LoadLibraryW(path_w.c_str());
         if (mod != nullptr) {
             std::string name = entry.path().filename().string();
@@ -1742,14 +1760,14 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
     std::wstring module_name_full = module_file_path.filename().wstring();
     std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
     std::transform(module_name_full.begin(), module_name_full.end(), module_name_full.begin(), ::towlower);
-    int module_utf8_size =
-        WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    int module_utf8_size = WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, nullptr, 0, nullptr, nullptr);
     if (module_utf8_size > 0) {
         std::string module_name_utf8(module_utf8_size - 1, '\0');
         WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, module_name_utf8.data(), module_utf8_size,
                             nullptr, nullptr);
         char debug_msg[512];
-        snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ls'\n",
+        snprintf(debug_msg, sizeof(debug_msg),
+                 "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ls'\n",
                  module_name_utf8.c_str(), module_name.c_str());
         OutputDebugStringA(debug_msg);
     }
@@ -1769,7 +1787,8 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
         {L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
          "Display Commander loaded as version.dll proxy - Version functions will be forwarded to system version.dll"},
         {L"opengl32", L"opengl32.dll", "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
-         "Display Commander loaded as opengl32.dll proxy - OpenGL/WGL functions will be forwarded to system opengl32.dll"}};
+         "Display Commander loaded as opengl32.dll proxy - OpenGL/WGL functions will be forwarded to system "
+         "opengl32.dll"}};
     for (const auto& proxy : proxy_dlls) {
         if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
             entry_point = proxy.entry_point_val;
@@ -1778,8 +1797,7 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
             return;
         }
     }
-    int module_utf8_size2 =
-        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    int module_utf8_size2 = WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
     if (module_utf8_size2 > 0) {
         std::string module_name_utf8(module_utf8_size2 - 1, '\0');
         WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, module_name_utf8.data(), module_utf8_size2, nullptr,
@@ -1854,14 +1872,15 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
             WideCharToMultiByte(CP_ACP, 0, dc_rd.c_str(), -1, lap_narrow, MAX_PATH, nullptr, nullptr);
             localappdata_path_str = lap_narrow;
         }
-        std::string message = "Display Commander detected a game platform (" + platform_names
-                              + ") but ReShade was not found.\n\n";
+        std::string message =
+            "Display Commander detected a game platform (" + platform_names + ") but ReShade was not found.\n\n";
         message += "ReShade is required for Display Commander to function.\n\n";
         message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
         message += "1. In the game's installation folder, or\n";
         message += "2. In " + localappdata_path_str + "\n\n";
         message += "Download ReShade from: https://reshade.me/";
-        MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+        MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
+                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
         g_process_attached.store(true);
         return false;
     }
@@ -2469,8 +2488,7 @@ void WaitForProcessAndInject_MarkExistingProcesses(const std::wstring& exe_name,
     }
 }
 
-void WaitForProcessAndInject_ProcessSnapshot(const std::wstring& exe_name,
-                                             std::array<bool, 65536>& process_seen) {
+void WaitForProcessAndInject_ProcessSnapshot(const std::wstring& exe_name, std::array<bool, 65536>& process_seen) {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE) return;
     PROCESSENTRY32W process_entry = {};

@@ -157,6 +157,8 @@ std::filesystem::path GetReshadeDirectoryForLoading() {
             s_fallback_loaded_version = fallback_version;
             return dll_base / std::filesystem::path(fallback_version);
         }
+        case ReshadeLoadSource::NoReshade:
+            return std::filesystem::path();
         default:
             return base;
     }
@@ -166,10 +168,14 @@ ReshadeLoadSource GetReshadeLoadSourceFromConfig() {
     using namespace display_commander::config;
     int value = DEFAULT_LOAD_SOURCE;
     DisplayCommanderConfigManager::GetInstance().GetConfigValue(RESHADE_SECTION, KEY_LOAD_SOURCE, value);
-    if (value < 0 || value > 2) {
+    if (value < 0 || value > 3) {
         value = DEFAULT_LOAD_SOURCE;
     }
     return static_cast<ReshadeLoadSource>(value);
+}
+
+bool IsReshadeLoadDisabledByConfig() {
+    return GetReshadeLoadSourceFromConfig() == ReshadeLoadSource::NoReshade;
 }
 
 void SetReshadeLoadSourceInConfig(ReshadeLoadSource value) {

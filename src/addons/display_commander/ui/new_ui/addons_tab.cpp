@@ -11,8 +11,11 @@
 #include "../../utils/reshade_version_download.hpp"
 #include "../imgui_wrapper_base.hpp"
 
-// Libraries <standard C++> — before our .hpp so std:: and types resolve in global scope
-#include <Windows.h>
+// Libraries <ReShade> / <imgui>
+#include <imgui.h>
+#include <reshade.hpp>
+
+// Libraries <standard C++>
 #include <algorithm>
 #include <atomic>
 #include <filesystem>
@@ -20,16 +23,12 @@
 #include <string>
 #include <vector>
 
-// Libraries <Windows.h> Windows.h before other Windows headers so Windows headers.
+// Libraries <Windows.h> — before other Windows headers
 #include <Windows.h>
 
-// Libraries <Windows> — before our .hpp so Windows types (e.g. IStream) resolve in global scope
+// Libraries <Windows>
 #include <psapi.h>
 #include <ShlObj.h>
-
-// Libraries <ReShade> / <imgui>
-#include <imgui.h>
-#include <reshade.hpp>
 
 namespace ui::new_ui {
 

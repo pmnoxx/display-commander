@@ -930,7 +930,6 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
     if (is_reshade_module && result == FALSE) {
         LogInfo("FreeLibrary: Detected ReShade module unload (refcount reached 0) (0x%p)", hLibModule);
         OnReshadeUnload();
-        g_reshade_module = nullptr;
     }
 
     return result;
@@ -948,7 +947,6 @@ VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode
     if (hLibModule != nullptr && hLibModule == g_reshade_module) {
         LogInfo("FreeLibraryAndExitThread: Detected ReShade module unload (0x%p)", hLibModule);
         OnReshadeUnload();
-        g_reshade_module = nullptr;
     }
 
     // Call original function (this function never returns)
@@ -1437,7 +1435,7 @@ bool HasReframeworkPluginModule() {
 
 // Returns true if ReShade was loaded from C:\ProgramData\ReShade\ReShade64.dll or ReShade32.dll
 static bool IsReshadeFromProgramData() {
-    HMODULE reshade = g_reshade_module;
+    HMODULE reshade = g_reshade_module.load();
     if (reshade == nullptr) {
         return false;
     }
@@ -1529,6 +1527,21 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
                 LogInfo("DLSS tracked: .bin identified as %s (0x%p) %s", name, hModule,
                         GetModulePathUtf8(hModule).c_str());
             }
+        }
+    }
+
+    // ReShade: when ReShade is loaded via LoadLibrary (e.g. by game), set g_reshade_module so UI and other code see it
+    {
+        std::wstring filename = std::filesystem::path(moduleName).filename().wstring();
+        std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+        bool is_reshade_dll = (filename == L"reshade64.dll" || filename == L"reshade32.dll");
+        if (!is_reshade_dll && GetProcAddress(hModule, "ReShadeRegisterAddon") != nullptr) {
+            is_reshade_dll = true;
+        }
+        if (is_reshade_dll) {
+            HMODULE expected = nullptr;
+            if (g_reshade_module.compare_exchange_strong(expected, hModule))
+                LogInfo("ReShade module set from LoadLibrary: %ws (0x%p)", moduleName.c_str(), hModule);
         }
     }
 

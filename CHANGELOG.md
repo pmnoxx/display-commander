@@ -2,9 +2,21 @@
 
 ---
 
+## v0.12.188 (2026-03-01)
+
+- **g_reshade_module robustness** - `g_reshade_module` is now `std::atomic<HMODULE>` for thread-safe access. It is set in every ReShade load path (main_entry, addon Init, proxy LoadReShadeDll, LoadLibrary hooks) and never overwritten when already set (compare_exchange_strong). When ReShade is loaded via LoadLibrary (e.g. by the game), `OnModuleLoaded` detects ReShade64/32.dll or the ReShadeRegisterAddon export and sets `g_reshade_module`. Optional clear in `OnReshadeUnload` (commented) uses `.store(nullptr)` when re-enabled.
+
+---
+
+## v0.12.187 (2026-03-01)
+
+- **ReShade load source improvements** - When "Specific version" is selected but that version is not installed, Display Commander now loads the highest available version instead of failing; the Main tab shows a warning (e.g. "Loaded ReShade 6.7.3 (selected 6.7.1 was not installed)"). Added "No ReShade" option to the load source selector so the proxy can run without loading ReShade. When ReShade is not found (empty path or DLL missing at configured path), the addon now starts in no-ReShade mode instead of showing an error message box.
+
+---
+
 ## v0.12.186 (2026-03-01)
 
-- **Main tab UI refactor** - Extracted the Updates section content (ReShade, Display Commander, Addons subsections) into a dedicated `DrawUpdatesSectionContent` function in `main_new_tab.cpp` for clearer structure and consistency with other section helpers.
+- **Main tab UI refactor** - Add UI for upgrading Reshade from main tab.
 
 ---
 

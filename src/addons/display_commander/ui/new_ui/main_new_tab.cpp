@@ -1402,6 +1402,9 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         imgui.Indent();
         using display_commander::utils::ReshadeLoadSource;
         int load_source = static_cast<int>(display_commander::utils::GetReshadeLoadSourceFromConfig());
+        if (load_source < 0 || load_source > 3) {
+            load_source = 0;
+        }
 
         std::string local_ver = display_commander::utils::GetLocalReshadeVersion();
         std::string shared_ver = display_commander::utils::GetSharedReshadeVersion();
@@ -1412,6 +1415,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         s_load_source_labels.push_back(local_ver.empty() ? "Local (not installed)" : ("Local (" + local_ver + ")"));
         s_load_source_labels.push_back(shared_ver.empty() ? "Shared: Not found" : ("Shared: " + shared_ver));
         s_load_source_labels.push_back("Specific version (" + selected_ver + ")");
+        s_load_source_labels.push_back("No ReShade");
 
         std::vector<const char*> label_ptrs;
         label_ptrs.reserve(s_load_source_labels.size());
@@ -1427,7 +1431,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 "When Display Commander runs as a proxy (e.g. dxgi.dll), it loads ReShade from this source.\n"
                 "Local: %%localappdata%%\\Programs\\Display_Commander\\Reshade\n"
                 "Shared path: a folder you choose (e.g. network share).\n"
-                "Specific version: a versioned subfolder; use Download if missing.");
+                "Specific version: a versioned subfolder; use Download if missing.\n"
+                "No ReShade: do not load ReShade (Display Commander runs without ReShade).");
         }
 
         if (load_source == static_cast<int>(ReshadeLoadSource::SharedPath)) {
@@ -1535,6 +1540,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     (void)api;
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    RefreshReShadeModuleIfNeeded();
     // Load saved settings once and sync legacy globals
     g_rendering_ui_section.store("ui:tab:main_new:entry", std::memory_order_release);
 

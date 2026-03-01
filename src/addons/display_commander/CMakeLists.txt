@@ -35,7 +35,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 186)
+set(DISPLAY_COMMANDER_VERSION_PATCH 188)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -234,19 +234,22 @@ if(EXISTS "${DC_CONTROL_FX}")
     set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh")
     set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders in DLL (extracted to Reshade\\Shaders\\DisplayCommander)\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\n")
   endif()
+  # Generate shader_effect.rc at build time (so it exists after clean); script is written at configure time.
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
+    "file(WRITE \"${DC_SHADER_RC}\" [[${DC_SHADER_RC_CONTENT}]])\n")
   add_custom_target(copy_shader_files_for_rc ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_CONTROL_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_COLOR_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_RESHADE_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
     COMMENT "Copy DisplayCommander shader files to build dir for resource embedding"
-    BYPRODUCTS ${DC_SHADER_RC_BYPRODUCTS}
+    BYPRODUCTS ${DC_SHADER_RC_BYPRODUCTS} ${DC_SHADER_RC}
   )
   if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
     add_custom_command(TARGET copy_shader_files_for_rc POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_PERCEPTUALBOOST_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx"
     )
   endif()
-  file(WRITE "${DC_SHADER_RC}" "${DC_SHADER_RC_CONTENT}")
   target_sources(zzz_display_commander PRIVATE ${DC_SHADER_RC})
   add_dependencies(zzz_display_commander copy_shader_files_for_rc)
   set_source_files_properties(${DC_SHADER_RC} PROPERTIES GENERATED TRUE)

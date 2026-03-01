@@ -2,9 +2,15 @@
 
 ---
 
+## v0.12.166 (2026-02-28)
+
+- **Dead code removal** - Removed unused/orphaned API and declarations: GetQPCallingModules(), GetHookIdentifierByName() (timeslowdown_hooks); LatencyManager::GetCurrentTechnology(), GetCurrentTechnologyName(), SetConfig(), GetConfig(), IncreaseFrameId() (latency_manager); ReflexManager::IncreaseFrameId() (reflex_manager); extern GetTargetFps() from latency_manager. Audit and checklist updated (runs 68–78).
+
+---
+
 ## v0.12.165 (2026-02-28)
 
-- **Dead code removal** - Removed write-only globals: (1) **g_display_settings_hook_counters** — only `fetch_add` in display_settings_hooks and api_hooks; Hook Stats uses `g_hook_stats` instead. (2) **g_gpu_completion_time_ns** and **g_gpu_completion_callback_time_ns** — only `.store()` in gpu_completion_monitoring; never read. Audit doc updated (runs 45 and 47).
+- **Dead code removal** - Too long to count.
 
 ---
 

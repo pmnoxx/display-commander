@@ -381,7 +381,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};
 std::atomic<LONGLONG> g_present_duration_ns{0};
-std::atomic<uint64_t> g_reshade_present_frame_count{0};
 
 // Render start time tracking
 std::atomic<LONGLONG> g_submit_start_time_ns{0};
@@ -1869,8 +1868,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     if (hwnd == g_proxy_hwnd) {
         return;
     }
-
-    g_reshade_present_frame_count.fetch_add(1, std::memory_order_relaxed);
 
     reshade::api::effect_runtime* first_runtime = GetFirstReShadeRuntime();
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {

@@ -28,8 +28,6 @@ class ReflexManager {
     // Configure Reflex sleep mode (Low Latency + Boost + markers optimization).
     bool ApplySleepMode(bool low_latency, bool boost, bool use_markers, float fps_limit);
 
-    NvU64 IncreaseFrameId();
-
     // Submit a latency marker.
     bool SetMarker(NV_LATENCY_MARKER_TYPE marker);
 

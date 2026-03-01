@@ -13,9 +13,6 @@
 // Define the PCLStats provider (must be in a .cpp file, not header)
 PCLSTATS_DEFINE()
 
-// Forward declaration to avoid circular dependency
-extern float GetTargetFps();
-
 // Namespace alias for cleaner code
 namespace timing = utils;
 
@@ -188,29 +185,6 @@ bool LatencyManager::Sleep() {
     return result;
 }
 
-void LatencyManager::SetConfig(const LatencyConfig& config) {
-    config_ = config;
-
-    // Apply configuration if initialized
-    if (IsInitialized()) {
-        // Use config.target_fps if available, otherwise get current target FPS
-        float fps_limit = GetTargetFps();
-        ApplySleepMode(config.low_latency_mode, config.boost_mode, config.use_markers, fps_limit);
-    }
-}
-
-LatencyConfig LatencyManager::GetConfig() const { return config_; }
-
-LatencyTechnology LatencyManager::GetCurrentTechnology() const {
-    if (!IsInitialized()) return LatencyTechnology::None;
-    return provider_->GetTechnology();
-}
-
-const char* LatencyManager::GetCurrentTechnologyName() const {
-    if (!IsInitialized()) return "None";
-    return provider_->GetTechnologyName();
-}
-
 bool LatencyManager::SwitchTechnology(LatencyTechnology technology, reshade::api::device* device) {
     if (technology == config_.technology && IsInitialized()) {
         return true;  // Already using this technology
@@ -301,20 +275,12 @@ std::unique_ptr<ILatencyProvider> LatencyManager::CreateProvider(LatencyTechnolo
 
 void LatencyManager::UpdateCachedSleepStatus() {
     if (!IsInitialized() || !provider_) {
-        g_reflex_sleep_status_low_latency_enabled.store(false, std::memory_order_release);
         return;
     }
 
     NV_GET_SLEEP_STATUS_PARAMS sleep_status = {};
     sleep_status.version = NV_GET_SLEEP_STATUS_PARAMS_VER;
-
-    if (provider_->GetSleepStatus(&sleep_status)) {
-        bool low_latency_enabled = (sleep_status.bLowLatencyMode == NV_TRUE);
-        g_reflex_sleep_status_low_latency_enabled.store(low_latency_enabled, std::memory_order_release);
-        g_reflex_sleep_status_last_update_ns.store(utils::get_now_ns(), std::memory_order_release);
-    } else {
-        g_reflex_sleep_status_low_latency_enabled.store(false, std::memory_order_release);
-    }
+    (void)provider_->GetSleepStatus(&sleep_status);  // Call for potential side effects; no readers of cached status
 }
 
 bool LatencyManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,

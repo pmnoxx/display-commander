@@ -12,15 +12,12 @@ namespace display_commanderhooks {
 struct HookCallStats {
     std::atomic<uint64_t> total_calls{0};
     std::atomic<uint64_t> unsuppressed_calls{0};
-    /** Last call time in nanoseconds (utils::get_now_ns()). Used for "active input API" display (last 10s). */
-    std::atomic<uint64_t> last_call_time_ns{0};
 
     void increment_total() { total_calls.fetch_add(1); }
     void increment_unsuppressed() { unsuppressed_calls.fetch_add(1); }
     void reset() {
         total_calls.store(0);
         unsuppressed_calls.store(0);
-        last_call_time_ns.store(0);
     }
 };
 
@@ -288,7 +285,6 @@ void UninstallWindowsMessageHooks();
 
 // Helper functions
 bool ShouldSuppressMessage(HWND hWnd, UINT uMsg);
-void SuppressMessage(LPMSG lpMsg);
 
 // Debug: suppress all GetMessage/PeekMessage (default off, not saved). Use to test if we forgot to spoof some message
 // type for continue rendering.
@@ -314,7 +310,6 @@ const char* GetHookName(int hook_index);
 // DLL group helper functions
 const char* GetDllGroupName(DllGroup group);
 DllGroup GetHookDllGroup(int hook_index);
-const HookInfo& GetHookInfo(int hook_index);
 
 // Keyboard state tracking
 namespace keyboard_tracker {

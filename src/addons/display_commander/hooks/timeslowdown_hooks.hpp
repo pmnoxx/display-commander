@@ -74,25 +74,13 @@ float GetTimeslowdownMultiplier();
 bool IsTimeslowdownEnabled();
 void SetTimeslowdownEnabled(bool enabled);
 
-// Individual hook type configuration
-void SetTimerHookType(const char *hook_name, TimerHookType type);
-TimerHookType GetTimerHookType(const char *hook_name);
-bool IsTimerHookEnabled(const char *hook_name);
-// Thread-specific modes removed
-
-// Statistics
-uint64_t GetTimerHookCallCount(const char *hook_name);
+// Individual hook type configuration (name-based overloads removed; use ById variants)
 
 // Efficient enum-based functions (for internal use)
 void SetTimerHookTypeById(TimerHookIdentifier id, TimerHookType type);
 TimerHookType GetTimerHookTypeById(TimerHookIdentifier id);
 bool IsTimerHookEnabledById(TimerHookIdentifier id);
 uint64_t GetTimerHookCallCountById(TimerHookIdentifier id);
-TimerHookIdentifier GetHookIdentifierByName(const char *hook_name);
-
-// UI helper functions for efficient hook management
-const TimerHookIdentifier* GetAllHookIdentifiers();
-const char* GetHookNameById(TimerHookIdentifier id);
 
 // Hook type constants
 extern const char *HOOK_QUERY_PERFORMANCE_COUNTER;
@@ -111,7 +99,6 @@ DWORD GetRenderThreadId();
 bool IsCurrentThreadRenderThread();
 
 // QPC calling module tracking
-std::vector<std::wstring> GetQPCallingModules();
 std::vector<std::pair<HMODULE, std::wstring>> GetQPCallingModulesWithHandles();
 void ClearQPCallingModules();
 bool IsQPCModuleEnabled(HMODULE hModule);

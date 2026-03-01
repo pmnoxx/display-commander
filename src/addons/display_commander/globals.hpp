@@ -447,40 +447,6 @@ class SwapchainTrackingManager {
         return hooked_swapchains_.find(swapchain) != hooked_swapchains_.end();
     }
 
-    // Get all tracked swapchains (returns a copy for thread safety)
-    std::vector<IDXGISwapChain*> GetAllTrackedSwapchains() const {
-        utils::SRWLockShared lock(lock_);
-        return std::vector<IDXGISwapChain*>(hooked_swapchains_.begin(), hooked_swapchains_.end());
-    }
-
-    // Get the number of tracked swapchains
-    size_t GetTrackedSwapchainCount() const {
-        utils::SRWLockShared lock(lock_);
-        return hooked_swapchains_.size();
-    }
-
-    // Clear all tracked swapchains
-    void ClearAll() {
-        utils::SRWLockExclusive lock(lock_);
-        hooked_swapchains_.clear();
-    }
-
-    // Check if any swapchains are being tracked
-    bool HasTrackedSwapchains() const {
-        utils::SRWLockShared lock(lock_);
-        return !hooked_swapchains_.empty();
-    }
-
-    // Iterate through all tracked swapchains while holding the lock
-    // The callback is called for each swapchain while the lock is held
-    template <typename Callback>
-    void ForEachTrackedSwapchain(Callback&& callback) const {
-        utils::SRWLockShared lock(lock_);
-        for (IDXGISwapChain* swapchain : hooked_swapchains_) {
-            callback(swapchain);
-        }
-    }
-
     // Diagnostic: returns true if lock_ is currently held (for stuck-detection reporting)
     bool IsLockHeldForDiagnostics() const;
 };
@@ -703,10 +669,6 @@ extern std::atomic<std::shared_ptr<const std::wstring>> g_dxgi_output_device_nam
 
 // Present duration tracking
 extern std::atomic<LONGLONG> g_present_duration_ns;
-
-// ReShade present frame count (incremented once per OnPresentUpdateBefore for the main swapchain).
-// Used to delay ADHD multi-monitor init until frame 500.
-extern std::atomic<uint64_t> g_reshade_present_frame_count;
 
 // Simulation duration tracking
 extern std::atomic<LONGLONG> g_simulation_duration_ns;
@@ -1435,10 +1397,6 @@ extern std::atomic<LONGLONG> g_sleep_reflex_native_ns;    // Time between native
 extern std::atomic<LONGLONG> g_sleep_reflex_native_ns_smooth;
 // Smoothed (rolling average) time between injected Reflex sleep calls
 extern std::atomic<LONGLONG> g_sleep_reflex_injected_ns_smooth;
-
-// Cached Reflex sleep status (updated periodically, read by UI)
-extern std::atomic<bool> g_reflex_sleep_status_low_latency_enabled;  // Low latency mode enabled
-extern std::atomic<LONGLONG> g_reflex_sleep_status_last_update_ns;   // Last update timestamp
 
 // g_nvapi_last_sleep_timestamp_ns
 

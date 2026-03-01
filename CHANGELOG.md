@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.173 (2026-03-01)
+
+- **dc_service: ReShade download and DLL in script folder** - `download_dc32_winmm.bat` and `download_dc64_winmm.bat` now download ReShade Addon installer (ReShade_Setup_6.7.3_Addon.exe) to shared folder `Display_Commander/Reshade_Setup` when missing, and ensure `Reshade32.dll` / `Reshade64.dll` are present in the script folder (extracted from the installer when needed). Shared folder avoids redownload when running either script.
+
+---
+
 ## v0.12.172 (2026-03-01)
 
 - **Add Swapchain HDR Upgrade (scRGB / HDR10)** - Main tab (Brightness and AutoHDR): checkbox "Swapchain HDR Upgrade" and "HDR mode" selector (scRGB default, HDR10). Upgrades swap chain to HDR on creation for DXGI; requires Windows HDR or HDR-capable display. Credits: approach inspired by [AutoHDR-ReShade](https://github.com/EndlesslyFlowering/AutoHDR-ReShade) (EndlesslyFlowering).

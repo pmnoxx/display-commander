@@ -1,13 +1,21 @@
+// 1
 #include "addon.hpp"
+
+// 2
 #include <windows.h>
+
+// 4
 #include <atomic>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <memory>
 #include <reshade.hpp>
 #include <string>
 #include <vector>
+
+// 5
 #include "globals.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "ui/cli_standalone_ui.hpp"

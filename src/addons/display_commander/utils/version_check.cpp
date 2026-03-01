@@ -2,6 +2,7 @@
 #include <ShlObj.h>
 #include <Windows.h>
 #include <WinInet.h>
+#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <filesystem>
@@ -68,6 +69,51 @@ bool DownloadTextFromUrl(const std::string& url, std::string& content) {
     return !content.empty();
 }
 
+// Fetch ReShade tags from GitHub API (crosire/reshade), filter >= 6.6.2, sort descending.
+// Used by reshade_load_path for the version list. Runs in same thread (call once per app start).
+bool FetchReShadeTagsFromGitHubImpl(std::vector<std::string>& out_versions, std::string* out_error) {
+    out_versions.clear();
+    std::string content;
+    if (!DownloadTextFromUrl("https://api.github.com/repos/crosire/reshade/tags", content)) {
+        if (out_error) {
+            *out_error = "Failed to fetch ReShade tags from GitHub";
+        }
+        return false;
+    }
+    const std::string min_version("6.6.2");
+    size_t pos = 0;
+    while ((pos = content.find("\"name\"", pos)) != std::string::npos) {
+        size_t colon = content.find(':', pos);
+        if (colon == std::string::npos) {
+            break;
+        }
+        size_t q1 = content.find('"', colon);
+        if (q1 == std::string::npos) {
+            break;
+        }
+        size_t q2 = content.find('"', q1 + 1);
+        if (q2 == std::string::npos) {
+            break;
+        }
+        std::string name = content.substr(q1 + 1, q2 - q1 - 1);
+        std::string ver = display_commander::utils::version_check::ParseVersionString(name);
+        if (ver.empty() || ver.find_first_not_of("0123456789.") != std::string::npos) {
+            pos = q2 + 1;
+            continue;
+        }
+        if (display_commander::utils::version_check::CompareVersions(ver, min_version) >= 0) {
+            out_versions.push_back(ver);
+        }
+        pos = q2 + 1;
+    }
+    std::sort(out_versions.begin(), out_versions.end(), [](const std::string& a, const std::string& b) {
+        return display_commander::utils::version_check::CompareVersions(a, b) > 0;
+    });
+    auto last = std::unique(out_versions.begin(), out_versions.end());
+    out_versions.erase(last, out_versions.end());
+    return !out_versions.empty();
+}
+
 }  // namespace
 
 // Download binary file from URL (public for ReShade update, etc.)
@@ -125,11 +171,10 @@ bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& 
     return std::filesystem::exists(file_path) && std::filesystem::file_size(file_path) > 0;
 }
 
-// Hardcoded ReShade version list (no network). Order: "latest", then default 6.7.2, then older.
+// Fetch ReShade versions from GitHub (crosire/reshade tags API). Returns all tags >= 6.6.2, sorted descending.
+// Call at most once per app start; on failure returns false and out_versions is empty.
 bool FetchReShadeVersionsFromGitHub(std::vector<std::string>& out_versions, std::string* out_error) {
-    (void)out_error;
-    out_versions = {"latest", "6.7.2", "6.7.1", "6.6.2"};
-    return true;
+    return FetchReShadeTagsFromGitHubImpl(out_versions, out_error);
 }
 
 namespace {

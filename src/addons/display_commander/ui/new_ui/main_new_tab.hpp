@@ -23,8 +23,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
 // Display settings section helpers (split from DrawDisplaySettings)
 void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper& imgui);
-void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& imgui);
-void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& imgui);
+void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui);
+void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& imgui);  // kept for compatibility; content moved to FpsLimiter
 void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw audio settings section

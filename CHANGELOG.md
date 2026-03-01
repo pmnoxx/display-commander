@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.169 (2026-02-28)
+
+- **AutoHDR UI warning and RenoDX link** - Main tab Brightness and AutoHDR: added visible warning that AutoHDR only applies the Perceptual Boost shader and requires an external addon (e.g. RenoDX) to upgrade swapchain from SDR to HDR; updated checkbox tooltip; added "RenoDX (open in browser)" button linking to recommended addon (https://github.com/clshortfuse/renodx). Future: autodownload option for addon.
+
+---
+
 ## v0.12.168 (2026-02-28)
 
 - **Bug fixes (detour safety and validation)** - Addressed items from the bug-detection audit: null checks before calling `_Original` in detours (SetWindowLong*, GetModuleHandleEx, Rand_s, SendInput, slUpgradeInterface, D3D9 Present, NvLL Vulkan SetSleepMode, DXGI Present/Present1 early-return paths); null checks for output pointers before calling original API (GetGUIThreadInfo pgui, CreateDXGIFactory2 ppFactory, GetCursorPos lpPoint, GetKeyboardState lpKeyState, GetFullscreenState pFullscreen, WM_WINDOWPOSCHANGED pWp); early return with error when input is invalid (GetModuleHandleEx phModule, Rand_s randomValue, SendInput pInputs when nInputs > 0); REFIID logging fixed via FormatRefIid() in CreateDXGIFactory2/D3D12CreateDevice; ReleaseDC(swapchain_hwnd, hdc) in window_management; WStringToUtf8 size <= 1 guard in audio_management; ApplyDisplaySettingsDXGI LogInfo format/argument count; main_entry snprintf %ls for wide strings; DXGI GetDesc/GetDesc1/CheckColorSpaceSupport and DInput/display_settings/TranslateMessage/DispatchMessage/GetMessage/PeekMessage validation or _Original guards as documented in `docs/tasks/bug_detection_task.md`.

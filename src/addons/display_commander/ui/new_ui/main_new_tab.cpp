@@ -1788,9 +1788,27 @@ if (enabled_experimental_features) {
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Run DisplayCommander Perceptual Boost effect for HDR-style enhancement. Requires Generic RenoDX "
-                    "to "
-                    "upgrade buffers from SDR to HDR.");
+                    "Only applies the Perceptual Boost shader. Requires an external addon (e.g. RenoDX) to upgrade "
+                    "swapchain from SDR to HDR for full effect.");
+            }
+            // Warning: AutoHDR only applies Perceptual Boost; SDR->HDR swapchain upgrade requires external addon
+            imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING " Only applies Perceptual Boost shader. "
+                             "Requires an external addon to upgrade swapchain from SDR to HDR (e.g. RenoDX).");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "AutoHDR runs DisplayCommander_PerceptualBoost.fx only. For real HDR output you need an addon "
+                    "that upgrades the swapchain (e.g. Generic RenoDX).");
+            }
+            // TODO(user): add autodownload option for recommended SDR->HDR addon (RenoDX), link in UI
+            imgui.TextUnformatted("Recommended addon: ");
+            imgui.SameLine();
+            imgui.PushStyleColor(ImGuiCol_Text, ::ui::colors::ICON_INFO);
+            if (imgui.Button("RenoDX (open in browser)")) {
+                ShellExecuteA(nullptr, "open", "https://github.com/clshortfuse/renodx", nullptr, nullptr, SW_SHOW);
+            }
+            imgui.PopStyleColor();
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Opens RenoDX GitHub (SDR to HDR swapchain upgrade for ReShade).");
             }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
                 if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",

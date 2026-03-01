@@ -1381,7 +1381,7 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromRuntime(reshade::api::effec
 }
 
 display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi() {
-    if (!g_reshade_loaded.load()) return display_commander::ui::GraphicsApi::Unknown;
+    if (!(g_reshade_module != nullptr)) return display_commander::ui::GraphicsApi::Unknown;
     const reshade::api::device_api api = g_last_reshade_device_api.load();
     switch (api) {
         case reshade::api::device_api::d3d9:   return display_commander::ui::GraphicsApi::D3D9;
@@ -1416,7 +1416,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     g_rendering_ui_section.store("ui:tab:main_new:warnings:load_from_dll", std::memory_order_release);
     // LoadFromDllMain warning
     int32_t load_from_dll_main_value = 0;
-    if (g_reshade_loaded.load()
+    if ((g_reshade_module != nullptr)
         && reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", load_from_dll_main_value)
         && load_from_dll_main_value == 1) {
         imgui.Spacing();
@@ -1764,7 +1764,7 @@ if (enabled_experimental_features) {
         imgui.Unindent();
     }
 
-    if (g_reshade_loaded.load()) {
+    if ((g_reshade_module != nullptr)) {
         imgui.Spacing();
 
         // Brightness and AutoHDR (Display Commander ReShade effects)
@@ -3474,7 +3474,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
     }
 
     // No Render / No Present in Background
-    if (g_reshade_loaded.load()) {
+    if ((g_reshade_module != nullptr)) {
         imgui.Spacing();
         bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
         if (imgui.Checkbox("No Render in Background", &no_render_in_bg)) {
@@ -3646,7 +3646,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
             }
         }
     } else {
-        if (g_reshade_loaded.load()) {
+        if ((g_reshade_module != nullptr)) {
             imgui.TextColored(ui::colors::TEXT_WARNING,
                               "VSYNC ON/OFF Prevent Tearing options unavailable due to reshade bug!");
         }
@@ -4463,7 +4463,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
     if (imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
-        if (g_reshade_loaded.load()) {
+        if ((g_reshade_module != nullptr)) {
             DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(imgui);
         } else {
             DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(imgui);
@@ -6471,7 +6471,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    if (g_reshade_loaded.load()) {
+    if ((g_reshade_module != nullptr)) {
         imgui.SameLine();
 
         // Open reshade.log Button

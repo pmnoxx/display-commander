@@ -190,7 +190,7 @@ bool HookD3D9Present(IDirect3DDevice9* device) {
     }
 
     // If FLIPEX not enabled for this mode (ReShade vs no-ReShade), skip PresentEx hook
-    const bool flipex_wanted = g_reshade_loaded.load()
+    const bool flipex_wanted = (g_reshade_module != nullptr)
                                   ? settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
                                   : settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue();
     if (!flipex_wanted) {

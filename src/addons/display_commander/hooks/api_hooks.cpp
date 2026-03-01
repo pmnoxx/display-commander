@@ -933,7 +933,7 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
 }
 
 bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
-    if (g_reshade_loaded.load()) {
+    if ((g_reshade_module != nullptr)) {
         return true;
     }
     // Check if this module is ReShade's proxy by checking for ReShade exports

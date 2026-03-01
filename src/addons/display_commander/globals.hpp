@@ -257,9 +257,6 @@ extern std::atomic<bool> g_dll_initialization_complete;
 // Process attach state - tracks when DLL_PROCESS_ATTACH has completed
 extern std::atomic<bool> g_process_attached;
 
-// ReShade load state (defined in main_entry.cpp)
-extern std::atomic<bool> g_reshade_loaded;
-
 // No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded, standalone settings UI
 // used
 extern std::atomic<bool> g_no_reshade_mode;

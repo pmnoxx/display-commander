@@ -620,7 +620,7 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         return;
     }
 
-    if (!g_reshade_loaded.load()) {
+    if (!(g_reshade_module != nullptr)) {
         return;
     }
 

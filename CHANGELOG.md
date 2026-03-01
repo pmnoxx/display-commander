@@ -2,6 +2,19 @@
 
 ---
 
+## v0.12.182 (2026-03-01)
+
+- **RunDLL injection entry points moved** - `StartAndInject` and `WaitAndInject` (implementations and exports) moved from `main_entry.cpp` to `rundll_injection.cpp`. New `rundll_injection_helpers.hpp` declares `GetReShadeDllPath`, `InjectIntoProcess`, and `WaitForProcessAndInject` (still implemented in main_entry). Simplifies main_entry and makes future injection refactors easier.
+
+---
+
+## v0.12.181 (2026-03-01)
+
+- **main_entry refactor** - Split the large `DLL_PROCESS_ATTACH` block into DllMain-safe helpers (`ProcessAttach_EarlyChecksAndInit`, `ProcessAttach_DetectReShadeInModules`, `ProcessAttach_LoadLocalAddonDlls`, `ProcessAttach_CheckNoReShadeMode`, `ProcessAttach_TryLoadReShadeFromCwd`, `ProcessAttach_DetectEntryPoint`, `ProcessAttach_TryLoadReShadeWhenNotLoaded`, `ProcessAttach_NoReShadeModeInit`, `ProcessAttach_RegisterAndPostInit`). Split `WaitForProcessAndInject` into `WaitForProcessAndInject_MarkExistingProcesses` and `WaitForProcessAndInject_ProcessSnapshot`. DllMain switch case is now a short, readable sequence.
+- **ReShade state via g_reshade_module** - Removed `g_reshade_loaded`; ReShade load state is inferred from `g_reshade_module != nullptr`. All code that checked `g_reshade_loaded` now uses `g_reshade_module`. When ReShade is detected or loaded (module enum, LoadLibrary from cwd, LocalAppData, or already loaded), `g_reshade_module` is set to the ReShade HMODULE so hooks and UI have a single source of truth.
+
+---
+
 ## v0.12.180 (2026-03-01)
 Remove unused code.
 

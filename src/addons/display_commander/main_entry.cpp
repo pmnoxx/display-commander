@@ -377,6 +377,108 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
     ApplyDisplayCommanderAutoHdr(runtime);
 }
 
+namespace {
+void OnInitEffectRuntime_ExtractShadersOnce() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    static std::atomic<bool> shader_extract_done{false};
+    if (shader_extract_done.exchange(true)) {
+        return;
+    }
+    constexpr int IDR_CONTROL_FX = 300;
+    constexpr int IDR_COLOR_FXH = 301;
+    constexpr int IDR_RESHADE_FXH = 302;
+    constexpr int IDR_PERCEPTUALBOOST_FX = 303;
+
+    auto extract_resource = [](int res_id, const wchar_t* filename_wide, const char* filename_utf8) -> bool {
+        HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
+        if (hRes == nullptr) return false;
+        HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
+        if (hLoaded == nullptr) return false;
+        const void* pData = LockResource(hLoaded);
+        const DWORD size = SizeofResource(g_hmodule, hRes);
+        if (pData == nullptr || size == 0) return false;
+
+        auto write_to = [&pData, size](const std::filesystem::path& dest_path) -> bool {
+            std::error_code ec2;
+            std::filesystem::create_directories(dest_path.parent_path(), ec2);
+            if (ec2) return false;
+            std::ofstream of(dest_path, std::ios::binary);
+            if (!of) return false;
+            of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
+            return of.good();
+        };
+
+        wchar_t addon_path[MAX_PATH] = {};
+        if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) == 0) return false;
+        std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
+
+        bool any_written = false;
+        wchar_t localappdata_path[MAX_PATH] = {};
+        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+            std::filesystem::path la_dest = std::filesystem::path(localappdata_path) / L"Programs"
+                                            / L"Display_Commander" / L"Reshade" / L"Shaders" / L"DisplayCommander"
+                                            / filename_wide;
+            if (write_to(la_dest)) any_written = true;
+        }
+        std::filesystem::path dc_dest =
+            addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders" / L"DisplayCommander" / filename_wide;
+        if (write_to(dc_dest)) any_written = true;
+
+        char base_path[512] = {};
+        size_t base_size = sizeof(base_path);
+        reshade::get_reshade_base_path(base_path, &base_size);
+        std::filesystem::path reshade_base(base_path);
+        std::filesystem::path reshade_dest = reshade_base / "Shaders" / "DisplayCommander" / filename_utf8;
+        if (std::filesystem::exists(reshade_base / "Shaders") && std::filesystem::is_directory(reshade_base / "Shaders")
+            && write_to(reshade_dest)) {
+            any_written = true;
+        }
+        return any_written;
+    };
+
+    if (extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx", "DisplayCommander_Control.fx")) {
+        LogInfo(
+            "DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. "
+            "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
+    }
+    extract_resource(IDR_COLOR_FXH, L"color.fxh", "color.fxh");
+    extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh", "ReShade.fxh");
+    extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx",
+                     "DisplayCommander_PerceptualBoost.fx");
+}
+
+void OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded() {
+    if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
+        || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
+        display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
+    }
+}
+
+void OnInitEffectRuntime_InitWithHwndOnce(reshade::api::effect_runtime* runtime) {
+    static bool initialized_with_hwnd = false;
+    if (initialized_with_hwnd) {
+        return;
+    }
+    initialized_with_hwnd = true;
+    HWND game_window = static_cast<HWND>(runtime->get_hwnd());
+    if (game_window != nullptr && IsWindow(game_window) != 0) {
+        LogInfo("[OnInitEffectRuntime] Game window detected - HWND: 0x%p", game_window);
+        LogInfo("[OnInitEffectRuntime] calling DoInitializationWithHwnd...");
+        DoInitializationWithHwnd(game_window);
+        LogInfo("[OnInitEffectRuntime] DoInitializationWithHwnd returned");
+    } else {
+        LogWarn("[OnInitEffectRuntime] ReShade runtime window is not valid - HWND: 0x%p", game_window);
+    }
+    LogInfo("[OnInitEffectRuntime] before autoclick start (enabled_experimental_features=%d)",
+            enabled_experimental_features ? 1 : 0);
+    if (enabled_experimental_features) {
+        autoclick::StartAutoClickThread();
+        autoclick::StartUpDownKeyPressThread();
+        autoclick::StartButtonOnlyPressThread();
+    }
+}
+}  // namespace
+
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     LogInfo("[OnInitEffectRuntime] entry");
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -387,118 +489,13 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     AddReShadeRuntime(runtime);
     LogInfo("[OnInitEffectRuntime] after AddReShadeRuntime");
 
-    // One-time: extract DisplayCommander shaders from DLL (embedded RCDATA) to Reshade\Shaders\DisplayCommander:
-    // - %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
-    // - addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
-    // - ReShade's Shaders\DisplayCommander folder (so the effect loads after reload/restart)
-    // Only the DLL is shipped; .fx and .fxh are embedded in the binary.
-    {
-        RECORD_DETOUR_CALL(utils::get_now_ns());
-        static std::atomic<bool> shader_extract_done{false};
-        if (!shader_extract_done.exchange(true)) {
-            constexpr int IDR_CONTROL_FX = 300;
-            constexpr int IDR_COLOR_FXH = 301;
-            constexpr int IDR_RESHADE_FXH = 302;
-            constexpr int IDR_PERCEPTUALBOOST_FX = 303;
-
-            auto extract_resource = [](int res_id, const wchar_t* filename_wide, const char* filename_utf8) -> bool {
-                HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCE(res_id), RT_RCDATA);
-                if (hRes == nullptr) return false;
-                HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
-                if (hLoaded == nullptr) return false;
-                const void* pData = LockResource(hLoaded);
-                const DWORD size = SizeofResource(g_hmodule, hRes);
-                if (pData == nullptr || size == 0) return false;
-
-                auto write_to = [&pData, size](const std::filesystem::path& dest_path) -> bool {
-                    std::error_code ec2;
-                    std::filesystem::create_directories(dest_path.parent_path(), ec2);
-                    if (ec2) return false;
-                    std::ofstream of(dest_path, std::ios::binary);
-                    if (!of) return false;
-                    of.write(static_cast<const char*>(pData), static_cast<std::streamsize>(size));
-                    return of.good();
-                };
-
-                wchar_t addon_path[MAX_PATH] = {};
-                if (GetModuleFileNameW(g_hmodule, addon_path, MAX_PATH) == 0) return false;
-                std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
-
-                bool any_written = false;
-
-                // %LOCALAPPDATA%\Programs\Display_Commander\Reshade\Shaders\DisplayCommander
-                wchar_t localappdata_path[MAX_PATH] = {};
-                if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
-                                               localappdata_path))) {
-                    std::filesystem::path la_dest = std::filesystem::path(localappdata_path) / L"Programs"
-                                                    / L"Display_Commander" / L"Reshade" / L"Shaders"
-                                                    / L"DisplayCommander" / filename_wide;
-                    if (write_to(la_dest)) any_written = true;
-                }
-
-                // addon_dir\Display_Commander\Reshade\Shaders\DisplayCommander
-                std::filesystem::path dc_dest =
-                    addon_dir / L"Display_Commander" / L"Reshade" / L"Shaders" / L"DisplayCommander" / filename_wide;
-                if (write_to(dc_dest)) any_written = true;
-
-                // ReShade Shaders\DisplayCommander
-                char base_path[512] = {};
-                size_t base_size = sizeof(base_path);
-                reshade::get_reshade_base_path(base_path, &base_size);
-                std::filesystem::path reshade_base(base_path);
-                std::filesystem::path reshade_dest = reshade_base / "Shaders" / "DisplayCommander" / filename_utf8;
-                if (std::filesystem::exists(reshade_base / "Shaders")
-                    && std::filesystem::is_directory(reshade_base / "Shaders") && write_to(reshade_dest)) {
-                    any_written = true;
-                }
-
-                return any_written;
-            };
-
-            if (extract_resource(IDR_CONTROL_FX, L"DisplayCommander_Control.fx", "DisplayCommander_Control.fx")) {
-                LogInfo(
-                    "DisplayCommander shaders extracted to Reshade\\Shaders\\DisplayCommander (e.g. "
-                    "%%LOCALAPPDATA%%\\Programs\\Display_Commander\\Reshade\\Shaders\\DisplayCommander).");
-            }
-            extract_resource(IDR_COLOR_FXH, L"color.fxh", "color.fxh");
-            extract_resource(IDR_RESHADE_FXH, L"ReShade.fxh", "ReShade.fxh");
-            extract_resource(IDR_PERCEPTUALBOOST_FX, L"DisplayCommander_PerceptualBoost.fx",
-                             "DisplayCommander_PerceptualBoost.fx");
-        }
-    }
+    OnInitEffectRuntime_ExtractShadersOnce();
     LogInfo("[OnInitEffectRuntime] after shader extract block");
-
     LogInfo("[OnInitEffectRuntime] ReShade effect runtime initialized - Input blocking now available");
 
-    if (settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()
-        || settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()) {
-        display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
-    }
+    OnInitEffectRuntime_StartRefreshRateMonitoringIfNeeded();
+    OnInitEffectRuntime_InitWithHwndOnce(runtime);
 
-    static bool initialized_with_hwnd = false;
-    if (!initialized_with_hwnd) {
-        // Set up window procedure hooks now that we have the runtime
-        HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-        if (game_window != nullptr && IsWindow(game_window) != 0) {
-            LogInfo("[OnInitEffectRuntime] Game window detected - HWND: 0x%p", game_window);
-            LogInfo("[OnInitEffectRuntime] calling DoInitializationWithHwnd...");
-            // Initialize if not already done
-            DoInitializationWithHwnd(game_window);
-            LogInfo("[OnInitEffectRuntime] DoInitializationWithHwnd returned");
-        } else {
-            LogWarn("[OnInitEffectRuntime] ReShade runtime window is not valid - HWND: 0x%p", game_window);
-        }
-        initialized_with_hwnd = true;
-        LogInfo("[OnInitEffectRuntime] before autoclick start (enabled_experimental_features=%d)",
-                enabled_experimental_features ? 1 : 0);
-
-        // Start the auto-click thread (always running, sleeps when disabled)
-        if (enabled_experimental_features) {
-            autoclick::StartAutoClickThread();
-            autoclick::StartUpDownKeyPressThread();
-            autoclick::StartButtonOnlyPressThread();
-        }
-    }
     LogInfo("[OnInitEffectRuntime] exit");
 }
 
@@ -578,90 +575,75 @@ void DrawCustomCursor() {
 }
 
 // Test callback for reshade_overlay event
+void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* runtime) {
+    const float fixed_width = 1600.0f;
+    float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
+    float saved_y = settings::g_mainTabSettings.display_commander_ui_window_y.GetValue();
+    static float last_saved_x = 0.0f;
+    static float last_saved_y = 0.0f;
+    if (saved_x > 0.0f || saved_y > 0.0f) {
+        if (saved_x != last_saved_x || saved_y != last_saved_y) {
+            ImGui::SetNextWindowPos(ImVec2(saved_x, saved_y), ImGuiCond_Once);
+            last_saved_x = saved_x;
+            last_saved_y = saved_y;
+        }
+    }
+    ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
+    bool window_open = true;
+    if (ImGui::Begin("Display Commander", &window_open,
+                     ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
+        if (enabled_experimental_features) {
+            autoclick::UpdateLastUIDrawTime();
+        }
+        if (runtime != nullptr) {
+            runtime->block_input_next_frame();
+        }
+        ImVec2 current_pos = ImGui::GetWindowPos();
+        if (current_pos.x != saved_x || current_pos.y != saved_y) {
+            settings::g_mainTabSettings.display_commander_ui_window_x.SetValue(current_pos.x);
+            settings::g_mainTabSettings.display_commander_ui_window_y.SetValue(current_pos.y);
+            last_saved_x = current_pos.x;
+            last_saved_y = current_pos.y;
+        }
+        ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
+    } else {
+        settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
+    }
+    ImGui::End();
+    if (!window_open) {
+        settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
+    }
+    DrawCustomCursor();
+}
+
+void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool show_tooltips) {
+    float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
+    float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
+    ImGui::SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, 10.0f + vertical_spacing), ImGuiCond_Always);
+    float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
+    ImGui::SetNextWindowBgAlpha(bg_alpha);
+    ImGui::SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Test Window", nullptr,
+                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
+                     | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
+    display_commander::ui::ImGuiWrapperReshade overlay_imgui;
+    ui::new_ui::DrawPerformanceOverlayContent(overlay_imgui, ui::new_ui::GetGraphicsApiFromRuntime(runtime),
+                                              show_tooltips);
+    ImGui::End();
+}
+
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
-    const bool show_tooltips = show_display_commander_ui;  // only show tooltips if the UI is visible
+    const bool show_tooltips = show_display_commander_ui;
 
     if (show_display_commander_ui) {
-        // IMGui window with fixed width and saved position
-        const float fixed_width = 1600.0f;
-        float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
-        float saved_y = settings::g_mainTabSettings.display_commander_ui_window_y.GetValue();
-
-        // Restore saved position if available
-        static float last_saved_x = 0.0f;
-        static float last_saved_y = 0.0f;
-        if (saved_x > 0.0f || saved_y > 0.0f) {
-            // Only set position if it changed or window was just opened
-            if (saved_x != last_saved_x || saved_y != last_saved_y) {
-                ImGui::SetNextWindowPos(ImVec2(saved_x, saved_y), ImGuiCond_Once);
-                last_saved_x = saved_x;
-                last_saved_y = saved_y;
-            }
-        }
-
-        ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
-        // Use local bool for ImGui window close button - ImGui will modify this when X is clicked
-        bool window_open = true;
-        if (ImGui::Begin("Display Commander", &window_open,
-                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
-            // Update UI draw time for auto-click optimization
-            if (enabled_experimental_features) {
-                autoclick::UpdateLastUIDrawTime();
-            }
-            // Block input every frame while overlay is open
-            if (runtime != nullptr) {
-                runtime->block_input_next_frame();
-            }
-            // Save window position when it changes
-            ImVec2 current_pos = ImGui::GetWindowPos();
-            if (current_pos.x != saved_x || current_pos.y != saved_y) {
-                settings::g_mainTabSettings.display_commander_ui_window_x.SetValue(current_pos.x);
-                settings::g_mainTabSettings.display_commander_ui_window_y.SetValue(current_pos.y);
-                last_saved_x = current_pos.x;
-                last_saved_y = current_pos.y;
-            }
-
-            // Render tabs
-            ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
-        } else {
-            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
-        }
-        ImGui::End();
-
-        // If window was closed via X button, update the setting
-        if (!window_open) {
-            settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
-        }
-        // Draw our own cursor (triangles) so it's visible regardless of game hiding the system cursor
-        DrawCustomCursor();
+        OnPerformanceOverlay_DisplayCommanderWindow(runtime);
     }
 
-    // Check the setting from main tab first
-    // Check which overlay components are enabled
-    bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
-    bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
     bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-    bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
-    bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
-    bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
-    bool show_gpu_measurement = (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0);
-    bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
-    bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
-    bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
-    bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
-    bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
-    bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
-    bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
-    bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
-    bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
-    bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
-    bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
-
-    // Start/stop NVAPI actual refresh rate monitor when overlay shows actual refresh rate or the refresh rate graph
     bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-    auto show_performance_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
+    bool show_performance_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
     if (show_performance_overlay && (show_actual_refresh_rate || show_refresh_rate_frame_times)) {
         if (!display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()) {
             display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
@@ -675,253 +657,185 @@ void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     if (!settings::g_mainTabSettings.show_test_overlay.GetValue()) {
         return;
     }
-
-    // Apply spacing offsets for stream overlay text compatibility
-    float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
-    float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
-    ImGui::SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, 10.0f + vertical_spacing), ImGuiCond_Always);
-    // Set transparent background for the window (configurable opacity)
-    float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
-    ImGui::SetNextWindowBgAlpha(bg_alpha);
-    ImGui::SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
-    // Auto size the window to the content
-    ImGui::Begin("Test Window", nullptr,
-                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
-                     | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
-
-    display_commander::ui::ImGuiWrapperReshade overlay_imgui;
-    ui::new_ui::DrawPerformanceOverlayContent(overlay_imgui, ui::new_ui::GetGraphicsApiFromRuntime(runtime),
-                                              show_tooltips);
-
-    ImGui::End();
+    OnPerformanceOverlay_TestWindow(runtime, show_tooltips);
 }
 }  // namespace
 
-// Override ReShade settings to set tutorial as viewed and disable auto updates
-void OverrideReShadeSettings() {
-    if (!g_reshade_loaded.load()) {
-        return;  // No-ReShade mode or ReShade not loaded; skip ReShade config override
+namespace {
+// Helpers for OverrideReShadeSettings - each handles one logical block.
+void OverrideReShadeSettings_WindowConfig() {
+    std::string window_config;
+    size_t value_size = 0;
+    if ((g_reshade_module != nullptr) && reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
+        window_config.resize(value_size);
+        if ((g_reshade_module != nullptr)
+            && reshade::get_config_value(nullptr, "OVERLAY", "Window", window_config.data(), &value_size)) {
+            if (!window_config.empty() && window_config.back() == '\0') {
+                window_config.pop_back();
+            }
+        } else {
+            window_config.clear();
+        }
     }
-    LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
 
-    //
-    // [Window][Display Commander],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,7
-
-    {
-        // Read Window config as string (ReShade stores docking data here)
-        std::string window_config;
-        size_t value_size = 0;
-
-        // First call to get the required buffer size
-        if (g_reshade_loaded.load() && reshade::get_config_value(nullptr, "OVERLAY", "Window", nullptr, &value_size)) {
-            // Allocate buffer and read the value
-            window_config.resize(value_size);
-            if (g_reshade_loaded.load()
-                && reshade::get_config_value(nullptr, "OVERLAY", "Window", window_config.data(), &value_size)) {
-                // Remove null terminator if present (ReShade includes it in size)
-                if (!window_config.empty() && window_config.back() == '\0') {
-                    window_config.pop_back();
-                }
+    bool changed_window_config = false;
+    if (window_config.find("[Window][DC]") == std::string::npos) {
+        if (!window_config.empty()) {
+            window_config.push_back('\0');
+        }
+        std::string to_add = "[Window][DC],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
+        for (size_t i = 0; i < to_add.size(); i++) {
+            if (to_add[i] == ',') {
+                window_config.push_back('\0');
             } else {
-                window_config.clear();
+                window_config.push_back(to_add[i]);
             }
         }
-
-        bool changed_window_config = false;
-
-        // Add Display Commander window config if not present
-        if (window_config.find("[Window][DC]") == std::string::npos) {
-            if (!window_config.empty()) {
-                window_config.push_back('\0');
-            }
-            std::string to_add = "[Window][DC],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,999999,";
-            for (size_t i = 0; i < to_add.size(); i++) {
-                if (to_add[i] == ',') {
-                    window_config.push_back('\0');
-                } else {
-                    window_config.push_back(to_add[i]);
-                }
-            }
-            changed_window_config = true;
-        }
-
-        // Add RenoDX window config if not present
-        if (window_config.find("[Window][RenoDX]") == std::string::npos) {
-            if (!window_config.empty()) {
-                window_config.push_back('\0');
-            }
-            std::string to_add =
-                "[Window][RenoDX],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,9999999,";
-            for (size_t i = 0; i < to_add.size(); i++) {
-                if (to_add[i] == ',') {
-                    window_config.push_back('\0');
-                } else {
-                    window_config.push_back(to_add[i]);
-                }
-            }
-
-            changed_window_config = true;
-        }
-
-        // Write back if changed
-        if (changed_window_config) {
-            reshade::set_config_value(nullptr, "OVERLAY", "Window", window_config.c_str(), window_config.size());
-            LogInfo("Updated ReShade Window config with Display Commander and RenoDX docking settings");
-        }
+        changed_window_config = true;
     }
+    if (window_config.find("[Window][RenoDX]") == std::string::npos) {
+        if (!window_config.empty()) {
+            window_config.push_back('\0');
+        }
+        std::string to_add = "[Window][RenoDX],Pos=1017,,20,Size=1344,,1255,Collapsed=0,DockId=0x00000001,,9999999,";
+        for (size_t i = 0; i < to_add.size(); i++) {
+            if (to_add[i] == ',') {
+                window_config.push_back('\0');
+            } else {
+                window_config.push_back(to_add[i]);
+            }
+        }
+        changed_window_config = true;
+    }
+    if (changed_window_config) {
+        reshade::set_config_value(nullptr, "OVERLAY", "Window", window_config.c_str(), window_config.size());
+        LogInfo("Updated ReShade Window config with Display Commander and RenoDX docking settings");
+    }
+}
 
-    // Set tutorial progress to 4 (fully viewed)
+void OverrideReShadeSettings_TutorialAndUpdates() {
     reshade::set_config_value(nullptr, "OVERLAY", "TutorialProgress", 4);
-    // LogInfo("ReShade settings override - TutorialProgress set to 4 (viewed)");
-
-    // Disable auto updates
     reshade::set_config_value(nullptr, "GENERAL", "CheckForUpdates", 0);
     LogInfo("ReShade settings override - CheckForUpdates set to 0 (disabled)");
-
-    // Disable clock display (if setting is enabled)
     if (settings::g_reshadeTabSettings.suppress_reshade_clock.GetValue()) {
         reshade::set_config_value(nullptr, "OVERLAY", "ShowClock", 0);
         LogInfo("ReShade settings override - ShowClock set to 0 (disabled)");
     }
+}
 
-    // Check if we've already set LoadFromDllMain to 0 at least once
+void OverrideReShadeSettings_LoadFromDllMainOnce() {
     bool load_from_dll_main_set_once = false;
     display_commander::config::get_config_value("DisplayCommander", "LoadFromDllMainSetOnce",
                                                 load_from_dll_main_set_once);
-
     if (!load_from_dll_main_set_once) {
-        // Get current value from ReShade.ini for logging
         int32_t current_reshade_value = 0;
         reshade::get_config_value(nullptr, "ADDON", "LoadFromDllMain", current_reshade_value);
         LogInfo("ReShade settings override - LoadFromDllMain current ReShade value: %d", current_reshade_value);
-
-        // Set LoadFromDllMain to 0 (first time only)
-        // reshade::set_config_value(nullptr, "ADDON", "LoadFromDllMain", 0);
         LogInfo("ReShade settings override - LoadFromDllMain set to 0 (first time)");
-
-        // Mark that we've set it at least once
         display_commander::config::set_config_value("DisplayCommander", "LoadFromDllMainSetOnce", true);
         display_commander::config::save_config("LoadFromDllMainSetOnce flag set");
         LogInfo("ReShade settings override - LoadFromDllMainSetOnce flag saved to DisplayCommander config");
     } else {
         LogInfo("ReShade settings override - LoadFromDllMain already set to 0 previously, skipping");
     }
+}
 
-    // Add Display Commander ReShade paths to EffectSearchPaths and TextureSearchPaths
-    {
-        wchar_t localappdata_path[MAX_PATH];
-        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
-            std::filesystem::path localappdata_dir(localappdata_path);
-            std::filesystem::path dc_base_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
-            std::filesystem::path shaders_dir = dc_base_dir / L"Shaders";
-            std::filesystem::path textures_dir = dc_base_dir / L"Textures";
-
-            // Create directories if they don't exist
-            try {
-                std::error_code ec;
-                std::filesystem::create_directories(shaders_dir, ec);
-                if (ec) {
-                    LogWarn("Failed to create shaders directory: %ls (error: %s)", shaders_dir.c_str(),
-                            ec.message().c_str());
-                } else {
-                    LogInfo("Created/verified shaders directory: %ls", shaders_dir.c_str());
-                }
-
-                std::filesystem::create_directories(textures_dir, ec);
-                if (ec) {
-                    LogWarn("Failed to create textures directory: %ls (error: %s)", textures_dir.c_str(),
-                            ec.message().c_str());
-                } else {
-                    LogInfo("Created/verified textures directory: %ls", textures_dir.c_str());
-                }
-            } catch (const std::exception& e) {
-                LogWarn("Exception while creating directories: %s", e.what());
-            }
-
-            // Helper function to add path to search paths if not already present
-            auto addPathToSearchPaths = [](const char* section, const char* key,
-                                           const std::filesystem::path& path_to_add) -> bool {
-                char buffer[4096] = {0};
-                size_t buffer_size = sizeof(buffer);
-
-                // Read current paths
-                std::vector<std::string> existing_paths;
-                if (g_reshade_loaded.load() && reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
-                    // Parse null-terminated string array
-                    const char* ptr = buffer;
-                    while (*ptr != '\0' && ptr < buffer + buffer_size) {
-                        std::string path(ptr);
-                        if (!path.empty()) {
-                            existing_paths.push_back(path);
-                        }
-                        ptr += path.length() + 1;
-                    }
-                }
-
-                // Convert path to string (use backslashes, add \** for recursive search)
-                std::string path_str = path_to_add.string();
-                path_str += "\\**";
-
-                // Helper to normalize path for comparison (remove \** suffix if present)
-                auto normalizeForComparison = [](const std::string& path) -> std::string {
-                    std::string normalized = path;
-                    // Remove trailing \** if present
-                    if (normalized.length() >= 3 && normalized.substr(normalized.length() - 3) == "\\**") {
-                        normalized = normalized.substr(0, normalized.length() - 3);
-                    }
-                    return normalized;
-                };
-
-                // Check if path already exists (case-insensitive comparison)
-                bool path_exists = false;
-                std::string normalized_path = normalizeForComparison(path_str);
-                for (const auto& existing_path : existing_paths) {
-                    std::string normalized_existing = normalizeForComparison(existing_path);
-                    // Case-insensitive comparison (check length first, then content)
-                    if (normalized_path.length() == normalized_existing.length()
-                        && std::equal(normalized_path.begin(), normalized_path.end(), normalized_existing.begin(),
-                                      [](char a, char b) { return std::tolower(a) == std::tolower(b); })) {
-                        path_exists = true;
-                        break;
-                    }
-                }
-
-                // Add path if it doesn't exist
-                if (!path_exists) {
-                    existing_paths.push_back(path_str);
-
-                    // Combine paths with null terminators
-                    std::string combined;
-                    for (const auto& path : existing_paths) {
-                        combined += path;
-                        combined += '\0';
-                    }
-
-                    // Write back to ReShade config (use array version for null-terminated strings)
-                    reshade::set_config_value(nullptr, section, key, combined.c_str(), combined.size());
-                    LogInfo("Added path to ReShade %s::%s: %s", section, key, path_str.c_str());
-                    return true;
-                } else {
-                    LogInfo("Path already exists in ReShade %s::%s: %s", section, key, normalized_path.c_str());
-                    return false;
-                }
-            };
-
-            // Add shaders path to EffectSearchPaths
-            addPathToSearchPaths("GENERAL", "EffectSearchPaths", shaders_dir);
-
-            // Add textures path to TextureSearchPaths
-            addPathToSearchPaths("GENERAL", "TextureSearchPaths", textures_dir);
-        } else {
-            LogWarn("Failed to get Documents folder path, skipping ReShade path configuration");
-        }
+void OverrideReShadeSettings_AddDisplayCommanderPaths() {
+    wchar_t localappdata_path[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+        LogWarn("Failed to get Documents folder path, skipping ReShade path configuration");
+        return;
     }
+    std::filesystem::path localappdata_dir(localappdata_path);
+    std::filesystem::path dc_base_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
+    std::filesystem::path shaders_dir = dc_base_dir / L"Shaders";
+    std::filesystem::path textures_dir = dc_base_dir / L"Textures";
+
+    try {
+        std::error_code ec;
+        std::filesystem::create_directories(shaders_dir, ec);
+        if (ec) {
+            LogWarn("Failed to create shaders directory: %ls (error: %s)", shaders_dir.c_str(), ec.message().c_str());
+        } else {
+            LogInfo("Created/verified shaders directory: %ls", shaders_dir.c_str());
+        }
+        std::filesystem::create_directories(textures_dir, ec);
+        if (ec) {
+            LogWarn("Failed to create textures directory: %ls (error: %s)", textures_dir.c_str(), ec.message().c_str());
+        } else {
+            LogInfo("Created/verified textures directory: %ls", textures_dir.c_str());
+        }
+    } catch (const std::exception& e) {
+        LogWarn("Exception while creating directories: %s", e.what());
+        return;
+    }
+
+    auto addPathToSearchPaths = [](const char* section, const char* key,
+                                   const std::filesystem::path& path_to_add) -> bool {
+        char buffer[4096] = {0};
+        size_t buffer_size = sizeof(buffer);
+        std::vector<std::string> existing_paths;
+        if ((g_reshade_module != nullptr) && reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
+            const char* ptr = buffer;
+            while (*ptr != '\0' && ptr < buffer + buffer_size) {
+                std::string path(ptr);
+                if (!path.empty()) {
+                    existing_paths.push_back(path);
+                }
+                ptr += path.length() + 1;
+            }
+        }
+        std::string path_str = path_to_add.string();
+        path_str += "\\**";
+        auto normalizeForComparison = [](const std::string& path) -> std::string {
+            std::string normalized = path;
+            if (normalized.length() >= 3 && normalized.substr(normalized.length() - 3) == "\\**") {
+                normalized = normalized.substr(0, normalized.length() - 3);
+            }
+            return normalized;
+        };
+        std::string normalized_path = normalizeForComparison(path_str);
+        for (const auto& existing_path : existing_paths) {
+            std::string normalized_existing = normalizeForComparison(existing_path);
+            if (normalized_path.length() == normalized_existing.length()
+                && std::equal(normalized_path.begin(), normalized_path.end(), normalized_existing.begin(),
+                              [](char a, char b) { return std::tolower(a) == std::tolower(b); })) {
+                LogInfo("Path already exists in ReShade %s::%s: %s", section, key, normalized_path.c_str());
+                return false;
+            }
+        }
+        existing_paths.push_back(path_str);
+        std::string combined;
+        for (const auto& path : existing_paths) {
+            combined += path;
+            combined += '\0';
+        }
+        reshade::set_config_value(nullptr, section, key, combined.c_str(), combined.size());
+        LogInfo("Added path to ReShade %s::%s: %s", section, key, path_str.c_str());
+        return true;
+    };
+
+    addPathToSearchPaths("GENERAL", "EffectSearchPaths", shaders_dir);
+    addPathToSearchPaths("GENERAL", "TextureSearchPaths", textures_dir);
+}
+}  // namespace
+
+// Override ReShade settings to set tutorial as viewed and disable auto updates
+void OverrideReShadeSettings() {
+    if (g_reshade_module == nullptr) {
+        return;  // No-ReShade mode or ReShade not loaded; skip ReShade config override
+    }
+    LogInfo("Overriding ReShade settings - Setting tutorial as viewed and disabling auto updates");
+
+    OverrideReShadeSettings_WindowConfig();
+    OverrideReShadeSettings_TutorialAndUpdates();
+    OverrideReShadeSettings_LoadFromDllMainOnce();
+    OverrideReShadeSettings_AddDisplayCommanderPaths();
 
     LogInfo("ReShade settings override completed successfully");
 }
 
 // ReShade loaded status (declared here so it's available to LoadAddonsFromPluginsDirectory)
-std::atomic<bool> g_reshade_loaded(false);
 std::atomic<bool> g_wait_and_inject_stop(false);
 
 // No-ReShade mode and standalone UI (see globals.hpp)
@@ -967,7 +881,7 @@ void CloseIndependentWindow() {
 
 // Helper function to check if an addon is enabled (whitelist approach)
 static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::string& addon_file) {
-    if (!g_reshade_loaded.load()) {
+    if (g_reshade_module == nullptr) {
         return false;
     }
     std::vector<std::string> enabled_addons;
@@ -986,41 +900,33 @@ static bool IsAddonEnabledForLoading(const std::string& addon_name, const std::s
     return false;
 }
 
-// Function to load enabled .addon64/.addon32 files from %localappdata%\Programs\Display_Commander\Reshade\Addons
-void LoadAddonsFromPluginsDirectory() {
-    OutputDebugStringA("Loading addons from Addons directory");
+namespace {
+// Get Addons dir path and create it. Returns false on failure.
+bool LoadAddonsFromPluginsDirectory_EnsureAddonsDir(std::filesystem::path& out_addons_dir) {
     wchar_t localappdata_path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         LogWarn("Failed to get LocalAppData folder path, skipping addon loading from Addons directory");
-        return;
+        return false;
     }
-
-    std::filesystem::path localappdata_dir(localappdata_path);
-    std::filesystem::path addons_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade" / L"Addons";
-
-    // Create Addons directory if it doesn't exist
+    out_addons_dir =
+        std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander" / L"Reshade" / L"Addons";
     try {
         std::error_code ec;
-        std::filesystem::create_directories(addons_dir, ec);
+        std::filesystem::create_directories(out_addons_dir, ec);
         if (ec) {
-            LogWarn("Failed to create Addons directory: %ls (error: %s)", addons_dir.c_str(), ec.message().c_str());
-            return;
-        } else {
-            LogInfo("Created/verified Addons directory: %ls", addons_dir.c_str());
+            LogWarn("Failed to create Addons directory: %ls (error: %s)", out_addons_dir.c_str(), ec.message().c_str());
+            return false;
         }
+        LogInfo("Created/verified Addons directory: %ls", out_addons_dir.c_str());
+        return true;
     } catch (const std::exception& e) {
         LogWarn("Exception while creating Addons directory: %s", e.what());
-        return;
+        return false;
     }
+}
 
-    // Check if ReShade is loaded before attempting to load addons
-    if (!g_reshade_loaded.load()) {
-        LogInfo("ReShade not loaded yet, skipping addon loading from Addons directory");
-        return;
-    }
-    OutputDebugStringA("ReShade loaded, attempting to load addons from Addons directory");
-
-    // Iterate through all files in the Addons directory
+// Iterate addons_dir and load enabled .addon64/.addon32. Updates counts and logs.
+void LoadAddonsFromPluginsDirectory_IterateAndLoad(const std::filesystem::path& addons_dir) {
     try {
         std::error_code ec;
         int loaded_count = 0;
@@ -1033,56 +939,34 @@ void LoadAddonsFromPluginsDirectory() {
                 LogWarn("Error accessing Addons directory: %s", ec.message().c_str());
                 continue;
             }
-
-            if (!entry.is_regular_file()) {
-                continue;
-            }
+            if (!entry.is_regular_file()) continue;
 
             const auto& path = entry.path();
             const auto extension = path.extension();
-
-            // Check for .addon64 (64-bit) or .addon32 (32-bit) extensions
-            if (extension != L".addon64" && extension != L".addon32") {
-                continue;
-            }
-
-            // Only load architecture-appropriate addons
+            if (extension != L".addon64" && extension != L".addon32") continue;
 #ifdef _WIN64
-            if (extension != L".addon64") {
-                continue;
-            }
+            if (extension != L".addon64") continue;
 #else
-            if (extension != L".addon32") {
-                continue;
-            }
+            if (extension != L".addon32") continue;
 #endif
-
-            // Get addon name and file name
             std::string addon_name = path.stem().string();
             std::string addon_file = path.filename().string();
-
-            // Check if addon is enabled (whitelist approach - default is disabled)
             if (!IsAddonEnabledForLoading(addon_name, addon_file)) {
                 LogInfo("Skipping disabled addon: %ls", path.c_str());
                 skipped_count++;
                 continue;
             }
-
             LogInfo("Loading enabled addon from Addons directory: %ls", path.c_str());
-
-            // Use LoadLibraryExW with search flags similar to ReShade's addon_manager
             HMODULE module = LoadLibraryExW(path.c_str(), nullptr,
                                             LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
             if (module == nullptr) {
-                DWORD error_code = GetLastError();
-                LogError("Failed to load addon from '%ls' (error: %lu)", path.c_str(), error_code);
+                LogError("Failed to load addon from '%ls' (error: %lu)", path.c_str(), GetLastError());
                 failed_count++;
             } else {
                 LogInfo("Successfully loaded addon from '%ls'", path.c_str());
                 loaded_count++;
             }
         }
-
         if (loaded_count > 0 || failed_count > 0 || skipped_count > 0) {
             LogInfo("Addon loading from Addons directory completed: %d loaded, %d failed, %d skipped (disabled)",
                     loaded_count, failed_count, skipped_count);
@@ -1091,136 +975,130 @@ void LoadAddonsFromPluginsDirectory() {
         LogWarn("Exception while loading addons from Addons directory: %s", e.what());
     }
 }
+}  // namespace
 
-// Function to detect multiple ReShade versions by scanning all modules
-void DetectMultipleReShadeVersions() {
-    LogInfo("=== ReShade Module Detection ===");
+// Function to load enabled .addon64/.addon32 files from %localappdata%\Programs\Display_Commander\Reshade\Addons
+void LoadAddonsFromPluginsDirectory() {
+    OutputDebugStringA("Loading addons from Addons directory");
+    std::filesystem::path addons_dir;
+    if (!LoadAddonsFromPluginsDirectory_EnsureAddonsDir(addons_dir)) {
+        return;
+    }
+    if (g_reshade_module == nullptr) {
+        LogInfo("ReShade not loaded yet, skipping addon loading from Addons directory");
+        return;
+    }
+    OutputDebugStringA("ReShade loaded, attempting to load addons from Addons directory");
+    LoadAddonsFromPluginsDirectory_IterateAndLoad(addons_dir);
+}
 
-    // Reset debug info
-    g_reshade_debug_info = ReShadeDetectionDebugInfo();
-
+namespace {
+// Enumerate process modules and fill g_reshade_debug_info.modules with ReShade modules. Returns false on enum failure.
+bool DetectMultipleReShadeVersions_EnumerateModules() {
     HMODULE modules[1024];
     DWORD num_modules = 0;
-
-    // Use K32EnumProcessModules for safe enumeration from DllMain
     if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
         DWORD error = GetLastError();
         LogWarn("Failed to enumerate process modules: %lu", error);
         g_reshade_debug_info.error_message = "Failed to enumerate process modules: " + std::to_string(error);
+        return false;
+    }
+    if (num_modules > sizeof(modules)) {
+        num_modules = static_cast<DWORD>(sizeof(modules));
+    }
+    LogInfo("Scanning %lu modules for ReShade...", num_modules / sizeof(HMODULE));
+    int reshade_module_count = 0;
+    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
+        HMODULE module = modules[i];
+        if (module == nullptr) continue;
+        FARPROC register_func = GetProcAddress(module, "ReShadeRegisterAddon");
+        FARPROC unregister_func = GetProcAddress(module, "ReShadeUnregisterAddon");
+        if (register_func == nullptr || unregister_func == nullptr) continue;
+
+        reshade_module_count++;
+        ReShadeModuleInfo module_info;
+        module_info.handle = module;
+        wchar_t module_path[MAX_PATH];
+        DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
+
+        if (path_length > 0) {
+            char narrow_path[MAX_PATH];
+            WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
+            module_info.path = narrow_path;
+            LogInfo("Found ReShade module #%d: 0x%p - %s", reshade_module_count, module, narrow_path);
+
+            DWORD version_dummy = 0;
+            DWORD version_size = GetFileVersionInfoSizeW(module_path, &version_dummy);
+            if (version_size > 0) {
+                std::vector<uint8_t> version_data(version_size);
+                if (GetFileVersionInfoW(module_path, version_dummy, version_size, version_data.data()) != 0) {
+                    VS_FIXEDFILEINFO* version_info = nullptr;
+                    UINT version_info_size = 0;
+                    if (VerQueryValueW(version_data.data(), L"\\", reinterpret_cast<LPVOID*>(&version_info),
+                                       &version_info_size) != 0
+                        && version_info != nullptr) {
+                        char version_str[64];
+                        snprintf(version_str, sizeof(version_str), "%hu.%hu.%hu.%hu",
+                                 HIWORD(version_info->dwFileVersionMS), LOWORD(version_info->dwFileVersionMS),
+                                 HIWORD(version_info->dwFileVersionLS), LOWORD(version_info->dwFileVersionLS));
+                        module_info.version = version_str;
+                        module_info.is_version_662_or_above = IsVersion662OrAbove(version_str);
+                        LogInfo("  Version: %s", version_str);
+                        LogInfo("  Version 6.6.2+: %s", module_info.is_version_662_or_above ? "Yes" : "No");
+                    }
+                }
+            }
+            FARPROC imgui_func = GetProcAddress(module, "ReShadeGetImGuiFunctionTable");
+            module_info.has_imgui_support = (imgui_func != nullptr);
+            LogInfo("  ImGui Support: %s", imgui_func != nullptr ? "Yes" : "No");
+            if (module_info.version.empty()) {
+                module_info.is_version_662_or_above = false;
+                LogInfo("  Version 6.6.2+: No (version unknown)");
+            }
+        } else {
+            module_info.path = "(path unavailable)";
+            LogInfo("Found ReShade module #%d: 0x%p - (path unavailable)", reshade_module_count, module);
+        }
+        g_reshade_debug_info.modules.push_back(module_info);
+    }
+    return true;
+}
+}  // namespace
+
+// Function to detect multiple ReShade versions by scanning all modules
+void DetectMultipleReShadeVersions() {
+    LogInfo("=== ReShade Module Detection ===");
+    g_reshade_debug_info = ReShadeDetectionDebugInfo();
+
+    if (!DetectMultipleReShadeVersions_EnumerateModules()) {
         g_reshade_debug_info.detection_completed = true;
         return;
     }
 
-    if (num_modules > sizeof(modules)) {
-        num_modules = static_cast<DWORD>(sizeof(modules));
-    }
-
-    int reshade_module_count = 0;
-    std::vector<HMODULE> reshade_modules;
-
-    LogInfo("Scanning %lu modules for ReShade...", num_modules / sizeof(HMODULE));
-
-    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
-        HMODULE module = modules[i];
-        if (module == nullptr) continue;
-
-        // Check if this module has ReShadeRegisterAddon
-        FARPROC register_func = GetProcAddress(module, "ReShadeRegisterAddon");
-        FARPROC unregister_func = GetProcAddress(module, "ReShadeUnregisterAddon");
-
-        if (register_func != nullptr && unregister_func != nullptr) {
-            reshade_module_count++;
-            reshade_modules.push_back(module);
-
-            // Create module info for debug storage
-            ReShadeModuleInfo module_info;
-            module_info.handle = module;
-
-            // Get module file path for detailed logging
-            wchar_t module_path[MAX_PATH];
-            DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
-
-            if (path_length > 0) {
-                // Convert wide string to narrow string for logging
-                char narrow_path[MAX_PATH];
-                WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
-                module_info.path = narrow_path;
-
-                LogInfo("Found ReShade module #%d: 0x%p - %s", reshade_module_count, module, narrow_path);
-
-                // Try to get version information
-                DWORD version_dummy = 0;
-                DWORD version_size = GetFileVersionInfoSizeW(module_path, &version_dummy);
-                if (version_size > 0) {
-                    std::vector<uint8_t> version_data(version_size);
-                    if (GetFileVersionInfoW(module_path, version_dummy, version_size, version_data.data()) != 0) {
-                        VS_FIXEDFILEINFO* version_info = nullptr;
-                        UINT version_info_size = 0;
-                        if (VerQueryValueW(version_data.data(), L"\\", reinterpret_cast<LPVOID*>(&version_info),
-                                           &version_info_size)
-                                != 0
-                            && version_info != nullptr) {
-                            char version_str[64];
-                            snprintf(version_str, sizeof(version_str), "%hu.%hu.%hu.%hu",
-                                     HIWORD(version_info->dwFileVersionMS), LOWORD(version_info->dwFileVersionMS),
-                                     HIWORD(version_info->dwFileVersionLS), LOWORD(version_info->dwFileVersionLS));
-                            module_info.version = version_str;
-                            module_info.is_version_662_or_above = IsVersion662OrAbove(version_str);
-                            LogInfo("  Version: %s", version_str);
-                            LogInfo("  Version 6.6.2+: %s", module_info.is_version_662_or_above ? "Yes" : "No");
-                        }
-                    }
-                }
-
-                // Check if this module also has ReShadeGetImGuiFunctionTable
-                FARPROC imgui_func = GetProcAddress(module, "ReShadeGetImGuiFunctionTable");
-                module_info.has_imgui_support = (imgui_func != nullptr);
-                LogInfo("  ImGui Support: %s", imgui_func != nullptr ? "Yes" : "No");
-
-                // If version extraction failed, set compatibility to false
-                if (module_info.version.empty()) {
-                    module_info.is_version_662_or_above = false;
-                    LogInfo("  Version 6.6.2+: No (version unknown)");
-                }
-
-            } else {
-                module_info.path = "(path unavailable)";
-                LogInfo("Found ReShade module #%d: 0x%p - (path unavailable)", reshade_module_count, module);
-            }
-
-            // Store module info for debug display
-            g_reshade_debug_info.modules.push_back(module_info);
-        }
-    }
-
+    const int reshade_module_count = static_cast<int>(g_reshade_debug_info.modules.size());
     LogInfo("=== ReShade Detection Complete ===");
     LogInfo("Total ReShade modules found: %d", reshade_module_count);
 
-    // Check if any module meets version requirements
     bool has_compatible_version = false;
-    for (const auto& module : g_reshade_debug_info.modules) {
-        if (module.is_version_662_or_above) {
+    for (const auto& m : g_reshade_debug_info.modules) {
+        if (m.is_version_662_or_above) {
             has_compatible_version = true;
-            LogInfo("Found compatible ReShade version: %s", module.version.c_str());
+            LogInfo("Found compatible ReShade version: %s", m.version.c_str());
             break;
         }
     }
-
     if (!has_compatible_version && !g_reshade_debug_info.modules.empty()) {
         LogWarn("No ReShade modules found with version 6.6.2 or above");
     }
 
-    // Update debug info
     g_reshade_debug_info.total_modules_found = reshade_module_count;
     g_reshade_debug_info.detection_completed = true;
 
     if (reshade_module_count > 1) {
         LogWarn("WARNING: Multiple ReShade versions detected! This may cause conflicts.");
         LogWarn("Found %d ReShade modules - only the first one will be used for registration.", reshade_module_count);
-
-        // Log warning about potential conflicts
-        for (size_t i = 0; i < reshade_modules.size(); ++i) {
-            LogWarn("  ReShade module %zu: 0x%p", i + 1, reshade_modules[i]);
+        for (size_t i = 0; i < g_reshade_debug_info.modules.size(); ++i) {
+            LogWarn("  ReShade module %zu: 0x%p", i + 1, g_reshade_debug_info.modules[i].handle);
         }
     } else if (reshade_module_count == 1) {
         LogInfo("Single ReShade module detected - proceeding with registration.");
@@ -1230,196 +1108,174 @@ void DetectMultipleReShadeVersions() {
     }
 }
 
-// Function to detect multiple Display Commander versions by scanning all modules
-// Returns true if multiple versions detected (should refuse to load), false otherwise
-bool DetectMultipleDisplayCommanderVersions() {
-    // Type definition for the version export function
+namespace {
+struct OtherDcModuleInfo {
+    HMODULE module = nullptr;
+    std::string path;
+    std::string version;
+    LONGLONG load_time_ns = 0;
+    bool has_load_time = false;
+};
+
+// Enumerate modules and collect other Display Commander instances. Returns false on enum failure.
+bool DetectMultipleDisplayCommanderVersions_Collect(std::vector<OtherDcModuleInfo>& out) {
     typedef const char* (*GetDisplayCommanderVersionFunc)();
-    // Type definition for the load timestamp export function
     typedef LONGLONG (*GetLoadedNsFunc)();
 
     HMODULE modules[1024];
     DWORD num_modules = 0;
-
-    // Use K32EnumProcessModules for safe enumeration
     if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules) == 0) {
         DWORD error = GetLastError();
-        // Use OutputDebugStringA since logging might not be initialized yet
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg),
                  "[DisplayCommander] Failed to enumerate process modules for Display Commander detection: %lu\n",
                  error);
         OutputDebugStringA(error_msg);
-        return false;  // Can't detect, so allow loading
+        return false;
     }
-
     if (num_modules > sizeof(modules)) {
         num_modules = static_cast<DWORD>(sizeof(modules));
     }
-
-    int dc_module_count = 0;
     HMODULE current_module = g_hmodule;
-    LONGLONG current_load_time_ns = g_dll_load_time_ns.load(std::memory_order_acquire);
-    bool should_refuse_load = false;
+    out.clear();
 
-    // Use OutputDebugStringA for early detection logging
     char scan_msg[256];
     snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] === Display Commander Module Detection ===\n");
     OutputDebugStringA(scan_msg);
     snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] Scanning %u modules for Display Commander...\n",
              static_cast<unsigned int>(num_modules / sizeof(HMODULE)));
     OutputDebugStringA(scan_msg);
+
+    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
+        HMODULE module = modules[i];
+        if (module == nullptr || module == current_module) continue;
+
+        GetDisplayCommanderVersionFunc version_func =
+            reinterpret_cast<GetDisplayCommanderVersionFunc>(GetProcAddress(module, "GetDisplayCommanderVersion"));
+        if (version_func == nullptr) continue;
+
+        OtherDcModuleInfo info;
+        info.module = module;
+        wchar_t module_path[MAX_PATH];
+        DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
+        if (path_length > 0) {
+            char narrow_path[MAX_PATH];
+            WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
+            info.path = narrow_path;
+        } else {
+            info.path = "(path unavailable)";
+        }
+        const char* other_version = version_func();
+        info.version = other_version ? other_version : "(unknown)";
+
+        GetLoadedNsFunc loaded_ns_func = reinterpret_cast<GetLoadedNsFunc>(GetProcAddress(module, "LoadedNs"));
+        if (loaded_ns_func != nullptr) {
+            info.load_time_ns = loaded_ns_func();
+            info.has_load_time = (info.load_time_ns > 0);
+        }
+        out.push_back(info);
+    }
+    return true;
+}
+
+// Log, notify other instances, set g_other_dc_version_detected and should_refuse_load.
+void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcModuleInfo>& others,
+                                                    LONGLONG current_load_time_ns, bool& should_refuse_load) {
+    const char* current_version = DISPLAY_COMMANDER_VERSION_STRING;
+    typedef void (*NotifyMultipleVersionsFunc)(const char*);
+
+    for (size_t idx = 0; idx < others.size(); ++idx) {
+        const OtherDcModuleInfo& info = others[idx];
+        int one_based = static_cast<int>(idx) + 1;
+        char found_msg[512];
+        snprintf(found_msg, sizeof(found_msg), "[DisplayCommander] Found Display Commander module #%d: 0x%p - %s\n",
+                 one_based, info.module, info.path.c_str());
+        OutputDebugStringA(found_msg);
+        snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other version: %s\n", info.version.c_str());
+        OutputDebugStringA(found_msg);
+        snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current version: %s\n", current_version);
+        OutputDebugStringA(found_msg);
+
+        if (info.has_load_time) {
+            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other load time: %lld ns\n", info.load_time_ns);
+            OutputDebugStringA(found_msg);
+            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current load time: %lld ns\n",
+                     current_load_time_ns);
+            OutputDebugStringA(found_msg);
+            if (info.load_time_ns < current_load_time_ns) {
+                snprintf(found_msg, sizeof(found_msg),
+                         "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
+                         "Refusing to load current instance.\n",
+                         current_load_time_ns - info.load_time_ns);
+                OutputDebugStringA(found_msg);
+            } else {
+                snprintf(found_msg, sizeof(found_msg),
+                         "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: %lld "
+                         "ns). Allowing current instance to load.\n",
+                         info.load_time_ns - current_load_time_ns);
+                OutputDebugStringA(found_msg);
+            }
+        } else {
+            OutputDebugStringA("[DisplayCommander]   Load timestamp not available from other instance.\n");
+        }
+
+        if (!info.version.empty() && info.version != "(unknown)") {
+            ::g_other_dc_version_detected.store(std::make_shared<const std::string>(info.version));
+
+            NotifyMultipleVersionsFunc notify_func = reinterpret_cast<NotifyMultipleVersionsFunc>(
+                GetProcAddress(info.module, "NotifyDisplayCommanderMultipleVersions"));
+            if (notify_func != nullptr) {
+                notify_func(current_version);
+                OutputDebugStringA("[DisplayCommander] Notified other instance of multiple versions.\n");
+            }
+
+            bool instance_should_refuse = false;
+            if (info.has_load_time && info.load_time_ns < current_load_time_ns) {
+                instance_should_refuse = true;
+                should_refuse_load = true;
+            }
+            if (instance_should_refuse) {
+                char error_msg[512];
+                snprintf(
+                    error_msg, sizeof(error_msg),
+                    "[Display Commander] ERROR: Multiple Display Commander instances detected! "
+                    "Other instance: v%s at %s (loaded at %lld ns), Current instance: v%s (loaded at %lld ns). "
+                    "Other instance was loaded first - refusing to load current instance to prevent conflicts.",
+                    info.version.c_str(), info.path.c_str(), info.load_time_ns, current_version, current_load_time_ns);
+                OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
+                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
+                         info.version.c_str(), info.path.c_str());
+                OutputDebugStringA(found_msg);
+                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current instance: v%s\n", current_version);
+                OutputDebugStringA(found_msg);
+                OutputDebugStringA("[DisplayCommander] Refusing to load to prevent conflicts.\n");
+            }
+        }
+    }
+}
+}  // namespace
+
+// Function to detect multiple Display Commander versions by scanning all modules
+// Returns true if multiple versions detected (should refuse to load), false otherwise
+bool DetectMultipleDisplayCommanderVersions() {
+    std::vector<OtherDcModuleInfo> others;
+    if (!DetectMultipleDisplayCommanderVersions_Collect(others)) {
+        return false;
+    }
+
+    LONGLONG current_load_time_ns = g_dll_load_time_ns.load(std::memory_order_acquire);
+    char scan_msg[256];
     snprintf(scan_msg, sizeof(scan_msg), "[DisplayCommander] Current instance load time: %lld ns\n",
              current_load_time_ns);
     OutputDebugStringA(scan_msg);
 
-    for (DWORD i = 0; i < num_modules / sizeof(HMODULE); ++i) {
-        HMODULE module = modules[i];
-        if (module == nullptr) continue;
+    bool should_refuse_load = false;
+    DetectMultipleDisplayCommanderVersions_Resolve(others, current_load_time_ns, should_refuse_load);
 
-        // Skip the current module (ourselves)
-        if (module == current_module) {
-            continue;
-        }
-
-        // Check if this module has GetDisplayCommanderVersion export
-        GetDisplayCommanderVersionFunc version_func =
-            reinterpret_cast<GetDisplayCommanderVersionFunc>(GetProcAddress(module, "GetDisplayCommanderVersion"));
-
-        if (version_func != nullptr) {
-            dc_module_count++;
-
-            // Get module file path for logging
-            wchar_t module_path[MAX_PATH];
-            DWORD path_length = GetModuleFileNameW(module, module_path, MAX_PATH);
-
-            char narrow_path[MAX_PATH] = "(path unavailable)";
-            if (path_length > 0) {
-                // Convert wide string to narrow string for logging
-                WideCharToMultiByte(CP_UTF8, 0, module_path, -1, narrow_path, MAX_PATH, nullptr, nullptr);
-            }
-
-            // Get version string from the other instance
-            const char* other_version = version_func();
-            const char* current_version = DISPLAY_COMMANDER_VERSION_STRING;
-
-            // Get load timestamp from the other instance
-            GetLoadedNsFunc loaded_ns_func = reinterpret_cast<GetLoadedNsFunc>(GetProcAddress(module, "LoadedNs"));
-            LONGLONG other_load_time_ns = 0;
-            bool has_load_time = false;
-            if (loaded_ns_func != nullptr) {
-                other_load_time_ns = loaded_ns_func();
-                has_load_time = (other_load_time_ns > 0);
-            }
-
-            // Log to debug output
-            char found_msg[512];
-            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander] Found Display Commander module #%d: 0x%p - %s\n",
-                     dc_module_count, module, narrow_path);
-            OutputDebugStringA(found_msg);
-            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other version: %s\n",
-                     other_version ? other_version : "(unknown)");
-            OutputDebugStringA(found_msg);
-            snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current version: %s\n", current_version);
-            OutputDebugStringA(found_msg);
-
-            if (has_load_time) {
-                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other load time: %lld ns\n",
-                         other_load_time_ns);
-                OutputDebugStringA(found_msg);
-                snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current load time: %lld ns\n",
-                         current_load_time_ns);
-                OutputDebugStringA(found_msg);
-
-                // Compare load timestamps to determine which DLL was loaded first
-                if (other_load_time_ns < current_load_time_ns) {
-                    // Other instance was loaded first - we should refuse to load
-                    snprintf(
-                        found_msg, sizeof(found_msg),
-                        "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
-                        "Refusing to load current instance.\n",
-                        current_load_time_ns - other_load_time_ns);
-                    OutputDebugStringA(found_msg);
-                } else {
-                    // We were loaded first - allow loading but notify the other instance
-                    snprintf(found_msg, sizeof(found_msg),
-                             "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: "
-                             "%lld ns). "
-                             "Allowing current instance to load.\n",
-                             other_load_time_ns - current_load_time_ns);
-                    OutputDebugStringA(found_msg);
-                }
-            } else {
-                OutputDebugStringA("[DisplayCommander]   Load timestamp not available from other instance.\n");
-            }
-
-            // Compare versions (simple string comparison - assumes semantic versioning)
-            if (other_version != nullptr) {
-                // Store the other version in our global atomic for UI display
-                extern std::atomic<std::shared_ptr<const std::string>> g_other_dc_version_detected;
-                auto version_str = std::make_shared<const std::string>(other_version);
-                g_other_dc_version_detected.store(version_str);
-
-                // Try to notify the other instance about multiple versions
-                typedef void (*NotifyMultipleVersionsFunc)(const char*);
-                NotifyMultipleVersionsFunc notify_func = reinterpret_cast<NotifyMultipleVersionsFunc>(
-                    GetProcAddress(module, "NotifyDisplayCommanderMultipleVersions"));
-
-                if (notify_func != nullptr) {
-                    // Call the notification function on the other instance with our version
-                    notify_func(current_version);
-                    OutputDebugStringA("[DisplayCommander] Notified other instance of multiple versions.\n");
-                }
-
-                // Resolve conflict based on load timestamps
-                bool instance_should_refuse = false;
-                if (has_load_time) {
-                    // If other instance was loaded first, refuse to load
-                    if (other_load_time_ns < current_load_time_ns) {
-                        instance_should_refuse = true;
-                        should_refuse_load = true;  // Set global flag
-                    }
-                } /* else {
-                    // If we can't determine load order, it will be set to greater value than current instance
-                    instance_should_refuse = true;
-                    should_refuse_load = true;  // Set global flag
-                }*/
-
-                if (instance_should_refuse) {
-                    // Log to ReShade's log as error (exception to the rule) if ReShade is available
-                    char error_msg[512];
-                    if (has_load_time) {
-                        snprintf(
-                            error_msg, sizeof(error_msg),
-                            "[Display Commander] ERROR: Multiple Display Commander instances detected! "
-                            "Other instance: v%s at %s (loaded at %lld ns), Current instance: v%s (loaded at %lld ns). "
-                            "Other instance was loaded first - refusing to load current instance to prevent conflicts.",
-                            other_version, narrow_path, other_load_time_ns, current_version, current_load_time_ns);
-                    } else {
-                        snprintf(error_msg, sizeof(error_msg),
-                                 "[Display Commander] ERROR: Multiple Display Commander instances detected! "
-                                 "Other instance: v%s at %s, Current instance: v%s. "
-                                 "Cannot determine load order - refusing to load to prevent conflicts. Please ensure "
-                                 "only one version is loaded.",
-                                 other_version, narrow_path, current_version);
-                    }
-                    // Also log to debug output
-                    OutputDebugStringA("[DisplayCommander] ERROR: Multiple Display Commander instances detected!\n");
-                    snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Other instance: v%s at %s\n",
-                             other_version, narrow_path);
-                    OutputDebugStringA(found_msg);
-                    snprintf(found_msg, sizeof(found_msg), "[DisplayCommander]   Current instance: v%s\n",
-                             current_version);
-                    OutputDebugStringA(found_msg);
-                    OutputDebugStringA("[DisplayCommander] Refusing to load to prevent conflicts.\n");
-                }
-            }
-        }
-    }
-
-    // Log completion
+    const int dc_module_count = static_cast<int>(others.size());
     char complete_msg[256];
-    snprintf(complete_msg, sizeof(complete_msg), "[DisplayCommander] === Display Commander Detection Complete ===\n");
+    snprintf(complete_msg, sizeof(complete_msg),
+             "[DisplayCommander] === Display Commander Detection Complete ===\n");
     OutputDebugStringA(complete_msg);
     snprintf(complete_msg, sizeof(complete_msg),
              "[DisplayCommander] Total Display Commander modules found: %d (excluding current)\n", dc_module_count);
@@ -1428,19 +1284,16 @@ bool DetectMultipleDisplayCommanderVersions() {
     if (should_refuse_load) {
         OutputDebugStringA(
             "[DisplayCommander] WARNING: Multiple Display Commander versions detected! Refusing to load.\n");
-        return true;  // Multiple versions detected and we should refuse - refuse to load
+        return true;
     }
-
     if (dc_module_count > 0) {
-        // Other instances found but we were loaded first - allow loading
         OutputDebugStringA(
             "[DisplayCommander] INFO: Multiple Display Commander versions detected, but current instance was loaded "
             "first. Allowing load.\n");
     } else {
         OutputDebugStringA("[DisplayCommander] Single Display Commander instance detected - no conflicts.\n");
     }
-
-    return false;  // No conflicts or we were loaded first - allow loading
+    return false;
 }
 
 // Version compatibility check function
@@ -1535,160 +1388,123 @@ bool CheckReShadeVersionCompatibility() {
     return false;
 }
 
+namespace {
+void HandleSafemode_WaitForDlls(const std::string& dlls_to_load) {
+    if (dlls_to_load.empty()) {
+        return;
+    }
+    LogInfo("Waiting for DLLs to load before Display Commander: %s", dlls_to_load.c_str());
+    std::string dlls(dlls_to_load);
+    std::replace(dlls.begin(), dlls.end(), ';', ',');
+    std::istringstream iss(dlls);
+    std::string dll_name;
+    const int max_wait_time_ms = 30000;
+    const int check_interval_ms = 100;
+
+    while (std::getline(iss, dll_name, ',')) {
+        dll_name.erase(0, dll_name.find_first_not_of(" \t\n\r"));
+        dll_name.erase(dll_name.find_last_not_of(" \t\n\r") + 1);
+        if (dll_name.empty()) {
+            continue;
+        }
+        std::wstring w_dll_name(dll_name.begin(), dll_name.end());
+        LogInfo("Waiting for DLL to load: %s", dll_name.c_str());
+        int waited_ms = 0;
+        bool dll_loaded = false;
+        while (waited_ms < max_wait_time_ms) {
+            HMODULE hMod = GetModuleHandleW(w_dll_name.c_str());
+            if (hMod != nullptr) {
+                LogInfo("DLL loaded successfully: %s (0x%p)", dll_name.c_str(), hMod);
+                dll_loaded = true;
+                break;
+            }
+            Sleep(check_interval_ms);
+            waited_ms += check_interval_ms;
+        }
+        if (!dll_loaded) {
+            LogWarn("Timeout waiting for DLL to load: %s (waited %d ms)", dll_name.c_str(), waited_ms);
+        }
+    }
+    LogInfo("Finished waiting for DLLs to load");
+}
+
+void HandleSafemode_ApplySafemodeSettings() {
+    LogInfo(
+        "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook "
+        "initialization, and Streamline loading");
+    settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kNoChanges));
+    s_window_mode.store(WindowMode::kNoChanges);
+    settings::g_advancedTabSettings.continue_rendering.SetValue(false);
+    settings::g_mainTabSettings.fps_limiter_enabled.SetValue(false);
+    s_fps_limiter_enabled.store(false);
+    ui::monitor_settings::g_setting_auto_apply_resolution.SetValue(false);
+    ui::monitor_settings::g_setting_auto_apply_refresh.SetValue(false);
+    ui::monitor_settings::g_setting_apply_display_settings_at_start.SetValue(false);
+    settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(true);
+    settings::g_advancedTabSettings.SaveAll();
+    LogInfo(
+        "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter disabled "
+        "(checkbox off), XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, "
+        "_nvngx loading disabled, nvapi64 loading disabled, XInput loading disabled");
+}
+
+void HandleSafemode_ApplyNonSafemodeSettings() {
+    settings::g_advancedTabSettings.safemode.SetValue(false);
+    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+        settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(false);
+    }
+    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()) {
+        settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.SetValue(false);
+    }
+    settings::g_advancedTabSettings.SaveAll();
+    LogInfo("Safemode not enabled - setting to 0 for config visibility");
+}
+}  // namespace
+
 // Safemode function - handles safemode logic
 void HandleSafemode() {
-    // Developer settings already loaded at startup
     bool safemode_enabled = settings::g_advancedTabSettings.safemode.GetValue();
-
-    // Wait for DLLs to load before Display Commander
     std::string dlls_to_load = settings::g_advancedTabSettings.dlls_to_load_before.GetValue();
-    if (!dlls_to_load.empty()) {
-        LogInfo("Waiting for DLLs to load before Display Commander: %s", dlls_to_load.c_str());
 
-        // Replace semicolons with commas to support both separators
-        std::replace(dlls_to_load.begin(), dlls_to_load.end(), ';', ',');
+    HandleSafemode_WaitForDlls(dlls_to_load);
 
-        // Parse comma-separated DLL list
-        std::istringstream iss(dlls_to_load);
-        std::string dll_name;
-        const int max_wait_time_ms = 30000;  // Maximum 30 seconds per DLL
-        const int check_interval_ms = 100;   // Check every 100ms
-
-        while (std::getline(iss, dll_name, ',')) {
-            // Trim whitespace
-            dll_name.erase(0, dll_name.find_first_not_of(" \t\n\r"));
-            dll_name.erase(dll_name.find_last_not_of(" \t\n\r") + 1);
-
-            if (dll_name.empty()) {
-                continue;
-            }
-
-            // Convert to wide string for GetModuleHandleW
-            std::wstring w_dll_name(dll_name.begin(), dll_name.end());
-
-            LogInfo("Waiting for DLL to load: %s", dll_name.c_str());
-
-            // Wait for DLL to be loaded (with timeout per DLL)
-            int waited_ms = 0;
-            bool dll_loaded = false;
-            while (waited_ms < max_wait_time_ms) {
-                HMODULE hMod = GetModuleHandleW(w_dll_name.c_str());
-                if (hMod != nullptr) {
-                    LogInfo("DLL loaded successfully: %s (0x%p)", dll_name.c_str(), hMod);
-                    dll_loaded = true;
-                    break;
-                }
-
-                Sleep(check_interval_ms);
-                waited_ms += check_interval_ms;
-            }
-
-            if (!dll_loaded) {
-                LogWarn("Timeout waiting for DLL to load: %s (waited %d ms)", dll_name.c_str(), waited_ms);
-            }
-        }
-
-        LogInfo("Finished waiting for DLLs to load");
-    }
-
-    // Apply DLL loading delay if configured
     int delay_ms = settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue();
     if (delay_ms > 0) {
         LogInfo("DLL loading delay: waiting %d ms before installing LoadLibrary hooks", delay_ms);
         Sleep(delay_ms);
         LogInfo("DLL loading delay complete, proceeding with initialization");
     }
-    // rewrite settings::g_advancedTabSettings.dll_loading_delay_ms
     settings::g_advancedTabSettings.dll_loading_delay_ms.SetValue(
         settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue());
 
     if (safemode_enabled) {
-        LogInfo(
-            "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook "
-            "initialization, and "
-            "Streamline loading");
-
-        // Set safemode to 0 (force set to 0)
-        // settings::g_advancedTabSettings.safemode.SetValue(false);
-        settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kNoChanges));
-        s_window_mode.store(WindowMode::kNoChanges);
-        settings::g_advancedTabSettings.continue_rendering.SetValue(false);
-
-        settings::g_mainTabSettings.fps_limiter_enabled.SetValue(false);
-        s_fps_limiter_enabled.store(false);
-
-        // Disable all auto-apply settings
-        ui::monitor_settings::g_setting_auto_apply_resolution.SetValue(false);
-        ui::monitor_settings::g_setting_auto_apply_refresh.SetValue(false);
-        ui::monitor_settings::g_setting_apply_display_settings_at_start.SetValue(false);
-
-        // Disable XInput hooks
-        settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(true);
-
-        // Enable MinHook suppression
-        // settings::g_advancedTabSettings.suppress_minhook.SetValue(true);
-
-        // Save the changes
-        settings::g_advancedTabSettings.SaveAll();
-
-        LogInfo(
-            "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter disabled "
-            "(checkbox off), XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, "
-            "_nvngx "
-            "loading disabled, nvapi64 loading "
-            "disabled, XInput loading disabled");
+        HandleSafemode_ApplySafemodeSettings();
     } else {
-        // If unset, force set to 0 so it appears in config
-        settings::g_advancedTabSettings.safemode.SetValue(false);
-
-        // forces entry to be saved to config
-        if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
-            settings::g_experimentalTabSettings.d3d9_flipex_enabled.SetValue(false);
-        }
-        if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()) {
-            settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.SetValue(false);
-        }
-        settings::g_advancedTabSettings.SaveAll();
-
-        LogInfo("Safemode not enabled - setting to 0 for config visibility");
+        HandleSafemode_ApplyNonSafemodeSettings();
     }
 }
 
-void DoInitializationWithoutHwndSafe(HMODULE h_module) {
-    // Initialize config system now (safe to start threads here, after DLLMain)
-
-    // Setup high-resolution timer for maximum precision
+namespace {
+void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     if (utils::setup_high_resolution_timer()) {
         LogInfo("High-resolution timer setup successful");
     } else {
         LogWarn("Failed to setup high-resolution timer");
     }
-
     LogInfo("DLLMain (DisplayCommander) %lld h_module: 0x%p", utils::get_now_ns(),
             reinterpret_cast<uintptr_t>(h_module));
-
-    // Load all settings at startup
     settings::LoadAllSettingsAtStartup();
-
-    // Install LoadLibrary hooks as early as possible so DLSS override can redirect before the game loads nvngx_*.dll
     display_commanderhooks::InstallLoadLibraryHooks();
-
-    // Log current logging level (always logs, even if logging is disabled)
     LogCurrentLogLevel();
-
-    // Disable DPI scaling early (before hooks) if enabled
     if (settings::g_advancedTabSettings.disable_dpi_scaling.GetValue()) {
         display_commander::display::dpi::DisableDPIScaling();
         LogInfo("DPI scaling disabled - process is now DPI-aware");
     }
-
     HandleSafemode();
 
-    // Pin the module to prevent premature unload (unless suppressed by config)
     bool suppress_pin_module = false;
     display_commander::config::get_config_value_ensure_exists("DisplayCommander.Safemode", "SuppressPinModule",
                                                               suppress_pin_module, false);
-
     if (!suppress_pin_module) {
         HMODULE pinned_module = nullptr;
         if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
@@ -1705,56 +1521,36 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
         LogInfo("Module pinning suppressed by config (SuppressPinModule=true)");
         g_module_pinned.store(false);
     }
-    // Install process-exit safety hooks to restore display on abnormal exits
     process_exit_hooks::Initialize();
-
     LogInfo("DLL initialization complete - DXGI calls now enabled");
-
-    // Install API hooks for continue rendering
     LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
     display_commanderhooks::InstallApiHooks();
-
-    // When used as dxgi proxy: hook real dxgi.dll CreateDXGIFactory2 with MinHook (not in DllMain)
     InstallRealDXGIMinHookHooks();
-
     g_dll_initialization_complete.store(true);
-    // Override ReShade settings early to set tutorial as viewed and disable auto updates
     OverrideReShadeSettings();
+}
 
-    // Install XInput hooks
+void DoInitializationWithoutHwndSafe_Late() {
     display_commanderhooks::InstallXInputHooks(nullptr);
-
-    // Initialize display cache
     display_cache::g_displayCache.Initialize();
-
-    // Capture initial display state for restoration
     display_initial_state::g_initialDisplayState.CaptureInitialState();
-
-    // Initialize input remapping system
     display_commander::input_remapping::initialize_input_remapping();
-
-    // Initialize UI system
     ui::new_ui::InitializeNewUISystem();
     StartContinuousMonitoring();
     StartGPUCompletionMonitoring();
-
-    // Initialize refresh rate monitoring
     dxgi::fps_limiter::StartRefreshRateMonitoring();
-
-    // Initialize experimental tab
     std::thread(RunBackgroundAudioMonitor).detach();
-
-    // Check for auto-enable NVAPI features for specific games
     g_nvapiFullscreenPrevention.CheckAndAutoEnable();
-
     ui::new_ui::InitExperimentalTab();
-
-    // Initialize DualSense support
     display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
-
-    // Initialize keyboard tracking system
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
+}
+}  // namespace
+
+void DoInitializationWithoutHwndSafe(HMODULE h_module) {
+    DoInitializationWithoutHwndSafe_Early(h_module);
+    DoInitializationWithoutHwndSafe_Late();
 }
 
 void DoInitializationWithoutHwnd(HMODULE h_module) {
@@ -1838,492 +1634,400 @@ void DoInitializationWithoutHwnd(HMODULE h_module) {
 constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander_InjectionActive";
 constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_InjectionStop";
 
+namespace {
+enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess };
+
+std::wstring ProcessAttach_GetConfigDirectoryW() {
+    wchar_t exe_path[MAX_PATH];
+    if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) return L"";
+    return std::filesystem::path(exe_path).parent_path().wstring();
+}
+
+void ProcessAttach_CheckNoReShadeMode() {
+    const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
+    if (dc_config_dir.empty()) return;
+    std::filesystem::path no_reshade(dc_config_dir + L"\\.NO_RESHADE");
+    std::filesystem::path noreshade(dc_config_dir + L"\\.NORESHADE");
+    if (std::filesystem::exists(no_reshade) || std::filesystem::exists(noreshade)) {
+        g_no_reshade_mode.store(true);
+        OutputDebugStringA(
+            "[DisplayCommander] .NO_RESHADE/.NORESHADE found - ReShade will not be loaded; standalone "
+            "settings UI will start.\n");
+    }
+}
+
+void ProcessAttach_DetectReShadeInModules() {
+    HMODULE modules[1024];
+    DWORD num_modules_bytes = 0;
+    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) == 0) return;
+    DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
+                                          static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
+    for (DWORD i = 0; i < num_modules; i++) {
+        if (modules[i] == nullptr) continue;
+        FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
+        if (register_func != nullptr) {
+            g_reshade_module = modules[i];
+            OutputDebugStringA("ReShadeRegisterAddon found");
+            break;
+        }
+    }
+}
+
+void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
+    WCHAR addon_path[MAX_PATH];
+    if (GetModuleFileNameW(h_module, addon_path, MAX_PATH) <= 0) return;
+    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
+#ifdef _WIN64
+    const std::wstring ext_list[] = {L".dc64", L".dc", L".asi"};
+#else
+    const std::wstring ext_list[] = {L".dc32", L".dc", L".asi"};
+#endif
+    const std::set<std::wstring> ext_match(ext_list, ext_list + 3);
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(
+             addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+        if (ec) break;
+        if (!entry.is_regular_file()) continue;
+        std::wstring ext = entry.path().extension().wstring();
+        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+        if (!ext_match.contains(ext)) continue;
+        const std::wstring path_w = entry.path().wstring();
+        HMODULE mod = LoadLibraryW(path_w.c_str());
+        if (mod != nullptr) {
+            std::string name = entry.path().filename().string();
+            char msg[384];
+            snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64/.dc32/.dc/.asi DLL: %s\n", name.c_str());
+            OutputDebugStringA(msg);
+        }
+    }
+}
+
+void ProcessAttach_TryLoadReShadeFromCwd() {
+    const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
+    if (!dc_config_dir.empty()) {
+        SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
+    }
+    SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+#ifdef _WIN64
+    HMODULE cwd_module = LoadLibraryA("Reshade64.dll");
+    if (cwd_module != nullptr) {
+        g_reshade_module = cwd_module;
+        OutputDebugStringA("Reshade64.dll loaded successfully");
+    } else if (std::filesystem::exists("Reshade64.dll")) {
+        DWORD error = GetLastError();
+        OutputDebugStringA("Reshade64.dll could not be loaded");
+        OutputDebugStringA(std::to_string(error).c_str());
+        std::string error_msg = "Reshade64.dll could not be loaded: Error code: " + std::to_string(error);
+        MessageBoxA(nullptr, error_msg.c_str(), error_msg.c_str(), MB_OK | MB_ICONWARNING | MB_TOPMOST);
+    }
+#else
+    HMODULE cwd_module = LoadLibraryA("Reshade32.dll");
+    if (cwd_module != nullptr) {
+        g_reshade_module = cwd_module;
+        OutputDebugStringA("Reshade32.dll loaded successfully");
+    }
+#endif
+}
+
+void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point, bool& found_proxy) {
+    entry_point = L"addon";
+    found_proxy = false;
+    WCHAR module_path[MAX_PATH];
+    if (GetModuleFileNameW(h_module, module_path, MAX_PATH) <= 0) {
+        OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
+        return;
+    }
+    std::filesystem::path module_file_path(module_path);
+    std::wstring module_name = module_file_path.stem().wstring();
+    std::wstring module_name_full = module_file_path.filename().wstring();
+    std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
+    std::transform(module_name_full.begin(), module_name_full.end(), module_name_full.begin(), ::towlower);
+    int module_utf8_size =
+        WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (module_utf8_size > 0) {
+        std::string module_name_utf8(module_utf8_size - 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, module_name_utf8.data(), module_utf8_size,
+                            nullptr, nullptr);
+        char debug_msg[512];
+        snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ls'\n",
+                 module_name_utf8.c_str(), module_name.c_str());
+        OutputDebugStringA(debug_msg);
+    }
+    struct ProxyDllInfo {
+        const wchar_t* name;
+        const wchar_t* entry_point_val;
+        const char* debug_msg;
+        const char* log_msg;
+    };
+    const ProxyDllInfo proxy_dlls[] = {
+        {L"dxgi", L"dxgi.dll", "[DisplayCommander] Entry point detected: dxgi.dll (proxy mode)\n",
+         "Display Commander loaded as dxgi.dll proxy - DXGI functions will be forwarded to system dxgi.dll"},
+        {L"d3d11", L"d3d11.dll", "[DisplayCommander] Entry point detected: d3d11.dll (proxy mode)\n",
+         "Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system d3d11.dll"},
+        {L"d3d12", L"d3d12.dll", "[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n",
+         "Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system d3d12.dll"},
+        {L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
+         "Display Commander loaded as version.dll proxy - Version functions will be forwarded to system version.dll"},
+        {L"opengl32", L"opengl32.dll", "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
+         "Display Commander loaded as opengl32.dll proxy - OpenGL/WGL functions will be forwarded to system opengl32.dll"}};
+    for (const auto& proxy : proxy_dlls) {
+        if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
+            entry_point = proxy.entry_point_val;
+            OutputDebugStringA(proxy.debug_msg);
+            found_proxy = true;
+            return;
+        }
+    }
+    int module_utf8_size2 =
+        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (module_utf8_size2 > 0) {
+        std::string module_name_utf8(module_utf8_size2 - 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, module_name_utf8.data(), module_utf8_size2, nullptr,
+                            nullptr);
+        char debug_msg[512];
+        snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: addon (module: %s)\n",
+                 module_name_utf8.c_str());
+        OutputDebugStringA(debug_msg);
+    } else {
+        OutputDebugStringA("[DisplayCommander] Entry point detected: addon\n");
+    }
+}
+
+bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_proxy) {
+    OutputDebugStringA("ReShade not loaded");
+    display_commander::utils::DetectAndLogPlatformAPIs();
+    std::vector<display_commander::utils::PlatformAPI> detected_platforms =
+        display_commander::utils::GetDetectedPlatformAPIs();
+    OutputDebugStringA("Detected platforms: ");
+    for (size_t i = 0; i < detected_platforms.size(); ++i) {
+        if (i > 0) OutputDebugStringA(", ");
+        OutputDebugStringA(display_commander::utils::GetPlatformAPIName(detected_platforms[i]));
+    }
+    OutputDebugStringA("\n");
+    WCHAR executable_path[MAX_PATH] = {0};
+    bool whitelist = false;
+    if (GetModuleFileNameW(nullptr, executable_path, MAX_PATH) > 0) {
+        OutputDebugStringA("Executable path: ");
+        char executable_path_narrow[MAX_PATH];
+        WideCharToMultiByte(CP_ACP, 0, executable_path, -1, executable_path_narrow, MAX_PATH, nullptr, nullptr);
+        OutputDebugStringA(executable_path_narrow);
+        OutputDebugStringA("\n");
+        whitelist = display_commander::utils::TestWhitelist(executable_path);
+    }
+    if (detected_platforms.empty() && !found_proxy && !whitelist) {
+        g_process_attached.store(true);
+        return false;
+    }
+    wchar_t localappdata_path[MAX_PATH];
+    if (!SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
+        MessageBoxA(nullptr, "ReShade not found in Documents folder", "Display Commander - ReShade Not Found",
+                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
+        g_process_attached.store(true);
+        return false;
+    }
+    std::filesystem::path localappdata_dir(localappdata_path);
+    std::filesystem::path dc_reshade_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
+#ifdef _WIN64
+    std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
+    const char* dll_name = "Reshade64.dll";
+#else
+    std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade32.dll";
+    const char* dll_name = "Reshade32.dll";
+#endif
+    if (!std::filesystem::exists(reshade_path)) {
+        std::string platform_names;
+        for (size_t i = 0; i < detected_platforms.size(); ++i) {
+            if (i > 0) platform_names += ", ";
+            platform_names += display_commander::utils::GetPlatformAPIName(detected_platforms[i]);
+        }
+#ifdef _WIN64
+        const char* dll_name_msg = "ReShade64.dll";
+#else
+        const char* dll_name_msg = "Reshade32.dll";
+#endif
+        std::string localappdata_path_str = "%localappdata%\\Programs\\Display_Commander\\Reshade";
+        wchar_t lap_path[MAX_PATH];
+        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, lap_path))) {
+            std::filesystem::path lap_dir(lap_path);
+            std::filesystem::path dc_rd = lap_dir / L"Programs" / L"Display_Commander" / L"Reshade";
+            char lap_narrow[MAX_PATH];
+            WideCharToMultiByte(CP_ACP, 0, dc_rd.c_str(), -1, lap_narrow, MAX_PATH, nullptr, nullptr);
+            localappdata_path_str = lap_narrow;
+        }
+        std::string message = "Display Commander detected a game platform (" + platform_names
+                              + ") but ReShade was not found.\n\n";
+        message += "ReShade is required for Display Commander to function.\n\n";
+        message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
+        message += "1. In the game's installation folder, or\n";
+        message += "2. In " + localappdata_path_str + "\n\n";
+        message += "Download ReShade from: https://reshade.me/";
+        MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
+        g_process_attached.store(true);
+        return false;
+    }
+    std::error_code ec;
+    std::filesystem::path absolute_path = std::filesystem::canonical(reshade_path, ec);
+    if (ec) {
+        absolute_path = std::filesystem::absolute(reshade_path, ec);
+        if (ec) absolute_path = reshade_path;
+    }
+    std::wstring dll_filename = absolute_path.filename().wstring();
+    HMODULE already_loaded = GetModuleHandleW(dll_filename.c_str());
+    if (already_loaded != nullptr) {
+        g_reshade_module = already_loaded;
+        char path_narrow[MAX_PATH];
+        WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+        char msg[512];
+        snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s", dll_name, path_narrow);
+        OutputDebugStringA(msg);
+        return true;
+    }
+    const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
+    if (!dc_config_dir.empty()) SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
+    SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
+    HMODULE reshade_module = LoadLibraryW(absolute_path.c_str());
+    if (reshade_module != nullptr) {
+        g_reshade_module = reshade_module;
+        char path_narrow[MAX_PATH];
+        WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+        char msg[512];
+        snprintf(msg, sizeof(msg), "%s loaded successfully from Documents folder: %s", dll_name, path_narrow);
+        OutputDebugStringA(msg);
+        return true;
+    }
+    DWORD error = GetLastError();
+    wchar_t error_msg[512] = {0};
+    DWORD msg_len = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error,
+                                   MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error_msg,
+                                   sizeof(error_msg) / sizeof(wchar_t), nullptr);
+    char path_narrow[MAX_PATH];
+    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+    char msg[1024];
+    if (msg_len > 0) {
+        while (msg_len > 0 && (error_msg[msg_len - 1] == L'\n' || error_msg[msg_len - 1] == L'\r'))
+            error_msg[--msg_len] = L'\0';
+        char error_msg_narrow[512];
+        WideCharToMultiByte(CP_ACP, 0, error_msg, -1, error_msg_narrow, sizeof(error_msg_narrow), nullptr, nullptr);
+        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error %lu: %s): %s", dll_name, error,
+                 error_msg_narrow, path_narrow);
+    } else {
+        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error: %lu): %s", dll_name, error,
+                 path_narrow);
+    }
+    OutputDebugStringA(msg);
+    MessageBoxA(nullptr, msg, msg, MB_OK | MB_ICONWARNING | MB_TOPMOST);
+    g_process_attached.store(true);
+    return false;
+}
+
+void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
+    g_hmodule = h_module;
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    utils::initialize_qpc_timing_constants();
+    DoInitializationWithoutHwndSafe(h_module);
+    g_standalone_ui_pending.store(true);
+    g_process_attached.store(true);
+}
+
+void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& entry_point) {
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    OutputDebugStringA("ReShade 111111");
+    DetectMultipleReShadeVersions();
+    LogInfoDirect(
+        "Display Commander v%s - ReShade addon registration successful (API version 17 supported)g_hmodule: "
+        "0x%p current module: 0x%p",
+        DISPLAY_COMMANDER_VERSION_STRING, g_hmodule, GetModuleHandleA(nullptr));
+    reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
+    LogInfoDirect("Display Commander overlay registered");
+    OutputDebugStringA("[DisplayCommander] DllMain: DLL_PROCESS_ATTACH - Starting entry point detection\n");
+    std::string entry_point_utf8;
+    int utf8_size = WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (utf8_size > 0) {
+        entry_point_utf8.resize(utf8_size - 1);
+        WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, entry_point_utf8.data(), utf8_size, nullptr, nullptr);
+    } else {
+        entry_point_utf8 = std::string(entry_point.begin(), entry_point.end());
+    }
+    char debug_msg[512];
+    snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: %s\n", entry_point_utf8.c_str());
+    LogInfoDirect("Entry point detected: %s", entry_point_utf8.c_str());
+    utils::initialize_qpc_timing_constants();
+    DoInitializationWithoutHwndSafe(h_module);
+    DoInitializationWithoutHwnd(h_module);
+    LoadAddonsFromPluginsDirectory();
+    g_process_attached.store(true);
+}
+
+ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
+    g_hmodule = h_module;
+    g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    DetectWine();
+    if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
+        OutputDebugStringA(
+            "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
+            "load Display Commander.\n");
+        return ProcessAttachEarlyResult::RefuseLoad;
+    }
+    if (DetectMultipleDisplayCommanderVersions()) {
+        OutputDebugStringA("[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
+        g_process_attached.store(true);
+        return ProcessAttachEarlyResult::RefuseLoad;
+    }
+    LPSTR command_line = GetCommandLineA();
+    if (command_line != nullptr && command_line[0] != '\0') {
+        OutputDebugStringA("[DisplayCommander] Command line: ");
+        OutputDebugStringA(command_line);
+        OutputDebugStringA("\n");
+        if (strstr(command_line, "rundll32") != nullptr) {
+            OutputDebugStringA("Run32DLL command line detected");
+            g_process_attached.store(true);
+            return ProcessAttachEarlyResult::EarlySuccess;
+        }
+    } else {
+        OutputDebugStringA("[DisplayCommander] Command line: (empty)\n");
+    }
+    g_shutdown.store(false);
+    return ProcessAttachEarlyResult::Continue;
+}
+}  // namespace
+
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
-            // Record load timestamp as early as possible for conflict resolution
-            g_hmodule = h_module;
-            g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
+            ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
+            if (early == ProcessAttachEarlyResult::RefuseLoad) return FALSE;
+            if (early == ProcessAttachEarlyResult::EarlySuccess) return TRUE;
 
-            // todo initialize logger
-            // for testing purposes
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+            ProcessAttach_DetectReShadeInModules();
+            ProcessAttach_LoadLocalAddonDlls(h_module);
+            ProcessAttach_CheckNoReShadeMode();
 
-            // Preload real dxgi.dll / ddraw.dll / d3d9.dll / opengl32.dll / winmm.dll when this DLL is used as proxy
-            // (safe in DllMain: system path only)
-            // LoadRealDXGIFromDllMain();
-            // LoadRealDDrawFromDllMain();
-            // LoadRealD3D9FromDllMain();
-            // LoadRealOpenGL32FromDllMain();
-            // LoadRealWinMMFromDllMain();
-
-            DetectWine();
-
-            // Refuse to load if SpecialK is already loaded (incompatible with Display Commander)
-            if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
-                OutputDebugStringA(
-                    "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
-                    "load Display Commander.\n");
-                return FALSE;  // Refuse to load
-            }
-
-            // Detect multiple Display Commander instances - refuse to load if multiple versions found
-            if (DetectMultipleDisplayCommanderVersions()) {
-                OutputDebugStringA(
-                    "[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
-                g_process_attached.store(true);
-                return FALSE;  // Refuse to load
-            }
-            // Print command line arguments when running with rundll32.exe
-            LPSTR command_line = GetCommandLineA();
-            if (command_line != nullptr && command_line[0] != '\0') {
-                OutputDebugStringA("[DisplayCommander] Command line: ");
-                OutputDebugStringA(command_line);
-                OutputDebugStringA("\n");
-                // run32dll
-                if (strstr(command_line, "rundll32") != nullptr) {
-                    OutputDebugStringA("Run32DLL command line detected");
-                    g_process_attached.store(true);
-                    return TRUE;
-                }
-            } else {
-                OutputDebugStringA("[DisplayCommander] Command line: (empty)\n");
-            }
-            // Don't initialize config system here - it starts a thread which is unsafe during DLLMain
-            // Initialize() will be called later in DoInitializationWithoutHwnd
-            g_shutdown.store(false);
-
-            /*
-            // Print command line arguments when running with rundll32.exe
-            LPSTR command_line = GetCommandLineA();
-            if (command_line != nullptr && command_line[0] != '\0') {
-                OutputDebugStringA("[DisplayCommander] Command line: ");
-                OutputDebugStringA(command_line);
-                OutputDebugStringA("\n");
-                LogInfo("Command line arguments: %s", command_line);
-                return TRUE;
-            } else {
-                OutputDebugStringA("[DisplayCommander] Command line: (empty)\n");
-                LogInfo("Command line arguments: (empty)");
-            }
-
-            */
-            // TODO: if file exists, load it
-            // check if reshade is loaded by going through all modules and checking if ReShadeRegisterAddon is
-            // present
-            HMODULE modules[1024];
-            DWORD num_modules_bytes = 0;
-            if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
-                DWORD num_modules = (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE),
-                                                      static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
-
-                // check for method named ReShadeRegisterAddon
-                for (DWORD i = 0; i < num_modules; i++) {
-                    if (modules[i] == nullptr) continue;
-                    FARPROC register_func = GetProcAddress(modules[i], "ReShadeRegisterAddon");
-                    if (register_func != nullptr) {
-                        g_reshade_loaded.store(true);
-                        OutputDebugStringA("ReShadeRegisterAddon found");
-                        break;
-                    }
-                }
-            }
-            // Load all local .dc64/.dc32 (bitness-specific), .dc, and .asi DLLs from the addon directory
-            {
-                WCHAR addon_path[MAX_PATH];
-                if (GetModuleFileNameW(h_module, addon_path, MAX_PATH) > 0) {
-                    std::filesystem::path addon_dir = std::filesystem::path(addon_path).parent_path();
-#ifdef _WIN64
-                    const std::wstring ext_list[] = {L".dc64", L".dc", L".asi"};
-#else
-                    const std::wstring ext_list[] = {L".dc32", L".dc", L".asi"};
-#endif
-                    const std::set<std::wstring> ext_match(ext_list, ext_list + 3);
-                    std::error_code ec;
-                    for (const auto& entry : std::filesystem::directory_iterator(
-                             addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
-                        if (ec) break;
-                        if (!entry.is_regular_file()) continue;
-                        std::wstring ext = entry.path().extension().wstring();
-                        std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
-                        if (!ext_match.contains(ext)) continue;
-                        const std::wstring path_w = entry.path().wstring();
-                        HMODULE mod = LoadLibraryW(path_w.c_str());
-                        if (mod != nullptr) {
-                            std::string name = entry.path().filename().string();
-                            char msg[384];
-                            snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64/.dc32/.dc/.asi DLL: %s\n",
-                                     name.c_str());
-                            OutputDebugStringA(msg);
-                        }
-                    }
-                }
-            }
-            // Returns the directory containing DisplayCommander.toml (game exe directory).
-            // Used to set RESHADE_BASE_PATH_OVERRIDE so ReShade uses the same folder for ReShade.ini etc.
-            auto GetDisplayCommanderConfigDirectoryW = []() -> std::wstring {
-                wchar_t exe_path[MAX_PATH];
-                if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) {
-                    return L"";
-                }
-                return std::filesystem::path(exe_path).parent_path().wstring();
-            };
-            // Check for .NO_RESHADE or .NORESHADE in game exe directory: skip loading ReShade and use standalone
-            // settings UI
-            {
-                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
-                if (!dc_config_dir.empty()) {
-                    std::filesystem::path no_reshade(dc_config_dir + L"\\.NO_RESHADE");
-                    std::filesystem::path noreshade(dc_config_dir + L"\\.NORESHADE");
-                    if (std::filesystem::exists(no_reshade) || std::filesystem::exists(noreshade)) {
-                        g_no_reshade_mode.store(true);
-                        OutputDebugStringA(
-                            "[DisplayCommander] .NO_RESHADE/.NORESHADE found - ReShade will not be loaded; standalone "
-                            "settings UI will start.\n");
-                    }
-                }
-            }
-#ifdef _WIN64
-            if (!g_reshade_loaded.load() && !g_no_reshade_mode.load()) {
-                // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
-                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
-                if (!dc_config_dir.empty()) {
-                    SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
-                }
-                // Set environment variable to disable ReShade loading check
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-                if (LoadLibraryA("Reshade64.dll") != nullptr) {
-                    g_reshade_loaded.store(true);
-                    OutputDebugStringA("Reshade64.dll loaded successfully");
-                } else {
-                    // if file exists
-                    if (std::filesystem::exists("Reshade64.dll")) {
-                        DWORD error = GetLastError();
-                        OutputDebugStringA("Reshade64.dll could not be loaded");
-                        OutputDebugStringA(std::to_string(error).c_str());
-                        std::string error_msg =
-                            "Reshade64.dll could not be loaded: Error code: " + std::to_string(error);
-                        MessageBoxA(nullptr, error_msg.c_str(), error_msg.c_str(), MB_OK | MB_ICONWARNING | MB_TOPMOST);
-                    }
-                }
-            }
-#else
-            if (!g_reshade_loaded.load() && !g_no_reshade_mode.load()) {
-                // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
-                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
-                if (!dc_config_dir.empty()) {
-                    SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
-                }
-                // Set environment variable to disable ReShade loading check
-                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-                if (LoadLibraryA("Reshade32.dll") != nullptr) {
-                    g_reshade_loaded.store(true);
-                    OutputDebugStringA("Reshade32.dll loaded successfully");
-                }
-            }
-#endif
-            WCHAR module_path[MAX_PATH];
-            std::wstring entry_point = L"addon";
+            std::wstring entry_point;
             bool found_proxy = false;
-            if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
-                std::filesystem::path module_file_path(module_path);
-                std::wstring module_name = module_file_path.stem().wstring();
-                std::wstring module_name_full = module_file_path.filename().wstring();
+            ProcessAttach_DetectEntryPoint(h_module, entry_point, found_proxy);
 
-                // Convert to lowercase for comparison
-                std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
-                std::transform(module_name_full.begin(), module_name_full.end(), module_name_full.begin(), ::towlower);
-
-                // Debug: Print module name to debug output
-                int module_utf8_size =
-                    WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, nullptr, 0, nullptr, nullptr);
-                if (module_utf8_size > 0) {
-                    std::string module_name_utf8(module_utf8_size - 1, '\0');
-                    WideCharToMultiByte(CP_UTF8, 0, module_name_full.c_str(), -1, module_name_utf8.data(),
-                                        module_utf8_size, nullptr, nullptr);
-                    char debug_msg[512];
-                    snprintf(debug_msg, sizeof(debug_msg),
-                             "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ls'\n",
-                             module_name_utf8.c_str(), module_name.c_str());
-                    OutputDebugStringA(debug_msg);
-                }
-
-                // List of proxy DLL names to check
-                struct ProxyDllInfo {
-                    const wchar_t* name;
-                    const wchar_t* entry_point;
-                    const char* debug_msg;
-                    const char* log_msg;
-                };
-
-                const ProxyDllInfo proxy_dlls[] = {
-                    {L"dxgi", L"dxgi.dll", "[DisplayCommander] Entry point detected: dxgi.dll (proxy mode)\n",
-                     "Display Commander loaded as dxgi.dll proxy - DXGI functions will be forwarded to system "
-                     "dxgi.dll"},
-                    {L"d3d11", L"d3d11.dll", "[DisplayCommander] Entry point detected: d3d11.dll (proxy mode)\n",
-                     "Display Commander loaded as d3d11.dll proxy - D3D11 functions will be forwarded to system "
-                     "d3d11.dll"},
-                    {L"d3d12", L"d3d12.dll", "[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n",
-                     "Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system "
-                     "d3d12.dll"},
-                    {L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
-                     "Display Commander loaded as version.dll proxy - Version functions will be forwarded to "
-                     "system "
-                     "version.dll"},
-                    {L"opengl32", L"opengl32.dll",
-                     "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
-                     "Display Commander loaded as opengl32.dll proxy - OpenGL/WGL functions will be forwarded to "
-                     "system opengl32.dll"}};
-
-                // Check if we're loaded as any proxy DLL
-                for (const auto& proxy : proxy_dlls) {
-                    if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
-                        entry_point = proxy.entry_point;
-                        OutputDebugStringA(proxy.debug_msg);
-                        // LogInfoDirect("%s", proxy.log_msg);
-                        found_proxy = true;
-                        break;
-                    }
-                }
-
-                if (!found_proxy) {
-                    entry_point = L"addon";
-                    // Convert module_name to UTF-8 for debug output
-                    int module_utf8_size =
-                        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, nullptr, 0, nullptr, nullptr);
-                    if (module_utf8_size > 0) {
-                        std::string module_name_utf8(module_utf8_size - 1, '\0');
-                        WideCharToMultiByte(CP_UTF8, 0, module_name.c_str(), -1, module_name_utf8.data(),
-                                            module_utf8_size, nullptr, nullptr);
-                        char debug_msg[512];
-                        snprintf(debug_msg, sizeof(debug_msg),
-                                 "[DisplayCommander] Entry point detected: addon (module: %s)\n",
-                                 module_name_utf8.c_str());
-                        OutputDebugStringA(debug_msg);
-                    } else {
-                        OutputDebugStringA("[DisplayCommander] Entry point detected: addon\n");
-                    }
-                    // LogInfoDirect("Display Commander loaded as ReShade addon (module: %ws)", module_name.c_str());
-                }
-            } else {
-                OutputDebugStringA("[DisplayCommander] Entry point detection: Failed to get module filename\n");
-            }
-
-            // don't call register_addon if reshade is not loaded to prevent crash (skip platform/LocalAppData path when
-            // no-Reshade mode)
-            if (!g_reshade_loaded.load() && !g_no_reshade_mode.load()) {
-                OutputDebugStringA("ReShade not loaded");
-                // Detect and log platform APIs (Steam, Epic, GOG, etc.)
-                display_commander::utils::DetectAndLogPlatformAPIs();
-
-                // Check if any platform was detected
-                std::vector<display_commander::utils::PlatformAPI> detected_platforms =
-                    display_commander::utils::GetDetectedPlatformAPIs();
-
-                OutputDebugStringA("Detected platforms: ");
-                for (size_t i = 0; i < detected_platforms.size(); ++i) {
-                    if (i > 0) OutputDebugStringA(", ");
-                    OutputDebugStringA(display_commander::utils::GetPlatformAPIName(detected_platforms[i]));
-                }
-                OutputDebugStringA("\n");
-
-                // Get executable path for whitelist check
-                WCHAR executable_path[MAX_PATH] = {0};
-                bool whitelist = false;
-                if (GetModuleFileNameW(nullptr, executable_path, MAX_PATH) > 0) {
-                    OutputDebugStringA("Executable path: ");
-                    char executable_path_narrow[MAX_PATH];
-                    WideCharToMultiByte(CP_ACP, 0, executable_path, -1, executable_path_narrow, MAX_PATH, nullptr,
-                                        nullptr);
-                    OutputDebugStringA(executable_path_narrow);
-                    OutputDebugStringA("\n");
-                    whitelist = display_commander::utils::TestWhitelist(executable_path);
-                }
-
-                // Only try Documents folder and show message box if platform detected, proxy found, or whitelisted
-                if (!detected_platforms.empty() || found_proxy || whitelist) {
-                    // Try to find Reshade DLL in LocalAppData folder
-                    wchar_t localappdata_path[MAX_PATH];
-
-                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
-                                                   localappdata_path))) {
-                        std::filesystem::path localappdata_dir(localappdata_path);
-                        std::filesystem::path dc_reshade_dir =
-                            localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
-#ifdef _WIN64
-                        std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
-                        const char* dll_name = "Reshade64.dll";
-#else
-                        std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade32.dll";
-                        const char* dll_name = "Reshade32.dll";
-#endif
-
-                        if (std::filesystem::exists(reshade_path)) {
-                            // Get absolute/canonical path
-                            std::error_code ec;
-                            std::filesystem::path absolute_path = std::filesystem::canonical(reshade_path, ec);
-                            if (ec) {
-                                // Fallback to absolute path if canonical fails
-                                absolute_path = std::filesystem::absolute(reshade_path, ec);
-                                if (ec) {
-                                    absolute_path = reshade_path;  // Last resort
-                                }
-                            }
-
-                            // Check if DLL is already loaded (by filename, not full path)
-                            std::wstring dll_filename = absolute_path.filename().wstring();
-                            HMODULE already_loaded = GetModuleHandleW(dll_filename.c_str());
-                            if (already_loaded != nullptr) {
-                                g_reshade_loaded.store(true);
-                                char msg[512];
-                                char path_narrow[MAX_PATH];
-                                WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH,
-                                                    nullptr, nullptr);
-                                snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s", dll_name,
-                                         path_narrow);
-                                OutputDebugStringA(msg);
-                            } else {
-                                // Set ReShade base path to same folder as DisplayCommander.toml (game exe directory)
-                                const std::wstring dc_config_dir = GetDisplayCommanderConfigDirectoryW();
-                                if (!dc_config_dir.empty()) {
-                                    SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
-                                }
-                                // Set environment variable to disable ReShade loading check
-                                SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-                                // Try to load from Documents folder
-                                HMODULE reshade_module = LoadLibraryW(absolute_path.c_str());
-                                if (reshade_module != nullptr) {
-                                    g_reshade_loaded.store(true);
-                                    char msg[512];
-                                    char path_narrow[MAX_PATH];
-                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH,
-                                                        nullptr, nullptr);
-                                    snprintf(msg, sizeof(msg), "%s loaded successfully from Documents folder: %s",
-                                             dll_name, path_narrow);
-                                    OutputDebugStringA(msg);
-                                } else {
-                                    DWORD error = GetLastError();
-
-                                    // Get detailed error message
-                                    wchar_t error_msg[512] = {0};
-                                    DWORD msg_len =
-                                        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                                       nullptr, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                                                       error_msg, sizeof(error_msg) / sizeof(wchar_t), nullptr);
-
-                                    char msg[1024];
-                                    char path_narrow[MAX_PATH];
-                                    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH,
-                                                        nullptr, nullptr);
-
-                                    if (msg_len > 0) {
-                                        // Remove trailing newlines from error message
-                                        while (
-                                            msg_len > 0
-                                            && (error_msg[msg_len - 1] == L'\n' || error_msg[msg_len - 1] == L'\r')) {
-                                            error_msg[--msg_len] = L'\0';
-                                        }
-                                        char error_msg_narrow[512];
-                                        WideCharToMultiByte(CP_ACP, 0, error_msg, -1, error_msg_narrow,
-                                                            sizeof(error_msg_narrow), nullptr, nullptr);
-                                        snprintf(msg, sizeof(msg),
-                                                 "Failed to load %s from Documents folder (error %lu: %s): %s",
-                                                 dll_name, error, error_msg_narrow, path_narrow);
-                                    } else {
-                                        snprintf(msg, sizeof(msg),
-                                                 "Failed to load %s from Documents folder (error: %lu): %s", dll_name,
-                                                 error, path_narrow);
-                                    }
-                                    OutputDebugStringA(msg);
-                                    MessageBoxA(nullptr, msg, msg, MB_OK | MB_ICONWARNING | MB_TOPMOST);
-                                    g_process_attached.store(true);
-                                    return FALSE;
-                                }
-                            }
-                        }
-                    } else {
-                        MessageBoxA(nullptr, "ReShade not found in Documents folder",
-                                    "Display Commander - ReShade Not Found", MB_OK | MB_ICONWARNING | MB_TOPMOST);
-                        g_process_attached.store(true);
-                        return FALSE;
-                    }
-
-                    // If still not loaded, show message box
-                    if (!g_reshade_loaded.load()) {
-                        std::string platform_names;
-                        for (size_t i = 0; i < detected_platforms.size(); ++i) {
-                            if (i > 0) platform_names += ", ";
-                            platform_names += display_commander::utils::GetPlatformAPIName(detected_platforms[i]);
-                        }
-
-#ifdef _WIN64
-                        const char* dll_name_msg = "ReShade64.dll";
-#else
-                        const char* dll_name_msg = "Reshade32.dll";
-#endif
-
-                        // Get LocalAppData folder path with Display Commander subdirectory
-                        std::string localappdata_path_str = "%localappdata%\\Programs\\Display_Commander\\Reshade";
-                        wchar_t localappdata_path[MAX_PATH];
-                        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT,
-                                                       localappdata_path))) {
-                            std::filesystem::path localappdata_dir(localappdata_path);
-                            std::filesystem::path dc_reshade_dir =
-                                localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
-                            // Convert wide string to narrow string
-                            char localappdata_path_narrow[MAX_PATH];
-                            WideCharToMultiByte(CP_ACP, 0, dc_reshade_dir.c_str(), -1, localappdata_path_narrow,
-                                                MAX_PATH, nullptr, nullptr);
-                            localappdata_path_str = localappdata_path_narrow;
-                        }
-
-                        std::string message = "Display Commander detected a game platform (" + platform_names
-                                              + ") but ReShade was not found.\n\n";
-                        message += "ReShade is required for Display Commander to function.\n\n";
-                        message += "Please ensure " + std::string(dll_name_msg) + " is either:\n";
-                        message += "1. In the game's installation folder, or\n";
-                        message += "2. In " + localappdata_path_str + "\n\n";
-                        message += "Download ReShade from: https://reshade.me/";
-
-                        MessageBoxA(nullptr, message.c_str(), "Display Commander - ReShade Not Found",
-                                    MB_OK | MB_ICONWARNING | MB_TOPMOST);
-                        g_process_attached.store(true);
-                        return FALSE;
-                    }
-                } else {
-                    g_process_attached.store(true);
+            if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
+                ProcessAttach_TryLoadReShadeFromCwd();
+                if ((g_reshade_module == nullptr) && !ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy))
                     return FALSE;
-                }
             }
 
-            // No-ReShade mode: init config and minimal addon, then start standalone settings UI from safe context
-            // (LoadLibrary detour)
             if (g_no_reshade_mode.load()) {
-                g_hmodule = h_module;
-                display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-                display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-                utils::initialize_qpc_timing_constants();
-                DoInitializationWithoutHwndSafe(h_module);
-                g_standalone_ui_pending.store(true);
-                g_process_attached.store(true);
+                ProcessAttach_NoReShadeModeInit(h_module);
                 break;
             }
 
             if (!reshade::register_addon(h_module)) {
-                // Registration failed - likely due to API version mismatch
-
-                // DetectMultipleReShadeVersions();
-                // CheckReShadeVersionCompatibility();
                 OutputDebugStringA("ReShade 0000000");
-
                 {
-                    // log g_module handle
                     char msg[512];
                     snprintf(msg, sizeof(msg), "g_module handle: 0x%p", g_hmodule);
                     reshade::log::message(reshade::log::level::info, msg);
                 }
-                // list all loaded modules to reshade and g_hmodule
                 HMODULE modules[1024];
                 DWORD num_modules_bytes = 0;
                 if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) != 0) {
@@ -2331,7 +2035,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                                           static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
                     for (DWORD i = 0; i < num_modules; i++) {
                         char msg[512];
-                        // print module handle and name
                         wchar_t module_name[MAX_PATH];
                         if (GetModuleFileNameW(modules[i], module_name, MAX_PATH) > 0) {
                             snprintf(msg, sizeof(msg), "Module %lu: 0x%p %ls", i, modules[i], module_name);
@@ -2344,61 +2047,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 g_process_attached.store(true);
                 return FALSE;
             }
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-            OutputDebugStringA("ReShade 111111");
 
-            DetectMultipleReShadeVersions();
-
-            // Registration successful - log version compatibility
-            LogInfoDirect(
-                "Display Commander v%s - ReShade addon registration successful (API version 17 supported)g_hmodule: "
-                "0x%p current module: 0x%p",
-                DISPLAY_COMMANDER_VERSION_STRING, g_hmodule, GetModuleHandleA(nullptr));
-
-            // Register overlay early so it appears as a tab by default
-            reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
-            LogInfoDirect("Display Commander overlay registered");
-
-            // Detect if we're loaded as a proxy DLL (dxgi.dll, d3d11.dll, d3d12.dll)
-            // Similar to how ReShade detects this
-            // Log to debug viewer early since log file may not be available yet
-            OutputDebugStringA("[DisplayCommander] DllMain: DLL_PROCESS_ATTACH - Starting entry point detection\n");
-
-            // Store entry point for logging later (after config system is initialized)
-            // Convert wide string to UTF-8
-            std::string entry_point_utf8;
-            int utf8_size = WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, nullptr, 0, nullptr, nullptr);
-            if (utf8_size > 0) {
-                entry_point_utf8.resize(utf8_size - 1);  // -1 to exclude null terminator
-                WideCharToMultiByte(CP_UTF8, 0, entry_point.c_str(), -1, entry_point_utf8.data(), utf8_size, nullptr,
-                                    nullptr);
-            } else {
-                // Fallback to simple conversion if UTF-8 conversion fails
-                entry_point_utf8 = std::string(entry_point.begin(), entry_point.end());
-            }
-
-            char debug_msg[512];
-            snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: %s\n",
-                     entry_point_utf8.c_str());
-            LogInfoDirect("Entry point detected: %s", entry_point_utf8.c_str());
-
-            // Handle safemode after config system is initialized
-
-            // Detect multiple ReShade versions AFTER successful registration to avoid interference
-            // This prevents our module scanning from interfering with ReShade's internal module detection
-
-            // Store module handle for pinning
-            // Initialize QPC timing constants based on actual frequency
-            utils::initialize_qpc_timing_constants();
-
-            DoInitializationWithoutHwndSafe(h_module);
-            DoInitializationWithoutHwnd(h_module);
-            // display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(false);
-
-            // Load addons from Plugins directory
-            LoadAddonsFromPluginsDirectory();
-            g_process_attached.store(true);
+            ProcessAttach_RegisterAndPostInit(h_module, entry_point);
             break;
         }
         case DLL_THREAD_ATTACH: {
@@ -2415,7 +2065,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         }
 
         case DLL_PROCESS_DETACH:
-            if (!g_reshade_loaded.load()) {
+            if (g_reshade_module == nullptr) {
                 return TRUE;
             }
             LogInfo("DLL_PROCESS_DETACH: DLL process detach");
@@ -2663,7 +2313,7 @@ static DWORD WINAPI LoadingThreadFunc(loading_data* arg) {
 }
 
 // Helper function to get ReShade DLL path based on architecture
-static std::wstring GetReShadeDllPath(bool is_wow64) {
+std::wstring GetReShadeDllPath(bool is_wow64) {
     wchar_t documents_path[MAX_PATH];
     wchar_t localappdata_path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
@@ -2695,24 +2345,20 @@ static std::wstring GetReShadeDllPath(bool is_wow64) {
     return L"";
 }
 
-// Helper function to inject ReShade DLL into a process using LoadLibrary
-static bool InjectIntoProcess(DWORD pid, const std::wstring& dll_path) {
-    // Open target process
+namespace {
+// Open process and verify architecture. Returns true and sets *out_process on success. Caller must CloseHandle.
+bool InjectIntoProcess_OpenTarget(DWORD pid, HANDLE* out_process) {
     HANDLE remote_process = OpenProcess(
         PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION,
         FALSE, pid);
-
     if (remote_process == nullptr) {
         DWORD error = GetLastError();
         OutputDebugStringA(
             std::format("Failed to open target process (PID {}): Error {} (0x{:X})", pid, error, error).c_str());
         return false;
     }
-
-    // Check process architecture
     BOOL remote_is_wow64 = FALSE;
     IsWow64Process(remote_process, &remote_is_wow64);
-
 #ifdef _WIN64
     if (remote_is_wow64 != FALSE) {
         CloseHandle(remote_process);
@@ -2728,15 +2374,18 @@ static bool InjectIntoProcess(DWORD pid, const std::wstring& dll_path) {
         return false;
     }
 #endif
+    *out_process = remote_process;
+    return true;
+}
 
-    // Setup loading data
+// Alloc, write loading_data, CreateRemoteThread(LoadLibraryW), wait, cleanup. Does not close process handle.
+bool InjectIntoProcess_DoRemoteLoadLibrary(HANDLE remote_process, DWORD pid, const std::wstring& dll_path) {
     loading_data arg;
     wcscpy_s(arg.load_path, dll_path.c_str());
     arg.GetLastError = GetLastError;
     arg.LoadLibraryW = LoadLibraryW;
     arg.SetEnvironmentVariableW = SetEnvironmentVariableW;
 
-    // Allocate memory in target process
     LPVOID load_param =
         VirtualAllocEx(remote_process, nullptr, sizeof(arg), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
     if (load_param == nullptr) {
@@ -2744,203 +2393,151 @@ static bool InjectIntoProcess(DWORD pid, const std::wstring& dll_path) {
         OutputDebugStringA(
             std::format("Failed to allocate memory in target process (PID {}): Error {} (0x{:X})", pid, error, error)
                 .c_str());
-        CloseHandle(remote_process);
         return false;
     }
-
-    // Write loading data to target process
     if (!WriteProcessMemory(remote_process, load_param, &arg, sizeof(arg), nullptr)) {
         DWORD error = GetLastError();
         OutputDebugStringA(
             std::format("Failed to write loading data to target process (PID {}): Error {} (0x{:X})", pid, error, error)
                 .c_str());
         VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
-        CloseHandle(remote_process);
         return false;
     }
-
-    // Note: To set RESHADE_DISABLE_LOADING_CHECK in target process, we would need to inject
-    // the LoadingThreadFunc code. For now, we use direct LoadLibrary injection.
-    // The environment variable can be set in the target process environment before starting it.
-
-    // Execute LoadLibrary in target process
     HANDLE load_thread = CreateRemoteThread(
         remote_process, nullptr, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(arg.LoadLibraryW), load_param, 0, nullptr);
-
     if (load_thread == nullptr) {
         DWORD error = GetLastError();
         OutputDebugStringA(std::format("Failed to create remote thread in target process (PID {}): Error {} (0x{:X})",
                                        pid, error, error)
                                .c_str());
         VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
-        CloseHandle(remote_process);
         return false;
     }
-
-    // Wait for loading to finish
     WaitForSingleObject(load_thread, INFINITE);
-
-    // Check if injection was successful
-    DWORD exit_code;
-    bool success = false;
-    if (GetExitCodeThread(load_thread, &exit_code) && exit_code != NULL) {
-        success = true;
+    DWORD exit_code = 0;
+    bool success = (GetExitCodeThread(load_thread, &exit_code) != 0 && exit_code != 0);
+    if (success) {
         OutputDebugStringA(std::format("Successfully injected ReShade into process (PID {})", pid).c_str());
     } else {
         OutputDebugStringA(
             std::format("Failed to inject Display Commander into process (PID {}): LoadLibrary returned NULL", pid)
                 .c_str());
     }
-
-    // Cleanup
     CloseHandle(load_thread);
     VirtualFreeEx(remote_process, load_param, 0, MEM_RELEASE);
-    CloseHandle(remote_process);
+    return success;
+}
+}  // namespace
 
+// Helper function to inject ReShade DLL into a process using LoadLibrary
+bool InjectIntoProcess(DWORD pid, const std::wstring& dll_path) {
+    HANDLE remote_process = nullptr;
+    if (!InjectIntoProcess_OpenTarget(pid, &remote_process)) {
+        return false;
+    }
+    bool success = InjectIntoProcess_DoRemoteLoadLibrary(remote_process, pid, dll_path);
+    CloseHandle(remote_process);
     return success;
 }
 
+namespace {
+void WaitForProcessAndInject_MarkExistingProcesses(const std::wstring& exe_name,
+                                                   std::array<bool, 65536>& process_seen) {
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) return;
+    PROCESSENTRY32W process_entry = {};
+    process_entry.dwSize = sizeof(PROCESSENTRY32W);
+    int existing_count = 0;
+    if (Process32FirstW(snapshot, &process_entry)) {
+        do {
+            if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) == 0) {
+                DWORD pid = process_entry.th32ProcessID;
+                if (pid < process_seen.size()) {
+                    process_seen[pid] = true;
+                    existing_count++;
+                }
+            }
+        } while (Process32NextW(snapshot, &process_entry));
+    }
+    CloseHandle(snapshot);
+    if (existing_count > 0) {
+        OutputDebugStringA(std::format("Found {} existing process(es) with name '{}', will wait for new ones",
+                                       existing_count, std::string(exe_name.begin(), exe_name.end()))
+                               .c_str());
+        std::cout << "Found " << existing_count << " existing process(es) with name '"
+                  << std::string(exe_name.begin(), exe_name.end()) << "', will wait for new ones" << '\n';
+    }
+}
+
+void WaitForProcessAndInject_ProcessSnapshot(const std::wstring& exe_name,
+                                             std::array<bool, 65536>& process_seen) {
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) return;
+    PROCESSENTRY32W process_entry = {};
+    process_entry.dwSize = sizeof(PROCESSENTRY32W);
+    if (Process32FirstW(snapshot, &process_entry)) {
+        do {
+            DWORD pid = process_entry.th32ProcessID;
+            if (pid >= process_seen.size()) continue;
+            if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) != 0) {
+                process_seen[pid] = true;
+                continue;
+            }
+            if (process_seen[pid]) continue;
+            process_seen[pid] = true;
+
+            OutputDebugStringA(
+                std::format("Found new process: {} (PID {})", std::string(exe_name.begin(), exe_name.end()), pid)
+                    .c_str());
+            std::cout << "Found new process: " << std::string(exe_name.begin(), exe_name.end()) << " (PID " << pid
+                      << ")" << '\n';
+
+            BOOL is_wow64 = FALSE;
+            HANDLE h_process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+            if (h_process != nullptr) {
+                IsWow64Process(h_process, &is_wow64);
+                CloseHandle(h_process);
+            }
+            std::wstring dll_path = GetReShadeDllPath(is_wow64 != FALSE);
+            if (dll_path.empty()) {
+                OutputDebugStringA(
+                    std::format("Failed to find ReShade DLL path for process (PID {}), continuing to wait", pid)
+                        .c_str());
+                std::cout << "Failed to find ReShade DLL path for process (PID " << pid << "), continuing to wait"
+                          << '\n';
+                continue;
+            }
+            if (InjectIntoProcess(pid, dll_path)) {
+                OutputDebugStringA(std::format("Successfully injected into process (PID {})", pid).c_str());
+                std::cout << "Successfully injected into process (PID " << pid << ")" << '\n';
+            } else {
+                OutputDebugStringA(
+                    std::format("Failed to inject into process (PID {}), continuing to wait", pid).c_str());
+                std::cout << "Failed to inject into process (PID " << pid << "), continuing to wait" << '\n';
+            }
+        } while (Process32NextW(snapshot, &process_entry));
+    }
+    CloseHandle(snapshot);
+}
+}  // namespace
+
 // Wait for a process with given exe name to start, then inject ReShade DLL
 // Waits forever and injects into every new process that starts with the given exe name
-// Uses the same injection method as StartAndInject (InjectIntoProcess with LoadLibrary)
-static void WaitForProcessAndInject(const std::wstring& exe_name) {
-    // Reset stop flag when starting
+void WaitForProcessAndInject(const std::wstring& exe_name) {
     g_wait_and_inject_stop.store(false);
-
     OutputDebugStringA(std::format("Waiting for process: {} (will inject into all new instances)",
                                    std::string(exe_name.begin(), exe_name.end()))
                            .c_str());
 
-    // Use array-based tracking like ReShade does (more efficient than set for PIDs)
-    // PIDs are typically in the range 0-65535, so this array covers most cases
     std::array<bool, 65536> process_seen = {};
+    WaitForProcessAndInject_MarkExistingProcesses(exe_name, process_seen);
 
-    // First, enumerate existing processes to mark them as seen
-    HANDLE initial_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (initial_snapshot != INVALID_HANDLE_VALUE) {
-        PROCESSENTRY32W process_entry = {};
-        process_entry.dwSize = sizeof(PROCESSENTRY32W);
-        if (Process32FirstW(initial_snapshot, &process_entry)) {
-            int existing_count = 0;
-            do {
-                if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) == 0) {
-                    DWORD pid = process_entry.th32ProcessID;
-                    if (pid < process_seen.size()) {
-                        process_seen[pid] = true;
-                        existing_count++;
-                    }
-                }
-            } while (Process32NextW(initial_snapshot, &process_entry));
-
-            if (existing_count > 0) {
-                OutputDebugStringA(std::format("Found {} existing process(es) with name '{}', will wait for new ones",
-                                               existing_count, std::string(exe_name.begin(), exe_name.end()))
-                                       .c_str());
-                std::cout << "Found " << existing_count << " existing process(es) with name '"
-                          << std::string(exe_name.begin(), exe_name.end()) << "', will wait for new ones" << std::endl;
-            }
-        }
-        CloseHandle(initial_snapshot);
-    }
-
-    // Wait forever and inject into every new process
     while (!g_wait_and_inject_stop.load()) {
-        // Create process snapshot
-        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if (snapshot == INVALID_HANDLE_VALUE) {
-            Sleep(10);  // Very short sleep before retrying (like ReShade)
-            continue;
-        }
-
-        PROCESSENTRY32W process_entry = {};
-        process_entry.dwSize = sizeof(PROCESSENTRY32W);
-
-        // Check all processes to find new ones matching our target
-        if (Process32FirstW(snapshot, &process_entry)) {
-            do {
-                DWORD pid = process_entry.th32ProcessID;
-                // Debug: Convert process name to narrow string for logging
-                int process_name_size =
-                    WideCharToMultiByte(CP_ACP, 0, process_entry.szExeFile, -1, nullptr, 0, nullptr, nullptr);
-                if (process_name_size > 0) {
-                    std::vector<char> process_name_buf(process_name_size);
-                    WideCharToMultiByte(CP_ACP, 0, process_entry.szExeFile, -1, process_name_buf.data(),
-                                        process_name_size, nullptr, nullptr);
-                    if (!process_seen[pid]) {
-                        OutputDebugStringA(std::format("Checking process: {} (PID {})", process_name_buf.data(),
-                                                       process_entry.th32ProcessID)
-                                               .c_str());
-                    }
-                }
-
-                // Check if this process matches our target
-                if (_wcsicmp(process_entry.szExeFile, exe_name.c_str()) == 0) {
-                    // Skip if PID is out of range (shouldn't happen, but be safe)
-                    if (pid >= process_seen.size()) {
-                        continue;
-                    }
-
-                    // Only inject into processes we haven't seen before (new processes)
-                    if (!process_seen[pid]) {
-                        process_seen[pid] = true;  // Mark as seen immediately to avoid duplicate injection attempts
-
-                        OutputDebugStringA(std::format("Found new process: {} (PID {})",
-                                                       std::string(exe_name.begin(), exe_name.end()), pid)
-                                               .c_str());
-                        std::cout << "Found new process: " << std::string(exe_name.begin(), exe_name.end()) << " (PID "
-                                  << pid << ")" << std::endl;
-
-                        // Wait a bit for the process to initialize (same as StartAndInject)
-                        // Sleep(500);
-
-                        // Check process architecture (same as StartAndInject)
-                        BOOL is_wow64 = FALSE;
-                        HANDLE h_process = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
-                        if (h_process != nullptr) {
-                            IsWow64Process(h_process, &is_wow64);
-                            CloseHandle(h_process);
-                        }
-
-                        // Get ReShade DLL path (same as StartAndInject)
-                        std::wstring dll_path = GetReShadeDllPath(is_wow64 != FALSE);
-                        if (dll_path.empty()) {
-                            OutputDebugStringA(
-                                std::format("Failed to find ReShade DLL path for process (PID {}), continuing to wait",
-                                            pid)
-                                    .c_str());
-                            std::cout << "Failed to find ReShade DLL path for process (PID " << pid
-                                      << "), continuing to wait" << std::endl;
-                            // Continue waiting - don't return on error
-                            continue;
-                        }
-
-                        // Inject into the process using the same method as StartAndInject
-                        bool success = InjectIntoProcess(pid, dll_path);
-                        if (success) {
-                            OutputDebugStringA(std::format("Successfully injected into process (PID {})", pid).c_str());
-                            std::cout << "Successfully injected into process (PID " << pid << ")" << std::endl;
-                        } else {
-                            OutputDebugStringA(
-                                std::format("Failed to inject into process (PID {}), continuing to wait", pid).c_str());
-                            std::cout << "Failed to inject into process (PID " << pid << "), continuing to wait"
-                                      << std::endl;
-                        }
-                        // Continue waiting for more processes - never return
-                    }
-                }
-                process_seen[pid] = true;
-            } while (Process32NextW(snapshot, &process_entry));
-        }
-
-        CloseHandle(snapshot);
-
-        // Don't sleep (or sleep very little) to catch new processes quickly, like ReShade does
-        // ReShade's comment: "don't sleep to make sure we catch all new processes"
-        Sleep(10);  // Very short sleep to avoid 100% CPU usage
+        WaitForProcessAndInject_ProcessSnapshot(exe_name, process_seen);
+        Sleep(10);
     }
-
     OutputDebugStringA("WaitForProcessAndInject: Stopped");
-    std::cout << "WaitForProcessAndInject: Stopped" << std::endl;
+    std::cout << "WaitForProcessAndInject: Stopped" << '\n';
 }
 
 // RunDLL entry point for rundll32.exe compatibility
@@ -2993,159 +2590,6 @@ extern "C" __declspec(dllexport) void CALLBACK Stop(HWND hwnd, HINSTANCE hInst, 
     OutputDebugStringA("Stop: Signaled WaitAndInject to stop");
 
     StopInjectionInternal();
-}
-
-// RunDLL entry point to start a game and inject into it
-// Allows calling: rundll32.exe zzz_display_commander.addon64,StartAndInject "C:\Path\To\game.exe"
-// The exe path should be passed as a command line argument
-extern "C" __declspec(dllexport) void CALLBACK StartAndInject(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
-                                                              int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    // Initialize config system for logging
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-
-    // Parse exe path from command line
-    std::string exe_path_ansi;
-    if (lpszCmdLine != nullptr && strlen(lpszCmdLine) > 0) {
-        // Remove quotes if present
-        exe_path_ansi = lpszCmdLine;
-        if (exe_path_ansi.length() >= 2 && exe_path_ansi.front() == '"' && exe_path_ansi.back() == '"') {
-            exe_path_ansi = exe_path_ansi.substr(1, exe_path_ansi.length() - 2);
-        }
-    }
-
-    if (exe_path_ansi.empty()) {
-        OutputDebugStringA(
-            "StartAndInject: No exe path provided. Usage: rundll32.exe zzz_display_commander.addon64,StartAndInject "
-            "\"C:\\Path\\To\\game.exe\"");
-        return;
-    }
-
-    // Convert to wide string
-    int size_needed = MultiByteToWideChar(CP_ACP, 0, exe_path_ansi.c_str(), -1, nullptr, 0);
-    if (size_needed <= 0) {
-        OutputDebugStringA("StartAndInject: Failed to convert exe path to wide string");
-        return;
-    }
-
-    std::vector<wchar_t> exe_path_wide(size_needed);
-    MultiByteToWideChar(CP_ACP, 0, exe_path_ansi.c_str(), -1, exe_path_wide.data(), size_needed);
-    std::wstring exe_path(exe_path_wide.data());
-
-    // Check if file exists
-    if (!std::filesystem::exists(exe_path)) {
-        OutputDebugStringA(std::format("StartAndInject: Exe file not found: {}", exe_path_ansi).c_str());
-        return;
-    }
-
-    OutputDebugStringA(std::format("StartAndInject: Starting process: {}", exe_path_ansi).c_str());
-
-    // Start the process
-    STARTUPINFOW si = {};
-    PROCESS_INFORMATION pi = {};
-    si.cb = sizeof(si);
-
-    std::wstring command_line = L"\"" + exe_path + L"\"";
-
-    if (!CreateProcessW(nullptr, command_line.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
-        DWORD error = GetLastError();
-        OutputDebugStringA(
-            std::format("StartAndInject: Failed to start process: Error {} (0x{:X})", error, error).c_str());
-        return;
-    }
-
-    // Close thread handle (we only need process handle)
-    CloseHandle(pi.hThread);
-
-    OutputDebugStringA(std::format("StartAndInject: Process started (PID {})", pi.dwProcessId).c_str());
-
-    // Wait a bit for the process to initialize
-    Sleep(500);
-
-    // Check process architecture
-    BOOL is_wow64 = FALSE;
-    IsWow64Process(pi.hProcess, &is_wow64);
-
-    // Get ReShade DLL path
-    std::wstring dll_path = GetReShadeDllPath(is_wow64 != FALSE);
-    if (dll_path.empty()) {
-        OutputDebugStringA("StartAndInject: Failed to find ReShade DLL path");
-        CloseHandle(pi.hProcess);
-        return;
-    }
-
-    // Inject into the process
-    bool success = InjectIntoProcess(pi.dwProcessId, dll_path);
-
-    CloseHandle(pi.hProcess);
-
-    if (success) {
-        OutputDebugStringA(
-            std::format("StartAndInject: Successfully started and injected into process (PID {})", pi.dwProcessId)
-                .c_str());
-    } else {
-        OutputDebugStringA(
-            std::format("StartAndInject: Failed to inject into process (PID {})", pi.dwProcessId).c_str());
-    }
-}
-
-// RunDLL entry point to wait for process and inject
-// Allows calling: rundll32.exe zzz_display_commander.addon64,WaitAndInject "game.exe"
-// The exe name should be passed as a command line argument
-extern "C" __declspec(dllexport) void CALLBACK WaitAndInject(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
-                                                             int nCmdShow) {
-    UNREFERENCED_PARAMETER(hwnd);
-    UNREFERENCED_PARAMETER(hInst);
-    UNREFERENCED_PARAMETER(nCmdShow);
-
-    // Initialize config system for logging
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-
-    // Parse exe name from command line
-    std::string exe_name_ansi;
-    if (lpszCmdLine != nullptr && strlen(lpszCmdLine) > 0) {
-        // Remove quotes if present
-        exe_name_ansi = lpszCmdLine;
-        if (exe_name_ansi.length() >= 2 && exe_name_ansi.front() == '"' && exe_name_ansi.back() == '"') {
-            exe_name_ansi = exe_name_ansi.substr(1, exe_name_ansi.length() - 2);
-        }
-    }
-
-    if (exe_name_ansi.empty()) {
-        OutputDebugStringA(
-            "WaitAndInject: No exe name provided. Usage: rundll32.exe zzz_display_commander.addon64,WaitAndInject "
-            "\"game.exe\"");
-        return;
-    }
-
-    // Convert to wide string
-    int size_needed = MultiByteToWideChar(CP_ACP, 0, exe_name_ansi.c_str(), -1, nullptr, 0);
-    if (size_needed <= 0) {
-        OutputDebugStringA("WaitAndInject: Failed to convert exe name to wide string");
-        return;
-    }
-
-    std::vector<wchar_t> exe_name_wide(size_needed);
-    MultiByteToWideChar(CP_ACP, 0, exe_name_ansi.c_str(), -1, exe_name_wide.data(), size_needed);
-    std::wstring exe_name(exe_name_wide.data());
-
-    // Extract just the filename if a path was provided (e.g., ".\BPSR_STREAM.exe" -> "BPSR_STREAM.exe")
-    std::filesystem::path exe_path(exe_name);
-    std::wstring exe_name_only = exe_path.filename().wstring();
-
-    OutputDebugStringA(std::format("WaitAndInject: Waiting for process: {} (comparing against: {})", exe_name_ansi,
-                                   std::string(exe_name_only.begin(), exe_name_only.end()))
-                           .c_str());
-    std::cout << "WaitAndInject: Waiting for process: " << exe_name_ansi
-              << " (comparing against: " << std::string(exe_name_only.begin(), exe_name_only.end()) << ")" << std::endl;
-
-    // Wait forever and inject into every new process that starts
-    WaitForProcessAndInject(exe_name_only);
 }
 
 // RunDLL entry point to set or reset an NVIDIA driver profile DWORD setting (SpecialK-compatible).

@@ -121,7 +121,7 @@ bool ReadCurrentReShadeSettings(ReShadeGlobalSettings& settings) {
             buffer_size = sizeof(buffer);
             memset(buffer, 0, sizeof(buffer));
 
-            if (g_reshade_loaded.load()
+            if ((g_reshade_module != nullptr)
                 && reshade::get_config_value(nullptr, section.c_str(), key.c_str(), buffer, &buffer_size)) {
                 // Special handling for EffectSearchPaths and TextureSearchPaths
                 // These are stored as null-terminated string arrays in ReShade

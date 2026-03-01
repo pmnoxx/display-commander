@@ -19,9 +19,11 @@ ReshadeDownloadStatus GetReshadeDownloadStatus();
 const char* GetReshadeDownloadStatusMessage();
 
 // Start downloading and extracting the given ReShade version (e.g. "6.7.3") in a background thread.
-// Downloads from https://reshade.me/downloads/ReShade_Setup_<version>_Addon.exe, extracts with tar.exe,
-// copies Reshade64.dll and Reshade32.dll to %localappdata%\Programs\Display_Commander\Reshade\Dll\<version>\.
-// No-op if already downloading. Uses atomics for status (no std::mutex).
+// Copies to Reshade\Dll\<version>\. No-op if already downloading. Uses atomics for status (no std::mutex).
 void StartReshadeVersionDownload(const std::string& version);
+
+// Same as above but copies to the global root (%%localappdata%%\Programs\Display_Commander\Reshade),
+// overwriting the single global version. Per updates UI spec: Download button overwrites that folder.
+void StartReshadeVersionDownloadToGlobalRoot(const std::string& version);
 
 }  // namespace display_commander::utils

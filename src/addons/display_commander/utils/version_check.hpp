@@ -78,6 +78,10 @@ bool DownloadDcVersionToDll(const std::string& version, std::string* out_error =
 // Returns true if the release exists and has addon64/addon32 assets.
 bool FetchLatestDebugRelease(std::string* out_error = nullptr);
 
+// Fetch latest_debug release and return the version from the release body (e.g. "0.12.200.2316").
+// Use for display; no need to call FetchLatestDebugRelease first.
+bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_error = nullptr);
+
 // Download latest_debug release to Dll\X.Y.Z (version read from downloaded binaries). Call after
 // FetchLatestDebugRelease (or any time).
 bool DownloadDcLatestDebugToDll(std::string* out_error = nullptr);

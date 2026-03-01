@@ -345,7 +345,7 @@ std::filesystem::path GetLocalReshadeDirectory() {
     return std::filesystem::path(localappdata_path) / L"Programs" / L"Display_Commander" / L"Reshade";
 }
 
-static std::string GetReshadeVersionInDirectory(const std::filesystem::path& dir) {
+std::string GetReshadeVersionInDirectory(const std::filesystem::path& dir) {
     if (dir.empty()) {
         return "";
     }

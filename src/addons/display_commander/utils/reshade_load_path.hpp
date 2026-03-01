@@ -48,6 +48,9 @@ std::filesystem::path GetReshadeDirectoryForLoading();
 // Local folder path (%localappdata%\Programs\Display_Commander\Reshade). For UI version display.
 std::filesystem::path GetLocalReshadeDirectory();
 
+// Version string of Reshade64.dll in the given directory, or empty if not found. For UI (loaded version, etc.).
+std::string GetReshadeVersionInDirectory(const std::filesystem::path& dir);
+
 // Version string of Reshade64.dll in the local base folder, or empty if not found.
 std::string GetLocalReshadeVersion();
 

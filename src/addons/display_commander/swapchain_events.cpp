@@ -1,11 +1,10 @@
 #include "addon.hpp"
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
-#include "display/hdr_control.hpp"
 #include "display/display_initial_state.hpp"
-#include "hdr_upgrade/hdr_upgrade.hpp"
+#include "display/hdr_control.hpp"
 #include "globals.hpp"
-#include "latency/gpu_completion_monitoring.hpp"
+#include "hdr_upgrade/hdr_upgrade.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/d3d9/d3d9_device_vtable_logging.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
@@ -21,6 +20,7 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/xinput_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
+#include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
@@ -766,11 +766,11 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             }
         }
 
-        // Swapchain HDR Upgrade (scRGB or HDR10 on create) - Main tab "Swapchain HDR Upgrade"
-        if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
+        // Swapchain HDR Upgrade (scRGB or HDR10 on create) - Main tab "Swapchain HDR Upgrade". Disabled when RenoDX addon is loaded.
+        if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
+            && settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
             const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
-            if (display_commander::hdr_upgrade::ModifyCreateSwapchainDesc(api, desc, use_hdr10))
-                modified = true;
+            if (display_commander::hdr_upgrade::ModifyCreateSwapchainDesc(api, desc, use_hdr10)) modified = true;
         }
 
         // Log sync interval and present flags with detailed explanation
@@ -1184,8 +1184,9 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         ApplyHdr1000MetadataToSwapchain(swapchain);
     }
 
-    // Swapchain HDR Upgrade (init_swapchain: ResizeBuffers + SetColorSpace1 + set_color_space when enabled)
-    if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
+    // Swapchain HDR Upgrade (init_swapchain: ResizeBuffers + SetColorSpace1 + set_color_space when enabled). Disabled when RenoDX addon is loaded.
+    if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
+        && settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
         const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
         display_commander::hdr_upgrade::OnInitSwapchain(swapchain, resize, use_hdr10);
     }
@@ -1423,8 +1424,7 @@ float GetTargetFps() {
 
 static OnPresentReflexMode GetEffectiveReflexMode() {
     if (!s_fps_limiter_enabled.load() || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        return static_cast<OnPresentReflexMode>(
-            settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
+        return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
     }
     switch (s_fps_limiter_mode.load()) {
         case FpsLimiterMode::kOnPresentSync:
@@ -2381,8 +2381,10 @@ bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource r
         }
     }
 
-    if (display_commander::hdr_upgrade::OnCreateResourceView(device, resource, usage_type, desc))
+    if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
+        && display_commander::hdr_upgrade::OnCreateResourceView(device, resource, usage_type, desc)) {
         modified = true;
+    }
 
     return modified;
 }

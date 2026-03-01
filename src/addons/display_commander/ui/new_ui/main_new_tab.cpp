@@ -2116,7 +2116,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 const reshade::api::device_api api = g_last_reshade_device_api.load();
                 const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
                                       || api == reshade::api::device_api::d3d12);
-                if (is_dxgi) {
+                const bool renodx_loaded = g_is_renodx_loaded.load(std::memory_order_relaxed);
+                if (is_dxgi && !renodx_loaded) {
                     if (CheckboxSetting(settings::g_mainTabSettings.swapchain_hdr_upgrade, "Swapchain HDR Upgrade",
                                         imgui)) {
                         // Applied in create_swapchain (desc) and init_swapchain (ResizeBuffers + color space)
@@ -2137,7 +2138,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                                 "restart.");
                         }
                     }
-                } else {
+                } else if (!is_dxgi) {
                     const char* api_label = "this API";
                     switch (api) {
                         case reshade::api::device_api::d3d9:   api_label = "D3D9"; break;

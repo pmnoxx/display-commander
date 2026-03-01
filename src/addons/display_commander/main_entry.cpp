@@ -36,8 +36,8 @@
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
-#include "utils/detour_call_tracker.hpp"
 #include "utils/dc_load_path.hpp"
+#include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
@@ -965,6 +965,14 @@ void LoadAddonsFromPluginsDirectory_IterateAndLoad(const std::filesystem::path& 
             } else {
                 LogInfo("Successfully loaded addon from '%ls'", path.c_str());
                 loaded_count++;
+                // RenoDX addon loaded: disable Swapchain HDR Upgrade and set global flag
+                std::string lower = addon_file;
+                std::transform(lower.begin(), lower.end(), lower.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                if (lower.find("renodx") != std::string::npos && lower.find("renodx-devkit") == std::string::npos) {
+                    g_is_renodx_loaded.store(true, std::memory_order_relaxed);
+                    settings::g_mainTabSettings.swapchain_hdr_upgrade.SetValue(false);
+                }
             }
         }
         if (loaded_count > 0 || failed_count > 0 || skipped_count > 0) {
@@ -1217,16 +1225,18 @@ void DetectMultipleDisplayCommanderVersions_Resolve(const std::vector<OtherDcMod
             OutputDebugStringA(found_msg);
             if (!other_is_loader) {
                 if (info.load_time_ns < current_load_time_ns) {
-                    snprintf(found_msg, sizeof(found_msg),
-                             "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
-                             "Refusing to load current instance.\n",
-                             current_load_time_ns - info.load_time_ns);
+                    snprintf(
+                        found_msg, sizeof(found_msg),
+                        "[DisplayCommander]   Conflict resolution: Other instance loaded first (difference: %lld ns). "
+                        "Refusing to load current instance.\n",
+                        current_load_time_ns - info.load_time_ns);
                     OutputDebugStringA(found_msg);
                 } else {
-                    snprintf(found_msg, sizeof(found_msg),
-                             "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: %lld "
-                             "ns). Allowing current instance to load.\n",
-                             info.load_time_ns - current_load_time_ns);
+                    snprintf(
+                        found_msg, sizeof(found_msg),
+                        "[DisplayCommander]   Conflict resolution: Current instance loaded first (difference: %lld "
+                        "ns). Allowing current instance to load.\n",
+                        info.load_time_ns - current_load_time_ns);
                     OutputDebugStringA(found_msg);
                 }
             }
@@ -2032,10 +2042,10 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
     if (display_commander::utils::version_check::CompareVersions(DISPLAY_COMMANDER_VERSION_STRING,
-                                                               kDisplayCommanderMinLoadVersion) < 0) {
+                                                                 kDisplayCommanderMinLoadVersion)
+        < 0) {
         char msg[384];
-        snprintf(msg, sizeof(msg),
-                 "[DisplayCommander] Version %s is below minimum allowed %s - refusing to load.\n",
+        snprintf(msg, sizeof(msg), "[DisplayCommander] Version %s is below minimum allowed %s - refusing to load.\n",
                  DISPLAY_COMMANDER_VERSION_STRING, kDisplayCommanderMinLoadVersion);
         OutputDebugStringA(msg);
         g_process_attached.store(true);
@@ -2069,7 +2079,7 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
                                 display_commander::utils::GetDcAddonPathInDirectory(load_path);
                             if (!addon_path.empty()) {
                                 g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
-                                                               std::memory_order_release);
+                                                                std::memory_order_release);
                                 if (LoadLibraryW(addon_path.c_str()) != nullptr) {
                                     g_process_attached.store(true);
                                     return ProcessAttachEarlyResult::LoaderOnly;

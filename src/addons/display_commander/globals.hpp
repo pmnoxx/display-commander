@@ -49,8 +49,9 @@ enum class DeviceTypeDC { DX9, DX10, DX11, DX12, OpenGL, Vulkan };
 // Display Commander load state for multi-proxy coordination (dxgi + winmm + version.dll, etc.).
 // One instance becomes HOOKED; others become PROXY_DLL_ONLY and do not install hooks.
 enum DisplayCommanderState : int {
-    DC_STATE_UNDECIDED = 0,   // Not yet determined
-    DC_STATE_PROXY_DLL_ONLY = 1,  // Will not hook; register as addon only (another DC is HOOKED or we loaded another DC)
+    DC_STATE_UNDECIDED = 0,  // Not yet determined
+    DC_STATE_PROXY_DLL_ONLY =
+        1,                    // Will not hook; register as addon only (another DC is HOOKED or we loaded another DC)
     DC_STATE_HOOKED = 2,      // This instance installs hooks (MinHook, etc.)
     DC_STATE_DO_NOTHING = 3,  // Do not hook; no other DC was loaded
     DC_STATE_DLL_LOADER = 4   // Loader instance: loads DC from Dll\X.Y.Z and does not hook; stays quiet
@@ -559,6 +560,10 @@ extern std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 // SRWLOCK diagnostics for stuck-detection reporting (returns true if lock is currently held)
 bool IsSwapchainTrackingLockHeld();
 extern std::atomic<HMODULE> g_reshade_module;
+
+/** True when a ReShade addon whose name contains "renodx" (e.g. rennodx-silenthill2remake.addon64) has been loaded.
+ *  When set, Swapchain HDR Upgrade is disabled and hidden in UI to avoid conflict with RenoDX. */
+extern std::atomic<bool> g_is_renodx_loaded;
 
 // If g_reshade_module is null, scan the process for ReShade (ReShadeRegisterAddon export) and set it.
 // Use when ReShade may have been loaded after we attached (e.g. we started in no-ReShade mode).

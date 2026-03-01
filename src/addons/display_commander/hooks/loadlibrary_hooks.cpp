@@ -54,6 +54,21 @@ bool ShouldBlockSpecialKDLL(const std::wstring& dll_path) {
     return (filename == L"specialk32.dll" || filename == L"specialk64.dll");
 }
 
+// Returns true if path or filename contains "renodx" (case-insensitive) but not "renodx-devkit". Used to detect RenoDX game addons.
+static bool IsRenoDxAddonPath(const std::wstring& path_or_name) {
+    std::filesystem::path p(path_or_name);
+    std::wstring filename = p.filename().wstring();
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+    if (filename.find(L"renodx") == std::wstring::npos) return false;
+    if (filename.find(L"renodx-devkit") != std::wstring::npos) return false;
+    return true;
+}
+
+static void OnRenoDxAddonLoaded() {
+    g_is_renodx_loaded.store(true, std::memory_order_relaxed);
+    settings::g_mainTabSettings.swapchain_hdr_upgrade.SetValue(false);
+}
+
 // Helper function to check if a DLL should be blocked (Ansel libraries)
 bool ShouldBlockAnselDLL(const std::wstring& dll_path) {
     // Check if Ansel skip is enabled
@@ -434,6 +449,8 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
             LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
+        } else if (IsRenoDxAddonPath(module_name_wide)) {
+            OnRenoDxAddonLoaded();
         }
     } else {
         DWORD error = GetLastError();
@@ -528,6 +545,8 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
             LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
+        } else if (IsRenoDxAddonPath(module_name_wide)) {
+            OnRenoDxAddonLoaded();
         }
     } else {
         DWORD error = GetLastError();
@@ -628,6 +647,8 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
             LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
+        } else if (IsRenoDxAddonPath(module_name_wide)) {
+            OnRenoDxAddonLoaded();
         }
     } else {
         DWORD error = GetLastError();
@@ -718,6 +739,8 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
             LogInfo("Added new module to tracking: %s (0x%p, %u bytes)", dll_name.c_str(), base_addr, size_img);
             RecordHostLoadedApiIfAppropriate(load_caller, callback_module_name);
             OnModuleLoaded(callback_module_name, callback_hmodule);
+        } else if (IsRenoDxAddonPath(module_name_wide)) {
+            OnRenoDxAddonLoaded();
         }
     } else {
         DWORD error = GetLastError();
@@ -1495,6 +1518,10 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
+
+    if (IsRenoDxAddonPath(moduleName)) {
+        OnRenoDxAddonLoaded();
+    }
 
     // Convert to lowercase for case-insensitive comparison
     std::wstring lowerModuleName = moduleName;

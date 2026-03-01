@@ -124,6 +124,7 @@ std::atomic<bool> g_dx9_swapchain_detected{false};    // Set when D3D9 swapchain
 // 4. Reshade loads again without unloading Display Commander
 std::vector<reshade::api::effect_runtime*> g_reshade_runtimes;
 std::atomic<HMODULE> g_reshade_module{nullptr};
+std::atomic<bool> g_is_renodx_loaded{false};
 
 void RefreshReShadeModuleIfNeeded() {
     if (g_reshade_module.load() != nullptr) return;

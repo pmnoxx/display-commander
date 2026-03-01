@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.198 (2026-03-01)
+
+- **RenoDX: disable and hide Swapchain HDR Upgrade** - When a ReShade addon whose name contains "renodx" (e.g. renodx-hollowknight.addon64, rennodx-silenthill2remake.addon64) is loaded, Display Commander sets `g_is_renodx_loaded`, auto-disables the Swapchain HDR Upgrade setting, skips HDR upgrade logic in create/init swapchain and create_resource_view, and hides the "Swapchain HDR Upgrade" checkbox and HDR mode combo in the Main tab so the option is not shown when RenoDX is loaded.
+
+---
+
 ## v0.12.197 (2026-03-01)
 
 - **Main tab Updates: DC and ReShade via selectors only** - In the Main tab Updates section, both Display Commander and ReShade are now controlled by a single version selector each (no override, latest installed, or a specific X.Y.Z); load source and DC loader behaviour (load from Dll when Latest or X.Y.Z is selected) follow from that choice.

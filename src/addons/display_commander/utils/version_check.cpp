@@ -813,9 +813,41 @@ bool DownloadDcVersionToDll(const std::string& version, std::string* out_error) 
     return DownloadDcReleaseToDll(tag, version, out_error);
 }
 
+// Parse "Version in binaries: X.Y.Z.W" (or "**Version in binaries**: X.Y.Z.W") from release body.
+static std::string ParseVersionFromReleaseBody(const std::string& json) {
+    const char prefix[] = "Version in binaries";
+    size_t pos = json.find(prefix);
+    if (pos == std::string::npos) return {};
+    pos += sizeof(prefix) - 1;
+    while (pos < json.size() && (json[pos] == ' ' || json[pos] == ':' || json[pos] == '*')) ++pos;
+    if (pos >= json.size() || !std::isdigit(static_cast<unsigned char>(json[pos]))) return {};
+    size_t start = pos;
+    while (pos < json.size() && (std::isdigit(static_cast<unsigned char>(json[pos])) || json[pos] == '.')) ++pos;
+    return json.substr(start, pos - start);
+}
+
 bool FetchLatestDebugRelease(std::string* out_error) {
     std::string url_64, url_32;
     return FetchReleaseByTag("latest_debug", &url_64, &url_32, out_error);
+}
+
+// Fetch latest_debug release and return the version string from the release body (e.g. "0.12.200.2316").
+bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_error) {
+    if (out_version) out_version->clear();
+    std::string url =
+        "https://api.github.com/repos/pmnoxx/display-commander/releases/tags/latest_debug";
+    std::string json;
+    if (!DownloadTextFromUrl(url, json)) {
+        if (out_error) *out_error = "Failed to fetch latest_debug release";
+        return false;
+    }
+    std::string ver = ParseVersionFromReleaseBody(json);
+    if (ver.empty()) {
+        if (out_error) *out_error = "Release body has no 'Version in binaries'";
+        return false;
+    }
+    if (out_version) *out_version = ver;
+    return true;
 }
 
 // Download latest_debug release: download to staging, read version from DLLs, move to Dll\X.Y.Z.

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.201 (2026-03-01)
+
+- **Updates UI redesign (Main tab)** - ReShade and Display Commander sections simplified: "Prefer global ReShade" / "Prefer global DC" checkboxes (config: `ReshadeSelectedVersion`, `dc_selector_mode`); version status green when up to date, red when newer available (tooltip shows current → new version). ReShade download overwrites single global folder; version combo remote-only (GitHub + reshade.me). DC: newest stable and newest debug fetched automatically; latest debug version parsed from release body ("Version in binaries"); no "Check debug" button. Open folder buttons: tooltips show full path (ReShade global, DC global). Spec: `docs/ui_specs/updates_ui_spec.md`; task: `docs/tasks/reshade_dc_updates_redesign.md`.
+
+---
+
 ## v0.12.200 (2026-03-01)
 
 - **Display Commander selector and upgrades** - New source selector: Local (injection DLL), Global (base path), Debug (Debug\X.Y.Z), Stable (Dll\X.Y.Z). Config: `dc_selector_mode`, `dc_version_for_debug`, `dc_version_for_stable`; legacy `DcSelectedVersion` is migrated once to stable mode + version. Debug builds install to `Debug\X.Y.Z` via "Download to Debug"; stable to `Dll\X.Y.Z`. Loader skips central load when mode is Local; treats runs under both Dll\ and Debug\ as versioned (no double load). UI: mode combo, per-mode version combos (Latest + installed), "Set as global" (copy running addon to base), "Copy current to Dll", Fetch/Download for stable, Check/Download for debug. Fallbacks when selected version is missing: latest in same folder, then base.

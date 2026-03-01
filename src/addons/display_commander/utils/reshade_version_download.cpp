@@ -40,7 +40,8 @@ std::filesystem::path GetReshadeVersionFolder(const std::string& version) {
     return base;
 }
 
-void ReshadeVersionDownloadWorker(std::string version) {
+// If to_global_root true, dest_dir is the Reshade global root (overwrite single version); else Reshade\Dll\X.Y.Z.
+static void ReshadeVersionDownloadWorker(std::string version, bool to_global_root) {
     ReshadeDownloadStatus expected = ReshadeDownloadStatus::Idle;
     if (!g_status.compare_exchange_strong(expected, ReshadeDownloadStatus::Downloading, std::memory_order_acq_rel)) {
         return;  // Already in progress
@@ -96,10 +97,11 @@ void ReshadeVersionDownloadWorker(std::string version) {
         return;
     }
 
-    std::filesystem::path dest_dir = GetReshadeVersionFolder(version);
+    std::filesystem::path dest_dir =
+        to_global_root ? GetLocalReshadeDirectory() : GetReshadeVersionFolder(version);
     std::filesystem::create_directories(dest_dir, ec);
     if (ec) {
-        SetError("Could not create version folder.");
+        SetError("Could not create destination directory.");
         g_status.store(ReshadeDownloadStatus::Idle, std::memory_order_release);
         return;
     }
@@ -136,7 +138,15 @@ void StartReshadeVersionDownload(const std::string& version) {
     if (version.empty()) {
         return;
     }
-    std::thread t(ReshadeVersionDownloadWorker, version);
+    std::thread t(ReshadeVersionDownloadWorker, version, false);
+    t.detach();
+}
+
+void StartReshadeVersionDownloadToGlobalRoot(const std::string& version) {
+    if (version.empty()) {
+        return;
+    }
+    std::thread t(ReshadeVersionDownloadWorker, version, true);
     t.detach();
 }
 

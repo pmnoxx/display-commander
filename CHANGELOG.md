@@ -2,6 +2,32 @@
 
 ---
 
+## v0.12.196 (2026-03-01)
+
+- **ReShade version selection simplified** - ReShade load config now uses a single value like Display Commander: `""` (no override / base folder), `"latest"` (Reshade\Dll\highest), `"X.Y.Z"` (Reshade\Dll\X.Y.Z), or `"no"` (do not load ReShade). Removed Local/Shared/Specific version combo and shared path. Main tab ReShade: single combo "No ReShade", "No override", "Latest installed", then installed versions.
+- **ReShade auto-backup** - When the Updates → ReShade section is opened and ReShade is loaded, the currently loaded ReShade is copied to `Reshade\Dll\X.Y.Z` (version from DLL) once if that folder does not already contain the DLLs and the loaded path is not already under Reshade\Dll\.
+- **Load DC from Dll: no separate checkbox** - Removed "Load DC from Dll folder on start" checkbox. Loader behavior is implied by the Display Commander version selection: when "Latest installed" or a specific "X.Y.Z" is selected and the instance is loaded from root/game (not under Dll\), it acts as loader and loads the addon from Dll\version; "No override" means run as addon from current location.
+- **Override ReShade location removed** - Removed "Override ReShade location" checkbox and path; ReShade is loaded only from the selected source (no override / latest / X.Y.Z).
+
+---
+
+## v0.12.195 (2026-03-01)
+
+- **Multi-version: ignore loader when resolving conflicts** - When "Load DC from Dll folder on start" is used, the loader (e.g. WINMM.dll) sets itself to `DC_STATE_DLL_LOADER`. Multi-version detection now queries `GetDisplayCommanderState()` from each other DC module; if the other instance is the loader, it is not treated as a conflict. The addon loaded from `Dll\X.Y.Z` is allowed to run instead of refusing to load.
+- **Minimum allowed version to load** - Display Commander now refuses to load if its version is below 0.12.194. Versions older than 0.12.194 log a message and return without hooking.
+
+---
+
+## v0.12.194 (2026-03-01)
+
+- **Latest debug download to Dll\X.Y.Z** - "Check latest (debug)" / "Download to Dll" now extracts the release to a staging folder, reads the version from the downloaded addon DLLs, and moves files to `Dll\X.Y.Z` (version from build) instead of `Dll\latest_debug`.
+- **Copy current version to Dll** - Main tab Display Commander: new "Copy current version to Dll" button copies the running addon to `Dll\X.Y.Z` if that version folder does not already contain it.
+- **DisplayCommanderState enum and loader mode** - `g_display_commander_state` is now `std::atomic<DisplayCommanderState>`. New state `DC_STATE_DLL_LOADER`: when "Load DC from Dll folder on start" is enabled, the instance loaded from root (or game dir) sets itself to DLL_LOADER, loads the addon from `Dll\<selected version>`, and does not hook; the loaded addon becomes the hooking instance.
+- **Load DC from Dll folder on start** - Main tab Display Commander: checkbox (default off). When on, the root/game copy acts as a loader and loads DC from `Dll\X.Y.Z` without installing hooks.
+- **Override ReShade location** - Main tab ReShade: checkbox "Override ReShade location" (default off) and path input. When enabled, ReShade is loaded from the given path instead of the selected source (Local/Shared/Specific version).
+
+---
+
 ## v0.12.193 (2026-03-01)
 
 - **Display Commander loads even if loaded multiple times** - Addon initialization and load paths tolerate being invoked multiple times (e.g. dxgi.dll + winmm.dll as proxies, or repeated ReShade load); DC registers and runs correctly instead of failing or crashing when already loaded.

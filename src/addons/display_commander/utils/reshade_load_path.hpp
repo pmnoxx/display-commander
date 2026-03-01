@@ -4,49 +4,40 @@
 
 namespace display_commander::utils {
 
-// Reshade load source: where to load ReShade DLL from when DC runs as proxy.
-enum class ReshadeLoadSource : int {
-    Local = 0,           // %localappdata%\Programs\Display_Commander\Reshade (flat)
-    SharedPath = 1,      // User-provided directory
-    SpecificVersion = 2,  // e.g. .../Reshade/Dll/6.7.3/
-    NoReshade = 3        // Do not load ReShade (DC runs without ReShade when used as proxy)
-};
+// ReShade load config: single string ReshadeSelectedVersion.
+// "" = no override (load from base folder). "latest" = Dll\<highest>. "X.Y.Z" = Dll\X.Y.Z. "no" = do not load ReShade.
+// Only versions under %localappdata%\Programs\Display_Commander\Reshade\Dll\X.Y.Z are considered.
 
 // Returns the directory that should contain Reshade64.dll / Reshade32.dll for the
-// current load source (read from Display Commander config). Used at ProcessAttach
-// and in the Main tab. Does not depend on ReShade runtime.
+// current config. Empty path when ReShade load is disabled ("no").
 std::filesystem::path GetReshadeDirectoryForLoading();
 
 // Local folder path (%localappdata%\Programs\Display_Commander\Reshade). For UI version display.
 std::filesystem::path GetLocalReshadeDirectory();
 
-// Version string of Reshade64.dll in the local folder, or empty if not found.
+// Version string of Reshade64.dll in the local base folder, or empty if not found.
 std::string GetLocalReshadeVersion();
 
-// Version string of Reshade64.dll in the configured shared path, or empty if path missing / DLL not found.
-std::string GetSharedReshadeVersion();
-
-// Get/set load source and related values from DC config (section DisplayCommander.ReShade).
-// Used by ReShade tab UI and by GetReshadeDirectoryForLoading().
-ReshadeLoadSource GetReshadeLoadSourceFromConfig();
-void SetReshadeLoadSourceInConfig(ReshadeLoadSource value);
-
-// True when load source is NoReshade (user chose not to load ReShade). Used to skip load without showing an error.
-bool IsReshadeLoadDisabledByConfig();
-std::string GetReshadeSharedPathFromConfig();
-void SetReshadeSharedPathInConfig(const std::string& path);
+// Config get/set. Value: "", "latest", "X.Y.Z", or "no".
 std::string GetReshadeSelectedVersionFromConfig();
 void SetReshadeSelectedVersionInConfig(const std::string& version);
 
-// Supported ReShade versions for the "Specific version" dropdown (all known: fallback + GitHub).
+// True when selected version is "no" (do not load ReShade).
+bool IsReshadeLoadDisabledByConfig();
+
+// Supported ReShade versions for dropdown (all known: fallback + GitHub).
 const char* const* GetReshadeVersionList(size_t* out_count);
 
-// Installed ReShade versions only (subdirs of .../Reshade/Dll/ that contain both DLLs). Use for version selector.
+// Installed ReShade versions only (subdirs of .../Reshade/Dll/ that contain both DLLs).
 const char* const* GetReshadeInstalledVersionList(size_t* out_count);
 
-// When load source is SpecificVersion but the selected version was not installed, GetReshadeDirectoryForLoading
-// falls back to the highest available version. This returns true in that case and fills the two version strings
-// (selected from config, and actually loaded). Use to show a UI warning. out_selected/out_loaded may be null.
+// When selected is "X.Y.Z" but that version was not installed, we load the highest available and set fallback info.
+// Returns true in that case and fills the two version strings. out_selected/out_loaded may be null.
 bool GetReshadeLoadFallbackVersionInfo(std::string* out_selected_version, std::string* out_loaded_version);
+
+// Copy currently loaded ReShade from loaded_reshade_directory to Reshade\Dll\X.Y.Z (version from DLL) if that
+// folder does not already contain the DLLs. Skips if loaded_reshade_directory is already under Reshade\Dll\.
+// Returns true on success or skip, false on error (out_error set).
+bool CopyCurrentReshadeToDll(const std::filesystem::path& loaded_reshade_directory, std::string* out_error);
 
 }  // namespace display_commander::utils

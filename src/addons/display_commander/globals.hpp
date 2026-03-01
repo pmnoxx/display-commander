@@ -52,12 +52,13 @@ enum DisplayCommanderState : int {
     DC_STATE_UNDECIDED = 0,   // Not yet determined
     DC_STATE_PROXY_DLL_ONLY = 1,  // Will not hook; register as addon only (another DC is HOOKED or we loaded another DC)
     DC_STATE_HOOKED = 2,      // This instance installs hooks (MinHook, etc.)
-    DC_STATE_DO_NOTHING = 3   // Do not hook; no other DC was loaded
+    DC_STATE_DO_NOTHING = 3,  // Do not hook; no other DC was loaded
+    DC_STATE_DLL_LOADER = 4   // Loader instance: loads DC from Dll\X.Y.Z and does not hook; stays quiet
 };
-extern std::atomic<int> g_display_commander_state;
+extern std::atomic<DisplayCommanderState> g_display_commander_state;
 
 inline bool IsDisplayCommanderHookingInstance() {
-    return g_display_commander_state.load(std::memory_order_acquire) == static_cast<int>(DC_STATE_HOOKED);
+    return g_display_commander_state.load(std::memory_order_acquire) == DisplayCommanderState::DC_STATE_HOOKED;
 }
 
 // Log level enum matching ReShade's log levels

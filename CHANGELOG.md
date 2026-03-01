@@ -2,6 +2,11 @@
 
 ---
 
+## v0.12.180 (2026-03-01)
+Remove unused code.
+
+---
+
 ## v0.12.179 (2026-03-01)
 
 - **Fixed crash due to invalid arguments** - XInput hook could crash when Steam overlay (or other code) called XInput with an pState being nullptr to check whenever device is connected.

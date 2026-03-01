@@ -173,9 +173,6 @@ struct ReShadeDetectionDebugInfo {
 // Global debug information storage
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 
-// Store entry point detected in DLLMain for saving after initialization
-static std::string g_entry_point_to_save;
-
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
@@ -1636,7 +1633,8 @@ void HandleSafemode() {
 
         LogInfo(
             "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter disabled "
-            "(checkbox off), XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, _nvngx "
+            "(checkbox off), XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, "
+            "_nvngx "
             "loading disabled, nvapi64 loading "
             "disabled, XInput loading disabled");
     } else {
@@ -1658,14 +1656,6 @@ void HandleSafemode() {
 
 void DoInitializationWithoutHwndSafe(HMODULE h_module) {
     // Initialize config system now (safe to start threads here, after DLLMain)
-
-    // Save entry point to config now that config system is initialized
-    // (entry point was detected in DLLMain but couldn't be saved then)
-    if (!g_entry_point_to_save.empty()) {
-        display_commander::config::set_config_value("DisplayCommander", "EntryPoint", g_entry_point_to_save);
-        display_commander::config::save_config("Entry point detection");
-        LogInfo("Entry point logged to DisplayCommander.toml: %s", g_entry_point_to_save.c_str());
-    }
 
     // Setup high-resolution timer for maximum precision
     if (utils::setup_high_resolution_timer()) {
@@ -2388,15 +2378,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 entry_point_utf8 = std::string(entry_point.begin(), entry_point.end());
             }
 
-            // Store entry point in a global variable to be saved later
-            g_entry_point_to_save = entry_point_utf8;
-
             char debug_msg[512];
-            snprintf(debug_msg, sizeof(debug_msg),
-                     "[DisplayCommander] Entry point detected: %s (will be saved after initialization)\n",
+            snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: %s\n",
                      entry_point_utf8.c_str());
-            OutputDebugStringA(debug_msg);
-            LogInfoDirect("Entry point detected: %s (will be saved after initialization)", entry_point_utf8.c_str());
+            LogInfoDirect("Entry point detected: %s", entry_point_utf8.c_str());
 
             // Handle safemode after config system is initialized
 

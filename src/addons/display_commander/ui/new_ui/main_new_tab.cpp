@@ -1210,8 +1210,14 @@ void InitMainNewTab() {
 
         settings_loaded_once = true;
 
-        // FPS limiter mode
-        s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(settings::g_mainTabSettings.fps_limiter_mode.GetValue()));
+        // FPS limiter: enabled checkbox + mode (0=OnPresentSync, 1=Reflex, 2=LatentSync; clamp old value 3→2)
+        s_fps_limiter_enabled.store(settings::g_mainTabSettings.fps_limiter_enabled.GetValue());
+        int mode_val = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
+        if (mode_val > 2) {
+            mode_val = 2;
+            settings::g_mainTabSettings.fps_limiter_mode.SetValue(mode_val);
+        }
+        s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(mode_val));
         // Scanline offset and VBlank Sync Divisor are now automatically synced via IntSettingRef
 
         // Initialize resolution widget
@@ -1814,7 +1820,7 @@ if (enabled_experimental_features) {
                         case reshade::api::device_api::d3d9:   api_label = "D3D9"; break;
                         case reshade::api::device_api::opengl: api_label = "OpenGL"; break;
                         case reshade::api::device_api::vulkan: api_label = "Vulkan"; break;
-                        default: break;
+                        default:                               break;
                     }
                     imgui.Text("Use RenoDX to upgrade swapchain to HDR (%s).", api_label);
                     if (imgui.IsItemHovered()) {
@@ -2744,10 +2750,12 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
             }
             imgui.SetTooltip("%s", tooltip_text.c_str());
         }
-        // warn if "no changes mode", moving to another display isn't implemented in that mode
-        if (s_target_display_changed && s_window_mode.load() == WindowMode::kNoChanges) {
+        // Warn if mode does not resize; moving to another display isn't implemented in those modes
+        const WindowMode mode = s_window_mode.load();
+        if (s_target_display_changed
+            && (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize)) {
             imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
-                              "Warning: Moving to another display isn't implemented in 'No Changes' mode.");
+                              "Warning: Moving to another display isn't implemented in this window mode.");
         }
     }
 }
@@ -2826,20 +2834,37 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
     RECORD_DETOUR_CALL(utils::get_now_ns());
     imgui.Spacing();
 
-    // FPS Limiter Mode
+    // FPS limiter: checkbox and mode on same line (Special K style)
     {
-        const char* items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)", "Disabled",
+        const char* items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)",
                                "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR"};
 
         int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
+        if (current_item > 2) {
+            current_item = 2;
+            settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
+            s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
+        }
         int prev_item = current_item;
-        if (imgui.Combo("FPS Limiter Mode", &current_item, items, 4)) {
+
+        bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
+        if (imgui.Checkbox("##FPS limiter", &enabled)) {
+            settings::g_mainTabSettings.fps_limiter_enabled.SetValue(enabled);
+            s_fps_limiter_enabled.store(enabled);
+            LogInfo("FPS Limiter: %s", enabled ? "enabled" : "disabled (no limiting)");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("When checked, the selected mode is active. When unchecked, no FPS limiting.");
+        }
+        imgui.SameLine();
+        if (!enabled) {
+            imgui.BeginDisabled();
+        }
+        if (imgui.Combo("FPS Limiter Mode", &current_item, items, 3)) {
             settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
             s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
             FpsLimiterMode mode = s_fps_limiter_mode.load();
-            if (mode == FpsLimiterMode::kDisabled) {
-                LogInfo("FPS Limiter: Disabled (no limiting)");
-            } else if (mode == FpsLimiterMode::kReflex) {
+            if (mode == FpsLimiterMode::kReflex) {
                 LogInfo("FPS Limiter: Reflex");
                 s_reflex_auto_configure.store(true);
                 settings::g_advancedTabSettings.reflex_auto_configure.SetValue(true);
@@ -2855,17 +2880,13 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 s_reflex_auto_configure.store(false);
             }
         }
-
-        // Custom rendering for grayed out option
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Choose limiter:\n"
-                "Default - recommend.\n"
-                "Reflex Mode - uses reflex library to limit FPS\n"
-                "Disabled - no FPS limiting\n"
-                "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR - synchronizes frame display "
-                "time "
-                "to the monitor refresh rate.\n"
+                "Choose limiter mode (when FPS limiter is enabled):\n"
+                "Default - OnPresent frame synchronizer (recommended).\n"
+                "Reflex - uses Reflex library to limit FPS.\n"
+                "Sync to Display Refresh Rate - synchronizes frame display time to the monitor refresh rate "
+                "(Non-VRR).\n"
                 " src: %s",
                 GetChosenFpsLimiterSiteName());
         }
@@ -2878,6 +2899,9 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 "reflex_marker_pclstats_etw > dxgi_swapchain1 > dxgi_swapchain > "
                 "dxgi_factory_wrapper > reshade_addon_event. src: %s",
                 GetChosenFpsLimiterSiteName());
+        }
+        if (!enabled) {
+            imgui.EndDisabled();
         }
         auto DrawPclStatsCheckbox = [&imgui]() {
             if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
@@ -3184,15 +3208,15 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
             }
         }
 
-        // Reflex config when FPS limiter is Disabled or LatentSync (used when no FPS limiter is active)
-        if (current_item == static_cast<int>(FpsLimiterMode::kDisabled)
-            || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
+        // Reflex config when FPS limiter is off (checkbox unchecked) or mode is LatentSync (used when no FPS limiter is
+        // active)
+        if (!s_fps_limiter_enabled.load() || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
             imgui.Spacing();
             if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui)) {
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Reflex setting when FPS limiter is Disabled or LatentSync.\n"
+                    "Reflex setting when FPS limiter is off or mode is LatentSync.\n"
                     "Used for Vulkan NvLL and other paths when no FPS limiter mode is active.");
             }
         }
@@ -3387,8 +3411,7 @@ void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& 
 
     // FPS Limit slider (persisted)
 
-    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
-                                 && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+    bool fps_limit_enabled = (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync)
                              || ShouldReflexBeEnabled();
 
     {
@@ -3451,8 +3474,7 @@ struct VSyncTearingTooltipContext {
 
 static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui::IImGuiWrapper& imgui) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    bool fps_limit_enabled = s_fps_limiter_mode.load() != FpsLimiterMode::kDisabled
-                                 && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+    bool fps_limit_enabled = (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync)
                              || ShouldReflexBeEnabled();
     {
         if (!fps_limit_enabled) {
@@ -3468,7 +3490,11 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         if (!fps_limit_enabled) {
             imgui.BeginDisabled();
         }
-        CheckboxSetting(settings::g_mainTabSettings.background_fps_enabled, "Background FPS", imgui);
+        // use imgui.Checkbox instead of CheckboxSetting
+        bool background_fps_enabled = settings::g_mainTabSettings.background_fps_enabled.GetValue();
+        if (imgui.Checkbox("##Background FPS", &background_fps_enabled)) {
+            settings::g_mainTabSettings.background_fps_enabled.SetValue(background_fps_enabled);
+        }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "When enabled, cap FPS when the game window is in the background. Slider sets the limit (default 60).");
@@ -3479,7 +3505,8 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Limit", fmt_bg, imgui)) {
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "BackGround Fps Limit", fmt_bg,
+                                  imgui)) {
         }
         if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
             imgui.EndDisabled();

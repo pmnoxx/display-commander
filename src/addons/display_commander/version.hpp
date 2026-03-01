@@ -9,17 +9,6 @@
 #define STRINGIFY(x)  STRINGIFY_(x)
 #define STRINGIFY_(x) #x
 
-// Version numbers (major.minor.patch) - set by CMake from CMakeLists.txt; fallbacks for non-CMake use (e.g. IDE)
-#ifndef DISPLAY_COMMANDER_VERSION_MAJOR
-#define DISPLAY_COMMANDER_VERSION_MAJOR 0
-#endif
-#ifndef DISPLAY_COMMANDER_VERSION_MINOR
-#define DISPLAY_COMMANDER_VERSION_MINOR 12
-#endif
-#ifndef DISPLAY_COMMANDER_VERSION_PATCH
-#define DISPLAY_COMMANDER_VERSION_PATCH 89
-#endif
-
 // Version string major.minor.patch (derived from the numeric macros above)
 #define DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH \
     STRINGIFY(DISPLAY_COMMANDER_VERSION_MAJOR)             \

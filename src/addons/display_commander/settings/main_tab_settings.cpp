@@ -44,8 +44,8 @@ namespace settings {
 
 MainTabSettings::MainTabSettings()
     : window_mode(
-          "window_mode", s_window_mode, static_cast<int>(WindowMode::kNoChanges),
-          {"No changes mode", "Borderless Fullscreen (resize to fullscreen)", "Borderless Windowed (Aspect Ratio)"},
+          "window_mode", s_window_mode, static_cast<int>(WindowMode::kPreventFullscreenNoResize),
+          {"No changes", "Prevent exclusive fullscreen / no resize", "Borderless fullscreen", "Borderless windowed"},
           "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "21.5:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9
@@ -53,12 +53,11 @@ MainTabSettings::MainTabSettings()
                           {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"},
                           "DisplayCommander"),
       alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "DisplayCommander"),
-      fps_limiter_mode("fps_limiter_mode", 0,
-                       {"Disabled", "Reflex (low latency)",
-                        "Sync to Sim Start Time (adds latency to offer more consistent frame timing)",
-                        "Sync to Display Refresh Rate (fraction of monitor refresh rate)",
-                        "Non-Reflex Low Latency Mode (not implemented)"},
-                       "DisplayCommander"),
+      fps_limiter_enabled("fps_limiter_enabled", true, "DisplayCommander"),
+      fps_limiter_mode(
+          "fps_limiter_mode", 0,
+          {"Default", "Reflex (low latency)", "Sync to Display Refresh Rate (fraction of monitor refresh rate)"},
+          "DisplayCommander"),
       scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "DisplayCommander"),
       vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "DisplayCommander"),
       fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "DisplayCommander"),
@@ -201,8 +200,7 @@ MainTabSettings::MainTabSettings()
       saturation_value("saturation_value", s_saturation_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
       hue_degrees("hue_degrees", s_hue_degrees, 0.0f, -15.0f, 15.0f, "DisplayCommander"),
       swapchain_hdr_upgrade("swapchain_hdr_upgrade", false, "DisplayCommander"),
-      swapchain_hdr_upgrade_mode("swapchain_hdr_upgrade_mode", 0, {"scRGB (default)", "HDR10"},
-                                 "DisplayCommander"),
+      swapchain_hdr_upgrade_mode("swapchain_hdr_upgrade_mode", 0, {"scRGB (default)", "HDR10"}, "DisplayCommander"),
       auto_hdr("auto_hdr", false, "DisplayCommander"),
       auto_hdr_strength("auto_hdr_strength", s_auto_hdr_strength, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
       auto_enable_disable_hdr("auto_enable_disable_hdr", false, "DisplayCommander"),
@@ -213,6 +211,7 @@ MainTabSettings::MainTabSettings()
         &aspect_index,
         &window_aspect_width,
         &alignment,
+        &fps_limiter_enabled,
         &fps_limiter_mode,
         &scanline_offset,
         &vblank_sync_divisor,

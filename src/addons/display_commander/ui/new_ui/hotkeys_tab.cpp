@@ -567,7 +567,8 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Win+Left: no adjacent display.");
                  return;
              }
-             bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+             const WindowMode mode = s_window_mode.load();
+             bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
                  s_window_mode.store(WindowMode::kFullscreen);
@@ -595,7 +596,8 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Win+Right: no adjacent display.");
                  return;
              }
-             bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+             const WindowMode mode = s_window_mode.load();
+             bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
                  s_window_mode.store(WindowMode::kFullscreen);
@@ -622,7 +624,8 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Move to primary: no primary display found.");
                  return;
              }
-             bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+             const WindowMode mode = s_window_mode.load();
+             bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
                  s_window_mode.store(WindowMode::kFullscreen);
@@ -649,7 +652,8 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Move to secondary: no non-primary display found.");
                  return;
              }
-             bool switched_mode = (s_window_mode.load() == WindowMode::kNoChanges);
+             const WindowMode mode = s_window_mode.load();
+             bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
                  s_window_mode.store(WindowMode::kFullscreen);

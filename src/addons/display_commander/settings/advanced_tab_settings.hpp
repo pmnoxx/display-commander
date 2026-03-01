@@ -41,7 +41,6 @@ class AdvancedTabSettings {
     void SaveAll();
 
     // Developer Settings
-    BoolSetting prevent_fullscreen;
     BoolSetting continue_rendering;
     BoolSetting prevent_always_on_top;
     BoolSetting prevent_minimize;

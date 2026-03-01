@@ -291,8 +291,13 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 
 // Enums
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
-enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kDisabled = 2, kLatentSync = 3 };
-enum class WindowMode : std::uint8_t { kNoChanges = 0, kFullscreen = 1, kAspectRatio = 2 };
+enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kLatentSync = 2 };
+enum class WindowMode : std::uint8_t {
+    kNoChanges = 0,                 // No changes; do not prevent exclusive fullscreen
+    kFullscreen = 1,                // Borderless fullscreen (resize) + prevent exclusive fullscreen
+    kAspectRatio = 2,               // Borderless windowed (aspect ratio) + prevent exclusive fullscreen
+    kPreventFullscreenNoResize = 3  // Prevent exclusive fullscreen only; no window resize (new default)
+};
 enum class AspectRatioType : std::uint8_t {
     k3_2 = 0,     // 3:2
     k4_3 = 1,     // 4:3
@@ -336,34 +341,28 @@ enum class InputBlockingMode : std::uint8_t {
 
 // Why Reflex Sleep Status is not available (for UI and diagnostics)
 enum class SleepStatusUnavailableReason : std::uint8_t {
-    kNone = 0,                 // Status is available
-    kNoReflex,                 // Reflex provider not created
-    kReflexNotInitialized,     // Reflex provider exists but not initialized (no D3D device yet)
-    kProviderDoesNotSupport,   // Current provider does not support sleep status
-    kNoD3DDevice,              // Reflex has no D3D device (device lost or not set)
+    kNone = 0,                  // Status is available
+    kNoReflex,                  // Reflex provider not created
+    kReflexNotInitialized,      // Reflex provider exists but not initialized (no D3D device yet)
+    kProviderDoesNotSupport,    // Current provider does not support sleep status
+    kNoD3DDevice,               // Reflex has no D3D device (device lost or not set)
     kNvApiFunctionUnavailable,  // NvAPI_D3D_GetSleepStatus not found in nvapi64
-    kNvApiError                // NvAPI_D3D_GetSleepStatus returned an error
+    kNvApiError                 // NvAPI_D3D_GetSleepStatus returned an error
 };
 
 // Human-readable reason for sleep status being unavailable (for UI)
 inline const char* SleepStatusUnavailableReasonToString(SleepStatusUnavailableReason r) {
     switch (r) {
-        case SleepStatusUnavailableReason::kNone:
-            return "Available";
-        case SleepStatusUnavailableReason::kNoReflex:
-            return "Reflex provider not created";
-        case SleepStatusUnavailableReason::kReflexNotInitialized:
-            return "Reflex not initialized (no D3D device yet)";
+        case SleepStatusUnavailableReason::kNone:                 return "Available";
+        case SleepStatusUnavailableReason::kNoReflex:             return "Reflex provider not created";
+        case SleepStatusUnavailableReason::kReflexNotInitialized: return "Reflex not initialized (no D3D device yet)";
         case SleepStatusUnavailableReason::kProviderDoesNotSupport:
             return "Current provider does not support sleep status";
-        case SleepStatusUnavailableReason::kNoD3DDevice:
-            return "No D3D device (device lost or not set)";
+        case SleepStatusUnavailableReason::kNoD3DDevice: return "No D3D device (device lost or not set)";
         case SleepStatusUnavailableReason::kNvApiFunctionUnavailable:
             return "NvAPI_D3D_GetSleepStatus not found in nvapi64";
-        case SleepStatusUnavailableReason::kNvApiError:
-            return "NvAPI GetSleepStatus returned an error";
-        default:
-            return "Unknown";
+        case SleepStatusUnavailableReason::kNvApiError: return "NvAPI GetSleepStatus returned an error";
+        default:                                        return "Unknown";
     }
 }
 
@@ -499,6 +498,8 @@ extern std::atomic<bool> s_resolution_applied_at_least_once;
 
 // Window management
 extern std::atomic<WindowMode> s_window_mode;
+/** True when window mode implies "prevent exclusive fullscreen" (all modes except kNoChanges). */
+inline bool ShouldPreventExclusiveFullscreen() { return s_window_mode.load() != WindowMode::kNoChanges; }
 extern std::atomic<AspectRatioType> s_aspect_index;
 extern std::atomic<int> s_aspect_width;
 
@@ -598,7 +599,8 @@ extern std::unique_ptr<ReflexProvider> g_reflexProvider;
 // Global frame ID for latency management
 extern std::atomic<uint64_t> g_global_frame_id;
 
-// Same moment in QPC ns (get_real_time_ns) when g_global_frame_id was last incremented; for relative "X.Xs ago" in stuck log.
+// Same moment in QPC ns (get_real_time_ns) when g_global_frame_id was last incremented; for relative "X.Xs ago" in
+// stuck log.
 extern std::atomic<LONGLONG> g_global_frame_id_last_updated_ns;
 
 // QPC ns when a Windows message was last processed in the game window's WndProc; for stuck-detection log.
@@ -724,7 +726,9 @@ bool IsAppInBackground();
 // Timestamp (ns) of last foreground<->background switch; used to limit VRR/NVAPI updates to 5s after switch
 extern std::atomic<LONGLONG> g_last_foreground_background_switch_ns;
 
-// FPS limiter mode: 0 = Disabled, 1 = OnPresentSync, 2 = OnPresentSyncLowLatency, 3 = VBlank Scanline Sync (VBlank)
+// FPS limiter: enabled by checkbox (s_fps_limiter_enabled). Mode: 0 = OnPresentSync, 1 = Reflex, 2 = LatentSync
+// (VBlank).
+extern std::atomic<bool> s_fps_limiter_enabled;
 extern std::atomic<FpsLimiterMode> s_fps_limiter_mode;
 
 // Lock-free ring buffer for recent FPS samples (60s window at ~240 Hz -> 14400 max)
@@ -1142,8 +1146,8 @@ extern std::atomic<LONGLONG> g_onpresent_sync_pre_sleep_ns;       // Actual pre-
 extern std::atomic<LONGLONG> g_onpresent_sync_post_sleep_ns;      // Actual post-sleep time applied (for debugging)
 
 // GPU completion measurement using EnqueueSetEvent
-extern std::atomic<HANDLE> g_gpu_completion_event;      // Event handle for GPU completion measurement
-extern std::atomic<LONGLONG> g_gpu_duration_ns;         // Last measured GPU duration (smoothed)
+extern std::atomic<HANDLE> g_gpu_completion_event;  // Event handle for GPU completion measurement
+extern std::atomic<LONGLONG> g_gpu_duration_ns;     // Last measured GPU duration (smoothed)
 
 // GPU completion failure tracking
 extern std::atomic<const char*>
@@ -1157,7 +1161,7 @@ extern std::atomic<bool> g_gpu_completion_callback_finished;  // Tracks if GPU c
 extern std::atomic<LONGLONG> g_sim_to_display_latency_ns;     // Measured sim-start-to-display latency (smoothed)
 
 // GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
-extern std::atomic<LONGLONG> g_present_update_after2_time_ns;    // Time when OnPresentUpdateAfter2 was called
+extern std::atomic<LONGLONG> g_present_update_after2_time_ns;  // Time when OnPresentUpdateAfter2 was called
 extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // NVIDIA Reflex minimal controls

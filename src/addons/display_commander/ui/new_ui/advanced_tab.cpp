@@ -185,12 +185,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
 void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
-    // Prevent Fullscreen
-    CheckboxSetting(settings::g_advancedTabSettings.prevent_fullscreen, "Prevent Fullscreen", imgui);
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Prevent exclusive fullscreen; keep borderless/windowed for stability and HDR.");
-    }
-
     CheckboxSetting(settings::g_advancedTabSettings.prevent_always_on_top, "Prevent Always On Top", imgui);
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Prevents windows from becoming always on top, even if they are moved or resized.");

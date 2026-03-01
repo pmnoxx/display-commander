@@ -4,10 +4,10 @@
 #include <reshade_imgui.hpp>
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
+#include "../../ui/imgui_wrapper_reshade.hpp"
 #include "../../utils/logging.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
-#include "../../ui/imgui_wrapper_reshade.hpp"
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
 #include "experimental_tab.hpp"
@@ -16,6 +16,7 @@
 #include "performance_tab.hpp"
 #include "swapchain_tab.hpp"
 #include "vulkan_tab.hpp"
+
 
 // Current section of the rendering UI (for crash/stuck reporting). Global namespace to match globals.hpp extern.
 std::atomic<const char*> g_rendering_ui_section{nullptr};
@@ -254,13 +255,7 @@ void InitializeNewUI() {
         [](reshade::api::effect_runtime* runtime) {
             try {
                 display_commander::ui::ImGuiWrapperReshade wrapper;
-                display_commander::widgets::xinput_widget::DrawActiveInputApisSection(wrapper);
-                ImGui::Spacing();
-                display_commander::widgets::xinput_widget::DrawXInputWidget(wrapper);
-
-                ImGui::Spacing();
-
-                display_commander::widgets::remapping_widget::DrawRemappingWidget(wrapper);
+                display_commander::widgets::xinput_widget::DrawControllerTab(wrapper);
             } catch (const std::exception& e) {
                 LogError("Error drawing Controller tab: %s", e.what());
             } catch (...) {

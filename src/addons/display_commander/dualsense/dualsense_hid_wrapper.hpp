@@ -164,12 +164,20 @@ struct DualSenseDevice {
     std::shared_ptr<hid_device_file_s> hid_device;
     GetInputReport_pfn get_input_report;
 
+    // Packet-number-changed rate (reports per second); updated every ~1s window
+    DWORD packet_change_count_this_second;
+    DWORD packet_rate_window_start_tick;
+    float last_packet_rate_hz;
+    bool packet_rate_ever_called;  // true once the rate-tracking branch has run at least once
+
     DualSenseDevice() : vendor_id(0), product_id(0), is_connected(false),
                        is_wireless(false), last_update_time(0), input_timestamp(0),
                        has_adaptive_triggers(false), has_touchpad(false),
                        has_microphone(false), has_speaker(false),
                        battery_info_valid(false), battery_level(0), battery_type(0),
-                       hid_device(nullptr), get_input_report(nullptr) {
+                       hid_device(nullptr), get_input_report(nullptr),
+                       packet_change_count_this_second(0), packet_rate_window_start_tick(0),
+                       last_packet_rate_hz(0.0f), packet_rate_ever_called(false) {
         ZeroMemory(&current_state, sizeof(XINPUT_STATE));
         ZeroMemory(&previous_state, sizeof(XINPUT_STATE));
         ZeroMemory(&sk_dualsense_data, sizeof(SK_HID_DualSense_GetStateData));

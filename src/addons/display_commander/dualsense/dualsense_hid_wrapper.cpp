@@ -1,16 +1,27 @@
 #include "dualsense_hid_wrapper.hpp"
-#include "../utils.hpp"
-#include "../utils/logging.hpp"
-#include "../hooks/hid_suppression_hooks.hpp"
-#include <reshade_imgui.hpp>
-#include <setupapi.h>
 #include <hidsdi.h>
 #include <initguid.h>
+#include <setupapi.h>
+#include <winioctl.h>
 #include <cstring>
+#include <reshade_imgui.hpp>
+#include "../hooks/hid_additional_hooks.hpp"
+#include "../hooks/hid_suppression_hooks.hpp"
+#include "../utils.hpp"
+#include "../utils/logging.hpp"
 
 // Define GUID_DEVINTERFACE_HID if not already defined
 #ifndef GUID_DEVINTERFACE_HID
 DEFINE_GUID(GUID_DEVINTERFACE_HID, 0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30);
+#endif
+
+// HID class driver IOCTL for poll frequency (not in user-mode hidsdi.h; matches WDK hidclass.h)
+#ifndef FILE_DEVICE_KEYBOARD
+#define FILE_DEVICE_KEYBOARD 0x0000000b
+#endif
+#ifndef IOCTL_HID_SET_POLL_FREQUENCY_MSEC
+#define HID_BUFFER_CTL_CODE(id) CTL_CODE(FILE_DEVICE_KEYBOARD, (id), METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define IOCTL_HID_SET_POLL_FREQUENCY_MSEC HID_BUFFER_CTL_CODE(103)
 #endif
 
 #pragma comment(lib, "setupapi.lib")
@@ -25,9 +36,7 @@ DualSenseHIDWrapper::DualSenseHIDWrapper() {
     // Initialize empty
 }
 
-DualSenseHIDWrapper::~DualSenseHIDWrapper() {
-    Cleanup();
-}
+DualSenseHIDWrapper::~DualSenseHIDWrapper() { Cleanup(); }
 
 bool DualSenseHIDWrapper::Initialize() {
     if (is_initialized_.load()) {
@@ -110,12 +119,11 @@ void DualSenseHIDWrapper::EnumerateHIDDevices() {
             SP_DEVINFO_DATA deviceInfoData = {};
             deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
 
-            if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &deviceInterfaceData, pDeviceInterfaceDetail, requiredSize, nullptr, &deviceInfoData)) {
+            if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &deviceInterfaceData, pDeviceInterfaceDetail, requiredSize,
+                                                nullptr, &deviceInfoData)) {
                 // Open the device
-                HANDLE hDevice = CreateFile(pDeviceInterfaceDetail->DevicePath,
-                                          GENERIC_READ | GENERIC_WRITE,
-                                          FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                          nullptr, OPEN_EXISTING, 0, nullptr);
+                HANDLE hDevice = CreateFile(pDeviceInterfaceDetail->DevicePath, GENERIC_READ | GENERIC_WRITE,
+                                            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
 
                 if (hDevice != INVALID_HANDLE_VALUE) {
                     // Get device attributes
@@ -157,10 +165,16 @@ void DualSenseHIDWrapper::EnumerateHIDDevices() {
                             if (CreateHIDDevice(device.device_path, device)) {
                                 devices_.push_back(device);
 
-                                LogInfo("DualSenseHIDWrapper::EnumerateHIDDevices() - Found DualSense device: %s [VID:0x%04X PID:0x%04X] %s",
-                                       device.device_name.c_str(), device.vendor_id, device.product_id, device.connection_type.c_str());
+                                LogInfo(
+                                    "DualSenseHIDWrapper::EnumerateHIDDevices() - Found DualSense device: %s "
+                                    "[VID:0x%04X PID:0x%04X] %s",
+                                    device.device_name.c_str(), device.vendor_id, device.product_id,
+                                    device.connection_type.c_str());
                             } else {
-                                LogError("DualSenseHIDWrapper::EnumerateHIDDevices() - Failed to create HID device wrapper for %s", device.device_name.c_str());
+                                LogError(
+                                    "DualSenseHIDWrapper::EnumerateHIDDevices() - Failed to create HID device wrapper "
+                                    "for %s",
+                                    device.device_name.c_str());
                             }
                         }
                     }
@@ -188,28 +202,41 @@ bool DualSenseHIDWrapper::CreateHIDDevice(const std::string& device_path, DualSe
     wcscpy_s(hid_device->wszDevicePath, MAX_PATH, wide_path.c_str());
 
     // Open the device file
-    hid_device->hDeviceFile = CreateFileW(wide_path.c_str(),
-                                       GENERIC_READ | GENERIC_WRITE,
-                                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                       nullptr, OPEN_EXISTING, 0, nullptr);
+    hid_device->hDeviceFile = CreateFileW(wide_path.c_str(), GENERIC_READ | GENERIC_WRITE,
+                                          FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
 
     if (hid_device->hDeviceFile == INVALID_HANDLE_VALUE) {
         LogError("DualSenseHIDWrapper::CreateHIDDevice() - Failed to open device: %s", device_path.c_str());
         return false;
     }
 
+    // Set polling frequency to 0 (irregular/opportunistic reads: get latest report per ReadFile, no fixed interval)
+    // Same as Special K setPollingFrequency(0); reduces latency when we poll at our own rate.
+    {
+        DWORD pollMsec = 0;
+        auto* deviceIoControl = display_commanderhooks::DeviceIoControl_Original != nullptr
+                                    ? display_commanderhooks::DeviceIoControl_Original
+                                    : &DeviceIoControl;
+        BOOL ok = deviceIoControl(hid_device->hDeviceFile, IOCTL_HID_SET_POLL_FREQUENCY_MSEC,
+                                  &pollMsec, sizeof(pollMsec), nullptr, 0, nullptr, nullptr);
+        if (!ok) {
+            LogInfo("DualSenseHIDWrapper::CreateHIDDevice() - SetPollingFrequency(0) failed (last error %lu), continuing",
+                    GetLastError());
+        }
+    }
+
     // Set up input report buffer
-    hid_device->input_report.resize(64); // Standard HID report size
+    hid_device->input_report.resize(64);  // Standard HID report size
 
     // Set up the input report function based on connection type
     if (device.is_wireless) {
         // For Bluetooth, we would use SK_DualSense_GetInputReportBt
         // For now, we'll use a stub
-        hid_device->get_input_report = nullptr; // Will be set up later
+        hid_device->get_input_report = nullptr;  // Will be set up later
     } else {
         // For USB, we would use SK_DualSense_GetInputReportUSB
         // For now, we'll use a stub
-        hid_device->get_input_report = nullptr; // Will be set up later
+        hid_device->get_input_report = nullptr;  // Will be set up later
     }
 
     // Set device info
@@ -241,10 +268,11 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
 
     // Read input report directly from HID device
     DWORD bytesRead = 0;
-    BYTE inputReport[78] = {0}; // Max size for Bluetooth reports
+    BYTE inputReport[78] = {0};  // Max size for Bluetooth reports
 
     // Try to read input report
-    if (renodx::hooks::ReadFile_Direct(device.hid_device->hDeviceFile, inputReport, sizeof(inputReport), &bytesRead, nullptr)) {
+    if (renodx::hooks::ReadFile_Direct(device.hid_device->hDeviceFile, inputReport, sizeof(inputReport), &bytesRead,
+                                       nullptr)) {
         if (bytesRead > 0) {
             // Update timestamp
             device.last_update_time = GetTickCount();
@@ -252,10 +280,10 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
 
             // Debug: Log raw input report (first few times)
             static int debug_count = 0;
-            if (debug_count++ < 5) { // Only log first 5 reports
-                LogInfo("DualSense raw input report [%d bytes]: %02X %02X %02X %02X %02X %02X %02X %02X...",
-                       bytesRead, inputReport[0], inputReport[1], inputReport[2], inputReport[3],
-                       inputReport[4], inputReport[5], inputReport[6], inputReport[7]);
+            if (debug_count++ < 5) {  // Only log first 5 reports
+                LogInfo("DualSense raw input report [%d bytes]: %02X %02X %02X %02X %02X %02X %02X %02X...", bytesRead,
+                        inputReport[0], inputReport[1], inputReport[2], inputReport[3], inputReport[4], inputReport[5],
+                        inputReport[6], inputReport[7]);
             }
 
             // Store the raw input report for debugging
@@ -270,14 +298,13 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
                 // Zero out the rest if the report is shorter than expected
                 if (bytesRead < device.hid_device->input_report.size()) {
                     std::memset(device.hid_device->input_report.data() + bytesRead, 0,
-                               device.hid_device->input_report.size() - bytesRead);
+                                device.hid_device->input_report.size() - bytesRead);
                 }
 
                 // Debug: Log that we stored the input report
                 static int store_debug_count = 0;
                 if (store_debug_count++ < 3) {
-                    LogInfo("Stored input report [%d bytes] for device %s",
-                           bytesRead, device.device_name.c_str());
+                    LogInfo("Stored input report [%d bytes] for device %s", bytesRead, device.device_name.c_str());
                 }
             }
 
@@ -287,20 +314,42 @@ void DualSenseHIDWrapper::UpdateDeviceFromHID(DualSenseDevice& device) {
             // Update packet number for change detection
             device.current_state.dwPacketNumber++;
 
-            // Check for state changes
+            // Check for state changes (true on every successful read since we just incremented packet number)
             if (device.current_state.dwPacketNumber != device.previous_state.dwPacketNumber) {
+                device.packet_rate_ever_called = true;
+                // Rate: how many times per second we see a new report
+                DWORD now = GetTickCount();
+                if (device.packet_rate_window_start_tick == 0) {
+                    device.packet_rate_window_start_tick = now;
+                }
+                device.packet_change_count_this_second++;
+                DWORD elapsed_ms = now - device.packet_rate_window_start_tick;
+                if (elapsed_ms >= 1000) {
+                    device.last_packet_rate_hz =
+                        (elapsed_ms > 0)
+                            ? (1000.0f * static_cast<float>(device.packet_change_count_this_second) /
+                               static_cast<float>(elapsed_ms))
+                            : 0.0f;
+                    LogInfo("DualSense %s: %.1f reports/sec (packet-number-changed)",
+                            device.device_name.c_str(), device.last_packet_rate_hz);
+                    device.packet_change_count_this_second = 0;
+                    device.packet_rate_window_start_tick = now;
+                }
                 // State changed - we could trigger events here
-                LogInfo("DualSense input state changed for device %s - Buttons: 0x%04X, LStick: (%d,%d), RStick: (%d,%d), LTrig: %d, RTrig: %d",
-                       device.device_name.c_str(), device.current_state.Gamepad.wButtons,
-                       device.current_state.Gamepad.sThumbLX, device.current_state.Gamepad.sThumbLY,
-                       device.current_state.Gamepad.sThumbRX, device.current_state.Gamepad.sThumbRY,
-                       device.current_state.Gamepad.bLeftTrigger, device.current_state.Gamepad.bRightTrigger);
+                LogInfoThrottled(10,
+                                 "DualSense input state changed for device %s - Buttons: 0x%04X, LStick: (%d,%d), "
+                                 "RStick: (%d,%d), LTrig: %d, RTrig: %d",
+                                 device.device_name.c_str(), device.current_state.Gamepad.wButtons,
+                                 device.current_state.Gamepad.sThumbLX, device.current_state.Gamepad.sThumbLY,
+                                 device.current_state.Gamepad.sThumbRX, device.current_state.Gamepad.sThumbRY,
+                                 device.current_state.Gamepad.bLeftTrigger, device.current_state.Gamepad.bRightTrigger);
             }
         }
     } else {
         DWORD error = GetLastError();
         if (error != ERROR_IO_PENDING) {
-            LogError("Failed to read input report from DualSense device: %s, error: %lu", device.device_name.c_str(), error);
+            LogError("Failed to read input report from DualSense device: %s, error: %lu", device.device_name.c_str(),
+                     error);
         }
     }
 }
@@ -330,36 +379,35 @@ bool DualSenseHIDWrapper::IsDeviceTypeEnabled(USHORT vendor_id, USHORT product_i
     }
 
     switch (hid_type) {
-        case 0: // Auto - detect all supported devices
+        case 0:                               // Auto - detect all supported devices
             return (product_id == 0x0CE6) ||  // DualSense Controller (Regular)
                    (product_id == 0x0DF2) ||  // DualSense Edge Controller
                    (product_id == 0x05C4) ||  // DualShock 4 Controller
                    (product_id == 0x09CC) ||  // DualShock 4 Controller (Rev 2)
                    (product_id == 0x0BA0);    // DualShock 4 Controller (Dongle)
-        case 1: // DualSense Regular only
+        case 1:                               // DualSense Regular only
             return (product_id == 0x0CE6);
-        case 2: // DualSense Edge only
+        case 2:  // DualSense Edge only
             return (product_id == 0x0DF2);
-        case 3: // DualShock 4 only
+        case 3:                               // DualShock 4 only
             return (product_id == 0x05C4) ||  // DualShock 4 Controller
                    (product_id == 0x09CC) ||  // DualShock 4 Controller (Rev 2)
                    (product_id == 0x0BA0);    // DualShock 4 Controller (Dongle)
-        case 4: // All Sony controllers
+        case 4:                               // All Sony controllers
             return true;
-        default:
-            return false;
+        default: return false;
     }
 }
 
 std::string DualSenseHIDWrapper::GetDeviceTypeString(USHORT vendor_id, USHORT product_id) const {
-    if (vendor_id == 0x054c) { // Sony
+    if (vendor_id == 0x054c) {  // Sony
         switch (product_id) {
-            case 0x0CE6: return "DualSense Controller";           // Regular DualSense
-            case 0x0DF2: return "DualSense Edge Controller";      // DualSense Edge
+            case 0x0CE6: return "DualSense Controller";       // Regular DualSense
+            case 0x0DF2: return "DualSense Edge Controller";  // DualSense Edge
             case 0x05C4: return "DualShock 4 Controller";
             case 0x09CC: return "DualShock 4 Controller (Rev 2)";
             case 0x0BA0: return "DualShock 4 Controller (Dongle)";
-            default: return "Sony Controller";
+            default:     return "Sony Controller";
         }
     }
     return "Unknown Controller";
@@ -367,9 +415,9 @@ std::string DualSenseHIDWrapper::GetDeviceTypeString(USHORT vendor_id, USHORT pr
 
 bool DualSenseHIDWrapper::DetermineConnectionType(const std::string& device_path, bool& is_wireless) {
     // Check if the device path contains Bluetooth indicators
-    is_wireless = (device_path.find("&col01") == std::string::npos) &&
-                  (device_path.find("bluetooth") != std::string::npos ||
-                   device_path.find("bt") != std::string::npos);
+    is_wireless =
+        (device_path.find("&col01") == std::string::npos)
+        && (device_path.find("bluetooth") != std::string::npos || device_path.find("bt") != std::string::npos);
     return true;
 }
 
@@ -424,7 +472,8 @@ void DualSenseHIDWrapper::ProcessUSBInputReport(DualSenseDevice& device, const B
     ParseDualSenseTriggers(device, inputReport);
 }
 
-void DualSenseHIDWrapper::ProcessBluetoothInputReport(DualSenseDevice& device, const BYTE* inputReport, DWORD bytesRead) {
+void DualSenseHIDWrapper::ProcessBluetoothInputReport(DualSenseDevice& device, const BYTE* inputReport,
+                                                      DWORD bytesRead) {
     // DualSense Bluetooth input report format
     // Report ID 0x31, 78 bytes total
     if (bytesRead < 78 || inputReport[0] != 0x31) {
@@ -450,22 +499,22 @@ void DualSenseHIDWrapper::ParseDualSenseButtons(DualSenseDevice& device, const B
     WORD buttons = 0;
 
     // Map DualSense buttons to XInput buttons
-    if (inputReport[1] & 0x10) buttons |= XINPUT_GAMEPAD_LEFT_SHOULDER;  // L1
-    if (inputReport[1] & 0x20) buttons |= XINPUT_GAMEPAD_RIGHT_SHOULDER; // R1
+    if (inputReport[1] & 0x10) buttons |= XINPUT_GAMEPAD_LEFT_SHOULDER;   // L1
+    if (inputReport[1] & 0x20) buttons |= XINPUT_GAMEPAD_RIGHT_SHOULDER;  // R1
     // Note: L2 and R2 are handled as triggers, not buttons in XInput
 
-    if (inputReport[2] & 0x01) buttons |= XINPUT_GAMEPAD_BACK;           // Share
-    if (inputReport[2] & 0x02) buttons |= XINPUT_GAMEPAD_START;          // Options
-    if (inputReport[2] & 0x04) buttons |= XINPUT_GAMEPAD_LEFT_THUMB;     // L3
-    if (inputReport[2] & 0x08) buttons |= XINPUT_GAMEPAD_RIGHT_THUMB;    // R3
+    if (inputReport[2] & 0x01) buttons |= XINPUT_GAMEPAD_BACK;         // Share
+    if (inputReport[2] & 0x02) buttons |= XINPUT_GAMEPAD_START;        // Options
+    if (inputReport[2] & 0x04) buttons |= XINPUT_GAMEPAD_LEFT_THUMB;   // L3
+    if (inputReport[2] & 0x08) buttons |= XINPUT_GAMEPAD_RIGHT_THUMB;  // R3
     // Note: PS button doesn't have a direct XInput equivalent, we'll use a custom constant
-    if (inputReport[2] & 0x10) buttons |= 0x0400;                        // PS (custom constant)
+    if (inputReport[2] & 0x10) buttons |= 0x0400;  // PS (custom constant)
 
     // Face buttons (mapped to XInput layout)
-    if (inputReport[1] & 0x01) buttons |= XINPUT_GAMEPAD_X;              // Square -> X
-    if (inputReport[1] & 0x02) buttons |= XINPUT_GAMEPAD_A;              // Cross -> A
-    if (inputReport[1] & 0x04) buttons |= XINPUT_GAMEPAD_B;              // Circle -> B
-    if (inputReport[1] & 0x08) buttons |= XINPUT_GAMEPAD_Y;              // Triangle -> Y
+    if (inputReport[1] & 0x01) buttons |= XINPUT_GAMEPAD_X;  // Square -> X
+    if (inputReport[1] & 0x02) buttons |= XINPUT_GAMEPAD_A;  // Cross -> A
+    if (inputReport[1] & 0x04) buttons |= XINPUT_GAMEPAD_B;  // Circle -> B
+    if (inputReport[1] & 0x08) buttons |= XINPUT_GAMEPAD_Y;  // Triangle -> Y
 
     // D-pad
     BYTE dpad = inputReport[3] & 0x0F;
@@ -477,8 +526,10 @@ void DualSenseHIDWrapper::ParseDualSenseButtons(DualSenseDevice& device, const B
         case 4: buttons |= XINPUT_GAMEPAD_DPAD_DOWN; break;
         case 5: buttons |= XINPUT_GAMEPAD_DPAD_DOWN | XINPUT_GAMEPAD_DPAD_LEFT; break;
         case 6: buttons |= XINPUT_GAMEPAD_DPAD_LEFT; break;
-        case 7: buttons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_LEFT; break;
-        // case 8: neutral (no buttons)
+        case 7:
+            buttons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_LEFT;
+            break;
+            // case 8: neutral (no buttons)
     }
 
     device.current_state.Gamepad.wButtons = buttons;
@@ -501,7 +552,6 @@ void DualSenseHIDWrapper::ParseDualSenseSticks(DualSenseDevice& device, const BY
     device.current_state.Gamepad.sThumbLY = leftY;
     device.current_state.Gamepad.sThumbRX = rightX;
     device.current_state.Gamepad.sThumbRY = rightY;
-
 }
 
 void DualSenseHIDWrapper::ParseDualSenseTriggers(DualSenseDevice& device, const BYTE* inputReport) {
@@ -517,7 +567,8 @@ void DualSenseHIDWrapper::ParseDualSenseTriggers(DualSenseDevice& device, const 
 }
 
 // Special-K format parsing methods
-void DualSenseHIDWrapper::ParseSpecialKDualSenseData(DualSenseDevice& device, const BYTE* inputReport, DWORD bytesRead) {
+void DualSenseHIDWrapper::ParseSpecialKDualSenseData(DualSenseDevice& device, const BYTE* inputReport,
+                                                     DWORD bytesRead) {
     // Check if we have enough data for the Special-K format
     // USB: 64 bytes (1 byte report ID + 63 bytes data)
     // Bluetooth: 78 bytes (2 bytes report ID + sequence + 63 bytes data)
@@ -563,7 +614,7 @@ void DualSenseHIDWrapper::ConvertSpecialKToXInput(DualSenseDevice& device) {
     if (sk_data.ButtonR3) xinput_state.wButtons |= XINPUT_GAMEPAD_RIGHT_THUMB;
     if (sk_data.ButtonCreate) xinput_state.wButtons |= XINPUT_GAMEPAD_BACK;
     if (sk_data.ButtonOptions) xinput_state.wButtons |= XINPUT_GAMEPAD_START;
-    if (sk_data.ButtonHome) xinput_state.wButtons |= 0x0400; // PS button (custom constant)
+    if (sk_data.ButtonHome) xinput_state.wButtons |= 0x0400;  // PS button (custom constant)
 
     // Face buttons (mapped to XInput layout)
     if (sk_data.ButtonSquare) xinput_state.wButtons |= XINPUT_GAMEPAD_X;    // Square -> X
@@ -573,16 +624,16 @@ void DualSenseHIDWrapper::ConvertSpecialKToXInput(DualSenseDevice& device) {
 
     // D-pad mapping
     switch (sk_data.DPad) {
-        case Direction::Up: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP; break;
-        case Direction::UpRight: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_RIGHT; break;
-        case Direction::Right: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT; break;
+        case Direction::Up:        xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP; break;
+        case Direction::UpRight:   xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_RIGHT; break;
+        case Direction::Right:     xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT; break;
         case Direction::DownRight: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN | XINPUT_GAMEPAD_DPAD_RIGHT; break;
-        case Direction::Down: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN; break;
-        case Direction::DownLeft: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN | XINPUT_GAMEPAD_DPAD_LEFT; break;
-        case Direction::Left: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT; break;
-        case Direction::UpLeft: xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_LEFT; break;
-        case Direction::None: // neutral (no buttons)
-        default: break;
+        case Direction::Down:      xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN; break;
+        case Direction::DownLeft:  xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_DOWN | XINPUT_GAMEPAD_DPAD_LEFT; break;
+        case Direction::Left:      xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_LEFT; break;
+        case Direction::UpLeft:    xinput_state.wButtons |= XINPUT_GAMEPAD_DPAD_UP | XINPUT_GAMEPAD_DPAD_LEFT; break;
+        case Direction::None:      // neutral (no buttons)
+        default:                   break;
     }
 
     // Analog sticks - convert from 8-bit to 16-bit signed values
@@ -599,27 +650,25 @@ void DualSenseHIDWrapper::ConvertSpecialKToXInput(DualSenseDevice& device) {
 
 void DualSenseHIDWrapper::UpdateSpecialKData(DualSenseDevice& device, const SK_HID_DualSense_GetStateData& new_data) {
     // Update battery information if available
-    if (new_data.PowerPercent <= 10) { // Valid range is 0-10
+    if (new_data.PowerPercent <= 10) {  // Valid range is 0-10
         device.battery_info_valid = true;
-        device.battery_level = new_data.PowerPercent * 10; // Convert to percentage (0-100)
+        device.battery_level = new_data.PowerPercent * 10;  // Convert to percentage (0-100)
         device.battery_type = static_cast<BYTE>(new_data.PowerState);
     }
 
     // Update device features based on Special-K data
     device.has_microphone = (new_data.PluggedMic || new_data.PluggedExternalMic);
-    device.has_speaker = true; // DualSense always has speaker
-    device.has_touchpad = true; // DualSense always has touchpad
-    device.has_adaptive_triggers = true; // DualSense always has adaptive triggers
+    device.has_speaker = true;            // DualSense always has speaker
+    device.has_touchpad = true;           // DualSense always has touchpad
+    device.has_adaptive_triggers = true;  // DualSense always has adaptive triggers
 
     // Log additional information if available
     static int debug_count = 0;
     if (debug_count++ < 3) {
-        LogInfo("DualSense Special-K data - Battery: %d%%, Mic: %s, Headphones: %s, USB: %s",
-               device.battery_level,
-               device.has_microphone ? "Yes" : "No",
-               new_data.PluggedHeadphones ? "Yes" : "No",
-               new_data.PluggedUsbData ? "Yes" : "No");
+        LogInfo("DualSense Special-K data - Battery: %d%%, Mic: %s, Headphones: %s, USB: %s", device.battery_level,
+                device.has_microphone ? "Yes" : "No", new_data.PluggedHeadphones ? "Yes" : "No",
+                new_data.PluggedUsbData ? "Yes" : "No");
     }
 }
 
-} // namespace display_commander::dualsense
+}  // namespace display_commander::dualsense

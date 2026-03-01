@@ -201,6 +201,10 @@ class MainTabSettings {
     ui::new_ui::FloatSettingRef contrast_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
     ui::new_ui::FloatSettingRef saturation_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
     ui::new_ui::FloatSettingRef hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
+    /** When enabled, upgrades swap chain to HDR (scRGB 16-bit float) on create_swapchain/init_swapchain (DXGI only). */
+    ui::new_ui::BoolSetting swapchain_hdr_upgrade;
+    /** 0 = scRGB (default), 1 = HDR10. Only used when swapchain_hdr_upgrade is true. */
+    ui::new_ui::ComboSetting swapchain_hdr_upgrade_mode;
     ui::new_ui::BoolSetting
         auto_hdr;  // When enabled, runs DisplayCommander_PerceptualBoost.fx (requires Generic RenoDX for SDR->HDR)
     ui::new_ui::FloatSettingRef auto_hdr_strength;  // Profile 3 EffectStrength_P3 (0.0–2.0), only used when AutoHDR on

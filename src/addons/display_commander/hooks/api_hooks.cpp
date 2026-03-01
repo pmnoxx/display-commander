@@ -1,9 +1,9 @@
 #include "api_hooks.hpp"
-#include <cstdio>
 #include <d3d11.h>
 #include <d3d12.h>
 #include <MinHook.h>
 #include <wrl/client.h>
+#include <cstdio>
 #include "../settings/advanced_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
@@ -319,7 +319,7 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
     g_hook_stats[HOOK_SetWindowLongPtrW].increment_unsuppressed();
     return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong)
-                                     : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
+                                      : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongA function
@@ -334,7 +334,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
     g_hook_stats[HOOK_SetWindowLongA].increment_unsuppressed();
     return SetWindowLongA_Original ? SetWindowLongA_Original(hWnd, nIndex, dwNewLong)
-                                  : SetWindowLongA(hWnd, nIndex, dwNewLong);
+                                   : SetWindowLongA(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongW function
@@ -348,7 +348,7 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
     g_hook_stats[HOOK_SetWindowLongW].increment_unsuppressed();
     return SetWindowLongW_Original ? SetWindowLongW_Original(hWnd, nIndex, dwNewLong)
-                                  : SetWindowLongW(hWnd, nIndex, dwNewLong);
+                                   : SetWindowLongW(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongPtrA function
@@ -366,7 +366,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
     g_hook_stats[HOOK_SetWindowLongPtrA].increment_unsuppressed();
     return SetWindowLongPtrA_Original ? SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong)
-                                     : SetWindowLongPtrA(hWnd, nIndex, dwNewLong);
+                                      : SetWindowLongPtrA(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowPos function

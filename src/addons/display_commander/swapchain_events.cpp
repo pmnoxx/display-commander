@@ -3,6 +3,7 @@
 #include "audio/audio_management.hpp"
 #include "display/hdr_control.hpp"
 #include "display_initial_state.hpp"
+#include "hdr_upgrade/hdr_upgrade.hpp"
 #include "globals.hpp"
 #include "gpu_completion_monitoring.hpp"
 #include "hooks/api_hooks.hpp"
@@ -769,6 +770,13 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             }
         }
 
+        // Swapchain HDR Upgrade (scRGB or HDR10 on create) - Main tab "Swapchain HDR Upgrade"
+        if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
+            const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
+            if (display_commander::hdr_upgrade::ModifyCreateSwapchainDesc(api, desc, use_hdr10))
+                modified = true;
+        }
+
         // Log sync interval and present flags with detailed explanation
         {
             std::ostringstream oss;
@@ -1038,6 +1046,7 @@ void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     if (swapchain == nullptr) {
         return;
     }
+    display_commander::hdr_upgrade::OnDestroySwapchain(swapchain, resize);
     if (s_we_auto_enabled_hdr.load() && s_hdr_auto_enabled_monitor != nullptr) {
         HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
         if (hwnd) {
@@ -1185,6 +1194,12 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     // Auto-apply MaxMDL 1000 HDR metadata when enabled (inject HDR10 metadata on swapchain init)
     if (!resize && settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.GetValue()) {
         ApplyHdr1000MetadataToSwapchain(swapchain);
+    }
+
+    // Swapchain HDR Upgrade (init_swapchain: ResizeBuffers + SetColorSpace1 + set_color_space when enabled)
+    if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
+        const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
+        display_commander::hdr_upgrade::OnInitSwapchain(swapchain, resize, use_hdr10);
     }
 }
 
@@ -2378,6 +2393,9 @@ bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource r
             }
         }
     }
+
+    if (display_commander::hdr_upgrade::OnCreateResourceView(device, resource, usage_type, desc))
+        modified = true;
 
     return modified;
 }

@@ -237,14 +237,12 @@ extern "C" HRESULT WINAPI CreateDXGIFactory(REFIID riid, void** ppFactory) {
 
     // redirecting to CreateDXGIFactory1
 
-    return CreateDXGIFactory1(riid, ppFactory);
+    // return CreateDXGIFactory1(riid, ppFactory);
 
-    /*
     auto func = reinterpret_cast<PFN_CreateDXGIFactory>(GetProcAddress(g_dxgi_module, "CreateDXGIFactory"));
     if (func == nullptr) return E_FAIL;
 
     return func(riid, ppFactory);
-    */
 }
 
 extern "C" HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void** ppFactory) {
@@ -252,6 +250,10 @@ extern "C" HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void** ppFactory) {
 
     auto func = reinterpret_cast<PFN_CreateDXGIFactory1>(GetProcAddress(g_dxgi_module, "CreateDXGIFactory1"));
     if (func == nullptr) return E_FAIL;
+
+    if (true) {
+        return func(riid, ppFactory);
+    }
 
     // upgrading to IDXGIFactory7
 
@@ -262,8 +264,8 @@ extern "C" HRESULT WINAPI CreateDXGIFactory1(REFIID riid, void** ppFactory) {
     GUID rrid_override = riid;
 
     if (std::find(rrids.begin(), rrids.end(), riid) != rrids.end()) {
-        LogInfo("CreateDXGIFactory1: Upgrading to IDXGIFactory7: %s", riid);
-        rrid_override = __uuidof(IDXGIFactory7);
+        //   LogInfo("CreateDXGIFactory1: Upgrading to IDXGIFactory7: %s", riid);
+        //  rrid_override = __uuidof(IDXGIFactory7);
     }
 
     HRESULT hr = func(rrid_override, ppFactory);
@@ -278,6 +280,9 @@ extern "C" HRESULT WINAPI CreateDXGIFactory2(UINT Flags, REFIID riid, void** ppF
 
     auto func = reinterpret_cast<PFN_CreateDXGIFactory2>(GetProcAddress(g_dxgi_module, "CreateDXGIFactory2"));
     if (func == nullptr) return E_FAIL;
+    if (true) {
+        return func(Flags, riid, ppFactory);
+    }
 
     std::array<const GUID, 8> rrids = {
         __uuidof(IDXGIFactory),  __uuidof(IDXGIFactory1), __uuidof(IDXGIFactory2), __uuidof(IDXGIFactory3),

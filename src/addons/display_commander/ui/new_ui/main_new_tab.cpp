@@ -1783,11 +1783,54 @@ if (enabled_experimental_features) {
                     "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, "
                     "multiply.");
             }
-            if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR", imgui)) {
+            {
+                const reshade::api::device_api api = g_last_reshade_device_api.load();
+                const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+                                      || api == reshade::api::device_api::d3d12);
+                if (is_dxgi) {
+                    if (CheckboxSetting(settings::g_mainTabSettings.swapchain_hdr_upgrade, "Swapchain HDR Upgrade",
+                                        imgui)) {
+                        // Applied in create_swapchain (desc) and init_swapchain (ResizeBuffers + color space)
+                    }
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
+                            "Upgrades the swap chain to HDR (scRGB or HDR10) on creation. Requires DXGI (D3D10/11/12) "
+                            "and Windows HDR or an HDR display. Game restart may be needed.");
+                    }
+                    if (settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
+                        if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_hdr_upgrade_mode, "HDR mode",
+                                                imgui)) {
+                            // Value applied on next create_swapchain / init_swapchain
+                        }
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip(
+                                "scRGB = 16-bit float linear. HDR10 = 10-bit PQ (ST.2084). Change may require game "
+                                "restart.");
+                        }
+                    }
+                } else {
+                    const char* api_label = "this API";
+                    switch (api) {
+                        case reshade::api::device_api::d3d9:   api_label = "D3D9"; break;
+                        case reshade::api::device_api::opengl: api_label = "OpenGL"; break;
+                        case reshade::api::device_api::vulkan: api_label = "Vulkan"; break;
+                        default: break;
+                    }
+                    imgui.Text("Use RenoDX to upgrade swapchain to HDR (%s).", api_label);
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
+                            "Swapchain HDR Upgrade is only available for DXGI (D3D10/11/12). For %s use RenoDX: "
+                            "https://github.com/clshortfuse/renodx",
+                            api_label);
+                    }
+                }
+            }
+            if (CheckboxSetting(settings::g_mainTabSettings.auto_hdr, "AutoHDR Perceptual Boost", imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Runs DisplayCommander_PerceptualBoost.fx. For SDR->HDR swapchain upgrade use RenoDX.");
+                imgui.SetTooltip(
+                    "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
             }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
                 // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade
@@ -1795,12 +1838,13 @@ if (enabled_experimental_features) {
                 bool backbuffer_8bit = false;
                 if (desc_ptr != nullptr) {
                     const auto fmt = desc_ptr->back_buffer.texture.format;
-                    backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
-                                       || fmt == reshade::api::format::b8g8r8a8_unorm);
+                    backbuffer_8bit =
+                        (fmt == reshade::api::format::r8g8b8a8_unorm || fmt == reshade::api::format::b8g8r8a8_unorm);
                 }
                 if (backbuffer_8bit) {
-                    imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING " 8-bit buffer. "
-                                     "Recommend RenoDX for SDR->HDR swapchain upgrade.");
+                    imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING
+                                      " 8-bit buffer. "
+                                      "Recommend RenoDX for SDR->HDR swapchain upgrade.");
                 }
                 if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
                                           imgui)) {

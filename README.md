@@ -194,6 +194,7 @@ The RenoDX Discord community is the best place to get real-time help, discuss fe
 - NVIDIA NVAPI headers/libs (`external/nvapi`)
 - Additional third-party code under `external/` (stb, fpng, etc.)
 - **VBlank Scanline Sync**: Based on the algorithm used in Special-K by Kaldaien
+- **Swapchain HDR Upgrade** (scRGB / HDR10): Approach inspired by [AutoHDR-ReShade](https://github.com/EndlesslyFlowering/AutoHDR-ReShade) (EndlesslyFlowering)
 
 See `CHANGELOG.md` for version history.
 

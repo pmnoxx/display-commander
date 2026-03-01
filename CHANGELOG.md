@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.172 (2026-03-01)
+
+- **Add Swapchain HDR Upgrade (scRGB / HDR10)** - Main tab (Brightness and AutoHDR): checkbox "Swapchain HDR Upgrade" and "HDR mode" selector (scRGB default, HDR10). Upgrades swap chain to HDR on creation for DXGI; requires Windows HDR or HDR-capable display. Credits: approach inspired by [AutoHDR-ReShade](https://github.com/EndlesslyFlowering/AutoHDR-ReShade) (EndlesslyFlowering).
+
+---
+
 ## v0.12.171 (2026-02-28)
 
 - **AutoHDR UI** - Warning shown only when AutoHDR is on and backbuffer is 8-bit: "Recommend RenoDX for SDR->HDR swapchain upgrade." Removed RenoDX link button and "only applies" wording; simplified checkbox tooltip.

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.177 (2026-03-01)
+
+- **FPS limiter UI reorganized** - Main tab display settings: FPS limiter section now shows (1) enable checkbox + FPS limit slider, (2) enable background checkbox + background FPS limit slider, (3) FPS limiter mode combo, then a subheader "Advanced FPS limiter settings" with all mode-specific options (Reflex/OnPresent/Latent Sync), Limit Real Frames, No Render/Present in Background, and Quick FPS limit changer. Single `DrawDisplaySettings_FpsLimiter` entry point; VSync & Tearing no longer draws the FPS sliders (moved into FPS limiter block).
+
+---
+
 ## v0.12.176 (2026-03-01)
 
 - **FPS limiter: enable checkbox instead of "Disabled" mode** - Replaced the "Disabled" option in the FPS limiter mode combo with a separate "FPS limiter enabled" checkbox (default on). The combo now has three modes only: Default (OnPresent sync), Reflex, and Sync to Display Refresh Rate (Latent Sync). Unchecking the checkbox disables all FPS limiting; the selected mode applies only when the limiter is enabled. Removed `FpsLimiterMode::kDisabled` from the enum; Reflex "when limiter off or Latent Sync" uses the same Reflex combo as before. Safemode sets the checkbox to off instead of the removed Disabled mode. No migration: existing configs with old mode value 3 are clamped to 2 (Latent Sync).

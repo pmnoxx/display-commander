@@ -112,7 +112,8 @@ void LoadAddonsFromPluginsDirectory();
 // Standalone settings UI when .NO_RESHADE (no ReShade loaded); implemented in ui/cli_standalone_ui.cpp
 void RunStandaloneSettingsUI(HINSTANCE hInst);
 
-// Export for multi-proxy coordination: other DC instances (dxgi, winmm, version.dll) scan this to decide HOOKED vs PROXY_DLL_ONLY
+// Export for multi-proxy coordination: other DC instances (dxgi, winmm, version.dll) scan this to decide HOOKED vs
+// PROXY_DLL_ONLY
 extern "C" __declspec(dllexport) int GetDisplayCommanderState() {
     return g_display_commander_state.load(std::memory_order_acquire);
 }
@@ -2018,7 +2019,9 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         return ProcessAttachEarlyResult::RefuseLoad;
     }
     if (another_undecided) {
-        LogWarn("Another Display Commander instance was still Undecided during scan; this instance may have claimed HOOKED.");
+        LogWarn(
+            "Another Display Commander instance was still Undecided during scan; this instance may have claimed "
+            "HOOKED.");
     }
     LPSTR command_line = GetCommandLineA();
     if (command_line != nullptr && command_line[0] != '\0') {
@@ -2042,7 +2045,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
-            if (early == ProcessAttachEarlyResult::RefuseLoad) return FALSE;
+            if (early == ProcessAttachEarlyResult::RefuseLoad) return TRUE;
             if (early == ProcessAttachEarlyResult::EarlySuccess) return TRUE;
 
             ProcessAttach_DetectReShadeInModules();
@@ -2056,7 +2059,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
                 ProcessAttach_TryLoadReShadeFromCwd();
                 if ((g_reshade_module == nullptr) && !ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy))
-                    return FALSE;
+                    return TRUE;
             }
 
             if (g_no_reshade_mode.load()) {
@@ -2088,7 +2091,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                     }
                 }
                 g_process_attached.store(true);
-                return FALSE;
+                return TRUE;
             }
 
             ProcessAttach_RegisterAndPostInit(h_module, entry_point);

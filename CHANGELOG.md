@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.171 (2026-02-28)
+
+- **AutoHDR UI** - Warning shown only when AutoHDR is on and backbuffer is 8-bit: "Recommend RenoDX for SDR->HDR swapchain upgrade." Removed RenoDX link button and "only applies" wording; simplified checkbox tooltip.
+
+---
+
 ## v0.12.170 (2026-02-28)
 
 - **Windows Gaming Input: remove __try/__except** - Removed MSVC SEH from `HStringToNarrowSafe` in `windows_gaming_input_hooks.cpp` so the addon builds on toolchains that do not support `__try`/`__except`. HSTRING-to-UTF-8 conversion for RoGetActivationFactory logging is unchanged; invalid HSTRING is no longer caught (defensive only).

@@ -1787,30 +1787,21 @@ if (enabled_experimental_features) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Only applies the Perceptual Boost shader. Requires an external addon (e.g. RenoDX) to upgrade "
-                    "swapchain from SDR to HDR for full effect.");
-            }
-            // Warning: AutoHDR only applies Perceptual Boost; SDR->HDR swapchain upgrade requires external addon
-            imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING " Only applies Perceptual Boost shader. "
-                             "Requires an external addon to upgrade swapchain from SDR to HDR (e.g. RenoDX).");
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "AutoHDR runs DisplayCommander_PerceptualBoost.fx only. For real HDR output you need an addon "
-                    "that upgrades the swapchain (e.g. Generic RenoDX).");
-            }
-            // TODO(user): add autodownload option for recommended SDR->HDR addon (RenoDX), link in UI
-            imgui.TextUnformatted("Recommended addon: ");
-            imgui.SameLine();
-            imgui.PushStyleColor(ImGuiCol_Text, ::ui::colors::ICON_INFO);
-            if (imgui.Button("RenoDX (open in browser)")) {
-                ShellExecuteA(nullptr, "open", "https://github.com/clshortfuse/renodx", nullptr, nullptr, SW_SHOW);
-            }
-            imgui.PopStyleColor();
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Opens RenoDX GitHub (SDR to HDR swapchain upgrade for ReShade).");
+                imgui.SetTooltip("Runs DisplayCommander_PerceptualBoost.fx. For SDR->HDR swapchain upgrade use RenoDX.");
             }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
+                // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade
+                auto desc_ptr = g_last_swapchain_desc.load();
+                bool backbuffer_8bit = false;
+                if (desc_ptr != nullptr) {
+                    const auto fmt = desc_ptr->back_buffer.texture.format;
+                    backbuffer_8bit = (fmt == reshade::api::format::r8g8b8a8_unorm
+                                       || fmt == reshade::api::format::b8g8r8a8_unorm);
+                }
+                if (backbuffer_8bit) {
+                    imgui.TextColored(::ui::colors::ICON_WARNING, ICON_FK_WARNING " 8-bit buffer. "
+                                     "Recommend RenoDX for SDR->HDR swapchain upgrade.");
+                }
                 if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
                                           imgui)) {
                     // Value is applied in OnReShadePresent each frame

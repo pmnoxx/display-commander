@@ -58,6 +58,9 @@ std::atomic<bool> g_module_pinned{false};
 // DLL load timestamp in nanoseconds (for conflict resolution)
 std::atomic<LONGLONG> g_dll_load_time_ns{0};
 
+// Display Commander state for multi-proxy: HOOKED (one instance) vs PROXY_DLL_ONLY (others)
+std::atomic<int> g_display_commander_state{static_cast<int>(DC_STATE_UNDECIDED)};
+
 // Shared DXGI factory to avoid redundant CreateDXGIFactory calls
 std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 

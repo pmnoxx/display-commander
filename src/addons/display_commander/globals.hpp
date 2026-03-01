@@ -46,6 +46,20 @@ constexpr bool enabled_experimental_features = false;
 
 enum class DeviceTypeDC { DX9, DX10, DX11, DX12, OpenGL, Vulkan };
 
+// Display Commander load state for multi-proxy coordination (dxgi + winmm + version.dll, etc.).
+// One instance becomes HOOKED; others become PROXY_DLL_ONLY and do not install hooks.
+enum DisplayCommanderState : int {
+    DC_STATE_UNDECIDED = 0,   // Not yet determined
+    DC_STATE_PROXY_DLL_ONLY = 1,  // Will not hook; register as addon only (another DC is HOOKED or we loaded another DC)
+    DC_STATE_HOOKED = 2,      // This instance installs hooks (MinHook, etc.)
+    DC_STATE_DO_NOTHING = 3   // Do not hook; no other DC was loaded
+};
+extern std::atomic<int> g_display_commander_state;
+
+inline bool IsDisplayCommanderHookingInstance() {
+    return g_display_commander_state.load(std::memory_order_acquire) == static_cast<int>(DC_STATE_HOOKED);
+}
+
 // Log level enum matching ReShade's log levels
 enum class LogLevel {
     Error = 1,    // Only errors

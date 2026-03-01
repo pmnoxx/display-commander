@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.191 (2026-03-01)
+
+- **Multi-proxy state export** - Added `GetDisplayCommanderState()` export (returns `Undecided`, `PROXY_DLL_ONLY`, `HOOKED`, or `DO_NOTHING`) so multiple Display Commander proxy DLLs (e.g. dxgi.dll + winmm.dll + version.dll) can coexist. On load, each instance scans loaded modules; if another module reports `HOOKED`, this instance becomes `PROXY_DLL_ONLY` (registers as addon but does not install hooks). Only the first instance becomes `HOOKED` and runs multi-version detection and hook installation. Enables using Display Commander as several proxies in the same process without crashing.
+
+---
+
 ## v0.12.190 (2026-03-01)
 
 - **Main tab Updates: ReShade and Display Commander** - ReShade "Specific version" now shows installed versions only in the version selector; added "Download another version" (list of non-installed versions + Download). Display Commander update source: Local / Shared folder / Specific version (shared path fixed to `%localappdata%\\Programs\\Display_Commander`). Specific version: installed-only version combo, "Download latest" (to root), "Check latest (debug)" from GitHub `latest_debug` release with "Download to Dll" when not installed, and "Fetch available versions" + download selected to `Dll\\X.Y.Z`. Added "Open folder" buttons to open the ReShade and Display Commander containing folders in Explorer.

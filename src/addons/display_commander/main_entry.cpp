@@ -112,6 +112,11 @@ void LoadAddonsFromPluginsDirectory();
 // Standalone settings UI when .NO_RESHADE (no ReShade loaded); implemented in ui/cli_standalone_ui.cpp
 void RunStandaloneSettingsUI(HINSTANCE hInst);
 
+// Export for multi-proxy coordination: other DC instances (dxgi, winmm, version.dll) scan this to decide HOOKED vs PROXY_DLL_ONLY
+extern "C" __declspec(dllexport) int GetDisplayCommanderState() {
+    return g_display_commander_state.load(std::memory_order_acquire);
+}
+
 // TryGetDxgiOutputDeviceNameFromLastSwapchain removed - VRR status is now updated
 // from OnPresentUpdateBefore with direct swapchain access to avoid unsafe global pointer usage
 
@@ -350,7 +355,7 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
 
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
-    display_commanderhooks::InstallApiHooks();
+    if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // ReShade effects finish tracking
     if (runtime == nullptr || cmd_list == nullptr) {
@@ -1479,6 +1484,7 @@ void HandleSafemode() {
 
 namespace {
 void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
+    if (!IsDisplayCommanderHookingInstance()) return;
     if (utils::setup_high_resolution_timer()) {
         LogInfo("High-resolution timer setup successful");
     } else {
@@ -1524,6 +1530,7 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
 }
 
 void DoInitializationWithoutHwndSafe_Late() {
+    if (!IsDisplayCommanderHookingInstance()) return;
     display_commanderhooks::InstallXInputHooks(nullptr);
     display_cache::g_displayCache.Initialize();
     display_initial_state::g_initialDisplayState.CaptureInitialState();
@@ -1619,7 +1626,7 @@ void DoInitializationWithoutHwnd(HMODULE h_module) {
     reshade::register_event<reshade::addon_event::reshade_begin_effects>(OnReShadeBeginEffects);
     reshade::register_event<reshade::addon_event::reshade_finish_effects>(OnReShadeFinishEffects);
     reshade::register_event<reshade::addon_event::reshade_present>(OnReShadePresent);
-    display_commanderhooks::InstallApiHooks();
+    if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
 }
 
 // Named event name for injection tracking (shared across processes)
@@ -1665,6 +1672,34 @@ void ProcessAttach_DetectReShadeInModules() {
             break;
         }
     }
+}
+
+using GetDisplayCommanderStateFn = int (*)();
+
+// Scan loaded modules for another Display Commander that already reports HOOKED.
+// If found, set our state to PROXY_DLL_ONLY; otherwise set to HOOKED.
+// Optional: set *another_undecided if any other DC returned UNDECIDED (caller may log later).
+void ProcessAttach_ScanDisplayCommanderState(bool* another_undecided = nullptr) {
+    if (another_undecided) *another_undecided = false;
+    HMODULE self = g_hmodule;
+    if (!self) return;
+    HMODULE modules[1024];
+    DWORD num_modules_bytes = 0;
+    if (K32EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &num_modules_bytes) == 0) return;
+    DWORD num_modules =
+        (std::min<DWORD>)(num_modules_bytes / sizeof(HMODULE), static_cast<DWORD>(sizeof(modules) / sizeof(HMODULE)));
+    for (DWORD i = 0; i < num_modules; i++) {
+        if (modules[i] == nullptr || modules[i] == self) continue;
+        FARPROC proc = GetProcAddress(modules[i], "GetDisplayCommanderState");
+        if (!proc) continue;
+        int other = reinterpret_cast<GetDisplayCommanderStateFn>(proc)();
+        if (other == static_cast<int>(DC_STATE_HOOKED)) {
+            g_display_commander_state.store(static_cast<int>(DC_STATE_PROXY_DLL_ONLY), std::memory_order_release);
+            return;
+        }
+        if (another_undecided && other == static_cast<int>(DC_STATE_UNDECIDED)) *another_undecided = true;
+    }
+    g_display_commander_state.store(static_cast<int>(DC_STATE_HOOKED), std::memory_order_release);
 }
 
 // Returns the file's version resource ProductName (wide), or empty if absent. Used to avoid
@@ -1965,6 +2000,7 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
 ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
     g_hmodule = h_module;
     g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
+    g_display_commander_state.store(static_cast<int>(DC_STATE_UNDECIDED), std::memory_order_release);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     DetectWine();
@@ -1974,10 +2010,15 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
             "load Display Commander.\n");
         return ProcessAttachEarlyResult::RefuseLoad;
     }
-    if (DetectMultipleDisplayCommanderVersions()) {
+    bool another_undecided = false;
+    ProcessAttach_ScanDisplayCommanderState(&another_undecided);
+    if (IsDisplayCommanderHookingInstance() && DetectMultipleDisplayCommanderVersions()) {
         OutputDebugStringA("[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
         g_process_attached.store(true);
         return ProcessAttachEarlyResult::RefuseLoad;
+    }
+    if (another_undecided) {
+        LogWarn("Another Display Commander instance was still Undecided during scan; this instance may have claimed HOOKED.");
     }
     LPSTR command_line = GetCommandLineA();
     if (command_line != nullptr && command_line[0] != '\0') {

@@ -26,6 +26,7 @@ std::string WStringToUtf8(const std::wstring& wstr) {
 
     int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
     if (size <= 0) return std::string();
+    if (size <= 1) return std::string();  // Only null terminator; result would have size 0, avoid buffer overflow
 
     std::string result(static_cast<size_t>(size - 1), '\0');
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], size, nullptr, nullptr);

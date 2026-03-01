@@ -1,5 +1,4 @@
 #include "windows_message_hooks.hpp"
-#include "../input_activity_stats.hpp"
 #include <MinHook.h>
 #include <algorithm>
 #include <array>
@@ -18,6 +17,7 @@
 #include "../../utils/timing.hpp"
 #include "../api_hooks.hpp"  // For GetGameWindow and other functions
 #include "../hook_suppression_manager.hpp"
+#include "../input_activity_stats.hpp"
 #include "../window_proc_hooks.hpp"  // For ProcessWindowMessage
 
 namespace display_commanderhooks {
@@ -795,6 +795,10 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 // Hooked GetKeyboardState function
 BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (lpKeyState == nullptr) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
     // Track total calls
     g_hook_stats[HOOK_GetKeyboardState].increment_total();
 
@@ -915,6 +919,10 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
 // Hooked GetCursorPos function
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (lpPoint == nullptr) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
     // Track total calls
     g_hook_stats[HOOK_GetCursorPos].increment_total();
 
@@ -1665,6 +1673,10 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
 // Hooked SendInput function
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (nInputs > 0 && pInputs == nullptr) {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return 0;
+    }
     // Track total calls
     g_hook_stats[HOOK_SendInput].increment_total();
 

@@ -221,7 +221,8 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGOptions& options) {
         || s_last_num_frames.load(std::memory_order_relaxed) != num_frames) {
         s_last_mode.store(mode_val, std::memory_order_relaxed);
         s_last_num_frames.store(num_frames, std::memory_order_relaxed);
-        LogInfo("UpdateNGXParamsFromDLSSGOptions: mode=%d numFramesToGenerate=%d", mode_val, options.numFramesToGenerate);
+        LogInfo("UpdateNGXParamsFromDLSSGOptions: mode=%d numFramesToGenerate=%d", mode_val,
+                options.numFramesToGenerate);
     }
 }
 
@@ -533,6 +534,7 @@ int slUpgradeInterface_Detour(void** baseInterface) {
         return -1;  // Error if original not available
     }
     auto result = slUpgradeInterface_Original(baseInterface);
+    if (baseInterface == nullptr) return result;
     auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
     Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;

@@ -144,7 +144,9 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
                         g_last_nvll_vk_applied_sleep_mode_params = stored;
                         g_nvll_vk_has_applied_params.store(true);
                     }
-                    (void)NvLL_VK_SetSleepMode_Original(device, &stored);
+                    if (NvLL_VK_SetSleepMode_Original != nullptr) {
+                        (void)NvLL_VK_SetSleepMode_Original(device, &stored);
+                    }
                 }
             }
         }

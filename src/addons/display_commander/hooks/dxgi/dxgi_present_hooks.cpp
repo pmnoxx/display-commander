@@ -928,7 +928,8 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
     }
 
     // NOTE: we assume that ppTarget is g_last_set_fullscreen_target.load()
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue() && g_last_set_fullscreen_state.load() != -1) {
+    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue() && g_last_set_fullscreen_state.load() != -1
+        && pFullscreen != nullptr) {
         *pFullscreen = g_last_set_fullscreen_state.load();
     }
 

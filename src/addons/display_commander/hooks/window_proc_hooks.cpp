@@ -196,8 +196,8 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             // Handle window position changes
             if (continue_rendering_enabled) {
                 WINDOWPOS* pWp = (WINDOWPOS*)lParam;
-                // Check if window is being minimized or hidden
-                if (pWp->flags & SWP_HIDEWINDOW) {
+                // Check if window is being minimized or hidden (guard pWp to avoid crash on null lParam)
+                if (pWp != nullptr && (pWp->flags & SWP_HIDEWINDOW)) {
                     LogInfo("WM_WINDOWPOSCHANGED: Suppressing window hide - HWND: 0x%p", hwnd);
                     // Update the message history to show this was suppressed
                     ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);

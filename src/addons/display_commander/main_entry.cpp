@@ -2052,7 +2052,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                         module_utf8_size, nullptr, nullptr);
                     char debug_msg[512];
                     snprintf(debug_msg, sizeof(debug_msg),
-                             "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ws'\n",
+                             "[DisplayCommander] DEBUG: module_name_full='%s', module_name (stem)='%ls'\n",
                              module_name_utf8.c_str(), module_name.c_str());
                     OutputDebugStringA(debug_msg);
                 }
@@ -2342,7 +2342,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                         // print module handle and name
                         wchar_t module_name[MAX_PATH];
                         if (GetModuleFileNameW(modules[i], module_name, MAX_PATH) > 0) {
-                            snprintf(msg, sizeof(msg), "Module %lu: 0x%p %ws", i, modules[i], module_name);
+                            snprintf(msg, sizeof(msg), "Module %lu: 0x%p %ls", i, modules[i], module_name);
                         } else {
                             snprintf(msg, sizeof(msg), "Module %lu: 0x%p (failed to get name)", i, modules[i]);
                         }

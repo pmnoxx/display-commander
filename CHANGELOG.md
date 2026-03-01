@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.168 (2026-02-28)
+
+- **Bug fixes (detour safety and validation)** - Addressed items from the bug-detection audit: null checks before calling `_Original` in detours (SetWindowLong*, GetModuleHandleEx, Rand_s, SendInput, slUpgradeInterface, D3D9 Present, NvLL Vulkan SetSleepMode, DXGI Present/Present1 early-return paths); null checks for output pointers before calling original API (GetGUIThreadInfo pgui, CreateDXGIFactory2 ppFactory, GetCursorPos lpPoint, GetKeyboardState lpKeyState, GetFullscreenState pFullscreen, WM_WINDOWPOSCHANGED pWp); early return with error when input is invalid (GetModuleHandleEx phModule, Rand_s randomValue, SendInput pInputs when nInputs > 0); REFIID logging fixed via FormatRefIid() in CreateDXGIFactory2/D3D12CreateDevice; ReleaseDC(swapchain_hwnd, hdc) in window_management; WStringToUtf8 size <= 1 guard in audio_management; ApplyDisplaySettingsDXGI LogInfo format/argument count; main_entry snprintf %ls for wide strings; DXGI GetDesc/GetDesc1/CheckColorSpaceSupport and DInput/display_settings/TranslateMessage/DispatchMessage/GetMessage/PeekMessage validation or _Original guards as documented in `docs/tasks/bug_detection_task.md`.
+
+---
+
 ## v0.12.167 (2026-02-28)
 
 - **Reflex-only latency** - Removed the LatencyManager abstraction; latency is now Reflex-only. Replaced `g_latencyManager` with `g_reflexProvider` (ReflexProvider). Deleted `latency_manager.cpp` and `latency_manager.hpp` (ILatencyProvider, LatencyTechnology, LatencyConfig). ReflexProvider is the single public API: Initialize, InitializeNative, Shutdown, SetMarker, ApplySleepMode, Sleep, UpdateCachedSleepStatus, GetSleepStatus; marker counting and sleep/ApplySleepMode stats moved into ReflexProvider. SleepStatusUnavailableReason simplified (kNoReflex, kReflexNotInitialized); SleepStatusUnavailableReasonToString moved to globals.hpp. PCLSTATS_DEFINE() moved to reflex_provider.cpp.

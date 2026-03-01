@@ -100,9 +100,10 @@ bool ApplyDisplaySettingsDXGI(int monitor_index, int width, int height, UINT32 r
                     mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
                     mode_desc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
 
-                    LogInfo("[ApplyDisplaySettingsDXGI] mode_desc: %d %d %d %d %d %d", mode_desc.Width,
-                            mode_desc.Height, mode_desc.Format, mode_desc.RefreshRate.Numerator,
-                            mode_desc.RefreshRate.Denominator, mode_desc.ScanlineOrdering, mode_desc.Scaling);
+                    LogInfo("[ApplyDisplaySettingsDXGI] mode_desc: %u %u %u %u %u %u %u", mode_desc.Width,
+                            mode_desc.Height, static_cast<unsigned>(mode_desc.Format), mode_desc.RefreshRate.Numerator,
+                            mode_desc.RefreshRate.Denominator, static_cast<unsigned>(mode_desc.ScanlineOrdering),
+                            static_cast<unsigned>(mode_desc.Scaling));
 
                     hr = swap_chain->ResizeTarget(&mode_desc);
                     if (SUCCEEDED(hr)) {

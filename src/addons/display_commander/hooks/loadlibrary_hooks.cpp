@@ -878,8 +878,8 @@ HMODULE WINAPI GetModuleHandleA_Detour(LPCSTR lpModuleName) {
 BOOL WINAPI GetModuleHandleExW_Detour(DWORD dwFlags, LPCWSTR lpModuleName, HMODULE* phModule) {
     constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
     if (phModule == nullptr) {
-        return GetModuleHandleExW_Original ? GetModuleHandleExW_Original(dwFlags, lpModuleName, phModule)
-                                           : GetModuleHandleExW(dwFlags, lpModuleName, phModule);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
     }
     if ((dwFlags & k_from_address) == 0 && lpModuleName && *lpModuleName) {
         HMODULE override_handle = GetDlssOverrideHandle(lpModuleName);
@@ -896,8 +896,8 @@ BOOL WINAPI GetModuleHandleExW_Detour(DWORD dwFlags, LPCWSTR lpModuleName, HMODU
 BOOL WINAPI GetModuleHandleExA_Detour(DWORD dwFlags, LPCSTR lpModuleName, HMODULE* phModule) {
     constexpr DWORD k_from_address = 0x00000004;  // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
     if (phModule == nullptr) {
-        return GetModuleHandleExA_Original ? GetModuleHandleExA_Original(dwFlags, lpModuleName, phModule)
-                                           : GetModuleHandleExA(dwFlags, lpModuleName, phModule);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
     }
     if ((dwFlags & k_from_address) == 0 && lpModuleName && *lpModuleName) {
         std::wstring wkey = ToLowerModuleName(lpModuleName);

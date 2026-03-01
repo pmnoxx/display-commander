@@ -1,4 +1,5 @@
 #include "api_hooks.hpp"
+#include <cstdio>
 #include <d3d11.h>
 #include <d3d12.h>
 #include <MinHook.h>
@@ -78,6 +79,14 @@ static CRDebugEntry g_cr_debug[CR_DEBUG_API_COUNT];
 static const char* const g_cr_names[CR_DEBUG_API_COUNT] = {
     "GetFocus", "GetForegroundWindow", "GetActiveWindow", "GetGUIThreadInfo", "IsIconic", "IsWindowVisible",
 };
+// Format REFIID/GUID for logging (avoids wrong/undefined output from %s with GUID).
+static std::string FormatRefIid(REFIID riid) {
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "{%08lX-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", riid.Data1, riid.Data2,
+                  riid.Data3, riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5],
+                  riid.Data4[6], riid.Data4[7]);
+    return std::string(buf);
+}
 static void RecordCRDebug(int idx, uintptr_t value, bool did_override) {
     g_cr_debug[idx].last_value.store(value, std::memory_order_relaxed);
     g_cr_debug[idx].last_call_time_ns.store(utils::get_now_ns(), std::memory_order_relaxed);
@@ -195,8 +204,8 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
         BOOL result =
             GetGUIThreadInfo_Original ? GetGUIThreadInfo_Original(idThread, pgui) : GetGUIThreadInfo(idThread, pgui);
 
-        if (result) {
-            // Modify the thread info to show game window as active
+        if (result && pgui != nullptr) {
+            // Modify the thread info to show game window as active (pgui validated to avoid crash on API misuse)
             DWORD dwPid = 0;
             DWORD dwTid = GetWindowThreadProcessId(game_hwnd, &dwPid);
 
@@ -216,7 +225,7 @@ BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
                     "Thread: %lu",
                     game_hwnd, idThread);
             } else {
-                RecordCRDebug(CR_GetGUIThreadInfo, pgui ? reinterpret_cast<uintptr_t>(pgui->hwndActive) : 0, false);
+                RecordCRDebug(CR_GetGUIThreadInfo, reinterpret_cast<uintptr_t>(pgui->hwndActive), false);
             }
         } else {
             RecordCRDebug(CR_GetGUIThreadInfo, 0, false);
@@ -309,8 +318,8 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     }
 
     g_hook_stats[HOOK_SetWindowLongPtrW].increment_unsuppressed();
-    // Call original function with unmodified value
-    return SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong);
+    return SetWindowLongPtrW_Original ? SetWindowLongPtrW_Original(hWnd, nIndex, dwNewLong)
+                                     : SetWindowLongPtrW(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongA function
@@ -324,8 +333,8 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     }
 
     g_hook_stats[HOOK_SetWindowLongA].increment_unsuppressed();
-    // Call original function with unmodified value
-    return SetWindowLongA_Original(hWnd, nIndex, dwNewLong);
+    return SetWindowLongA_Original ? SetWindowLongA_Original(hWnd, nIndex, dwNewLong)
+                                  : SetWindowLongA(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongW function
@@ -338,7 +347,8 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     }
 
     g_hook_stats[HOOK_SetWindowLongW].increment_unsuppressed();
-    return SetWindowLongW_Original(hWnd, nIndex, dwNewLong);
+    return SetWindowLongW_Original ? SetWindowLongW_Original(hWnd, nIndex, dwNewLong)
+                                  : SetWindowLongW(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowLongPtrA function
@@ -355,7 +365,8 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     // }
 
     g_hook_stats[HOOK_SetWindowLongPtrA].increment_unsuppressed();
-    return SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong);
+    return SetWindowLongPtrA_Original ? SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong)
+                                     : SetWindowLongPtrA(hWnd, nIndex, dwNewLong);
 }
 
 // Hooked SetWindowPos function
@@ -462,6 +473,7 @@ PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION
 // Hooked CreateDXGIFactory2 function
 HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFactory) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    if (ppFactory == nullptr) return E_POINTER;
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY2].fetch_add(1);
 
@@ -470,10 +482,10 @@ HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFacto
                                        __uuidof(IDXGIFactory6), __uuidof(IDXGIFactory7)};
 
     if (std::find(rrids.begin(), rrids.end(), riid) == rrids.end()) {
-        LogWarn("CreateDXGIFactory2: Unknown interface %s", riid);
+        LogWarn("CreateDXGIFactory2: Unknown interface %s", FormatRefIid(riid).c_str());
         return E_NOINTERFACE;
     }
-    LogInfo("CreateDXGIFactory2: Found interface %s -> IDXGIFactory7", riid);
+    LogInfo("CreateDXGIFactory2: Found interface %s -> IDXGIFactory7", FormatRefIid(riid).c_str());
     // Upgrading interface
     const GUID rrid_override = __uuidof(IDXGIFactory7);
 
@@ -740,9 +752,7 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
     LogInfo("=== D3D12CreateDevice Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  MinimumFeatureLevel: 0x%04X", MinimumFeatureLevel);
-    LogInfo("  riid: {%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", riid.Data1, riid.Data2, riid.Data3,
-            riid.Data4[0], riid.Data4[1], riid.Data4[2], riid.Data4[3], riid.Data4[4], riid.Data4[5], riid.Data4[6],
-            riid.Data4[7]);
+    LogInfo("  riid: %s", FormatRefIid(riid).c_str());
     LogInfo("  ppDevice: 0x%p", ppDevice);
 
     // Call original function

@@ -46,7 +46,10 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
     // Skip if this is not the device used by OnPresentUpdateBefore
     IDirect3DDevice9* expected_device = g_last_present_update_device.load();
     if (expected_device != nullptr && This != expected_device) {
-        return IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+        if (IDirect3DDevice9_Present_Original != nullptr) {
+            return IDirect3DDevice9_Present_Original(This, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+        }
+        return This->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
     }
 
     // Increment DX9 Present counter

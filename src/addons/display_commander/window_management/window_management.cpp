@@ -309,7 +309,7 @@ void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
                     int physical_width = GetDeviceCaps(hdc, DESKTOPHORZRES);
                     int physical_height = GetDeviceCaps(hdc, DESKTOPVERTRES);
 
-                    ReleaseDC(nullptr, hdc);
+                    ReleaseDC(swapchain_hwnd, hdc);
 
                     // Prevent division by zero
                     if (physical_width > 0 && physical_height > 0) {

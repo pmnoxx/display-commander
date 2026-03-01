@@ -52,13 +52,8 @@ errno_t __cdecl Rand_s_Detour(unsigned int* randomValue) {
         return 0;  // Success
     }
 
-    // Check if randomValue pointer is valid
     if (randomValue == nullptr) {
-        // Return error if pointer is null (matching standard behavior)
-        if (Rand_s_Original) {
-            return Rand_s_Original(nullptr);
-        }
-        return EINVAL;
+        return EINVAL;  // rand_s requires valid output pointer; do not call original with nullptr
     }
 
     // Call original function if hook is disabled

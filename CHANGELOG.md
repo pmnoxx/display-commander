@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.163 (2026-02-28)
+
+- **DualSense HID vibration (rumble)** - When "Use DualSense as XInput" is enabled, XInputSetState(0) now drives the first DualSense via HID output report (USB report ID 0x02, rumble flags + left/right motor 0–255). DualSenseHIDWrapper::SetRumble(device_index, left_speed, right_speed) sends the report; Bluetooth rumble (report 0x31 + CRC) not implemented yet. Vibration amplification applies before sending.
+- **Vibration test for DualSense** - XInput tab vibration test (Test Left/Right Motor, Stop Vibration) now uses XInputSetState_Detour instead of XInputSetState_Direct so controller 0 uses the same path as in-game (DualSense HID rumble when enabled). Added public XInputSetState_Detour and fallback to XInputSetState_Direct when no XInput DLL is hooked so the test works before any game loads XInput.
+
+---
+
 ## v0.12.162 (2026-02-28)
 
 - **DualSense: remove Battery & Power subsection** - Removed the "Battery & Power" collapsing section from DualSense Data in both the DualSense widget (Input Report) and the XInput widget to fix a crash-to-desktop when expanding that section. The subsection displayed battery percent, power state, USB/headphones/mic flags, etc.; the crash was likely from invalid or uninitialized data when opening it.

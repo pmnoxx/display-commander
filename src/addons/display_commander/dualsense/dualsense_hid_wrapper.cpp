@@ -276,6 +276,46 @@ bool DualSenseHIDWrapper::CreateHIDDevice(const std::string& device_path, DualSe
     return true;
 }
 
+bool DualSenseHIDWrapper::SetRumble(size_t device_index, WORD left_speed, WORD right_speed) {
+    HANDLE hDevice = INVALID_HANDLE_VALUE;
+    bool is_wireless = true;
+
+    {
+        utils::SRWLockShared lock(devices_lock_);
+        if (device_index >= devices_.size()) {
+            return false;
+        }
+        const DualSenseDevice& device = devices_[device_index];
+        if (!device.is_connected || !device.hid_device ||
+            device.hid_device->hDeviceFile == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+        hDevice = device.hid_device->hDeviceFile;
+        is_wireless = device.is_wireless;
+    }
+
+    // Bluetooth requires report 0x31 and 78-byte packet with CRC; not implemented yet.
+    if (is_wireless) {
+        return false;
+    }
+
+    // USB output report: Report ID 0x02 + 47-byte payload (Special-K / community layout).
+    // Flags byte: 0x01|0x02 = set main motors (rumble). EnableRumbleEmulation | UseRumbleNotHaptics.
+    SK_HID_DualSense_SetStateData payload = {};
+    payload.flags0 = 0x03;  // EnableRumbleEmulation | UseRumbleNotHaptics
+    payload.flags1 = 0;
+    payload.RumbleEmulationRight = (static_cast<uint32_t>(right_speed) * 255u) / 65535u;
+    payload.RumbleEmulationLeft = (static_cast<uint32_t>(left_speed) * 255u) / 65535u;
+
+    BYTE buffer[1 + sizeof(SK_HID_DualSense_SetStateData)];
+    buffer[0] = 0x02;  // USB output report ID
+    std::memcpy(buffer + 1, &payload, sizeof(payload));
+
+    DWORD written = 0;
+    BOOL ok = WriteFile(hDevice, buffer, sizeof(buffer), &written, nullptr);
+    return (ok && written == sizeof(buffer));
+}
+
 void DualSenseHIDWrapper::EnsurePollingStarted() {
     if (polling_requested_once_.exchange(true)) {
         return;  // Already requested or thread already started

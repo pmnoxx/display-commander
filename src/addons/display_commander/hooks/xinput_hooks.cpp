@@ -15,6 +15,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "../dualsense/dualsense_hid_wrapper.hpp"
 #include "dualsense_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
@@ -630,9 +631,23 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
         vibration.wRightMotorSpeed = static_cast<WORD>(right_speed);
     }
 
+    // When DualSense-as-XInput is enabled, slot 0 is our HID DualSense: send rumble via HID output report.
+    if (shared_state && shared_state->enable_dualsense_xinput.load() &&
+        display_commander::hooks::IsDualSenseAvailable() && dwUserIndex == 0 &&
+        display_commander::dualsense::g_dualsense_hid_wrapper) {
+        if (display_commander::dualsense::g_dualsense_hid_wrapper->SetRumble(
+                0, vibration.wLeftMotorSpeed, vibration.wRightMotorSpeed)) {
+            g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
+            return ERROR_SUCCESS;
+        }
+    }
+
     XInputSetState_pfn set_state = nullptr;
     if (module_index < original_xinput_set_state_procs.size()) {
         set_state = original_xinput_set_state_procs[module_index];
+    }
+    if (set_state == nullptr) {
+        set_state = XInputSetState_Direct;  // e.g. vibration test when no XInput DLL hooked yet
     }
     if (set_state == nullptr) {
         return ERROR_DEVICE_NOT_CONNECTED;
@@ -646,6 +661,10 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
     }
 
     return result;
+}
+
+DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
+    return XInputSetState_Detour_Impl(0, dwUserIndex, pVibration);
 }
 
 static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD dwUserIndex, DWORD dwFlags,

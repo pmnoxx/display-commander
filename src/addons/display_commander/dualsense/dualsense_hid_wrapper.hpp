@@ -100,6 +100,20 @@ struct SK_HID_DualSense_GetStateData // 63 bytes
 /*55  */ uint8_t    AesCmac[8];
 };
 
+// DualSense HID output report payload (set state). Used for rumble and other output.
+// Layout matches Special-K / community docs. We only set rumble-related bytes; rest zeroed.
+#pragma pack(push, 1)
+struct SK_HID_DualSense_SetStateData  // 47 bytes
+{
+    uint8_t flags0;  // 0.0 EnableRumbleEmulation, 0.1 UseRumbleNotHaptics, 0.01|0x02 = set main motors
+    uint8_t flags1;
+    uint8_t RumbleEmulationRight;  // 0-255, light motor
+    uint8_t RumbleEmulationLeft;   // 0-255, heavy motor
+    uint8_t padding[43];          // rest of 47 bytes, zeroed
+};
+#pragma pack(pop)
+static_assert(sizeof(SK_HID_DualSense_SetStateData) == 47, "SetStateData must be 47 bytes");
+
 // HID device structure (simplified version for our use)
 struct hid_device_file_s {
     wchar_t wszDevicePath[MAX_PATH] = {};
@@ -223,6 +237,11 @@ public:
 
     // Check if device matches selected HID type
     bool IsDeviceTypeEnabled(USHORT vendor_id, USHORT product_id, int hid_type) const;
+
+    // Set rumble (vibration) on a DualSense device via HID output report.
+    // left_speed / right_speed: 0-65535 (XInput range). Returns true if write succeeded.
+    // USB only for now; Bluetooth would require report 0x31 and CRC.
+    bool SetRumble(size_t device_index, WORD left_speed, WORD right_speed);
 
     // Get device type string
     std::string GetDeviceTypeString(USHORT vendor_id, USHORT product_id) const;

@@ -1776,9 +1776,8 @@ void XInputWidget::TestLeftMotor() {
     vibration.wLeftMotorSpeed = 65535;  // Maximum intensity
     vibration.wRightMotorSpeed = 0;     // Right motor off
 
-    DWORD result = display_commanderhooks::XInputSetState_Direct
-                       ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
-                       : ERROR_DEVICE_NOT_CONNECTED;
+    // Use detour so DualSense-as-XInput (slot 0) gets HID rumble; otherwise uses original XInput.
+    DWORD result = display_commanderhooks::XInputSetState_Detour(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         vibration_test_start_ns_ = utils::get_now_ns();
         LogInfo("XInputWidget::TestLeftMotor() - Left motor test started for controller %d", selected_controller_);
@@ -1800,9 +1799,8 @@ void XInputWidget::TestRightMotor() {
     vibration.wLeftMotorSpeed = 0;       // Left motor off
     vibration.wRightMotorSpeed = 65535;  // Maximum intensity
 
-    DWORD result = display_commanderhooks::XInputSetState_Direct
-                       ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
-                       : ERROR_DEVICE_NOT_CONNECTED;
+    // Use detour so DualSense-as-XInput (slot 0) gets HID rumble; otherwise uses original XInput.
+    DWORD result = display_commanderhooks::XInputSetState_Detour(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         vibration_test_start_ns_ = utils::get_now_ns();
         LogInfo("XInputWidget::TestRightMotor() - Right motor test started for controller %d", selected_controller_);
@@ -1825,9 +1823,8 @@ void XInputWidget::StopVibration() {
     vibration.wRightMotorSpeed = 0;
 
     vibration_test_start_ns_ = 0;  // Clear timer so UI stops showing countdown
-    DWORD result = display_commanderhooks::XInputSetState_Direct
-                       ? display_commanderhooks::XInputSetState_Direct(selected_controller_, &vibration)
-                       : ERROR_DEVICE_NOT_CONNECTED;
+    // Use detour so DualSense-as-XInput (slot 0) gets HID rumble stop; otherwise uses original XInput.
+    DWORD result = display_commanderhooks::XInputSetState_Detour(selected_controller_, &vibration);
     if (result == ERROR_SUCCESS) {
         LogInfo("XInputWidget::StopVibration() - Vibration stopped for controller %d", selected_controller_);
     } else {

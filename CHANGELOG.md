@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.184 (2026-03-01)
+
+- **Skip loading ReShade and Display Commander from addon directory when already loaded** - When loading .dc/.dc64/.dc32/.asi DLLs from the addon directory (`ProcessAttach_LoadLocalAddonDlls`), skip `LoadLibrary` for files whose version resource ProductName is "ReShade" (if ReShade is already loaded) or "Display Commander" (avoid loading ourselves or a second copy). Uses `GetFileProductNameW` (version info API) to read ProductName; comparisons are case-insensitive.
+
+---
+
 ## v0.12.183 (2026-03-01)
 
 - **Project structure reorganization** - Moved feature-specific modules from addon root into existing subdirs: `gpu_completion_monitoring` → `latency/`; `display_initial_state`, `display_cache`, `display_restore` → `display/`; `rundll_injection`, `rundll_injection_helpers.hpp`, `dbghelp_loader` → `utils/`. Root now holds only cross-cutting pieces (main_entry, addon, globals, swapchain_events, continuous_monitoring, resolution_helpers, process_exit_hooks, exit_handler). All includes updated; `docs/project_structure.md` and folder-by-folder move plan updated.

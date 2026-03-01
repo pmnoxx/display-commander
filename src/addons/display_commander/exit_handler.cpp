@@ -5,7 +5,7 @@
 #include <sstream>
 #include <vector>
 #include "config/display_commander_config.hpp"
-#include "display_restore.hpp"
+#include "display/display_restore.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "utils.hpp"

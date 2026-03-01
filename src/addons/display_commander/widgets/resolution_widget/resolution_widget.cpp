@@ -6,9 +6,9 @@
 #include <string>
 #include "../../display/hdr_control.hpp"
 #include "../../display/query_display.hpp"
-#include "../../display_cache.hpp"
-#include "../../display_initial_state.hpp"
-#include "../../display_restore.hpp"
+#include "display/display_cache.hpp"
+#include "display/display_initial_state.hpp"
+#include "display/display_restore.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/display_settings_hooks.hpp"
 #include "../../resolution_helpers.hpp"

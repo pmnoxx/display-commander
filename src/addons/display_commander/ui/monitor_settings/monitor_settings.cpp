@@ -1,7 +1,7 @@
 #include "monitor_settings.hpp"
 #include "../imgui_wrapper_base.hpp"
-#include "../../display_cache.hpp"
-#include "../../display_restore.hpp"
+#include "display/display_cache.hpp"
+#include "display/display_restore.hpp"
 #include "../ui_display_tab.hpp"
 
 #include <algorithm>

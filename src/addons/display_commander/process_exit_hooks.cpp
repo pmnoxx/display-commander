@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "dbghelp_loader.hpp"
+#include "utils/dbghelp_loader.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "utils/detour_call_tracker.hpp"

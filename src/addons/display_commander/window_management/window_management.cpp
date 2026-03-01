@@ -1,6 +1,6 @@
 #include "window_management.hpp"
 #include "../addon.hpp"
-#include "../display_cache.hpp"
+#include "display/display_cache.hpp"
 #include "../globals.hpp"
 #include "../hooks/api_hooks.hpp"
 #include "../settings/advanced_tab_settings.hpp"

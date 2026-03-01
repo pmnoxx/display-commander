@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <memory>
 #include <string>
-#include "../display_cache.hpp"
+#include "display/display_cache.hpp"
 #include "../utils/logging.hpp"
 #include "refresh_rate_monitor.hpp"
 

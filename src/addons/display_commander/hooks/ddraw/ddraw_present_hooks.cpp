@@ -1,6 +1,6 @@
 #include "ddraw_present_hooks.hpp"
 #include "../../globals.hpp"
-#include "../../gpu_completion_monitoring.hpp"
+#include "../../latency/gpu_completion_monitoring.hpp"
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/detour_call_tracker.hpp"

@@ -3,7 +3,7 @@
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
-#include "../../display_cache.hpp"
+#include "display/display_cache.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/display_settings_hooks.hpp"

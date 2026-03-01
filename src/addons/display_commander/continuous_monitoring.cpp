@@ -2,7 +2,7 @@
 #include "adhd_multi_monitor/adhd_simple_api.hpp"
 #include "audio/audio_management.hpp"
 #include "autoclick/autoclick_manager.hpp"
-#include "display_cache.hpp"
+#include "display/display_cache.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"

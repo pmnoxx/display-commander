@@ -1,5 +1,5 @@
 #include "dbghelp_hooks.hpp"
-#include "../dbghelp_loader.hpp"
+#include "utils/dbghelp_loader.hpp"
 #include "../utils/logging.hpp"
 #include "hook_suppression_manager.hpp"
 #include <MinHook.h>

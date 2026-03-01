@@ -4,7 +4,7 @@
 #include <wingdi.h>
 #include <array>
 #include "../globals.hpp"
-#include "../gpu_completion_monitoring.hpp"
+#include "../latency/gpu_completion_monitoring.hpp"
 #include "../performance_types.hpp"
 #include "../swapchain_events.hpp"
 #include "../utils.hpp"

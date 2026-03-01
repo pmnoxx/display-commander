@@ -1,5 +1,5 @@
-#include "display_initial_state.hpp"
-#include "display_cache.hpp"
+#include "display/display_initial_state.hpp"
+#include "display/display_cache.hpp"
 #include "display/query_display.hpp"
 #include "utils/logging.hpp"
 

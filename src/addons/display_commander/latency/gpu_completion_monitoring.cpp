@@ -1,4 +1,4 @@
-#include "gpu_completion_monitoring.hpp"
+#include "latency/gpu_completion_monitoring.hpp"
 #include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "swapchain_events.hpp"

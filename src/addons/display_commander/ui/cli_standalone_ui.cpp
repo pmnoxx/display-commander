@@ -25,7 +25,7 @@
 #include "imgui.h"
 
 #include "config/display_commander_config.hpp"
-#include "display_cache.hpp"
+#include "display/display_cache.hpp"
 #include "standalone_ui_settings_bridge.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "ui/imgui_wrapper_standalone.hpp"

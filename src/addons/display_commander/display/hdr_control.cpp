@@ -1,5 +1,5 @@
 #include "hdr_control.hpp"
-#include "../display_cache.hpp"
+#include "display/display_cache.hpp"
 #include "../utils/logging.hpp"
 
 #include <windows.h>

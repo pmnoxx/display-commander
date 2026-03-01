@@ -1,5 +1,5 @@
 #include "stack_trace.hpp"
-#include "../dbghelp_loader.hpp"
+#include "utils/dbghelp_loader.hpp"
 #include <windows.h>
 #include <dbghelp.h>
 #include <sstream>

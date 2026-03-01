@@ -1,6 +1,6 @@
 #pragma once
 
-#include "display_cache.hpp"
+#include "display/display_cache.hpp"
 #include "latent_sync/latent_sync_manager.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "utils/timing.hpp"

@@ -1,7 +1,7 @@
 #include "d3d9_present_hooks.hpp"
 #include "d3d9_vtable_indices.hpp"
 #include "../../globals.hpp"
-#include "../../gpu_completion_monitoring.hpp"
+#include "../../latency/gpu_completion_monitoring.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../performance_types.hpp"
 #include "../../swapchain_events.hpp"

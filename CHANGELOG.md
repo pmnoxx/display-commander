@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.183 (2026-03-01)
+
+- **Project structure reorganization** - Moved feature-specific modules from addon root into existing subdirs: `gpu_completion_monitoring` → `latency/`; `display_initial_state`, `display_cache`, `display_restore` → `display/`; `rundll_injection`, `rundll_injection_helpers.hpp`, `dbghelp_loader` → `utils/`. Root now holds only cross-cutting pieces (main_entry, addon, globals, swapchain_events, continuous_monitoring, resolution_helpers, process_exit_hooks, exit_handler). All includes updated; `docs/project_structure.md` and folder-by-folder move plan updated.
+
+---
+
 ## v0.12.182 (2026-03-01)
 
 - **RunDLL injection entry points moved** - `StartAndInject` and `WaitAndInject` (implementations and exports) moved from `main_entry.cpp` to `rundll_injection.cpp`. New `rundll_injection_helpers.hpp` declares `GetReShadeDllPath`, `InjectIntoProcess`, and `WaitForProcessAndInject` (still implemented in main_entry). Simplifies main_entry and makes future injection refactors easier.

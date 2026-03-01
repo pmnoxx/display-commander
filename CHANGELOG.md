@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.157 (2026-02-28)
+
+- **XInputGetState(0) last duration (Event Counters)** - Controller tab → Event Counters now shows "XInputGetState(0) last duration: X.XXX ms" for the most recent call when the game polls controller 0. A RAII scoped timer runs only when `dwUserIndex == 0`; on scope exit a lambda records the elapsed time so the UI can display it. Helps gauge detour overhead.
+
+---
+
 ## v0.12.156 (2026-02-28)
 
 - **Dead code removal** - Removed unused/orphaned code: (1) Display Settings Debug tab (`display_settings_debug_tab.cpp`/`.hpp`, never wired into UI). (2) `#if 0` block in `dinput_hooks.cpp` (~165 lines of disabled DirectInput device-state detours). (3) `#ifdef TRY_CATCH_BLOCKS` blocks in `main_entry.cpp` and `continuous_monitoring.cpp` (macro never defined). (4) Unused `ParseDisplayNumberFromDeviceIdUtf8()` in `display_cache.cpp`. Audit doc `docs/tasks/dead_code_and_unused_files_audit.md` updated.

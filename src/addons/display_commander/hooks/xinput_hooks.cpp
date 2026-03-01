@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "../globals.hpp"
@@ -59,6 +60,24 @@ static std::array<DWORD, 4> g_packet_numbers = {};
 
 // Number of XInputGetState_Detour_Impl calls with dwUserIndex == 0 (game polling controller 0)
 static std::atomic<std::uint64_t> g_getstate_userindex0_calls{0};
+
+// Last XInputGetState_Detour_Impl duration (ns) when dwUserIndex == 0; 0 if not yet measured
+static std::atomic<std::uint64_t> g_getstate_userindex0_last_duration_ns{0};
+
+// RAII: on destruction calls lambda with elapsed time in nanoseconds
+struct ScopedDurationReporter {
+    std::uint64_t start_ns;
+    std::function<void(std::uint64_t)> on_exit;
+    explicit ScopedDurationReporter(std::function<void(std::uint64_t)> fn)
+        : start_ns(static_cast<std::uint64_t>(utils::get_now_ns())), on_exit(std::move(fn)) {}
+    ~ScopedDurationReporter() {
+        if (on_exit) {
+            on_exit(static_cast<std::uint64_t>(utils::get_now_ns()) - start_ns);
+        }
+    }
+    ScopedDurationReporter(const ScopedDurationReporter&) = delete;
+    ScopedDurationReporter& operator=(const ScopedDurationReporter&) = delete;
+};
 
 // Forward declarations for per-module detour helpers
 static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState);
@@ -490,8 +509,12 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
 // Per-module implementation helpers used by the per-DLL detours.
 // These route calls to the correct original function for the specific xinput DLL.
 static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
+    std::optional<ScopedDurationReporter> getstate0_timer;
     if (dwUserIndex == 0) {
         g_getstate_userindex0_calls.fetch_add(1, std::memory_order_relaxed);
+        getstate0_timer.emplace([](std::uint64_t elapsed_ns) {
+            g_getstate_userindex0_last_duration_ns.store(elapsed_ns, std::memory_order_relaxed);
+        });
     }
     RECORD_DETOUR_CALL(utils::get_now_ns());
     if (pState == nullptr) {
@@ -696,6 +719,10 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
 
 std::uint64_t GetXInputGetStateUserIndexZeroCallCount() {
     return g_getstate_userindex0_calls.load(std::memory_order_relaxed);
+}
+
+std::uint64_t GetXInputGetStateUserIndexZeroLastDurationNs() {
+    return g_getstate_userindex0_last_duration_ns.load(std::memory_order_relaxed);
 }
 
 bool IsXInputHooksInstalled() { return g_xinput_hooks_installed.load(std::memory_order_relaxed); }

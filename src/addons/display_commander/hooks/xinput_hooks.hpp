@@ -48,6 +48,9 @@ bool IsXInputHooksInstalled();
 // Number of game calls to XInputGetState(dwUserIndex=0) seen by the detour (0 = game may use WGI/other API)
 std::uint64_t GetXInputGetStateUserIndexZeroCallCount();
 
+// Last duration (ns) of XInputGetState_Detour_Impl when dwUserIndex=0; 0 if not yet measured
+std::uint64_t GetXInputGetStateUserIndexZeroLastDurationNs();
+
 // Helper: apply stick mapping and center calibration (reads all params from shared_state)
 void ApplyThumbstickProcessing(
     XINPUT_STATE* pState,

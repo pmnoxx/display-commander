@@ -483,6 +483,14 @@ void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "XInputGetState Rate: No data");
     }
 
+    // Last XInputGetState(0) call duration (only tracked for dwUserIndex == 0)
+    const std::uint64_t getstate0_last_duration_ns =
+        display_commanderhooks::GetXInputGetStateUserIndexZeroLastDurationNs();
+    if (getstate0_last_duration_ns > 0) {
+        imgui.Text("XInputGetState(0) last duration: %.3f ms",
+                  static_cast<double>(getstate0_last_duration_ns) / 1000000.0);
+    }
+
     // Display smooth call rate for XInputGetStateEx
     uint64_t getstateex_update_ns = g_shared_state->xinput_getstateex_update_ns.load();
     if (getstateex_update_ns > 0) {

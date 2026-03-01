@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.160 (2026-02-28)
+
+- **DualSense HID: setBufferCount(2)** - After opening a DualSense HID device we now call `DeviceIoControl(IOCTL_SET_NUM_DEVICE_INPUT_BUFFERS, 2)` (same as Special K). Caps the HID input queue to 2 reports so the "latest" report stays fresher and can reduce latency when reading at high rate or with a background polling thread.
+
+---
+
 ## v0.12.159 (2026-02-28)
 
 - **DualSense HID: setPollingFrequency(0)** - After opening a DualSense HID device we now call `DeviceIoControl(IOCTL_HID_SET_POLL_FREQUENCY_MSEC, 0)` (same as Special K). Poll interval 0 means irregular reads: each ReadFile returns the latest report without waiting for a fixed interval, reducing latency when we poll at our own rate.

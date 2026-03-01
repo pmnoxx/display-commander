@@ -2,10 +2,12 @@
 
 #include <windows.h>
 #include <xinput.h>
-#include <vector>
-#include <memory>
 #include <atomic>
+#include <functional>
+#include <memory>
 #include <string>
+#include <thread>
+#include <vector>
 
 // Forward declarations for XInput_HID types
 using GetInputReport_pfn = bool (*)(void*);
@@ -200,8 +202,15 @@ public:
     // Enumerate connected DualSense devices
     void EnumerateDevices();
 
-    // Update device states (poll input)
+    // Update device states (poll input). When background thread is running, returns immediately.
     void UpdateDeviceStates();
+
+    // Start background poll thread on first call (called when DualSensePollingOnce runs at least once).
+    void EnsurePollingStarted();
+
+    // Run a function with shared lock on devices (for reading state from another thread).
+    using DevicesLockCallback = std::function<void(const std::vector<DualSenseDevice>*)>;
+    void RunWithDevicesSharedLock(DevicesLockCallback f) const;
 
     // Get list of devices
     const std::vector<DualSenseDevice>& GetDevices() const { return devices_; }
@@ -236,9 +245,17 @@ public:
 private:
     // Device management
     std::vector<DualSenseDevice> devices_;
+    mutable SRWLOCK devices_lock_ = SRWLOCK_INIT;
     std::atomic<bool> is_initialized_{false};
     std::atomic<bool> enumeration_in_progress_{false};
     std::atomic<int> hid_type_filter_{0}; // 0 = Auto, 1 = DualSense Regular, 2 = DualSense Edge, 3 = DualShock 4, 4 = All Sony
+
+    // Background HID read thread (started when DualSensePollingOnce is called at least once)
+    std::thread poll_thread_;
+    std::atomic<bool> poll_thread_running_{false};
+    std::atomic<bool> polling_requested_once_{false};
+    void StartBackgroundPollThread();
+    static void BackgroundPollThreadFunc(DualSenseHIDWrapper* self);
 
     // XInput_HID integration
     bool SetupXInputHIDIntegration();

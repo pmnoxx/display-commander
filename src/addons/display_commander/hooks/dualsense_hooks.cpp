@@ -64,36 +64,39 @@ bool ReadDualSenseState(DWORD user_index, DualSenseState& state) {
     if (user_index >= XUSER_MAX_COUNT) {
         return false;
     }
-    LogInfo("[DUALSENSE] ReadDualSenseState called for controller %lu", user_index);
 
-    // Check if DualSense HID wrapper is available
     if (!display_commander::dualsense::g_dualsense_hid_wrapper) {
         return false;
     }
-    LogInfo("[DUALSENSE] DualSense HID wrapper available");
 
-    // Update all device states from HID
-    display_commander::dualsense::g_dualsense_hid_wrapper->UpdateDeviceStates();
+    // Start background HID poll thread on first use (so ReadFile runs off the game thread)
+    display_commander::dualsense::g_dualsense_hid_wrapper->EnsurePollingStarted();
 
-    // Get the device from HID wrapper
-    auto* device = display_commander::dualsense::g_dualsense_hid_wrapper->GetDevice(user_index);
-    if (device == nullptr || !device->is_connected) {
-        state.connected = false;
-        return false;
-    }
-    LogInfo("[DUALSENSE] DualSense device available");
-    // Convert the device state to our DualSenseState format
-    state.connected = device->is_connected;
-    state.buttons = device->current_state.Gamepad.wButtons;
-    state.left_stick_x = device->current_state.Gamepad.sThumbLX;
-    state.left_stick_y = device->current_state.Gamepad.sThumbLY;
-    state.right_stick_x = device->current_state.Gamepad.sThumbRX;
-    state.right_stick_y = device->current_state.Gamepad.sThumbRY;
-    state.left_trigger = device->current_state.Gamepad.bLeftTrigger;
-    state.right_trigger = device->current_state.Gamepad.bRightTrigger;
-    state.packet_number = device->current_state.dwPacketNumber;
-    LogInfo("[DUALSENSE] DualSense state converted to XInput format state.connected %d", (int)state.connected);
-    return state.connected;
+    // Read cached state under shared lock (updated by background thread or sync path)
+    bool got_state = false;
+    display_commander::dualsense::g_dualsense_hid_wrapper->RunWithDevicesSharedLock(
+        [&](const std::vector<display_commander::dualsense::DualSenseDevice>* devices) {
+            if (user_index >= devices->size()) {
+                state.connected = false;
+                return;
+            }
+            const auto& device = (*devices)[user_index];
+            if (!device.is_connected) {
+                state.connected = false;
+                return;
+            }
+            state.connected = device.is_connected;
+            state.buttons = device.current_state.Gamepad.wButtons;
+            state.left_stick_x = device.current_state.Gamepad.sThumbLX;
+            state.left_stick_y = device.current_state.Gamepad.sThumbLY;
+            state.right_stick_x = device.current_state.Gamepad.sThumbRX;
+            state.right_stick_y = device.current_state.Gamepad.sThumbRY;
+            state.left_trigger = device.current_state.Gamepad.bLeftTrigger;
+            state.right_trigger = device.current_state.Gamepad.bRightTrigger;
+            state.packet_number = device.current_state.dwPacketNumber;
+            got_state = true;
+        });
+    return got_state && state.connected;
 }
 
 void DualSensePollingOnce() {
@@ -195,7 +198,7 @@ bool ConvertDualSenseToXInput(DWORD user_index, XINPUT_STATE* state) {
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
     if (shared_state) {
         // Thread-safe update
-        utils::SRWLockExclusive lock(shared_state->state_lock);
+        ::utils::SRWLockExclusive lock(shared_state->state_lock);
 
         // Update controller state for UI display
         shared_state->controller_states[user_index] = *state;

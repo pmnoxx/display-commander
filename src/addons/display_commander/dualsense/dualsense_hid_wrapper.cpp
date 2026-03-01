@@ -3,12 +3,15 @@
 #include <initguid.h>
 #include <setupapi.h>
 #include <winioctl.h>
+#include <chrono>
 #include <cstring>
+#include <thread>
 #include <reshade_imgui.hpp>
 #include "../hooks/hid_additional_hooks.hpp"
 #include "../hooks/hid_suppression_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_wrapper.hpp"
 
 // Define GUID_DEVINTERFACE_HID if not already defined
 #ifndef GUID_DEVINTERFACE_HID
@@ -69,6 +72,12 @@ void DualSenseHIDWrapper::Cleanup() {
     }
 
     LogInfo("DualSenseHIDWrapper::Cleanup() - Cleaning up DualSense HID wrapper");
+
+    // Stop background poll thread first
+    poll_thread_running_.store(false);
+    if (poll_thread_.joinable()) {
+        poll_thread_.join();
+    }
 
     // Cleanup devices
     for (auto& device : devices_) {
@@ -267,7 +276,50 @@ bool DualSenseHIDWrapper::CreateHIDDevice(const std::string& device_path, DualSe
     return true;
 }
 
+void DualSenseHIDWrapper::EnsurePollingStarted() {
+    if (polling_requested_once_.exchange(true)) {
+        return;  // Already requested or thread already started
+    }
+    StartBackgroundPollThread();
+}
+
+void DualSenseHIDWrapper::StartBackgroundPollThread() {
+    if (poll_thread_running_.load() || poll_thread_.joinable()) {
+        return;
+    }
+    poll_thread_running_.store(true);
+    poll_thread_ = std::thread(BackgroundPollThreadFunc, this);
+    LogInfo("DualSense: background HID poll thread started");
+}
+
+void DualSenseHIDWrapper::BackgroundPollThreadFunc(DualSenseHIDWrapper* self) {
+    if (!self) {
+        return;
+    }
+    while (self->poll_thread_running_.load()) {
+        {
+            utils::SRWLockExclusive lock(self->devices_lock_);
+            for (auto& device : self->devices_) {
+                if (device.is_connected && device.hid_device) {
+                    self->UpdateDeviceFromHID(device);
+                }
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
+void DualSenseHIDWrapper::RunWithDevicesSharedLock(DevicesLockCallback f) const {
+    utils::SRWLockShared lock(devices_lock_);
+    f(&devices_);
+}
+
 void DualSenseHIDWrapper::UpdateDeviceStates() {
+    EnsurePollingStarted();
+    if (poll_thread_running_.load()) {
+        return;  // Background thread does the reads; game thread just reads cached state
+    }
+    utils::SRWLockExclusive lock(devices_lock_);
     for (auto& device : devices_) {
         if (device.is_connected && device.hid_device) {
             UpdateDeviceFromHID(device);

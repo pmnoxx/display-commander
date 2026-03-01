@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.161 (2026-02-28)
+
+- **DualSense HID: background poll thread** - ReadFile_Direct for DualSense now runs on a dedicated background thread instead of the game thread. The thread starts when DualSensePollingOnce (or UpdateDeviceStates) is called at least once. XInputGetState path reads cached state via RunWithDevicesSharedLock; no ReadFile on the game thread after the thread is running. Reduces input latency by moving HID I/O off the critical path.
+- **DualSense: devices_lock_** - SRWLOCK protects device list/state: background thread holds exclusive lock while updating from HID; readers use RunWithDevicesSharedLock for shared access. Thread is stopped and joined in Cleanup().
+
+---
+
 ## v0.12.160 (2026-02-28)
 
 - **DualSense HID: setBufferCount(2)** - After opening a DualSense HID device we now call `DeviceIoControl(IOCTL_SET_NUM_DEVICE_INPUT_BUFFERS, 2)` (same as Special K). Caps the HID input queue to 2 reports so the "latest" report stays fresher and can reduce latency when reading at high rate or with a background polling thread.

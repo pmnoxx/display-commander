@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.186 (2026-03-01)
+
+- **Main tab UI refactor** - Extracted the Updates section content (ReShade, Display Commander, Addons subsections) into a dedicated `DrawUpdatesSectionContent` function in `main_new_tab.cpp` for clearer structure and consistency with other section helpers.
+
+---
+
 ## v0.12.185 (2026-03-01)
 
 - **ReShade load source** - Add feature to download reshade / choose local / shared reshade folder.

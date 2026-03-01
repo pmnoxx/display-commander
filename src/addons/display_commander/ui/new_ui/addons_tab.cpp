@@ -1,17 +1,4 @@
-// Libraries <standard C++> — before our .hpp so std:: and types resolve in global scope
-#include <algorithm>
-#include <atomic>
-#include <filesystem>
-#include <set>
-#include <string>
-#include <vector>
-
-// Libraries <Windows> — before our .hpp so Windows types (e.g. IStream) resolve in global scope
-#include <Windows.h>
-#include <psapi.h>
-#include <ShlObj.h>
-
-// Source Code <Display Commander>
+// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "addons_tab.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../res/forkawesome.h"
@@ -23,6 +10,22 @@
 #include "../../utils/reshade_load_path.hpp"
 #include "../../utils/reshade_version_download.hpp"
 #include "../imgui_wrapper_base.hpp"
+
+// Libraries <standard C++> — before our .hpp so std:: and types resolve in global scope
+#include <Windows.h>
+#include <algorithm>
+#include <atomic>
+#include <filesystem>
+#include <set>
+#include <string>
+#include <vector>
+
+// Libraries <Windows.h> Windows.h before other Windows headers so Windows headers.
+#include <Windows.h>
+
+// Libraries <Windows> — before our .hpp so Windows types (e.g. IStream) resolve in global scope
+#include <psapi.h>
+#include <ShlObj.h>
 
 // Libraries <ReShade> / <imgui>
 #include <imgui.h>
@@ -643,95 +646,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Spacing();
 
-    // ReShade load source (where to load ReShade from when DC runs as proxy)
-    if (imgui.CollapsingHeader("ReShade load source", TreeNodeFlags_None)) {
-        imgui.Spacing();
-        using display_commander::utils::ReshadeLoadSource;
-        int load_source = static_cast<int>(display_commander::utils::GetReshadeLoadSourceFromConfig());
-        const char* source_items[] = {"Local folder (default)", "Shared path", "Specific version"};
-        if (imgui.Combo("Load ReShade from", &load_source, source_items, static_cast<int>(std::size(source_items)))) {
-            display_commander::utils::SetReshadeLoadSourceInConfig(static_cast<ReshadeLoadSource>(load_source));
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("ReShade load source");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "When Display Commander runs as a proxy (e.g. dxgi.dll), it loads ReShade from this source.\n"
-                "Local: %%localappdata%%\\Programs\\Display_Commander\\Reshade\n"
-                "Shared path: a folder you choose (e.g. network share).\n"
-                "Specific version: a versioned subfolder (e.g. 6.7.3); use Download if missing.");
-        }
-
-        if (load_source == static_cast<int>(ReshadeLoadSource::SharedPath)) {
-            std::string shared_path = display_commander::utils::GetReshadeSharedPathFromConfig();
-            char buf[1024];
-            snprintf(buf, sizeof(buf), "%.1023s", shared_path.c_str());
-            if (imgui.InputText("Shared path", buf, sizeof(buf))) {
-                display_commander::utils::SetReshadeSharedPathInConfig(buf);
-                display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig(
-                    "ReShade load source");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Folder containing Reshade64.dll and Reshade32.dll.");
-            }
-        }
-
-        if (load_source == static_cast<int>(ReshadeLoadSource::SpecificVersion)) {
-            size_t version_count = 0;
-            const char* const* versions = display_commander::utils::GetReshadeVersionList(&version_count);
-            std::string selected = display_commander::utils::GetReshadeSelectedVersionFromConfig();
-            int version_index = 0;
-            for (size_t i = 0; i < version_count; ++i) {
-                if (selected == versions[i]) {
-                    version_index = static_cast<int>(i);
-                    break;
-                }
-            }
-            if (imgui.Combo("Version", &version_index, versions, static_cast<int>(version_count))) {
-                std::string new_ver(versions[version_index]);
-                display_commander::utils::SetReshadeSelectedVersionInConfig(new_ver);
-                display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig(
-                    "ReShade load source");
-                selected = new_ver;
-            }
-
-            std::filesystem::path version_dir = GetReshadeDirectory();
-            bool dlls_present = std::filesystem::exists(version_dir / L"Reshade64.dll")
-                                && std::filesystem::exists(version_dir / L"Reshade32.dll");
-            display_commander::utils::ReshadeDownloadStatus dl_status =
-                display_commander::utils::GetReshadeDownloadStatus();
-
-            if (dl_status == display_commander::utils::ReshadeDownloadStatus::Downloading
-                || dl_status == display_commander::utils::ReshadeDownloadStatus::Extracting) {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "%s",
-                                  dl_status == display_commander::utils::ReshadeDownloadStatus::Downloading
-                                      ? "Downloading..."
-                                      : "Extracting...");
-            } else if (dl_status == display_commander::utils::ReshadeDownloadStatus::Ready) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Ready");
-            } else if (dl_status == display_commander::utils::ReshadeDownloadStatus::Error) {
-                const char* err = display_commander::utils::GetReshadeDownloadStatusMessage();
-                imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_CANCEL " Error: %s", err && *err ? err : "Unknown");
-            } else if (dlls_present) {
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Ready (already installed)");
-            } else {
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "Not found. Click Download to install.");
-            }
-
-            const bool can_download = (dl_status != display_commander::utils::ReshadeDownloadStatus::Downloading
-                                       && dl_status != display_commander::utils::ReshadeDownloadStatus::Extracting);
-            if (can_download && imgui.Button(ICON_FK_REFRESH " Download")) {
-                display_commander::utils::StartReshadeVersionDownload(selected);
-            }
-            if (imgui.IsItemHovered() && can_download) {
-                imgui.SetTooltip("Download ReShade %s Addon installer and extract DLLs to the version folder.",
-                                 selected.c_str());
-            }
-        }
-
-        imgui.Spacing();
-        imgui.Separator();
-        imgui.Spacing();
-    }
+    // ReShade load source is on the Main tab (with local/shared version in selector).
 
     // ReShade Config Subsection
     if (imgui.CollapsingHeader("ReShade Config", TreeNodeFlags_None)) {

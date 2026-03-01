@@ -35,6 +35,7 @@ std::filesystem::path GetReshadeVersionFolder(const std::string& version) {
     base /= L"Programs";
     base /= L"Display_Commander";
     base /= L"Reshade";
+    base /= L"Dll";
     base /= std::filesystem::path(version);
     return base;
 }

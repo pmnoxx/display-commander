@@ -50,8 +50,8 @@ std::filesystem::path GetDownloadDirectory();
 // Download a binary file from URL to the given path (for ReShade update, etc.)
 bool DownloadBinaryFromUrl(const std::string& url, const std::filesystem::path& file_path);
 
-// Get supported ReShade versions (hardcoded list: "latest", "6.7.2", "6.7.1", "6.6.2"). Fills out_versions.
-// Kept name for API compatibility. Always returns true; out_error is unused.
+// Fetch ReShade versions from GitHub (crosire/reshade tags). Returns all tags >= 6.6.2, sorted descending.
+// Call at most once per app start; on failure returns false and out_versions is empty.
 bool FetchReShadeVersionsFromGitHub(std::vector<std::string>& out_versions, std::string* out_error = nullptr);
 
 // Extract build number from version string

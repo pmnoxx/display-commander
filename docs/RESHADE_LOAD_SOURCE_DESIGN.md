@@ -4,9 +4,9 @@
 
 Add an option on the **ReShade tab** to choose where ReShade is loaded from when Display Commander runs as a proxy (e.g. dxgi.dll) and needs to load ReShade itself:
 
-1. **Local folder (default)** – Current behavior: load from `%localappdata%\Programs\Display_Commander\Reshade\` (flat: `Reshade64.dll` / `Reshade32.dll`).
+1. **Local folder (default)** – Load from `%localappdata%\Programs\Display_Commander\Reshade\` (root: shared `Reshade64.dll` / `Reshade32.dll`).
 2. **Shared path** – User-provided directory that contains `Reshade64.dll` and `Reshade32.dll` (e.g. network or common install).
-3. **Specific version** – Load from `%localappdata%\Programs\Display_Commander\Reshade\X.Y.Z\` (e.g. `6.6.2`, `6.7.3`). If that folder is missing, the user can trigger a **download** of the ReShade Addon installer, **X.509 signature verification**, and **extraction** of the DLLs into that folder; **status** is shown in the UI.
+3. **Specific version** – Load from `%localappdata%\Programs\Display_Commander\Reshade\Dll\X.Y.Z\` (e.g. `6.6.2`, `6.7.3`). If that folder is missing, the user can trigger a **download** of the ReShade Addon installer and **extraction** of the DLLs into that folder; **status** is shown in the UI.
 
 This document iterates until all implementation details are covered.
 
@@ -27,8 +27,8 @@ This document iterates until all implementation details are covered.
 | R1 | User can choose: **Local folder** (default), **Shared path**, or **Specific version**. |
 | R2 | **Local**: Use existing flat folder `...\Display_Commander\Reshade\` (current behavior). |
 | R3 | **Shared path**: Use a user-configurable directory; must contain `Reshade64.dll` and `Reshade32.dll` (or at least the one for current process bitness). |
-| R4 | **Specific version**: Use `...\Display_Commander\Reshade\X.Y.Z\` (e.g. `6.6.2`, `6.7.3`). Supported versions at least `["6.6.2", "6.7.3"]` (extensible). |
-| R5 | If **Specific version** is selected but the version folder does **not** exist (or DLLs missing), user can trigger: **Download** from `https://reshade.me/downloads/ReShade_Setup_X.Y.Z_Addon.exe` → **Verify** X.509 Digital Signature (thumbprint `589690208A5E52FB96980C4A6698F50ACD47C49F`) → **Extract** `Reshade32.dll` and `Reshade64.dll` into `...\Reshade\X.Y.Z\`. |
+| R4 | **Specific version**: Use `...\Display_Commander\Reshade\Dll\X.Y.Z\` (e.g. `6.6.2`, `6.7.3`). Supported versions at least `["6.6.2", "6.7.3"]` (extensible). |
+| R5 | If **Specific version** is selected but the version folder does **not** exist (or DLLs missing), user can trigger: **Download** from `https://reshade.me/downloads/ReShade_Setup_X.Y.Z_Addon.exe` → **Extract** `Reshade32.dll` and `Reshade64.dll` into `...\Reshade\Dll\X.Y.Z\`. |
 | R6 | **Status** in ReShade tab: show whether the chosen source is available (e.g. “Ready”, “Not found”, “Downloading…”, “Error: …”). |
 | R7 | Setting must be **effective at ProcessAttach** (before ReShade is loaded). Therefore it cannot rely on ReShade config; it must be stored in **Display Commander config** (file-based, readable at startup). |
 
@@ -48,15 +48,15 @@ This document iterates until all implementation details are covered.
 ## 5. Path Resolution (Loader)
 
 - **Single helper** used by both:
-  - ProcessAttach loader in `main_entry.cpp`, and  
+  - ProcessAttach loader in `main_entry.cpp`, and
   - ReShade tab (for status and “Open folder”).
-- **Signature**: e.g. `std::filesystem::path GetReshadeDirectoryForLoading();`  
+- **Signature**: e.g. `std::filesystem::path GetReshadeDirectoryForLoading();`
   Returns the directory that should contain `Reshade64.dll` / `Reshade32.dll` for the current load source.
 - **Logic**:
   - Read from DC config: `ReshadeLoadSource`, `ReshadeSharedPath`, `ReshadeSelectedVersion` (with defaults: 0, "", "6.7.3" or first in list).
   - If **Local (0)**: return `%localappdata%\Programs\Display_Commander\Reshade` (current flat path).
   - If **Shared (1)**: return `ReshadeSharedPath` (normalized, absolute if possible); if empty or invalid, fallback to Local path and optionally log.
-  - If **Specific version (2)**: return `%localappdata%\Programs\Display_Commander\Reshade\<ReshadeSelectedVersion>` (e.g. `...\Reshade\6.7.3`).
+  - If **Specific version (2)**: return `%localappdata%\Programs\Display_Commander\Reshade\Dll\<ReshadeSelectedVersion>` (e.g. `...\Reshade\Dll\6.7.3`).
 - **ProcessAttach** (`ProcessAttach_TryLoadReShadeWhenNotLoaded`): Replace hardcoded `dc_reshade_dir` with `GetReshadeDirectoryForLoading()`. If the resolved path does not exist or the required DLL is missing, show the same style of message as today, but for “Specific version” mention that the user can use the ReShade tab to download that version.
 
 ---
@@ -65,9 +65,9 @@ This document iterates until all implementation details are covered.
 
 - **Placement**: In the same ReShade tab where “Suppress ReShade Clock” and “Global ReShade” live (`addons_tab.cpp`), add a new subsection (e.g. **“ReShade load source”** or **“Where to load ReShade”**).
 - **Controls**:
-  - **Combo or radio**: “Load ReShade from:”  
-    - **Local folder (default)**  
-    - **Shared path**  
+  - **Combo or radio**: “Load ReShade from:”
+    - **Local folder (default)**
+    - **Shared path**
     - **Specific version**
   - When **Shared path**:
     - Text input for directory path.
@@ -75,14 +75,14 @@ This document iterates until all implementation details are covered.
   - When **Specific version**:
     - Combo with at least `["6.6.2", "6.7.3"]` (hardcoded list; can be extended later).
     - **Status line**: one of:
-      - “Ready” (both DLLs present in `...\Reshade\X.Y.Z\`)
+      - “Ready” (both DLLs present in `...\Reshade\Dll\X.Y.Z\`)
       - “Not found – click Download to install”
       - “Downloading…”
       - “Ready (downloaded)”
       - “Error: &lt;message&gt;” (e.g. download failed, signature invalid, extract failed)
     - **Download** button: enabled when folder/DLLs are missing (or always; if already present, can show “Already installed” or still allow re-download). Click starts background download + verify + extract; UI shows “Downloading…” and then status.
 - **Persistence**: On change, write `ReshadeLoadSource`, `ReshadeSharedPath`, `ReshadeSelectedVersion` to DC config and call `SaveConfig()`.
-- **“Open Reshade Folder”**: When “Specific version” is selected, “Open Reshade Folder” should open `...\Reshade\X.Y.Z\`; otherwise keep current behavior (flat folder or shared path). So “Open Reshade Folder” uses `GetReshadeDirectoryForLoading()` (or the same resolved path as the loader).
+- **“Open Reshade Folder”**: When “Specific version” is selected, “Open Reshade Folder” should open `...\Reshade\Dll\X.Y.Z\`; otherwise keep current behavior (root folder or shared path). So “Open Reshade Folder” uses `GetReshadeDirectoryForLoading()` (or the same resolved path as the loader).
 
 ---
 
@@ -93,7 +93,7 @@ This document iterates until all implementation details are covered.
   1. Download to temp file (e.g. `%TEMP%\dc_reshade_<version>.exe`).
   2. **Verify Authenticode**: Check that the PE file is signed and that the **X.509 certificate thumbprint** matches `589690208A5E52FB96980C4A6698F50ACD47C49F` (user-provided for 6.7.3; we use same for all supported versions unless we later add per-version thumbprints). Use WinVerifyTrust and then CertGetCertificateContext + thumbprint comparison (or equivalent). If verification fails, delete temp file, set status to error, do not extract.
   3. **Extract**: Use `tar.exe -xf "<exe>" ReShade64.dll ReShade32.dll` in a temp directory (same as standalone UI and `scripts/dc_service/download_dc32_winmm.bat`; Windows 10+ has tar). Alternatively a .bat could be used; for now tar.exe is acceptable.
-  4. **Copy**: Copy `ReShade64.dll` and `Reshade32.dll` from temp to `%localappdata%\Programs\Display_Commander\Reshade\<version>\`. Create the version folder if missing; overwrite existing DLLs.
+  4. **Copy**: Copy `ReShade64.dll` and `Reshade32.dll` from temp to `%localappdata%\Programs\Display_Commander\Reshade\Dll\<version>\`. Create the version folder if missing; overwrite existing DLLs.
   5. Clean up temp files.
 - **Threading**: Run in a **background thread** (e.g. worker thread or `CreateThread`), not on the UI thread. Use **atomics** (and optionally a simple status string) for “Downloading” / “Ready” / “Error” so the UI can poll and show status. **No std::mutex** (project rule: use SRWLOCK if a lock is needed).
 - **Optional**: After extract, verify extracted DLLs with the existing **SHA256 database** (`GetReShadeExpectedSha256`) and show “signature: OK” / “MISMATCH” in status (same as standalone UI). If we do this, status can show “Ready (signature OK)” or “Warning: signature mismatch”.
@@ -174,7 +174,7 @@ This document iterates until all implementation details are covered.
 | **Persistence** | Display Commander config (TOML), section e.g. `DisplayCommander.ReShade` |
 | **Load source values** | 0 = Local, 1 = Shared path, 2 = Specific version |
 | **Shared path** | Single string; must point to folder with Reshade64/32.dll |
-| **Specific version folder** | `%localappdata%\Programs\Display_Commander\Reshade\X.Y.Z\` |
+| **Specific version folder** | `%localappdata%\Programs\Display_Commander\Reshade\Dll\X.Y.Z\` |
 | **Download URL** | `https://reshade.me/downloads/ReShade_Setup_X.Y.Z_Addon.exe` |
 | **Signature** | X.509 thumbprint `589690208A5E52FB96980C4A6698F50ACD47C49F` |
 | **Extract** | `tar.exe -xf` (same as standalone UI); copy Reshade64.dll + Reshade32.dll to version folder. |

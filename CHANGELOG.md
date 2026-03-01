@@ -2,6 +2,18 @@
 
 ---
 
+## v0.12.176 (2026-03-01)
+
+- **FPS limiter: enable checkbox instead of "Disabled" mode** - Replaced the "Disabled" option in the FPS limiter mode combo with a separate "FPS limiter enabled" checkbox (default on). The combo now has three modes only: Default (OnPresent sync), Reflex, and Sync to Display Refresh Rate (Latent Sync). Unchecking the checkbox disables all FPS limiting; the selected mode applies only when the limiter is enabled. Removed `FpsLimiterMode::kDisabled` from the enum; Reflex "when limiter off or Latent Sync" uses the same Reflex combo as before. Safemode sets the checkbox to off instead of the removed Disabled mode. No migration: existing configs with old mode value 3 are clamped to 2 (Latent Sync).
+
+---
+
+## v0.12.175 (2026-03-01)
+
+- **Window mode and prevent fullscreen merged** - Combined the Main tab "Window Mode" dropdown and the Advanced tab "Prevent Fullscreen" checkbox into a single setting. Window Mode now has four options: "No changes" (no prevent fullscreen, no resize), "Prevent exclusive fullscreen / no resize" (new default; prevent fullscreen only), "Borderless fullscreen", and "Borderless windowed" (last two prevent fullscreen and apply resize as before). Removed the separate Prevent Fullscreen option from the Advanced tab. Safemode now sets window mode to "No changes" instead of toggling the removed checkbox. Move-to-display hotkeys (Win+Left/Right, primary/secondary) temporarily switch to borderless fullscreen when in "No changes" or "Prevent exclusive fullscreen / no resize" so the move is applied. No migration; existing saved window_mode values (0/1/2) unchanged.
+
+---
+
 ## v0.12.174 (2026-03-01)
 
 - **32-bit build: Ninja preset and parallel builds** - Added `CMakePresets.json` with single-config Ninja preset for 32-bit (`ninja-x86`). `bd32.ps1` / `bd32_core.ps1` now prefer Ninja when `vcvars32.bat` is available (via vswhere), running configure and build in a 32-bit environment for full parallel compilation. Fallback remains Visual Studio generator with MSBuild intra-project parallelism (`CL_MPCount`). Switched from Ninja Multi-Config to single-config Ninja to avoid object-order dependency errors with generated `.rc` files; build type is passed as `CMAKE_BUILD_TYPE` at configure time.

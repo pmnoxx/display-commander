@@ -61,9 +61,8 @@ std::atomic<LONGLONG> g_dll_load_time_ns{0};
 std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 
 // Window settings
-std::atomic<WindowMode> s_window_mode{WindowMode::kNoChanges};  // kNoChanges = No changes mode (default),
-                                                                // kFullscreen = Borderless Fullscreen,
-                                                                // kAspectRatio = Borderless Windowed (Aspect Ratio)
+std::atomic<WindowMode> s_window_mode{
+    WindowMode::kPreventFullscreenNoResize};  // default: prevent fullscreen, no resize
 
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9};  // Default to 16:9
 std::atomic<int> s_aspect_width{0};                                   // 0 = Display Width, 1 = 3840, 2 = 2560, etc.
@@ -139,8 +138,8 @@ std::atomic<bool> s_initial_auto_selection_done{false};  // Track if we've done 
 std::atomic<bool> s_auto_restore_resolution_on_close{true};  // Enabled by default
 
 // Auto-apply resolution and refresh rate changes
-std::atomic<bool> s_auto_apply_resolution_change{false};     // Disabled by default
-std::atomic<bool> s_auto_apply_refresh_rate_change{false};   // Disabled by default
+std::atomic<bool> s_auto_apply_resolution_change{false};    // Disabled by default
+std::atomic<bool> s_auto_apply_refresh_rate_change{false};  // Disabled by default
 
 // Track if resolution was successfully applied at least once
 std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by default
@@ -373,9 +372,9 @@ std::atomic<int> g_game_render_height{0};
 std::atomic<bool> g_app_in_background{false};
 std::atomic<LONGLONG> g_last_foreground_background_switch_ns{0};
 
-// FPS limiter mode: 0 = Disabled, 1 = Reflex, 2 = OnPresentSync, 3 = OnPresentSyncLowLatency, 4 = VBlank Scanline Sync
-// (VBlank)
-std::atomic<FpsLimiterMode> s_fps_limiter_mode{FpsLimiterMode::kDisabled};
+// FPS limiter: enabled by checkbox; mode 0 = OnPresentSync, 1 = Reflex, 2 = LatentSync (VBlank)
+std::atomic<bool> s_fps_limiter_enabled{true};
+std::atomic<FpsLimiterMode> s_fps_limiter_mode{FpsLimiterMode::kOnPresentSync};
 
 // FPS limiter injection timing: 0 = Default (Direct DX9/10/11/12), 1 = Fallback(1) (Through ReShade), 2 = Fallback(2)
 // (Through ReShade)
@@ -524,7 +523,7 @@ std::atomic<bool> g_gpu_completion_callback_finished{false};  // Tracks if GPU c
 std::atomic<LONGLONG> g_sim_to_display_latency_ns{0};         // Measured sim-start-to-display latency (smoothed)
 
 // GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
-std::atomic<LONGLONG> g_present_update_after2_time_ns{0};    // Time when OnPresentUpdateAfter2 was called
+std::atomic<LONGLONG> g_present_update_after2_time_ns{0};  // Time when OnPresentUpdateAfter2 was called
 std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // Frame data cyclic buffer (see docs/FRAME_DATA_CYCLIC_BUFFER.md). Not populated yet.

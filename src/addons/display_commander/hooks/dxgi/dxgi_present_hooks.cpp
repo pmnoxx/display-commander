@@ -905,9 +905,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetFullscreenState_Detour(IDXGISwapChai
     g_last_set_fullscreen_target.store(pTarget);
     g_last_set_fullscreen_state.store(Fullscreen);
 
-    // Check if fullscreen prevention is enabled and we're trying to go fullscreen
+    // Check if fullscreen prevention is enabled (window mode != No changes) and we're trying to go fullscreen
     HRESULT hr;
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+    if (ShouldPreventExclusiveFullscreen()) {
         hr = IDXGISwapChain_SetFullscreenState_Original(This, false, pTarget);
     } else {
         hr = IDXGISwapChain_SetFullscreenState_Original(This, Fullscreen, pTarget);
@@ -928,7 +928,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
     }
 
     // NOTE: we assume that ppTarget is g_last_set_fullscreen_target.load()
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue() && g_last_set_fullscreen_state.load() != -1
+    if (ShouldPreventExclusiveFullscreen() && g_last_set_fullscreen_state.load() != -1
         && pFullscreen != nullptr) {
         *pFullscreen = g_last_set_fullscreen_state.load();
     }

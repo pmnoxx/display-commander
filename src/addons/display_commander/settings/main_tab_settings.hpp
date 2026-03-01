@@ -61,12 +61,15 @@ class MainTabSettings {
     ui::new_ui::BoolSetting adhd_multi_monitor_enabled;
 
     // FPS Settings
+    /** When true, FPS limiter is active (mode from fps_limiter_mode). When false, no limiting. Default on. */
+    ui::new_ui::BoolSetting fps_limiter_enabled;
     ui::new_ui::ComboSetting fps_limiter_mode;
     ui::new_ui::IntSettingRef scanline_offset;
     ui::new_ui::IntSettingRef vblank_sync_divisor;
     ui::new_ui::FloatSettingRef fps_limit;
     ui::new_ui::FloatSettingRef fps_limit_background;
-    /** When true, cap FPS to fps_limit_background when window is in background. When false, use same limit as foreground. Default off. */
+    /** When true, cap FPS to fps_limit_background when window is in background. When false, use same limit as
+     * foreground. Default off. */
     ui::new_ui::BoolSettingRef background_fps_enabled;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     /** When true and native Reflex is not active, addon injects Reflex (sleep + markers). Default false. */
@@ -74,7 +77,8 @@ class MainTabSettings {
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;
     ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> onpresent_reflex_mode;
     ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> reflex_limiter_reflex_mode;  // Used when FPS limiter is Reflex
-    ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> reflex_disabled_limiter_mode;  // Used when FPS limiter is Disabled or LatentSync
+    ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode>
+        reflex_disabled_limiter_mode;  // Used when FPS limiter is off (checkbox unchecked) or mode is LatentSync
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting experimental_fg_native_fps_limiter;
     ui::new_ui::BoolSetting native_pacing_sim_start_only;
@@ -188,9 +192,11 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_vulkan_tab;
     /** When enabled, install NvLowLatencyVk hooks when NvLowLatencyVk.dll is loaded (Vulkan Reflex frame pacing). */
     ui::new_ui::BoolSetting vulkan_nvll_hooks_enabled;
-    /** When enabled, hook vulkan-1.dll vkGetDeviceProcAddr and wrap vkSetLatencyMarkerNV (VK_NV_low_latency2) for frame pacing. */
+    /** When enabled, hook vulkan-1.dll vkGetDeviceProcAddr and wrap vkSetLatencyMarkerNV (VK_NV_low_latency2) for frame
+     * pacing. */
     ui::new_ui::BoolSetting vulkan_vk_loader_hooks_enabled;
-    /** When enabled, append VK_NV_low_latency2, VK_KHR_present_id, VK_KHR_timeline_semaphore in vkCreateDevice (Special K style). */
+    /** When enabled, append VK_NV_low_latency2, VK_KHR_present_id, VK_KHR_timeline_semaphore in vkCreateDevice (Special
+     * K style). */
     ui::new_ui::BoolSetting vulkan_append_reflex_extensions;
 
     // Brightness (ReShade effect driven by DC)

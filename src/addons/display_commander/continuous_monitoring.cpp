@@ -181,9 +181,11 @@ void check_is_background() {
     }
 
     // Apply window changes - the function will automatically determine what needs to be changed
-    // Skip if suppress_window_changes is enabled (compatibility feature) or if window mode is kNoChanges
+    // Skip if suppress_window_changes is enabled (compatibility feature), or if window mode does not imply resize
+    // (kNoChanges and kPreventFullscreenNoResize do not resize; only kFullscreen and kAspectRatio do)
+    const WindowMode mode = s_window_mode.load();
     if (!settings::g_advancedTabSettings.suppress_window_changes.GetValue()
-        && s_window_mode.load() != WindowMode::kNoChanges) {
+        && (mode == WindowMode::kFullscreen || mode == WindowMode::kAspectRatio)) {
         ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
     }
 }

@@ -31,8 +31,8 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsA].increment_total();
 
-    // Check if fullscreen prevention is enabled
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+    // Check if fullscreen prevention is enabled (window mode != No changes)
+    if (ShouldPreventExclusiveFullscreen()) {
         LogInfo("ChangeDisplaySettingsA blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -45,8 +45,8 @@ LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsW].increment_total();
 
-    // Check if fullscreen prevention is enabled
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+    // Check if fullscreen prevention is enabled (window mode != No changes)
+    if (ShouldPreventExclusiveFullscreen()) {
         LogInfo("ChangeDisplaySettingsW blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -60,8 +60,8 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA].increment_total();
 
-    // Check if fullscreen prevention is enabled
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+    // Check if fullscreen prevention is enabled (window mode != No changes)
+    if (ShouldPreventExclusiveFullscreen()) {
         LogInfo("ChangeDisplaySettingsExA blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -75,8 +75,8 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW].increment_total();
 
-    // Check if fullscreen prevention is enabled
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+    // Check if fullscreen prevention is enabled (window mode != No changes)
+    if (ShouldPreventExclusiveFullscreen()) {
         LogInfo("ChangeDisplaySettingsExW blocked - fullscreen prevention enabled");
         return DISP_CHANGE_SUCCESSFUL;  // Return success without changing display mode
     }
@@ -91,8 +91,8 @@ BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_total();
 
-    // Check if fullscreen prevention is enabled
-    if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+    // Check if fullscreen prevention is enabled (window mode != No changes)
+    if (ShouldPreventExclusiveFullscreen()) {
         // Prevent maximize operations that could lead to fullscreen
         if (nCmdShow == SW_MAXIMIZE || nCmdShow == SW_SHOWMAXIMIZED) {
             LogInfo("ShowWindow blocked maximize attempt - forcing normal window");

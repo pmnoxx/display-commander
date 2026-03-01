@@ -1613,10 +1613,12 @@ void HandleSafemode() {
 
         // Set safemode to 0 (force set to 0)
         // settings::g_advancedTabSettings.safemode.SetValue(false);
-        settings::g_advancedTabSettings.prevent_fullscreen.SetValue(false);
+        settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kNoChanges));
+        s_window_mode.store(WindowMode::kNoChanges);
         settings::g_advancedTabSettings.continue_rendering.SetValue(false);
 
-        settings::g_mainTabSettings.fps_limiter_mode.SetValue((int)FpsLimiterMode::kDisabled);
+        settings::g_mainTabSettings.fps_limiter_enabled.SetValue(false);
+        s_fps_limiter_enabled.store(false);
 
         // Disable all auto-apply settings
         ui::monitor_settings::g_setting_auto_apply_resolution.SetValue(false);
@@ -1633,8 +1635,8 @@ void HandleSafemode() {
         settings::g_advancedTabSettings.SaveAll();
 
         LogInfo(
-            "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter set to "
-            "disabled, XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, _nvngx "
+            "Safemode applied - auto-apply settings disabled, continue rendering disabled, FPS limiter disabled "
+            "(checkbox off), XInput hooks disabled, MinHook initialization suppressed, Streamline loading disabled, _nvngx "
             "loading disabled, nvapi64 loading "
             "disabled, XInput loading disabled");
     } else {

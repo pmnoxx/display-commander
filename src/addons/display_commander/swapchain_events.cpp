@@ -585,11 +585,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         bool modified = false;
-        if (desc.fullscreen_state && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-            if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-                LogWarn("D3D9: Fullscreen state change blocked by developer settings");
-                return false;
-            }
+        if (desc.fullscreen_state && ShouldPreventExclusiveFullscreen()) {
             LogInfo("D3D9: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO",
                     desc.fullscreen_state ? "NO" : "YES");
             desc.fullscreen_state = false;
@@ -873,11 +869,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         bool prev_fullscreen_state = desc.fullscreen_state;
         reshade::api::format prev_format = desc.back_buffer.texture.format;
 
-        if (desc.fullscreen_state && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-            if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-                LogWarn("OpenGL Swapchain: Fullscreen state change blocked by developer settings");
-                return false;
-            }
+        if (desc.fullscreen_state && ShouldPreventExclusiveFullscreen()) {
             LogInfo("OpenGL Swapchain: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO",
                     desc.fullscreen_state ? "NO" : "YES");
             desc.fullscreen_state = false;
@@ -955,11 +947,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         bool prev_fullscreen_state = desc.fullscreen_state;
         reshade::api::format prev_format = desc.back_buffer.texture.format;
 
-        if (desc.fullscreen_state && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-            if (!settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-                LogWarn("Vulkan Swapchain: Fullscreen state change blocked by developer settings");
-                return false;
-            }
+        if (desc.fullscreen_state && ShouldPreventExclusiveFullscreen()) {
             LogInfo("Vulkan Swapchain: Changed fullscreen state from %s to %s", desc.fullscreen_state ? "YES" : "NO",
                     desc.fullscreen_state ? "NO" : "YES");
             desc.fullscreen_state = false;
@@ -1434,13 +1422,15 @@ float GetTargetFps() {
 }
 
 static OnPresentReflexMode GetEffectiveReflexMode() {
+    if (!s_fps_limiter_enabled.load() || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
+        return static_cast<OnPresentReflexMode>(
+            settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
+    }
     switch (s_fps_limiter_mode.load()) {
         case FpsLimiterMode::kOnPresentSync:
             return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.onpresent_reflex_mode.GetValue());
         case FpsLimiterMode::kReflex:
             return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
-        case FpsLimiterMode::kDisabled:
-        case FpsLimiterMode::kLatentSync:
         default:
             return static_cast<OnPresentReflexMode>(
                 settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
@@ -1544,17 +1534,14 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     from_wrapper ? "true" : "false");
         }
     }
-    if (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
+    if (s_fps_limiter_enabled.load()
+        && (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync)) {
         RECORD_DETOUR_CALL(start_time_ns);
         // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
         // No need to flush here anymore
 
         // Call FPS Limiter on EVERY frame (not throttled)
         switch (s_fps_limiter_mode.load()) {
-            case FpsLimiterMode::kDisabled: {
-                // No FPS limiting - do nothing
-                break;
-            }
             case FpsLimiterMode::kReflex: {
                 if (!s_reflex_auto_configure.load()) {
                     s_reflex_auto_configure.store(true);

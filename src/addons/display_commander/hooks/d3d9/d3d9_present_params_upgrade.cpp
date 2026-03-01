@@ -17,8 +17,8 @@ bool ApplyD3D9PresentParameterUpgrades(D3DPRESENT_PARAMETERS* pp, bool is_create
 
     bool modified = false;
 
-    // Prevent fullscreen (force windowed) if enabled
-    if (pp->Windowed == FALSE && settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
+    // Prevent fullscreen (force windowed) when window mode implies prevent exclusive fullscreen
+    if (pp->Windowed == FALSE && ShouldPreventExclusiveFullscreen()) {
         LogInfo("D3D9 (no-ReShade): Forcing windowed mode (prevent fullscreen)");
         pp->Windowed = TRUE;
         // FullScreen_RefreshRateInHz is only meaningful in fullscreen; leave it non-zero can cause

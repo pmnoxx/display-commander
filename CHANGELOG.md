@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.179 (2026-03-01)
+
+- **Fixed crash due to invalid arguments** - XInput hook could crash when Steam overlay (or other code) called XInput with an pState being nullptr to check whenever device is connected.
+
+---
+
 ## v0.12.178 (2026-03-01)
 
 - **CI: Latest Debug Build** - GitHub Actions now builds a Debug configuration with PDB symbols on every push to main and publishes it as the "Latest Debug Build" release (tag `latest_debug`). README and Continuous Integration section updated with a link to the debug release for debugging and crash analysis.

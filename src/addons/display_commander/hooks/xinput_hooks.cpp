@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "../dualsense/dualsense_hid_wrapper.hpp"
 #include "../globals.hpp"
 #include "../input_remapping/input_remapping.hpp"
 #include "../settings/main_tab_settings.hpp"
@@ -15,7 +16,6 @@
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
-#include "../dualsense/dualsense_hid_wrapper.hpp"
 #include "dualsense_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
@@ -306,6 +306,7 @@ void ApplyThumbstickProcessing(
 static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, HookIndex hook_index,
                                    std::atomic<uint64_t>& update_ns_field, const char* error_function_name,
                                    const std::function<DWORD(DWORD, XINPUT_STATE*)>& call_original_func) {
+    // Note pState may be null if caller wants to check if device is connected
     // Track hook call statistics
     g_hook_stats[hook_index].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(hook_index);
@@ -337,7 +338,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
 
     // Try DualSense conversion first if enabled
     if (dualsense_enabled && display_commander::hooks::IsDualSenseAvailable()) {
-        if (display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
+        if (pState != nullptr && display_commander::hooks::ConvertDualSenseToXInput(dwUserIndex, pState)) {
             result = ERROR_SUCCESS;
         }
     }
@@ -346,7 +347,7 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
     bool did_spoof_connection = false;
 
     // If controller is not connected but we need to spoof for override, create fake state
-    if (should_spoof_connection) {
+    if (should_spoof_connection && pState != nullptr) {
         // Initialize fake gamepad state (all zeros)
         ZeroMemory(&pState->Gamepad, sizeof(XINPUT_GAMEPAD));
         // Packet number will be set just before return
@@ -358,9 +359,13 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
     if (result != ERROR_SUCCESS) {
         result = call_original_func(dwUserIndex, pState);
     }
+    // Note pState may be null if caller wants to check if device is connected
+    if (pState == nullptr) {
+        return result;
+    }
 
     // Override packet number with our tracked value just before returning
-    if (dwUserIndex < 4) {
+    if (dwUserIndex < 4 && pState != nullptr) {
         // If we spoofed the connection, increment our tracked packet number
         g_packet_numbers[dwUserIndex]++;
         // Always override with our tracked packet number
@@ -632,11 +637,10 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
     }
 
     // When DualSense-as-XInput is enabled, slot 0 is our HID DualSense: send rumble via HID output report.
-    if (shared_state && shared_state->enable_dualsense_xinput.load() &&
-        display_commander::hooks::IsDualSenseAvailable() && dwUserIndex == 0 &&
-        display_commander::dualsense::g_dualsense_hid_wrapper) {
-        if (display_commander::dualsense::g_dualsense_hid_wrapper->SetRumble(
-                0, vibration.wLeftMotorSpeed, vibration.wRightMotorSpeed)) {
+    if (shared_state && shared_state->enable_dualsense_xinput.load() && display_commander::hooks::IsDualSenseAvailable()
+        && dwUserIndex == 0 && display_commander::dualsense::g_dualsense_hid_wrapper) {
+        if (display_commander::dualsense::g_dualsense_hid_wrapper->SetRumble(0, vibration.wLeftMotorSpeed,
+                                                                             vibration.wRightMotorSpeed)) {
             g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
             return ERROR_SUCCESS;
         }

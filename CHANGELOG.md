@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.178 (2026-03-01)
+
+- **CI: Latest Debug Build** - GitHub Actions now builds a Debug configuration with PDB symbols on every push to main and publishes it as the "Latest Debug Build" release (tag `latest_debug`). README and Continuous Integration section updated with a link to the debug release for debugging and crash analysis.
+
+---
+
 ## v0.12.177 (2026-03-01)
 
 - **FPS limiter UI reorganized** - Main tab display settings: FPS limiter section now shows (1) enable checkbox + FPS limit slider, (2) enable background checkbox + background FPS limit slider, (3) FPS limiter mode combo, then a subheader "Advanced FPS limiter settings" with all mode-specific options (Reflex/OnPresent/Latent Sync), Limit Real Frames, No Render/Present in Background, and Quick FPS limit changer. Single `DrawDisplaySettings_FpsLimiter` entry point; VSync & Tearing no longer draws the FPS sliders (moved into FPS limiter block).

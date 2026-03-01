@@ -76,6 +76,74 @@ jobs:
           path: ${{ steps.collect.outputs.artifact_dir }}/*
           if-no-files-found: error
 
+  build-debug:
+    name: Build Debug (${{ matrix.arch }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            devcmd_arch: x64
+            artifact_suffix: addon64
+            artifact_name: zzz_display_commander.addon64
+            pdb_suffix: x64
+          - arch: x86
+            devcmd_arch: x86
+            artifact_suffix: addon32
+            artifact_name: zzz_display_commander.addon32
+            pdb_suffix: x86
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v5
+
+      - name: Setup MSVC (${{ matrix.devcmd_arch }})
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.devcmd_arch }}
+
+      - name: Configure (Debug)
+        shell: bash
+        run: |
+          cmake -S . -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DGIT_COMMIT_COUNT=${{ github.run_number }}
+
+      - name: Build (Debug)
+        shell: bash
+        run: |
+          cmake --build build-debug --config Debug --parallel
+
+      - name: Collect debug artifacts
+        id: collect_debug
+        shell: bash
+        run: |
+          mkdir -p artifacts-debug
+          display_commander_file=$(find build-debug -type f -name "zzz_display_commander.${{ matrix.artifact_suffix }}" | head -1)
+          if [ -z "$display_commander_file" ]; then
+            echo "Display Commander debug addon file not found; listing build-debug dir:" >&2
+            find build-debug -type f -name "*.${{ matrix.artifact_suffix }}" || true
+            ls -la build-debug || true
+            exit 1
+          fi
+          cp "$display_commander_file" "artifacts-debug/${{ matrix.artifact_name }}"
+          pdb_file=$(find build-debug -type f -name "zzz_display_commander.pdb" | head -1)
+          if [ -n "$pdb_file" ]; then
+            cp "$pdb_file" "artifacts-debug/zzz_display_commander_${{ matrix.pdb_suffix }}.pdb"
+          fi
+          echo "artifact_dir=artifacts-debug" >> $GITHUB_OUTPUT
+
+      - name: Upload debug artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zzz-display-commander-debug-${{ matrix.artifact_suffix }}
+          path: ${{ steps.collect_debug.outputs.artifact_dir }}/*
+          if-no-files-found: error
+
   release:
     name: Release
     needs: [ build ]
@@ -137,3 +205,46 @@ jobs:
             - `zzz_display_commander.addon32` - 32-bit version
 
             For scheduled development builds, see [Nightly](https://github.com/pmnoxx/display-commander/releases/tag/nightly). For stable releases, use the main [Releases](https://github.com/pmnoxx/display-commander/releases) page.
+
+  release-debug:
+    name: Release Debug
+    needs: [ build-debug ]
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: windows-latest
+    steps:
+      - name: Download debug artifacts (x64)
+        uses: actions/download-artifact@v4
+        with:
+          name: zzz-display-commander-debug-addon64
+          path: artifacts-debug
+
+      - name: Download debug artifacts (x86)
+        uses: actions/download-artifact@v4
+        with:
+          name: zzz-display-commander-debug-addon32
+          path: artifacts-debug
+
+      - name: Create/Update Latest Debug Release (main)
+        uses: ncipollo/release-action@v1
+        with:
+          tag: latest_debug
+          name: Latest Debug Build
+          allowUpdates: true
+          artifacts: artifacts-debug/*
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## Latest Debug Build (with symbols)
+
+            Debug build from the main branch with PDB symbols. Updated on every successful push to main. Use for debugging or crash analysis.
+
+            **Version in binaries**: 0.11.0.${{ github.run_number }}
+
+            **Commit**: ${{ github.sha }}
+
+            **Files**:
+            - `zzz_display_commander.addon64` - 64-bit addon
+            - `zzz_display_commander.addon32` - 32-bit addon
+            - `zzz_display_commander_x64.pdb` - 64-bit symbols
+            - `zzz_display_commander_x86.pdb` - 32-bit symbols
+
+            Place the PDB next to the addon (or in the same folder as the game) for symbol resolution in a debugger.

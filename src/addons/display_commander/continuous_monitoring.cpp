@@ -38,15 +38,11 @@
 #include <nvapi.h>
 #include <windows.h>
 
-// #define TRY_CATCH_BLOCKS
-
 // External reference to prevent display sleep & screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
 // Stuck detection: last time the continuous monitoring loop started an iteration (real time ns)
 static std::atomic<LONGLONG> g_last_continuous_monitoring_loop_real_ns{0};
-// Wall-clock time (FILETIME as uint64_t) when the loop last ran; 0 = never. Used for "last looped at HH:MM:SS.mmm".
-static std::atomic<uint64_t> g_last_continuous_monitoring_loop_filetime{0};
 // Current section of the loop (so when stuck we know where; "sleeping" = in sleep_for)
 std::atomic<const char*> g_continuous_monitoring_section{nullptr};
 
@@ -83,28 +79,22 @@ void HandleReflexAutoConfigure() {
     // is enabled
     if (is_reflex_mode) {
         auto cur = static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_limiter_reflex_mode.GetValue());
-        if (cur == OnPresentReflexMode::kOff || cur == OnPresentReflexMode::kGameDefaults) {
-            g_reflex_settings_outdated.store(true);
-        }
     }
 
     {
         if (!settings::g_advancedTabSettings.reflex_use_markers.GetValue()) {
             settings::g_advancedTabSettings.reflex_use_markers.SetValue(true);
-            g_reflex_settings_outdated.store(true);
         }
     }
 
     if (reflex_generate_markers == is_native_reflex_active
         && settings::g_advancedTabSettings.reflex_generate_markers.GetValue() != !is_native_reflex_active) {
         settings::g_advancedTabSettings.reflex_generate_markers.SetValue(!is_native_reflex_active);
-        g_reflex_settings_outdated.store(true);
     }
 
     if (reflex_enable_sleep == is_native_reflex_active
         && settings::g_advancedTabSettings.reflex_enable_sleep.GetValue() != !is_native_reflex_active) {
         settings::g_advancedTabSettings.reflex_enable_sleep.SetValue(!is_native_reflex_active);
-        g_reflex_settings_outdated.store(true);
     }
 }
 
@@ -415,7 +405,6 @@ static void Every1sVrrStatus() {
                 vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
                 vrr_status::cached_output_device_name.store(nullptr);
             }
-            vrr_status::last_nvapi_update_ns.store(now_ns);
             last_nvapi_update_ns = now_ns;
         }
     }
@@ -731,10 +720,6 @@ void ContinuousMonitoringThread() {
             RECORD_DETOUR_CALL(utils::get_now_ns());
             LONGLONG loop_time_ns = utils::get_real_time_ns();
             g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
-            FILETIME ft = {};
-            GetSystemTimePreciseAsFileTime(&ft);
-            g_last_continuous_monitoring_loop_filetime.store(
-                (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime, std::memory_order_release);
             g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
 
             // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground

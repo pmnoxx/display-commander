@@ -43,7 +43,6 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::PROCESS_EXIT:     return &settings::g_hook_suppression_settings.suppress_process_exit_hooks;
         case HookType::WINDOW_PROC:      return &settings::g_hook_suppression_settings.suppress_window_proc_hooks;
         case HookType::DBGHELP:          return &settings::g_hook_suppression_settings.suppress_dbghelp_hooks;
-        case HookType::WINMM_JOYSTICK:   return &settings::g_hook_suppression_settings.suppress_winmm_joystick_hooks;
         default:                         return nullptr;
     }
 }
@@ -137,9 +136,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                 case HookType::DBGHELP:
                     current_value = settings::g_hook_suppression_settings.suppress_dbghelp_hooks.GetValue();
                     break;
-                case HookType::WINMM_JOYSTICK:
-                    current_value = settings::g_hook_suppression_settings.suppress_winmm_joystick_hooks.GetValue();
-                    break;
                 default: break;
             }
 
@@ -191,8 +187,6 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
         case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
         case HookType::DBGHELP: return settings::g_hook_suppression_settings.suppress_dbghelp_hooks.GetValue();
-        case HookType::WINMM_JOYSTICK:
-            return settings::g_hook_suppression_settings.suppress_winmm_joystick_hooks.GetValue();
         default:
             LogError("HookSuppressionManager::ShouldSuppressHook - Invalid hook type: %d", static_cast<int>(hookType));
             return false;
@@ -357,12 +351,6 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_dbghelp_hooks.SetValue(false);
             }
             break;
-        case HookType::WINMM_JOYSTICK:
-            if (!settings::g_hook_suppression_settings.winmm_joystick_hooks_installed.GetValue()) {
-                settings::g_hook_suppression_settings.winmm_joystick_hooks_installed.SetValue(true);
-                settings::g_hook_suppression_settings.suppress_winmm_joystick_hooks.SetValue(false);
-            }
-            break;
 
         default:
 
@@ -402,7 +390,6 @@ std::string HookSuppressionManager::GetSuppressionSettingName(HookType hookType)
         case HookType::PROCESS_EXIT:         return "SuppressProcessExitHooks";
         case HookType::WINDOW_PROC:          return "SuppressWindowProcHooks";
         case HookType::DBGHELP:               return "SuppressDbghelpHooks";
-        case HookType::WINMM_JOYSTICK:         return "SuppressWinMMJoystickHooks";
         default:
             LogError("HookSuppressionManager::GetSuppressionSettingName - Invalid hook type: %d",
                      static_cast<int>(hookType));
@@ -438,60 +425,10 @@ std::string HookSuppressionManager::GetInstallationSettingName(HookType hookType
         case HookType::PROCESS_EXIT:         return "ProcessExitHooksInstalled";
         case HookType::WINDOW_PROC:          return "WindowProcHooksInstalled";
         case HookType::DBGHELP:               return "DbghelpHooksInstalled";
-        case HookType::WINMM_JOYSTICK:         return "WinMMJoystickHooksInstalled";
         default:
             LogError("HookSuppressionManager::GetInstallationSettingName - Invalid hook type: %d",
                      static_cast<int>(hookType));
             return "";
-    }
-}
-
-bool HookSuppressionManager::WasHookInstalled(HookType hookType) {
-    switch (hookType) {
-        case HookType::DXGI_FACTORY:
-            return settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue();
-        case HookType::DXGI_SWAPCHAIN:
-            return settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue();
-        case HookType::D3D11_DEVICE:
-            return settings::g_hook_suppression_settings.d3d11_device_hooks_installed.GetValue();
-        case HookType::D3D12_DEVICE:
-            return settings::g_hook_suppression_settings.d3d12_device_hooks_installed.GetValue();
-        case HookType::XINPUT:     return settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue();
-        case HookType::DINPUT:     return settings::g_hook_suppression_settings.dinput_hooks_installed.GetValue();
-        case HookType::DINPUT8:    return settings::g_hook_suppression_settings.dinput8_hooks_installed.GetValue();
-        case HookType::STREAMLINE: return settings::g_hook_suppression_settings.streamline_hooks_installed.GetValue();
-        case HookType::NGX:        return settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue();
-        case HookType::WINDOWS_GAMING_INPUT:
-            return settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.GetValue();
-        case HookType::HID_KERNEL32:
-            return settings::g_hook_suppression_settings.hid_kernel32_hooks_installed.GetValue();
-        case HookType::HID_HID_DLL:
-            return settings::g_hook_suppression_settings.hid_hid_dll_hooks_installed.GetValue();
-        case HookType::API:        return settings::g_hook_suppression_settings.api_hooks_installed.GetValue();
-        case HookType::WINDOW_API: return settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue();
-        case HookType::SLEEP:      return settings::g_hook_suppression_settings.sleep_hooks_installed.GetValue();
-        case HookType::TIMESLOWDOWN:
-            return settings::g_hook_suppression_settings.timeslowdown_hooks_installed.GetValue();
-        case HookType::DEBUG_OUTPUT:
-            return settings::g_hook_suppression_settings.debug_output_hooks_installed.GetValue();
-        case HookType::LOADLIBRARY: return settings::g_hook_suppression_settings.loadlibrary_hooks_installed.GetValue();
-        case HookType::DISPLAY_SETTINGS:
-            return settings::g_hook_suppression_settings.display_settings_hooks_installed.GetValue();
-        case HookType::WINDOWS_MESSAGE:
-            return settings::g_hook_suppression_settings.windows_message_hooks_installed.GetValue();
-        case HookType::OPENGL: return settings::g_hook_suppression_settings.opengl_hooks_installed.GetValue();
-        case HookType::HID_SUPPRESSION:
-            return settings::g_hook_suppression_settings.hid_suppression_hooks_installed.GetValue();
-        case HookType::NVAPI: return settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue();
-        case HookType::PROCESS_EXIT:
-            return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
-        case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue();
-        case HookType::DBGHELP: return settings::g_hook_suppression_settings.dbghelp_hooks_installed.GetValue();
-        case HookType::WINMM_JOYSTICK:
-            return settings::g_hook_suppression_settings.winmm_joystick_hooks_installed.GetValue();
-        default:
-            LogError("HookSuppressionManager::WasHookInstalled - Invalid hook type: %d", static_cast<int>(hookType));
-            return false;
     }
 }
 
@@ -523,7 +460,6 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::PROCESS_EXIT:         return "Process Exit";
         case HookType::WINDOW_PROC:          return "Window Procedure";
         case HookType::DBGHELP:              return "DbgHelp";
-        case HookType::WINMM_JOYSTICK:       return "WinMM Joystick";
         default:
             LogError("HookSuppressionManager::GetHookTypeName - Invalid hook type: %d", static_cast<int>(hookType));
             return "Unknown";

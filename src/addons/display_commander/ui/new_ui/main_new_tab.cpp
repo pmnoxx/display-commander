@@ -2756,8 +2756,6 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
     // Apply Changes button
     imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
     if (imgui.Button(ICON_FK_OK " Apply Changes")) {
-        // Force immediate application of window changes
-        ::g_init_apply_generation.fetch_add(1);
         LogInfo("Apply Changes button clicked - forcing immediate window update");
         std::ostringstream oss;
         // All global settings on this tab are handled by the settings wrapper
@@ -2792,7 +2790,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 LogInfo("FPS Limiter: Reflex");
                 s_reflex_auto_configure.store(true);
                 settings::g_advancedTabSettings.reflex_auto_configure.SetValue(true);
-                g_reflex_settings_outdated.store(true);
             } else if (mode == FpsLimiterMode::kOnPresentSync) {
                 LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
             } else if (mode == FpsLimiterMode::kLatentSync) {
@@ -2803,7 +2800,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 // reset the reflex auto configure setting
                 settings::g_advancedTabSettings.reflex_auto_configure.SetValue(false);
                 s_reflex_auto_configure.store(false);
-                g_reflex_settings_outdated.store(true);
             }
         }
 
@@ -2832,7 +2828,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
         }
         auto DrawPclStatsCheckbox = [&imgui]() {
             if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
-                g_reflex_settings_outdated.store(true);
                 LogInfo("Inject Reflex %s",
                         settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
             }
@@ -3082,7 +3077,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 imgui.Spacing();
                 if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex",
                                                imgui)) {
-                    g_reflex_settings_outdated.store(true);
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
@@ -3101,7 +3095,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
                 imgui.SameLine();
                 if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
                                     ICON_FK_WARNING " Suppress Native Reflex", imgui)) {
-                    g_reflex_settings_outdated.store(true);
                     LogInfo("Suppress Native Reflex %s",
                             settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
                 }
@@ -3113,7 +3106,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
             if (!IsNativeReflexActive()) {
                 imgui.Spacing();
                 if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
-                    g_reflex_settings_outdated.store(true);
                     LogInfo("Inject Reflex %s",
                             settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
                 }
@@ -3129,7 +3121,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
             // Suppress Reflex Sleep checkbox
             imgui.Spacing();
             if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", imgui)) {
-                g_reflex_settings_outdated.store(true);
                 LogInfo("Suppress Reflex Sleep %s",
                         settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
             }
@@ -3145,7 +3136,6 @@ void DrawDisplaySettings_FpsLimiterMode(display_commander::ui::IImGuiWrapper& im
             || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
             imgui.Spacing();
             if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui)) {
-                g_reflex_settings_outdated.store(true);
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(

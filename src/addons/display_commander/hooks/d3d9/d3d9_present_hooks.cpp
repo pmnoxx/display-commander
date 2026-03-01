@@ -51,7 +51,6 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_Present_Detour(IDirect3DDevice9* This
 
     // Increment DX9 Present counter
     g_dx9_event_counters[DX9_EVENT_PRESENT].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::dx9_present);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dx9_present);
@@ -117,7 +116,6 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(IDirect3DDevice9* Th
 
     // Increment DX9 Present counter
     g_dx9_event_counters[DX9_EVENT_PRESENT].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::dx9_presentex);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dx9_presentex);

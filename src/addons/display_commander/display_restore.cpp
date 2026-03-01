@@ -213,15 +213,6 @@ bool WasDeviceChangedByDeviceName(const std::wstring &device_name) {
     return current_data->devices_changed.find(device_name) != current_data->devices_changed.end();
 }
 
-bool WasDeviceChangedByDisplayIndex(int display_index) {
-    if (display_index < 0)
-        return false;
-    const auto *disp = display_cache::g_displayCache.GetDisplay(static_cast<size_t>(display_index));
-    if (disp == nullptr)
-        return false;
-    return WasDeviceChangedByDeviceName(disp->simple_device_id);
-}
-
 bool RestoreDisplayByDeviceName(const std::wstring &device_name) {
     auto current_data = s_data.load();
 

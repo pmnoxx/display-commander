@@ -58,7 +58,6 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_GET_HDR_CAPABILITIES].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Log the call (first few times only)
     static int log_count = 0;
@@ -122,7 +121,6 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
     if (g_thread_tracking_enabled.load(std::memory_order_relaxed) && pSetLatencyMarkerParams != nullptr) {
@@ -303,7 +301,6 @@ NvAPI_Status __cdecl NvAPI_D3D_SetSleepMode_Detour(IUnknown* pDev, NV_SET_SLEEP_
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_SLEEP_MODE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
         return NVAPI_OK;
@@ -425,7 +422,6 @@ NvAPI_Status __cdecl NvAPI_D3D_GetSleepStatus_Detour(IUnknown* pDev,
                                                      NV_GET_SLEEP_STATUS_PARAMS* pGetSleepStatusParams) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_SLEEP_STATUS].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     if (NvAPI_D3D_GetSleepStatus_Original != nullptr) {
         return NvAPI_D3D_GetSleepStatus_Original(pDev, pGetSleepStatusParams);
@@ -448,7 +444,6 @@ NvAPI_Status __cdecl NvAPI_D3D_Sleep_Detour(IUnknown* pDev) {
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SLEEP].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
     // Record timestamp of this sleep call
     g_nvapi_last_sleep_timestamp_ns.store(utils::get_now_ns());
 
@@ -500,7 +495,6 @@ NvAPI_Status __cdecl NvAPI_D3D_GetLatency_Detour(IUnknown* pDev, NV_LATENCY_RESU
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_GET_LATENCY].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Log the call (first few times only)
     static int log_count = 0;

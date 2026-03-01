@@ -31,8 +31,7 @@ enum class HookType {
     NVAPI,
     PROCESS_EXIT,
     WINDOW_PROC,
-    DBGHELP,
-    WINMM_JOYSTICK  // winmm.dll joyGetPos / joyGetPosEx
+    DBGHELP
 };
 
 // Hook suppression manager
@@ -51,9 +50,6 @@ class HookSuppressionManager {
 
     // Get the installation tracking setting name for a hook type
     std::string GetInstallationSettingName(HookType hookType);
-
-    // Check if a hook was previously installed
-    bool WasHookInstalled(HookType hookType);
 
     // Get the human-readable name for a hook type
     std::string GetHookTypeName(HookType hookType);

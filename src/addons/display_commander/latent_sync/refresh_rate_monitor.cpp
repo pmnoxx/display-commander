@@ -1,7 +1,6 @@
 #include "refresh_rate_monitor.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
-#include "../globals.hpp"
 #include <dxgi.h>
 #include <dwmapi.h>
 #include <limits>
@@ -234,54 +233,9 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
 }
 
 bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
-    // First, try to get from cached frame statistics (updated in present detour)
-    // Use memory_order_acquire to ensure we see the latest value and proper synchronization
-    // The local variable 'cached_stats' keeps the shared_ptr alive during dereference,
-    // preventing the object from being destroyed by another thread between load and dereference
- /*   auto cached_stats = g_cached_frame_stats.load(std::memory_order_acquire);
-    if (cached_stats != nullptr) {
-        // Copy the stats - cached_stats keeps the shared_ptr alive during this operation
-        stats = *cached_stats;
-        return true;
-    }
-*/
-    global_dxgi_swapchain_inuse.store(true, std::memory_order_release);
-    // Fallback: try to get swapchain from tracked swapchains
-    // Iterate through all tracked swapchains while holding the lock
-    bool found = false;
-    auto global_dxgi_swapchain_ptr = global_dxgi_swapchain.load(std::memory_order_acquire);
-
-    if (global_dxgi_swapchain_ptr != nullptr) {
-        // dxgi_output from swapchain
-        IDXGIOutput* dxgi_output = nullptr;
-        HRESULT hr = global_dxgi_swapchain_ptr->GetContainingOutput(&dxgi_output);
-        if (FAILED(hr)) {
-            LogError("GetContainingOutput failed with HRESULT: 0x%08X", hr);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            return false;
-        }
-
-        // Wait for vblank using IDXGIOutput::WaitForVBlank
-        hr = dxgi_output->WaitForVBlank();
-        if (FAILED(hr)) {
-            LogError("WaitForVBlank failed with HRESULT: 0x%08X", hr);
-            // Continue trying, but sleep a bit to avoid busy waiting
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            return false;
-        }
-        hr = global_dxgi_swapchain_ptr->GetFrameStatistics(&stats);
-        if (SUCCEEDED(hr)) {
-            global_dxgi_swapchain_inuse.store(false, std::memory_order_release);
-            found = true;
-        } else {
-            return false;
-        }
-    }
-
-    global_dxgi_swapchain_inuse.store(false, std::memory_order_release);
-
-    // Return true if we found a valid swapchain with frame statistics, false otherwise
-    return found;
+    (void)stats;
+    // No swapchain source wired (global_dxgi_swapchain was removed; cached frame stats path was never enabled).
+    return false;
 }
 
 std::string RefreshRateMonitor::GetStatusString() const {

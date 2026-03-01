@@ -79,12 +79,6 @@ std::atomic<bool> s_spoof_mouse_position{false};  // disabled by default
 std::atomic<int> s_spoofed_mouse_x{0};
 std::atomic<int> s_spoofed_mouse_y{0};
 
-// SetCursor detour - store last cursor value atomically
-std::atomic<HCURSOR> s_last_cursor_value{nullptr};
-
-// ShowCursor detour - store last show cursor state atomically
-std::atomic<BOOL> s_last_show_cursor_arg{TRUE};
-
 // Keyboard Shortcuts
 
 // Auto-click enabled state (atomic, not loaded from config)
@@ -115,7 +109,6 @@ std::atomic<LogLevel> g_min_log_level{LogLevel::Debug};
 // Hide HDR capabilities from applications
 
 // D3D9 to D3D9Ex upgrade
-// std::atomic<bool> s_enable_d3d9e_upgrade{true}; // Enabled by default
 std::atomic<bool> s_d3d9e_upgrade_successful{false};  // Track if upgrade was successful
 std::atomic<bool> g_used_flipex{false};               // Track if FLIPEX is currently being used
 std::atomic<bool> g_dx9_swapchain_detected{false};    // Set when D3D9 swapchain is detected (skip DXGI swapchain hooks)
@@ -148,22 +141,17 @@ std::atomic<bool> s_auto_restore_resolution_on_close{true};  // Enabled by defau
 // Auto-apply resolution and refresh rate changes
 std::atomic<bool> s_auto_apply_resolution_change{false};     // Disabled by default
 std::atomic<bool> s_auto_apply_refresh_rate_change{false};   // Disabled by default
-std::atomic<bool> s_apply_display_settings_at_start{false};  // Disabled by default
 
 // Track if resolution was successfully applied at least once
 std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by default
 
 // Atomic variables
-std::atomic<int> g_comp_query_counter{0};
 std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr};  // TODO: unsafe remove later
 std::atomic<reshade::api::device_api> g_last_reshade_device_api{static_cast<reshade::api::device_api>(0)};
 std::atomic<uint32_t> g_last_api_version{0};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc{nullptr};
-std::atomic<uint64_t> g_init_apply_generation{0};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<HWND> g_standalone_ui_hwnd{nullptr};
-std::atomic<IDXGISwapChain*> global_dxgi_swapchain{nullptr};
-std::atomic<bool> global_dxgi_swapchain_inuse{false};
 std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_muted_applied{false};
 
@@ -192,19 +180,14 @@ std::unique_ptr<LatencyManager> g_latencyManager = std::make_unique<LatencyManag
 // Global frame ID for latency management
 std::atomic<uint64_t> g_global_frame_id{1};
 
-// When g_global_frame_id was last incremented (FILETIME as uint64_t); 0 = never
-std::atomic<uint64_t> g_global_frame_id_last_updated_filetime{0};
+// When g_global_frame_id was last incremented (QPC ns)
 std::atomic<LONGLONG> g_global_frame_id_last_updated_ns{0};
 
-// When a Windows message was last processed in the game window's WndProc (FILETIME as uint64_t); 0 = never
-std::atomic<uint64_t> g_last_window_message_processed_filetime{0};
+// When a Windows message was last processed in the game window's WndProc (QPC ns)
 std::atomic<LONGLONG> g_last_window_message_processed_ns{0};
 
 // Global frame ID for pclstats frame id
 std::atomic<uint64_t> g_pclstats_frame_id{0};
-
-// Global frame ID for UI drawing tracking
-std::atomic<uint64_t> g_last_ui_drawn_frame_id{0};
 
 // Global frame ID when XInput was last successfully detected
 std::atomic<uint64_t> g_last_xinput_detected_frame_id{0};
@@ -358,25 +341,6 @@ bool IsNativeFramePacingInSync() {
     return false;
 }
 
-bool IsDxgiSwapChainGettingCalled() {
-    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-    const uint64_t dxgi1_ts =
-        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::dxgi_swapchain1)].load();
-    if (dxgi1_ts != 0 && (now_ns - dxgi1_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS)) {
-        return true;
-    }
-    const uint64_t dxgi_ts =
-        g_fps_limiter_last_timestamp_ns[static_cast<size_t>(FpsLimiterCallSite::dxgi_swapchain)].load();
-    if (dxgi_ts == 0) {
-        return false;
-    }
-    return (now_ns - dxgi_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS);
-}
-
-bool ShouldUseNativeFpsLimiterFromFramePacing() {
-    return settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() && IsNativeFramePacingInSync();
-}
-
 // Thread tracking for frame pacing debug
 std::atomic<bool> g_thread_tracking_enabled{false};
 std::atomic<DWORD> g_latency_marker_thread_id[kLatencyMarkerTypeCountFirstSix] = {};
@@ -390,7 +354,6 @@ SwapchainTrackingManager g_swapchainTrackingManager;
 namespace vrr_status {
 std::atomic<bool> cached_nvapi_ok{false};
 std::atomic<std::shared_ptr<nvapi::VrrStatus>> cached_nvapi_vrr{std::make_shared<nvapi::VrrStatus>()};
-std::atomic<LONGLONG> last_nvapi_update_ns{0};
 std::atomic<std::shared_ptr<const std::wstring>> cached_output_device_name{nullptr};
 }  // namespace vrr_status
 
@@ -405,22 +368,6 @@ std::atomic<int> g_last_backbuffer_height{0};
 // Game render resolution (before any modifications) - matches Special K's render_x/render_y
 std::atomic<int> g_game_render_width{0};
 std::atomic<int> g_game_render_height{0};
-
-// Translate-mouse-position debug (atomics only, no locks)
-std::atomic<std::uint64_t> g_translate_mouse_debug_seq{0};
-std::atomic<uintptr_t> g_translate_mouse_debug_hwnd{0};
-std::atomic<int> g_translate_mouse_debug_num_x{0};
-std::atomic<int> g_translate_mouse_debug_denom_x{0};
-std::atomic<int> g_translate_mouse_debug_num_y{0};
-std::atomic<int> g_translate_mouse_debug_denom_y{0};
-std::atomic<int> g_translate_mouse_debug_screen_in_x{0};
-std::atomic<int> g_translate_mouse_debug_screen_in_y{0};
-std::atomic<int> g_translate_mouse_debug_client_x{0};
-std::atomic<int> g_translate_mouse_debug_client_y{0};
-std::atomic<int> g_translate_mouse_debug_render_x{0};
-std::atomic<int> g_translate_mouse_debug_render_y{0};
-std::atomic<int> g_translate_mouse_debug_screen_out_x{0};
-std::atomic<int> g_translate_mouse_debug_screen_out_y{0};
 
 // Background/foreground state (updated by monitoring thread)
 std::atomic<bool> g_app_in_background{false};
@@ -447,10 +394,6 @@ std::atomic<std::shared_ptr<const std::string>> g_perf_text_shared{std::make_sha
 // Native frame time ring buffer (for frames shown to display via native swapchain Present)
 utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_native_frame_time_ring;
 
-// Volume overlay display tracking
-std::atomic<LONGLONG> g_volume_change_time_ns{0};
-std::atomic<float> g_volume_display_value{0.0f};
-
 // Action notification system for overlay display
 std::atomic<ActionNotification> g_action_notification{
     ActionNotification{ActionNotificationType::None, 0, 0.0f, false, {0}}};
@@ -460,12 +403,10 @@ std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors{std::mak
 
 // Colorspace variables - removed, now queried directly in UI
 
-// HDR10 override status (thread-safe, updated by background thread, read by UI thread)
-// Use UpdateHdr10OverrideStatus() to update, or g_hdr10_override_status.load()->c_str() to read
+// HDR10 override status (thread-safe; read by Swapchain tab UI)
 std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status{std::make_shared<std::string>("Not applied")};
 
-// HDR10 override timestamp (thread-safe, updated by background thread, read by UI thread)
-// Use UpdateHdr10OverrideTimestamp() to update, or g_hdr10_override_timestamp.load()->c_str() to read
+// HDR10 override timestamp (thread-safe; read by Swapchain tab UI)
 std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_timestamp{std::make_shared<std::string>("Never")};
 
 // Config save failure path (thread-safe, updated by config manager, read by UI thread)
@@ -488,16 +429,6 @@ std::atomic<LONGLONG> g_stopwatch_elapsed_time_ns{0};
 
 // Game playtime tracking (time from game start)
 std::atomic<LONGLONG> g_game_start_time_ns{0};
-
-// Helper function for updating HDR10 override status atomically
-void UpdateHdr10OverrideStatus(const std::string& status) {
-    g_hdr10_override_status.store(std::make_shared<std::string>(status));
-}
-
-// Helper function for updating HDR10 override timestamp atomically
-void UpdateHdr10OverrideTimestamp(const std::string& timestamp) {
-    g_hdr10_override_timestamp.store(std::make_shared<std::string>(timestamp));
-}
 
 // Helper function to get shared DXGI factory (thread-safe)
 Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
@@ -559,19 +490,8 @@ std::array<std::atomic<uint32_t>, NUM_NVAPI_EVENTS> g_nvapi_event_counters = {};
 std::atomic<uint64_t> g_nvapi_last_sleep_timestamp_ns{0};  // Last NVAPI_D3D_Sleep call timestamp in nanoseconds
 std::atomic<bool> g_native_reflex_detected{false};         // Native Reflex detected via SetLatencyMarker calls
 
-std::atomic<bool> g_reflex_was_enabled_last_frame{false};
-std::atomic<bool> g_reflex_settings_outdated{true};  // true initially; set true whenever reflex settings change
-
-std::atomic<uint32_t> g_swapchain_event_total_count{0};  // Total events across all types
-
 // OpenGL hook counters
 std::array<std::atomic<uint64_t>, NUM_OPENGL_HOOKS> g_opengl_hook_counters = {};  // Array for all OpenGL hook events
-std::atomic<uint64_t> g_opengl_hook_total_count{0};  // Total OpenGL hook events across all types
-
-// Display settings hook counters
-std::array<std::atomic<uint64_t>, NUM_DISPLAY_SETTINGS_HOOKS> g_display_settings_hook_counters =
-    {};                                                        // Array for all display settings hook events
-std::atomic<uint64_t> g_display_settings_hook_total_count{0};  // Total display settings hook events across all types
 
 // Present pacing delay as percentage of frame time - 0% to 100%
 // This adds a delay after present to improve frame pacing and reduce CPU usage
@@ -591,7 +511,6 @@ std::atomic<LONGLONG> g_onpresent_sync_post_sleep_ns{0};
 
 // GPU completion measurement using EnqueueSetEvent
 std::atomic<HANDLE> g_gpu_completion_event{nullptr};  // Event handle for GPU completion measurement
-std::atomic<LONGLONG> g_gpu_completion_time_ns{0};    // Last measured GPU completion time
 std::atomic<LONGLONG> g_gpu_duration_ns{0};           // Last measured GPU duration (smoothed)
 
 // GPU completion failure tracking
@@ -606,7 +525,6 @@ std::atomic<LONGLONG> g_sim_to_display_latency_ns{0};         // Measured sim-st
 
 // GPU late time measurement (how much later GPU finishes compared to OnPresentUpdateAfter2)
 std::atomic<LONGLONG> g_present_update_after2_time_ns{0};    // Time when OnPresentUpdateAfter2 was called
-std::atomic<LONGLONG> g_gpu_completion_callback_time_ns{0};  // Time when GPU completion callback finished
 std::atomic<LONGLONG> g_gpu_late_time_ns{0};  // GPU late time (0 if GPU finished first, otherwise difference)
 
 // Frame data cyclic buffer (see docs/FRAME_DATA_CYCLIC_BUFFER.md). Not populated yet.

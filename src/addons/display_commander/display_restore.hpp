@@ -27,9 +27,6 @@ void RestoreAllIfEnabled();
 // Check if a specific device was changed (by device name)
 bool WasDeviceChangedByDeviceName(const std::wstring& device_name);
 
-// Check if a specific device was changed (by display cache index)
-bool WasDeviceChangedByDisplayIndex(int display_index);
-
 // Restore only a single display (by display cache index). Returns true on success.
 bool RestoreDisplayByIndex(int display_index);
 

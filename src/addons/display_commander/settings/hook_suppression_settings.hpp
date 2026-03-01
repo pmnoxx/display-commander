@@ -51,7 +51,6 @@ class HookSuppressionSettings {
     BoolSetting suppress_process_exit_hooks;
     BoolSetting suppress_window_proc_hooks;
     BoolSetting suppress_dbghelp_hooks;
-    BoolSetting suppress_winmm_joystick_hooks;
 
     // Auto-detection settings (set to 1 when hooks are successfully installed)
     BoolSetting dxgi_factory_hooks_installed;
@@ -80,7 +79,6 @@ class HookSuppressionSettings {
     BoolSetting process_exit_hooks_installed;
     BoolSetting window_proc_hooks_installed;
     BoolSetting dbghelp_hooks_installed;
-    BoolSetting winmm_joystick_hooks_installed;
 
    private:
     std::vector<SettingBase*> all_settings_;

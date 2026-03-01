@@ -254,10 +254,6 @@ constexpr std::array<HookInfo, HOOK_COUNT> g_hook_info = {{
     {"HIDD_SetNumInputBuffers", DllGroup::HID_API, HOOK_HIDD_SetNumInputBuffers},
     {"HIDD_GetFeature", DllGroup::HID_API, HOOK_HIDD_GetFeature},
     {"HIDD_SetFeature", DllGroup::HID_API, HOOK_HIDD_SetFeature},
-
-    // winmm.dll joystick
-    {"joyGetPos", DllGroup::WINMM_JOYSTICK, HOOK_joyGetPos},
-    {"joyGetPosEx", DllGroup::WINMM_JOYSTICK, HOOK_joyGetPosEx},
 }};
 
 namespace {
@@ -2413,7 +2409,6 @@ const char* GetDllGroupName(DllGroup group) {
         case DllGroup::OPENGL:           return "opengl32.dll";
         case DllGroup::DISPLAY_SETTINGS: return "user32.dll (display_settings)";
         case DllGroup::HID_API:          return "HID API (kernel32.dll + hid.dll)";
-        case DllGroup::WINMM_JOYSTICK:   return "winmm.dll (joystick)";
         default:                         return "Unknown";
     }
 }

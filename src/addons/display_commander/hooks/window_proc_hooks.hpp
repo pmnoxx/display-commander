@@ -22,9 +22,6 @@ bool IsContinueRenderingEnabled();
 // Fake activation functions
 void SendFakeActivationMessages(HWND hwnd);
 
-// Get the currently hooked window (backward compatibility - uses game window)
-HWND GetHookedWindow();
-
 // Message detouring function (similar to Special-K's SK_DetourWindowProc)
 LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

@@ -9,7 +9,7 @@
 ## Root
 
 - [x] addon.cpp — no dead code (all statics/exports used; RunCommandLine→CommandLine, DetectExeForPath/RunStandaloneUI from cli_standalone_ui)
-- [x] continuous_monitoring.cpp — no dead code (all functions called; only leftover is commented `// #define TRY_CATCH_BLOCKS`)
+- [x] continuous_monitoring.cpp — no dead code (all functions called); **removed** orphaned comment `// #define TRY_CATCH_BLOCKS`
 - [x] display_cache.cpp — no dead code (GetMonitorFriendlyName, EnumerateDisplayModes, ParseDisplayNumberFromDeviceName all used)
 - [x] display_initial_state.cpp — **removed** dead `GetInitialStateForDisplayId()` (never called)
 - [x] display_restore.cpp — **removed:** Clear(), HasAnyChanges() (never called)
@@ -27,6 +27,10 @@
 - [x] config/chords_file.cpp — no dead code (ParseTomlLine, TryMigrateFromGameConfig, IsChordConfigKey, Load/Save/Get/SetChordValue all used; display_commander_config delegates chord keys here)
 - [x] config/display_commander_config.cpp — no dead code (IniFile/TomlFile + get/set/save_config, get_config_value_ensure_exists used widely; chord/hotkey delegation to chords_file/hotkeys_file)
 - [x] config/hotkeys_file.cpp — no dead code (ParseTomlLine, MigrateHotkeyKeysFromMap used by TryMigrateFromGameIni; Load/Save/Get/SetHotkeyValue, IsHotkeyConfigKey used by display_commander_config)
+
+## hid
+
+- [x] hid/ — **removed:** `hid/hid_enumeration.hpp` (never included, no implementation or call sites). `hid/` may be empty; no .cpp in this dir.
 
 ## display
 
@@ -54,7 +58,7 @@
 - [x] hooks/hid_hooks_install.cpp — no dead code (InstallHIDKernel32Hooks, InstallHIDDHooks from loadlibrary_hooks)
 - [x] hooks/hid_statistics.cpp — **removed:** ResetAllHIDStats(); no remaining dead code
 - [x] hooks/hid_suppression_hooks.cpp — no dead code (AreHIDSuppressionHooksInstalled, Mark* used; Uninstall from main_entry)
-- [x] hooks/hook_suppression_manager.cpp — no dead code (GetInstance, ShouldSuppressHook, GetSuppressionSetting used)
+- [x] hooks/hook_suppression_manager.cpp — **removed:** WasHookInstalled(); no remaining dead code
 - [x] hooks/input_activity_stats.cpp — no dead code (GetInstance, MarkActive, MarkActiveByHookIndex etc. used)
 - [x] hooks/loadlibrary_hooks.cpp — **removed:** IsModuleSrwlockHeld(), IsBlockedDllsSrwlockHeld(); no remaining dead code
 - [x] hooks/mutually_exclusive_keys.cpp — **removed:** GetPressedKeyInGroup(), GetAllKeyGroups(); no remaining dead code
@@ -70,7 +74,7 @@
 - [x] hooks/timeslowdown_hooks.cpp — no dead code (Install/Uninstall, Are*Installed, Set*Multiplier, Set*Enabled, timer/QPC APIs used from UI and hooks)
 - [x] hooks/window_proc_hooks.cpp — no dead code (Install/Uninstall, ProcessWindowMessage, DetourWindowMessage, IsContinueRenderingEnabled, SendFakeActivationMessages, WindowHasBorder used)
 - [x] hooks/windows_gaming_input_hooks.cpp — no dead code (Install/Uninstall from loadlibrary)
-- [x] hooks/winmm_joystick_hooks.cpp — no dead code (InstallWinMMJoystickHooks from loadlibrary)
+- [x] hooks/winmm_joystick_hooks.cpp — **removed:** file deleted (WinMM joystick hooks removed)
 - [x] hooks/xinput_hooks.cpp — no dead code (InstallXInputHooks from loadlibrary; EnsureXInputSetStateForTest from xinput_widget; IsXInputHooksInstalled, ApplyThumbstickProcessing used)
 
 ## hooks/d3d9
@@ -208,4 +212,4 @@
 
 ---
 
-**Total:** 152 files. Check one at a time; document findings in this file or in the main audit doc.
+**Total:** 151 `.cpp` files (was 152; winmm_joystick_hooks.cpp deleted). One header-only unused module: `hid/hid_enumeration.hpp`. Check one at a time; document findings in this file or in the main audit doc.

@@ -48,7 +48,6 @@
 #include "window_management/window_management.hpp"
 
 #include <d3d9.h>
-#include <dxgi.h>
 #include <dxgi1_4.h>
 #include <minwindef.h>
 
@@ -151,8 +150,7 @@ void OnDestroyDevice(reshade::api::device* device) {
     // Note: Most cleanup is handled in DLL_PROCESS_DETACH, but this provides
     // device-specific cleanup when a device is destroyed during runtime
 
-    // Reset any device-specific state
-    // g_initialized_with_hwnd.store(false);
+    // Reset any device-specific state (if needed in future)
 
     // Clean up any device-specific resources that need immediate cleanup
     // (Most resources are cleaned up in DLL_PROCESS_DETACH)
@@ -539,7 +537,6 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     if (hwnd == nullptr) return false;
 
@@ -1115,7 +1112,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
 
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_INIT_SWAPCHAIN].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Capture game render resolution after swapchain creation/resize - matches Special K's render_x/render_y
     // Get the current back buffer to determine the actual render resolution
@@ -1259,7 +1255,6 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
 
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_AFTER].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
@@ -1360,7 +1355,6 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
             boost = GetReflexBoost();
             g_latencyManager->ApplySleepMode(low_latency, boost,
                                              settings::g_advancedTabSettings.reflex_use_markers.GetValue(), target_fps);
-            g_reflex_was_enabled_last_frame.store(true);
             if (settings::g_advancedTabSettings.reflex_enable_sleep.GetValue()
                 && s_fps_limiter_mode.load() == FpsLimiterMode::kReflex) {
                 perf_timer.pause();
@@ -1392,13 +1386,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     }
 
     g_global_frame_id.fetch_add(1);
-    {
-        FILETIME ft = {};
-        GetSystemTimePreciseAsFileTime(&ft);
-        const uint64_t ft64 = (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-        g_global_frame_id_last_updated_filetime.store(ft64, std::memory_order_release);
-        g_global_frame_id_last_updated_ns.store(utils::get_real_time_ns(), std::memory_order_release);
-    }
+    g_global_frame_id_last_updated_ns.store(utils::get_real_time_ns(), std::memory_order_release);
 
     if (s_reflex_enable_current_frame.load()) {
         if (settings::g_advancedTabSettings.reflex_generate_markers.GetValue()) {
@@ -1985,7 +1973,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Check for XInput screenshot trigger
     display_commander::widgets::xinput_widget::CheckAndHandleScreenshot();
@@ -2069,7 +2056,6 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_BIND_PIPELINE].fetch_add(1);
-    g_swapchain_event_total_count.fetch_add(1);
 
     // Power saving: skip pipeline binding in background if enabled
     if (s_suppress_binding_in_background.load() && ShouldBackgroundSuppressOperation()) {
@@ -2092,7 +2078,6 @@ void OnPresentFlags2(bool from_present_detour, bool from_wrapper) {
 
         // Increment event counter
         g_reshade_event_counters[RESHADE_EVENT_PRESENT_FLAGS].fetch_add(1);
-        g_swapchain_event_total_count.fetch_add(1);
     }
 
     HandleFpsLimiterPre(from_present_detour, from_wrapper);

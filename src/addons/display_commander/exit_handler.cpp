@@ -50,23 +50,19 @@ void WriteMultiLineToDebugLog(const std::string& text, const char* empty_fallbac
 }
 
 void OnHandleExit(ExitSource source, const std::string& message) {
-    presentmon::g_presentMonManager.StopWorker();
-
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-    display_commander::logger::FlushLogs();
-    // Use atomic compare_exchange to ensure only one thread handles exit
+    // Ensure only one thread performs exit logging and cleanup (avoids duplicate "[Exit Handler] Detected exit..." lines)
     bool expected = false;
-    // Format the exit message
-    std::ostringstream exit_message;
-    exit_message << "[Exit Handler] Detected exit from " << GetExitSourceString(source) << ": " << message;
-
-    // Write to DisplayCommander.log using the logger system
-    WriteToDebugLog(exit_message.str());
-
     if (!g_exit_handled.compare_exchange_strong(expected, true)) {
-        // Another thread already handled the exit
         return;
     }
+
+    presentmon::g_presentMonManager.StopWorker(presentmon::PresentMonStopReason::AddonShutdown);
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    display_commander::logger::FlushLogs();
+
+    std::ostringstream exit_message;
+    exit_message << "[Exit Handler] Detected exit from " << GetExitSourceString(source) << ": " << message;
+    WriteToDebugLog(exit_message.str());
     display_commander::logger::LogInfoDirectSynchronized("%s", exit_message.str().c_str());
 
     // Print undestroyed guard information (crash detection)

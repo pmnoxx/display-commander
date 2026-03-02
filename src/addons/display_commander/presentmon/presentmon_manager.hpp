@@ -121,7 +121,19 @@ struct PresentMonDebugInfo {
 
     // List of ETW sessions starting with "DC_" prefix
     std::vector<std::string> dc_etw_sessions;
+
+    // Non-empty if enumerating ETW sessions failed (e.g. QueryAllTracesW access denied); show in UI
+    std::string etw_enumeration_error;
 };
+
+// Reason for stopping the PresentMon worker (logged when StopWorker is called)
+enum class PresentMonStopReason {
+    UserDisabled,    // User turned off the checkbox in Advanced tab
+    AddonShutdown,   // Addon exit handler or main_entry unload
+    Destructor,      // PresentMonManager destructor
+};
+
+const char* PresentMonStopReasonToString(PresentMonStopReason reason);
 
 // PresentMon manager for ETW-based presentation tracking
 // Similar to Special-K's PresentMon integration
@@ -133,8 +145,8 @@ class PresentMonManager {
     // Start PresentMon worker thread
     void StartWorker();
 
-    // Stop PresentMon worker thread
-    void StopWorker();
+    // Stop PresentMon worker thread (reason is logged)
+    void StopWorker(PresentMonStopReason reason);
 
     // Check if PresentMon is running
     bool IsRunning() const;
@@ -159,8 +171,14 @@ class PresentMonManager {
     void GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out,
                                             uint64_t within_ms) const;
 
-    // Get list of ETW sessions starting with specified prefix (e.g., "DC_")
-    static void GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names);
+    // Get list of ETW sessions starting with specified prefix (e.g., "DC_").
+    // On failure (e.g. QueryAllTracesW returns ERROR_ACCESS_DENIED), out_session_names is empty and
+    // if out_error is non-null, *out_error is set to a message for UI display.
+    static void GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names,
+                                         std::string* out_error = nullptr);
+
+    // Log all current ETW session names to the log (for debugging; call at app start)
+    static void LogAllEtwSessions();
 
     // Stop ETW session by name (public for UI cleanup)
     static void StopEtwSessionByName(const wchar_t* session_name);

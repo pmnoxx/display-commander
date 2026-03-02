@@ -2,6 +2,18 @@
 
 ---
 
+## v0.12.214 (2026-03-02)
+
+- **PresentMon: show all ETW sessions from all apps** - In Advanced → PresentMon ETW Tracing, added a collapsible subheader **"Show all sessions from all apps"** (closed by default). When opened, it lists all ETW sessions on the system (from any app) and provides a **Stop** button for each so the user can stop any session. Enumeration uses `GetEtwSessionsWithPrefix(L"")`; empty prefix now returns all sessions instead of returning early. Tooltip warns that stopping a session may affect the app that created it.
+
+---
+
+## v0.12.213 (2026-03-02)
+
+- **TerminateProcess hook: only trigger exit when terminating this process** - The TerminateProcess detour was calling the exit handler (and thus stopping PresentMon, flushing logs, etc.) on every TerminateProcess call. That is wrong when the app is terminating another process (e.g. a child or helper); it caused PresentMon to stop and duplicate "[Exit Handler] Detected exit from PROCESS_TERMINATE_HOOK" logs while the game was still running. We now trigger the exit handler only when the target of TerminateProcess is the current process (GetProcessId(GetCurrentProcess()) == GetProcessId(hProcess)). When the target is another process we only log which process was targeted (target pid, current pid, target image path) for debugging.
+
+---
+
 ## v0.12.212 (2026-03-02)
 
 - **Updates: tooltip showing source of version info** - "Up to date" and "Newer version available" in the Updates section now show a tooltip with the source of the version information: ReShade (GitHub crosire/reshade, reshade.me), Display Commander stable (GitHub Display Commander stable releases), and the main-tab version check (GitHub Display Commander stable releases). Spec: `docs/ui_specs/updates_ui_spec.md`.

@@ -36,6 +36,29 @@ std::string Narrow(const std::wstring& ws) {
     return out;
 }
 
+// Parse PID from "DC_PresentMon_<pid>". Returns true and sets out_pid if format matches.
+bool ParsePidFromDcPresentMonSessionName(const std::string& name, DWORD& out_pid) {
+    const char prefix[] = "DC_PresentMon_";
+    const size_t prefix_len = sizeof(prefix) - 1;
+    if (name.size() <= prefix_len || name.compare(0, prefix_len, prefix) != 0) return false;
+    const std::string suffix = name.substr(prefix_len);
+    if (suffix.empty()) return false;
+    char* end = nullptr;
+    unsigned long pid = std::strtoul(suffix.c_str(), &end, 10);
+    if (end == nullptr || end != suffix.c_str() + suffix.size() || pid == 0) return false;
+    out_pid = static_cast<DWORD>(pid);
+    return true;
+}
+
+// Returns true if the given process ID is still running.
+bool IsProcessRunning(DWORD pid) {
+    if (pid == 0) return false;
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (h == nullptr) return false;
+    CloseHandle(h);
+    return true;
+}
+
 bool ProviderGuidByName(const wchar_t* provider_name, GUID& out_guid) {
     ULONG size = 0;
     if (TdhEnumerateProviders(nullptr, &size) != ERROR_INSUFFICIENT_BUFFER) {
@@ -286,6 +309,15 @@ const char* PresentMonFlipModeToString(PresentMonFlipMode mode) {
     }
 }
 
+const char* PresentMonStopReasonToString(PresentMonStopReason reason) {
+    switch (reason) {
+        case PresentMonStopReason::UserDisabled: return "UserDisabled";
+        case PresentMonStopReason::AddonShutdown: return "AddonShutdown";
+        case PresentMonStopReason::Destructor: return "Destructor";
+        default: return "Unknown";
+    }
+}
+
 PresentMonManager::PresentMonManager()
     : m_running(false),
       m_should_stop(false),
@@ -371,7 +403,7 @@ bool PresentMonManager::GetFlipCompatibility(PresentMonFlipCompatibility& out) c
 PresentMonManager::~PresentMonManager() {
     // Always stop worker and ETW session, even if StopWorker wasn't called explicitly
     // This ensures ETW sessions don't leak system-wide resources
-    StopWorker();
+    StopWorker(PresentMonStopReason::Destructor);
 
     // Double-check: if session name exists but handle is lost, try to stop by name
     // This handles edge cases where the destructor runs but StopWorker didn't fully clean up
@@ -401,8 +433,9 @@ PresentMonManager::~PresentMonManager() {
 }
 
 void PresentMonManager::StartWorker() {
+    LogInfo("PresentMon: StartWorker() called (pid=%lu)", static_cast<unsigned long>(GetCurrentProcessId()));
     if (m_running.load()) {
-        LogInfo("PresentMon: Worker thread already running");
+        LogInfo("PresentMon: Worker already running, skipping duplicate start");
         return;
     }
 
@@ -420,6 +453,9 @@ void PresentMonManager::StartWorker() {
     std::string* status = new std::string("Starting...");
     delete m_thread_status.exchange(status);
 
+    // Log all ETW sessions at start for debugging (e.g. why DC_ list may be empty in UI)
+    LogAllEtwSessions();
+
     // Stop all DC_ ETW sessions so we can start ours clean (no PID check)
     StopAllDcEtwSessions();
 
@@ -436,12 +472,12 @@ void PresentMonManager::StartWorker() {
     LogInfo("PresentMon: Worker thread started");
 }
 
-void PresentMonManager::StopWorker() {
+void PresentMonManager::StopWorker(PresentMonStopReason reason) {
     if (!m_running.load()) {
         return;
     }
 
-    LogInfo("PresentMon: Stopping worker thread...");
+    LogInfo("PresentMon: Stopping worker thread (reason: %s)", PresentMonStopReasonToString(reason));
 
     m_should_stop.store(true);
 
@@ -572,8 +608,9 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
     auto last_gprops_ptr = m_last_graphics_props.load();
     debug_info.last_graphics_props = last_gprops_ptr ? *last_gprops_ptr : "";
 
-    // Enumerate ETW sessions starting with "DC_"
-    GetEtwSessionsWithPrefix(L"DC_", debug_info.dc_etw_sessions);
+    // Enumerate ETW sessions starting with "DC_"; capture error for UI if enumeration fails
+    debug_info.etw_enumeration_error.clear();
+    GetEtwSessionsWithPrefix(L"DC_", debug_info.dc_etw_sessions, &debug_info.etw_enumeration_error);
 }
 
 void PresentMonManager::UpdateFlipState(PresentMonFlipMode mode, const std::string& present_mode_str,
@@ -636,7 +673,13 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
     int result = manager->PresentMonMain();
     t_active_manager = nullptr;
 
-    LogInfo("[PresentMon] Worker thread exiting with code %d", result);
+    std::string* err_ptr = manager->m_last_error.load();
+    const char* err_str = (err_ptr && !err_ptr->empty()) ? err_ptr->c_str() : nullptr;
+    if (err_str != nullptr) {
+        LogWarn("[PresentMon] Worker thread exiting with code %d, last_error: %s", result, err_str);
+    } else {
+        LogInfo("[PresentMon] Worker thread exiting with code %d (0=normal stop, 1=oom, 2=StartTrace failed, 3=no providers, 4=OpenTrace failed)", result);
+    }
 
     // Update thread status
     manager->UpdateDebugInfo("Exited", "Stopped", "", manager->m_events_processed.load(),
@@ -712,9 +755,14 @@ void PresentMonManager::StopEtwSessionByName(const wchar_t* session_name) {
     (void)status;
 }
 
-void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names) {
+void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names,
+                                                  std::string* out_error) {
     out_session_names.clear();
-    if (prefix == nullptr || prefix[0] == 0) return;
+    if (out_error) out_error->clear();
+    if (prefix == nullptr) return;
+
+    // Empty prefix (L"") means return all sessions; otherwise filter by prefix
+    const size_t prefix_len = (prefix[0] != L'\0') ? wcslen(prefix) : 0;
 
     // QueryAllTracesW can return up to 64 sessions (or more on Windows 10+)
     constexpr ULONG max_sessions = 128;
@@ -729,7 +777,7 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
     for (ULONG i = 0; i < max_sessions; ++i) {
         prop_buffers[i] = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[props_size]);
         if (!prop_buffers[i]) {
-            // Out of memory, return what we have
+            if (out_error) *out_error = "Out of memory enumerating ETW sessions";
             return;
         }
         ZeroMemory(prop_buffers[i].get(), props_size);
@@ -743,12 +791,19 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
     // Query all ETW sessions
     ULONG status = QueryAllTracesW(prop_ptrs.data(), max_sessions, &session_count);
     if (status != ERROR_SUCCESS && status != ERROR_MORE_DATA) {
-        // Failed to query sessions (may not have permissions)
+        char msg[128] = {};
+        StringCchPrintfA(msg, std::size(msg), "QueryAllTracesW failed: %lu (e.g. access denied)", static_cast<unsigned long>(status));
+        if (out_error) *out_error = msg;
+        LogWarn("PresentMon: %s", msg);
         return;
     }
 
-    // Filter sessions by prefix
-    const size_t prefix_len = wcslen(prefix);
+    if (status == ERROR_MORE_DATA) {
+        // More sessions exist than max_sessions; we still have partial list
+        session_count = max_sessions;
+    }
+
+    // Filter sessions by prefix (prefix_len 0 = include all)
     for (ULONG i = 0; i < session_count && i < max_sessions; ++i) {
         auto* props = prop_ptrs[i];
         if (props == nullptr) continue;
@@ -761,6 +816,81 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
             // Session name starts with prefix, add it to output
             out_session_names.push_back(Narrow(std::wstring(session_name)));
         }
+    }
+}
+
+void PresentMonManager::LogAllEtwSessions() {
+    constexpr ULONG max_sessions = 128;
+    ULONG session_count = 0;
+    constexpr ULONG props_size = sizeof(EVENT_TRACE_PROPERTIES) + 2048;
+    std::vector<std::unique_ptr<uint8_t[]>> prop_buffers(max_sessions);
+    std::vector<PEVENT_TRACE_PROPERTIES> prop_ptrs(max_sessions);
+
+    for (ULONG i = 0; i < max_sessions; ++i) {
+        prop_buffers[i] = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[props_size]);
+        if (!prop_buffers[i]) {
+            LogWarn("[PresentMon] LogAllEtwSessions: out of memory allocating buffer %lu", static_cast<unsigned long>(i));
+            return;
+        }
+        ZeroMemory(prop_buffers[i].get(), props_size);
+        auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(prop_buffers[i].get());
+        props->Wnode.BufferSize = props_size;
+        props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+        props->LogFileNameOffset = sizeof(EVENT_TRACE_PROPERTIES) + 1024;
+        prop_ptrs[i] = props;
+    }
+
+    ULONG status = QueryAllTracesW(prop_ptrs.data(), max_sessions, &session_count);
+    if (status != ERROR_SUCCESS && status != ERROR_MORE_DATA) {
+        LogWarn("[PresentMon] QueryAllTracesW failed: %lu (e.g. access denied)", static_cast<unsigned long>(status));
+        return;
+    }
+
+    if (status == ERROR_MORE_DATA) {
+        LogInfo("[PresentMon] ETW sessions: more than %u exist, listing first %u", max_sessions, max_sessions);
+        session_count = max_sessions;
+    } else {
+        LogInfo("[PresentMon] ETW sessions on start (%u total):", static_cast<unsigned>(session_count));
+    }
+
+    // Scratch buffer for re-querying each session (detect orphaned/stale entries)
+    constexpr ULONG query_props_size = sizeof(EVENT_TRACE_PROPERTIES) + 512;
+    std::unique_ptr<uint8_t[]> query_buf(new (std::nothrow) uint8_t[query_props_size]);
+    const bool can_validate = (query_buf != nullptr);
+
+    for (ULONG i = 0; i < session_count && i < max_sessions; ++i) {
+        auto* props = prop_ptrs[i];
+        if (props == nullptr) continue;
+        const wchar_t* session_name =
+            reinterpret_cast<const wchar_t*>(reinterpret_cast<const uint8_t*>(props) + props->LoggerNameOffset);
+        if (session_name == nullptr || session_name[0] == L'\0') {
+            LogInfo("[PresentMon]   ETW session: (unnamed or invalid)");
+            continue;
+        }
+
+        if (can_validate) {
+            ZeroMemory(query_buf.get(), query_props_size);
+            auto* q = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(query_buf.get());
+            q->Wnode.BufferSize = query_props_size;
+            q->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
+            q->LogFileNameOffset = sizeof(EVENT_TRACE_PROPERTIES) + 256;
+            ULONG qstatus = ControlTraceW(NULL, session_name, q, EVENT_TRACE_CONTROL_QUERY);
+            if (qstatus == ERROR_WMI_INSTANCE_NOT_FOUND) {
+                LogInfo("[PresentMon]   ETW session: %ls (not running - possibly orphaned)", session_name);
+                continue;
+            }
+            if (qstatus == ERROR_ACCESS_DENIED) {
+                LogInfo("[PresentMon]   ETW session: %ls (query access denied)", session_name);
+                continue;
+            }
+            if (qstatus == ERROR_SUCCESS && (q->EventsLost != 0 || q->RealTimeBuffersLost != 0)) {
+                LogInfo("[PresentMon]   ETW session: %ls (EventsLost=%lu RealTimeBuffersLost=%lu)",
+                        session_name, static_cast<unsigned long>(q->EventsLost),
+                        static_cast<unsigned long>(q->RealTimeBuffersLost));
+                continue;
+            }
+        }
+        LogInfo("[PresentMon]   ETW session: %ls", session_name);
     }
 }
 
@@ -780,6 +910,7 @@ void PresentMonManager::StopAllDcEtwSessions() {
 void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) {
     if (our_session_name == nullptr || our_session_name[0] == L'\0') return;
 
+    const DWORD our_pid = GetCurrentProcessId();
     std::string our_name_narrow = Narrow(std::wstring(our_session_name));
     if (our_name_narrow.empty()) return;
 
@@ -787,12 +918,32 @@ void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) 
     GetEtwSessionsWithPrefix(L"DC_", sessions);
 
     for (const std::string& name : sessions) {
-        if (name == our_name_narrow) continue;  // Keep our own session
+        if (name == our_name_narrow) {
+            LogInfo("[PresentMon] Skip our own DC_ session: %s", name.c_str());
+            continue;
+        }
+
+        DWORD session_pid = 0;
+        if (!ParsePidFromDcPresentMonSessionName(name, session_pid)) {
+            LogInfo("[PresentMon] Skip DC_ session (unknown format, not stopping): %s", name.c_str());
+            continue;
+        }
+        if (session_pid == our_pid) {
+            LogInfo("[PresentMon] Skip our own DC_ session (by PID): %s", name.c_str());
+            continue;
+        }
+
+        if (IsProcessRunning(session_pid)) {
+            LogInfo("[PresentMon] Skip live DC_ session (pid %lu still running): %s",
+                    static_cast<unsigned long>(session_pid), name.c_str());
+            continue;
+        }
 
         std::wstring wide_name = Widen(name);
         if (!wide_name.empty()) {
             StopEtwSessionByName(wide_name.c_str());
-            LogInfo("PresentMon: Stopped other DC_ ETW session %s (no events for 10s)", name.c_str());
+            LogInfo("PresentMon: Stopped orphaned DC_ ETW session %s (pid %lu not running)",
+                    name.c_str(), static_cast<unsigned long>(session_pid));
         }
     }
 }
@@ -808,10 +959,13 @@ void PresentMonManager::CleanupThread(PresentMonManager* manager) {
             Sleep(1000);
         }
 
-        // If we haven't seen any events for 10s, try to kill all other DC_ sessions (they may be blocking us)
+        // If we haven't seen any events for 10s, try to stop only *orphaned* other DC_ sessions
+        // (sessions whose owning process has exited). We must not stop another live process's session.
         int64_t now_ns = static_cast<int64_t>(utils::get_now_ns());
         int64_t last_ns = static_cast<int64_t>(manager->m_last_event_time.load());
         if (last_ns > 0 && (now_ns - last_ns) >= k_no_events_interval_ns) {
+            LogInfo("[PresentMon] No events for 10s; checking other DC_ sessions for orphans (our session: %ls)",
+                    manager->m_session_name);
             StopOtherDcEtwSessions(manager->m_session_name);
         }
     }
@@ -1400,6 +1554,7 @@ int PresentMonManager::PresentMonMain() {
         if (status != ERROR_SUCCESS) {
             char err[128] = {};
             StringCchPrintfA(err, std::size(err), "StartTrace failed: %lu", status);
+            LogWarn("[PresentMon] %s", err);
             UpdateDebugInfo("Running", "Failed", err, 0, 0);
             return 2;
         }
@@ -1416,6 +1571,7 @@ int PresentMonManager::PresentMonMain() {
     m_have_dwm = ProviderGuidByName(L"Microsoft-Windows-Dwm-Core", m_guid_dwm);
 
     if (!m_have_dxgkrnl && !m_have_dxgi && !m_have_dwm) {
+        LogWarn("[PresentMon] Could not locate ETW providers via TDH");
         UpdateDebugInfo("Running", "Failed", "Could not locate ETW providers via TDH", 0, 0);
         RequestStopEtw();
         return 3;
@@ -1457,6 +1613,8 @@ int PresentMonManager::PresentMonMain() {
 
     TRACEHANDLE trace_handle = OpenTraceW(&logfile);
     if (trace_handle == INVALID_PROCESSTRACE_HANDLE) {
+        DWORD open_err = GetLastError();
+        LogWarn("[PresentMon] OpenTrace failed, GetLastError=%lu", static_cast<unsigned long>(open_err));
         UpdateDebugInfo("Running", "Failed", "OpenTrace failed", 0, 0);
         RequestStopEtw();
         return 4;
@@ -1464,8 +1622,9 @@ int PresentMonManager::PresentMonMain() {
     m_etw_trace_handle.store(static_cast<uint64_t>(trace_handle));
 
     // Process events until session stops
+    LogInfo("[PresentMon] ProcessTrace started (session active)");
     status = ProcessTrace(&trace_handle, 1, nullptr, nullptr);
-    (void)status;
+    LogInfo("[PresentMon] ProcessTrace returned, status=%lu", static_cast<unsigned long>(status));
 
     CloseTrace(trace_handle);
     m_etw_trace_handle.store(0);

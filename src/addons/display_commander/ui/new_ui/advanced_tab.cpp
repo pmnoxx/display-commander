@@ -31,6 +31,7 @@ using namespace display_commander::ui;
 
 void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui);
 void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
+void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui);
@@ -62,6 +63,13 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     // Advanced Settings Section
     if (imgui.CollapsingHeader("Advanced Settings", wrapper_flags::TreeNodeFlags_None)) {
         DrawAdvancedTabSettingsSection(imgui);
+    }
+
+    imgui.Spacing();
+
+    // PresentMon ETW Tracing Section
+    if (imgui.CollapsingHeader("PresentMon ETW Tracing", wrapper_flags::TreeNodeFlags_None)) {
+        DrawPresentMonSection(imgui);
     }
 
     imgui.Spacing();
@@ -193,137 +201,18 @@ void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Unindent();
 }
 
-void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
+void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
-    // Safemode setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.safemode, "Safemode (requires restart)", imgui)) {
-        LogInfo("Safemode setting changed to: %s",
-                settings::g_advancedTabSettings.safemode.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Safemode disables all auto-apply settings and sets FPS limiter to disabled.\n"
-            "When enabled, it will automatically set itself to 0 and disable:\n"
-            "- Auto-apply resolution changes\n"
-            "- Auto-apply refresh rate changes\n"
-            "- Apply display settings at start\n"
-            "- FPS limiter mode (set to disabled)\n\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-    // DLLs to load before Display Commander
-    std::string dlls_to_load = settings::g_advancedTabSettings.dlls_to_load_before.GetValue();
-    char dlls_buffer[512] = {0};
-    strncpy_s(dlls_buffer, sizeof(dlls_buffer), dlls_to_load.c_str(), _TRUNCATE);
-    if (imgui.InputText("DLLs to Load Before Display Commander", dlls_buffer, sizeof(dlls_buffer))) {
-        settings::g_advancedTabSettings.dlls_to_load_before.SetValue(std::string(dlls_buffer));
-        LogInfo("DLLs to load before set to: %s", dlls_buffer);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Comma or semicolon-separated list of DLL names to wait for before Display Commander continues "
-            "initialization.\n"
-            "Example: dll1.dll, dll2.dll, dll3.dll or dll1.dll; dll2.dll; dll3.dll\n"
-            "Display Commander will wait for each DLL to be loaded (up to 30 seconds per DLL) before proceeding.\n"
-            "This happens before the DLL loading delay.\n\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-    // DLL loading delay setting
-    int delay_ms = settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue();
-    if (imgui.SliderInt("DLL Loading Delay (ms)", &delay_ms, 0, 10000, delay_ms == 0 ? "No delay" : "%d ms")) {
-        settings::g_advancedTabSettings.dll_loading_delay_ms.SetValue(delay_ms);
-        LogInfo("DLL loading delay set to %d ms", delay_ms);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Delay before installing LoadLibrary hooks (in milliseconds).\n"
-            "This can help with compatibility issues by allowing other DLLs to load first.\n"
-            "Set to 0 to disable delay.\n\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-    // Suppress MinHook setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_minhook, "Suppress MinHook Initialization", imgui)) {
-        LogInfo("Suppress MinHook setting changed to: %s",
-                settings::g_advancedTabSettings.suppress_minhook.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Suppress all MinHook initialization calls (MH_Initialize).\n"
-            "When enabled, all hook functions will skip MinHook initialization.\n"
-            "This can help with compatibility issues or debugging.\n"
-            "This setting is automatically enabled when safemode is active.\n\n"
-            "This setting requires a game restart to take effect.");
-    }
-
-    imgui.Spacing();
-
-    // Auto-hide Discord Overlay setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay",
-                        imgui)) {
-        LogInfo("Auto-hide Discord Overlay setting changed to: %s",
-                settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Automatically hide Discord Overlay window when it overlaps with the game window.\n"
-            "This prevents the overlay from interfering with MPO iFlip and can improve performance.\n"
-            "Similar to Special-K's behavior when AllowWindowedMode=false.\n\n"
-            "The check runs every second in the continuous monitoring thread.");
-    }
-
-    imgui.Spacing();
-
-    // Suppress Window Changes setting
-    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_window_changes, "Suppress Window Changes", imgui)) {
-        LogInfo("Suppress Window Changes setting changed to: %s",
-                settings::g_advancedTabSettings.suppress_window_changes.GetValue() ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Suppresses automatic window position, size, and style changes from continuous monitoring.\n"
-            "When enabled, ApplyWindowChange will not be called automatically.\n"
-            "This is a compatibility feature for cases where automatic window management causes issues.\n\n"
-            "Default: disabled (window changes are applied automatically).");
-    }
-
-    imgui.Spacing();
-
-    // Win+Up grace period (global setting, stored in Display Commander folder)
-    {
-        int grace = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
-        const char* format = (grace >= 61) ? "Forever" : "%d s";
-        if (imgui.SliderInt("Win+Up grace period (after leaving foreground)", &grace, 0, 61, format)) {
-            if (grace < 0) {
-                grace = 0;
-            } else if (grace > 61) {
-                grace = 61;
-            }
-            settings::g_advancedTabSettings.win_up_grace_seconds.SetValue(grace);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "For borderless windows: how long after the game loses focus Win+Up (restore) still works.\n"
-                "0 = only when game is in foreground; 1-60 = seconds; 61 = Forever (Win+Up always works).\n"
-                "Stored in Display Commander config (global). Default: 1 s.");
-        }
-    }
-
-    imgui.Spacing();
-
-    // PresentMon ETW Tracing setting
     if (CheckboxSetting(settings::g_advancedTabSettings.enable_presentmon_tracing, "Enable PresentMon ETW Tracing",
                         imgui)) {
         LogInfo("PresentMon ETW tracing setting changed to: %s",
                 settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue() ? "enabled" : "disabled");
 
-        // Start or stop PresentMon based on setting
         if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
             presentmon::g_presentMonManager.StartWorker();
         } else {
-            presentmon::g_presentMonManager.StopWorker();
+            presentmon::g_presentMonManager.StopWorker(presentmon::PresentMonStopReason::UserDisabled);
         }
     }
     if (imgui.IsItemHovered()) {
@@ -342,7 +231,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             "Note: Requires appropriate Windows permissions for ETW tracing.");
     }
 
-    // Show PresentMon status
     if (presentmon::g_presentMonManager.IsRunning()) {
         imgui.SameLine();
         imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " ACTIVE");
@@ -350,7 +238,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             imgui.SetTooltip("PresentMon worker thread is currently running.");
         }
 
-        // Show detailed debug info when active in advanced tab
         imgui.Indent();
         presentmon::PresentMonFlipState pm_flip_state;
         presentmon::PresentMonDebugInfo pm_debug_info;
@@ -365,33 +252,34 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             imgui.Text("%s", pm_debug_info.etw_session_status.c_str());
         }
 
-        // Display list of DC_ ETW sessions
-        if (!pm_debug_info.dc_etw_sessions.empty()) {
+        if (!pm_debug_info.etw_enumeration_error.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "DC_ ETW Sessions:");
+            imgui.SameLine();
+            imgui.TextColored(::ui::colors::TEXT_ERROR, "%s", pm_debug_info.etw_enumeration_error.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Could not enumerate ETW sessions. List is empty. Try running as administrator or check permissions.");
+            }
+        } else if (!pm_debug_info.dc_etw_sessions.empty()) {
             imgui.TextColored(::ui::colors::TEXT_LABEL,
                               "DC_ ETW Sessions (%zu):", pm_debug_info.dc_etw_sessions.size());
             imgui.Indent();
             for (const auto& session_name : pm_debug_info.dc_etw_sessions) {
                 imgui.PushID(session_name.c_str());
 
-                // Check if this is the current session
                 bool is_current_session = (session_name == pm_debug_info.etw_session_name);
 
-                // Display session name
                 imgui.Text("  • %s", session_name.c_str());
                 imgui.SameLine();
 
-                // Add close button (X) - disable for current session
                 if (is_current_session) {
                     imgui.BeginDisabled();
                 }
 
-                // Small button with X icon
                 imgui.PushStyleColor(4, ImVec4{0.7f, 0.2f, 0.2f, 0.6f});
                 imgui.PushStyleColor(5, ImVec4{0.9f, 0.3f, 0.3f, 0.8f});
                 imgui.PushStyleColor(6, ::ui::colors::TEXT_ERROR);
 
                 if (imgui.SmallButton(ICON_FK_CANCEL)) {
-                    // Convert narrow string to wide string for StopEtwSessionByName
                     int wide_len = MultiByteToWideChar(CP_UTF8, 0, session_name.c_str(), -1, nullptr, 0);
                     if (wide_len > 0) {
                         std::vector<wchar_t> wide_name(wide_len);
@@ -417,6 +305,13 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                 imgui.PopID();
             }
             imgui.Unindent();
+        } else {
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "DC_ ETW Sessions:");
+            imgui.SameLine();
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "(waiting for data...)");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Enumeration succeeded; no DC_ sessions found yet. Our session may appear shortly.");
+            }
         }
 
         if (!pm_debug_info.last_error.empty()) {
@@ -497,14 +392,12 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             imgui.TextColored(::ui::colors::TEXT_DIMMED, "Flip Mode: (No data yet)");
         }
 
-        // DWM Flip Compatibility (separate from flip-state)
         presentmon::PresentMonFlipCompatibility pm_flip_compat;
         if (presentmon::g_presentMonManager.GetFlipCompatibility(pm_flip_compat)) {
             imgui.Spacing();
             if (imgui.CollapsingHeader("Flip Compatibility (DWM)", wrapper_flags::TreeNodeFlags_DefaultOpen)) {
                 imgui.Indent();
 
-                // Age
                 LONGLONG now_ns = utils::get_now_ns();
                 double age_ms =
                     static_cast<double>(now_ns - static_cast<LONGLONG>(pm_flip_compat.last_update_time_ns)) / 1000000.0;
@@ -660,6 +553,233 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
         }
 
         imgui.Unindent();
+    } else {
+        presentmon::PresentMonDebugInfo pm_debug_info_stopped;
+        presentmon::g_presentMonManager.GetDebugInfo(pm_debug_info_stopped);
+
+        imgui.SameLine();
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "ETW Tracing Status: Stopped");
+        if (imgui.IsItemHovered()) {
+            const bool setting_enabled =
+                settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue();
+            std::string tip;
+            if (setting_enabled) {
+                tip = "PresentMon is enabled but the worker is not running.\n\n";
+                tip += "Last known state:\n";
+                tip += "  Thread status: ";
+                tip += pm_debug_info_stopped.thread_status.empty() ? "(unknown)" : pm_debug_info_stopped.thread_status;
+                tip += "\n  ETW status: ";
+                tip += pm_debug_info_stopped.etw_session_status.empty() ? "(unknown)" : pm_debug_info_stopped.etw_session_status;
+                tip += "\n\nPossible reasons:\n"
+                       "- Worker failed to start or exited (e.g. StartTrace failed)\n"
+                       "- ETW session could not be created\n"
+                       "- Insufficient permissions (try running as administrator)\n";
+                if (!pm_debug_info_stopped.last_error.empty()) {
+                    tip += "\nLast error: ";
+                    tip += pm_debug_info_stopped.last_error;
+                }
+                if (!pm_debug_info_stopped.etw_enumeration_error.empty()) {
+                    tip += "\nSession enumeration: ";
+                    tip += pm_debug_info_stopped.etw_enumeration_error;
+                }
+                if (pm_debug_info_stopped.last_error.empty() && pm_debug_info_stopped.etw_enumeration_error.empty()) {
+                    tip += "\n\nNo error or enumeration failure recorded. Worker may have exited normally, "
+                           "was stopped by user, or exited before reporting an error. Check ReShade log for [PresentMon] messages.";
+                }
+            } else {
+                tip = "Enable the checkbox above to start ETW tracing and see session list.";
+            }
+            imgui.SetTooltip("%s", tip.c_str());
+        }
+        imgui.Indent();
+        // Always show last known thread/ETW status when stopped so user sees why even when last_error is empty
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "Thread status:");
+        imgui.SameLine();
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "%s",
+                         pm_debug_info_stopped.thread_status.empty() ? "(unknown)" : pm_debug_info_stopped.thread_status.c_str());
+        imgui.TextColored(::ui::colors::TEXT_LABEL, "ETW status:");
+        imgui.SameLine();
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "%s",
+                         pm_debug_info_stopped.etw_session_status.empty() ? "(unknown)" : pm_debug_info_stopped.etw_session_status.c_str());
+        if (!pm_debug_info_stopped.last_error.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_ERROR, "Last error: %s", pm_debug_info_stopped.last_error.c_str());
+        }
+        if (!pm_debug_info_stopped.etw_enumeration_error.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "ETW sessions:");
+            imgui.SameLine();
+            imgui.TextColored(::ui::colors::TEXT_ERROR, "%s", pm_debug_info_stopped.etw_enumeration_error.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Could not enumerate ETW sessions. Try running as administrator.");
+            }
+        }
+        imgui.Unindent();
+    }
+
+    // Subheader (closed by default): list all ETW sessions from all apps with option to stop any
+    if (imgui.CollapsingHeader("Show all sessions from all apps", wrapper_flags::TreeNodeFlags_None)) {
+        imgui.Indent();
+        std::string all_err;
+        std::vector<std::string> all_sessions;
+        presentmon::PresentMonManager::GetEtwSessionsWithPrefix(L"", all_sessions, &all_err);
+        if (!all_err.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_ERROR, "%s", all_err.c_str());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Try running as administrator to enumerate ETW sessions.");
+            }
+        } else if (all_sessions.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "(no sessions)");
+        } else {
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Sessions (%zu):", all_sessions.size());
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Stopping a session may affect the app that created it. DC_ sessions are from Display Commander.");
+            }
+            imgui.Indent();
+            for (const auto& session_name : all_sessions) {
+                imgui.PushID(session_name.c_str());
+                imgui.Text("  %s", session_name.empty() ? "(unnamed)" : session_name.c_str());
+                imgui.SameLine();
+                imgui.PushStyleColor(4, ImVec4{0.7f, 0.2f, 0.2f, 0.6f});
+                imgui.PushStyleColor(5, ImVec4{0.9f, 0.3f, 0.3f, 0.8f});
+                imgui.PushStyleColor(6, ::ui::colors::TEXT_ERROR);
+                if (imgui.SmallButton(ICON_FK_CANCEL " Stop")) {
+                    int wide_len = MultiByteToWideChar(CP_UTF8, 0, session_name.c_str(), -1, nullptr, 0);
+                    if (wide_len > 0 && !session_name.empty()) {
+                        std::vector<wchar_t> wide_name(static_cast<size_t>(wide_len));
+                        MultiByteToWideChar(CP_UTF8, 0, session_name.c_str(), -1, wide_name.data(), wide_len);
+                        presentmon::PresentMonManager::StopEtwSessionByName(wide_name.data());
+                        LogInfo("Stopped ETW session: %s", session_name.c_str());
+                    }
+                }
+                imgui.PopStyleColor(3);
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Stop ETW session: %s", session_name.c_str());
+                }
+                imgui.PopID();
+            }
+            imgui.Unindent();
+        }
+        imgui.Unindent();
+    }
+
+    imgui.Unindent();
+}
+
+void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Indent();
+
+    // Safemode setting
+    if (CheckboxSetting(settings::g_advancedTabSettings.safemode, "Safemode (requires restart)", imgui)) {
+        LogInfo("Safemode setting changed to: %s",
+                settings::g_advancedTabSettings.safemode.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Safemode disables all auto-apply settings and sets FPS limiter to disabled.\n"
+            "When enabled, it will automatically set itself to 0 and disable:\n"
+            "- Auto-apply resolution changes\n"
+            "- Auto-apply refresh rate changes\n"
+            "- Apply display settings at start\n"
+            "- FPS limiter mode (set to disabled)\n\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // DLLs to load before Display Commander
+    std::string dlls_to_load = settings::g_advancedTabSettings.dlls_to_load_before.GetValue();
+    char dlls_buffer[512] = {0};
+    strncpy_s(dlls_buffer, sizeof(dlls_buffer), dlls_to_load.c_str(), _TRUNCATE);
+    if (imgui.InputText("DLLs to Load Before Display Commander", dlls_buffer, sizeof(dlls_buffer))) {
+        settings::g_advancedTabSettings.dlls_to_load_before.SetValue(std::string(dlls_buffer));
+        LogInfo("DLLs to load before set to: %s", dlls_buffer);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Comma or semicolon-separated list of DLL names to wait for before Display Commander continues "
+            "initialization.\n"
+            "Example: dll1.dll, dll2.dll, dll3.dll or dll1.dll; dll2.dll; dll3.dll\n"
+            "Display Commander will wait for each DLL to be loaded (up to 30 seconds per DLL) before proceeding.\n"
+            "This happens before the DLL loading delay.\n\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // DLL loading delay setting
+    int delay_ms = settings::g_advancedTabSettings.dll_loading_delay_ms.GetValue();
+    if (imgui.SliderInt("DLL Loading Delay (ms)", &delay_ms, 0, 10000, delay_ms == 0 ? "No delay" : "%d ms")) {
+        settings::g_advancedTabSettings.dll_loading_delay_ms.SetValue(delay_ms);
+        LogInfo("DLL loading delay set to %d ms", delay_ms);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Delay before installing LoadLibrary hooks (in milliseconds).\n"
+            "This can help with compatibility issues by allowing other DLLs to load first.\n"
+            "Set to 0 to disable delay.\n\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    // Suppress MinHook setting
+    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_minhook, "Suppress MinHook Initialization", imgui)) {
+        LogInfo("Suppress MinHook setting changed to: %s",
+                settings::g_advancedTabSettings.suppress_minhook.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Suppress all MinHook initialization calls (MH_Initialize).\n"
+            "When enabled, all hook functions will skip MinHook initialization.\n"
+            "This can help with compatibility issues or debugging.\n"
+            "This setting is automatically enabled when safemode is active.\n\n"
+            "This setting requires a game restart to take effect.");
+    }
+
+    imgui.Spacing();
+
+    // Auto-hide Discord Overlay setting
+    if (CheckboxSetting(settings::g_advancedTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay",
+                        imgui)) {
+        LogInfo("Auto-hide Discord Overlay setting changed to: %s",
+                settings::g_advancedTabSettings.auto_hide_discord_overlay.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Automatically hide Discord Overlay window when it overlaps with the game window.\n"
+            "This prevents the overlay from interfering with MPO iFlip and can improve performance.\n"
+            "Similar to Special-K's behavior when AllowWindowedMode=false.\n\n"
+            "The check runs every second in the continuous monitoring thread.");
+    }
+
+    imgui.Spacing();
+
+    // Suppress Window Changes setting
+    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_window_changes, "Suppress Window Changes", imgui)) {
+        LogInfo("Suppress Window Changes setting changed to: %s",
+                settings::g_advancedTabSettings.suppress_window_changes.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Suppresses automatic window position, size, and style changes from continuous monitoring.\n"
+            "When enabled, ApplyWindowChange will not be called automatically.\n"
+            "This is a compatibility feature for cases where automatic window management causes issues.\n\n"
+            "Default: disabled (window changes are applied automatically).");
+    }
+
+    imgui.Spacing();
+
+    // Win+Up grace period (global setting, stored in Display Commander folder)
+    {
+        int grace = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
+        const char* format = (grace >= 61) ? "Forever" : "%d s";
+        if (imgui.SliderInt("Win+Up grace period (after leaving foreground)", &grace, 0, 61, format)) {
+            if (grace < 0) {
+                grace = 0;
+            } else if (grace > 61) {
+                grace = 61;
+            }
+            settings::g_advancedTabSettings.win_up_grace_seconds.SetValue(grace);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "For borderless windows: how long after the game loses focus Win+Up (restore) still works.\n"
+                "0 = only when game is in foreground; 1-60 = seconds; 61 = Forever (Win+Up always works).\n"
+                "Stored in Display Commander config (global). Default: 1 s.");
+        }
     }
 
     imgui.Spacing();

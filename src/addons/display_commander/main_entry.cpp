@@ -1558,6 +1558,10 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
 
 void DoInitializationWithoutHwndSafe_Late() {
     if (!IsDisplayCommanderHookingInstance()) return;
+
+    // Log all ETW sessions once at addon init for diagnostics (e.g. why DC_ list may be empty in Advanced tab)
+    presentmon::PresentMonManager::LogAllEtwSessions();
+
     display_commanderhooks::InstallXInputHooks(nullptr);
     display_cache::g_displayCache.Initialize();
     display_initial_state::g_initialDisplayState.CaptureInitialState();
@@ -2357,7 +2361,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
             // ETW sessions are system-wide and persist until explicitly stopped
             // If not stopped, they can interfere with future processes
-            presentmon::g_presentMonManager.StopWorker();
+            presentmon::g_presentMonManager.StopWorker(presentmon::PresentMonStopReason::AddonShutdown);
 
             // Try to remove post-ReShade addon temp dir (may fail while loaded DLLs still hold files)
             CleanupPostReShadeAddonTempDir();

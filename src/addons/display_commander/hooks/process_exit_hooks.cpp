@@ -4,6 +4,8 @@
 #include "../utils/logging.hpp"
 #include "hook_suppression_manager.hpp"
 #include <MinHook.h>
+#include <string>
+#include <Windows.h>
 
 namespace display_commanderhooks {
 
@@ -17,6 +19,19 @@ TerminateProcess_pfn TerminateProcess_Original = nullptr;
 
 // Hook state
 static std::atomic<bool> g_process_exit_hooks_installed{false};
+
+// Best-effort process image path for logging (uses hProcess if provided, else opens by pid)
+static void GetProcessImagePathForLog(HANDLE hProcess, DWORD pid, wchar_t* out_buf, size_t out_buf_chars) {
+    out_buf[0] = L'\0';
+    DWORD size = static_cast<DWORD>(out_buf_chars);
+    if (QueryFullProcessImageNameW(hProcess, 0, out_buf, &size)) return;
+    if (hProcess == GetCurrentProcess()) return;
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (!h) return;
+    size = static_cast<DWORD>(out_buf_chars);
+    if (QueryFullProcessImageNameW(h, 0, out_buf, &size)) { CloseHandle(h); return; }
+    CloseHandle(h);
+}
 
 // Hooked ExitProcess function
 void WINAPI ExitProcess_Detour(UINT uExitCode) {
@@ -34,16 +49,27 @@ void WINAPI ExitProcess_Detour(UINT uExitCode) {
 
 // Hooked TerminateProcess function
 BOOL WINAPI TerminateProcess_Detour(HANDLE hProcess, UINT uExitCode) {
-    // Log exit detection
-    exit_handler::OnHandleExit(exit_handler::ExitSource::PROCESS_TERMINATE_HOOK,
-                               "TerminateProcess called with exit code: " + std::to_string(uExitCode));
+    DWORD current_pid = GetProcessId(GetCurrentProcess());
+    DWORD target_pid = GetProcessId(hProcess);
+    wchar_t image_path[MAX_PATH] = {};
 
-    // Call original function
+    if (current_pid != 0 && target_pid != 0 && current_pid == target_pid) {
+        GetProcessImagePathForLog(GetCurrentProcess(), current_pid, image_path, MAX_PATH);
+        LogInfo("TerminateProcess: target is current process (current_pid == target_pid == %lu), triggering exit handler; image: %ls",
+                static_cast<unsigned long>(current_pid), image_path[0] ? image_path : L"(unknown)");
+        exit_handler::OnHandleExit(exit_handler::ExitSource::PROCESS_TERMINATE_HOOK,
+                                   "TerminateProcess called with exit code: " + std::to_string(uExitCode));
+    } else {
+        GetProcessImagePathForLog(hProcess, target_pid, image_path, MAX_PATH);
+        LogInfo("TerminateProcess: app is terminating another process (target pid %lu, current pid %lu); target image: %ls",
+                static_cast<unsigned long>(target_pid), static_cast<unsigned long>(current_pid),
+                image_path[0] ? image_path : L"(could not query)");
+    }
+
     if (TerminateProcess_Original) {
         return TerminateProcess_Original(hProcess, uExitCode);
-    } else {
-        return TerminateProcess(hProcess, uExitCode);
     }
+    return TerminateProcess(hProcess, uExitCode);
 }
 
 bool InstallProcessExitHooks() {

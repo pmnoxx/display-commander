@@ -775,7 +775,6 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Advanced")) {
-                    ui::new_ui::InitAdvancedTab();
                     display_commander::ui::ImGuiWrapperStandalone wrapper;
                     ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper);
                     ImGui::EndTabItem();

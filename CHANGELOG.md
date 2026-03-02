@@ -1,5 +1,7 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
+**Changelog style:** Describe user-visible behavior and outcomes; avoid minor implementation details (internal APIs, function names, which types use a code path). Prefer "what changed for the user" over "how it was implemented." Config key names are OK when relevant (e.g. migration).
+
 ---
 
 ## v0.12.211 (2026-03-02)

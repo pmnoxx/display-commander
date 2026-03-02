@@ -223,7 +223,8 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **reshade_load_path.cpp**, **.hpp**: ReShade load source (Local / Shared path / Specific version), path resolution from DC config, used at ProcessAttach and ReShade tab
 - **reshade_version_download.cpp**, **.hpp**: Download ReShade Addon by version (tar.exe extract), status for ReShade tab
 - **stack_trace.cpp**, **.hpp**
-- **steam_library.cpp**, **.hpp**
+- **steam_library.cpp**, **.hpp**: Enumerate Steam libraries and installed games; LaunchSteamGame via steam://run
+- **steam_launch_history.cpp**, **.hpp**: Persist Steam game launch timestamps (HKCU) for "most recent" ordering in Games tab
 - **version_check.cpp**, **.hpp**
 - **ring_buffer.hpp**: Ring buffer (header-only)
 

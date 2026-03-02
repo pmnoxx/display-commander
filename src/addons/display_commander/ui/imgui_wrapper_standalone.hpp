@@ -123,6 +123,8 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void OpenPopup(const char* str_id) override;
     bool BeginPopupModal(const char* name, bool* p_open, int flags) override;
     void EndPopup() override;
+    bool BeginPopupContextItem(const char* str_id, int popup_flags) override;
+    bool MenuItem(const char* label, const char* shortcut, bool selected, bool enabled) override;
 };
 
 } // namespace ui

@@ -1,9 +1,12 @@
 // Source Code <Display Commander>
 
 // Group 1 — Source Code (Display Commander)
+#include "advanced_tab.hpp"
 #include "games_tab.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../utils/process_window_enumerator.hpp"
+#include "../../utils/steam_launch_history.hpp"
+#include "../../utils/steam_library.hpp"
 #include "../../utils/timing.hpp"
 #include "../imgui_wrapper_base.hpp"
 
@@ -11,6 +14,10 @@
 #include <reshade_imgui.hpp>
 
 // Group 3 — Standard C++
+#include <algorithm>
+#include <cstdio>
+#include <ctime>
+#include <filesystem>
 #include <string>
 #include <thread>
 #include <vector>
@@ -19,7 +26,7 @@
 #include <windows.h>
 
 // Group 5 — Other Windows SDK
-// (none)
+#include <Shellapi.h>
 
 namespace ui::new_ui {
 
@@ -32,10 +39,25 @@ struct GamesTabState {
     DWORD pending_kill_pid = 0;
     std::wstring pending_kill_title;
     LONGLONG last_refresh_ns = 0;
+    bool show_details_modal = false;
+    display_commander::utils::RunningGameInfo details_game;
+};
+
+struct SteamLaunchState {
+    std::vector<display_commander::steam_library::SteamGame> games;
+    char search_buf[256] = {};
+    bool has_loaded_once = false;
+    bool show_details_modal = false;
+    display_commander::steam_library::SteamGame details_steam_game;
 };
 
 GamesTabState& GetState() {
     static GamesTabState s_state;
+    return s_state;
+}
+
+SteamLaunchState& GetSteamState() {
+    static SteamLaunchState s_state;
     return s_state;
 }
 
@@ -46,9 +68,7 @@ void RefreshGamesList() {
     state.last_refresh_ns = utils::get_now_ns();
 }
 
-void RequestGamesListRefresh() {
-    display_commander::utils::RequestRunningGamesRefresh();
-}
+void RequestGamesListRefresh() { display_commander::utils::RequestRunningGamesRefresh(); }
 
 void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
     auto& state = GetState();
@@ -58,13 +78,12 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
         RefreshGamesList();
     } else {
         const LONGLONG now_ns = utils::get_now_ns();
-        if (state.last_refresh_ns == 0
-            || (now_ns - state.last_refresh_ns) >= utils::SEC_TO_NS) {
+        if (state.last_refresh_ns == 0 || (now_ns - state.last_refresh_ns) >= utils::SEC_TO_NS) {
             RefreshGamesList();
         }
     }
 
-    if (imgui.Button("Refresh")) {
+    /* if (imgui.Button("Refresh")) {
         RequestGamesListRefresh();
     }
     if (imgui.IsItemHovered()) {
@@ -72,7 +91,9 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     imgui.SameLine();
+    */
     imgui.TextColored(::ui::colors::TEXT_DIMMED, "(Session-wide, based on Display Commander mutex)");
+    ui::new_ui::DrawDcServiceIndicatorsOnLine(imgui, true);
 
     imgui.Spacing();
 
@@ -82,8 +103,7 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
         return;
     }
 
-    if (imgui.BeginTable("##dc_games_tab_table",
-                         5,
+    if (imgui.BeginTable("##dc_games_tab_table", 7,
                          display_commander::ui::wrapper_flags::TableFlags_RowBg
                              | display_commander::ui::wrapper_flags::TableFlags_Borders
                              | display_commander::ui::wrapper_flags::TableFlags_SizingStretchProp,
@@ -91,7 +111,9 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TableSetupColumn("PID", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 80.0f);
         imgui.TableSetupColumn("Title / Executable");
         imgui.TableSetupColumn("Focus", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 80.0f);
-        imgui.TableSetupColumn("Minimize", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 80.0f);
+        imgui.TableSetupColumn("Mini", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 55.0f);
+        imgui.TableSetupColumn("Rest", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 55.0f);
+        imgui.TableSetupColumn("Stop", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 55.0f);
         imgui.TableSetupColumn("Kill", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed, 80.0f);
         imgui.TableHeadersRow();
 
@@ -104,14 +126,21 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.TableSetColumnIndex(0);
             imgui.Text("%lu", static_cast<unsigned long>(game.pid));
 
-            // Title
+            // Title (right-click for context menu)
             imgui.TableSetColumnIndex(1);
-            // Display UTF-16 strings directly via ImGui (ReShade wrapper expects UTF-8, but titles are simple).
-            // For now, print a narrow placeholder when conversion helpers are unavailable.
+            imgui.PushID(static_cast<int>(game.pid));
             imgui.Text("%ls", game.display_title.c_str());
             if (!game.exe_path.empty() && imgui.IsItemHovered()) {
                 imgui.SetTooltip("%ls", game.exe_path.c_str());
             }
+            if (imgui.BeginPopupContextItem("row_ctx")) {
+                if (imgui.MenuItem("Open details")) {
+                    state.details_game = game;
+                    state.show_details_modal = true;
+                }
+                imgui.EndPopup();
+            }
+            imgui.PopID();
 
             // Focus button
             imgui.TableSetColumnIndex(2);
@@ -153,7 +182,7 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             }
             {
                 char min_label[32];
-                snprintf(min_label, sizeof(min_label), "Minimize##%lu", static_cast<unsigned long>(game.pid));
+                snprintf(min_label, sizeof(min_label), "Mini##%lu", static_cast<unsigned long>(game.pid));
                 if (imgui.SmallButton(min_label) && can_minimize) {
                     HWND hwnd = game.main_window;
                     if (hwnd != nullptr) {
@@ -172,8 +201,118 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
                 }
             }
 
-            // Kill button
+            // Rest (Restart) button — terminate then relaunch (or launch first then close for current process)
             imgui.TableSetColumnIndex(4);
+            bool is_current = (game.pid == current_pid);
+            bool can_restart =
+                !game.exe_path.empty()
+                && (is_current || (game.main_window != nullptr || game.can_terminate));
+            if (!can_restart) {
+                imgui.BeginDisabled();
+            }
+            {
+                char rest_label[32];
+                snprintf(rest_label, sizeof(rest_label), "Rest##%lu", static_cast<unsigned long>(game.pid));
+                if (imgui.SmallButton(rest_label) && can_restart) {
+                    DWORD pid_to_restart = game.pid;
+                    std::wstring exe_path = game.exe_path;
+                    HWND main_window = game.main_window;
+                    bool can_terminate = game.can_terminate;
+                    bool is_current_process = is_current;
+                    RequestGamesListRefresh();
+                    std::thread([pid_to_restart, exe_path, main_window, can_terminate, is_current_process]() {
+                        auto do_launch = [&exe_path]() {
+                            std::filesystem::path exe_p(exe_path);
+                            if (!std::filesystem::exists(exe_p)) return false;
+                            std::wstring working_dir = exe_p.parent_path().wstring();
+                            std::vector<wchar_t> cmd_buf;
+                            cmd_buf.reserve(exe_path.size() + 3);
+                            cmd_buf.push_back(L'\"');
+                            cmd_buf.insert(cmd_buf.end(), exe_path.begin(), exe_path.end());
+                            cmd_buf.push_back(L'\"');
+                            cmd_buf.push_back(L'\0');
+                            STARTUPINFOW si = {};
+                            si.cb = sizeof(si);
+                            PROCESS_INFORMATION pi = {};
+                            if (CreateProcessW(nullptr, cmd_buf.data(), nullptr, nullptr, FALSE, 0, nullptr,
+                                               working_dir.empty() ? nullptr : working_dir.c_str(), &si, &pi)) {
+                                CloseHandle(pi.hProcess);
+                                CloseHandle(pi.hThread);
+                                return true;
+                            }
+                            return false;
+                        };
+                        if (is_current_process) {
+                            // Current app: launch new instance first, then close ourselves
+                            if (do_launch()) {
+                                Sleep(300);
+                                if (main_window != nullptr) {
+                                    PostMessageW(main_window, WM_CLOSE, 0, 0);
+                                } else {
+                                    TerminateProcess(GetCurrentProcess(), 0);
+                                }
+                            }
+                        } else {
+                            // Other process: terminate first, then relaunch
+                            if (main_window != nullptr) {
+                                PostMessageW(main_window, WM_CLOSE, 0, 0);
+                            } else if (can_terminate) {
+                                HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, pid_to_restart);
+                                if (h != nullptr) {
+                                    TerminateProcess(h, 0);
+                                    CloseHandle(h);
+                                }
+                            } else {
+                                return;
+                            }
+                            Sleep(500);
+                            do_launch();
+                        }
+                    }).detach();
+                }
+            }
+            if (!can_restart) {
+                imgui.EndDisabled();
+            }
+            if (imgui.IsItemHovered()) {
+                if (game.exe_path.empty()) {
+                    imgui.SetTooltip("Cannot restart (executable path unknown).");
+                } else if (!game.main_window && !game.can_terminate && !is_current) {
+                    imgui.SetTooltip("Cannot restart (no window and cannot terminate process).");
+                } else {
+                    imgui.SetTooltip("Restart this game (close and relaunch).");
+                }
+            }
+
+            // Stop button (graceful close via WM_CLOSE)
+            imgui.TableSetColumnIndex(5);
+            bool can_stop = game.main_window != nullptr;
+            if (!can_stop) {
+                imgui.BeginDisabled();
+            }
+            {
+                char stop_label[32];
+                snprintf(stop_label, sizeof(stop_label), "Stop##%lu", static_cast<unsigned long>(game.pid));
+                if (imgui.SmallButton(stop_label) && can_stop) {
+                    HWND hwnd = game.main_window;
+                    if (hwnd != nullptr) {
+                        std::thread([hwnd]() { PostMessageW(hwnd, WM_CLOSE, 0, 0); }).detach();
+                    }
+                }
+            }
+            if (!can_stop) {
+                imgui.EndDisabled();
+            }
+            if (imgui.IsItemHovered()) {
+                if (can_stop) {
+                    imgui.SetTooltip("Request graceful close (sends WM_CLOSE to the game window).");
+                } else {
+                    imgui.SetTooltip("No main window detected for this game.");
+                }
+            }
+
+            // Kill button
+            imgui.TableSetColumnIndex(6);
             bool can_kill_here = game.can_terminate && game.pid != current_pid;
             if (!can_kill_here) {
                 imgui.BeginDisabled();
@@ -216,14 +355,11 @@ void DrawKillConfirmationModal(display_commander::ui::IImGuiWrapper& imgui) {
 
     bool open = true;
     if (imgui.BeginPopupModal("Confirm Game Termination", &open, ImGuiWindowFlags_AlwaysAutoResize)) {
-        imgui.TextColored(::ui::colors::TEXT_WARNING,
-                          "Terminate game process PID %lu?",
+        imgui.TextColored(::ui::colors::TEXT_WARNING, "Terminate game process PID %lu?",
                           static_cast<unsigned long>(state.pending_kill_pid));
-        imgui.TextWrapped("%ls",
-                          state.pending_kill_title.empty() ? L"(no title)" : state.pending_kill_title.c_str());
+        imgui.TextWrapped("%ls", state.pending_kill_title.empty() ? L"(no title)" : state.pending_kill_title.c_str());
         imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_WARNING,
-                          "This will close the game immediately without saving progress.");
+        imgui.TextColored(::ui::colors::TEXT_WARNING, "This will close the game immediately without saving progress.");
 
         imgui.Spacing();
 
@@ -265,6 +401,170 @@ void DrawKillConfirmationModal(display_commander::ui::IImGuiWrapper& imgui) {
     }
 }
 
+void DrawRunningGameDetailsModal(display_commander::ui::IImGuiWrapper& imgui) {
+    auto& state = GetState();
+    if (state.show_details_modal) {
+        imgui.OpenPopup("Game Details");
+        state.show_details_modal = false;
+    }
+    bool open = true;
+    if (imgui.BeginPopupModal("Game Details", &open, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const auto& g = state.details_game;
+        imgui.Text("PID: %lu", static_cast<unsigned long>(g.pid));
+        imgui.Text("Title: %ls", g.display_title.empty() ? L"(none)" : g.display_title.c_str());
+        imgui.Text("Exe path: %ls", g.exe_path.empty() ? L"(none)" : g.exe_path.c_str());
+        imgui.Text("Main window: %p", static_cast<void*>(g.main_window));
+        imgui.Text("Can terminate: %s", g.can_terminate ? "Yes" : "No");
+        imgui.Spacing();
+        if (imgui.Button("Close")) open = false;
+        imgui.EndPopup();
+    }
+}
+
+static std::string ToLowerAscii(const std::string& s) {
+    std::string out = s;
+    for (char& c : out)
+        if (c >= 'A' && c <= 'Z') c += 32;
+    return out;
+}
+
+// Format Unix timestamp as "today", "this week", "this month", "X months ago", or "never".
+static void FormatLastOpened(int64_t ts, char* out, size_t out_size) {
+    if (ts <= 0) {
+        snprintf(out, out_size, "never");
+        return;
+    }
+    const time_t now = time(nullptr);
+    const time_t t = static_cast<time_t>(ts);
+    const long diff_sec = static_cast<long>(now) - static_cast<long>(t);
+    const long diff_days = diff_sec / 86400;
+
+    if (diff_days < 0) {
+        snprintf(out, out_size, "never");
+        return;
+    }
+    if (diff_days == 0) {
+        snprintf(out, out_size, "today");
+        return;
+    }
+    if (diff_days < 7) {
+        snprintf(out, out_size, "this week");
+        return;
+    }
+    if (diff_days < 30) {
+        snprintf(out, out_size, "this month");
+        return;
+    }
+    const int months = static_cast<int>((diff_days + 15) / 30);
+    snprintf(out, out_size, "%d months ago", months);
+}
+
+void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
+    auto& state = GetSteamState();
+
+    if (!state.has_loaded_once) {
+        display_commander::steam_library::GetInstalledGames(state.games);
+        state.has_loaded_once = true;
+    }
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+    imgui.Text("Launch Steam game");
+    imgui.Spacing();
+
+    imgui.SetNextItemWidth(-1.0f);
+    imgui.InputTextWithHint("##steam_launch_search", "Search installed Steam games...", state.search_buf,
+                            sizeof(state.search_buf));
+
+    imgui.Spacing();
+
+    std::string searchLower = ToLowerAscii(state.search_buf);
+    std::vector<std::pair<display_commander::steam_library::SteamGame, int64_t>> filtered;
+    for (const auto& game : state.games) {
+        std::string nameLower = ToLowerAscii(game.name);
+        if (!searchLower.empty() && nameLower.find(searchLower) == std::string::npos) continue;
+        int64_t ts = display_commander::steam_launch_history::GetSteamLaunchTimestamp(game.app_id);
+        filtered.push_back({game, ts});
+    }
+
+    std::sort(filtered.begin(), filtered.end(), [](const auto& a, const auto& b) {
+        if (a.second != b.second) return a.second > b.second;
+        return a.first.name < b.first.name;
+    });
+
+    if (imgui.BeginChild("##steam_launch_list", ImVec2(0.0f, 600.0f), true)) {
+        if (state.games.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "No Steam library found or no Steam games installed.");
+        } else if (filtered.empty()) {
+            imgui.TextColored(::ui::colors::TEXT_DIMMED, "No games match search.");
+        } else if (imgui.BeginTable("##steam_launch_table", 2,
+                                    display_commander::ui::wrapper_flags::TableFlags_SizingStretchProp
+                                        | display_commander::ui::wrapper_flags::TableFlags_Borders,
+                                    ImVec2(0.0f, 0.0f))) {
+            imgui.TableSetupColumn("Game");
+            imgui.TableSetupColumn("Last opened", display_commander::ui::wrapper_flags::TableColumnFlags_WidthFixed,
+                                   100.0f);
+            for (const auto& [game, lastLaunch] : filtered) {
+                imgui.TableNextRow();
+                imgui.TableSetColumnIndex(0);
+                imgui.PushID(static_cast<int>(game.app_id));
+                if (imgui.Selectable(game.name.c_str(), false)) {
+                    display_commander::steam_library::LaunchSteamGame(game.app_id);
+                }
+                if (imgui.IsItemHovered()) {
+                    if (game.install_dir.empty()) {
+                        imgui.SetTooltip("Launch this game via Steam.");
+                    } else {
+                        imgui.SetTooltip("Launch this game via Steam.\n%ls", game.install_dir.c_str());
+                    }
+                }
+                if (imgui.BeginPopupContextItem("steam_row_ctx")) {
+                    if (imgui.MenuItem("Open details")) {
+                        auto& steam_state = GetSteamState();
+                        steam_state.details_steam_game = game;
+                        steam_state.show_details_modal = true;
+                    }
+                    imgui.EndPopup();
+                }
+                imgui.TableSetColumnIndex(1);
+                char lastOpened[32];
+                FormatLastOpened(lastLaunch, lastOpened, sizeof(lastOpened));
+                imgui.TextColored(::ui::colors::TEXT_DIMMED, "%s", lastOpened);
+                imgui.PopID();
+            }
+            imgui.EndTable();
+        }
+        imgui.EndChild();
+    }
+
+    // Steam game details modal
+    auto& steam_state = GetSteamState();
+    if (steam_state.show_details_modal) {
+        imgui.OpenPopup("Steam Game Details");
+        steam_state.show_details_modal = false;
+    }
+    bool steam_open = true;
+    if (imgui.BeginPopupModal("Steam Game Details", &steam_open, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const auto& g = steam_state.details_steam_game;
+        imgui.Text("App ID: %u", g.app_id);
+        imgui.Text("Name: %s", g.name.c_str());
+        imgui.Text("Install dir: %ls", g.install_dir.empty() ? L"(none)" : g.install_dir.c_str());
+        imgui.Spacing();
+        if (!g.install_dir.empty()) {
+            if (imgui.Button("Open folder##steam_details")) {
+                ShellExecuteW(nullptr, L"explore", g.install_dir.c_str(), nullptr, nullptr, SW_SHOW);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Open game folder in Explorer.");
+            }
+            imgui.SameLine();
+        }
+        if (imgui.Button("Close##steam_details")) steam_open = false;
+        imgui.EndPopup();
+    }
+}
+
 }  // namespace
 
 void DrawGamesTab(display_commander::ui::IImGuiWrapper& imgui) {
@@ -272,9 +572,10 @@ void DrawGamesTab(display_commander::ui::IImGuiWrapper& imgui) {
 
     DrawGamesTable(imgui);
     DrawKillConfirmationModal(imgui);
+    DrawRunningGameDetailsModal(imgui);
+    DrawSteamLaunchSection(imgui);
 
     imgui.Unindent();
 }
 
 }  // namespace ui::new_ui
-

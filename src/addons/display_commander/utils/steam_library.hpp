@@ -30,4 +30,8 @@ void GetInstalledGames(std::vector<SteamGame>& out);
 // Returns full path to exe or empty if none found.
 std::wstring FindMainExeInDir(const std::wstring& install_dir);
 
+// Launch a Steam game via steam://run/<app_id>. Records launch timestamp for "most recent" ordering.
+// Returns true if ShellExecuteW succeeded (Steam will start the game).
+bool LaunchSteamGame(uint32_t app_id);
+
 }  // namespace display_commander::steam_library

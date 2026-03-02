@@ -15,19 +15,6 @@ using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
 using ui::new_ui::StringSetting;
 
-/** Manual color space when auto_colorspace is off. Index 0 = No changes; 1..MANUAL_COLOR_SPACE_MAX_INDEX = DXGI types
- * (see GetManualColorSpaceDisplayName). */
-constexpr int MANUAL_COLOR_SPACE_MAX_INDEX = 22;
-
-// Legacy enum: 0..4 map to first five entries (No changes, sRGB, scRGB, HDR10 ST2084, HDR10 HLG).
-enum class ManualColorSpace : int {
-    NoChanges = 0,
-    sRGB = 1,
-    scRGB = 2,
-    HDR10_ST2084 = 3,
-    HDR10_HLG = 4,
-};
-
 // Advanced tab settings manager
 class AdvancedTabSettings {
    public:
@@ -49,10 +36,6 @@ class AdvancedTabSettings {
     BoolSetting hide_hdr_capabilities;
     BoolSetting enable_flip_chain;
     BoolSetting auto_colorspace;
-    IntSetting manual_colorspace;  // persisted as int 0..MANUAL_COLOR_SPACE_MAX_INDEX; use Get/SetManualColorSpaceIndex
-
-    int GetManualColorSpaceIndex() const;
-    void SetManualColorSpaceIndex(int index);
 
     // D3D9 to D3D9Ex Upgrade
     // BoolSettingRef enable_d3d9e_upgrade;

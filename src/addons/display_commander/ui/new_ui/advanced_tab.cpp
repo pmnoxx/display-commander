@@ -764,7 +764,9 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
         imgui.Indent();
         CheckboxSetting(settings::g_advancedTabSettings.monitor_per_second_enabled, "Enable per-second tasks", imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Prevent display sleep & screensaver, FPS aggregate, volume, refresh rate, VRR status, and other periodic tasks.");
+            imgui.SetTooltip(
+                "Prevent display sleep & screensaver, FPS aggregate, volume, refresh rate, VRR status, and other "
+                "periodic tasks.");
         }
         SliderIntSetting(settings::g_advancedTabSettings.monitor_per_second_interval_sec, "Interval (seconds)", "%d s",
                          imgui);
@@ -773,7 +775,8 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
         }
         imgui.Spacing();
         imgui.TextColored(::ui::colors::TEXT_LABEL, "Triggers:");
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Prevent display sleep & screensaver", imgui);
+        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Prevent display sleep & screensaver",
+                        imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_fps_aggregate, "FPS aggregate (overlay stats)", imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_volume, "Volume (game & system)", imgui);
         CheckboxSetting(settings::g_advancedTabSettings.monitor_refresh_rate, "Refresh rate stats", imgui);
@@ -872,42 +875,6 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
                 "- SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
                 "Only works with DirectX 11/12 games.\n"
                 "Applied automatically in presentBefore.");
-        }
-
-        // Color space selector (used when Auto color space is off); all DXGI values with bracket labels (sRGB, scRGB, HDR10, etc.)
-        const int num_colorspaces = GetManualColorSpaceCount();
-        int current_idx = settings::g_advancedTabSettings.GetManualColorSpaceIndex();
-        if (current_idx < 0 || current_idx >= num_colorspaces) {
-            current_idx = 0;
-        }
-        std::string preview_str(GetManualColorSpaceDisplayName(current_idx));
-        const int cached_preview = GetManualColorSpaceSupportCached(current_idx);
-        preview_str += (cached_preview == 1 ? "  " ICON_FK_OK " Supported" : cached_preview == 0 ? "  " ICON_FK_CANCEL " Not supported" : "");
-        // Request a taller combo popup so more options are visible (~14 rows); reset before tooltip so tooltip stays auto-sized
-        const int visible_rows = (num_colorspaces < 14) ? num_colorspaces : 14;
-        imgui.SetNextWindowSize(ImVec2(0.f, imgui.GetTextLineHeightWithSpacing() * static_cast<float>(visible_rows)));
-        if (imgui.BeginCombo("Color space", preview_str.c_str(), 0)) {
-            for (int i = 0; i < num_colorspaces; ++i) {
-                const bool selected = (i == current_idx);
-                std::string label(GetManualColorSpaceDisplayName(i));
-                const int cached = GetManualColorSpaceSupportCached(i);
-                label += (cached == 1 ? "  " ICON_FK_OK " Supported" : cached == 0 ? "  " ICON_FK_CANCEL " Not supported" : "  —");
-                if (imgui.Selectable(label.c_str(), selected)) {
-                    settings::g_advancedTabSettings.SetManualColorSpaceIndex(i);
-                }
-                if (selected) {
-                    imgui.SetItemDefaultFocus();
-                }
-            }
-            imgui.EndCombo();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetNextWindowSize(ImVec2(0.f, 0.f)); // tooltip auto-sized (combo popup already used the larger size)
-            imgui.SetTooltip(
-                "Manual color space applied to the swap chain when \"Auto color space\" is off.\n"
-                "Scroll the dropdown to see all %d options.\n"
-                "Supported / Not supported is cached from the current swap chain (refresh in-game).",
-                num_colorspaces);
         }
     }
 
@@ -1288,8 +1255,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 NvLLVkSleepModeParamsView game_params = {};
                 GetNvLowLatencyVkGameSleepModeParams(&game_params);
                 if (game_params.has_value) {
-                    imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f},
-                                      "Game tried to set (NvLL_VK_SetSleepMode):");
+                    imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "Game tried to set (NvLL_VK_SetSleepMode):");
                     imgui.Text("  Low Latency: %s  Boost: %s  Min interval: %u us",
                                game_params.low_latency ? "Yes" : "No", game_params.boost ? "Yes" : "No",
                                game_params.minimum_interval_us);
@@ -1359,8 +1325,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Unindent();
 
             imgui.Spacing();
-            imgui.TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.0f},
-                              "These counters help debug Reflex FPS limiter issues.");
+            imgui.TextColored(ImVec4{0.6f, 0.6f, 0.6f, 1.0f}, "These counters help debug Reflex FPS limiter issues.");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
                     "Marker counts show which specific markers are being set:\n"

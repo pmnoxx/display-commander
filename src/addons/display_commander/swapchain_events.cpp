@@ -766,7 +766,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             }
         }
 
-        // Swapchain HDR Upgrade (scRGB or HDR10 on create) - Main tab "Swapchain HDR Upgrade". Disabled when RenoDX addon is loaded.
+        // Swapchain HDR Upgrade (scRGB or HDR10 on create) - Main tab "Swapchain HDR Upgrade". Disabled when RenoDX
+        // addon is loaded.
         if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
             && settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
             const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
@@ -1184,7 +1185,8 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         ApplyHdr1000MetadataToSwapchain(swapchain);
     }
 
-    // Swapchain HDR Upgrade (init_swapchain: ResizeBuffers + SetColorSpace1 + set_color_space when enabled). Disabled when RenoDX addon is loaded.
+    // Swapchain HDR Upgrade (init_swapchain: ResizeBuffers + SetColorSpace1 + set_color_space when enabled). Disabled
+    // when RenoDX addon is loaded.
     if (!g_is_renodx_loaded.load(std::memory_order_relaxed)
         && settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue()) {
         const bool use_hdr10 = (settings::g_mainTabSettings.swapchain_hdr_upgrade_mode.GetValue() == 1);
@@ -1710,143 +1712,38 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
     }
 }
 
-// Manual color space table: index 0 = No changes; 1..N = DXGI types with display names (bracket =
-// sRGB/scRGB/HDR10/etc.)
-struct ManualColorSpaceEntry {
-    DXGI_COLOR_SPACE_TYPE dxgi;
-    reshade::api::color_space reshade_cs;
-    const char* label;
-};
-static const ManualColorSpaceEntry s_manual_color_space_table[] = {
-    {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, reshade::api::color_space::unknown, "No changes"},  // index 0: no-op
-    {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, reshade::api::color_space::srgb_nonlinear,
-     "RGB Full G22 None P709 (sRGB)"},
-    {DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709, reshade::api::color_space::extended_srgb_linear,
-     "RGB Full G10 None P709 (scRGB)"},
-    {DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, reshade::api::color_space::hdr10_st2084,
-     "RGB Full G2084 None P2020 (HDR10)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020, reshade::api::color_space::hdr10_hlg,
-     "YCbCr Studio G2084 TopLeft P2020 (HDR10 HLG)"},
-    {DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709, reshade::api::color_space::unknown, "RGB Studio G22 None P709 (SDR)"},
-    {DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020, reshade::api::color_space::unknown, "RGB Studio G22 None P2020"},
-    {DXGI_COLOR_SPACE_RESERVED, reshade::api::color_space::unknown, "Reserved"},
-    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601, reshade::api::color_space::unknown,
-     "YCbCr Full G22 None P709 X601 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601, reshade::api::color_space::unknown,
-     "YCbCr Studio G22 Left P601 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601, reshade::api::color_space::unknown,
-     "YCbCr Full G22 Left P601 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709, reshade::api::color_space::unknown,
-     "YCbCr Studio G22 Left P709 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709, reshade::api::color_space::unknown,
-     "YCbCr Full G22 Left P709 (SDR YCbCr)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020, reshade::api::color_space::unknown, "YCbCr Studio G22 Left P2020"},
-    {DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020, reshade::api::color_space::unknown, "YCbCr Full G22 Left P2020"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020, reshade::api::color_space::unknown,
-     "YCbCr Studio G2084 Left P2020 (HDR10-related)"},
-    {DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020, reshade::api::color_space::unknown,
-     "RGB Studio G2084 None P2020 (HDR10-related)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020, reshade::api::color_space::unknown,
-     "YCbCr Studio G22 TopLeft P2020"},
-    {DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020, reshade::api::color_space::unknown,
-     "RGB Full G22 None P2020 (HLG-related)"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P709, reshade::api::color_space::unknown, "YCbCr Studio G24 Left P709"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P2020, reshade::api::color_space::unknown, "YCbCr Studio G24 Left P2020"},
-    {DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020, reshade::api::color_space::unknown,
-     "YCbCr Studio G24 TopLeft P2020"},
-    {DXGI_COLOR_SPACE_CUSTOM, reshade::api::color_space::unknown, "Custom"},
-};
-static const int s_manual_color_space_count =
-    static_cast<int>(sizeof(s_manual_color_space_table) / sizeof(s_manual_color_space_table[0]));
-
-int GetManualColorSpaceCount() { return s_manual_color_space_count; }
-
-const char* GetManualColorSpaceDisplayName(int index) {
-    if (index < 0 || index >= s_manual_color_space_count) {
-        return "No changes";
-    }
-    return s_manual_color_space_table[index].label;
-}
-
-bool GetManualColorSpaceFromIndex(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi, reshade::api::color_space* out_reshade) {
-    if (index <= 0 || index >= s_manual_color_space_count || out_dxgi == nullptr || out_reshade == nullptr) {
-        return false;
-    }
-    const ManualColorSpaceEntry& e = s_manual_color_space_table[index];
-    *out_dxgi = e.dxgi;
-    *out_reshade = e.reshade_cs;
-    LogInfo("GetManualColorSpaceFromIndex: %d -> %s (DXGI 0x%x)", index, e.label, e.dxgi);
-    return true;
-}
-
-// Cached support per manual color space index. -1 unknown, 0 not supported, 1 supported. Refreshed when we have
-// swapchain3.
-static constexpr int k_max_manual_color_space_cache = 23;
-static std::atomic<int> g_manual_color_space_support_cache[k_max_manual_color_space_cache];
-
-static void RefreshColorSpaceSupportCache(IDXGISwapChain3* swapchain3) {
-    for (int i = 0; i < s_manual_color_space_count && i < k_max_manual_color_space_cache; ++i) {
-        UINT support = 0;
-        if (SUCCEEDED(swapchain3->CheckColorSpaceSupport(s_manual_color_space_table[i].dxgi, &support))) {
-            g_manual_color_space_support_cache[i].store(support != 0 ? 1 : 0, std::memory_order_relaxed);
-        } else {
-            g_manual_color_space_support_cache[i].store(-1, std::memory_order_relaxed);
-        }
-    }
-}
-
-int GetManualColorSpaceSupportCached(int index) {
-    if (index < 0 || index >= s_manual_color_space_count || index >= k_max_manual_color_space_cache) {
-        return -1;
-    }
-    return g_manual_color_space_support_cache[index].load(std::memory_order_relaxed);
-}
-
-// Helper function to set color space: auto (format-based) or manual (selector)
+// Helper: set color space from format when Auto color space is enabled (format-based only).
 void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
-    const bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+    if (g_last_reshade_device_api.load() != reshade::api::device_api::d3d12
+        && g_last_reshade_device_api.load() != reshade::api::device_api::d3d11) {
+        return;
+    }
+    if (!settings::g_advancedTabSettings.auto_colorspace.GetValue()) {
+        return;
+    }
+    auto desc_ptr = g_last_swapchain_desc.load();
+    if (!desc_ptr) {
+        return;
+    }
+    const auto& desc = *desc_ptr;
+    auto format = desc.back_buffer.texture.format;
 
     DXGI_COLOR_SPACE_TYPE color_space;
     reshade::api::color_space reshade_color_space;
-
-    bool applied = false;
-    const int manual_index = settings::g_advancedTabSettings.GetManualColorSpaceIndex();
-    if (manual_index > 0 && GetManualColorSpaceFromIndex(manual_index, &color_space, &reshade_color_space)) {
-        LogInfo("AutoSetColorSpace: manual=%d", manual_index);
-        applied = true;
-    } else if (manual_index == 0 && auto_colorspace) {
-        auto desc_ptr = g_last_swapchain_desc.load();
-        if (!desc_ptr) {
-            return;
-        }
-        const auto& desc = *desc_ptr;
-        auto format = desc.back_buffer.texture.format;
-
-        if (format == reshade::api::format::r10g10b10a2_unorm) {
-            color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-            reshade_color_space = reshade::api::color_space::hdr10_st2084;
-        } else if (format == reshade::api::format::r16g16b16a16_float) {
-            color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
-            reshade_color_space = reshade::api::color_space::extended_srgb_linear;
-        } else if (format == reshade::api::format::r8g8b8a8_unorm) {
-            color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-            reshade_color_space = reshade::api::color_space::srgb_nonlinear;
-        } else {
-            LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
-            return;
-        }
-        applied = true;
+    if (format == reshade::api::format::r10g10b10a2_unorm) {
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+        reshade_color_space = reshade::api::color_space::hdr10_st2084;
+    } else if (format == reshade::api::format::r16g16b16a16_float) {
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+        reshade_color_space = reshade::api::color_space::extended_srgb_linear;
+    } else if (format == reshade::api::format::r8g8b8a8_unorm) {
+        color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+        reshade_color_space = reshade::api::color_space::srgb_nonlinear;
+    } else {
+        LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
+        return;
     }
-    if (applied) {
-        auto* unknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-        if (unknown != nullptr) {
-            Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
-            if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&swapchain3)))) {
-                RefreshColorSpaceSupportCache(swapchain3.Get());
-            }
-        }
-        SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);
-    }
+    SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);
 }
 // Update composition state after presents (required for valid stats)
 void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::api::swapchain* swapchain,

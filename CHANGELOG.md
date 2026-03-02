@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.204 (2026-03-01)
+
+- **Manual color space removed** - Removed the manual color space selector (combo) and related logic. Color space is now set only when "Auto color space" is enabled (format-based: R10G10B10A2 → HDR10, R16G16B16A16 → scRGB, R8G8B8A8 → sRGB). Removed: `GetManualColorSpaceIndex`/`SetManualColorSpaceIndex`, manual color space setting, manual table and cache, and the Advanced tab "Color space" combo. DXGI swap chain wrapper `SetColorSpace1` no longer overrides the color space; it forwards the game's request to the original swap chain.
+
+---
+
 ## v0.12.203 (2026-03-01)
 
 - **Background detection runs at least once** - `check_is_background()` no longer returns early when the swapchain window is null. Foreground/background detection and the update of `g_app_in_background` and `g_last_foreground_background_switch_ns` now always run at least once, so downstream logic (e.g. NVAPI VRR cache in `Every1sVrrStatus`) gets an initial timestamp and can run. Clip-cursor and apply-window-change actions remain gated on a non-null swapchain window.

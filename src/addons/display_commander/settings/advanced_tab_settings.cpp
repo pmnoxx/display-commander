@@ -35,9 +35,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace", false, "DisplayCommander"),
-      manual_colorspace(
-          "ManualColorspace", 0, 0, MANUAL_COLOR_SPACE_MAX_INDEX,
-          "DisplayCommander"),  // 0=No changes; 1..N=DXGI color space (see GetManualColorSpaceDisplayName)
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
@@ -113,28 +110,12 @@ void AdvancedTabSettings::LoadAll() {
     // All Ref classes automatically sync with global variables
 }
 
-int AdvancedTabSettings::GetManualColorSpaceIndex() const {
-    int v = manual_colorspace.GetValue();
-    if (v < 0 || v > MANUAL_COLOR_SPACE_MAX_INDEX) {
-        return 0;
-    }
-    return v;
-}
-
-void AdvancedTabSettings::SetManualColorSpaceIndex(int index) {
-    if (index < 0 || index > MANUAL_COLOR_SPACE_MAX_INDEX) {
-        index = 0;
-    }
-    manual_colorspace.SetValue(index);
-}
-
 void AdvancedTabSettings::SaveAll() {
     // Save all settings that don't auto-save
     continue_rendering.Save();
     hide_hdr_capabilities.Save();
     enable_flip_chain.Save();
     auto_colorspace.Save();
-    manual_colorspace.Save();
     nvapi_auto_enable_enabled.Save();
     enable_hotkeys.Save();
     safemode.Save();
@@ -170,7 +151,7 @@ void AdvancedTabSettings::SaveAll() {
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
     return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities,
-            &enable_flip_chain, &auto_colorspace, &manual_colorspace,
+            &enable_flip_chain, &auto_colorspace,
             //&enable_d3d9e_upgrade,
             &nvapi_auto_enable_enabled,
 

@@ -415,11 +415,6 @@ STDMETHODIMP DXGISwapChain4Wrapper::CheckColorSpaceSupport(DXGI_COLOR_SPACE_TYPE
 }
 
 STDMETHODIMP DXGISwapChain4Wrapper::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
-    DXGI_COLOR_SPACE_TYPE mapped = ColorSpace;
-    reshade::api::color_space unused_reshade{};
-    if (GetManualColorSpaceFromIndex(settings::g_advancedTabSettings.GetManualColorSpaceIndex(), &mapped, &unused_reshade)) {
-        ColorSpace = mapped;
-    }
     return m_originalSwapChain->SetColorSpace1(ColorSpace);
 }
 

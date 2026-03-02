@@ -51,20 +51,11 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 void OnPresentUpdateAfter2(bool from_wrapper = false);
 void OnPresentFlags2(bool from_present_detour = true, bool from_wrapper = false);
 
-// Auto color space helper
+// Auto color space helper (format-based when enabled)
 void AutoSetColorSpace(reshade::api::swapchain* swapchain);
-
-// Manual color space list (all DXGI types with bracket labels: sRGB, scRGB, HDR10, etc.)
-int GetManualColorSpaceCount();
-const char* GetManualColorSpaceDisplayName(int index);
-bool GetManualColorSpaceFromIndex(int index, DXGI_COLOR_SPACE_TYPE* out_dxgi,
-                                  reshade::api::color_space* out_reshade);
 
 // Last applied color space support (for UI). out_dxgi = last DXGI we tried; out_supported = -1 unknown, 0 no, 1 yes.
 void GetLastColorSpaceSupportForUI(int* out_dxgi, int* out_supported);
-
-// Cached support per manual color space index (refreshed when we have a swap chain). -1 unknown, 0 not supported, 1 supported.
-int GetManualColorSpaceSupportCached(int index);
 
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,

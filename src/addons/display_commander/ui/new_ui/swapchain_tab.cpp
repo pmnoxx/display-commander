@@ -1,5 +1,4 @@
 #include "swapchain_tab.hpp"
-#include "../imgui_wrapper_base.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
@@ -12,6 +11,7 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "../imgui_wrapper_base.hpp"
 
 #include <dxgi1_6.h>
 #include <wrl/client.h>
@@ -233,7 +233,7 @@ void DrawSwapchainWrapperStats(display_commander::ui::IImGuiWrapper& imgui) {
 
                     // Display statistics
                     imgui.Text("  Frame Time: Min: %.2f ms | Max: %.2f ms | Avg: %.2f ms | FPS: %.1f", min_ft, max_ft,
-                                avg_ft, avg_fps);
+                               avg_ft, avg_fps);
 
                     // Create overlay text
                     std::string overlay_text = "Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
@@ -246,8 +246,8 @@ void DrawSwapchainWrapperStats(display_commander::ui::IImGuiWrapper& imgui) {
                     // Draw the frame time graph
                     std::string graph_label = std::string("##FrameTime") + type_name;
                     imgui.PlotLines(graph_label.c_str(), frame_times.data(), static_cast<int>(frame_times.size()),
-                                     0,  // values_offset
-                                     overlay_text.c_str(), scale_min, scale_max, graph_size);
+                                    0,  // values_offset
+                                    overlay_text.c_str(), scale_min, scale_max, graph_size);
                 } else {
                     imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  No frame time data available yet...");
                 }
@@ -267,7 +267,7 @@ void DrawSwapchainWrapperStats(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
     // Swapchain Event Counters Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 1: Nested subsection with indentation and distinct colors
-    imgui.Indent();                       // Indent nested header
+    imgui.Indent();                              // Indent nested header
     ui::colors::PushNestedHeaderColors(&imgui);  // Apply distinct colors for nested header
     if (imgui.CollapsingHeader("Swapchain Event Counters", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();  // Indent content inside subsection
@@ -453,7 +453,8 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
         // NVAPI Event Counters Section
         imgui.Spacing();
         ui::colors::PushNestedHeaderColors(&imgui);  // Apply distinct colors for nested NVAPI header
-        if (imgui.CollapsingHeader("NVAPI Event Counters", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+        if (imgui.CollapsingHeader("NVAPI Event Counters",
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
             // NVAPI event mapping
             static const std::vector<std::pair<NvapiEventIndex, const char*>> nvapi_event_mapping = {
                 {NVAPI_EVENT_GET_HDR_CAPABILITIES, "NVAPI_EVENT_GET_HDR_CAPABILITIES"},
@@ -484,7 +485,8 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
                  .color = ImVec4(0.6f, 1.0f, 0.8f, 1.0f)}};
 
             for (const auto& group : nvapi_event_groups) {
-                if (imgui.CollapsingHeader(group.name, display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+                if (imgui.CollapsingHeader(group.name,
+                                           display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
                     imgui.Indent();
 
                     for (int i = static_cast<int>(group.start_idx); i <= static_cast<int>(group.end_idx); ++i) {
@@ -535,12 +537,12 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.TextColored(ui::colors::TEXT_SUCCESS, "Status: Swapchain events are working correctly");
         } else {
             imgui.TextColored(ui::colors::TEXT_ERROR,
-                               "Status: No swapchain events detected - check if addon is properly loaded");
+                              "Status: No swapchain events detected - check if addon is properly loaded");
         }
         imgui.Unindent();  // Unindent content
     }
     ui::colors::PopNestedHeaderColors(&imgui);  // Restore default header colors
-    imgui.Unindent();                    // Unindent nested header section
+    imgui.Unindent();                           // Unindent nested header section
 
     // NGX Counters Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
     // Depth 0: Main section header
@@ -550,9 +552,10 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
 
         // Depth 1: Nested subsections with indentation and distinct colors
         // Parameter functions
-        imgui.Indent();                       // Indent nested headers
+        imgui.Indent();                              // Indent nested headers
         ui::colors::PushNestedHeaderColors(&imgui);  // Apply distinct colors for nested headers
-        if (imgui.CollapsingHeader("Parameter Functions", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+        if (imgui.CollapsingHeader("Parameter Functions",
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
             imgui.Indent();  // Indent content inside subsection
             imgui.TextColored(ui::colors::TEXT_VALUE, "SetF: %u", g_ngx_counters.parameter_setf_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "SetD: %u", g_ngx_counters.parameter_setd_count.load());
@@ -563,51 +566,53 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.TextColored(ui::colors::TEXT_VALUE, "GetUI: %u", g_ngx_counters.parameter_getui_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "GetULL: %u", g_ngx_counters.parameter_getull_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "GetVoidPointer: %u",
-                               g_ngx_counters.parameter_getvoidpointer_count.load());
+                              g_ngx_counters.parameter_getvoidpointer_count.load());
             imgui.Unindent();  // Unindent content
         }
         ui::colors::PopNestedHeaderColors(&imgui);  // Restore default header colors
 
         // D3D12 Feature Management
         ui::colors::PushNestedHeaderColors(&imgui);
-        if (imgui.CollapsingHeader("D3D12 Feature Management", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+        if (imgui.CollapsingHeader("D3D12 Feature Management",
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
             imgui.Indent();
             imgui.TextColored(ui::colors::TEXT_VALUE, "Init: %u", g_ngx_counters.d3d12_init_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "Init Ext: %u", g_ngx_counters.d3d12_init_ext_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "Init ProjectID: %u",
-                               g_ngx_counters.d3d12_init_projectid_count.load());
+                              g_ngx_counters.d3d12_init_projectid_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "CreateFeature: %u",
-                               g_ngx_counters.d3d12_createfeature_count.load());
+                              g_ngx_counters.d3d12_createfeature_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "ReleaseFeature: %u",
-                               g_ngx_counters.d3d12_releasefeature_count.load());
+                              g_ngx_counters.d3d12_releasefeature_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "EvaluateFeature: %u",
-                               g_ngx_counters.d3d12_evaluatefeature_count.load());
+                              g_ngx_counters.d3d12_evaluatefeature_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "GetParameters: %u",
-                               g_ngx_counters.d3d12_getparameters_count.load());
+                              g_ngx_counters.d3d12_getparameters_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "AllocateParameters: %u",
-                               g_ngx_counters.d3d12_allocateparameters_count.load());
+                              g_ngx_counters.d3d12_allocateparameters_count.load());
             imgui.Unindent();
         }
         ui::colors::PopNestedHeaderColors(&imgui);
 
         // D3D11 Feature Management
         ui::colors::PushNestedHeaderColors(&imgui);
-        if (imgui.CollapsingHeader("D3D11 Feature Management", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+        if (imgui.CollapsingHeader("D3D11 Feature Management",
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
             imgui.Indent();
             imgui.TextColored(ui::colors::TEXT_VALUE, "Init: %u", g_ngx_counters.d3d11_init_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "Init Ext: %u", g_ngx_counters.d3d11_init_ext_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "Init ProjectID: %u",
-                               g_ngx_counters.d3d11_init_projectid_count.load());
+                              g_ngx_counters.d3d11_init_projectid_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "CreateFeature: %u",
-                               g_ngx_counters.d3d11_createfeature_count.load());
+                              g_ngx_counters.d3d11_createfeature_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "ReleaseFeature: %u",
-                               g_ngx_counters.d3d11_releasefeature_count.load());
+                              g_ngx_counters.d3d11_releasefeature_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "EvaluateFeature: %u",
-                               g_ngx_counters.d3d11_evaluatefeature_count.load());
+                              g_ngx_counters.d3d11_evaluatefeature_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "GetParameters: %u",
-                               g_ngx_counters.d3d11_getparameters_count.load());
+                              g_ngx_counters.d3d11_getparameters_count.load());
             imgui.TextColored(ui::colors::TEXT_VALUE, "AllocateParameters: %u",
-                               g_ngx_counters.d3d11_allocateparameters_count.load());
+                              g_ngx_counters.d3d11_allocateparameters_count.load());
             imgui.Unindent();
         }
         ui::colors::PopNestedHeaderColors(&imgui);
@@ -804,7 +809,7 @@ void DrawNGXParameters(display_commander::ui::IImGuiWrapper& imgui) {
         // Display unified parameter list
         if (!all_params.empty()) {
             imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f),
-                               "All Parameters (%zu) - Sorted Alphabetically:", all_params.size());
+                              "All Parameters (%zu) - Sorted Alphabetically:", all_params.size());
             imgui.Spacing();
 
             // Add search filter
@@ -902,7 +907,7 @@ void DrawNGXParameters(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.SetNextItemWidth(120);
                 if (has_override) {
                     imgui.PushStyleColor(ImGuiCol_FrameBg,
-                                          ImVec4(0.0f, 0.3f, 0.0f, 1.0f));  // Green tint for active override
+                                         ImVec4(0.0f, 0.3f, 0.0f, 1.0f));  // Green tint for active override
                 }
 
                 // Create input field based on type
@@ -913,7 +918,7 @@ void DrawNGXParameters(display_commander::ui::IImGuiWrapper& imgui) {
                                                                    : static_cast<float>(override_value.get_as_double()))
                                           : 0.0f;
                     if (imgui.InputFloat("##OverrideInput", &float_val, 0.0f, 0.0f, "%.6f",
-                                          ImGuiInputTextFlags_EnterReturnsTrue)) {
+                                         ImGuiInputTextFlags_EnterReturnsTrue)) {
                         if (param.type == "float") {
                             g_ngx_parameter_overrides.update_float(param.name, float_val);
                         } else {
@@ -945,7 +950,7 @@ void DrawNGXParameters(display_commander::ui::IImGuiWrapper& imgui) {
                     char ull_str[32];
                     snprintf(ull_str, sizeof(ull_str), "%llu", ull_val);
                     if (imgui.InputText("##OverrideInput", ull_str, sizeof(ull_str),
-                                         ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
+                                        ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsDecimal)) {
                         uint64_t new_val = strtoull(ull_str, nullptr, 10);
                         g_ngx_parameter_overrides.update_ull(param.name, new_val);
                         LogInfo("NGX Parameter Override Set: %s = %llu", param.name.c_str(), new_val);
@@ -995,7 +1000,7 @@ void DrawNGXParameters(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.Columns(1);
                 imgui.Spacing();
                 imgui.TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Showing %zu of %zu parameters", displayed_count,
-                                   all_params.size());
+                                  all_params.size());
                 imgui.Spacing();
             }
 
@@ -1047,8 +1052,7 @@ void DrawNGXParameters(display_commander::ui::IImGuiWrapper& imgui) {
 // Draw DLSS Settings section with nested subheaders (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
 void DrawDLSSSettings(display_commander::ui::IImGuiWrapper& imgui) {
     // Depth 0: Main section header
-    if (imgui.CollapsingHeader("DLSS Settings",
-                               display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (imgui.CollapsingHeader("DLSS Settings", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         imgui.TextColored(ui::colors::TEXT_DEFAULT, "DLSS/DLSS-G/Ray Reconstruction Configuration");
         imgui.Separator();
 
@@ -1058,7 +1062,7 @@ void DrawDLSSSettings(display_commander::ui::IImGuiWrapper& imgui) {
         // DLSS/DLSS-G/RR Summary subsection
         ui::colors::PushNestedHeaderColors(&imgui);  // Apply distinct colors for nested header
         if (imgui.CollapsingHeader("DLSS/DLSS-G/RR Summary",
-                                    display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+                                   display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
             imgui.Indent();  // Indent content inside subsection
             DrawDLSSGSummaryContent(imgui);
             imgui.Unindent();  // Unindent content
@@ -1069,8 +1073,7 @@ void DrawDLSSSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
         // DLSS Preset Override subsection
         ui::colors::PushNestedHeaderColors(&imgui);  // Apply distinct colors for nested header
-        if (imgui.CollapsingHeader("DLSS Preset Override",
-                                    display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+        if (imgui.CollapsingHeader("DLSS Preset Override", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             imgui.Indent();  // Indent content inside subsection
             DrawDLSSPresetOverrideContent(imgui);
             imgui.Unindent();  // Unindent content
@@ -1108,13 +1111,13 @@ void DrawDLSSGSummaryContent(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("DLSS Active:");
     imgui.NextColumn();
     imgui.TextColored(summary.dlss_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
-                       summary.dlss_active ? "Yes" : "No");
+                      summary.dlss_active ? "Yes" : "No");
     imgui.NextColumn();
 
     imgui.Text("DLSS-G Active:");
     imgui.NextColumn();
     imgui.TextColored(summary.dlss_g_active ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s",
-                       summary.dlss_g_active ? "Yes" : "No");
+                      summary.dlss_g_active ? "Yes" : "No");
     imgui.NextColumn();
 
     imgui.Text("Ray Reconstruction:");
@@ -1220,15 +1223,14 @@ void DrawDLSSGSummaryContent(display_commander::ui::IImGuiWrapper& imgui) {
     // Technical settings
     imgui.Text("Depth Inverted:");
     imgui.NextColumn();
-    imgui.TextColored(
-        summary.depth_inverted == "Yes" ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "%s",
-        summary.depth_inverted.c_str());
+    imgui.TextColored(summary.depth_inverted == "Yes" ? ImVec4(1.0f, 0.5f, 0.0f, 1.0f) : ImVec4(0.5f, 1.0f, 0.5f, 1.0f),
+                      "%s", summary.depth_inverted.c_str());
     imgui.NextColumn();
 
     imgui.Text("HDR Enabled:");
     imgui.NextColumn();
     imgui.TextColored(summary.hdr_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                       "%s", summary.hdr_enabled.c_str());
+                      "%s", summary.hdr_enabled.c_str());
     imgui.NextColumn();
 
     imgui.Text("Motion Vectors:");
@@ -1251,7 +1253,7 @@ void DrawDLSSGSummaryContent(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("Optical Flow Accelerator:");
     imgui.NextColumn();
     imgui.TextColored(summary.ofa_enabled == "Yes" ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                       "%s", summary.ofa_enabled.c_str());
+                      "%s", summary.ofa_enabled.c_str());
     imgui.NextColumn();
 
     imgui.Columns(1);  // Reset columns
@@ -1259,7 +1261,7 @@ void DrawDLSSGSummaryContent(display_commander::ui::IImGuiWrapper& imgui) {
     // Add some helpful information
     imgui.Spacing();
     imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f),
-                       "Note: Values update in real-time as the game calls NGX functions");
+                      "Note: Values update in real-time as the game calls NGX functions");
 
     if (summary.dlss_g_active) {
         imgui.TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "DLSS Frame Generation is currently active!");
@@ -1275,33 +1277,17 @@ void DrawDLSSGSummaryContent(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 void DrawDxgiCompositionInfo(display_commander::ui::IImGuiWrapper& imgui) {
-    if (imgui.CollapsingHeader("DXGI Composition Information", display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
+    if (imgui.CollapsingHeader("DXGI Composition Information",
+                               display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
         // Get backbuffer format
         std::string format_str = "Unknown";
 
-        // Get colorspace string directly from swapchain
-        /*  std::string colorspace_str = "Unknown";
-          if (auto* swapchain_ptr = g_last_swapchain_ptr_unsafe.load()) {
-              auto* swapchain = static_cast<reshade::api::swapchain*>(swapchain_ptr);
-              auto colorspace = swapchain->get_color_space();
-              switch (colorspace) {
-                  case reshade::api::color_space::unknown:              colorspace_str = "Unknown"; break;
-                  case reshade::api::color_space::srgb_nonlinear:       colorspace_str = "sRGB"; break;
-                  case reshade::api::color_space::extended_srgb_linear: colorspace_str = "Extended sRGB Linear"; break;
-                  case reshade::api::color_space::hdr10_st2084:         colorspace_str = "HDR10 ST2084"; break;
-                  case reshade::api::color_space::hdr10_hlg:            colorspace_str = "HDR10 HLG"; break;
-                  default:                                              colorspace_str = "ColorSpace_" +
-          std::to_string(static_cast<int>(colorspace)); break;
-              }
-          }*/
-
         imgui.Text("Backbuffer: %dx%d", g_last_backbuffer_width.load(), g_last_backbuffer_height.load());
         imgui.Text("Format: %s", format_str.c_str());
-        // imgui.Text("Colorspace: %s", colorspace_str.c_str());
 
         // Display HDR10 override status
         imgui.Text("HDR10 Colorspace Override: %s (Last: %s)", g_hdr10_override_status.load()->c_str(),
-                    g_hdr10_override_timestamp.load()->c_str());
+                   g_hdr10_override_timestamp.load()->c_str());
     }
 }
 
@@ -1390,7 +1376,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
     // Content of the DLSS Preset Override section
     // Warning about experimental nature
     imgui.TextColored(ui::colors::TEXT_WARNING,
-                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
+                      ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
             "This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into "
@@ -1400,7 +1386,8 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
     imgui.Spacing();
 
     // Enable/disable checkbox
-    if (CheckboxSetting(settings::g_swapchainTabSettings.dlss_preset_override_enabled, "Enable DLSS Preset Override", imgui)) {
+    if (CheckboxSetting(settings::g_swapchainTabSettings.dlss_preset_override_enabled, "Enable DLSS Preset Override",
+                        imgui)) {
         LogInfo("DLSS preset override %s",
                 settings::g_swapchainTabSettings.dlss_preset_override_enabled.GetValue() ? "enabled" : "disabled");
         // Reset NGX preset initialization when override is enabled/disabled
@@ -1440,7 +1427,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
             }
 
             if (imgui.Combo("DLSS Super Resolution Preset", &current_selection, preset_cstrs.data(),
-                             static_cast<int>(preset_cstrs.size()))) {
+                            static_cast<int>(preset_cstrs.size()))) {
                 settings::g_swapchainTabSettings.dlss_sr_preset_override.SetValue(preset_options[current_selection]);
                 LogInfo("DLSS SR preset changed to %s (index %d)", preset_options[current_selection].c_str(),
                         current_selection);
@@ -1475,7 +1462,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
             }
 
             if (imgui.Combo("DLSS Ray Reconstruction Preset", &current_rr_selection, rr_preset_cstrs.data(),
-                             static_cast<int>(rr_preset_cstrs.size()))) {
+                            static_cast<int>(rr_preset_cstrs.size()))) {
                 settings::g_swapchainTabSettings.dlss_rr_preset_override.SetValue(
                     rr_preset_options[current_rr_selection]);
                 LogInfo("DLSS RR preset changed to %s (index %d)", rr_preset_options[current_rr_selection].c_str(),
@@ -1494,11 +1481,13 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
 
         if (g_dlss_from_nvidia_app_bin.load()) {
             imgui.Spacing();
-            imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
+            imgui.TextColored(
+                ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                 "NVIDIA App DLSS override detected (.bin). Version and presets are controlled by the NVIDIA app.");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited effect.");
+                    "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited "
+                    "effect.");
             }
         }
 
@@ -1508,10 +1497,10 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Current Settings:");
         if (!summary.ray_reconstruction_active) {
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS SR Preset: %s",
-                               settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue().c_str());
+                              settings::g_swapchainTabSettings.dlss_sr_preset_override.GetValue().c_str());
         } else {
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  DLSS RR Preset: %s",
-                               settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
+                              settings::g_swapchainTabSettings.dlss_rr_preset_override.GetValue().c_str());
         }
         imgui.Spacing();
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Note: Preset values are mapped as follows:");
@@ -1519,11 +1508,11 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  DLSS Default = set value to 0");
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Preset A = 1, Preset B = 2, etc.");
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  SR presets supported by your DLSS version: %s",
-                           summary.supported_dlss_presets.c_str());
+                          summary.supported_dlss_presets.c_str());
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  RR presets supported by your DLSS version: %s",
-                           summary.supported_dlss_rr_presets.c_str());
+                          summary.supported_dlss_rr_presets.c_str());
         imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-                           "  These values override the corresponding NGX parameter values.");
+                          "  These values override the corresponding NGX parameter values.");
     }
 
     // DLSS Model Profile display
@@ -1566,11 +1555,11 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
         if (!summary.ray_reconstruction_active) {
             // Display current preset values
             imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Super Resolution (%s): %d", current_quality.c_str(),
-                               sr_preset_value);
+                              sr_preset_value);
         } else {
             // Display current preset values
             imgui.TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "  Ray Reconstruction (%s): %d", current_quality.c_str(),
-                               rr_preset_value);
+                              rr_preset_value);
         }
 
         // Show all values in tooltip

@@ -4,7 +4,7 @@
 
 ## v0.12.211 (2026-03-02)
 
-- **Game default config override by exe** - Per-game default overrides for Display Commander settings: when a setting is not yet in the game's DisplayCommander.toml, the addon uses values from an embedded `game_default_overrides.toml` (e.g. `hitman3.exe` → ContinueRendering = 1). Overrides are embedded as a resource in the DLL; only apply when the key is missing (never overwrite existing config). Main tab shows an info banner when overrides are in use, with a tooltip listing active overrides and an "Apply to config" button to persist them to DisplayCommander.toml. Logs once at load: "Game default override found for <exe>" or "No game default override for <exe>". Config layer: `get_config_value_or_default()` for bool/int/float; BoolSetting, BoolSettingRef, IntSetting, FloatSetting use it when the key is absent.
+- **Game default config override by exe** - Per-game default overrides for Display Commander settings: when a setting is not yet in the game's DisplayCommander.toml, the addon uses values from a built-in list (e.g. hitman3.exe → ContinueRendering = 1). Overrides only apply when the key is missing; existing config is never overwritten. Main tab shows an info banner when overrides are in use, with a tooltip listing them and an "Apply to config" button to save them to DisplayCommander.toml. Logs once at load whether an override was found for the current exe.
 
 ---
 

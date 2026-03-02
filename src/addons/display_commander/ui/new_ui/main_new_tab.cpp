@@ -1425,7 +1425,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         if (!game_dir.empty()) {
             local_ver = GetReshadeVersionInDirectory(game_dir);
         }
-        std::string global_ver = GetLocalReshadeVersion();
+        std::string global_ver = GetGlobalReshadeVersion();
         imgui.TextDisabled("Local version: %s", local_ver.empty() ? "(none)" : local_ver.c_str());
         imgui.TextDisabled("Global version: %s", global_ver.empty() ? "(none)" : global_ver.c_str());
         if (imgui.IsItemHovered()) {
@@ -1498,7 +1498,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }
 
         // Open folder (global Reshade folder)
-        std::filesystem::path reshade_global = GetLocalReshadeDirectory();
+        std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
         if (!reshade_global.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
             std::string folder_str = reshade_global.string();
             std::thread([folder_str]() {

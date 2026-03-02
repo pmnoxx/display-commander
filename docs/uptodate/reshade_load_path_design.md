@@ -72,7 +72,7 @@ std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& ga
   If version cannot be read, use empty string (such entries still participate for “local” and “latest” but not for “specific version” match).
 
 - **Global base**  
-  Base = `GetLocalReshadeDirectory()` = `%LocalAppData%\Programs\Display_Commander\Reshade`.  
+  Base = `GetGlobalReshadeDirectory()` = `%LocalAppData%\Programs\Display_Commander\Reshade`.  
   If that directory contains both DLLs, add:  
   `{ type: ReshadeLocationType::Global, version: NormalizeVersionToXyz(GetDLLVersionString(base / "Reshade64.dll")), directory: base }`.
 
@@ -111,7 +111,7 @@ ChooseReshadeVersionResult ChooseReshadeVersion(
 | `"no"`    | Return `directory = {}`, no fallback. |
 | `"local"` | If any entry has `type == ReshadeLocationType::Local`, return its `directory`. Otherwise, return the directory of the entry with the **highest** version (same as “latest”). |
 | `"latest"`| Sort `locations` by `version` descending (using `CompareVersions`). Return the first entry’s `directory`. If list empty, return empty. |
-| `"global"` | Find the entry with `type == Global`. If found, return its `directory`. If not in list (e.g. no DLLs in base), return `GetLocalReshadeDirectory()` anyway so existing "load from base" behavior is preserved. “load from base” behavior is preserved |
+| `"global"` | Find the entry with `type == Global`. If found, return its `directory`. If not in list (e.g. no DLLs in base), fall back to highest versioned location; if no locations at all, return empty (do not use base path when DLLs are not there). |
 | `"X.Y.Z"` | Normalize to `NormalizeVersionToXyz(selected_setting)`. Find an entry with `type == SpecificVersion` and `version == normalized`. If found, return that `directory`. If not found, **fallback**: set `fallback_selected = selected_setting`, `fallback_loaded = highest available version` (among SpecificVersion entries, or whole list), and return the directory of that highest version. |
 
 **Sorting for “latest” and “local” fallback:** Sort by `version` using `version_check::CompareVersions` descending (so 11.10.9 > 10.15.20).

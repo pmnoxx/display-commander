@@ -98,7 +98,7 @@ static void ReshadeVersionDownloadWorker(std::string version, bool to_global_roo
     }
 
     std::filesystem::path dest_dir =
-        to_global_root ? GetLocalReshadeDirectory() : GetReshadeVersionFolder(version);
+        to_global_root ? GetGlobalReshadeDirectory() : GetReshadeVersionFolder(version);
     std::filesystem::create_directories(dest_dir, ec);
     if (ec) {
         SetError("Could not create destination directory.");

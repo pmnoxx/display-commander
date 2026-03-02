@@ -134,48 +134,50 @@ void TrySetGameWindowFromForeground() {
 
 void check_is_background() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Get the current swapchain window
     HWND hwnd = g_last_swapchain_hwnd.load();
-    if (hwnd == nullptr) {
-        return;
-    }
-    // BACKGROUND DETECTION: Check if the app is in background using same logic as IsAppInBackground()
-    bool app_in_background = IsAppInBackground();
 
-    if (app_in_background != g_app_in_background.load()) {
+    // BACKGROUND DETECTION: Run at least once (no early return) so g_app_in_background and
+    // g_last_foreground_background_switch_ns are set; downstream (e.g. NVAPI VRR cache) relies on this.
+    bool app_in_background = IsAppInBackground();
+    static bool first_time = true;
+
+    if (app_in_background != g_app_in_background.load() || first_time) {
+        first_time = false;
         g_app_in_background.store(app_in_background);
         g_last_foreground_background_switch_ns.store(static_cast<LONGLONG>(utils::get_now_ns()),
                                                      std::memory_order_release);
 
-        if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
-            if (app_in_background) {
-                LogInfo("Continuous monitoring: App moved to BACKGROUND");
-                // ReleaseCapture();
-                //  Release cursor clipping when going to background
-                display_commanderhooks::ClipCursor_Direct(nullptr);
+        if (hwnd != nullptr) {
+            if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
+                if (app_in_background) {
+                    LogInfo("Continuous monitoring: App moved to BACKGROUND");
+                    // ReleaseCapture();
+                    //  Release cursor clipping when going to background
+                    display_commanderhooks::ClipCursor_Direct(nullptr);
 
-                // Set cursor to default arrow when moving to background
-                display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
+                    // Set cursor to default arrow when moving to background
+                    display_commanderhooks::SetCursor_Direct(LoadCursor(nullptr, IDC_ARROW));
 
-                // Hide cursor when moving to background
-                // display_commanderhooks::ShowCursor_Direct(TRUE);
+                    // Hide cursor when moving to background
+                    // display_commanderhooks::ShowCursor_Direct(TRUE);
+                } else {
+                    LogInfo("Continuous monitoring: App moved to FOREGROUND");
+                    // Restore cursor clipping when coming to foreground
+                    LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
+
+                    // If clip cursor feature is enabled, clip cursor to game window
+                    display_commanderhooks::ClipCursorToGameWindow();
+
+                    display_commanderhooks::RestoreClipCursor();
+                }  // else {
+                //
+                //   }
             } else {
-                LogInfo("Continuous monitoring: App moved to FOREGROUND");
-                // Restore cursor clipping when coming to foreground
-                LogInfo("Continuous monitoring: Restored cursor clipping for foreground");
-
-                // If clip cursor feature is enabled, clip cursor to game window
-                display_commanderhooks::ClipCursorToGameWindow();
-
-                display_commanderhooks::RestoreClipCursor();
-            }  // else {
-            //
-            //   }
-        } else {
-            if (app_in_background) {
-                display_commanderhooks::ClipCursor_Direct(nullptr);
-            } else {
-                display_commanderhooks::RestoreClipCursor();
+                if (app_in_background) {
+                    display_commanderhooks::ClipCursor_Direct(nullptr);
+                } else {
+                    display_commanderhooks::RestoreClipCursor();
+                }
             }
         }
     }
@@ -183,10 +185,12 @@ void check_is_background() {
     // Apply window changes - the function will automatically determine what needs to be changed
     // Skip if suppress_window_changes is enabled (compatibility feature), or if window mode does not imply resize
     // (kNoChanges and kPreventFullscreenNoResize do not resize; only kFullscreen and kAspectRatio do)
-    const WindowMode mode = s_window_mode.load();
-    if (!settings::g_advancedTabSettings.suppress_window_changes.GetValue()
-        && (mode == WindowMode::kFullscreen || mode == WindowMode::kAspectRatio)) {
-        ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
+    if (hwnd != nullptr) {
+        const WindowMode mode = s_window_mode.load();
+        if (!settings::g_advancedTabSettings.suppress_window_changes.GetValue()
+            && (mode == WindowMode::kFullscreen || mode == WindowMode::kAspectRatio)) {
+            ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
+        }
     }
 }
 
@@ -704,235 +708,232 @@ void StuckCheckWatchdogThread() {
 // Main monitoring thread function
 void ContinuousMonitoringThread() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-        LogInfo("Continuous monitoring thread started");
+    LogInfo("Continuous monitoring thread started");
 
-        auto start_time = utils::get_now_ns();
-        LONGLONG last_cache_refresh_ns = start_time;
-        LONGLONG last_60fps_update_ns = start_time;
-        LONGLONG last_1s_update_ns = start_time;
-        LONGLONG last_exclusive_keys_cache_update_ns = start_time;
+    auto start_time = utils::get_now_ns();
+    LONGLONG last_cache_refresh_ns = start_time;
+    LONGLONG last_60fps_update_ns = start_time;
+    LONGLONG last_1s_update_ns = start_time;
+    LONGLONG last_exclusive_keys_cache_update_ns = start_time;
 
-        while (g_monitoring_thread_running.load()) {
-            const bool high_freq_enabled = settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue();
-            const int high_freq_ms = settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue();
-            const LONGLONG sleep_ns = high_freq_enabled ? (static_cast<LONGLONG>(high_freq_ms) * 1000000)
-                                                        : (50 * 1000000);  // 50 ms when high-freq disabled
-            g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
-            std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_ns));
+    while (g_monitoring_thread_running.load()) {
+        const bool high_freq_enabled = settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue();
+        const int high_freq_ms = settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue();
+        const LONGLONG sleep_ns = high_freq_enabled ? (static_cast<LONGLONG>(high_freq_ms) * 1000000)
+                                                    : (50 * 1000000);  // 50 ms when high-freq disabled
+        g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
+        std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_ns));
+        RECORD_DETOUR_CALL(utils::get_now_ns());
+        LONGLONG loop_time_ns = utils::get_real_time_ns();
+        g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
+        g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
+
+        // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground
+        TrySetGameWindowFromForeground();
+
+        // Periodic display cache refresh off the UI thread
+        {
             RECORD_DETOUR_CALL(utils::get_now_ns());
-            LONGLONG loop_time_ns = utils::get_real_time_ns();
-            g_last_continuous_monitoring_loop_real_ns.store(loop_time_ns, std::memory_order_release);
-            g_continuous_monitoring_section.store("after_sleep", std::memory_order_release);
-
-            // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground
-            TrySetGameWindowFromForeground();
-
-            // Periodic display cache refresh off the UI thread
-            {
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                LONGLONG now_ns = utils::get_now_ns();
-                if (settings::g_advancedTabSettings.monitor_display_cache.GetValue()) {
-                    const int cache_interval_sec =
-                        settings::g_advancedTabSettings.monitor_display_cache_interval_sec.GetValue();
-                    if (now_ns - last_cache_refresh_ns
-                        >= static_cast<LONGLONG>(cache_interval_sec) * utils::SEC_TO_NS) {
-                        g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
-                        display_cache::g_displayCache.Refresh();
-                        last_cache_refresh_ns = now_ns;
-                    }
+            LONGLONG now_ns = utils::get_now_ns();
+            if (settings::g_advancedTabSettings.monitor_display_cache.GetValue()) {
+                const int cache_interval_sec =
+                    settings::g_advancedTabSettings.monitor_display_cache_interval_sec.GetValue();
+                if (now_ns - last_cache_refresh_ns >= static_cast<LONGLONG>(cache_interval_sec) * utils::SEC_TO_NS) {
+                    g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
+                    display_cache::g_displayCache.Refresh();
+                    last_cache_refresh_ns = now_ns;
                 }
-                g_continuous_monitoring_section.store("after_cache_refresh", std::memory_order_release);
             }
-            // Wait for 1 second to start
-            if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
-                continue;
-            }
+            g_continuous_monitoring_section.store("after_cache_refresh", std::memory_order_release);
+        }
+        // Wait for 1 second to start
+        if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
+            continue;
+        }
 
-            // Apply CPU affinity mask if configured
-            {
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                static int last_cpu_cores = -1;
-                int cpu_cores = settings::g_mainTabSettings.cpu_cores.GetValue();
+        // Apply CPU affinity mask if configured
+        {
+            RECORD_DETOUR_CALL(utils::get_now_ns());
+            static int last_cpu_cores = -1;
+            int cpu_cores = settings::g_mainTabSettings.cpu_cores.GetValue();
 
-                if (cpu_cores != last_cpu_cores) {
-                    last_cpu_cores = cpu_cores;
+            if (cpu_cores != last_cpu_cores) {
+                last_cpu_cores = cpu_cores;
 
-                    HANDLE process_handle = GetCurrentProcess();
-                    DWORD_PTR process_affinity_mask = 0;
-                    DWORD_PTR system_affinity_mask = 0;
+                HANDLE process_handle = GetCurrentProcess();
+                DWORD_PTR process_affinity_mask = 0;
+                DWORD_PTR system_affinity_mask = 0;
 
-                    // Get current process affinity
-                    if (GetProcessAffinityMask(process_handle, &process_affinity_mask, &system_affinity_mask)) {
-                        if (cpu_cores == 0) {
-                            // Default: restore system affinity (no change)
-                            if (SetProcessAffinityMask(process_handle, system_affinity_mask)) {
-                                LogInfo("CPU affinity restored to default (all available cores)");
-                            } else {
-                                LogError("Failed to restore CPU affinity to default: %lu", GetLastError());
-                            }
+                // Get current process affinity
+                if (GetProcessAffinityMask(process_handle, &process_affinity_mask, &system_affinity_mask)) {
+                    if (cpu_cores == 0) {
+                        // Default: restore system affinity (no change)
+                        if (SetProcessAffinityMask(process_handle, system_affinity_mask)) {
+                            LogInfo("CPU affinity restored to default (all available cores)");
                         } else {
-                            // Create affinity mask for specified number of cores
-                            SYSTEM_INFO sys_info = {};
-                            GetSystemInfo(&sys_info);
-                            DWORD max_cores = sys_info.dwNumberOfProcessors;
-
-                            if (cpu_cores > 0 && cpu_cores <= static_cast<int>(max_cores)) {
-                                // Create mask with first N cores enabled
-                                DWORD_PTR new_mask = 0;
-                                for (DWORD i = 0; i < static_cast<DWORD>(cpu_cores); ++i) {
-                                    new_mask |= (static_cast<DWORD_PTR>(1) << i);
-                                }
-
-                                // Only apply if mask is valid and different from current
-                                if (new_mask != 0 && new_mask != process_affinity_mask) {
-                                    if (SetProcessAffinityMask(process_handle, new_mask)) {
-                                        LogInfo("CPU affinity set to %d core(s) (mask: 0x%llx)", cpu_cores,
-                                                static_cast<unsigned long long>(new_mask));
-                                    } else {
-                                        LogError("Failed to set CPU affinity to %d cores: %lu", cpu_cores,
-                                                 GetLastError());
-                                    }
-                                }
-                            } else {
-                                LogError("Invalid CPU cores value: %d (max: %lu)", cpu_cores, max_cores);
-                            }
+                            LogError("Failed to restore CPU affinity to default: %lu", GetLastError());
                         }
                     } else {
-                        LogError("Failed to get process affinity mask: %lu", GetLastError());
-                    }
-                }
-            }
-            g_continuous_monitoring_section.store("after_cpu_affinity", std::memory_order_release);
+                        // Create affinity mask for specified number of cores
+                        SYSTEM_INFO sys_info = {};
+                        GetSystemInfo(&sys_info);
+                        DWORD max_cores = sys_info.dwNumberOfProcessors;
 
-            // High-frequency updates (background check, ADHD, keyboard, hotkeys)
-            LONGLONG now_ns = utils::get_now_ns();
-            const LONGLONG high_freq_interval_ns =
-                static_cast<LONGLONG>(settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue())
-                * utils::NS_TO_MS;
-            if (settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue()
-                && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
-                check_is_background();
-                last_60fps_update_ns = now_ns;
-                // Delay ADHD init/SetEnabled until frame 500 to avoid early-present issues
-                if (g_global_frame_id.load(std::memory_order_acquire) >= 500) {
-                    adhd_multi_monitor::api::SetEnabled(
-                        settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue(),
-                        settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
-                }
-
-                // Update keyboard tracking system
-                display_commanderhooks::keyboard_tracker::Update();
-
-                // Handle keyboard shortcuts
-                HandleKeyboardShortcuts();
-
-                // Reset keyboard frame states for next frame
-                display_commanderhooks::keyboard_tracker::ResetFrame();
-            }
-            g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
-
-            const int per_second_interval_sec =
-                settings::g_advancedTabSettings.monitor_per_second_interval_sec.GetValue();
-            if (settings::g_advancedTabSettings.monitor_per_second_enabled.GetValue()
-                && now_ns - last_1s_update_ns >= static_cast<LONGLONG>(per_second_interval_sec) * utils::SEC_TO_NS) {
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                last_1s_update_ns = now_ns;
-                g_continuous_monitoring_section.store("every1s_tasks", std::memory_order_release);
-                every1s_tasks();
-
-                if (settings::g_advancedTabSettings.monitor_exclusive_key_groups.GetValue()) {
-                    RECORD_DETOUR_CALL(utils::get_now_ns());
-                    g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
-                    display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
-                }
-
-                if (settings::g_advancedTabSettings.monitor_discord_overlay.GetValue()) {
-                    RECORD_DETOUR_CALL(utils::get_now_ns());
-                    g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
-                    HandleDiscordOverlayAutoHide();
-                }
-
-                // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules
-                // loaded via paths EnumProcessModules misses at init, e.g. NvLowLatencyVk.dll.
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                g_continuous_monitoring_section.store("enumerate_loaded_modules_10s", std::memory_order_release);
-                {
-                    static int enumerate_after_10s_count = 0;
-                    constexpr int kEnumerateRuns = 6;
-                    constexpr LONGLONG kIntervalNs = 10 * utils::SEC_TO_NS;
-                    if (enumerate_after_10s_count < kEnumerateRuns) {
-                        LONGLONG elapsed_ns = now_ns - start_time;
-                        LONGLONG next_run_at_ns = (enumerate_after_10s_count + 1) * kIntervalNs;
-                        if (elapsed_ns >= next_run_at_ns) {
-                            enumerate_after_10s_count++;
-                            if (display_commanderhooks::EnumerateLoadedModules(
-                                    true)) {  // modules loaded late without us noticing
-                                LogInfo("Continuous monitoring: EnumerateLoadedModules run %d/6 (at %lld s) completed",
-                                        enumerate_after_10s_count, elapsed_ns / utils::SEC_TO_NS);
-                            } else {
-                                LogError("Continuous monitoring: EnumerateLoadedModules run %d/6 failed",
-                                         enumerate_after_10s_count);
+                        if (cpu_cores > 0 && cpu_cores <= static_cast<int>(max_cores)) {
+                            // Create mask with first N cores enabled
+                            DWORD_PTR new_mask = 0;
+                            for (DWORD i = 0; i < static_cast<DWORD>(cpu_cores); ++i) {
+                                new_mask |= (static_cast<DWORD_PTR>(1) << i);
                             }
-                        }
-                    }
-                }
 
-                if (settings::g_advancedTabSettings.monitor_reflex_auto_configure.GetValue()
-                    && now_ns - start_time >= 10 * utils::SEC_TO_NS) {
-                    RECORD_DETOUR_CALL(utils::get_now_ns());
-                    g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
-                    HandleReflexAutoConfigure();
-                }
-
-                if (settings::g_advancedTabSettings.monitor_auto_apply_trigger.GetValue()) {
-                    RECORD_DETOUR_CALL(utils::get_now_ns());
-                    g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
-                    ui::new_ui::AutoApplyTrigger();
-                }
-
-                // Auto-apply resolution on game start
-                RECORD_DETOUR_CALL(utils::get_now_ns());
-                static bool auto_apply_on_start_done = false;
-                namespace res_widget = display_commander::widgets::resolution_widget;
-                g_continuous_monitoring_section.store("auto_apply_on_start", std::memory_order_release);
-                if (!auto_apply_on_start_done && res_widget::g_resolution_settings) {
-                    if (res_widget::g_resolution_settings->GetAutoApplyOnStart()) {
-                        LONGLONG game_start_time_ns = g_game_start_time_ns.load();
-                        if (game_start_time_ns > 0) {
-                            int delay_seconds = res_widget::g_resolution_settings->GetAutoApplyOnStartDelay();
-                            LONGLONG elapsed_ns = now_ns - game_start_time_ns;
-                            LONGLONG delay_ns = static_cast<LONGLONG>(delay_seconds) * utils::SEC_TO_NS;
-
-                            if (elapsed_ns >= delay_ns) {
-                                LogInfo("Auto-apply on start: %lld seconds elapsed (delay: %d), applying resolution",
-                                        elapsed_ns / utils::SEC_TO_NS, delay_seconds);
-
-                                // Apply resolution using the resolution widget
-                                if (res_widget::g_resolution_widget) {
-                                    // Prepare widget (ensures initialization and settings are loaded)
-                                    res_widget::g_resolution_widget->PrepareForAutoApply();
-
-                                    // Apply the resolution
-                                    bool success = res_widget::g_resolution_widget->ApplyCurrentSelection();
-                                    if (success) {
-                                        LogInfo("Auto-apply on start: Successfully applied resolution");
-                                    } else {
-                                        LogWarn("Auto-apply on start: Failed to apply resolution");
-                                    }
+                            // Only apply if mask is valid and different from current
+                            if (new_mask != 0 && new_mask != process_affinity_mask) {
+                                if (SetProcessAffinityMask(process_handle, new_mask)) {
+                                    LogInfo("CPU affinity set to %d core(s) (mask: 0x%llx)", cpu_cores,
+                                            static_cast<unsigned long long>(new_mask));
                                 } else {
-                                    LogWarn("Auto-apply on start: Resolution widget not available");
+                                    LogError("Failed to set CPU affinity to %d cores: %lu", cpu_cores, GetLastError());
                                 }
-
-                                auto_apply_on_start_done = true;
                             }
+                        } else {
+                            LogError("Invalid CPU cores value: %d (max: %lu)", cpu_cores, max_cores);
+                        }
+                    }
+                } else {
+                    LogError("Failed to get process affinity mask: %lu", GetLastError());
+                }
+            }
+        }
+        g_continuous_monitoring_section.store("after_cpu_affinity", std::memory_order_release);
+
+        // High-frequency updates (background check, ADHD, keyboard, hotkeys)
+        LONGLONG now_ns = utils::get_now_ns();
+        const LONGLONG high_freq_interval_ns =
+            static_cast<LONGLONG>(settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue())
+            * utils::NS_TO_MS;
+        if (settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue()
+            && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
+            RECORD_DETOUR_CALL(utils::get_now_ns());
+            g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
+            check_is_background();
+            last_60fps_update_ns = now_ns;
+            // Delay ADHD init/SetEnabled until frame 500 to avoid early-present issues
+            if (g_global_frame_id.load(std::memory_order_acquire) >= 500) {
+                adhd_multi_monitor::api::SetEnabled(
+                    settings::g_mainTabSettings.adhd_single_monitor_enabled_for_game_display.GetValue(),
+                    settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue());
+            }
+
+            // Update keyboard tracking system
+            display_commanderhooks::keyboard_tracker::Update();
+
+            // Handle keyboard shortcuts
+            HandleKeyboardShortcuts();
+
+            // Reset keyboard frame states for next frame
+            display_commanderhooks::keyboard_tracker::ResetFrame();
+        }
+        g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
+
+        const int per_second_interval_sec = settings::g_advancedTabSettings.monitor_per_second_interval_sec.GetValue();
+        if (settings::g_advancedTabSettings.monitor_per_second_enabled.GetValue()
+            && now_ns - last_1s_update_ns >= static_cast<LONGLONG>(per_second_interval_sec) * utils::SEC_TO_NS) {
+            RECORD_DETOUR_CALL(utils::get_now_ns());
+            last_1s_update_ns = now_ns;
+            g_continuous_monitoring_section.store("every1s_tasks", std::memory_order_release);
+            every1s_tasks();
+
+            if (settings::g_advancedTabSettings.monitor_exclusive_key_groups.GetValue()) {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
+                g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
+                display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
+            }
+
+            if (settings::g_advancedTabSettings.monitor_discord_overlay.GetValue()) {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
+                g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
+                HandleDiscordOverlayAutoHide();
+            }
+
+            // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules
+            // loaded via paths EnumProcessModules misses at init, e.g. NvLowLatencyVk.dll.
+            RECORD_DETOUR_CALL(utils::get_now_ns());
+            g_continuous_monitoring_section.store("enumerate_loaded_modules_10s", std::memory_order_release);
+            {
+                static int enumerate_after_10s_count = 0;
+                constexpr int kEnumerateRuns = 6;
+                constexpr LONGLONG kIntervalNs = 10 * utils::SEC_TO_NS;
+                if (enumerate_after_10s_count < kEnumerateRuns) {
+                    LONGLONG elapsed_ns = now_ns - start_time;
+                    LONGLONG next_run_at_ns = (enumerate_after_10s_count + 1) * kIntervalNs;
+                    if (elapsed_ns >= next_run_at_ns) {
+                        enumerate_after_10s_count++;
+                        if (display_commanderhooks::EnumerateLoadedModules(
+                                true)) {  // modules loaded late without us noticing
+                            LogInfo("Continuous monitoring: EnumerateLoadedModules run %d/6 (at %lld s) completed",
+                                    enumerate_after_10s_count, elapsed_ns / utils::SEC_TO_NS);
+                        } else {
+                            LogError("Continuous monitoring: EnumerateLoadedModules run %d/6 failed",
+                                     enumerate_after_10s_count);
                         }
                     }
                 }
             }
-            g_continuous_monitoring_section.store("end_of_loop", std::memory_order_release);
+
+            if (settings::g_advancedTabSettings.monitor_reflex_auto_configure.GetValue()
+                && now_ns - start_time >= 10 * utils::SEC_TO_NS) {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
+                g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
+                HandleReflexAutoConfigure();
+            }
+
+            if (settings::g_advancedTabSettings.monitor_auto_apply_trigger.GetValue()) {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
+                g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
+                ui::new_ui::AutoApplyTrigger();
+            }
+
+            // Auto-apply resolution on game start
+            RECORD_DETOUR_CALL(utils::get_now_ns());
+            static bool auto_apply_on_start_done = false;
+            namespace res_widget = display_commander::widgets::resolution_widget;
+            g_continuous_monitoring_section.store("auto_apply_on_start", std::memory_order_release);
+            if (!auto_apply_on_start_done && res_widget::g_resolution_settings) {
+                if (res_widget::g_resolution_settings->GetAutoApplyOnStart()) {
+                    LONGLONG game_start_time_ns = g_game_start_time_ns.load();
+                    if (game_start_time_ns > 0) {
+                        int delay_seconds = res_widget::g_resolution_settings->GetAutoApplyOnStartDelay();
+                        LONGLONG elapsed_ns = now_ns - game_start_time_ns;
+                        LONGLONG delay_ns = static_cast<LONGLONG>(delay_seconds) * utils::SEC_TO_NS;
+
+                        if (elapsed_ns >= delay_ns) {
+                            LogInfo("Auto-apply on start: %lld seconds elapsed (delay: %d), applying resolution",
+                                    elapsed_ns / utils::SEC_TO_NS, delay_seconds);
+
+                            // Apply resolution using the resolution widget
+                            if (res_widget::g_resolution_widget) {
+                                // Prepare widget (ensures initialization and settings are loaded)
+                                res_widget::g_resolution_widget->PrepareForAutoApply();
+
+                                // Apply the resolution
+                                bool success = res_widget::g_resolution_widget->ApplyCurrentSelection();
+                                if (success) {
+                                    LogInfo("Auto-apply on start: Successfully applied resolution");
+                                } else {
+                                    LogWarn("Auto-apply on start: Failed to apply resolution");
+                                }
+                            } else {
+                                LogWarn("Auto-apply on start: Resolution widget not available");
+                            }
+
+                            auto_apply_on_start_done = true;
+                        }
+                    }
+                }
+            }
         }
+        g_continuous_monitoring_section.store("end_of_loop", std::memory_order_release);
+    }
 
     LogInfo("Continuous monitoring thread stopped");
 }

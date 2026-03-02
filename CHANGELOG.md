@@ -4,6 +4,7 @@
 
 ## v0.12.203 (2026-03-01)
 
+- **Background detection runs at least once** - `check_is_background()` no longer returns early when the swapchain window is null. Foreground/background detection and the update of `g_app_in_background` and `g_last_foreground_background_switch_ns` now always run at least once, so downstream logic (e.g. NVAPI VRR cache in `Every1sVrrStatus`) gets an initial timestamp and can run. Clip-cursor and apply-window-change actions remain gated on a non-null swapchain window.
 - **AutoHDR default colorspace** - Fixed default colorspace for AutoHDR to auto.  (AutoHDR didn't work properly with HDR10/SDR)
 
 ---

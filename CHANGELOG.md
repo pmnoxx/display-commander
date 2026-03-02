@@ -2,7 +2,12 @@
 
 ---
 
-## v0.12.206 (2026-03-01)
+## v0.12.207 (2026-03-02)
+
+- **Window mode default: No changes** - Default window mode is now "No changes" (kNoChanges) instead of "Prevent exclusive fullscreen / no resize". New users and fresh config get no window-mode intervention; existing configs keep their saved value. Config key `window_mode` unchanged.
+- **Restart warning when enabling fullscreen prevention** - When the user switches from "No changes" to any other window mode (e.g. "Prevent exclusive fullscreen / no resize"), the Main tab shows a warning: "Restart may be needed for preventing fullscreen." The warning appears only if the user had "No changes" at some point in the session, then changed away from it.
+
+---
 
 - **NVAPI fullscreen prevention removed** - Removed the NVAPIFullscreenPrevention module and all related code: `nvapi_fullscreen_prevention.cpp`/`.hpp`, NVAPI Settings UI block in Advanced tab (auto-enable for games, NVAPI Library status), `nvapi_auto_enable_enabled` setting, `CheckAndAutoEnable()`/`Cleanup()` call sites from main_entry and swapchain_events, and helpers `IsGameInNvapiAutoEnableList`/`GetNvapiAutoEnableGameStatus`/`GetCurrentProcessName` from general_utils. The "Game restart required to apply NVAPI changes" message now appears in the AntiLag 2 / XeLL (fakenvapi) section when toggling fake NVAPI. Unused includes removed from advanced_tab (`<algorithm>`, `<cstring>`, `<set>`). Docs updated: NVAPI_FUNCTIONS_LIST, KNOWN_ISSUES, nvidia_profile_search_simplification_plan (historical note). Window mode and DXGI/D3D9 "prevent exclusive fullscreen" behavior (ShouldPreventExclusiveFullscreen, SetFullscreenState detour) unchanged.
 

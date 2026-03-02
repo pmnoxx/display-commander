@@ -1500,3 +1500,4 @@ extern std::atomic<bool> g_swapchain_wrapper_present1_called;
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();
 void HandleReflexAutoConfigure();
+

@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -349,7 +350,12 @@ class PresentMonManager {
     bool m_have_dwm;
 };
 
-// Global instance
+// Global instance (start/stop worker; object lives for process lifetime)
 extern PresentMonManager g_presentMonManager;
+
+// Start worker if not already running (call when user enables or from continuous monitoring).
+void CreateAndStartPresentMon();
+// Stop worker (call on disable or shutdown). Manager object is not destroyed.
+void StopAndDestroyPresentMon(PresentMonStopReason reason);
 
 }  // namespace presentmon

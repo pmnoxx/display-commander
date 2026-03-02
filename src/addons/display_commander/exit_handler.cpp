@@ -56,7 +56,7 @@ void OnHandleExit(ExitSource source, const std::string& message) {
         return;
     }
 
-    presentmon::g_presentMonManager.StopWorker(presentmon::PresentMonStopReason::AddonShutdown);
+    presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdown);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();
 

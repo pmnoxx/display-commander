@@ -12,6 +12,7 @@
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "nvapi/vrr_status.hpp"
+#include "presentmon/presentmon_manager.hpp"
 #include "settings/advanced_tab_settings.hpp"
 #include "settings/experimental_tab_settings.hpp"
 #include "settings/main_tab_settings.hpp"
@@ -731,6 +732,12 @@ void ContinuousMonitoringThread() {
         // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground
         TrySetGameWindowFromForeground();
 
+        // PresentMon: start worker immediately when enabled and not running
+        if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
+            && !presentmon::g_presentMonManager.IsRunning()) {
+            presentmon::CreateAndStartPresentMon();
+        }
+
         // Periodic display cache refresh off the UI thread
         {
             RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -987,3 +994,4 @@ void StopContinuousMonitoring() {
 
     LogInfo("Continuous monitoring stopped");
 }
+

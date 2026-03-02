@@ -80,6 +80,9 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
       enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander"),
+      presentmon_provider_dxgkrnl("PresentMonProviderDxgKrnl", false, "DisplayCommander"),
+      presentmon_provider_dxgi("PresentMonProviderDXGI", false, "DisplayCommander"),
+      presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
 
       // Continuous monitoring
@@ -126,6 +129,9 @@ void AdvancedTabSettings::SaveAll() {
     auto_hide_discord_overlay.Save();
     suppress_window_changes.Save();
     enable_presentmon_tracing.Save();
+    presentmon_provider_dxgkrnl.Save();
+    presentmon_provider_dxgi.Save();
+    presentmon_provider_dwm.Save();
     disable_dpi_scaling.Save();
 
     monitor_high_freq_enabled.Save();
@@ -148,27 +154,27 @@ void AdvancedTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
-    return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities, &enable_flip_chain,
-            &auto_colorspace,
-            //&enable_d3d9e_upgrade,
+    return {
+        &continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities, &enable_flip_chain,
+        &auto_colorspace,
+        //&enable_d3d9e_upgrade,
 
-            &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
-            &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging,
-            &reflex_supress_native,
+        &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
+        &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging, &reflex_supress_native,
 
-            &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
-            &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
-            &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut,
-            &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
-            &fake_nvapi_enabled, &suppress_minhook, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
-            &debug_layer_enabled, &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes,
-            &win_up_grace_seconds, &enable_presentmon_tracing, &disable_dpi_scaling,
+        &enable_hotkeys, &enable_mute_unmute_shortcut, &enable_background_toggle_shortcut,
+        &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
+        &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
+        &safemode, &dll_loading_delay_ms, &dlls_to_load_before, &fake_nvapi_enabled, &suppress_minhook,
+        &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games, &debug_layer_enabled, &debug_break_on_severity,
+        &auto_hide_discord_overlay, &suppress_window_changes,             &win_up_grace_seconds, &enable_presentmon_tracing,
+            &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm, &disable_dpi_scaling,
 
-            &monitor_high_freq_enabled, &monitor_high_freq_interval_ms, &monitor_per_second_enabled,
-            &monitor_per_second_interval_sec, &monitor_screensaver, &monitor_fps_aggregate, &monitor_volume,
-            &monitor_refresh_rate, &monitor_vrr_status, &monitor_exclusive_key_groups, &monitor_discord_overlay,
-            &monitor_reflex_auto_configure, &monitor_auto_apply_trigger, &monitor_display_cache,
-            &monitor_display_cache_interval_sec};
+        &monitor_high_freq_enabled, &monitor_high_freq_interval_ms, &monitor_per_second_enabled,
+        &monitor_per_second_interval_sec, &monitor_screensaver, &monitor_fps_aggregate, &monitor_volume,
+        &monitor_refresh_rate, &monitor_vrr_status, &monitor_exclusive_key_groups, &monitor_discord_overlay,
+        &monitor_reflex_auto_configure, &monitor_auto_apply_trigger, &monitor_display_cache,
+        &monitor_display_cache_interval_sec};
 }
 
 }  // namespace settings

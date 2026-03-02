@@ -812,10 +812,6 @@ void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
-    const bool is_dxgi =
-        (api == display_commander::ui::GraphicsApi::D3D11 || api == display_commander::ui::GraphicsApi::D3D12
-         || api == display_commander::ui::GraphicsApi::D3D10);
-
     // Hide HDR Capabilities
     if (CheckboxSetting(settings::g_advancedTabSettings.hide_hdr_capabilities,
                         "Hide display's HDR capabilities from game", imgui)) {
@@ -857,25 +853,6 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
             "Makes the process DPI-aware to prevent Windows from bitmap-scaling the application.\n"
             "Uses AppCompat registry for persistence across restarts.\n"
             "Requires a game restart to take full effect.");
-    }
-
-    if (is_dxgi) {
-        imgui.Spacing();
-
-        // Auto Color Space checkbox
-        bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
-        if (imgui.Checkbox("Auto color space", &auto_colorspace)) {
-            settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Automatically sets the appropriate color space on the game's swap chain based on the current format.\n"
-                "- HDR10 format (R10G10B10A2) → HDR10 color space (ST2084)\n"
-                "- FP16 format (R16G16B16A16) → scRGB color space (Linear)\n"
-                "- SDR format (R8G8B8A8) → sRGB color space (Non-linear)\n"
-                "Only works with DirectX 11/12 games.\n"
-                "Applied automatically in presentBefore.");
-        }
     }
 
     // Show upgrade status

@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.205 (2026-03-01)
+
+- **Auto adjust color space: default on, moved to Main tab** - "Auto adjust color space" (renamed from "Auto color space") is now on by default. The checkbox was moved from Advanced → HDR and Display Settings to Main tab → Brightness and AutoHDR, directly under "AutoHDR Perceptual Boost" (shown only for DXGI). Tooltip clarifies that both DXGI swap chain and ReShade color space are set to match the back-buffer format (HDR10/scRGB/sRGB). Config key `AutoColorspace` unchanged; existing configs keep their saved value.
+
+---
+
 ## v0.12.204 (2026-03-01)
 
 - **Manual color space removed** - Removed the manual color space selector (combo) and related logic. Color space is now set only when "Auto color space" is enabled (format-based: R10G10B10A2 → HDR10, R16G16B16A16 → scRGB, R8G8B8A8 → sRGB). Removed: `GetManualColorSpaceIndex`/`SetManualColorSpaceIndex`, manual color space setting, manual table and cache, and the Advanced tab "Color space" combo. DXGI swap chain wrapper `SetColorSpace1` no longer overrides the color space; it forwards the game's request to the original swap chain.

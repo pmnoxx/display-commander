@@ -34,7 +34,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       prevent_minimize("PreventMinimize", true, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
-      auto_colorspace("AutoColorspace", false, "DisplayCommander"),
+      auto_colorspace("AutoColorspace2", true, "DisplayCommander"),
       nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
@@ -150,8 +150,8 @@ void AdvancedTabSettings::SaveAll() {
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
-    return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities,
-            &enable_flip_chain, &auto_colorspace,
+    return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities, &enable_flip_chain,
+            &auto_colorspace,
             //&enable_d3d9e_upgrade,
             &nvapi_auto_enable_enabled,
 

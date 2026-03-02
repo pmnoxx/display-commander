@@ -2221,6 +2221,27 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.SetTooltip(
                     "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
             }
+            // Auto adjust color space (DXGI only) – sets DXGI swap chain and ReShade color space to match back-buffer format
+            {
+                const reshade::api::device_api api = g_last_reshade_device_api.load();
+                const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
+                                      || api == reshade::api::device_api::d3d12);
+                if (is_dxgi) {
+                    bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+                    if (imgui.Checkbox("Auto adjust color space", &auto_colorspace)) {
+                        settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
+                    }
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
+                            "Automatically sets DXGI swap chain and ReShade color space to the correct values for the "
+                            "current back-buffer format:\n"
+                            "• HDR10 (R10G10B10A2) -> HDR10 (ST2084)\n"
+                            "• FP16 (R16G16B16A16) -> scRGB (Linear)\n"
+                            "• SDR (R8G8B8A8) -> sRGB (Non-linear)\n"
+                            "Only applies to DirectX 11/12. Applied in presentBefore.");
+                    }
+                }
+            }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
                 // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade
                 auto desc_ptr = g_last_swapchain_desc.load();

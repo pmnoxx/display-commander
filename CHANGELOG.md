@@ -13,6 +13,8 @@
 - **Download errors in logs** - DC stable and DC debug download failures are logged with `LogError` (e.g. "DC stable download: ...", "DC debug download: ...") in addition to being shown in the UI.
 - **TryHardLinkOrCopyFile for copy-then-load** - `CopyCurrentVersionToDll` and `CopyCurrentVersionToGlobal` in version_check now use `TryHardLinkOrCopyFile` (hard link when possible, else copy). `general_utils.hpp` documents that any "copy then load" path should use this helper.
 - **DirectoryHasDcAddonDlls** - Removed redundant `dir.empty()` check; logic only depends on presence of addon files.
+- **Display Commander "Up to date"** - Updates section now shows green "Up to date" or red "Newer version available" for Display Commander (like ReShade), comparing current DC version with latest stable from GitHub; tooltip shows current → latest when newer is available.
+- **VRR Debug Mode tooltip** - Tooltip for the VRR Debug Mode checkbox now explains each NVAPI field from `NvAPI_Disp_GetVRRInfo` (NV_GET_VRR_INFO): enabled, req, poss, in_mode (per NVIDIA NVAPI documentation).
 
 ---
 

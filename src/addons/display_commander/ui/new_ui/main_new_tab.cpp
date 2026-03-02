@@ -1682,6 +1682,22 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_ERROR, "(%s)", s_dc_stable_fetch_error.c_str());
         }
+        std::string current_dc_ver = NormalizeVersionToXyz(DISPLAY_COMMANDER_VERSION_STRING);
+        if (current_dc_ver.empty()) current_dc_ver = ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING);
+        if (!current_dc_ver.empty() && !s_dc_latest_stable_ver.empty()
+            && s_dc_latest_stable_ver.find_first_not_of("0123456789.") == std::string::npos) {
+            int dc_cmp = CompareVersions(current_dc_ver, s_dc_latest_stable_ver);
+            if (dc_cmp >= 0) {
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
+            } else {
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("%s -> %s", current_dc_ver.c_str(), s_dc_latest_stable_ver.c_str());
+                }
+            }
+        }
         size_t stable_count = 0;
         const char* const* stable_list = GetDcInstalledVersionListStable(&stable_count);
         if (stable_count > 0 && stable_list != nullptr) {
@@ -7055,8 +7071,12 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Shows detailed VRR debugging parameters (Fixed Hz, Threshold, Samples, etc.) in the performance "
-                    "overlay.");
+                    "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
+                    "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
+                    "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
+                    "  req: VRR has been requested (e.g. by the application or swap chain).\n"
+                    "  poss: The display and link support VRR (capability).\n"
+                    "  in_mode: The display is currently operating in VRR mode (authoritative hardware state).");
             }
             imgui.NextColumn();
         }

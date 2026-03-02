@@ -2221,7 +2221,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.SetTooltip(
                     "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
             }
-            // Auto adjust color space (DXGI only) – sets DXGI swap chain and ReShade color space to match back-buffer format
+            // Auto adjust color space (DXGI only) – sets DXGI swap chain and ReShade color space to match back-buffer
+            // format
             {
                 const reshade::api::device_api api = g_last_reshade_device_api.load();
                 const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
@@ -3184,6 +3185,11 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
     (void)imgui;
     RECORD_DETOUR_CALL(utils::get_now_ns());
     // Window Mode dropdown (with persistent setting)
+    static bool was_ever_in_no_changes_mode = false;
+    if (static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue()) == WindowMode::kNoChanges) {
+        was_ever_in_no_changes_mode = true;
+    }
+
     if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode", imgui)) {
         WindowMode old_mode = s_window_mode.load();
         s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
@@ -3195,6 +3201,12 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
         oss << "Window mode changed from " << static_cast<int>(old_mode) << " to "
             << settings::g_mainTabSettings.window_mode.GetValue();
         LogInfo(oss.str().c_str());
+    }
+    // Warn about restart may be needed for preventing fullscreen
+    if (was_ever_in_no_changes_mode
+        && static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue()) != WindowMode::kNoChanges) {
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING "Warning: Restart may be needed for preventing fullscreen.");
     }
 
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)

@@ -81,6 +81,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 - **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
 - **Proxy loading**: Load as dxgi, d3d11, d3d12, d3d9, ddraw, opengl32, or winmm proxy when needed
+- **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). Post-ReShade addons use a temp copy so originals can be updated while the game runs.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator
 - **CPU control**: Core affinity and process priority (Main / Settings tab in standalone)
 - **Prevent display sleep & screensaver**: Keep display awake while gaming

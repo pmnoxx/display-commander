@@ -2,6 +2,25 @@
 
 ---
 
+## v0.12.222 (2026-03-02)
+
+- **Injection service control (32/64-bit)** - Added `GetAddonPathForArch`, `StartService`, `StopService` in `dc_service_status`. Top-right indicators `[32]` and `[64]` in Advanced tab; inline on same line as "(Session-wide...)" in Games tab. Green when running, red when stopped; greyed-out red when addon binary not available (32 or 64-bit). Click to start (rundll32 addon,Start) or stop (TerminateProcess). Addon path resolution: DC load path, AppData, stable/Debug subdirs.
+- **Rest button (Games tab)** - Added Rest column: close then relaunch for other processes; launch first then close for current process. Requires exe path and either main window or can_terminate.
+- **Games tab moved after Main** - Games tab is now the second tab (right after Main) for quicker access to running games and Steam launch.
+
+---
+
+## v0.12.221 (2026-03-02)
+
+- **Steam games launch section (Games tab)** - Below the running games table: search bar for installed Steam games, list ordered by most recently launched, Start button (launches via steam://run), Open button (opens game folder in Explorer). Launch history stored in `HKCU\Software\Display Commander\SteamLaunchHistory`; "Last opened" column shows relative time (today, this week, this month, X months ago). Right-click context menu with "Open details".
+- **Stop button (Games tab)** - Graceful close via WM_CLOSE; works for the current process as well.
+- **Running games: Mini, Stop, right-click details** - Renamed Minimize to Mini. Added Stop button. Right-click on title opens context menu with "Open details" (modal shows PID, path, main window, can_terminate).
+- **Steam list: duplicate and path fixes** - Deduplicate library paths (case-insensitive) and games by app_id. Normalize install paths to uppercase drive letter (e.g. C:\).
+- **Steam games section: removed Refresh button** - List loads automatically on first view; manual refresh no longer needed.
+- **Steam games: left-click to launch, details modal for folder** - Removed Dir and Open buttons from the list. Left click on game name launches; right click → "Open details" opens modal with app_id, name, install path, and "Open folder" button.
+
+---
+
 ## v0.12.220 (2026-03-02)
 
 - **New Games tab (running games overview)** - Added a Games tab that lists all processes currently running with Display Commander loaded, detected via a per-PID named mutex. Shows PID and game title/executable, auto-refreshes every second while the tab is open, and updates immediately after kill actions.

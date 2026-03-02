@@ -10,7 +10,9 @@
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
+#include "../../utils/dc_service_status.hpp"
 #include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
 #include "../../utils/process_window_enumerator.hpp"
@@ -32,6 +34,7 @@ using namespace display_commander::ui;
 void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui);
 void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui);
+void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui);
@@ -53,6 +56,8 @@ void InitAdvancedTab() {
 }
 
 void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
+    DrawDcServiceStatusIndicators(imgui, false);
+
     if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault(imgui);
     }
@@ -68,6 +73,13 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     // PresentMon ETW Tracing Section
     if (imgui.CollapsingHeader("PresentMon ETW Tracing", wrapper_flags::TreeNodeFlags_None)) {
         DrawPresentMonSection(imgui);
+    }
+
+    imgui.Spacing();
+
+    // DC Service (RunDLL auto-injection) status
+    if (imgui.CollapsingHeader("DC Service (RunDLL auto-injection)", wrapper_flags::TreeNodeFlags_None)) {
+        DrawDcServiceSection(imgui);
     }
 
     imgui.Spacing();
@@ -277,7 +289,9 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SameLine();
             imgui.TextColored(::ui::colors::TEXT_ERROR, "%s", pm_debug_info.etw_enumeration_error.c_str());
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Could not enumerate ETW sessions. List is empty. Try running as administrator or check permissions.");
+                imgui.SetTooltip(
+                    "Could not enumerate ETW sessions. List is empty. Try running as administrator or check "
+                    "permissions.");
             }
         } else if (!pm_debug_info.dc_etw_sessions.empty()) {
             imgui.TextColored(::ui::colors::TEXT_LABEL,
@@ -597,8 +611,7 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SameLine();
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "ETW Tracing Status: Stopped");
         if (imgui.IsItemHovered()) {
-            const bool setting_enabled =
-                settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue();
+            const bool setting_enabled = settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue();
             std::string tip;
             if (setting_enabled) {
                 tip = "PresentMon is enabled but the worker is not running.\n\n";
@@ -606,11 +619,13 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
                 tip += "  Thread status: ";
                 tip += pm_debug_info_stopped.thread_status.empty() ? "(unknown)" : pm_debug_info_stopped.thread_status;
                 tip += "\n  ETW status: ";
-                tip += pm_debug_info_stopped.etw_session_status.empty() ? "(unknown)" : pm_debug_info_stopped.etw_session_status;
-                tip += "\n\nPossible reasons:\n"
-                       "- Worker failed to start or exited (e.g. StartTrace failed)\n"
-                       "- ETW session could not be created\n"
-                       "- Insufficient permissions (try running as administrator)\n";
+                tip += pm_debug_info_stopped.etw_session_status.empty() ? "(unknown)"
+                                                                        : pm_debug_info_stopped.etw_session_status;
+                tip +=
+                    "\n\nPossible reasons:\n"
+                    "- Worker failed to start or exited (e.g. StartTrace failed)\n"
+                    "- ETW session could not be created\n"
+                    "- Insufficient permissions (try running as administrator)\n";
                 if (!pm_debug_info_stopped.last_error.empty()) {
                     tip += "\nLast error: ";
                     tip += pm_debug_info_stopped.last_error;
@@ -620,8 +635,10 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
                     tip += pm_debug_info_stopped.etw_enumeration_error;
                 }
                 if (pm_debug_info_stopped.last_error.empty() && pm_debug_info_stopped.etw_enumeration_error.empty()) {
-                    tip += "\n\nNo error or enumeration failure recorded. Worker may have exited normally, "
-                           "was stopped by user, or exited before reporting an error. Check ReShade log for [PresentMon] messages.";
+                    tip +=
+                        "\n\nNo error or enumeration failure recorded. Worker may have exited normally, "
+                        "was stopped by user, or exited before reporting an error. Check ReShade log for [PresentMon] "
+                        "messages.";
                 }
             } else {
                 tip = "Enable the checkbox above to start ETW tracing and see session list.";
@@ -632,12 +649,15 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
         // Always show last known thread/ETW status when stopped so user sees why even when last_error is empty
         imgui.TextColored(::ui::colors::TEXT_LABEL, "Thread status:");
         imgui.SameLine();
-        imgui.TextColored(::ui::colors::TEXT_DIMMED, "%s",
-                         pm_debug_info_stopped.thread_status.empty() ? "(unknown)" : pm_debug_info_stopped.thread_status.c_str());
+        imgui.TextColored(
+            ::ui::colors::TEXT_DIMMED, "%s",
+            pm_debug_info_stopped.thread_status.empty() ? "(unknown)" : pm_debug_info_stopped.thread_status.c_str());
         imgui.TextColored(::ui::colors::TEXT_LABEL, "ETW status:");
         imgui.SameLine();
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "%s",
-                         pm_debug_info_stopped.etw_session_status.empty() ? "(unknown)" : pm_debug_info_stopped.etw_session_status.c_str());
+                          pm_debug_info_stopped.etw_session_status.empty()
+                              ? "(unknown)"
+                              : pm_debug_info_stopped.etw_session_status.c_str());
         if (!pm_debug_info_stopped.last_error.empty()) {
             imgui.TextColored(::ui::colors::TEXT_ERROR, "Last error: %s", pm_debug_info_stopped.last_error.c_str());
         }
@@ -668,7 +688,8 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
         } else {
             imgui.TextColored(::ui::colors::TEXT_LABEL, "Sessions (%zu):", all_sessions.size());
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Stopping a session may affect the app that created it. DC_ sessions are from Display Commander.");
+                imgui.SetTooltip(
+                    "Stopping a session may affect the app that created it. DC_ sessions are from Display Commander.");
             }
             imgui.Indent();
             for (const auto& session_name : all_sessions) {
@@ -697,6 +718,221 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.Unindent();
     }
+
+    imgui.Unindent();
+}
+
+void DrawDcServiceStatusIndicators(display_commander::ui::IImGuiWrapper& imgui, bool include_version_in_tooltip) {
+    using display_commander::dc_service::GetAddonPathForArch;
+    using display_commander::dc_service::QueryServiceStatus;
+    using display_commander::dc_service::ServiceArchitecture;
+    using display_commander::dc_service::StartService;
+    using display_commander::dc_service::StopService;
+
+    const auto status64 = QueryServiceStatus(ServiceArchitecture::X64);
+    const auto status32 = QueryServiceStatus(ServiceArchitecture::X86);
+
+    const float button_w = 36.0f;
+    const float spacing = 4.0f;
+    const float total_w = button_w * 2 + spacing;
+
+    float avail = imgui.GetContentRegionAvail().x;
+    if (avail > total_w) {
+        imgui.SameLine(0, avail - total_w);
+    }
+
+    auto draw_indicator = [&imgui, &include_version_in_tooltip](
+        const char* label, ServiceArchitecture arch, bool running,
+        const display_commander::dc_service::ServiceStatus& st) {
+        std::filesystem::path addon_path = GetAddonPathForArch(arch);
+        bool can_start = !addon_path.empty();
+        bool disabled = !running && !can_start;
+
+        if (disabled) {
+            imgui.BeginDisabled();
+        }
+        ImVec4 col = running ? ::ui::colors::ICON_SUCCESS : ::ui::colors::ICON_ERROR;
+        imgui.PushStyleColor(ImGuiCol_Button, col);
+        imgui.PushStyleColor(ImGuiCol_ButtonHovered, col);
+        imgui.PushStyleColor(ImGuiCol_ButtonActive, col);
+
+        bool clicked = imgui.SmallButton(label);
+
+        imgui.PopStyleColor(3);
+        if (disabled) {
+            imgui.EndDisabled();
+        }
+
+        if (imgui.IsItemHovered()) {
+            const char* arch_name = (arch == ServiceArchitecture::X64) ? "64-bit" : "32-bit";
+            std::string tip = running
+                ? (std::string(arch_name) + " DC Service: running (PID " + std::to_string(st.pid) + ").")
+                : (std::string(arch_name) + " DC Service: stopped.");
+            if (include_version_in_tooltip || !can_start) {
+                if (!addon_path.empty()) {
+                    std::string ver = GetDLLVersionString(addon_path.wstring());
+                    if (!ver.empty()) tip += "\n" + addon_path.filename().string() + " v" + ver;
+                    else tip += "\n" + addon_path.filename().string();
+                } else {
+                    tip += "\n(Addon not installed)";
+                }
+            }
+            if (disabled) {
+                tip += "\nCannot start: addon not found.";
+            } else {
+                tip += running ? "\nClick to stop." : "\nClick to start.";
+            }
+            imgui.SetTooltip("%s", tip.c_str());
+        }
+
+        if (clicked && !disabled) {
+            if (running) {
+                StopService(arch);
+            } else {
+                StartService(arch);
+            }
+        }
+    };
+
+    draw_indicator("32", ServiceArchitecture::X86, status32.running, status32);
+    imgui.SameLine(0, spacing);
+    draw_indicator("64", ServiceArchitecture::X64, status64.running, status64);
+}
+
+void DrawDcServiceIndicatorsOnLine(display_commander::ui::IImGuiWrapper& imgui, bool include_version_in_tooltip) {
+    using display_commander::dc_service::GetAddonPathForArch;
+    using display_commander::dc_service::QueryServiceStatus;
+    using display_commander::dc_service::ServiceArchitecture;
+    using display_commander::dc_service::StartService;
+    using display_commander::dc_service::StopService;
+
+    const auto status64 = QueryServiceStatus(ServiceArchitecture::X64);
+    const auto status32 = QueryServiceStatus(ServiceArchitecture::X86);
+
+    constexpr float spacing = 4.0f;
+    // Greyed-out red when addon binary not available
+    constexpr ImVec4 kGreyedRedUnavailable = ImVec4(0.6f, 0.25f, 0.25f, 1.0f);
+
+    auto draw_indicator = [&imgui, &include_version_in_tooltip, kGreyedRedUnavailable](
+        const char* label, ServiceArchitecture arch, bool running,
+        const display_commander::dc_service::ServiceStatus& st) {
+        std::filesystem::path addon_path = GetAddonPathForArch(arch);
+        bool can_start = !addon_path.empty();
+        bool disabled = !running && !can_start;
+
+        ImVec4 col;
+        if (running) {
+            col = ::ui::colors::ICON_SUCCESS;
+        } else if (!can_start) {
+            col = kGreyedRedUnavailable;  // Addon binary not available
+        } else {
+            col = ::ui::colors::ICON_ERROR;
+        }
+
+        if (disabled) {
+            imgui.BeginDisabled();
+        }
+        imgui.PushStyleColor(ImGuiCol_Button, col);
+        imgui.PushStyleColor(ImGuiCol_ButtonHovered, col);
+        imgui.PushStyleColor(ImGuiCol_ButtonActive, col);
+
+        bool clicked = imgui.SmallButton(label);
+
+        imgui.PopStyleColor(3);
+        if (disabled) {
+            imgui.EndDisabled();
+        }
+
+        if (imgui.IsItemHovered()) {
+            const char* arch_name = (arch == ServiceArchitecture::X64) ? "64-bit" : "32-bit";
+            std::string tip = running
+                ? (std::string(arch_name) + " DC Service: running (PID " + std::to_string(st.pid) + ").")
+                : (std::string(arch_name) + " DC Service: stopped.");
+            if (include_version_in_tooltip || !can_start) {
+                if (!addon_path.empty()) {
+                    std::string ver = GetDLLVersionString(addon_path.wstring());
+                    if (!ver.empty()) tip += "\n" + addon_path.filename().string() + " v" + ver;
+                    else tip += "\n" + addon_path.filename().string();
+                } else {
+                    tip += "\n(Addon not installed)";
+                }
+            }
+            if (disabled) {
+                tip += "\nCannot start: addon not found.";
+            } else {
+                tip += running ? "\nClick to stop." : "\nClick to start.";
+            }
+            imgui.SetTooltip("%s", tip.c_str());
+        }
+
+        if (clicked && !disabled) {
+            if (running) {
+                StopService(arch);
+            } else {
+                StartService(arch);
+            }
+        }
+    };
+
+    imgui.SameLine(0, spacing);
+    draw_indicator("32", ServiceArchitecture::X86, status32.running, status32);
+    imgui.SameLine(0, spacing);
+    draw_indicator("64", ServiceArchitecture::X64, status64.running, status64);
+}
+
+void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Indent();
+
+    using display_commander::dc_service::QueryServiceStatus;
+    using display_commander::dc_service::ServiceArchitecture;
+
+    const auto status64 = QueryServiceStatus(ServiceArchitecture::X64);
+    const auto status32 = QueryServiceStatus(ServiceArchitecture::X86);
+
+    imgui.TextColored(::ui::colors::TEXT_LABEL, "64-bit DC Service:");
+    imgui.SameLine();
+    if (status64.running) {
+        imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " RUNNING (PID %u)",
+                          static_cast<unsigned int>(status64.pid));
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "64-bit DC Service is running (started via rundll32.exe zzz_display_commander.addon64,Start).\n"
+                "PID shown is the process hosting the WH_CBT auto-injection hook.");
+        }
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, ICON_FK_MINUS " Not running");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "No 64-bit DC Service instance is currently running in this Windows session.\n"
+                "Start it with: rundll32.exe zzz_display_commander.addon64,Start");
+        }
+    }
+
+    imgui.Spacing();
+
+    imgui.TextColored(::ui::colors::TEXT_LABEL, "32-bit DC Service:");
+    imgui.SameLine();
+    if (status32.running) {
+        imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " RUNNING (PID %u)",
+                          static_cast<unsigned int>(status32.pid));
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "32-bit DC Service is running (started via rundll32.exe zzz_display_commander.addon32,Start).\n"
+                "PID shown is the process hosting the WH_CBT auto-injection hook.");
+        }
+    } else {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, ICON_FK_MINUS " Not running");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "No 32-bit DC Service instance is currently running in this Windows session.\n"
+                "Start it with: rundll32.exe zzz_display_commander.addon32,Start");
+        }
+    }
+
+    imgui.Spacing();
+    imgui.TextColored(::ui::colors::TEXT_DIMMED,
+                      "Only one DC Service instance is allowed per architecture. "
+                      "Additional Start calls will be ignored when a service is already running.");
 
     imgui.Unindent();
 }

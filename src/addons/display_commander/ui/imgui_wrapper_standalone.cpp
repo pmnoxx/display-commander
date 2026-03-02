@@ -338,5 +338,13 @@ void ImGuiWrapperStandalone::EndPopup() {
     ImGui::EndPopup();
 }
 
+bool ImGuiWrapperStandalone::BeginPopupContextItem(const char* str_id, int popup_flags) {
+    return ImGui::BeginPopupContextItem(str_id, static_cast<ImGuiPopupFlags>(popup_flags));
+}
+
+bool ImGuiWrapperStandalone::MenuItem(const char* label, const char* shortcut, bool selected, bool enabled) {
+    return ImGui::MenuItem(label, shortcut, selected, enabled);
+}
+
 } // namespace ui
 } // namespace display_commander

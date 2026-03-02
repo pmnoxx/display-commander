@@ -1,8 +1,24 @@
+// Source Code <Display Commander>
+
+// Group 1 — Source Code (Display Commander)
 #include "steam_library.hpp"
-#include <windows.h>
+#include "logging.hpp"
+#include "steam_launch_history.hpp"
+
+// Group 2 — ReShade / ImGui
+// (none)
+
+// Group 3 — Standard C++
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <string>
+
+// Group 4 — Windows.h
+#include <windows.h>
+
+// Group 5 — Other Windows SDK
+// (none)
 
 namespace display_commander::steam_library {
 
@@ -119,7 +135,8 @@ void GetLibraryPaths(std::vector<std::wstring>& out) {
     std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     f.close();
     ParseLibraryFoldersVdfSimple(content, out);
-    // Remove duplicate of default path when it also appeared in vdf (keep out[0] = default)
+    // Remove all duplicate library paths (case-insensitive). Same physical folder can appear
+    // multiple times (e.g. registry vs vdf, or vdf with different casing like D:\ vs d:\).
     auto samePath = [](const std::wstring& a, const std::wstring& b) {
         if (a.size() != b.size()) return false;
         for (size_t i = 0; i < a.size(); ++i) {
@@ -131,15 +148,32 @@ void GetLibraryPaths(std::vector<std::wstring>& out) {
         return true;
     };
     for (size_t i = out.size(); i > 1; --i) {
-        if (samePath(out[i - 1], steamPath))
-            out.erase(out.begin() + (long)(i - 1));
+        bool isDup = false;
+        for (size_t j = 0; j < i - 1; ++j) {
+            if (samePath(out[j], out[i - 1])) {
+                isDup = true;
+                break;
+            }
+        }
+        if (isDup) out.erase(out.begin() + (long)(i - 1));
     }
+}
+
+// Normalize path for consistent display: uppercase drive letter (e.g. c:\ -> C:\).
+static std::wstring NormalizePathCase(const std::wstring& path) {
+    if (path.size() >= 2 && path[1] == L':' && (path[0] >= L'a' && path[0] <= L'z')) {
+        std::wstring out = path;
+        out[0] = static_cast<wchar_t>(path[0] - 32);
+        return out;
+    }
+    return path;
 }
 
 void GetInstalledGames(std::vector<SteamGame>& out) {
     out.clear();
     std::vector<std::wstring> libPaths;
     GetLibraryPaths(libPaths);
+    std::vector<uint32_t> seenAppIds;
     for (const std::wstring& lib : libPaths) {
         std::wstring steamapps = lib + L"\\steamapps";
         WIN32_FIND_DATAW fd = {};
@@ -161,6 +195,8 @@ void GetInstalledGames(std::vector<SteamGame>& out) {
             std::string name, installdir;
             if (!ParseAppManifest(content, appId, name, installdir)) continue;
             if (installdir.empty()) continue;
+            if (std::find(seenAppIds.begin(), seenAppIds.end(), appId) != seenAppIds.end()) continue;
+            seenAppIds.push_back(appId);
             std::wstring installdirW;
             installdirW.reserve(installdir.size() + 1);
             for (unsigned char c : installdir) installdirW += (wchar_t)c;
@@ -170,7 +206,7 @@ void GetInstalledGames(std::vector<SteamGame>& out) {
             SteamGame game;
             game.app_id = appId;
             game.name = name;
-            game.install_dir = installPath;
+            game.install_dir = NormalizePathCase(installPath);
             out.push_back(game);
         } while (FindNextFileW(h, &fd));
         FindClose(h);
@@ -196,6 +232,20 @@ std::wstring FindMainExeInDir(const std::wstring& install_dir) {
     } while (FindNextFileW(h, &fd));
     FindClose(h);
     return firstExe;
+}
+
+bool LaunchSteamGame(uint32_t app_id) {
+    if (app_id == 0) return false;
+    steam_launch_history::RecordSteamLaunch(app_id);
+    std::wstring url = L"steam://run/" + std::to_wstring(app_id);
+    HINSTANCE result = ShellExecuteW(nullptr, L"open", url.c_str(), nullptr, nullptr, SW_SHOW);
+    // ShellExecute returns value > 32 on success
+    if (reinterpret_cast<intptr_t>(result) <= 32) {
+        LogInfo("LaunchSteamGame: ShellExecuteW failed for app_id %u, result %td", app_id,
+                reinterpret_cast<intptr_t>(result));
+        return false;
+    }
+    return true;
 }
 
 }  // namespace display_commander::steam_library

@@ -223,6 +223,12 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         return ImGui::BeginPopupModal(name, p_open, static_cast<ImGuiWindowFlags>(flags));
     }
     void EndPopup() override { ImGui::EndPopup(); }
+    bool BeginPopupContextItem(const char* str_id, int popup_flags) override {
+        return ImGui::BeginPopupContextItem(str_id, static_cast<ImGuiPopupFlags>(popup_flags));
+    }
+    bool MenuItem(const char* label, const char* shortcut, bool selected, bool enabled) override {
+        return ImGui::MenuItem(label, shortcut, selected, enabled);
+    }
 };
 
 } // namespace ui

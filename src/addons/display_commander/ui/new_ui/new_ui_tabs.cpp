@@ -218,6 +218,21 @@ void InitializeNewUI() {
         false);  // Main tab is not advanced
 
     g_tab_manager.AddTab(
+        "Games", "games",
+        [](reshade::api::effect_runtime* runtime) {
+            (void)runtime;
+            try {
+                display_commander::ui::ImGuiWrapperReshade wrapper;
+                ui::new_ui::DrawGamesTab(wrapper);
+            } catch (const std::exception& e) {
+                LogError("Error drawing Games tab: %s", e.what());
+            } catch (...) {
+                LogError("Unknown error drawing Games tab");
+            }
+        },
+        false);  // Games tab is not advanced
+
+    g_tab_manager.AddTab(
         "Advanced", "advanced",
         [](reshade::api::effect_runtime* runtime) {
             try {
@@ -250,21 +265,6 @@ void InitializeNewUI() {
             }
         },
         false);  // Hotkeys tab is not advanced
-
-    g_tab_manager.AddTab(
-        "Games", "games",
-        [](reshade::api::effect_runtime* runtime) {
-            (void)runtime;
-            try {
-                display_commander::ui::ImGuiWrapperReshade wrapper;
-                ui::new_ui::DrawGamesTab(wrapper);
-            } catch (const std::exception& e) {
-                LogError("Error drawing Games tab: %s", e.what());
-            } catch (...) {
-                LogError("Unknown error drawing Games tab");
-            }
-        },
-        false);  // Games tab is not advanced
 
     g_tab_manager.AddTab(
         "Controller", "controller",

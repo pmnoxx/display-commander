@@ -197,6 +197,9 @@ struct IImGuiWrapper {
     virtual void OpenPopup(const char* str_id) = 0;
     virtual bool BeginPopupModal(const char* name, bool* p_open, int flags = 0) = 0;
     virtual void EndPopup() = 0;
+    virtual bool BeginPopupContextItem(const char* str_id = nullptr, int popup_flags = 1) = 0;
+    virtual bool MenuItem(const char* label, const char* shortcut = nullptr, bool selected = false,
+                          bool enabled = true) = 0;
 };
 
 } // namespace ui

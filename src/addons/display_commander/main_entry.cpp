@@ -1815,8 +1815,7 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
     const DWORD pid = GetCurrentProcessId();
     wchar_t pid_buf[32];
     swprintf_s(pid_buf, L"%lu", static_cast<unsigned long>(pid));
-    std::filesystem::path global_temp_dir =
-        display_commander::utils::GetLocalDcDirectory() / L"tmp" / pid_buf;
+    std::filesystem::path global_temp_dir = display_commander::utils::GetLocalDcDirectory() / L"tmp" / pid_buf;
     std::error_code ec;
     if (!std::filesystem::exists(global_temp_dir, ec)) {
         std::filesystem::create_directories(global_temp_dir, ec);
@@ -1884,7 +1883,7 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
             std::string name = entry.path().filename().string();
             char msg[384];
             snprintf(msg, sizeof(msg), "[DisplayCommander] Loaded .dc64r/.dc32r/.dcr DLL (after ReShade): %s\n",
-                    name.c_str());
+                     name.c_str());
             OutputDebugStringA(msg);
         }
     }
@@ -1997,15 +1996,13 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
         whitelist = display_commander::utils::TestWhitelist(executable_path);
     }
     if (detected_platforms.empty() && !found_proxy && !whitelist) {
+        LogInfo("[reshade] No platforms detected and not found in whitelist, refusing to load found_proxy: %d",
+                found_proxy);
         g_process_attached.store(true);
         return false;
     }
     std::filesystem::path game_directory = std::filesystem::path(executable_path).parent_path();
     std::filesystem::path dc_reshade_dir = display_commander::utils::GetReshadeDirectoryForLoading(game_directory);
-    if (dc_reshade_dir.empty()) {
-        g_process_attached.store(true);
-        return true;
-    }
 #ifdef _WIN64
     std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade64.dll";
     const char* dll_name = "Reshade64.dll";
@@ -2013,7 +2010,9 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     std::filesystem::path reshade_path = dc_reshade_dir / L"Reshade32.dll";
     const char* dll_name = "Reshade32.dll";
 #endif
-    if (!std::filesystem::exists(reshade_path)) {
+    auto path_exists = std::filesystem::exists(reshade_path);
+    LogInfo("[reshade] path_exists = %d path = %s", path_exists, reshade_path.string().c_str());
+    if (!path_exists) {
         g_process_attached.store(true);
         return true;
     }

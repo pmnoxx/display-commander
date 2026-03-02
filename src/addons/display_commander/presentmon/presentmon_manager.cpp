@@ -225,10 +225,37 @@ static std::string FormatPropValueBestEffort(PEVENT_RECORD event_record, const s
     uint64_t v = 0;
     if (TryGetEventPropertyU64(event_record, prop_name.c_str(), v)) {
         char buf[64] = {};
-        StringCchPrintfA(buf, std::size(buf), "%llu", static_cast<unsigned long long>(v));
+        // Pointers and handles: show hex (TDH_INTYPE_POINTER is 14 in Windows SDK)
+        const bool as_hex = (in_type == 14);
+        StringCchPrintfA(buf, std::size(buf), as_hex ? "0x%llx" : "%llu",
+                         static_cast<unsigned long long>(v));
         return std::string(buf);
     }
     return {};
+}
+
+// Build "name=value, name2=value2" for one event (one sample per field). Used for event-type tooltip.
+static std::string BuildEventTypeSampleString(PEVENT_RECORD event_record, const TRACE_EVENT_INFO* info,
+                                              size_t max_props) {
+    if (!info || info->TopLevelPropertyCount == 0) return {};
+    std::string out;
+    size_t listed = 0;
+    for (ULONG i = 0; i < info->TopLevelPropertyCount && listed < max_props; ++i) {
+        const EVENT_PROPERTY_INFO& pi = info->EventPropertyInfoArray[i];
+        std::wstring prop_name = GetTraceEventInfoString(info, pi.NameOffset);
+        if (prop_name.empty()) continue;
+
+        USHORT in_type = pi.nonStructType.InType;
+        std::string value = FormatPropValueBestEffort(event_record, prop_name, in_type);
+        if (value.empty()) continue;
+
+        if (!out.empty()) out += ", ";
+        out += Narrow(prop_name);
+        out += "=";
+        out += value;
+        ++listed;
+    }
+    return out;
 }
 
 static std::string ProviderGuidToString(const GUID& guid) { return Narrow(GuidToWString(guid)); }
@@ -256,6 +283,23 @@ static uint64_t HashSurfaceKey(uint64_t surface_luid) {
     uint64_t h = 1469598103934665603ULL;
     const uint8_t* p = reinterpret_cast<const uint8_t*>(&surface_luid);
     for (size_t i = 0; i < sizeof(surface_luid); ++i) {
+        h ^= p[i];
+        h *= 1099511628211ULL;
+    }
+    if (h == 0) h = 1;
+    return h;
+}
+
+// Event IDs for "per draw" events (one event per Present() call). May vary by Windows version.
+// See private_docs/tasks/surface_refresh_rate_and_etw_events.md.
+static constexpr uint16_t k_dxgi_present_start_id = 64;     // Microsoft-Windows-DXGI Present_Start
+static constexpr uint16_t k_dxgkrnl_present_info_id = 68;   // Microsoft-Windows-DxgKrnl Present_Info (has hWnd)
+static constexpr uint16_t k_d3d9_present_start_id = 1;      // Microsoft-Windows-D3D9 Present_Start (often 1)
+
+static uint64_t HashHwndKey(uint64_t hwnd) {
+    uint64_t h = 1469598103934665603ULL;
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(&hwnd);
+    for (size_t i = 0; i < sizeof(hwnd); ++i) {
         h ^= p[i];
         h *= 1099511628211ULL;
     }
@@ -358,6 +402,7 @@ PresentMonManager::PresentMonManager()
       m_events_dxgkrnl(0),
       m_events_dxgi(0),
       m_events_dwm(0),
+      m_events_d3d9(0),
       m_last_graphics_provider(new std::string("")),
       m_last_graphics_event_id(0),
       m_last_graphics_event_pid(0),
@@ -384,9 +429,11 @@ PresentMonManager::PresentMonManager()
     ZeroMemory(&m_guid_dxgkrnl, sizeof(m_guid_dxgkrnl));
     ZeroMemory(&m_guid_dxgi, sizeof(m_guid_dxgi));
     ZeroMemory(&m_guid_dwm, sizeof(m_guid_dwm));
+    ZeroMemory(&m_guid_d3d9, sizeof(m_guid_d3d9));
     m_have_dxgkrnl = false;
     m_have_dxgi = false;
     m_have_dwm = false;
+    m_have_d3d9 = false;
 }
 
 bool PresentMonManager::GetFlipCompatibility(PresentMonFlipCompatibility& out) const {
@@ -611,6 +658,7 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
     debug_info.events_dxgkrnl = m_events_dxgkrnl.load();
     debug_info.events_dxgi = m_events_dxgi.load();
     debug_info.events_dwm = m_events_dwm.load();
+    debug_info.events_d3d9 = m_events_d3d9.load();
 
     auto last_gprov_ptr = m_last_graphics_provider.load();
     debug_info.last_graphics_provider = last_gprov_ptr ? *last_gprov_ptr : "";
@@ -1038,15 +1086,66 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
         m_last_event_id.store(event_record->EventHeader.EventDescriptor.Id);
     }
 
-    // Track graphics-relevant providers separately (DxgKrnl/DXGI/DWM)
+    // Track graphics-relevant providers separately (DxgKrnl/DXGI/DWM/D3D9)
     const bool is_dxgkrnl = m_have_dxgkrnl && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dxgkrnl);
     const bool is_dxgi = m_have_dxgi && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dxgi);
     const bool is_dwm = m_have_dwm && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dwm);
-    const bool is_graphics_provider = (is_dxgkrnl || is_dxgi || is_dwm);
+    const bool is_d3d9 = m_have_d3d9 && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_d3d9);
+    const bool is_graphics_provider = (is_dxgkrnl || is_dxgi || is_dwm || is_d3d9);
 
     if (is_dxgkrnl) m_events_dxgkrnl.fetch_add(1);
     if (is_dxgi) m_events_dxgi.fetch_add(1);
     if (is_dwm) m_events_dwm.fetch_add(1);
+    if (is_d3d9) m_events_d3d9.fetch_add(1);
+
+    // Per-draw statistics: one event per Present() call
+    const uint16_t event_id = event_record->EventHeader.EventDescriptor.Id;
+    bool per_draw_global_incremented = false;
+    if (is_dxgi && event_id == k_dxgi_present_start_id) {
+        m_per_draw_global_count.fetch_add(1);
+        per_draw_global_incremented = true;
+    }
+    if (is_d3d9 && event_id == k_d3d9_present_start_id) {
+        m_per_draw_global_count.fetch_add(1);
+        per_draw_global_incremented = true;
+    }
+    // 1s sliding window for rate: advance boundary when event timestamp crosses 1 second
+    if (per_draw_global_incremented) {
+        const uint64_t time_100ns = static_cast<uint64_t>(event_record->EventHeader.TimeStamp.QuadPart);
+        const uint64_t boundary = m_per_draw_1s_boundary_100ns.load(std::memory_order_relaxed);
+        if (boundary == 0 || (time_100ns - boundary) >= 10000000u) {  // 1 s = 10^7 * 100ns
+            m_per_draw_global_count_at_1s_ago.store(m_per_draw_global_count.load(std::memory_order_relaxed),
+                                                   std::memory_order_relaxed);
+            m_per_draw_1s_boundary_100ns.store(time_100ns, std::memory_order_relaxed);
+        }
+    }
+    if (is_dxgkrnl && event_id == k_dxgkrnl_present_info_id) {
+        uint64_t hwnd = 0;
+        if (TryGetEventPropertyU64(event_record, L"hWnd", hwnd)
+            || TryGetEventPropertyU64(event_record, L"hwnd", hwnd)
+            || TryGetEventPropertyU64(event_record, L"HWND", hwnd)) {
+            if (hwnd != 0) {
+                const uint64_t key = HashHwndKey(hwnd);
+                size_t idx = static_cast<size_t>(key % k_per_draw_hwnd_cache_size);
+                for (size_t probe = 0; probe < k_per_draw_hwnd_cache_size; ++probe) {
+                    auto& e = m_per_draw_hwnd_cache[idx];
+                    uint64_t existing = e.hwnd.load(std::memory_order_relaxed);
+                    if (existing == hwnd) {
+                        e.count.fetch_add(1);
+                        break;
+                    }
+                    if (existing == 0) {
+                        uint64_t expected = 0;
+                        if (e.hwnd.compare_exchange_strong(expected, hwnd, std::memory_order_acq_rel)) {
+                            e.count.store(1);
+                            break;
+                        }
+                    }
+                    idx = (idx + 1) % k_per_draw_hwnd_cache_size;
+                }
+            }
+        }
+    }
 
     if (is_graphics_provider) {
         std::string* p = new std::string(ProviderGuidToString(event_record->EventHeader.ProviderId));
@@ -1424,6 +1523,45 @@ void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMo
               });
 }
 
+void PresentMonManager::GetPerDrawStats(PresentMonPerDrawStats& out, uint64_t hwnd_for_window) const {
+    out.global_count = m_per_draw_global_count.load();
+    out.count_for_window = 0;
+    out.window_matched = false;
+    out.rate_global_per_sec = 0.0;
+    const uint64_t boundary_100ns = m_per_draw_1s_boundary_100ns.load(std::memory_order_relaxed);
+    if (boundary_100ns != 0) {
+        ULARGE_INTEGER ft;
+        GetSystemTimePreciseAsFileTime(reinterpret_cast<FILETIME*>(&ft));
+        const uint64_t now_100ns = ft.QuadPart;
+        const uint64_t elapsed_100ns = now_100ns - boundary_100ns;
+        const double elapsed_s = static_cast<double>(elapsed_100ns) / 1e7;
+        if (elapsed_s >= 0.1) {
+            const uint64_t count_1s_ago = m_per_draw_global_count_at_1s_ago.load(std::memory_order_relaxed);
+            const uint64_t cur = m_per_draw_global_count.load(std::memory_order_relaxed);
+            if (cur >= count_1s_ago) {
+                out.rate_global_per_sec = static_cast<double>(cur - count_1s_ago) / elapsed_s;
+            }
+        }
+    }
+    if (hwnd_for_window == 0) {
+        return;
+    }
+    const uint64_t key = HashHwndKey(hwnd_for_window);
+    size_t idx = static_cast<size_t>(key % k_per_draw_hwnd_cache_size);
+    for (size_t probe = 0; probe < k_per_draw_hwnd_cache_size; ++probe) {
+        const auto& e = m_per_draw_hwnd_cache[idx];
+        if (e.hwnd.load() == hwnd_for_window) {
+            out.count_for_window = e.count.load();
+            out.window_matched = true;
+            return;
+        }
+        if (e.hwnd.load() == 0) {
+            return;
+        }
+        idx = (idx + 1) % k_per_draw_hwnd_cache_size;
+    }
+}
+
 void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graphics_provider) {
     (void)is_graphics_provider;
 
@@ -1496,6 +1634,18 @@ void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graph
     delete entry->provider_name.exchange(new std::string(Narrow(provider_name)));
     delete entry->event_name.exchange(new std::string(Narrow(event_name)));
     delete entry->props.exchange(new std::string(props_csv));
+
+    // Cache one sample per event type for tooltip (name=value for each field)
+    if (entry->props_sample.load(std::memory_order_relaxed) == nullptr) {
+        std::string sample = BuildEventTypeSampleString(event_record, info, 32);
+        if (!sample.empty()) {
+            std::string* new_str = new std::string(sample);
+            std::string* expected = nullptr;
+            if (!entry->props_sample.compare_exchange_strong(expected, new_str, std::memory_order_acq_rel)) {
+                delete new_str;  // another thread stored first
+            }
+        }
+    }
 }
 
 void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSummary>& out, bool graphics_only) const {
@@ -1511,12 +1661,14 @@ void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSum
         auto* provider_name_ptr = e.provider_name.load();
         auto* event_name_ptr = e.event_name.load();
         auto* props_ptr = e.props.load();
+        auto* props_sample_ptr = e.props_sample.load();
 
         PresentMonEventTypeSummary s;
         s.provider_guid = guid_ptr ? *guid_ptr : "";
         s.provider_name = provider_name_ptr ? *provider_name_ptr : "";
         s.event_name = event_name_ptr ? *event_name_ptr : "";
         s.props = props_ptr ? *props_ptr : "";
+        s.props_sample = props_sample_ptr ? *props_sample_ptr : "";
         s.event_id = e.event_id;
         s.task = e.task;
         s.opcode = e.opcode;
@@ -1529,11 +1681,12 @@ void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSum
             bool ok = false;
             if (!s.provider_name.empty()) {
                 ok = StringContainsI(s.provider_name, "dxgkrnl") || StringContainsI(s.provider_name, "dxgi")
-                     || StringContainsI(s.provider_name, "dwm");
+                     || StringContainsI(s.provider_name, "dwm") || StringContainsI(s.provider_name, "d3d9");
             } else {
                 ok = (s.provider_guid == ProviderGuidToString(m_guid_dxgkrnl)
                       || s.provider_guid == ProviderGuidToString(m_guid_dxgi)
-                      || s.provider_guid == ProviderGuidToString(m_guid_dwm));
+                      || s.provider_guid == ProviderGuidToString(m_guid_dwm)
+                      || s.provider_guid == ProviderGuidToString(m_guid_d3d9));
             }
             if (!ok) continue;
         }
@@ -1608,19 +1761,23 @@ int PresentMonManager::PresentMonMain() {
     m_guid_dxgkrnl = {};
     m_guid_dxgi = {};
     m_guid_dwm = {};
+    m_guid_d3d9 = {};
     m_have_dxgkrnl = ProviderGuidByName(L"Microsoft-Windows-DxgKrnl", m_guid_dxgkrnl);
     m_have_dxgi = ProviderGuidByName(L"Microsoft-Windows-DXGI", m_guid_dxgi);
     m_have_dwm = ProviderGuidByName(L"Microsoft-Windows-Dwm-Core", m_guid_dwm);
+    m_have_d3d9 = ProviderGuidByName(L"Microsoft-Windows-D3D9", m_guid_d3d9);
 
     const bool want_dxgkrnl = settings::g_advancedTabSettings.presentmon_provider_dxgkrnl.GetValue();
     const bool want_dxgi = settings::g_advancedTabSettings.presentmon_provider_dxgi.GetValue();
     const bool want_dwm = settings::g_advancedTabSettings.presentmon_provider_dwm.GetValue();
+    const bool want_d3d9 = settings::g_advancedTabSettings.presentmon_provider_d3d9.GetValue();
 
     const bool enable_dxgkrnl = m_have_dxgkrnl && want_dxgkrnl;
     const bool enable_dxgi = m_have_dxgi && want_dxgi;
     const bool enable_dwm = m_have_dwm && want_dwm;
+    const bool enable_d3d9 = m_have_d3d9 && want_d3d9;
 
-    if (!enable_dxgkrnl && !enable_dxgi && !enable_dwm) {
+    if (!enable_dxgkrnl && !enable_dxgi && !enable_dwm && !enable_d3d9) {
         LogWarn("[PresentMon] No ETW providers enabled (none selected or TDH lookup failed)");
         UpdateDebugInfo("Running", "Failed", "No ETW providers enabled", 0, 0);
         RequestStopEtw();
@@ -1647,11 +1804,12 @@ int PresentMonManager::PresentMonMain() {
     ULONG st_dxgkrnl = enable_dxgkrnl ? enable_provider(m_guid_dxgkrnl, L"Microsoft-Windows-DxgKrnl") : ERROR_NOT_FOUND;
     ULONG st_dxgi = enable_dxgi ? enable_provider(m_guid_dxgi, L"Microsoft-Windows-DXGI") : ERROR_NOT_FOUND;
     ULONG st_dwm = enable_dwm ? enable_provider(m_guid_dwm, L"Microsoft-Windows-Dwm-Core") : ERROR_NOT_FOUND;
+    ULONG st_d3d9 = enable_d3d9 ? enable_provider(m_guid_d3d9, L"Microsoft-Windows-D3D9") : ERROR_NOT_FOUND;
 
     {
         char status_msg[256] = {};
-        StringCchPrintfA(status_msg, std::size(status_msg), "ETW active (DxgKrnl=%lu, DXGI=%lu, DWM=%lu)", st_dxgkrnl,
-                         st_dxgi, st_dwm);
+        StringCchPrintfA(status_msg, std::size(status_msg), "ETW active (DxgKrnl=%lu, DXGI=%lu, DWM=%lu, D3D9=%lu)",
+                         st_dxgkrnl, st_dxgi, st_dwm, st_d3d9);
         UpdateDebugInfo("Running", status_msg, "", 0, 0);
     }
 

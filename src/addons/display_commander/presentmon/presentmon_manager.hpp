@@ -23,7 +23,8 @@ struct PresentMonEventTypeSummary {
     uint8_t level;
     uint64_t keyword;
     std::string event_name;
-    std::string props;  // comma-separated property names (or name=? markers)
+    std::string props;        // comma-separated property names (or name=? markers)
+    std::string props_sample; // one sample per field (name=value, ...) for tooltip; empty if not yet captured
     uint64_t count;
 };
 
@@ -111,6 +112,7 @@ struct PresentMonDebugInfo {
     uint64_t events_dxgkrnl;
     uint64_t events_dxgi;
     uint64_t events_dwm;
+    uint64_t events_d3d9;
 
     // Last graphics-relevant event info (DxgKrnl/DXGI/DWM)
     std::string last_graphics_provider;
@@ -125,6 +127,15 @@ struct PresentMonDebugInfo {
 
     // Non-empty if enumerating ETW sessions failed (e.g. QueryAllTracesW access denied); show in UI
     std::string etw_enumeration_error;
+};
+
+// Per-draw statistics snapshot (for UI). Filled by GetPerDrawStats().
+// "Per draw" = one Present() call; we count DXGI Present_Start (global) and DxgKrnl Present_Info (per hWnd).
+struct PresentMonPerDrawStats {
+    uint64_t global_count = 0;       // Total per-draw events seen (any surface; DXGI Present_Start)
+    uint64_t count_for_window = 0;   // Per-draw count for the requested HWND (DxgKrnl Present_Info), if any
+    bool window_matched = false;     // True if we had a per-hwnd entry for the requested window
+    double rate_global_per_sec = 0.0;  // Events per second (any surface), 1s sliding window; 0 if not enough data
 };
 
 // Reason for stopping the PresentMon worker (logged when StopWorker is called)
@@ -171,6 +182,10 @@ class PresentMonManager {
     // Recent DWM flip-compatibility surfaces (best-effort)
     void GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out,
                                             uint64_t within_ms) const;
+
+    // Per-draw statistics (DXGI Present_Start = global; DxgKrnl Present_Info = per hWnd).
+    // Pass hwnd_for_window to get count for that window (e.g. game window); 0 = global only.
+    void GetPerDrawStats(PresentMonPerDrawStats& out, uint64_t hwnd_for_window = 0) const;
 
     // Get list of ETW sessions starting with specified prefix (e.g., "DC_").
     // On failure (e.g. QueryAllTracesW returns ERROR_ACCESS_DENIED), out_session_names is empty and
@@ -236,6 +251,7 @@ class PresentMonManager {
         std::atomic<std::string*> provider_name{nullptr};
         std::atomic<std::string*> event_name{nullptr};
         std::atomic<std::string*> props{nullptr};
+        std::atomic<std::string*> props_sample{nullptr};  // one sample (name=value per field) for tooltip
         std::atomic<uint64_t> last_schema_update_ns{0};
     };
 
@@ -285,6 +301,7 @@ class PresentMonManager {
     mutable std::atomic<uint64_t> m_events_dxgkrnl;
     mutable std::atomic<uint64_t> m_events_dxgi;
     mutable std::atomic<uint64_t> m_events_dwm;
+    mutable std::atomic<uint64_t> m_events_d3d9;
 
     // Last graphics-relevant event info
     mutable std::atomic<std::string*> m_last_graphics_provider;
@@ -334,6 +351,18 @@ class PresentMonManager {
     static constexpr size_t k_surface_cache_size = 256;
     SurfaceEntry m_surface_cache[k_surface_cache_size];
 
+    // Per-draw event counts (lock-free). DXGI Present_Start -> global; DxgKrnl Present_Info -> per hWnd.
+    std::atomic<uint64_t> m_per_draw_global_count{0};
+    // 1s sliding window for global rate (updated in callback when crossing 1s boundary; time in 100ns FILETIME)
+    std::atomic<uint64_t> m_per_draw_global_count_at_1s_ago{0};
+    std::atomic<uint64_t> m_per_draw_1s_boundary_100ns{0};
+    struct PerDrawHwndEntry {
+        std::atomic<uint64_t> hwnd{0};
+        std::atomic<uint64_t> count{0};
+    };
+    static constexpr size_t k_per_draw_hwnd_cache_size = 64;
+    PerDrawHwndEntry m_per_draw_hwnd_cache[k_per_draw_hwnd_cache_size];
+
     // ETW handles (stored as integers for atomics)
     std::atomic<uint64_t> m_etw_session_handle;
     std::atomic<uint64_t> m_etw_trace_handle;
@@ -345,9 +374,11 @@ class PresentMonManager {
     GUID m_guid_dxgkrnl;
     GUID m_guid_dxgi;
     GUID m_guid_dwm;
+    GUID m_guid_d3d9;
     bool m_have_dxgkrnl;
     bool m_have_dxgi;
     bool m_have_dwm;
+    bool m_have_d3d9;
 };
 
 // Global instance (start/stop worker; object lives for process lifetime)

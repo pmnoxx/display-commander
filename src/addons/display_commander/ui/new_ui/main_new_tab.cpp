@@ -4414,6 +4414,26 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_
                 if (surface.count > 0) {
                     imgui.Text("Event Count: %llu", surface.count);
                 }
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw events (one per Present call):");
+                {
+                    presentmon::PresentMonPerDrawStats per_draw;
+                    presentmon::g_presentMonManager.GetPerDrawStats(per_draw,
+                                                                   reinterpret_cast<uint64_t>(game_hwnd));
+                    if (per_draw.rate_global_per_sec > 0.0) {
+                        imgui.Text("Any surface: %llu  (rate: %.1f/s)", static_cast<unsigned long long>(per_draw.global_count),
+                                  per_draw.rate_global_per_sec);
+                    } else {
+                        imgui.Text("Any surface: %llu", static_cast<unsigned long long>(per_draw.global_count));
+                    }
+                    if (per_draw.window_matched) {
+                        imgui.Text("This window: %llu",
+                                   static_cast<unsigned long long>(per_draw.count_for_window));
+                    } else {
+                        imgui.TextColored(ui::colors::TEXT_DIMMED,
+                                          "This window: (no DxgKrnl Present_Info for this HWND)");
+                    }
+                }
                 imgui.Unindent();
                 break;
             }
@@ -4731,6 +4751,26 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
                         }
                     }
                     imgui.Separator();
+                    imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw events (one per Present call):");
+                    {
+                        presentmon::PresentMonPerDrawStats per_draw;
+                        presentmon::g_presentMonManager.GetPerDrawStats(per_draw,
+                                                                       reinterpret_cast<uint64_t>(game_hwnd));
+                        if (per_draw.rate_global_per_sec > 0.0) {
+                            imgui.Text("Any surface: %llu  (rate: %.1f/s)", static_cast<unsigned long long>(per_draw.global_count),
+                                       per_draw.rate_global_per_sec);
+                        } else {
+                            imgui.Text("Any surface: %llu", static_cast<unsigned long long>(per_draw.global_count));
+                        }
+                        if (per_draw.window_matched) {
+                            imgui.Text("This window: %llu",
+                                       static_cast<unsigned long long>(per_draw.count_for_window));
+                        } else {
+                            imgui.TextColored(ui::colors::TEXT_DIMMED,
+                                              "This window: (no DxgKrnl Present_Info for this HWND)");
+                        }
+                    }
+                    imgui.Separator();
                     imgui.TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
                     if (found_surface->is_direct_flip_compatible) {
                         imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
@@ -4760,6 +4800,35 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
                     imgui.TextColored(ui::colors::TEXT_LABEL, "Flip State (from surface):");
                     imgui.TextColored(flip_color, "Mode: %s", flip_str);
                     imgui.EndTooltip();
+                }
+                {
+                    presentmon::PresentMonPerDrawStats per_draw;
+                    presentmon::g_presentMonManager.GetPerDrawStats(per_draw,
+                                                                   reinterpret_cast<uint64_t>(game_hwnd));
+                    imgui.SameLine();
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
+                    imgui.SameLine();
+                    if (per_draw.window_matched) {
+                        if (per_draw.rate_global_per_sec > 0.0) {
+                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any) / %llu (win) @ %.1f/s",
+                                              static_cast<unsigned long long>(per_draw.global_count),
+                                              static_cast<unsigned long long>(per_draw.count_for_window),
+                                              per_draw.rate_global_per_sec);
+                        } else {
+                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any) / %llu (win)",
+                                              static_cast<unsigned long long>(per_draw.global_count),
+                                              static_cast<unsigned long long>(per_draw.count_for_window));
+                        }
+                    } else {
+                        if (per_draw.rate_global_per_sec > 0.0) {
+                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any) @ %.1f/s",
+                                              static_cast<unsigned long long>(per_draw.global_count),
+                                              per_draw.rate_global_per_sec);
+                        } else {
+                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any)",
+                                              static_cast<unsigned long long>(per_draw.global_count));
+                        }
+                    }
                 }
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");

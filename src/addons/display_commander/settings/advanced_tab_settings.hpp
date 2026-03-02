@@ -103,6 +103,7 @@ class AdvancedTabSettings {
     BoolSetting presentmon_provider_dxgkrnl;
     BoolSetting presentmon_provider_dxgi;
     BoolSetting presentmon_provider_dwm;
+    BoolSetting presentmon_provider_d3d9;
 
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;

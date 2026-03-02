@@ -244,6 +244,10 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Microsoft-Windows-Dwm-Core. Desktop Window Manager composition.");
     }
+    CheckboxSetting(settings::g_advancedTabSettings.presentmon_provider_d3d9, "Subscribe to D3D9", imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Microsoft-Windows-D3D9. Direct3D 9 present events (per-draw counting).");
+    }
     imgui.Unindent();
     imgui.Spacing();
 
@@ -345,9 +349,11 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
 
         imgui.TextColored(::ui::colors::TEXT_LABEL, "Providers:");
         imgui.SameLine();
-        imgui.Text("DxgKrnl=%llu, DXGI=%llu, DWM=%llu", static_cast<unsigned long long>(pm_debug_info.events_dxgkrnl),
+        imgui.Text("DxgKrnl=%llu, DXGI=%llu, DWM=%llu, D3D9=%llu",
+                   static_cast<unsigned long long>(pm_debug_info.events_dxgkrnl),
                    static_cast<unsigned long long>(pm_debug_info.events_dxgi),
-                   static_cast<unsigned long long>(pm_debug_info.events_dwm));
+                   static_cast<unsigned long long>(pm_debug_info.events_dwm),
+                   static_cast<unsigned long long>(pm_debug_info.events_d3d9));
 
         if (!pm_debug_info.last_graphics_provider.empty()) {
             imgui.TextColored(::ui::colors::TEXT_LABEL, "Last Graphics Event:");
@@ -544,8 +550,17 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
                     } else {
                         imgui.Text("%s", t.provider_guid.c_str());
                     }
-                    if (!t.event_name.empty() && imgui.IsItemHovered()) {
-                        imgui.SetTooltip("%s", t.event_name.c_str());
+                    if (imgui.IsItemHovered()) {
+                        imgui.BeginTooltip();
+                        if (!t.event_name.empty()) {
+                            imgui.Text("%s", t.event_name.c_str());
+                        }
+                        if (!t.props_sample.empty()) {
+                            if (!t.event_name.empty()) imgui.Separator();
+                            imgui.TextColored(::ui::colors::TEXT_DIMMED, "Sample (one event):");
+                            imgui.TextWrapped("%s", t.props_sample.c_str());
+                        }
+                        imgui.EndTooltip();
                     }
 
                     imgui.TableSetColumnIndex(2);
@@ -562,6 +577,12 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
 
                     imgui.TableSetColumnIndex(6);
                     imgui.TextWrapped("%s", t.props.empty() ? "(no schema/props)" : t.props.c_str());
+                    if (imgui.IsItemHovered() && !t.props_sample.empty()) {
+                        imgui.BeginTooltip();
+                        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Sample (one event):");
+                        imgui.TextWrapped("%s", t.props_sample.c_str());
+                        imgui.EndTooltip();
+                    }
                 }
 
                 imgui.EndTable();

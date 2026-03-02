@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.218 (2026-03-02)
+
+- **Cleaned up ReShade loading logic** - ReShade location selection and fallbacks: added debug logging for selected setting, all considered locations (type, version, dir), and chosen result (dir, fallback_selected, fallback_loaded). When setting is "global" and the global base folder has no ReShade DLLs, we now fall back to the highest versioned location (e.g. Reshade\\Dll\\X.Y.Z) and set fallback_selected/fallback_loaded so the UI can show that global was requested but a versioned path was used; avoids returning a path with no DLLs. Logic aligned with "local" fallback behavior.
+
+---
+
 ## v0.12.217 (2026-03-02)
 
 - **Refuse to load in UnityCrashHandler64.exe** - When the process executable is `UnityCrashHandler64.exe` (case-insensitive), Display Commander refuses to load (`ProcessAttachEarlyResult::RefuseLoad`) and logs to OutputDebugString. Avoids running the addon in Unity's crash reporter helper process.

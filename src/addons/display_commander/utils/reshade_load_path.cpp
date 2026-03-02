@@ -1,6 +1,7 @@
 #include "reshade_load_path.hpp"
 #include "../config/display_commander_config.hpp"
 #include "general_utils.hpp"
+#include "logging.hpp"
 #include "version_check.hpp"
 
 #include <Windows.h>
@@ -240,7 +241,16 @@ ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocatio
                 return result;
             }
         }
-        result.directory = base;
+        // Fallback: no Global (base has no DLLs), use highest versioned location
+        std::vector<ReshadeLocation> sorted = locations;
+        std::sort(sorted.begin(), sorted.end(), by_version_desc);
+        if (!sorted.empty()) {
+            result.fallback_selected = "global";
+            result.fallback_loaded = sorted.front().version;
+            result.directory = sorted.front().directory;
+        } else {
+            result.directory = base;
+        }
         return result;
     }
 
@@ -264,21 +274,36 @@ ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocatio
     return result;
 }
 
+static const char* ReshadeLocationTypeToString(ReshadeLocationType t) {
+    switch (t) {
+        case ReshadeLocationType::Local:           return "Local";
+        case ReshadeLocationType::Global:          return "Global";
+        case ReshadeLocationType::SpecificVersion: return "SpecificVersion";
+        default:                                   return "?";
+    }
+}
+
 std::filesystem::path GetReshadeDirectoryForLoading(const std::filesystem::path& game_directory) {
     std::string selected = GetReshadeSelectedVersionEffective();
+    LogInfo("[reshade] selected = %s", selected.c_str());
     if (selected == "no") {
         return std::filesystem::path();
     }
     std::vector<ReshadeLocation> locations = GetReshadeLocations(game_directory);
+    for (size_t i = 0; i < locations.size(); ++i) {
+        const ReshadeLocation& loc = locations[i];
+        LogInfo("[reshade] location[%zu] type=%s version=%s dir=%s", i, ReshadeLocationTypeToString(loc.type),
+                loc.version.c_str(), loc.directory.string().c_str());
+    }
     ChooseReshadeVersionResult choose = ChooseReshadeVersion(locations, selected);
+    LogInfo("[reshade] chosen dir=%s fallback_selected=%s fallback_loaded=%s", choose.directory.string().c_str(),
+            choose.fallback_selected.c_str(), choose.fallback_loaded.c_str());
     s_fallback_selected_version = choose.fallback_selected;
     s_fallback_loaded_version = choose.fallback_loaded;
     return choose.directory;
 }
 
-std::filesystem::path GetReshadeDirectoryForLoading() {
-    return GetReshadeDirectoryForLoading(std::filesystem::path());
-}
+std::filesystem::path GetReshadeDirectoryForLoading() { return GetReshadeDirectoryForLoading(std::filesystem::path()); }
 
 bool IsReshadeLoadDisabledByConfig() { return GetReshadeSelectedVersionEffective() == "no"; }
 

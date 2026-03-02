@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.223 (unreleased)
+
+- **Standalone .exe build** - Project builds both the ReShade addon DLL and a standalone executable (DisplayCommander.exe / DisplayCommander32.exe) from the same codebase. EXE uses the same init path as the DLL in no-ReShade mode then runs the standalone settings UI on the main thread. New CMake target `display_commander_exe`; entry in `main_exe.cpp` (wWinMain → RunDisplayCommanderStandalone). DllMain is compiled only for the DLL (guarded with DISPLAY_COMMANDER_BUILD_EXE).
+
+---
+
 ## v0.12.222 (2026-03-02)
 
 - **Injection service control (32/64-bit)** - Added `GetAddonPathForArch`, `StartService`, `StopService` in `dc_service_status`. Top-right indicators `[32]` and `[64]` in Advanced tab; inline on same line as "(Session-wide...)" in Games tab. Green when running, red when stopped; greyed-out red when addon binary not available (32 or 64-bit). Click to start (rundll32 addon,Start) or stop (TerminateProcess). Addon path resolution: DC load path, AppData, stable/Debug subdirs.

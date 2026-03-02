@@ -9,12 +9,15 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/cli_ui_exe/.*")
 # ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.cpp$")
+# main_exe.cpp is only for the standalone .exe target; DLL must not link it (RunDisplayCommanderStandalone is exe-only).
+set(DISPLAY_COMMANDER_DLL_SOURCES ${DISPLAY_COMMANDER_SOURCES})
+list(FILTER DISPLAY_COMMANDER_DLL_SOURCES EXCLUDE REGEX ".*/main_exe\\.cpp$")
 
-if(DISPLAY_COMMANDER_SOURCES STREQUAL "")
+if(DISPLAY_COMMANDER_DLL_SOURCES STREQUAL "")
   message(FATAL_ERROR "No sources found under src/addons/display_commander")
 endif()
 
-add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_SOURCES})
+add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_DLL_SOURCES})
 
 # Compile definitions
 if(EXPERIMENTAL_TAB)
@@ -35,7 +38,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 221)
+set(DISPLAY_COMMANDER_VERSION_PATCH 223)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -308,3 +311,73 @@ endif()
 target_sources(zzz_display_commander PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
 set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/imgui_wrapper_standalone.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
+
+# ---------------------------------------------------------------------------
+# Standalone .exe target: same codebase as the DLL, different entry point.
+# Builds DisplayCommander.exe (or DisplayCommander32.exe) that runs the
+# no-ReShade standalone settings UI. Same init path as DLL when .NO_RESHADE.
+# ---------------------------------------------------------------------------
+set(DISPLAY_COMMANDER_EXE_SOURCES ${DISPLAY_COMMANDER_DLL_SOURCES})
+list(APPEND DISPLAY_COMMANDER_EXE_SOURCES ${CMAKE_CURRENT_LIST_DIR}/main_exe.cpp)
+# Exe does not use proxy exports; do not add exports.def
+add_executable(display_commander_exe WIN32 ${DISPLAY_COMMANDER_EXE_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+target_sources(display_commander_exe PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)
+target_compile_definitions(display_commander_exe PRIVATE DISPLAY_COMMANDER_BUILD_EXE)
+target_compile_definitions(display_commander_exe PRIVATE GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT})
+target_compile_definitions(display_commander_exe PRIVATE ${BUILD_DATE_DEFINE} ${BUILD_TIME_DEFINE})
+target_compile_definitions(display_commander_exe PRIVATE
+  DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
+  DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
+  DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
+)
+if(EXPERIMENTAL_TAB)
+  target_compile_definitions(display_commander_exe PRIVATE EXPERIMENTAL_TAB=1)
+endif()
+if(EXPERIMENTAL_FEATURES)
+  target_compile_definitions(display_commander_exe PRIVATE EXPERIMENTAL_FEATURES=1)
+endif()
+target_include_directories(display_commander_exe PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/../../../src
+  ${CMAKE_CURRENT_LIST_DIR}/../../../src/addons/display_commander
+  ${CMAKE_CURRENT_LIST_DIR}/../../../include
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/include
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/Streamline/include
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvidia-dlss/include
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/vulkan-headers/include
+  ${CMAKE_CURRENT_LIST_DIR}/../../../external/tomlplusplus/include
+)
+target_link_libraries(display_commander_exe PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi")
+  if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib")
+      target_link_libraries(display_commander_exe PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib")
+    endif()
+  else()
+    if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/amd64/nvapi64.lib")
+      target_link_libraries(display_commander_exe PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/amd64/nvapi64.lib")
+    endif()
+  endif()
+endif()
+target_link_libraries(display_commander_exe PRIVATE minhook)
+if(MSVC)
+  target_compile_options(display_commander_exe PRIVATE /bigobj /arch:SSE2 /arch:AVX /arch:AVX2 /wd4191 /utf-8)
+  target_compile_options(display_commander_exe PRIVATE /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  set_property(TARGET display_commander_exe PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  set_target_properties(display_commander_exe PROPERTIES
+    PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    PDB_NAME "display_commander_exe"
+  )
+endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(display_commander_exe PRIVATE -msse4.1 -msse4.2 -mavx -mavx2 -mmwaitx -Wno-microsoft-cast -Wno-microsoft-string-literal-from-predefined)
+endif()
+# Exe output name by platform
+if(CMAKE_GENERATOR_PLATFORM STREQUAL "Win32" OR CMAKE_EXE_LINKER_FLAGS MATCHES "/machine:X86" OR CMAKE_SIZEOF_VOID_P EQUAL 4)
+  set_target_properties(display_commander_exe PROPERTIES OUTPUT_NAME "DisplayCommander32")
+else()
+  set_target_properties(display_commander_exe PROPERTIES OUTPUT_NAME "DisplayCommander")
+endif()

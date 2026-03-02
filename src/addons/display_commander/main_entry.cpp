@@ -2265,6 +2265,7 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
 }
 }  // namespace
 
+#if !defined(DISPLAY_COMMANDER_BUILD_EXE)
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
@@ -2420,6 +2421,16 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
     return TRUE;
 }
+#endif  // !DISPLAY_COMMANDER_BUILD_EXE
+
+#if defined(DISPLAY_COMMANDER_BUILD_EXE)
+// Standalone .exe entry: same init as no-ReShade DLL path, then run settings UI on main thread.
+void RunDisplayCommanderStandalone(HINSTANCE hInst) {
+    g_shutdown.store(false);
+    ProcessAttach_NoReShadeModeInit(reinterpret_cast<HMODULE>(hInst));
+    RunStandaloneSettingsUI(hInst);
+}
+#endif  // DISPLAY_COMMANDER_BUILD_EXE
 
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks
 

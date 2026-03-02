@@ -21,9 +21,6 @@ void AutoApplyTrigger();
 // Draw the swapchain tab content (uses ImGui wrapper for ReShade or standalone UI)
 void DrawSwapchainTab(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime);
 
-// Draw swapchain information section
-void DrawSwapchainInfo(display_commander::ui::IImGuiWrapper& imgui, reshade::api::effect_runtime* runtime);
-
 // Draw adapter information section
 void DrawAdapterInfo(display_commander::ui::IImGuiWrapper& imgui);
 

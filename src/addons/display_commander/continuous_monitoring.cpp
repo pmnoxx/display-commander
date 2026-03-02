@@ -386,6 +386,7 @@ static void Every1sVrrStatus() {
         const LONGLONG nvapi_update_interval_ns = 1 * utils::SEC_TO_NS;
 
         if (now_ns - last_nvapi_update_ns >= nvapi_update_interval_ns) {
+            last_nvapi_update_ns = now_ns;
             if (g_got_device_name.load()) {
                 auto device_name_ptr = g_dxgi_output_device_name.load();
                 if (device_name_ptr != nullptr) {
@@ -411,7 +412,6 @@ static void Every1sVrrStatus() {
                 vrr_status::cached_nvapi_vrr.store(std::make_shared<nvapi::VrrStatus>());
                 vrr_status::cached_output_device_name.store(nullptr);
             }
-            last_nvapi_update_ns = now_ns;
         }
     }
 }

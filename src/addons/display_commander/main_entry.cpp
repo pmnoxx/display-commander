@@ -2137,7 +2137,17 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttach_DetectEntryPoint(h_module, entry_point, found_proxy);
 
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
-                if (!ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy)) return TRUE;
+                ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy);
+            }
+            // If ReShade still not loaded, use standalone UI (same as .NORESHADE)
+            if (g_reshade_module == nullptr) {
+                const bool was_no_reshade = g_no_reshade_mode.load();
+                g_no_reshade_mode.store(true);
+                if (!was_no_reshade) {
+                    OutputDebugStringA(
+                        "[DisplayCommander] ReShade not found - starting with standalone settings UI (same as "
+                        ".NORESHADE).\n");
+                }
             }
 
             if (g_no_reshade_mode.load()) {

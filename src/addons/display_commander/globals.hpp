@@ -499,7 +499,7 @@ inline bool ShouldPreventExclusiveFullscreen() { return s_window_mode.load() != 
 extern std::atomic<AspectRatioType> s_aspect_index;
 extern std::atomic<int> s_aspect_width;
 
-// Auto color space setting
+// HDR10 / scRGB color fix setting (10-bit and 16-bit FP back buffer)
 
 // Hide HDR capabilities from applications
 

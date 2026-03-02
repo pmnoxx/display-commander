@@ -293,8 +293,7 @@ namespace display_commanderhooks::dxgi {
 
 // Log DXGI error up to 10 times per method (each detour has its own static counter).
 inline void LogDxgiErrorUpTo10(const char* method, HRESULT hr, int* pCount) {
-    if (SUCCEEDED(hr) || pCount == nullptr || *pCount >= 10)
-        return;
+    if (SUCCEEDED(hr) || pCount == nullptr || *pCount >= 10) return;
     LogError("[DXGI error] %s returned 0x%08X", method, static_cast<unsigned>(hr));
     (*pCount)++;
 }
@@ -764,12 +763,12 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Detour(
     if (IDXGIFactory1_CreateSwapChainForHwnd_Original == nullptr) {
         Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
         if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
-            return factory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput, ppSwapChain);
+            return factory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                                    ppSwapChain);
         return E_NOINTERFACE;
     }
-    HRESULT hr =
-        IDXGIFactory1_CreateSwapChainForHwnd_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
-                                                      ppSwapChain);
+    HRESULT hr = IDXGIFactory1_CreateSwapChainForHwnd_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc,
+                                                               pRestrictToOutput, ppSwapChain);
     {
         static int s_err_count = 0;
         LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForHwnd", hr, &s_err_count);
@@ -782,9 +781,11 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Detour(
 }
 
 // IDXGIFactory1::CreateSwapChainForCoreWindow (vtable index 15). Log errors and hook new swapchain on success.
-HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(
-    IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow, const DXGI_SWAP_CHAIN_DESC1* pDesc,
-    IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
+HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(IDXGIFactory1* This, IUnknown* pDevice,
+                                                                            IUnknown* pWindow,
+                                                                            const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                            IDXGIOutput* pRestrictToOutput,
+                                                                            IDXGISwapChain1** ppSwapChain) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
 
@@ -850,32 +851,32 @@ bool HookFactory(IDXGIFactory* factory) {
             }
         }
     }
-
-    if (factory1 != nullptr) {
-        if (!g_factory_create_swapchain_for_hwnd_hooked.load(std::memory_order_relaxed)
-            && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForHwnd)) {
-            if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForHwnd],
-                                    IDXGIFactory1_CreateSwapChainForHwnd_Detour,
-                                    reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Original),
-                                    "IDXGIFactory1::CreateSwapChainForHwnd")) {
-                g_factory_create_swapchain_for_hwnd_hooked.store(true, std::memory_order_relaxed);
-                LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
-                any_hooked = true;
+    /*
+        if (factory1 != nullptr) {
+            if (!g_factory_create_swapchain_for_hwnd_hooked.load(std::memory_order_relaxed)
+                && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForHwnd)) {
+                if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForHwnd],
+                                        IDXGIFactory1_CreateSwapChainForHwnd_Detour,
+                                        reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Original),
+                                        "IDXGIFactory1::CreateSwapChainForHwnd")) {
+                    g_factory_create_swapchain_for_hwnd_hooked.store(true, std::memory_order_relaxed);
+                    LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
+                    any_hooked = true;
+                }
             }
-        }
-        if (!g_factory_create_swapchain_for_core_window_hooked.load(std::memory_order_relaxed)
-            && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForCoreWindow)) {
-            if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForCoreWindow],
-                                    IDXGIFactory1_CreateSwapChainForCoreWindow_Detour,
-                                    reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Original),
-                                    "IDXGIFactory1::CreateSwapChainForCoreWindow")) {
-                g_factory_create_swapchain_for_core_window_hooked.store(true, std::memory_order_relaxed);
-                LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
-                any_hooked = true;
+            if (!g_factory_create_swapchain_for_core_window_hooked.load(std::memory_order_relaxed)
+                && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForCoreWindow)) {
+                if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForCoreWindow],
+                                        IDXGIFactory1_CreateSwapChainForCoreWindow_Detour,
+                                        reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Original),
+                                        "IDXGIFactory1::CreateSwapChainForCoreWindow")) {
+                    g_factory_create_swapchain_for_core_window_hooked.store(true, std::memory_order_relaxed);
+                    LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
+                    any_hooked = true;
+                }
             }
-        }
-        factory1->Release();
-    }
+            factory1->Release();
+        }*/
 
     return any_hooked;
 }
@@ -928,8 +929,7 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_GetFullscreenState_Detour(IDXGISwapChai
     }
 
     // NOTE: we assume that ppTarget is g_last_set_fullscreen_target.load()
-    if (ShouldPreventExclusiveFullscreen() && g_last_set_fullscreen_state.load() != -1
-        && pFullscreen != nullptr) {
+    if (ShouldPreventExclusiveFullscreen() && g_last_set_fullscreen_state.load() != -1 && pFullscreen != nullptr) {
         *pFullscreen = g_last_set_fullscreen_state.load();
     }
 
@@ -1569,8 +1569,8 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     // ============================================================================
     if (vtable_version >= 1) {
         LogInfo("Hooking IDXGISwapChain1 methods (indices 18-28)");
-        if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour,
-                                 (LPVOID*)&IDXGISwapChain_GetDesc1_Original, "IDXGISwapChain1::GetDesc1")) {
+        if (!CreateAndEnableHook(vtable[18], IDXGISwapChain_GetDesc1_Detour, (LPVOID*)&IDXGISwapChain_GetDesc1_Original,
+                                 "IDXGISwapChain1::GetDesc1")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetDesc1 hook");
         }
         if (!CreateAndEnableHook(vtable[19], IDXGISwapChain_GetFullscreenDesc_Detour,
@@ -1578,13 +1578,12 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
                                  "IDXGISwapChain1::GetFullscreenDesc")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetFullscreenDesc hook");
         }
-        if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour,
-                                 (LPVOID*)&IDXGISwapChain_GetHwnd_Original, "IDXGISwapChain1::GetHwnd")) {
+        if (!CreateAndEnableHook(vtable[20], IDXGISwapChain_GetHwnd_Detour, (LPVOID*)&IDXGISwapChain_GetHwnd_Original,
+                                 "IDXGISwapChain1::GetHwnd")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetHwnd hook");
         }
         if (!CreateAndEnableHook(vtable[21], IDXGISwapChain_GetCoreWindow_Detour,
-                                 (LPVOID*)&IDXGISwapChain_GetCoreWindow_Original,
-                                 "IDXGISwapChain1::GetCoreWindow")) {
+                                 (LPVOID*)&IDXGISwapChain_GetCoreWindow_Original, "IDXGISwapChain1::GetCoreWindow")) {
             LogError("Failed to create and enable IDXGISwapChain1::GetCoreWindow hook");
         }
 
@@ -1698,8 +1697,7 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     if (vtable_version >= 4) {
         LogInfo("Hooking IDXGISwapChain4 methods (indices 40+)");
         if (!CreateAndEnableHook(vtable[40], IDXGISwapChain_SetHDRMetaData_Detour,
-                                 (LPVOID*)&IDXGISwapChain_SetHDRMetaData_Original,
-                                 "IDXGISwapChain4::SetHDRMetaData")) {
+                                 (LPVOID*)&IDXGISwapChain_SetHDRMetaData_Original, "IDXGISwapChain4::SetHDRMetaData")) {
             LogError("Failed to create and enable IDXGISwapChain4::SetHDRMetaData hook");
         }
     }

@@ -2,6 +2,18 @@
 
 ---
 
+## v0.12.209 (2026-03-02)
+
+- **HDR10 / scRGB color fix** - "Auto adjust color space" was renamed to **"HDR10 / scRGB color fix"** and applies when the back buffer is 10-bit HDR10 (R10G10B10A2) or 16-bit FP scRGB (R16G16B16A16): sets DXGI swap chain and ReShade color space to HDR10 (ST2084) or scRGB (Linear) respectively. No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. Config key unchanged; existing configs keep their saved value.
+
+---
+
+## v0.12.208 (2026-03-02)
+
+- **Start without ReShade** - Display Commander now starts with the standalone (independent) UI when ReShade is not found, same as when `.NORESHADE` is present. After attempting to load ReShade, if it is still not loaded we set no-ReShade mode and run the usual standalone init so the game runs and the user can open Display Commander’s UI and download ReShade from there.
+
+---
+
 ## v0.12.207 (2026-03-02)
 
 - **Window mode default: No changes** - Default window mode is now "No changes" (kNoChanges) instead of "Prevent exclusive fullscreen / no resize". New users and fresh config get no window-mode intervention; existing configs keep their saved value. Config key `window_mode` unchanged.

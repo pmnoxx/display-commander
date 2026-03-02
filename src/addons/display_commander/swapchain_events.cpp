@@ -1706,7 +1706,8 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
     }
 }
 
-// Helper: set color space from format when Auto color space is enabled (format-based only).
+// Helper: when HDR/scRGB color fix is enabled, set DXGI + ReShade color space from back buffer format:
+// 10-bit (R10G10B10A2) → HDR10 (ST2084), 16-bit FP (R16G16B16A16) → scRGB. No-op for 8-bit.
 void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
     if (g_last_reshade_device_api.load() != reshade::api::device_api::d3d12
         && g_last_reshade_device_api.load() != reshade::api::device_api::d3d11) {
@@ -1730,11 +1731,7 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
     } else if (format == reshade::api::format::r16g16b16a16_float) {
         color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
         reshade_color_space = reshade::api::color_space::extended_srgb_linear;
-    } else if (format == reshade::api::format::r8g8b8a8_unorm) {
-        color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-        reshade_color_space = reshade::api::color_space::srgb_nonlinear;
     } else {
-        LogError("AutoSetColorSpace: Unsupported format %d", static_cast<int>(format));
         return;
     }
     SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);

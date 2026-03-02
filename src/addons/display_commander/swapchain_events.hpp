@@ -51,7 +51,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 void OnPresentUpdateAfter2(bool from_wrapper = false);
 void OnPresentFlags2(bool from_present_detour = true, bool from_wrapper = false);
 
-// Auto color space helper (format-based when enabled)
+// HDR/scRGB color fix: set DXGI + ReShade color space from back buffer (10-bit → HDR10, 16-bit FP → scRGB); no-op for 8-bit.
 void AutoSetColorSpace(reshade::api::swapchain* swapchain);
 
 // Last applied color space support (for UI). out_dxgi = last DXGI we tried; out_supported = -1 unknown, 0 no, 1 yes.

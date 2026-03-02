@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.225 (unreleased)
+
+- **Build: shared object library and common options** - DLL and exe now share an object library (`display_commander_objs`) for all sources except `main_entry.cpp` and `main_exe.cpp`, so common code is compiled once and linked into both targets. A single interface library (`display_commander_common_options`) holds compile definitions, include directories, and compiler flags for both; flags are no longer duplicated. Build time improves when building both targets (e.g. `ninja zzz_display_commander display_commander_exe`).
+
 ## v0.12.224 (unreleased)
 
 - **SetupDC and installer UI removed** - Removed the `SetupDC` command from CommandLine (rundll32) and the standalone installer UI (`RunStandaloneUI`). The "Display Commander - Installer" window (Setup tab, Games tab, ReShade install) is no longer available. Use the standalone exe or rundll32 Launcher for the Games-only UI; use ReShade overlay or no-ReShade settings window for configuration.

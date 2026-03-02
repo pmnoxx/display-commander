@@ -12,40 +12,19 @@ list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/imgui_wrapper_reshade\\.
 # main_exe.cpp is only for the standalone .exe target; DLL must not link it (RunDisplayCommanderStandalone is exe-only).
 set(DISPLAY_COMMANDER_DLL_SOURCES ${DISPLAY_COMMANDER_SOURCES})
 list(FILTER DISPLAY_COMMANDER_DLL_SOURCES EXCLUDE REGEX ".*/main_exe\\.cpp$")
+# Common sources compiled once into an object library and linked into both DLL and exe (main_entry.cpp differs by define).
+set(DISPLAY_COMMANDER_COMMON_SOURCES ${DISPLAY_COMMANDER_DLL_SOURCES})
+list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/main_entry\\.cpp$")
 
 if(DISPLAY_COMMANDER_DLL_SOURCES STREQUAL "")
   message(FATAL_ERROR "No sources found under src/addons/display_commander")
 endif()
 
-add_library(zzz_display_commander MODULE ${DISPLAY_COMMANDER_DLL_SOURCES})
-
-# Compile definitions
-if(EXPERIMENTAL_TAB)
-  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_TAB=1)
-endif()
-
-if(EXPERIMENTAL_FEATURES)
-  target_compile_definitions(zzz_display_commander PRIVATE EXPERIMENTAL_FEATURES=1)
-endif()
-
-# Add git commit count as build number
-target_compile_definitions(zzz_display_commander PRIVATE GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT})
-
-# Add build date and time as compile definitions
-target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_DATE_DEFINE})
-target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
-
-# Version (single source of truth for addon and DLL resource)
+# Version (single source of truth for addon and exe; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 224)
-target_compile_definitions(zzz_display_commander PRIVATE
-  DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
-  DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
-  DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
-)
+set(DISPLAY_COMMANDER_VERSION_PATCH 225)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
-# Bitness for version resource FileDescription (32-bit vs 64-bit)
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(DISPLAY_COMMANDER_BITNESS "32-bit")
 else()
@@ -56,76 +35,82 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/version.rc
   @ONLY
 )
-target_sources(zzz_display_commander PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 
-# MSVC-specific flags
+# Common compile options, definitions, and includes shared by DLL and exe (and by the object library).
+# Reduces duplication and, with the object library below, compiles shared sources once for both targets.
+add_library(display_commander_common_options INTERFACE)
+target_compile_definitions(display_commander_common_options INTERFACE
+  GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT}
+  ${BUILD_DATE_DEFINE}
+  ${BUILD_TIME_DEFINE}
+  DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
+  DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
+  DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
+)
+if(EXPERIMENTAL_TAB)
+  target_compile_definitions(display_commander_common_options INTERFACE EXPERIMENTAL_TAB=1)
+endif()
+if(EXPERIMENTAL_FEATURES)
+  target_compile_definitions(display_commander_common_options INTERFACE EXPERIMENTAL_FEATURES=1)
+endif()
+target_include_directories(display_commander_common_options INTERFACE
+  ${CMAKE_CURRENT_LIST_DIR}/../../../src
+  ${CMAKE_CURRENT_LIST_DIR}/../../../src/addons/display_commander
+  ${CMAKE_CURRENT_LIST_DIR}/../../../include
+  SYSTEM
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/Streamline/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/nvidia-dlss/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/vulkan-headers/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/tomlplusplus/include>
+)
 if(MSVC)
-  target_compile_options(zzz_display_commander PRIVATE /bigobj /arch:SSE2)
-  # Enable SSE4.1 and SSE4.2 for better performance
-  target_compile_options(zzz_display_commander PRIVATE /arch:AVX)
-  # Enable MWAITX for AMD Zen architecture support
-  target_compile_options(zzz_display_commander PRIVATE /arch:AVX2)
-  # Enable MWAITX specifically
-  target_compile_options(zzz_display_commander PRIVATE /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
-  # Suppress Microsoft extension warnings for function pointer casting (common with MinHook)
-  target_compile_options(zzz_display_commander PRIVATE /wd4191)
-  # Use UTF-8 encoding for source files to support Unicode characters (fixes C4566 warning)
-  target_compile_options(zzz_display_commander PRIVATE /utf-8)
-
-  # Use static runtime linking to avoid dependency on debug runtime DLLs
-  set_property(TARGET zzz_display_commander PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
-  # Explicitly enable debug symbols for all build types (especially RelWithDebInfo)
-  # /Zi generates full debug information in a program database (PDB)
-  # /DEBUG generates debug information for the linker
-  target_compile_options(zzz_display_commander PRIVATE
+  target_compile_options(display_commander_common_options INTERFACE /bigobj /arch:SSE2 /arch:AVX /arch:AVX2 /wd4191 /utf-8 /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+  target_compile_options(display_commander_common_options INTERFACE
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/Zi>
-    $<$<CONFIG:Release>:/Zi>  # Also generate symbols in Release for crash analysis
+    $<$<CONFIG:Release>:/Zi>
   )
-  target_link_options(zzz_display_commander PRIVATE
+  target_link_options(display_commander_common_options INTERFACE
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:/DEBUG>
-    $<$<CONFIG:Release>:/DEBUG>  # Also generate debug info in Release for crash analysis
+    $<$<CONFIG:Release>:/DEBUG>
   )
+endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(display_commander_common_options INTERFACE -msse4.1 -msse4.2 -mavx -mavx2 -mmwaitx -Wno-microsoft-cast -Wno-microsoft-string-literal-from-predefined)
+endif()
 
-  # Ensure PDB file is placed alongside the DLL for easier debugging and crash analysis.
-  # PDB_OUTPUT_DIRECTORY + PDB_NAME put the PDB next to the addon DLL; no copy step needed
-  # (copying to the same path caused CI failure when generator already emits PDB there).
+# Object library: all sources except main_entry.cpp (and main_exe.cpp). Compiled once and linked into both DLL and exe.
+add_library(display_commander_objs OBJECT ${DISPLAY_COMMANDER_COMMON_SOURCES})
+target_link_libraries(display_commander_objs PRIVATE display_commander_common_options)
+if(MSVC)
+  set_property(TARGET display_commander_objs PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/cli_standalone_ui.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/imgui_wrapper_standalone.cpp PROPERTIES COMPILE_DEFINITIONS "ImGui=ImGuiStandalone;ImDrawList=ImDrawListStandalone")
+
+# DLL target: entry + resources + object libraries (common code compiled once)
+add_library(zzz_display_commander MODULE
+  ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+)
+target_sources(zzz_display_commander PRIVATE
+  $<TARGET_OBJECTS:display_commander_objs>
+  ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
+)
+target_link_libraries(zzz_display_commander PRIVATE display_commander_common_options)
+
+# DLL-specific: static runtime, PDB name (compile options come from display_commander_common_options)
+if(MSVC)
+  set_property(TARGET zzz_display_commander PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   set_target_properties(zzz_display_commander PROPERTIES
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     PDB_NAME "zzz_display_commander"
   )
 endif()
-
-# GCC/Clang-specific flags
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(zzz_display_commander PRIVATE -msse4.1 -msse4.2)
-  # Enable AVX for even better performance if available
-  target_compile_options(zzz_display_commander PRIVATE -mavx)
-  # Enable MWAITX for AMD Zen architecture
-  target_compile_options(zzz_display_commander PRIVATE -mavx2 -mmwaitx)
-  # Suppress Microsoft extension warnings for function pointer casting (common with MinHook)
-  target_compile_options(zzz_display_commander PRIVATE -Wno-microsoft-cast)
-  # Suppress __FUNCTION__ expansion to string literal (used in detour_call_tracker)
-  target_compile_options(zzz_display_commander PRIVATE -Wno-microsoft-string-literal-from-predefined)
-endif()
-
-# Include directories
-target_include_directories(zzz_display_commander
-  PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/../../../src
-  ${CMAKE_CURRENT_LIST_DIR}/../../../src/addons/display_commander
-  ${CMAKE_CURRENT_LIST_DIR}/../../../include
-  SYSTEM PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/include  # provides ReShade/reshade.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade          # provides res/fonts/forkawesome.h
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui # provides imgui.h
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/Streamline/include # Streamline headers if referenced
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi              # official NVIDIA NVAPI headers (nvapi.h, NvApiDriverSettings.h)
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvidia-dlss/include # official NVIDIA DLSS/NGX headers
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include    # MinHook headers
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/vulkan-headers/include # official Khronos Vulkan headers
-    ${CMAKE_CURRENT_LIST_DIR}/../../../external/tomlplusplus/include     # toml++ for DisplayCommander.toml
-)
 
 # System libraries removed (xinput, dinput8, winmm, dbghelp) to avoid DLL dependency issues - they are loaded dynamically
 # Version library is needed for GetFileVersionInfo functions
@@ -272,11 +257,6 @@ if(EXISTS "${DC_CONTROL_FX}")
   endif()
 endif()
 
-# Link exports.def file for proxy DLL exports (dxgi, d3d11, d3d12, version, opengl32, winmm)
-# CMake automatically handles .def files for MSVC when added as a source, but we also explicitly link it
-target_sources(zzz_display_commander PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/exports.def
-)
 # opengl32_proxy.cpp defines wgl* that wingdi.h declares as dllimport; suppress inconsistent-dllimport
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/opengl32_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
@@ -314,43 +294,19 @@ set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/ui/imgui_wrapper_standalon
 
 # ---------------------------------------------------------------------------
 # Standalone .exe target: same codebase as the DLL, different entry point.
-# Builds DisplayCommander.exe (or DisplayCommander32.exe) that runs the
-# no-ReShade standalone settings UI. Same init path as DLL when .NO_RESHADE.
+# Uses display_commander_objs (common code compiled once) + main_entry.cpp (with BUILD_EXE) + main_exe.cpp.
 # ---------------------------------------------------------------------------
-set(DISPLAY_COMMANDER_EXE_SOURCES ${DISPLAY_COMMANDER_DLL_SOURCES})
-list(APPEND DISPLAY_COMMANDER_EXE_SOURCES ${CMAKE_CURRENT_LIST_DIR}/main_exe.cpp)
-# Exe does not use proxy exports; do not add exports.def
-add_executable(display_commander_exe WIN32 ${DISPLAY_COMMANDER_EXE_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
-target_sources(display_commander_exe PRIVATE $<TARGET_OBJECTS:imgui_standalone_obj>)
+add_executable(display_commander_exe WIN32
+  ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/main_exe.cpp
+  ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+)
+target_sources(display_commander_exe PRIVATE
+  $<TARGET_OBJECTS:display_commander_objs>
+  $<TARGET_OBJECTS:imgui_standalone_obj>
+)
 target_compile_definitions(display_commander_exe PRIVATE DISPLAY_COMMANDER_BUILD_EXE)
-target_compile_definitions(display_commander_exe PRIVATE GIT_COMMIT_COUNT=${GIT_COMMIT_COUNT})
-target_compile_definitions(display_commander_exe PRIVATE ${BUILD_DATE_DEFINE} ${BUILD_TIME_DEFINE})
-target_compile_definitions(display_commander_exe PRIVATE
-  DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
-  DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
-  DISPLAY_COMMANDER_VERSION_PATCH=${DISPLAY_COMMANDER_VERSION_PATCH}
-)
-if(EXPERIMENTAL_TAB)
-  target_compile_definitions(display_commander_exe PRIVATE EXPERIMENTAL_TAB=1)
-endif()
-if(EXPERIMENTAL_FEATURES)
-  target_compile_definitions(display_commander_exe PRIVATE EXPERIMENTAL_FEATURES=1)
-endif()
-target_include_directories(display_commander_exe PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/../../../src
-  ${CMAKE_CURRENT_LIST_DIR}/../../../src/addons/display_commander
-  ${CMAKE_CURRENT_LIST_DIR}/../../../include
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/include
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/reshade/deps/imgui
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/Streamline/include
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/nvidia-dlss/include
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/vulkan-headers/include
-  ${CMAKE_CURRENT_LIST_DIR}/../../../external/tomlplusplus/include
-)
-target_link_libraries(display_commander_exe PRIVATE version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt)
+target_link_libraries(display_commander_exe PRIVATE display_commander_common_options version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt)
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi")
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib")
@@ -364,16 +320,11 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi")
 endif()
 target_link_libraries(display_commander_exe PRIVATE minhook)
 if(MSVC)
-  target_compile_options(display_commander_exe PRIVATE /bigobj /arch:SSE2 /arch:AVX /arch:AVX2 /wd4191 /utf-8)
-  target_compile_options(display_commander_exe PRIVATE /D_ENABLE_EXTENDED_ALIGNED_STORAGE)
   set_property(TARGET display_commander_exe PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   set_target_properties(display_commander_exe PROPERTIES
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     PDB_NAME "display_commander_exe"
   )
-endif()
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(display_commander_exe PRIVATE -msse4.1 -msse4.2 -mavx -mavx2 -mmwaitx -Wno-microsoft-cast -Wno-microsoft-string-literal-from-predefined)
 endif()
 # Exe output name by platform
 if(CMAKE_GENERATOR_PLATFORM STREQUAL "Win32" OR CMAKE_EXE_LINKER_FLAGS MATCHES "/machine:X86" OR CMAKE_SIZEOF_VOID_P EQUAL 4)

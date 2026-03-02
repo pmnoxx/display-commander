@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.210 (2026-03-02)
+
+- **Addon directory DLL loading** - Added support for loading DLL files from the game (addon) directory **after** ReShade is registered. Extensions **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade so they can use ReShade APIs. DLLs are loaded in a non-blocking way: the originals can be replaced while the game is running (e.g. update `renodx-hollownight.addon64.dcr` to a newer version); the new version is loaded on the next game start.
+
+---
+
 ## v0.12.209 (2026-03-02)
 
 - **HDR10 / scRGB color fix** - "Auto adjust color space" was renamed to **"HDR10 / scRGB color fix"** and applies when the back buffer is 10-bit HDR10 (R10G10B10A2) or 16-bit FP scRGB (R16G16B16A16): sets DXGI swap chain and ReShade color space to HDR10 (ST2084) or scRGB (Linear) respectively. No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. Config key unchanged; existing configs keep their saved value.

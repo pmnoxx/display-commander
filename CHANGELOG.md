@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.203 (2026-03-01)
+
+- **AutoHDR default colorspace** - Fixed default colorspace for AutoHDR to auto.  (AutoHDR didn't work properly with HDR10/SDR)
+
+---
+
 ## v0.12.201 (2026-03-01)
 
 - **Updates UI redesign (Main tab)** - ReShade and Display Commander sections simplified: "Prefer global ReShade" / "Prefer global DC" checkboxes (config: `ReshadeSelectedVersion`, `dc_selector_mode`); version status green when up to date, red when newer available (tooltip shows current → new version). ReShade download overwrites single global folder; version combo remote-only (GitHub + reshade.me). DC: newest stable and newest debug fetched automatically; latest debug version parsed from release body ("Version in binaries"); no "Check debug" button. Open folder buttons: tooltips show full path (ReShade global, DC global). Spec: `docs/ui_specs/updates_ui_spec.md`; task: `docs/tasks/reshade_dc_updates_redesign.md`.

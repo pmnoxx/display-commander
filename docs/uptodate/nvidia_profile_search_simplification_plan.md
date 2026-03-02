@@ -1,5 +1,7 @@
 # NVIDIA Profile Search – Simple Design (No Enumeration)
 
+**Note:** References in this doc to `nvapi_fullscreen_prevention` are historical; that module has been removed.
+
 **Goal:** Simplify the DRS (NVIDIA driver profile) code, remove bugs, and use a single lookup path. **Do not enumerate profiles.** Support only five operations: find profile, delete profile, create profile, get profile details, set setting.
 
 ---

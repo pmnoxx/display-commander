@@ -137,7 +137,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 ## addons/display_commander/nvapi
 
 - **reflex_manager.cpp**, **reflex_manager.hpp**: NVIDIA Reflex integration
-- **nvapi_fullscreen_prevention.cpp**, **.hpp**: NVAPI fullscreen prevention
 - **nvidia_profile_search.cpp**, **.hpp**: NVIDIA profile search
 - **nvapi_actual_refresh_rate_monitor.cpp**, **.hpp**: Actual refresh rate via NVAPI
 - **vrr_status.cpp**, **vrr_status.hpp**: VRR status (NVAPI)

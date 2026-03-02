@@ -536,8 +536,7 @@ extern std::atomic<int> s_spoofed_mouse_y;
 
 // Present blocking in background
 
-// NVAPI Settings
-extern std::atomic<bool> s_nvapi_auto_enable;
+// NVAPI (e.g. restart needed after fake NVAPI toggle)
 extern std::atomic<bool> s_restart_needed_nvapi;
 
 // Audio Settings

@@ -24,7 +24,6 @@
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/latent_sync_limiter.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
-#include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "performance_types.hpp"
 #include "reshade_api_device.hpp"
@@ -317,11 +316,6 @@ void DoInitializationWithHwnd(HWND hwnd) {
     LogInfo("[DoInit] before RunBackgroundAudioMonitor detach");
     std::thread(RunBackgroundAudioMonitor).detach();
     LogInfo("[DoInit] after RunBackgroundAudioMonitor detach");
-
-    // Check for auto-enable NVAPI features for specific games
-    LogInfo("[DoInit] before CheckAndAutoEnable (NVAPI fullscreen prevention)");
-    g_nvapiFullscreenPrevention.CheckAndAutoEnable();
-    LogInfo("[DoInit] after CheckAndAutoEnable");
 
     LogInfo("[DoInit] before InitExperimentalTab");
     ui::new_ui::InitExperimentalTab();

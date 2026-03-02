@@ -18,7 +18,6 @@
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
-#include "nvapi/nvapi_fullscreen_prevention.hpp"
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
 #include "presentmon/presentmon_manager.hpp"
@@ -1568,7 +1567,6 @@ void DoInitializationWithoutHwndSafe_Late() {
     StartGPUCompletionMonitoring();
     dxgi::fps_limiter::StartRefreshRateMonitoring();
     std::thread(RunBackgroundAudioMonitor).detach();
-    g_nvapiFullscreenPrevention.CheckAndAutoEnable();
     ui::new_ui::InitExperimentalTab();
     display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
     display_commanderhooks::keyboard_tracker::Initialize();
@@ -2139,8 +2137,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttach_DetectEntryPoint(h_module, entry_point, found_proxy);
 
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
-                if (!ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy))
-                    return TRUE;
+                if (!ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy)) return TRUE;
             }
 
             if (g_no_reshade_mode.load()) {
@@ -2233,9 +2230,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             if (g_reflexProvider) {
                 g_reflexProvider->Shutdown();
             }
-
-            // Clean up NVAPI fullscreen prevention
-            g_nvapiFullscreenPrevention.Cleanup();
 
             // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
             // ETW sessions are system-wide and persist until explicitly stopped

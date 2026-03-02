@@ -106,7 +106,7 @@ This document lists NVAPI functions organized by category. Functions marked with
 - `NvAPI_D3D12_LaunchCubinShader()` - Launch CUBIN shader (D3D12)
 
 ## Driver Settings (DRS)
-- ✅ `NvAPI_DRS_CreateSession()` - Create DRS session (used for fullscreen prevention)
+- ✅ `NvAPI_DRS_CreateSession()` - Create DRS session (used for profile search / DRS)
 - ✅ `NvAPI_DRS_LoadSettings()` - Load DRS settings
 - ✅ `NvAPI_DRS_SaveSettings()` - Save DRS settings
 - ✅ `NvAPI_DRS_FindApplicationByName()` - Find application by name

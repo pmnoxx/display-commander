@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.206 (2026-03-01)
+
+- **NVAPI fullscreen prevention removed** - Removed the NVAPIFullscreenPrevention module and all related code: `nvapi_fullscreen_prevention.cpp`/`.hpp`, NVAPI Settings UI block in Advanced tab (auto-enable for games, NVAPI Library status), `nvapi_auto_enable_enabled` setting, `CheckAndAutoEnable()`/`Cleanup()` call sites from main_entry and swapchain_events, and helpers `IsGameInNvapiAutoEnableList`/`GetNvapiAutoEnableGameStatus`/`GetCurrentProcessName` from general_utils. The "Game restart required to apply NVAPI changes" message now appears in the AntiLag 2 / XeLL (fakenvapi) section when toggling fake NVAPI. Unused includes removed from advanced_tab (`<algorithm>`, `<cstring>`, `<set>`). Docs updated: NVAPI_FUNCTIONS_LIST, KNOWN_ISSUES, nvidia_profile_search_simplification_plan (historical note). Window mode and DXGI/D3D9 "prevent exclusive fullscreen" behavior (ShouldPreventExclusiveFullscreen, SetFullscreenState detour) unchanged.
+
+---
+
 ## v0.12.205 (2026-03-01)
 
 - **Auto adjust color space: default on, moved to Main tab** - "Auto adjust color space" (renamed from "Auto color space") is now on by default. The checkbox was moved from Advanced → HDR and Display Settings to Main tab → Brightness and AutoHDR, directly under "AutoHDR Perceptual Boost" (shown only for DXGI). Tooltip clarifies that both DXGI swap chain and ReShade color space are set to match the back-buffer format (HDR10/scRGB/sRGB). Config key `AutoColorspace` unchanged; existing configs keep their saved value.

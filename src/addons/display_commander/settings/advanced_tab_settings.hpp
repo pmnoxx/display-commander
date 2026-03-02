@@ -40,9 +40,6 @@ class AdvancedTabSettings {
     // D3D9 to D3D9Ex Upgrade
     // BoolSettingRef enable_d3d9e_upgrade;
 
-    // NVAPI Settings
-    BoolSetting nvapi_auto_enable_enabled;
-
     // Keyboard Shortcut Settings (Experimental)
     BoolSetting enable_hotkeys;
     BoolSettingRef enable_mute_unmute_shortcut;

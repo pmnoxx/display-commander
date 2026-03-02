@@ -35,7 +35,6 @@ AdvancedTabSettings::AdvancedTabSettings()
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace2", true, "DisplayCommander"),
-      nvapi_auto_enable_enabled("NvapiAutoEnableEnabled", true, "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
       reflex_auto_configure("ReflexAutoConfigure", s_reflex_auto_configure, s_reflex_auto_configure.load(),
@@ -116,7 +115,6 @@ void AdvancedTabSettings::SaveAll() {
     hide_hdr_capabilities.Save();
     enable_flip_chain.Save();
     auto_colorspace.Save();
-    nvapi_auto_enable_enabled.Save();
     enable_hotkeys.Save();
     safemode.Save();
     fake_nvapi_enabled.Save();
@@ -153,7 +151,6 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
     return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities, &enable_flip_chain,
             &auto_colorspace,
             //&enable_d3d9e_upgrade,
-            &nvapi_auto_enable_enabled,
 
             &reflex_auto_configure, &reflex_enable, &reflex_delay_first_500_frames, &reflex_low_latency, &reflex_boost,
             &reflex_use_markers, &reflex_generate_markers, &reflex_enable_sleep, &reflex_logging,

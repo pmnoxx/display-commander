@@ -167,11 +167,6 @@ inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_t
 // Returns path from GetModuleFileNameW(nullptr, ...); empty on failure.
 std::wstring GetCurrentProcessPathW();
 
-// Game detection utilities
-std::string GetCurrentProcessName();
-bool IsGameInNvapiAutoEnableList(const std::string& processName);
-std::string GetNvapiAutoEnableGameStatus();
-
 // Architecture detection utility
 // Returns true if code was built for 64-bit, false for 32-bit
 inline bool Is64BitBuild() {

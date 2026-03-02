@@ -3,7 +3,6 @@
 #include "../../globals.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"
-#include "../../nvapi/nvapi_fullscreen_prevention.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
@@ -12,17 +11,13 @@
 #include "../../swapchain_events.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
 #include "../../utils/detour_call_tracker.hpp"
-#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
 #include "../../utils/process_window_enumerator.hpp"
 #include "../../utils/timing.hpp"
 #include "settings_wrapper.hpp"
 
-#include <algorithm>
 #include <atomic>
-#include <cstring>
-#include <set>
 #include <sstream>
 #include <string>
 
@@ -936,79 +931,6 @@ void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
     uint64_t now_ns = utils::get_now_ns();
 
-    if (IsGameInNvapiAutoEnableList(GetCurrentProcessName())) {
-        if (imgui.CollapsingHeader("NVAPI Settings", wrapper_flags::TreeNodeFlags_None)) {
-            imgui.Indent();
-            // NVAPI Auto-enable checkbox
-            if (CheckboxSetting(settings::g_advancedTabSettings.nvapi_auto_enable_enabled,
-                                "Enable NVAPI Auto-enable for Games", imgui)) {
-                LogInfo("NVAPI Auto-enable setting changed to: %s",
-                        settings::g_advancedTabSettings.nvapi_auto_enable_enabled.GetValue() ? "true" : "false");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Automatically enable NVAPI features for supported games when they are launched.");
-            }
-
-            // Display current game status
-            imgui.Spacing();
-            std::string gameStatus = GetNvapiAutoEnableGameStatus();
-            bool isGameSupported = IsGameInNvapiAutoEnableList(GetCurrentProcessName());
-
-            if (isGameSupported) {
-                imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " Current Game: %s", gameStatus.c_str());
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("This game is supported for NVAPI auto-enable features.");
-                }
-                // Warning about Alt+Enter requirement
-                imgui.Spacing();
-                imgui.TextColored(ImVec4{1.0f, 0.8f, 0.0f, 1.0f},
-                                  ICON_FK_WARNING " Warning: Requires pressing Alt+Enter once");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
-                        "Press Alt-Enter to enable HDR.\n"
-                        "This is required for proper HDR functionality.");
-                }
-
-            } else {
-                imgui.TextColored(::ui::colors::TEXT_DIMMED, ICON_FK_CANCEL " Current Game: %s", gameStatus.c_str());
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("This game is not in the NVAPI auto-enable supported games list.");
-                }
-            }
-
-            imgui.TextColored(ImVec4{0.8f, 0.8f, 0.8f, 1.0f}, "NVAPI Auto-enable for Games");
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Automatically enable NVAPI features for specific games.\n\n"
-                    "Note: DLDSR needs to be off for proper functionality\n\n"
-                    "Supported games:\n"
-                    "- Armored Core 6\n"
-                    "- Devil May Cry 5\n"
-                    "- Elden Ring\n"
-                    "- Hitman\n"
-                    "- Resident Evil 2\n"
-                    "- Resident Evil 3\n"
-                    "- Resident Evil 7\n"
-                    "- Resident Evil 8\n"
-                    "- Sekiro: Shadows Die Twice");
-            }
-
-            // Display restart warning if needed
-            if (s_restart_needed_nvapi.load()) {
-                imgui.Spacing();
-                imgui.TextColored(::ui::colors::TEXT_ERROR, "Game restart required to apply NVAPI changes.");
-            }
-            if (::g_nvapiFullscreenPrevention.IsAvailable()) {
-                // Library loaded successfully
-                imgui.TextColored(::ui::colors::ICON_SUCCESS, ICON_FK_OK " NVAPI Library: Loaded");
-            } else {
-                // Library not loaded
-                imgui.TextColored(::ui::colors::ICON_ERROR, ICON_FK_CANCEL " NVAPI Library: Not Loaded");
-            }
-        }
-        imgui.Unindent();
-    }
-
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
     if (imgui.CollapsingHeader("NVIDIA Reflex (Minimal)", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
@@ -1409,6 +1331,10 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 "AntiLag 2, Vulkan AntiLag+ or XeLL are automatically selected when available.\n"
                 "Add nvapi64.dll to the addon directory (rename fakenvapi.dll if needed).\n\n"
                 "Downlaod from here: https://github.com/emoose/fakenvapi\n");
+        }
+        if (s_restart_needed_nvapi.load()) {
+            imgui.Spacing();
+            imgui.TextColored(::ui::colors::TEXT_ERROR, "Game restart required to apply NVAPI changes.");
         }
 
         imgui.Unindent();  // Unindent nested header section

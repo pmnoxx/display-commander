@@ -671,8 +671,9 @@ EXPORTS
 	Stop
 	StartAndInject
 	WaitAndInject
-	; Display Commander addon / CLI (addon entry + rundll32 CommandLine)
+	; Display Commander addon / CLI (addon entry + rundll32 CommandLine + Launcher)
 	AddonInit
 	CommandLine
+	Launcher
 	; Multi-proxy state: other DC instances can query this to decide HOOKED vs PROXY_DLL_ONLY
 	GetDisplayCommanderState

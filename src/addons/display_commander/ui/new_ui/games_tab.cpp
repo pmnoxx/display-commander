@@ -5,6 +5,7 @@
 #include "games_tab.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../utils/process_window_enumerator.hpp"
+#include "../../utils/standalone_launcher.hpp"
 #include "../../utils/steam_launch_history.hpp"
 #include "../../utils/steam_library.hpp"
 #include "../../utils/timing.hpp"
@@ -41,6 +42,7 @@ struct GamesTabState {
     LONGLONG last_refresh_ns = 0;
     bool show_details_modal = false;
     display_commander::utils::RunningGameInfo details_game;
+    std::string last_launch_error;  // from TryInstallAddonToAppDataAndLaunchGamesUI
 };
 
 struct SteamLaunchState {
@@ -94,6 +96,20 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
     */
     imgui.TextColored(::ui::colors::TEXT_DIMMED, "(Session-wide, based on Display Commander mutex)");
     ui::new_ui::DrawDcServiceIndicatorsOnLine(imgui, true);
+
+    if (imgui.Button("Open Games UI (standalone)")) {
+        state.last_launch_error.clear();
+        std::string err;
+        if (!display_commander::utils::TryInstallAddonToAppDataAndLaunchGamesUI(&err)) {
+            state.last_launch_error = err;
+        }
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Copy addon to %%LocalAppData%%\\Programs\\Display_Commander and open the Games-only window (rundll32 Launcher).");
+    }
+    if (!state.last_launch_error.empty()) {
+        imgui.TextColored(::ui::colors::TEXT_DIMMED, "Launch failed: %s", state.last_launch_error.c_str());
+    }
 
     imgui.Spacing();
 

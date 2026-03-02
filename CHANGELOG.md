@@ -2,13 +2,16 @@
 
 ---
 
-## v0.12.223 (unreleased)
+## v0.12.224 (unreleased)
 
+- **SetupDC and installer UI removed** - Removed the `SetupDC` command from CommandLine (rundll32) and the standalone installer UI (`RunStandaloneUI`). The "Display Commander - Installer" window (Setup tab, Games tab, ReShade install) is no longer available. Use the standalone exe or rundll32 Launcher for the Games-only UI; use ReShade overlay or no-ReShade settings window for configuration.
 - **Standalone .exe build** - Project builds both the ReShade addon DLL and a standalone executable (DisplayCommander.exe / DisplayCommander32.exe) from the same codebase. EXE uses the same init path as the DLL in no-ReShade mode then runs the standalone settings UI on the main thread. New CMake target `display_commander_exe`; entry in `main_exe.cpp` (wWinMain → RunDisplayCommanderStandalone). DllMain is compiled only for the DLL (guarded with DISPLAY_COMMANDER_BUILD_EXE).
 - **Standalone exe: Games tab only** - DisplayCommander.exe shows only the Games tab (RunStandaloneGamesOnlyUI): running games table, Steam list, Focus/Mini/Rest/Stop/Kill. Window title "Display Commander - Games"; default size 960×900.
 - **Standalone exe: running games list** - Exe sets `g_display_commander_state` to HOOKED so DoInitializationWithoutHwndSafe_Late runs and StartContinuousMonitoring starts; the monitoring thread fills the running-games cache so the Games tab shows other processes with the addon loaded.
 - **CI: latest_debug ships exe** - GitHub Actions build-debug job collects DisplayCommander_x64.exe (64-bit only) and includes it in the Latest Debug Build release assets and release body.
 - **bd.ps1 builds DLL and exe** - `build_display_commander.ps1` builds both `zzz_display_commander` and `display_commander_exe`; `bd_core.ps1` copies DisplayCommander.exe to `build\` after a successful build.
+- **rundll32 Launcher export** - Addon DLL exports `Launcher` for use with rundll32 (e.g. `rundll32.exe zzz_display_commander.addon64,Launcher`). Opens the same Games-only standalone UI without running the full exe. `RunDisplayCommanderStandalone` is built for both DLL and exe; Launcher is DLL-only.
+- **Games tab: Open Games UI (standalone) button** - Button copies or hardlinks the current addon (.addon64/.addon32) to `%LocalAppData%\Programs\Display_Commander`, then launches the Games-only window via rundll32 Launcher. When running as the addon (ReShade) uses the loaded DLL path; when running as the standalone exe uses the addon next to the exe. Shows launch errors in the tab if the operation fails.
 
 ---
 

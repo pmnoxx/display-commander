@@ -1,12 +1,16 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
-**Changelog style:** Describe user-visible behavior and outcomes; avoid minor implementation details (internal APIs, function names, which types use a code path). Prefer "what changed for the user" over "how it was implemented." Config key names are OK when relevant (e.g. migration).
+---
+
+## v0.12.212 (2026-03-02)
+
+- **Updates: tooltip showing source of version info** - "Up to date" and "Newer version available" in the Updates section now show a tooltip with the source of the version information: ReShade (GitHub crosire/reshade, reshade.me), Display Commander stable (GitHub Display Commander stable releases), and the main-tab version check (GitHub Display Commander stable releases). Spec: `docs/ui_specs/updates_ui_spec.md`.
 
 ---
 
 ## v0.12.211 (2026-03-02)
 
-- **Game default config override by exe** - Per-game default overrides for Display Commander settings: when a setting is not yet in the game's DisplayCommander.toml, the addon uses values from a built-in list (e.g. hitman3.exe → ContinueRendering = 1). Overrides only apply when the key is missing; existing config is never overwritten. Main tab shows an info banner when overrides are in use, with a tooltip listing them and an "Apply to config" button to save them to DisplayCommander.toml. Logs once at load whether an override was found for the current exe.
+- **Game default config override by exe** - Per-game default overrides for Display Commander settings: when a setting is not yet in the game's DisplayCommander.toml, the addon uses values from an embedded `game_default_overrides.toml` (e.g. `hitman3.exe` → ContinueRendering = 1). Overrides apply only when the key is missing (never overwrite existing config). Main tab shows an info banner when overrides are in use, with a tooltip listing active overrides and an "Apply to config" button to persist them to DisplayCommander.toml. Logs once at load whether an override was found for the current exe.
 
 ---
 

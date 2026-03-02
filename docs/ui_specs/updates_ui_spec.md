@@ -16,6 +16,7 @@ This document defines the UI and behavior for the **Updates** feature: ReShade v
   - Tooltip: explains that by default we prefer local > global, but this checkbox changes preference to global > local.
 - **ReShade newest version available:** `...`
   - **Green** when up to date: the **loaded** version (local or global, per preference) is ≥ newest available to download. **Red** when a newer version exists: newest available > loaded version. We check GitHub and reshade.me for “newest available”. Version comparison is numerical triple: `(x1,y1,z1) > (x2,y2,z2)`.
+  - **Tooltip on status ("Up to date" / "Newer exists"):** Show the source of the version information, e.g. *"Version info from: GitHub (crosire/reshade), reshade.me"*, so the user knows where "newest available" comes from.
 - **Download subsection**
   - A selector to choose the version to download. The list shows **only remote versions** (from GitHub + reshade.me), not already-installed versions.
   - **Download** button: overwrites the DLLs in the single global folder `%LocalAppData%\Programs\Display_Commander\Reshade`, so global is always one version.
@@ -36,7 +37,8 @@ This document defines the UI and behavior for the **Updates** feature: ReShade v
   - **Debug: Latest from GitHub (X.Y.Z)** — use the current latest debug version (number shown); after download it lives in `Display_Commander\Debug\X.Y.Z`.
   - **Debug: X.Y.Z (cached)** — use a specific version already in `Display_Commander\Debug\X.Y.Z`. This gives a choice of latest from GitHub (with version number) or any previously downloaded debug version from local cache, since GitHub only exposes one debug tag (`latest_debug`).
 - **Newest stable available:** `...`
-  **Newest debug version available:** `...`
+- **Newest debug version available:** `...`
+  - **Tooltip on status ("Up to date" / "Newer exists")** for stable and for debug: Show the source of the version information (e.g. *"Version info from: GitHub (Display Commander stable releases)"* or *"Version info from: GitHub (Display Commander latest_debug)"*), so the user knows where "newest available" comes from.
 - **Download subsection**
   - A selector to choose either **debug builds** or **stable builds**.
   - Stable: version list (remote) + **Download** (to `Dll\X.Y.Z`).
@@ -56,6 +58,7 @@ This document defines the UI and behavior for the **Updates** feature: ReShade v
 - **Loaded version** = the version we are actually using (from local or global, per preference).
 - **Newest available** = newest version we can download (ReShade: from GitHub and reshade.me; DC: stable or debug from GitHub).
 - **Green (up to date):** loaded version ≥ newest available. **Red (newer exists):** newest available > loaded version.
+- **Source tooltip:** For both "Up to date" and "Newer exists", show a tooltip that states where "newest available" was obtained (ReShade: GitHub + reshade.me; DC stable: GitHub stable releases; DC debug: GitHub latest_debug). This lets users verify or understand the source of the information.
 - Comparison is numerical on the version triple: `(x1, y1, z1) > (x2, y2, z2)` (e.g. 6.7.3 vs 6.7.2).
 
 ---

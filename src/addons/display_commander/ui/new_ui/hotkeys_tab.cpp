@@ -1,9 +1,7 @@
 #include "hotkeys_tab.hpp"
-#include "../imgui_wrapper_base.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
 #include "../../autoclick/autoclick_manager.hpp"
-#include "display/display_cache.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/display_settings_hooks.hpp"
@@ -18,6 +16,8 @@
 #include "../../settings/main_tab_settings.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"
+#include "../imgui_wrapper_base.hpp"
+#include "display/display_cache.hpp"
 #include "imgui.h"
 #include "settings_wrapper.hpp"
 #include "utils/timing.hpp"
@@ -42,10 +42,10 @@ void InitVkToStringsTable() {
     t[VK_RETURN] = {"enter", "return"};
     t[VK_ESCAPE] = {"escape", "esc"};
     t[VK_SPACE] = {"space"};
-    t[0x2D] = {"insert", "ins"};      // VK_INSERT
-    t[0x2E] = {"delete", "del"};      // VK_DELETE
-    t[0x21] = {"pageup", "pgup"};      // VK_PRIOR
-    t[0x22] = {"pagedown", "pgdn"};    // VK_NEXT
+    t[0x2D] = {"insert", "ins"};     // VK_INSERT
+    t[0x2E] = {"delete", "del"};     // VK_DELETE
+    t[0x21] = {"pageup", "pgup"};    // VK_PRIOR
+    t[0x22] = {"pagedown", "pgdn"};  // VK_NEXT
     t[0x23] = {"end"};
     t[0x24] = {"home"};
     t[0x25] = {"left"};
@@ -58,7 +58,7 @@ void InitVkToStringsTable() {
     for (int i = 0; i < 26; ++i) {
         t[0x41 + i] = {std::string(1, 'a' + i)};  // VK_A..VK_Z
     }
-    t[0x60] = {"numpad0", "num0"};   // VK_NUMPAD0
+    t[0x60] = {"numpad0", "num0"};  // VK_NUMPAD0
     t[0x61] = {"numpad1", "num1"};
     t[0x62] = {"numpad2", "num2"};
     t[0x63] = {"numpad3", "num3"};
@@ -68,18 +68,18 @@ void InitVkToStringsTable() {
     t[0x67] = {"numpad7", "num7"};
     t[0x68] = {"numpad8", "num8"};
     t[0x69] = {"numpad9", "num9"};
-    t[0x6A] = {"numpad*", "numpadmultiply", "nummultiply"};   // VK_MULTIPLY
+    t[0x6A] = {"numpad*", "numpadmultiply", "nummultiply"};  // VK_MULTIPLY
     t[0x6B] = {"numpad+", "numpadadd", "numadd"};            // VK_ADD
-    t[0x6C] = {"numpadsep"};                                  // VK_SEPARATOR
+    t[0x6C] = {"numpadsep"};                                 // VK_SEPARATOR
     t[0x6D] = {"numpad-", "numpadsubtract", "numsubtract"};  // VK_SUBTRACT
     t[0x6E] = {"numpad.", "numpaddecimal", "numdecimal"};    // VK_DECIMAL
     t[0x6F] = {"numpad/", "numpaddivide", "numdivide"};      // VK_DIVIDE
     for (int i = 1; i <= 24; ++i) {
         t[0x70 - 1 + i] = {"f" + std::to_string(i)};  // VK_F1..VK_F24
     }
-    t[0xC0] = {"`", "backtick", "grave"};   // VK_OEM_3
-    t[0xBF] = {"/", "slash"};                // VK_OEM_2
-    t[0xDC] = {"\\", "backslash"};           // VK_OEM_5
+    t[0xC0] = {"`", "backtick", "grave"};  // VK_OEM_3
+    t[0xBF] = {"/", "slash"};              // VK_OEM_2
+    t[0xDC] = {"\\", "backslash"};         // VK_OEM_5
 }
 
 // Primary display name for a VK (for readable config format)
@@ -129,7 +129,8 @@ static ParsedHotkey ParseReadableHotkeyString(const std::string& value) {
                 try {
                     int vk = std::stoi(t.substr(3));
                     if (vk >= 1 && vk <= 255) p.key_code = vk;
-                } catch (...) {}
+                } catch (...) {
+                }
             }
         }
     }
@@ -140,10 +141,26 @@ std::string SerializeHotkeyToConfigString(const ParsedHotkey& p) {
     if (!p.IsValid()) return "";
     std::ostringstream oss;
     bool first = true;
-    if (p.ctrl) { if (!first) oss << " "; oss << "ctrl"; first = false; }
-    if (p.shift) { if (!first) oss << " "; oss << "shift"; first = false; }
-    if (p.alt) { if (!first) oss << " "; oss << "alt"; first = false; }
-    if (p.win) { if (!first) oss << " "; oss << "win"; first = false; }
+    if (p.ctrl) {
+        if (!first) oss << " ";
+        oss << "ctrl";
+        first = false;
+    }
+    if (p.shift) {
+        if (!first) oss << " ";
+        oss << "shift";
+        first = false;
+    }
+    if (p.alt) {
+        if (!first) oss << " ";
+        oss << "alt";
+        first = false;
+    }
+    if (p.win) {
+        if (!first) oss << " ";
+        oss << "win";
+        first = false;
+    }
     if (!first) oss << " ";
     oss << VkToReadableName(p.key_code);
     return oss.str();
@@ -176,7 +193,8 @@ struct HotkeyDebugInfo {
 };
 HotkeyDebugInfo g_hotkey_debug_info;
 
-// Index of the hotkey row currently capturing a key (-1 = none). When set, ProcessHotkeys runs capture logic instead of normal hotkeys.
+// Index of the hotkey row currently capturing a key (-1 = none). When set, ProcessHotkeys runs capture logic instead of
+// normal hotkeys.
 static int s_capturing_hotkey_index = -1;
 // Capture result from ProcessHotkeys (same thread as Update): UI applies when it next draws.
 static bool s_capture_pending = false;
@@ -203,7 +221,7 @@ static bool HotkeyMatchesCurrentState(const ParsedHotkey& p) {
 
 // Draw a single hotkey entry in the table. Display string is derived from def.parsed (no parsing).
 void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefinition& def,
-                    ui::new_ui::StringSetting& setting, int index) {
+                     ui::new_ui::StringSetting& setting, int index) {
     imgui.TableNextRow();
 
     // Source of truth is def.parsed (numeric); display from formatted string
@@ -299,9 +317,7 @@ ParsedHotkey ParsedHotkey::FromArray(const std::array<int, kHotkeyArraySize>& ar
     return p;
 }
 
-std::string GetHotkeyDisplayString(const HotkeyDefinition& def) {
-    return FormatHotkeyString(def.parsed);
-}
+std::string GetHotkeyDisplayString(const HotkeyDefinition& def) { return FormatHotkeyString(def.parsed); }
 
 // Initialize hotkey definitions with default values
 void InitializeHotkeyDefinitions() {
@@ -539,8 +555,11 @@ void InitializeHotkeyDefinitions() {
              HWND fg = display_commanderhooks::GetForegroundWindow_Direct();
              bool is_fg = (fg == game_hwnd);
              int grace_sec = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
-             LONGLONG last_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
              LONGLONG now_ns = utils::get_now_ns();
+             LONGLONG last_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
+             if (last_ns == 0) {
+                 g_last_foreground_background_switch_ns.store(now_ns, std::memory_order_release);
+             }
              bool grace_ok = (grace_sec >= 61)
                              || (grace_sec > 0 && last_ns != 0
                                  && (now_ns - last_ns <= static_cast<LONGLONG>(grace_sec) * utils::SEC_TO_NS));
@@ -579,7 +598,8 @@ void InitializeHotkeyDefinitions() {
              LogInfo("Win+Left: target display set to \"%s\".", new_id.c_str());
          }},
         {"win_right", "Win+Right (Next display)", "win right",
-         "Set target display to next monitor. Only when game is in foreground.", []() {
+         "Set target display to next monitor. Only when game is in foreground.",
+         []() {
              if (display_commanderhooks::GetForegroundWindow_Direct() != g_last_swapchain_hwnd.load()) return;
              if (!display_cache::g_displayCache.IsInitialized()) return;
              HWND game_hwnd = g_last_swapchain_hwnd.load();
@@ -636,8 +656,7 @@ void InitializeHotkeyDefinitions() {
              LogInfo("Move to primary: target display set to primary monitor.");
          }},
         {"move_to_secondary", "Move to secondary monitor", "numpad-",
-         "Set target display to the first non-primary monitor. Only when game is in foreground.",
-         []() {
+         "Set target display to the first non-primary monitor. Only when game is in foreground.", []() {
              if (display_commanderhooks::GetForegroundWindow_Direct() != g_last_swapchain_hwnd.load()) return;
              if (!display_cache::g_displayCache.IsInitialized()) return;
              auto display_info = display_cache::g_displayCache.GetDisplayInfoForUI();
@@ -669,20 +688,25 @@ void InitializeHotkeyDefinitions() {
     if (g_hotkey_definitions.size() >= kHotkeyDefinitionCount) {
         // Load from config: "0x11;0x10;0x65" or legacy "ctrl+shift+m"
         g_hotkey_definitions[0].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_mute_unmute.GetValue());
-        g_hotkey_definitions[1].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_background_toggle.GetValue());
+        g_hotkey_definitions[1].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_background_toggle.GetValue());
         if (enabled_experimental_features) {
             g_hotkey_definitions[2].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_timeslowdown.GetValue());
             g_hotkey_definitions[4].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_autoclick.GetValue());
         }
         g_hotkey_definitions[3].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_adhd_toggle.GetValue());
         g_hotkey_definitions[5].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_input_blocking.GetValue());
-        g_hotkey_definitions[6].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_display_commander_ui.GetValue());
-        g_hotkey_definitions[7].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
+        g_hotkey_definitions[6].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_display_commander_ui.GetValue());
+        g_hotkey_definitions[7].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
         g_hotkey_definitions[8].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
         g_hotkey_definitions[9].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_up.GetValue());
         g_hotkey_definitions[10].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_down.GetValue());
-        g_hotkey_definitions[11].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
-        g_hotkey_definitions[12].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_down.GetValue());
+        g_hotkey_definitions[11].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
+        g_hotkey_definitions[12].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_down.GetValue());
         g_hotkey_definitions[13].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_auto_hdr.GetValue());
         g_hotkey_definitions[14].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_brightness_down.GetValue());
         g_hotkey_definitions[15].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_brightness_up.GetValue());
@@ -691,7 +715,8 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[18].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_left.GetValue());
         g_hotkey_definitions[19].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_right.GetValue());
         g_hotkey_definitions[20].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_move_to_primary.GetValue());
-        g_hotkey_definitions[21].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_move_to_secondary.GetValue());
+        g_hotkey_definitions[21].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_move_to_secondary.GetValue());
     }
 }
 
@@ -1052,8 +1077,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.Text(ICON_FK_WARNING);
                 ui::colors::PopIconColor(&imgui);
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
-                        "ProcessHotkeys hasn't been called recently - check continuous monitoring thread");
+                    imgui.SetTooltip("ProcessHotkeys hasn't been called recently - check continuous monitoring thread");
                 }
             }
         } else {
@@ -1281,9 +1305,7 @@ void ProcessExclusiveKeyGroups() {
     }
 }
 
-bool IsCapturingHotkey() {
-    return s_capturing_hotkey_index >= 0;
-}
+bool IsCapturingHotkey() { return s_capturing_hotkey_index >= 0; }
 
 // Process all hotkeys (call from continuous monitoring loop, same thread as keyboard_tracker::Update)
 void ProcessHotkeys() {

@@ -36,10 +36,12 @@
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/dc_load_path.hpp"
+#include "utils/dc_service_status.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
+#include "utils/process_window_enumerator.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/timing.hpp"
 #include "utils/version_check.hpp"
@@ -1519,6 +1521,7 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     }
     LogInfo("DLLMain (DisplayCommander) %lld h_module: 0x%p", utils::get_now_ns(),
             reinterpret_cast<uintptr_t>(h_module));
+    display_commander::utils::RegisterCurrentProcessWithDisplayCommanderMutex();
     settings::LoadAllSettingsAtStartup();
     display_commanderhooks::InstallLoadLibraryHooks();
     LogCurrentLogLevel();
@@ -2848,6 +2851,13 @@ extern "C" __declspec(dllexport) void CALLBACK Start(HWND hwnd, HINSTANCE hInst,
     UNREFERENCED_PARAMETER(hInst);
     UNREFERENCED_PARAMETER(lpszCmdLine);
     UNREFERENCED_PARAMETER(nCmdShow);
+
+    // Ensure only one DC service per architecture (32-bit / 64-bit) in the current session.
+    // If another service is already running for this architecture, do not start a new one.
+    if (!display_commander::dc_service::InitializeServiceForCurrentProcess()) {
+        OutputDebugStringA("Start: DC service already running for this architecture or initialization failed");
+        return;
+    }
 
     StartInjectionInternal(true);  // Forever
 }

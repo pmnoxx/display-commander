@@ -2,6 +2,16 @@
 
 ---
 
+## v0.12.220 (2026-03-02)
+
+- **New Games tab (running games overview)** - Added a Games tab that lists all processes currently running with Display Commander loaded, detected via a per-PID named mutex. Shows PID and game title/executable, auto-refreshes every second while the tab is open, and updates immediately after kill actions.
+- **Per-game Focus, Minimize, and Kill controls** - Each row exposes a Focus button that restores and brings the game window to the foreground, a Minimize button that minimizes the game to the taskbar, and a Kill button with confirmation dialog and permission checks (cannot kill the current DC process, and handles access-denied/terminated races gracefully).
+- **Running games discovery on dedicated thread** - Mutex access (OpenMutexW) and process/window enumeration run only on the continuous monitoring thread; the Games tab reads from a cached list. Avoids blocking the UI thread and respects the requirement that mutex access be done from a dedicated thread.
+- **Focus, Minimize, Kill run off UI thread** - Focus (ShowWindow, SetForegroundWindow), Minimize (ShowWindow SW_MINIMIZE), and Kill (OpenProcess, TerminateProcess) are executed on detached worker threads to avoid deadlock when the overlay is rendered inside the game's window message loop.
+- **Kill confirmation modal fix** - Fixed the confirmation dialog not appearing when clicking Kill; the modal now opens and displays correctly.
+
+---
+
 ## v0.12.219 (2026-03-02)
 
 - **Subscribe to fewer PresentMon events by default** - PresentMon ETW now subscribes only to DWM by default; DxgKrnl, DXGI, and D3D9 providers are off. Reduces event volume and overhead unless the user enables additional providers in Advanced → PresentMon ETW Tracing.

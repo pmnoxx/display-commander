@@ -23,6 +23,7 @@
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
 #include "utils/overlay_window_detector.hpp"
+#include "utils/process_window_enumerator.hpp"
 #include "utils/srwlock_registry.hpp"
 #include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
@@ -753,6 +754,12 @@ void ContinuousMonitoringThread() {
             }
             g_continuous_monitoring_section.store("after_cache_refresh", std::memory_order_release);
         }
+        // Running games cache: refresh when requested (e.g. user clicked Refresh or after Kill)
+        // so UI gets update without waiting for next 1s tick. Mutex access only on this thread.
+        if (display_commander::utils::RunningGamesRefreshRequested()) {
+            g_continuous_monitoring_section.store("running_games_cache", std::memory_order_release);
+            display_commander::utils::RefreshRunningGamesCache();
+        }
         // Wait for 1 second to start
         if (utils::get_now_ns() - start_time < 1 * utils::SEC_TO_NS) {
             continue;
@@ -860,6 +867,13 @@ void ContinuousMonitoringThread() {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
                 HandleDiscordOverlayAutoHide();
+            }
+
+            // Running games cache: refresh every 1s so Games tab can read without mutex access on UI thread
+            {
+                RECORD_DETOUR_CALL(utils::get_now_ns());
+                g_continuous_monitoring_section.store("running_games_cache_1s", std::memory_order_release);
+                display_commander::utils::RefreshRunningGamesCache();
             }
 
             // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules

@@ -903,9 +903,9 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(920, 860), ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Games", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
+        if (ImGui::Begin("Games", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)) {
             display_commander::ui::ImGuiWrapperStandalone wrapper;
             ui::new_ui::DrawGamesTab(wrapper);
         }

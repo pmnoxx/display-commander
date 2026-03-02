@@ -407,12 +407,32 @@ bool CopyCurrentReshadeToDll(const std::filesystem::path& loaded_reshade_directo
         std::filesystem::path src = loaded_reshade_directory / name;
         std::filesystem::path dst = target_dir / name;
         if (!std::filesystem::exists(src, ec)) return true;
-        std::filesystem::copy_file(src, dst, std::filesystem::copy_options::overwrite_existing, ec);
-        if (ec && out_error) *out_error = "Failed to copy DLL: " + ec.message();
-        return !ec;
+        if (!TryHardLinkOrCopyFile(src, dst)) {
+            if (out_error) *out_error = "Failed to hard link or copy DLL";
+            return false;
+        }
+        return true;
     };
     if (!copy_one(L"Reshade64.dll")) return false;
     if (!copy_one(L"Reshade32.dll")) return false;
+    return true;
+}
+
+bool DeleteLocalReshadeFromDirectory(const std::filesystem::path& dir, std::string* out_error) {
+    if (dir.empty()) {
+        if (out_error) *out_error = "Directory is empty";
+        return false;
+    }
+    std::error_code ec;
+    auto remove_if_exists = [&dir, &ec, out_error](const wchar_t* name) -> bool {
+        std::filesystem::path p = dir / name;
+        if (!std::filesystem::exists(p, ec)) return true;
+        std::filesystem::remove(p, ec);
+        if (ec && out_error) *out_error = "Failed to remove " + p.string() + ": " + ec.message();
+        return !ec;
+    };
+    if (!remove_if_exists(L"Reshade64.dll")) return false;
+    if (!remove_if_exists(L"Reshade32.dll")) return false;
     return true;
 }
 

@@ -2023,30 +2023,30 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         return ProcessAttachEarlyResult::RefuseLoad;
     }
 
-    // Loader mode: when selector mode is global/debug/stable and we're not under Dll\ or Debug\, act as loader:
-    // load DC from the resolved path and stay quiet. When mode is "local", GetDcDirectoryForLoading() returns
-    // base so we don't load from central.
+    // Loader mode: when we're not under stable\ or Debug\, act as loader. GetDcDirectoryForLoading(h_module) returns
+    // the directory to use (local addon > global > local proxy when mode is "local"; else global/debug/stable path).
+    // If that path != base and contains the addon, we load it and stay quiet.
     {
         WCHAR module_path_buf[MAX_PATH];
         if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) > 0) {
             std::filesystem::path module_dir = std::filesystem::path(module_path_buf).parent_path();
             std::filesystem::path base = display_commander::utils::GetLocalDcDirectory();
-            std::filesystem::path dll_base = base / L"Dll";
+            std::filesystem::path stable_base = base / L"stable";
             std::filesystem::path debug_base = base / L"Debug";
             std::error_code ec;
             std::filesystem::path module_canon = std::filesystem::canonical(module_dir, ec);
             if (!ec) {
-                bool we_are_under_dll = false;
-                if (std::filesystem::exists(dll_base, ec)) {
-                    std::filesystem::path dll_canon = std::filesystem::canonical(dll_base, ec);
+                bool we_are_under_stable = false;
+                if (std::filesystem::exists(stable_base, ec)) {
+                    std::filesystem::path stable_canon = std::filesystem::canonical(stable_base, ec);
                     if (!ec) {
                         auto m_it = module_canon.begin();
-                        auto d_it = dll_canon.begin();
-                        while (d_it != dll_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
+                        auto d_it = stable_canon.begin();
+                        while (d_it != stable_canon.end() && m_it != module_canon.end() && *d_it == *m_it) {
                             ++d_it;
                             ++m_it;
                         }
-                        we_are_under_dll = (d_it == dll_canon.end());
+                        we_are_under_stable = (d_it == stable_canon.end());
                     }
                 }
                 bool we_are_under_debug = false;
@@ -2062,9 +2062,10 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
                         we_are_under_debug = (d_it == debug_canon.end());
                     }
                 }
-                bool we_are_under_versioned = we_are_under_dll || we_are_under_debug;
+                bool we_are_under_versioned = we_are_under_stable || we_are_under_debug;
                 if (!we_are_under_versioned) {
-                    std::filesystem::path load_path = display_commander::utils::GetDcDirectoryForLoading();
+                    std::filesystem::path load_path =
+                        display_commander::utils::GetDcDirectoryForLoading(static_cast<void*>(h_module));
                     if (load_path != base) {
                         std::filesystem::path addon_path =
                             display_commander::utils::GetDcAddonPathInDirectory(load_path);

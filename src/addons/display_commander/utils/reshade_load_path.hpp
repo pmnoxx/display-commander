@@ -76,4 +76,8 @@ bool GetReshadeLoadFallbackVersionInfo(std::string* out_selected_version, std::s
 // Returns true on success or skip, false on error (out_error set).
 bool CopyCurrentReshadeToDll(const std::filesystem::path& loaded_reshade_directory, std::string* out_error);
 
+// Delete local ReShade DLLs (Reshade64.dll, Reshade32.dll) from the given directory (e.g. game exe folder).
+// Safe because we never load the game-folder copy directly; we copy to temp then load. Returns true on success.
+bool DeleteLocalReshadeFromDirectory(const std::filesystem::path& dir, std::string* out_error = nullptr);
+
 }  // namespace display_commander::utils

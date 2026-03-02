@@ -275,6 +275,25 @@ std::string GetDLLVersionString(const std::wstring& dllPath) {
     return std::string(versionStr);
 }
 
+bool TryHardLinkOrCopyFile(const std::filesystem::path& existing_file, const std::filesystem::path& new_path) {
+    std::error_code ec;
+    if (!std::filesystem::exists(existing_file, ec) || !std::filesystem::is_regular_file(existing_file, ec)) {
+        return false;
+    }
+    if (std::filesystem::exists(new_path, ec)) {
+        std::filesystem::remove(new_path, ec);
+        if (ec) return false;
+    }
+    std::wstring new_w = new_path.wstring();
+    std::wstring existing_w = existing_file.wstring();
+    if (CreateHardLinkW(new_w.c_str(), existing_w.c_str(), nullptr)) {
+        return true;
+    }
+    ec.clear();
+    std::filesystem::copy_file(existing_file, new_path, std::filesystem::copy_options::overwrite_existing, ec);
+    return !ec;
+}
+
 // Convert device API enum to readable string
 const char* GetDeviceApiString(reshade::api::device_api api) {
     switch (api) {

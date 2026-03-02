@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -17,7 +18,7 @@
 namespace display_commander::utils::version_check {
 
 namespace {
-// Return first three version components (X.Y.Z) from "X.Y.Z" or "X.Y.Z.Build" for use as Dll folder name.
+// Return first three version components (X.Y.Z) from "X.Y.Z" or "X.Y.Z.Build" for use as stable folder name.
 static std::string VersionStringToXyzFolder(const std::string& version_str) {
     std::string s = version_str;
     size_t dot_count = 0;
@@ -59,20 +60,38 @@ struct ScopedInternetHandle {
 // Global version check state
 VersionCheckState g_version_check_state;
 
-// Download text content from URL using WinInet
-bool DownloadTextFromUrl(const std::string& url, std::string& content) {
+// Set *out_error to a short description including Win32 error code when provided.
+static void SetWinInetError(std::string* out_error, const char* step) {
+    if (!out_error) return;
+    DWORD err = GetLastError();
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%s (error %lu)", step, static_cast<unsigned long>(err));
+    *out_error = buf;
+}
+
+// Download text content from URL using WinInet. On failure, if out_error is non-null, sets a detailed message.
+bool DownloadTextFromUrl(const std::string& url, std::string& content, std::string* out_error = nullptr) {
     content.clear();
     int url_len = MultiByteToWideChar(CP_UTF8, 0, url.c_str(), -1, nullptr, 0);
-    if (url_len <= 0) return false;
+    if (url_len <= 0) {
+        if (out_error) *out_error = "Invalid URL encoding";
+        return false;
+    }
     std::vector<wchar_t> url_wide(url_len);
     MultiByteToWideChar(CP_UTF8, 0, url.c_str(), -1, url_wide.data(), url_len);
     ScopedInternetHandle session =
         InternetOpenW(L"DisplayCommander", INTERNET_OPEN_TYPE_PRECONFIG, nullptr, nullptr, 0);
-    if (session.handle == nullptr) return false;
+    if (session.handle == nullptr) {
+        SetWinInetError(out_error, "InternetOpen failed");
+        return false;
+    }
     ScopedInternetHandle request =
         InternetOpenUrlW(session, url_wide.data(), nullptr, 0,
                          INTERNET_FLAG_RELOAD | INTERNET_FLAG_PRAGMA_NOCACHE | INTERNET_FLAG_NO_CACHE_WRITE, 0);
-    if (request.handle == nullptr) return false;
+    if (request.handle == nullptr) {
+        SetWinInetError(out_error, "Connection failed");
+        return false;
+    }
     DWORD timeout = 10000;
     InternetSetOption(request, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
     InternetSetOption(request, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
@@ -82,7 +101,11 @@ bool DownloadTextFromUrl(const std::string& url, std::string& content) {
         buffer[bytes_read] = '\0';
         content += buffer;
     }
-    return !content.empty();
+    if (content.empty()) {
+        SetWinInetError(out_error, "Empty response");
+        return false;
+    }
+    return true;
 }
 
 // Fetch ReShade tags from GitHub API (crosire/reshade), filter >= 6.6.2, sort descending.
@@ -90,10 +113,11 @@ bool DownloadTextFromUrl(const std::string& url, std::string& content) {
 bool FetchReShadeTagsFromGitHubImpl(std::vector<std::string>& out_versions, std::string* out_error) {
     out_versions.clear();
     std::string content;
-    if (!DownloadTextFromUrl("https://api.github.com/repos/crosire/reshade/tags", content)) {
-        if (out_error) {
+    if (!DownloadTextFromUrl("https://api.github.com/repos/crosire/reshade/tags", content, out_error)) {
+        if (out_error && !out_error->empty())
+            *out_error = std::string("ReShade tags from GitHub: ") + *out_error;
+        else if (out_error)
             *out_error = "Failed to fetch ReShade tags from GitHub";
-        }
         return false;
     }
     const std::string min_version("6.6.2");
@@ -166,9 +190,12 @@ bool FetchReShadeLatestFromReshadeMeImpl(std::string* out_version, std::string* 
         return !s_cached.empty();
     }
     std::string content;
-    if (!DownloadTextFromUrl("https://reshade.me", content)) {
+    if (!DownloadTextFromUrl("https://reshade.me", content, out_error)) {
         s_done = true;
-        if (out_error) *out_error = "Failed to fetch reshade.me";
+        if (out_error && !out_error->empty())
+            *out_error = std::string("reshade.me: ") + *out_error;
+        else if (out_error)
+            *out_error = "Failed to fetch reshade.me";
         return false;
     }
     s_cached = ParseReShadeLatestFromReshadeMeHtml(content);
@@ -440,8 +467,9 @@ void CheckForUpdates() {
             std::string api_url = "https://api.github.com/repos/pmnoxx/display-commander/releases/latest";
             std::string json_response;
 
-            if (!DownloadTextFromUrl(api_url, json_response)) {
-                auto* error = new std::string("Failed to connect to GitHub API");
+            std::string dl_err;
+            if (!DownloadTextFromUrl(api_url, json_response, &dl_err)) {
+                auto* error = new std::string(dl_err.empty() ? "Failed to connect to GitHub API" : dl_err);
                 state.error_message.store(error);
                 state.status.store(VersionComparison::CheckFailed);
                 state.checking.store(false);
@@ -716,35 +744,30 @@ bool DownloadUpdate(bool is_64bit, const std::string& build_number) {
     return DownloadBinaryFromUrl(url, download_path);
 }
 
-// Fetch all Display Commander release tag names from GitHub, sorted descending.
-bool FetchDisplayCommanderReleasesFromGitHub(std::vector<std::string>& out_versions, std::string* out_error) {
-    out_versions.clear();
-    std::string content;
-    if (!DownloadTextFromUrl("https://api.github.com/repos/pmnoxx/display-commander/releases", content)) {
-        if (out_error) *out_error = "Failed to fetch releases from GitHub";
+// Fetch latest stable release version from GitHub (releases/latest). Returns version string e.g. "0.12.201".
+bool FetchLatestStableReleaseVersion(std::string* out_version, std::string* out_error) {
+    if (out_version) out_version->clear();
+    std::string json;
+    if (!DownloadTextFromUrl("https://api.github.com/repos/pmnoxx/display-commander/releases/latest", json,
+                             out_error)) {
+        if (out_error && !out_error->empty())
+            *out_error = std::string("Latest stable from GitHub: ") + *out_error;
+        else if (out_error)
+            *out_error = "Failed to fetch latest stable from GitHub";
         return false;
     }
-    // Response is a JSON array: [ { "tag_name": "v0.12.189", ... }, ... ]
-    size_t pos = 0;
-    while ((pos = content.find("\"tag_name\"", pos)) != std::string::npos) {
-        size_t colon = content.find(':', pos);
-        if (colon == std::string::npos) break;
-        size_t q1 = content.find('"', colon);
-        if (q1 == std::string::npos) break;
-        size_t q2 = content.find('"', q1 + 1);
-        if (q2 == std::string::npos) break;
-        std::string tag = content.substr(q1 + 1, q2 - q1 - 1);
-        std::string ver = ParseVersionString(tag);
-        if (!ver.empty() && ver.find_first_not_of("0123456789.") == std::string::npos) {
-            out_versions.push_back(ver);
-        }
-        pos = q2 + 1;
+    std::string ver_parsed, url_64, url_32, build_num;
+    if (!ParseGitHubReleaseJson(json, ver_parsed, url_64, url_32, build_num)) {
+        if (out_error) *out_error = "Invalid latest release JSON";
+        return false;
     }
-    std::sort(out_versions.begin(), out_versions.end(),
-              [](const std::string& a, const std::string& b) { return CompareVersions(a, b) > 0; });
-    auto last = std::unique(out_versions.begin(), out_versions.end());
-    out_versions.erase(last, out_versions.end());
-    return !out_versions.empty();
+    std::string ver = ParseVersionString(ver_parsed);
+    if (ver.empty() || ver.find_first_not_of("0123456789.") != std::string::npos) {
+        if (out_error) *out_error = "No valid version in latest release";
+        return false;
+    }
+    if (out_version) *out_version = ver;
+    return true;
 }
 
 // Fetch a release by exact tag (e.g. "v0.12.189" or "latest_debug"). Fills url_64 and url_32 from assets.
@@ -752,8 +775,11 @@ static bool FetchReleaseByTag(const std::string& tag, std::string* out_url_64, s
                               std::string* out_error) {
     std::string url = "https://api.github.com/repos/pmnoxx/display-commander/releases/tags/" + tag;
     std::string json;
-    if (!DownloadTextFromUrl(url, json)) {
-        if (out_error) *out_error = "Failed to fetch release info";
+    if (!DownloadTextFromUrl(url, json, out_error)) {
+        if (out_error && !out_error->empty())
+            *out_error = std::string("Release info: ") + *out_error;
+        else if (out_error)
+            *out_error = "Failed to fetch release info";
         return false;
     }
     std::string ver_parsed, url_64, url_32, build_num;
@@ -775,11 +801,11 @@ static bool DownloadDcReleaseToDll(const std::string& tag, const std::string& fo
     if (!FetchReleaseByTag(tag, &url_64, &url_32, out_error)) {
         return false;
     }
-    std::filesystem::path base = GetDownloadDirectory() / L"Dll" / std::filesystem::path(folder_name);
+    std::filesystem::path base = GetDownloadDirectory() / L"stable" / std::filesystem::path(folder_name);
     std::error_code ec;
     std::filesystem::create_directories(base, ec);
     if (ec) {
-        if (out_error) *out_error = "Could not create Dll version folder";
+        if (out_error) *out_error = "Could not create stable version folder";
         return false;
     }
     auto filenameFromUrl = [](const std::string& u) {
@@ -804,7 +830,7 @@ static bool DownloadDcReleaseToDll(const std::string& tag, const std::string& fo
     return true;
 }
 
-// Download a specific DC version to Dll\<version>\ (both addon64 and addon32).
+// Download a specific DC version to stable\<version>\ (both addon64 and addon32).
 bool DownloadDcVersionToDll(const std::string& version, std::string* out_error) {
     std::string tag = version;
     if (tag.empty() || (tag[0] != 'v' && tag[0] != 'V')) {
@@ -837,8 +863,11 @@ bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_e
     std::string url =
         "https://api.github.com/repos/pmnoxx/display-commander/releases/tags/latest_debug";
     std::string json;
-    if (!DownloadTextFromUrl(url, json)) {
-        if (out_error) *out_error = "Failed to fetch latest_debug release";
+    if (!DownloadTextFromUrl(url, json, out_error)) {
+        if (out_error && !out_error->empty())
+            *out_error = std::string("latest_debug release: ") + *out_error;
+        else if (out_error)
+            *out_error = "Failed to fetch latest_debug release";
         return false;
     }
     std::string ver = ParseVersionFromReleaseBody(json);
@@ -850,13 +879,13 @@ bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_e
     return true;
 }
 
-// Download latest_debug release: download to staging, read version from DLLs, move to Dll\X.Y.Z.
+// Download latest_debug release: download to staging, read version from DLLs, move to stable\X.Y.Z.
 bool DownloadDcLatestDebugToDll(std::string* out_error) {
     std::string url_64, url_32;
     if (!FetchReleaseByTag("latest_debug", &url_64, &url_32, out_error)) {
         return false;
     }
-    std::filesystem::path base = GetDownloadDirectory() / L"Dll";
+    std::filesystem::path base = GetDownloadDirectory() / L"stable";
     const std::string staging_name = "_staging_latest_debug";
     std::filesystem::path staging = base / std::filesystem::path(staging_name);
     std::error_code ec;
@@ -900,7 +929,7 @@ bool DownloadDcLatestDebugToDll(std::string* out_error) {
     std::filesystem::create_directories(target_dir, ec);
     if (ec) {
         std::filesystem::remove_all(staging, ec);
-        if (out_error) *out_error = "Could not create Dll version folder";
+        if (out_error) *out_error = "Could not create stable version folder";
         return false;
     }
     std::filesystem::path dest64 = target_dir / name64;
@@ -930,7 +959,8 @@ bool DownloadDcLatestDebugToDll(std::string* out_error) {
     return true;
 }
 
-// Download latest_debug to Debug\X.Y.Z (same flow as Dll but target folder Debug).
+// Download latest_debug to Display_Commander\Debug\X.Y.Z (local cache for override choice: latest from
+// GitHub or pick a cached version).
 bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
     std::string url_64, url_32;
     if (!FetchReleaseByTag("latest_debug", &url_64, &url_32, out_error)) {
@@ -1026,7 +1056,7 @@ bool CopyCurrentVersionToDll(const std::filesystem::path& current_addon_path, st
         if (out_error) *out_error = "Invalid version from addon";
         return false;
     }
-    std::filesystem::path base = GetDownloadDirectory() / L"Dll";
+    std::filesystem::path base = GetDownloadDirectory() / L"stable";
     std::filesystem::path target_dir = base / std::filesystem::path(folder_xyz);
     // Use canonical addon filename so the version is recognized (current path may be proxy e.g. winmm.dll).
 #ifdef _WIN64
@@ -1040,12 +1070,11 @@ bool CopyCurrentVersionToDll(const std::filesystem::path& current_addon_path, st
     }
     std::filesystem::create_directories(target_dir, ec);
     if (ec) {
-        if (out_error) *out_error = "Could not create Dll version folder";
+        if (out_error) *out_error = "Could not create stable version folder";
         return false;
     }
-    std::filesystem::copy(current_addon_path, dest, std::filesystem::copy_options::overwrite_existing, ec);
-    if (ec) {
-        if (out_error) *out_error = "Could not copy addon to version folder";
+    if (!TryHardLinkOrCopyFile(current_addon_path, dest)) {
+        if (out_error) *out_error = "Could not hard link or copy addon to version folder";
         return false;
     }
     return true;
@@ -1064,9 +1093,8 @@ bool CopyCurrentVersionToGlobal(const std::filesystem::path& current_addon_path,
         if (out_error) *out_error = "Could not create base folder";
         return false;
     }
-    std::filesystem::copy(current_addon_path, dest, std::filesystem::copy_options::overwrite_existing, ec);
-    if (ec) {
-        if (out_error) *out_error = "Could not copy addon to global folder";
+    if (!TryHardLinkOrCopyFile(current_addon_path, dest)) {
+        if (out_error) *out_error = "Could not hard link or copy addon to global folder";
         return false;
     }
     return true;

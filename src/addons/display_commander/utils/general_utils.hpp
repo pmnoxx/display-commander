@@ -62,6 +62,11 @@ SHORT FloatToShort(float value);
 // DLL version information
 std::string GetDLLVersionString(const std::wstring& dllPath);
 
+// Try to create a hard link at new_path pointing to existing_file (no admin required on same NTFS volume).
+// If hard link fails (e.g. different volume, non-NTFS), copy the file. Returns true on success.
+// Use this for any "copy then load" path (e.g. local ReShade/DC into temp or versioned folder) so we prefer hard link over copy when possible.
+bool TryHardLinkOrCopyFile(const std::filesystem::path& existing_file, const std::filesystem::path& new_path);
+
 // DLSS preset support functions
 bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,
                int maxPatch);

@@ -67,11 +67,10 @@ std::string ExtractBuildNumber(const std::string& version_str);
 // Format build number as 6 digits with leading zeros
 std::string FormatBuildNumber(const std::string& build_str);
 
-// Fetch Display Commander release versions from GitHub (pmnoxx/display-commander). Returns tag names, sorted
-// descending.
-bool FetchDisplayCommanderReleasesFromGitHub(std::vector<std::string>& out_versions, std::string* out_error = nullptr);
+// Fetch latest stable release version from GitHub (releases/latest). Returns single version string e.g. "0.12.201".
+bool FetchLatestStableReleaseVersion(std::string* out_version, std::string* out_error = nullptr);
 
-// Download a specific DC version to %localappdata%\Programs\Display_Commander\Dll\<version>\. Returns true on success.
+// Download a specific DC version to %localappdata%\Programs\Display_Commander\stable\<version>\. Returns true on success.
 bool DownloadDcVersionToDll(const std::string& version, std::string* out_error = nullptr);
 
 // Fetch the latest_debug release (https://github.com/pmnoxx/display-commander/releases/tag/latest_debug).
@@ -82,15 +81,15 @@ bool FetchLatestDebugRelease(std::string* out_error = nullptr);
 // Use for display; no need to call FetchLatestDebugRelease first.
 bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_error = nullptr);
 
-// Download latest_debug release to Dll\X.Y.Z (version read from downloaded binaries). Call after
+// Download latest_debug release to stable\X.Y.Z (version read from downloaded binaries). Call after
 // FetchLatestDebugRelease (or any time).
 bool DownloadDcLatestDebugToDll(std::string* out_error = nullptr);
 
 // Download latest_debug release to Debug\X.Y.Z (version read from downloaded binaries). Use for DC selector
-// debug mode; keeps debug builds separate from stable Dll\.
+// debug mode; keeps debug builds separate from stable\.
 bool DownloadDcLatestDebugToDebugFolder(std::string* out_error = nullptr);
 
-// Copy the given DC addon file to Dll\X.Y.Z (version read from the file) if that folder does not already exist.
+// Copy the given DC addon file to stable\X.Y.Z (version read from the file) if that folder does not already exist.
 // current_addon_path is typically the path to the running addon (e.g. from GetModuleFileNameW(g_hmodule)).
 bool CopyCurrentVersionToDll(const std::filesystem::path& current_addon_path, std::string* out_error = nullptr);
 

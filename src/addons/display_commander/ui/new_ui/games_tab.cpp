@@ -1,7 +1,6 @@
 // Source Code <Display Commander>
 
 // Group 1 — Source Code (Display Commander)
-#include "advanced_tab.hpp"
 #include "games_tab.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../utils/process_window_enumerator.hpp"
@@ -10,6 +9,7 @@
 #include "../../utils/steam_library.hpp"
 #include "../../utils/timing.hpp"
 #include "../imgui_wrapper_base.hpp"
+#include "advanced_tab.hpp"
 
 // Group 2 — ReShade / ImGui
 #include <reshade_imgui.hpp>
@@ -105,7 +105,9 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Copy addon to %%LocalAppData%%\\Programs\\Display_Commander and open the Games-only window (rundll32 Launcher).");
+        imgui.SetTooltip(
+            "Copy addon to %%LocalAppData%%\\Programs\\Display_Commander and open the Games-only window (rundll32 "
+            "Launcher).");
     }
     if (!state.last_launch_error.empty()) {
         imgui.TextColored(::ui::colors::TEXT_DIMMED, "Launch failed: %s", state.last_launch_error.c_str());
@@ -221,8 +223,7 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.TableSetColumnIndex(4);
             bool is_current = (game.pid == current_pid);
             bool can_restart =
-                !game.exe_path.empty()
-                && (is_current || (game.main_window != nullptr || game.can_terminate));
+                !game.exe_path.empty() && (is_current || (game.main_window != nullptr || game.can_terminate));
             if (!can_restart) {
                 imgui.BeginDisabled();
             }
@@ -509,7 +510,7 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
         return a.first.name < b.first.name;
     });
 
-    if (imgui.BeginChild("##steam_launch_list", ImVec2(0.0f, 600.0f), true)) {
+    if (imgui.BeginChild("##steam_launch_list", ImVec2(0.0f, 0.0f), true)) {
         if (state.games.empty()) {
             imgui.TextColored(::ui::colors::TEXT_DIMMED, "No Steam library found or no Steam games installed.");
         } else if (filtered.empty()) {

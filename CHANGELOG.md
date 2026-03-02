@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.227 (unreleased)
+
+- **Games window (Launcher/exe): resize both ways, non-movable, more list rows** - Inner Games window now uses GetClientRect every frame so it grows and shrinks with the outer window. Added NoTitleBar so the tab cannot be dragged. Steam "Launch Steam game" search list uses remaining vertical space (BeginChild 0,0) so more rows are visible when the window is large.
+
 ## v0.12.226 (unreleased)
 
 - **Games window (Launcher/exe): stretch to borders** - The standalone Games-only UI window now fills the full client area; position and size are set every frame to the display size so the content stretches when the window is resized. Replaced AlwaysAutoResize with NoResize/NoMove/NoCollapse so the inner ImGui window stays full-client-area.

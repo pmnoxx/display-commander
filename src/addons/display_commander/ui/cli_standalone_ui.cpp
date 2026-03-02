@@ -1,6 +1,7 @@
-// Standalone UIs: RunStandaloneSettingsUI (no-ReShade settings), RunStandaloneGamesOnlyUI (Games tab only, exe/Launcher).
-// (default "."). Uses a second ImGui build in namespace ImGuiStandalone (via compile define ImGui=ImGuiStandalone) and
-// ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used in-game.
+// Standalone UIs: RunStandaloneSettingsUI (no-ReShade settings), RunStandaloneGamesOnlyUI (Games tab only,
+// exe/Launcher). (default "."). Uses a second ImGui build in namespace ImGuiStandalone (via compile define
+// ImGui=ImGuiStandalone) and ImDrawList=ImDrawListStandalone to avoid symbol clash with ReShade's ImGui/ImDrawList used
+// in-game.
 
 #include "config/display_commander_config.hpp"
 #include "display/display_cache.hpp"
@@ -896,6 +897,7 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
 
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
             glViewport(0, 0, (GLsizei)g_ResizeWidth, (GLsizei)g_ResizeHeight);
+            ImGui::GetIO().DisplaySize = ImVec2((float)g_ResizeWidth, (float)g_ResizeHeight);
             g_ResizeWidth = g_ResizeHeight = 0;
         }
 
@@ -903,9 +905,16 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        // Use current client size every frame so Games window grows and shrinks with the outer window
+        RECT rc = {};
+        if (GetClientRect(hwnd, &rc)) {
+            ImGui::GetIO().DisplaySize = ImVec2((float)(rc.right - rc.left), (float)(rc.bottom - rc.top));
+        }
         ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
-        if (ImGui::Begin("Games", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)) {
+        if (ImGui::Begin("Games", nullptr,
+                         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
+                             | ImGuiWindowFlags_NoTitleBar)) {
             display_commander::ui::ImGuiWrapperStandalone wrapper;
             ui::new_ui::DrawGamesTab(wrapper);
         }
@@ -926,7 +935,6 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     DestroyWindow(hwnd);
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
 }
-
 
 // WGL 3.0 context for ImGui OpenGL3 backend (Win32-only, no DX9)
 static bool CreateContextOpenGL(HWND hWnd) {

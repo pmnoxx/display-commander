@@ -2424,8 +2424,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 }
 #endif  // !DISPLAY_COMMANDER_BUILD_EXE
 
-#if defined(DISPLAY_COMMANDER_BUILD_EXE)
-// Standalone .exe entry: same init as no-ReShade DLL path, then run Games-tab-only UI on main thread.
+// Standalone entry: same init as no-ReShade DLL path, then run Games-tab-only UI on main thread.
+// Used by: (1) .exe build (main_exe.cpp), (2) rundll32 Launcher export (DLL build).
 // Set HOOKED so DoInitializationWithoutHwndSafe_Late runs (StartContinuousMonitoring), which fills the
 // running-games cache so the Games tab can show other processes with the addon loaded.
 void RunDisplayCommanderStandalone(HINSTANCE hInst) {
@@ -2434,7 +2434,16 @@ void RunDisplayCommanderStandalone(HINSTANCE hInst) {
     ProcessAttach_NoReShadeModeInit(reinterpret_cast<HMODULE>(hInst));
     RunStandaloneGamesOnlyUI(hInst);
 }
-#endif  // DISPLAY_COMMANDER_BUILD_EXE
+
+#if !defined(DISPLAY_COMMANDER_BUILD_EXE)
+// rundll32 entry: e.g. rundll32.exe zzz_display_commander.addon64,Launcher
+extern "C" __declspec(dllexport) void CALLBACK Launcher(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine, int nCmdShow) {
+    (void)hwnd;
+    (void)lpszCmdLine;
+    (void)nCmdShow;
+    RunDisplayCommanderStandalone(hInst);
+}
+#endif  // !DISPLAY_COMMANDER_BUILD_EXE
 
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks
 

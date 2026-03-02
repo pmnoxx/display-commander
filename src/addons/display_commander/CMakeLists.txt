@@ -38,7 +38,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 223)
+set(DISPLAY_COMMANDER_VERSION_PATCH 224)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -283,7 +283,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/winmm_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
 endif()
 
-# Standalone installer UI built into the DLL (CommandLine SetupDC [script_dir]). Uses a second ImGui in namespace
+# Standalone UIs (RunStandaloneSettingsUI, RunStandaloneGamesOnlyUI) use a second ImGui in namespace
 # ImGuiStandalone to avoid symbol clash with ReShade's ImGui. No separate .exe.
 # Use an OBJECT library so standalone ImGui is compiled exactly once with ImGui=ImGuiStandalone and
 # ImDrawList=ImDrawListStandalone, avoiding LNK2005 duplicate symbol errors: ReShade's reshade_overlay.hpp

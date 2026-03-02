@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.226 (unreleased)
+
+- **Games window (Launcher/exe): stretch to borders** - The standalone Games-only UI window now fills the full client area; position and size are set every frame to the display size so the content stretches when the window is resized. Replaced AlwaysAutoResize with NoResize/NoMove/NoCollapse so the inner ImGui window stays full-client-area.
+
 ## v0.12.225 (unreleased)
 
 - **Build: shared object library and common options** - DLL and exe now share an object library (`display_commander_objs`) for all sources except `main_entry.cpp` and `main_exe.cpp`, so common code is compiled once and linked into both targets. A single interface library (`display_commander_common_options`) holds compile definitions, include directories, and compiler flags for both; flags are no longer duplicated. Build time improves when building both targets (e.g. `ninja zzz_display_commander display_commander_exe`).

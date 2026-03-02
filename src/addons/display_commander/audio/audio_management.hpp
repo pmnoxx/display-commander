@@ -32,7 +32,6 @@ bool SetAudioOutputDeviceForCurrentProcess(const std::wstring& device_id);
 // Per-channel (e.g. left/right speaker) volume for the current process.
 // Only available when the session supports IChannelAudioVolume (typically stereo or more).
 bool GetChannelVolumeCountForCurrentProcess(unsigned int* channel_count_out);
-bool GetChannelVolumeForCurrentProcess(unsigned int channel_index, float* volume_0_1_out);
 bool SetChannelVolumeForCurrentProcess(unsigned int channel_index, float volume_0_1);
 // Get all channel volumes in one call. out_volumes_0_1 is filled up to channel_count; returns true on success.
 bool GetAllChannelVolumesForCurrentProcess(std::vector<float>* out_volumes_0_1);

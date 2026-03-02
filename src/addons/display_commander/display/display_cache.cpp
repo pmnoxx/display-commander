@@ -515,27 +515,6 @@ bool DisplayCache::GetRationalRefreshRate(size_t display_index, size_t resolutio
     return false;
 }
 
-bool DisplayCache::GetCurrentDisplayInfo(size_t display_index, int& width, int& height,
-                                         RationalRefreshRate& refresh_rate) const {
-    auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return false;
-    width = display->width;
-    height = display->height;
-    refresh_rate = display->current_refresh_rate;
-    return true;
-}
-
-bool DisplayCache::GetSupportedModes(size_t display_index, std::vector<Resolution>& resolutions) const {
-    auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || display_index >= displays_ptr->size()) return false;
-    const auto* display = (*displays_ptr)[display_index].get();
-    if (!display) return false;
-    resolutions = display->resolutions;
-    return true;
-}
-
 std::shared_ptr<std::vector<std::unique_ptr<DisplayInfo>>> DisplayCache::GetDisplays() const {
     return displays.load(std::memory_order_acquire);
 }
@@ -549,59 +528,6 @@ const DisplayInfo* DisplayCache::GetDisplay(size_t index) const {
     auto displays_ptr = displays.load(std::memory_order_acquire);
     if (!displays_ptr || index >= displays_ptr->size()) return nullptr;
     return (*displays_ptr)[index].get();
-}
-
-void DisplayCache::SwapFrom(DisplayCache&& other) {
-    if (&other == this) return;
-    // Atomically swap the displays data
-    auto other_displays = other.displays.load(std::memory_order_acquire);
-    displays.store(other_displays, std::memory_order_release);
-    is_initialized.store(other.is_initialized.load(std::memory_order_acquire), std::memory_order_release);
-}
-
-bool DisplayCache::CopyDisplay(size_t index, DisplayInfo& out) const {
-    auto displays_ptr = displays.load(std::memory_order_acquire);
-    if (!displays_ptr || index >= displays_ptr->size() || !(*displays_ptr)[index]) return false;
-    out = *(*displays_ptr)[index];
-    return true;
-}
-
-void DisplayCache::PrintVSyncFreqDivider() const {
-    auto displays_ptr = displays.load(std::memory_order_acquire);
-
-    if (!displays_ptr || displays_ptr->empty()) {
-        LogInfo("DisplayCache: No displays available to print vSyncFreqDivider");
-        return;
-    }
-
-    for (size_t i = 0; i < displays_ptr->size(); ++i) {
-        const auto& display = (*displays_ptr)[i];
-        if (!display) continue;
-
-        std::ostringstream oss;
-        oss << "Display " << i << " (";
-        // Convert wstring to string for output (proper UTF-8 conversion)
-        std::string friendly_name_str = WideCharToUTF8(display->friendly_name);
-        oss << friendly_name_str << "): ";
-        oss << "Current refresh rate: " << display->current_refresh_rate.ToString();
-        oss << " [Raw: " << display->current_refresh_rate.numerator << "/" << display->current_refresh_rate.denominator
-            << "]";
-
-        // Calculate vSyncFreqDivider equivalent (this is a conceptual representation)
-        // In SpecialK, vSyncFreqDivider is used to divide the vsync frequency
-        // Here we'll show the current refresh rate and potential divider values
-        double current_hz = display->current_refresh_rate.ToHz();
-        if (current_hz > 0.0) {
-            oss << " | vSyncFreqDivider equivalents: ";
-            for (int divider = 1; divider <= 6; ++divider) {
-                double divided_hz = current_hz / divider;
-                oss << divider << ":" << std::fixed << std::setprecision(2) << divided_hz << "Hz";
-                if (divider < 6) oss << ", ";
-            }
-        }
-
-        LogInfo(oss.str().c_str());
-    }
 }
 
 double DisplayCache::GetMaxRefreshRateAcrossAllMonitors() const {

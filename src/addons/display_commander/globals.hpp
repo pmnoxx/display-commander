@@ -453,23 +453,6 @@ class SwapchainTrackingManager {
         return true;
     }
 
-    // Remove a swapchain from the tracked set
-    bool RemoveSwapchain(IDXGISwapChain* swapchain) {
-        if (swapchain == nullptr) {
-            return false;
-        }
-
-        utils::SRWLockExclusive lock(lock_);
-
-        auto it = hooked_swapchains_.find(swapchain);
-        if (it != hooked_swapchains_.end()) {
-            hooked_swapchains_.erase(it);
-            return true;
-        }
-
-        return false;  // Not found
-    }
-
     // Check if a swapchain is being tracked
     bool IsSwapchainTracked(IDXGISwapChain* swapchain) const {
         if (swapchain == nullptr) {

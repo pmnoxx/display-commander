@@ -106,21 +106,3 @@ void LogInfoDirect(const char *msg, ...) {
     va_end(args);
     LogInfo("%s", buffer);
 }
-
-void LogWarnDirect(const char *msg, ...) {
-    va_list args;
-    va_start(args, msg);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), msg, args);
-    va_end(args);
-    LogWarn("%s", buffer);
-}
-
-void LogErrorDirect(const char *msg, ...) {
-    va_list args;
-    va_start(args, msg);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), msg, args);
-    va_end(args);
-    LogError("%s", buffer);
-}

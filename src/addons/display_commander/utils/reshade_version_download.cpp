@@ -134,14 +134,6 @@ const char* GetReshadeDownloadStatusMessage() {
     return msg && !msg->empty() ? msg->c_str() : "";
 }
 
-void StartReshadeVersionDownload(const std::string& version) {
-    if (version.empty()) {
-        return;
-    }
-    std::thread t(ReshadeVersionDownloadWorker, version, false);
-    t.detach();
-}
-
 void StartReshadeVersionDownloadToGlobalRoot(const std::string& version) {
     if (version.empty()) {
         return;

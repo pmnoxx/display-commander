@@ -613,95 +613,6 @@ std::string InputRemapper::get_button_name(WORD button) const {
     }
 }
 
-std::string InputRemapper::get_keyboard_name(int vk_code) const {
-    switch (vk_code) {
-        case VK_VOLUME_MUTE:      return "Volume Mute";
-        case VK_VOLUME_DOWN:      return "Volume Down";
-        case VK_VOLUME_UP:        return "Volume Up";
-        case VK_MEDIA_NEXT_TRACK: return "Next Track";
-        case VK_MEDIA_PREV_TRACK: return "Previous Track";
-        case VK_MEDIA_STOP:       return "Stop Media";
-        case VK_MEDIA_PLAY_PAUSE: return "Play/Pause Media";
-        default:                  break;
-    }
-    char key_name[256];
-    int result = GetKeyNameTextA(MapVirtualKey(vk_code, MAPVK_VK_TO_VSC) << 16, key_name, sizeof(key_name));
-    if (result > 0) {
-        return std::string(key_name);
-    }
-    return "Unknown";
-}
-
-int InputRemapper::get_vk_code_from_name(const std::string& name) const {
-    // Simple mapping for common keys
-    if (name == "Space") return VK_SPACE;
-    if (name == "Enter") return VK_RETURN;
-    if (name == "Escape") return VK_ESCAPE;
-    if (name == "Tab") return VK_TAB;
-    if (name == "Shift") return VK_SHIFT;
-    if (name == "Ctrl") return VK_CONTROL;
-    if (name == "Alt") return VK_MENU;
-    if (name == "F1") return VK_F1;
-    if (name == "F2") return VK_F2;
-    if (name == "F3") return VK_F3;
-    if (name == "F4") return VK_F4;
-    if (name == "F5") return VK_F5;
-    if (name == "F6") return VK_F6;
-    if (name == "F7") return VK_F7;
-    if (name == "F8") return VK_F8;
-    if (name == "F9") return VK_F9;
-    if (name == "F10") return VK_F10;
-    if (name == "F11") return VK_F11;
-    if (name == "F12") return VK_F12;
-    if (name == "F13") return VK_F13;
-    if (name == "F14") return VK_F14;
-    if (name == "F15") return VK_F15;
-    if (name == "F16") return VK_F16;
-    if (name == "F17") return VK_F17;
-    if (name == "F18") return VK_F18;
-    if (name == "F19") return VK_F19;
-    if (name == "F20") return VK_F20;
-    if (name == "F21") return VK_F21;
-    if (name == "F22") return VK_F22;
-    if (name == "F23") return VK_F23;
-    if (name == "F24") return VK_F24;
-    if (name == "~") return VK_OEM_3;  // Tilde key
-    if (name == "A") return 'A';
-    if (name == "B") return 'B';
-    if (name == "C") return 'C';
-    if (name == "D") return 'D';
-    if (name == "E") return 'E';
-    if (name == "F") return 'F';
-    if (name == "G") return 'G';
-    if (name == "H") return 'H';
-    if (name == "I") return 'I';
-    if (name == "J") return 'J';
-    if (name == "K") return 'K';
-    if (name == "L") return 'L';
-    if (name == "M") return 'M';
-    if (name == "N") return 'N';
-    if (name == "O") return 'O';
-    if (name == "P") return 'P';
-    if (name == "Q") return 'Q';
-    if (name == "R") return 'R';
-    if (name == "S") return 'S';
-    if (name == "T") return 'T';
-    if (name == "U") return 'U';
-    if (name == "V") return 'V';
-    if (name == "W") return 'W';
-    if (name == "X") return 'X';
-    if (name == "Y") return 'Y';
-    if (name == "Z") return 'Z';
-    if (name == "Volume Mute") return VK_VOLUME_MUTE;
-    if (name == "Volume Down") return VK_VOLUME_DOWN;
-    if (name == "Volume Up") return VK_VOLUME_UP;
-    if (name == "Next Track") return VK_MEDIA_NEXT_TRACK;
-    if (name == "Previous Track") return VK_MEDIA_PREV_TRACK;
-    if (name == "Stop Media") return VK_MEDIA_STOP;
-    if (name == "Play/Pause Media") return VK_MEDIA_PLAY_PAUSE;
-    return 0;
-}
-
 HWND InputRemapper::get_active_window() const { return display_commanderhooks::GetForegroundWindow_Direct(); }
 
 void InputRemapper::update_button_states(DWORD user_index, WORD button_state) {
@@ -994,11 +905,6 @@ void InputRemapper::increment_trigger_count(WORD gamepad_button) {
     if (remap) {
         remap->trigger_count.fetch_add(1);
     }
-}
-
-uint64_t InputRemapper::get_trigger_count(WORD gamepad_button) const {
-    const ButtonRemap* remap = get_button_remap(gamepad_button);
-    return remap ? remap->trigger_count.load() : 0;
 }
 
 void InputRemapper::apply_gamepad_remapping(DWORD user_index, XINPUT_STATE* state) {

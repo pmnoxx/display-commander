@@ -31,10 +31,6 @@ struct AutoClickAction {
     static AutoClickAction Deserialize(const std::string& str);
 };
 
-// Helper functions for serializing/deserializing action lists
-std::string SerializeActions(const std::vector<AutoClickAction>& actions);
-std::vector<AutoClickAction> DeserializeActions(const std::string& str);
-
 } // namespace autoclick
 
 

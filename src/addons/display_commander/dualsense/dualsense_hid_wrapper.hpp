@@ -134,13 +134,6 @@ struct hid_device_file_s {
 
     std::vector<BYTE> input_report;
     GetInputReport_pfn get_input_report = nullptr;
-
-    bool GetInputReport() {
-        if (get_input_report) {
-            return get_input_report(this);
-        }
-        return false;
-    }
 };
 
 namespace display_commander::dualsense {

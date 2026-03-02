@@ -45,12 +45,6 @@ class HookSuppressionManager {
     // Mark a hook as successfully installed
     void MarkHookInstalled(HookType hookType);
 
-    // Get the suppression setting name for a hook type
-    std::string GetSuppressionSettingName(HookType hookType);
-
-    // Get the installation tracking setting name for a hook type
-    std::string GetInstallationSettingName(HookType hookType);
-
     // Get the human-readable name for a hook type
     std::string GetHookTypeName(HookType hookType);
 

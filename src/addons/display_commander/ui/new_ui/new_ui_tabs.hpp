@@ -35,12 +35,6 @@ class TabManager {
     // Draw the tab bar and content (thread-safe)
     void Draw(reshade::api::effect_runtime* runtime);
 
-    // Get current active tab (thread-safe)
-    int GetActiveTab() const { return active_tab_; }
-
-    // Set active tab (thread-safe)
-    void SetActiveTab(int tab) { active_tab_ = tab; }
-
     // Check if a tab with the given ID exists (thread-safe)
     bool HasTab(const std::string& id) const;
 

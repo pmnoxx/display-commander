@@ -112,18 +112,6 @@ constexpr ImVec4 HEADER_NESTED_TEXT = TEXT_LABEL;  // Light blue for nested head
 // Helper Functions
 // ============================================================================
 
-// Get button color set for selected state (use with PushStyleColor in sequence)
-inline void PushSelectedButtonColors() {
-    ImGui::PushStyleColor(ImGuiCol_Button, BUTTON_SELECTED);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, BUTTON_SELECTED_HOVERED);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, BUTTON_SELECTED_ACTIVE);
-}
-
-// Pop button colors (3 colors)
-inline void PopSelectedButtonColors() {
-    ImGui::PopStyleColor(3);
-}
-
 // Wrapper-based overloads (use when drawing via IImGuiWrapper, e.g. standalone UI)
 inline void PushSelectedButtonColors(display_commander::ui::IImGuiWrapper* w) {
     if (w == nullptr) return;
@@ -155,28 +143,6 @@ inline void PushNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
 inline void PopNestedHeaderColors(display_commander::ui::IImGuiWrapper* w) {
     if (w == nullptr) return;
     w->PopStyleColor(4);
-}
-
-// Apply icon color for text
-inline void PushIconColor(const ImVec4& color) {
-    ImGui::PushStyleColor(ImGuiCol_Text, color);
-}
-
-inline void PopIconColor() {
-    ImGui::PopStyleColor();
-}
-
-// Apply nested header colors (for Depth 1 CollapsingHeaders inside Depth 0 sections)
-// This makes nested headers visually distinct from parent headers
-inline void PushNestedHeaderColors() {
-    ImGui::PushStyleColor(ImGuiCol_Header, HEADER_NESTED_BG);
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HEADER_NESTED_BG_HOVERED);
-    ImGui::PushStyleColor(ImGuiCol_HeaderActive, HEADER_NESTED_BG_ACTIVE);
-    ImGui::PushStyleColor(ImGuiCol_Text, HEADER_NESTED_TEXT);
-}
-
-inline void PopNestedHeaderColors() {
-    ImGui::PopStyleColor(4);  // Pop 4 colors: Header, HeaderHovered, HeaderActive, Text
 }
 
 }  // namespace ui::colors

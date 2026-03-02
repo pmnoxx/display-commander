@@ -1,21 +1,12 @@
 #include "ui_display_tab.hpp"
 #include "display/display_cache.hpp"
 #include "../globals.hpp"
-#include "../settings/main_tab_settings.hpp"
 #include <iomanip>
 #include <sstream>
 #include <vector>
 #include <windows.h>
 
 namespace ui {
-
-// Initialize the display cache for the UI
-void InitializeDisplayCache() {
-    if (!display_cache::g_displayCache.IsInitialized()) {
-        display_cache::g_displayCache.Initialize();
-    }
-}
-
 
 // Function to find monitor index by device ID
 int FindMonitorIndexByDeviceId(const std::string &device_id) {
@@ -54,23 +45,6 @@ int FindMonitorIndexByDeviceId(const std::string &device_id) {
     }
 
     return -1;
-}
-
-// Function to get the correct monitor index for target monitor selection
-int GetTargetMonitorIndex() {
-    // Get the saved game window display device ID
-    std::string saved_device_id = settings::g_mainTabSettings.game_window_extended_display_device_id.GetValue();
-
-    // Try to find the monitor by device ID
-    int monitor_index = FindMonitorIndexByDeviceId(saved_device_id);
-
-    if (monitor_index >= 0) {
-        // Found matching monitor by device ID
-        return monitor_index; // Direct 0-based index
-    }
-
-    // Fallback to first monitor (index 0) if no match found
-    return 0;
 }
 
 } // namespace ui

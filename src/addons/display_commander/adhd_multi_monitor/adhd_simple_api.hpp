@@ -21,9 +21,6 @@ namespace api {
 // Initialize the ADHD multi-monitor system
 bool Initialize();
 
-// Update the system (call from main loop)
-void Update();
-
 // Enable/disable ADHD mode: (enabled for game display, enabled for other displays)
 void SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays);
 bool IsEnabledForGameDisplay();

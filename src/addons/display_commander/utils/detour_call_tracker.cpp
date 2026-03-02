@@ -79,18 +79,6 @@ DetourCallGuard::~DetourCallGuard() {
     }
 }
 
-size_t GetUndestroyedGuardCount() {
-    uint64_t used = g_used_entries.load(std::memory_order_acquire);
-    size_t limit = (std::min)(static_cast<uint64_t>(MAX_ENTRIES), used);
-    size_t count = 0;
-    for (size_t i = 0; i < limit; ++i) {
-        if (g_entries[i].inprogress_cnt.load(std::memory_order_acquire) != 0) {
-            count++;
-        }
-    }
-    return count;
-}
-
 std::string FormatUndestroyedGuards(uint64_t crash_timestamp_ns) {
     uint64_t used = g_used_entries.load(std::memory_order_acquire);
     size_t limit = (std::min)(static_cast<uint64_t>(MAX_ENTRIES), used);

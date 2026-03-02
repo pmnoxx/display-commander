@@ -93,21 +93,6 @@ bool GetChannelVolumeCountForCurrentProcess(unsigned int* channel_count_out) {
     return true;
 }
 
-bool GetChannelVolumeForCurrentProcess(unsigned int channel_index, float* volume_0_1_out) {
-    if (volume_0_1_out == nullptr) return false;
-    IChannelAudioVolume* pv = nullptr;
-    UINT n = 0;
-    if (!GetChannelVolumeControlForCurrentProcess(&pv, &n)) {
-        return false;
-    }
-    bool ok = false;
-    if (channel_index < n && SUCCEEDED(pv->GetChannelVolume(channel_index, volume_0_1_out))) {
-        ok = true;
-    }
-    if (pv != nullptr) pv->Release();
-    return ok;
-}
-
 bool SetChannelVolumeForCurrentProcess(unsigned int channel_index, float volume_0_1) {
     IChannelAudioVolume* pv = nullptr;
     UINT n = 0;

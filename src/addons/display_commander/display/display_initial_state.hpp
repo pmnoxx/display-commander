@@ -30,17 +30,6 @@ struct InitialDisplayState {
             return 0.0;
         return static_cast<double>(refresh_numerator) / static_cast<double>(refresh_denominator);
     }
-
-    // Get formatted string representation
-    std::string GetFormattedString() const {
-        std::string result = "Display " + std::to_string(display_id) + ": ";
-        result += std::to_string(width) + "x" + std::to_string(height) + " @ ";
-        result += std::to_string(refresh_numerator) + "/" + std::to_string(refresh_denominator);
-        result += " (" + std::to_string(GetRefreshRateHz()) + "Hz)";
-        if (is_primary)
-            result += " [PRIMARY]";
-        return result;
-    }
 };
 
 // Main class to manage initial display state
@@ -61,17 +50,8 @@ class InitialDisplayStateManager {
         return initial_states_.load(std::memory_order_acquire);
     }
 
-    // Check if initial state has been captured
-    bool IsCaptured() const { return is_captured_.load(std::memory_order_acquire); }
-
     // Get initial state for a specific device name
     const InitialDisplayState *GetInitialStateForDevice(const std::wstring &device_name) const;
-
-    // Clear captured state
-    void Clear() {
-        initial_states_.store(std::make_shared<std::vector<InitialDisplayState>>(), std::memory_order_release);
-        is_captured_.store(false, std::memory_order_release);
-    }
 
     // Print all captured states to log
     void PrintInitialStates() const;

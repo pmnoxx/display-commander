@@ -198,13 +198,10 @@ class InputRemapper {
 
     // Helper functions
     std::string get_button_name(WORD button) const;
-    std::string get_keyboard_name(int vk_code) const;
-    int get_vk_code_from_name(const std::string &name) const;
     HWND get_active_window() const;
 
     // Trigger counter functions
     void increment_trigger_count(WORD gamepad_button);
-    uint64_t get_trigger_count(WORD gamepad_button) const;
 
     // Button state tracking
     void update_button_states(DWORD user_index, WORD button_state);

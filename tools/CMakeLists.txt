@@ -39,3 +39,16 @@ install(FILES injector_config.ini
 
 # Game Commander
 add_subdirectory(game_commander)
+
+# Unused API check (requires cppcheck and compile_commands.json from a configured build)
+# Configure with: cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if(Python3_EXECUTABLE)
+  set(ADDON_BUILD_DIR "${CMAKE_BINARY_DIR}/..")
+  add_custom_target(find_unused_api
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/find_unused_api.py" "${ADDON_BUILD_DIR}"
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    COMMENT "Find unused functions in addon (cppcheck)"
+    USES_TERMINAL
+  )
+endif()

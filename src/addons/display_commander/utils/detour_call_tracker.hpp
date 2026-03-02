@@ -54,9 +54,6 @@ class DetourCallGuard {
 
 // --- Crash reporting: iterate entries 0 .. used_entries-1 ---
 
-// Count of entries with inprogress_cnt != 0 (guards that didn't finish).
-size_t GetUndestroyedGuardCount();
-
 // Format entries with inprogress_cnt != 0 (one line per entry, time since crash_timestamp_ns).
 std::string FormatUndestroyedGuards(uint64_t crash_timestamp_ns);
 

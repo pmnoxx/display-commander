@@ -43,36 +43,6 @@ AutoClickAction AutoClickAction::Deserialize(const std::string& str) {
     return action;
 }
 
-std::string SerializeActions(const std::vector<AutoClickAction>& actions) {
-    std::ostringstream oss;
-    for (size_t i = 0; i < actions.size(); ++i) {
-        if (i > 0) {
-            oss << ";";
-        }
-        oss << actions[i].Serialize();
-    }
-    return oss.str();
-}
-
-std::vector<AutoClickAction> DeserializeActions(const std::string& str) {
-    std::vector<AutoClickAction> actions;
-
-    if (str.empty()) {
-        return actions;
-    }
-
-    std::istringstream iss(str);
-    std::string action_str;
-
-    while (std::getline(iss, action_str, ';')) {
-        if (!action_str.empty()) {
-            actions.push_back(AutoClickAction::Deserialize(action_str));
-        }
-    }
-
-    return actions;
-}
-
 } // namespace autoclick
 
 

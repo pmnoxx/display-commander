@@ -40,19 +40,9 @@ class LockFreeRingBuffer {
         return buffer_[(head - 1 - idx) & (Capacity - 1)];
     }
 
-    // Access a sample by absolute index
-    const T& GetSampleByAbsoluteIndex(uint32_t absolute_idx) const {
-        return buffer_[absolute_idx & (Capacity - 1)];
-    }
-
     // Reset the ring buffer
     void Reset() {
         head_.store(0, std::memory_order_release);
-    }
-
-    // Get the capacity
-    static constexpr size_t GetCapacity() {
-        return Capacity;
     }
 
   private:

@@ -6,31 +6,6 @@
 #include <dxgi.h>
 #include <wingdi.h>
 
-// Helper methods for calculated values
-double DisplayTimingInfo::GetPixelClockMHz() const { return static_cast<double>(pixel_clock_hz) / 1000000.0; }
-
-double DisplayTimingInfo::GetHSyncFreqHz() const {
-    return static_cast<double>(hsync_freq_numerator) / static_cast<double>(hsync_freq_denominator);
-}
-
-double DisplayTimingInfo::GetHSyncFreqKHz() const { return GetHSyncFreqHz() / 1000.0; }
-
-double DisplayTimingInfo::GetVSyncFreqHz() const {
-    return static_cast<double>(vsync_freq_numerator) / static_cast<double>(vsync_freq_denominator);
-}
-
-// Format timing info similar to Special-K log format
-std::wstring DisplayTimingInfo::GetFormattedString() const {
-    wchar_t buffer[512];
-    swprintf_s(buffer,
-               L"Display:%s :: Adapter:%u::Target:%u :: PixelClock=%.1f MHz, vSyncFreq=%.3f Hz, hSyncFreq=%.3f kHz, "
-               L"activeSize=(%ux%u), totalSize=(%ux%u), Standard=%u",
-               display_name.empty() ? L"UNKNOWN" : display_name.c_str(), adapter_id, target_id, GetPixelClockMHz(),
-               GetVSyncFreqHz(), GetHSyncFreqKHz(), active_width, active_height, total_width, total_height,
-               video_standard);
-    return buffer;
-}
-
 // Query display timing information for all active displays
 std::vector<DisplayTimingInfo> QueryDisplayTimingInfo() {
     std::vector<DisplayTimingInfo> results;

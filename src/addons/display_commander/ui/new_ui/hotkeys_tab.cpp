@@ -302,21 +302,6 @@ void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefiniti
 }
 }  // namespace
 
-// Numeric array representation for storage/persistence
-std::array<int, kHotkeyArraySize> ParsedHotkey::ToArray() const {
-    return {{key_code, ctrl ? 1 : 0, shift ? 1 : 0, alt ? 1 : 0, win ? 1 : 0}};
-}
-
-ParsedHotkey ParsedHotkey::FromArray(const std::array<int, kHotkeyArraySize>& arr) {
-    ParsedHotkey p;
-    p.key_code = arr[0];
-    p.ctrl = (arr[1] != 0);
-    p.shift = (arr[2] != 0);
-    p.alt = (arr[3] != 0);
-    p.win = (arr[4] != 0);
-    return p;
-}
-
 std::string GetHotkeyDisplayString(const HotkeyDefinition& def) { return FormatHotkeyString(def.parsed); }
 
 // Initialize hotkey definitions with default values
@@ -557,9 +542,6 @@ void InitializeHotkeyDefinitions() {
              int grace_sec = settings::g_advancedTabSettings.win_up_grace_seconds.GetValue();
              LONGLONG now_ns = utils::get_now_ns();
              LONGLONG last_ns = g_last_foreground_background_switch_ns.load(std::memory_order_acquire);
-             if (last_ns == 0) {
-                 g_last_foreground_background_switch_ns.store(now_ns, std::memory_order_release);
-             }
              bool grace_ok = (grace_sec >= 61)
                              || (grace_sec > 0 && last_ns != 0
                                  && (now_ns - last_ns <= static_cast<LONGLONG>(grace_sec) * utils::SEC_TO_NS));

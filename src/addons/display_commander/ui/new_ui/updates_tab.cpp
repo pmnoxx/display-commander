@@ -167,14 +167,6 @@ void OpenFolderInExplorer(const std::filesystem::path& folder_path) {
     ShellExecuteW(nullptr, L"open", L"explorer.exe", folder_wstr.c_str(), nullptr, SW_SHOWNORMAL);
 }
 
-// Compare current version with downloaded version
-bool IsDownloadedVersionNewer(const std::string& downloaded_version) {
-    std::string current_version =
-        display_commander::utils::version_check::ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING_MAJOR_MINOR_PATCH);
-    int comparison = display_commander::utils::version_check::CompareVersions(current_version, downloaded_version);
-    return comparison < 0;  // Downloaded version is newer
-}
-
 }  // anonymous namespace
 
 void DrawUpdatesTab(display_commander::ui::IImGuiWrapper& imgui) {

@@ -18,7 +18,6 @@ using HotkeyAction = std::function<void()>;
 
 // Internal storage is numeric: key_code (VK_*) + modifier flags.
 // Display strings are derived via FormatHotkeyString; no per-frame parsing.
-static constexpr int kHotkeyArraySize = 5;
 
 // Expected number of hotkey definitions (must match g_hotkey_definitions size in InitializeHotkeyDefinitions).
 static constexpr int kHotkeyDefinitionCount = 22;
@@ -34,10 +33,6 @@ struct ParsedHotkey {
 
     bool IsValid() const { return key_code != 0; }
     bool IsEmpty() const { return key_code == 0 && !ctrl && !shift && !alt && !win; }
-
-    // Serialize to array of numbers [key_code, ctrl, shift, alt, win] for storage/persistence
-    std::array<int, kHotkeyArraySize> ToArray() const;
-    static ParsedHotkey FromArray(const std::array<int, kHotkeyArraySize>& arr);
 };
 
 // Hotkey definition structure

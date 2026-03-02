@@ -24,15 +24,6 @@ struct DisplayTimingInfo {
     std::wstring device_path;     // Monitor device path
     std::wstring gdi_device_name; // GDI device name (matches GetMonitorInfoW format)
     uint32_t connector_instance;  // Connector instance
-
-    // Helper methods for calculated values
-    double GetPixelClockMHz() const;
-    double GetHSyncFreqHz() const;
-    double GetHSyncFreqKHz() const;
-    double GetVSyncFreqHz() const;
-
-    // Format timing info similar to Special-K log format
-    std::wstring GetFormattedString() const;
 };
 
 // Query display timing information for all active displays

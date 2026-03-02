@@ -1,0 +1,6 @@
+# Per-game default overrides. Only used when the setting is not already in the game's DisplayCommander.toml.
+# Keys must match Display Commander config (section DisplayCommander).
+# Format: [exe_name.DisplayCommander] then key = value. Exe name is case-insensitive.
+
+[hitman3.exe.DisplayCommander]
+ContinueRendering = 1

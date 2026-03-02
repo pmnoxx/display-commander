@@ -60,3 +60,6 @@ res_injector/injector_config.ini
 
 # user settings
 imgui.ini
+
+# Docs not commited to the repo
+private_docs

@@ -2,6 +2,7 @@
 #include "../../addon.hpp"
 #include "../../adhd_multi_monitor/adhd_simple_api.hpp"
 #include "../../audio/audio_management.hpp"
+#include "../../config/default_overrides.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
@@ -1911,6 +1912,30 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     RefreshReShadeModuleIfNeeded();
     // Load saved settings once and sync legacy globals
     g_rendering_ui_section.store("ui:tab:main_new:entry", std::memory_order_release);
+
+    // Game default overrides info banner (when overrides are in use for this exe)
+    if (display_commander::config::HasActiveOverrides()) {
+        g_rendering_ui_section.store("ui:tab:main_new:default_overrides", std::memory_order_release);
+        imgui.Spacing();
+        imgui.TextColored(ImVec4(0.4f, 0.6f, 0.9f, 1.0f), ICON_FK_FILE " Game default overrides are in use for this game.");
+        if (imgui.IsItemHovered()) {
+            std::string tooltip = "Active overrides (from embedded game_default_overrides.toml):\n";
+            for (const auto& e : display_commander::config::GetActiveOverrideEntries()) {
+                std::string value_display = (e.value == "1") ? "On" : (e.value == "0") ? "Off" : e.value;
+                tooltip += "  - " + e.display_name + " = " + value_display + "\n";
+            }
+            tooltip += "\nClick \"Apply to config\" to save these to DisplayCommander.toml.";
+            imgui.SetTooltip("%s", tooltip.c_str());
+        }
+        imgui.SameLine();
+        if (imgui.Button("Apply to config")) {
+            display_commander::config::ApplyDefaultOverridesToConfig();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Save the current override values to this game's DisplayCommander.toml.");
+        }
+        imgui.Spacing();
+    }
 
     // Config save failure warning at the top
     g_rendering_ui_section.store("ui:tab:main_new:warnings:config", std::memory_order_release);

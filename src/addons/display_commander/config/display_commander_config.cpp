@@ -1,4 +1,5 @@
 #include "display_commander_config.hpp"
+#include "default_overrides.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -684,6 +685,69 @@ void get_config_value_ensure_exists(const char* section, const char* key, double
 
 void get_config_value_ensure_exists(const char* section, const char* key, bool& value, bool default_value) {
     DisplayCommanderConfigManager::GetInstance().GetConfigValueEnsureExists(section, key, value, default_value);
+}
+
+void get_config_value_or_default(const char* section, const char* key, bool default_value, bool* out_value) {
+    if (out_value == nullptr) return;
+    bool from_config = false;
+    if (get_config_value(section, key, from_config)) {
+        *out_value = from_config;
+        return;
+    }
+    std::string ov;
+    if (display_commander::config::GetDefaultOverride(section, key, ov)) {
+        if (ov == "1" || ov == "true" || ov == "yes") {
+            *out_value = true;
+            display_commander::config::MarkUsedOverride(section, key);
+            return;
+        }
+        if (ov == "0" || ov == "false" || ov == "no") {
+            *out_value = false;
+            display_commander::config::MarkUsedOverride(section, key);
+            return;
+        }
+    }
+    *out_value = default_value;
+}
+
+void get_config_value_or_default(const char* section, const char* key, int default_value, int* out_value) {
+    if (out_value == nullptr) return;
+    int from_config = 0;
+    if (get_config_value(section, key, from_config)) {
+        *out_value = from_config;
+        return;
+    }
+    std::string ov;
+    if (display_commander::config::GetDefaultOverride(section, key, ov)) {
+        try {
+            *out_value = std::stoi(ov);
+            display_commander::config::MarkUsedOverride(section, key);
+            return;
+        } catch (const std::exception&) {
+            /* fall through to default */
+        }
+    }
+    *out_value = default_value;
+}
+
+void get_config_value_or_default(const char* section, const char* key, float default_value, float* out_value) {
+    if (out_value == nullptr) return;
+    float from_config = 0.0f;
+    if (get_config_value(section, key, from_config)) {
+        *out_value = from_config;
+        return;
+    }
+    std::string ov;
+    if (display_commander::config::GetDefaultOverride(section, key, ov)) {
+        try {
+            *out_value = std::stof(ov);
+            display_commander::config::MarkUsedOverride(section, key);
+            return;
+        } catch (const std::exception&) {
+            /* fall through to default */
+        }
+    }
+    *out_value = default_value;
 }
 
 }  // namespace display_commander::config

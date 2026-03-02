@@ -108,4 +108,9 @@ void get_config_value_ensure_exists(const char* section, const char* key, float&
 void get_config_value_ensure_exists(const char* section, const char* key, double& value, double default_value);
 void get_config_value_ensure_exists(const char* section, const char* key, bool& value, bool default_value);
 
+// Get config value; if missing, use per-game default override (if any) else use passed default. Does not write to config.
+void get_config_value_or_default(const char* section, const char* key, bool default_value, bool* out_value);
+void get_config_value_or_default(const char* section, const char* key, int default_value, int* out_value);
+void get_config_value_or_default(const char* section, const char* key, float default_value, float* out_value);
+
 }  // namespace display_commander::config

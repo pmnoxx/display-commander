@@ -1,8 +1,8 @@
 #include "settings_wrapper.hpp"
-#include "../imgui_wrapper_base.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../performance_types.hpp"
+#include "../imgui_wrapper_base.hpp"
 
 #include <reshade_imgui.hpp>
 #include "../../res/forkawesome.h"
@@ -41,8 +41,10 @@ void FloatSetting::Load() {
             value_.store(loaded_value);
         }
     } else {
-        // Use default value if not found
-        const float safe_default = std::max(min_, std::min(max_, default_value_));
+        float effective_default;
+        display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
+                                                               &effective_default);
+        const float safe_default = std::max(min_, std::min(max_, effective_default));
         value_.store(safe_default);
     }
 }
@@ -77,8 +79,10 @@ void IntSetting::Load() {
             value_.store(loaded_value);
         }
     } else {
-        // Use default value if not found
-        const int safe_default = std::max(min_, std::min(max_, default_value_));
+        int effective_default;
+        display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
+                                                              &effective_default);
+        const int safe_default = std::max(min_, std::min(max_, effective_default));
         value_.store(safe_default);
     }
 }
@@ -110,8 +114,10 @@ void BoolSetting::Load() {
             Save();
         }
     } else {
-        // Use default value if not found
-        value_.store(default_value_);
+        bool effective_default;
+        display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
+                                                               &effective_default);
+        value_.store(effective_default);
     }
 }
 
@@ -144,8 +150,10 @@ void BoolSettingRef::Load() {
             Save();
         }
     } else {
-        // Use default value if not found
-        external_ref_.get().store(default_value_);
+        bool effective_default;
+        display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
+                                                              &effective_default);
+        external_ref_.get().store(effective_default);
     }
 }
 
@@ -702,8 +710,7 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
     return changed;
 }
 
-bool CheckboxSetting(BoolSetting& setting, const char* label,
-                    display_commander::ui::IImGuiWrapper& imgui) {
+bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
     bool value = setting.GetValue();
     bool changed = imgui.Checkbox(label, &value);
     if (changed) {
@@ -726,8 +733,7 @@ bool CheckboxSetting(BoolSetting& setting, const char* label,
     return changed;
 }
 
-bool CheckboxSetting(BoolSettingRef& setting, const char* label,
-                    display_commander::ui::IImGuiWrapper& imgui) {
+bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
     bool value = setting.GetValue();
     bool changed = imgui.Checkbox(label, &value);
     if (changed) {
@@ -750,8 +756,7 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label,
     return changed;
 }
 
-bool ComboSettingWrapper(ComboSetting& setting, const char* label,
-                         display_commander::ui::IImGuiWrapper& imgui) {
+bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
     int value = setting.GetValue();
     const auto& labels = setting.GetLabels();
     int count = static_cast<int>(labels.size());
@@ -777,8 +782,7 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label,
     return changed;
 }
 
-bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label,
-                            display_commander::ui::IImGuiWrapper& imgui) {
+bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
     int value = setting.GetValue();
     const auto& labels = setting.GetLabels();
     int count = static_cast<int>(labels.size());
@@ -844,13 +848,13 @@ template bool ComboSettingEnumRefWrapper<FrameTimeMode>(ComboSettingEnumRef<Fram
                                                         display_commander::ui::IImGuiWrapper&);
 template class ComboSettingEnumRef<WindowMode>;
 template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowMode>&, const char*,
-                                                    display_commander::ui::IImGuiWrapper&);
+                                                     display_commander::ui::IImGuiWrapper&);
 template class ComboSettingEnumRef<InputBlockingMode>;
 template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode>&, const char*,
                                                             display_commander::ui::IImGuiWrapper&);
 template class ComboSettingEnumRef<LogLevel>;
 template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel>&, const char*,
-                                                  display_commander::ui::IImGuiWrapper&);
+                                                   display_commander::ui::IImGuiWrapper&);
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {

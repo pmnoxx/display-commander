@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.211 (2026-03-02)
+
+- **Game default config override by exe** - Per-game default overrides for Display Commander settings: when a setting is not yet in the game's DisplayCommander.toml, the addon uses values from an embedded `game_default_overrides.toml` (e.g. `hitman3.exe` → ContinueRendering = 1). Overrides are embedded as a resource in the DLL; only apply when the key is missing (never overwrite existing config). Main tab shows an info banner when overrides are in use, with a tooltip listing active overrides and an "Apply to config" button to persist them to DisplayCommander.toml. Logs once at load: "Game default override found for <exe>" or "No game default override for <exe>". Config layer: `get_config_value_or_default()` for bool/int/float; BoolSetting, BoolSettingRef, IntSetting, FloatSetting use it when the key is absent.
+
+---
+
 ## v0.12.210 (2026-03-02)
 
 - **Addon directory DLL loading** - Added support for loading DLL files from the game (addon) directory **after** ReShade is registered. Extensions **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade so they can use ReShade APIs. DLLs are loaded in a non-blocking way: the originals can be replaced while the game is running (e.g. update `renodx-hollownight.addon64.dcr` to a newer version); the new version is loaded on the next game start.

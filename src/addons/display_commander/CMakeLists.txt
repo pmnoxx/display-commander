@@ -35,7 +35,7 @@ target_compile_definitions(zzz_display_commander PRIVATE ${BUILD_TIME_DEFINE})
 # Version (single source of truth for addon and DLL resource)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 210)
+set(DISPLAY_COMMANDER_VERSION_PATCH 211)
 target_compile_definitions(zzz_display_commander PRIVATE
   DISPLAY_COMMANDER_VERSION_MAJOR=${DISPLAY_COMMANDER_VERSION_MAJOR}
   DISPLAY_COMMANDER_VERSION_MINOR=${DISPLAY_COMMANDER_VERSION_MINOR}
@@ -220,19 +220,20 @@ else()
   message(STATUS "NVPI Reference.xml not found (optional). Run: git submodule update --init external/NvidiaProfileInspectorRevamped")
 endif()
 
-# Embed Display Commander shader files in the DLL (RCDATA). Only the DLL is shipped; runtime extracts to Reshade\Shaders\DisplayCommander.
+# Embed Display Commander shader files and game_default_overrides.toml in the DLL (RCDATA).
 set(DC_CONTROL_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_Control.fx")
 set(DC_PERCEPTUALBOOST_FX "${CMAKE_CURRENT_LIST_DIR}/res/effects/DisplayCommander_PerceptualBoost.fx")
 set(DC_COLOR_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/color.fxh")
 set(DC_RESHADE_FXH "${CMAKE_CURRENT_LIST_DIR}/res/effects/ReShade.fxh")
+set(DC_GAME_DEFAULT_OVERRIDES_TOML "${CMAKE_CURRENT_LIST_DIR}/res/game_default_overrides.toml")
 set(DC_SHADER_RC "${CMAKE_CURRENT_BINARY_DIR}/shader_effect.rc")
 if(EXISTS "${DC_CONTROL_FX}")
   if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
-    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx")
-    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders in DLL (extracted to Reshade\\Shaders\\DisplayCommander)\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_PERCEPTUALBOOST_FX 303\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"\n")
+    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml")
+    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders and game_default_overrides in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_PERCEPTUALBOOST_FX 303\n#define IDR_GAME_DEFAULT_OVERRIDES 304\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_PERCEPTUALBOOST_FX RCDATA \"DisplayCommander_PerceptualBoost.fx\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\n")
   else()
-    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh")
-    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders in DLL (extracted to Reshade\\Shaders\\DisplayCommander)\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\n")
+    set(DC_SHADER_RC_BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml")
+    set(DC_SHADER_RC_CONTENT "// Generated - embeds DisplayCommander shaders and game_default_overrides in DLL\n#pragma code_page(65001)\n#define IDR_CONTROL_FX 300\n#define IDR_COLOR_FXH 301\n#define IDR_RESHADE_FXH 302\n#define IDR_GAME_DEFAULT_OVERRIDES 304\nIDR_CONTROL_FX RCDATA \"DisplayCommander_Control.fx\"\nIDR_COLOR_FXH RCDATA \"color.fxh\"\nIDR_RESHADE_FXH RCDATA \"ReShade.fxh\"\nIDR_GAME_DEFAULT_OVERRIDES RCDATA \"game_default_overrides.toml\"\n")
   endif()
   # Generate shader_effect.rc at build time (so it exists after clean); script is written at configure time.
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
@@ -241,14 +242,18 @@ if(EXISTS "${DC_CONTROL_FX}")
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_CONTROL_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_Control.fx"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_COLOR_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/color.fxh"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_RESHADE_FXH}" "${CMAKE_CURRENT_BINARY_DIR}/ReShade.fxh"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_GAME_DEFAULT_OVERRIDES_TOML}" "${CMAKE_CURRENT_BINARY_DIR}/game_default_overrides.toml"
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/write_shader_rc.cmake"
-    COMMENT "Copy DisplayCommander shader files to build dir for resource embedding"
+    COMMENT "Copy DisplayCommander shader files and game_default_overrides.toml to build dir for resource embedding"
     BYPRODUCTS ${DC_SHADER_RC_BYPRODUCTS} ${DC_SHADER_RC}
   )
   if(EXISTS "${DC_PERCEPTUALBOOST_FX}")
     add_custom_command(TARGET copy_shader_files_for_rc POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DC_PERCEPTUALBOOST_FX}" "${CMAKE_CURRENT_BINARY_DIR}/DisplayCommander_PerceptualBoost.fx"
     )
+  endif()
+  if(NOT EXISTS "${DC_GAME_DEFAULT_OVERRIDES_TOML}")
+    message(WARNING "game_default_overrides.toml not found at ${DC_GAME_DEFAULT_OVERRIDES_TOML} - resource 304 will be missing")
   endif()
   target_sources(zzz_display_commander PRIVATE ${DC_SHADER_RC})
   add_dependencies(zzz_display_commander copy_shader_files_for_rc)

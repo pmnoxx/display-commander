@@ -193,7 +193,7 @@ MainTabSettings::MainTabSettings()
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       brightness_percent("brightness_percent", s_brightness_percent, 100.0f, 0.0f, 200.0f, "DisplayCommander"),
-      brightness_colorspace("brightness_colorspace", s_brightness_colorspace, 1,
+      brightness_colorspace("brightness_colorspace2", s_brightness_colorspace, 0,
                             {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
       gamma_value("gamma_value", s_gamma_value, 1.0f, 0.5f, 2.0f, "DisplayCommander"),
       contrast_value("contrast_value", s_contrast_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),

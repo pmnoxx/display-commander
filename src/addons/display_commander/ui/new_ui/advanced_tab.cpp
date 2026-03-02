@@ -45,11 +45,9 @@ void InitAdvancedTab() {
         // Settings already loaded at startup
         settings_loaded = true;
 
-        // Start PresentMon worker if the setting is already enabled
-        // This ensures PresentMon starts on game restart if the setting was previously enabled
+        // Start PresentMon immediately when enabled
         if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
-            LogInfo("InitAdvancedTab() - PresentMon tracing setting is enabled, starting worker");
-            presentmon::g_presentMonManager.StartWorker();
+            presentmon::CreateAndStartPresentMon();
         }
     }
 }
@@ -210,9 +208,9 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
                 settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue() ? "enabled" : "disabled");
 
         if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
-            presentmon::g_presentMonManager.StartWorker();
+            presentmon::CreateAndStartPresentMon();
         } else {
-            presentmon::g_presentMonManager.StopWorker(presentmon::PresentMonStopReason::UserDisabled);
+            presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::UserDisabled);
         }
     }
     if (imgui.IsItemHovered()) {
@@ -230,6 +228,24 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
             "- Default: enabled\n\n"
             "Note: Requires appropriate Windows permissions for ETW tracing.");
     }
+
+    imgui.Spacing();
+    imgui.TextColored(::ui::colors::TEXT_LABEL, "ETW providers (apply on next start):");
+    imgui.Indent();
+    CheckboxSetting(settings::g_advancedTabSettings.presentmon_provider_dxgkrnl, "Subscribe to DxgKrnl", imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Microsoft-Windows-DxgKrnl. Kernel graphics events.");
+    }
+    CheckboxSetting(settings::g_advancedTabSettings.presentmon_provider_dxgi, "Subscribe to DXGI", imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Microsoft-Windows-DXGI. Swapchain and present events.");
+    }
+    CheckboxSetting(settings::g_advancedTabSettings.presentmon_provider_dwm, "Subscribe to DWM", imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Microsoft-Windows-Dwm-Core. Desktop Window Manager composition.");
+    }
+    imgui.Unindent();
+    imgui.Spacing();
 
     if (presentmon::g_presentMonManager.IsRunning()) {
         imgui.SameLine();

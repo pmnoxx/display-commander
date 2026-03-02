@@ -2,6 +2,19 @@
 
 ---
 
+## v0.12.217 (2026-03-02)
+
+- **Refuse to load in UnityCrashHandler64.exe** - When the process executable is `UnityCrashHandler64.exe` (case-insensitive), Display Commander refuses to load (`ProcessAttachEarlyResult::RefuseLoad`) and logs to OutputDebugString. Avoids running the addon in Unity's crash reporter helper process.
+- **PresentMon getting stopped** - Fix presentmon not working in Hollow Knight.
+
+---
+
+## v0.12.215 (2026-03-02)
+
+- **PresentMon ETW providers: DxgKrnl and DXGI off by default** - The Advanced tab checkboxes "Subscribe to DxgKrnl" and "Subscribe to DXGI" now default to **off**. "Subscribe to DWM" remains on by default so PresentMon still starts with one provider. Users can enable DxgKrnl/DXGI for more event coverage. Config keys `PresentMonProviderDxgKrnl` and `PresentMonProviderDXGI`; existing configs keep their saved values.
+
+---
+
 ## v0.12.214 (2026-03-02)
 
 - **PresentMon: show all ETW sessions from all apps** - In Advanced → PresentMon ETW Tracing, added a collapsible subheader **"Show all sessions from all apps"** (closed by default). When opened, it lists all ETW sessions on the system (from any app) and provides a **Stop** button for each so the user can stop any session. Enumeration uses `GetEtwSessionsWithPrefix(L"")`; empty prefix now returns all sessions instead of returning early. Tooltip warns that stopping a session may affect the app that created it.

@@ -1461,7 +1461,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip("%s -> %s\n\nVersion info from: GitHub (crosire/reshade), reshade.me",
-                                    loaded_ver.c_str(), newest_available.c_str());
+                                     loaded_ver.c_str(), newest_available.c_str());
                 }
             }
         }
@@ -1703,7 +1703,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip("%s -> %s\n\nVersion info from: GitHub (Display Commander stable releases)",
-                                    current_dc_ver.c_str(), s_dc_latest_stable_ver.c_str());
+                                     current_dc_ver.c_str(), s_dc_latest_stable_ver.c_str());
                 }
             }
         }
@@ -4314,7 +4314,8 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_
     RECORD_DETOUR_CALL(utils::get_now_ns());
     presentmon::PresentMonFlipState pm_flip_state;
     presentmon::PresentMonDebugInfo pm_debug_info;
-    bool has_pm_flip_state = presentmon::g_presentMonManager.GetFlipState(pm_flip_state);
+    bool has_pm_flip_state = false;
+    has_pm_flip_state = presentmon::g_presentMonManager.GetFlipState(pm_flip_state);
     presentmon::g_presentMonManager.GetDebugInfo(pm_debug_info);
 
     imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon Flip State:");
@@ -4777,7 +4778,11 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
             imgui.TextColored(ui::colors::TEXT_DIMMED, "HWND: nullptr");
         }
     } else {
-        imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF (not enabled by default)");
+        if (!settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF");
+        } else if (!presentmon::g_presentMonManager.IsRunning()) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon: ON, but not running");
+        }
         if (imgui.IsItemHovered()) {
             imgui.BeginTooltip();
             imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon: OFF");

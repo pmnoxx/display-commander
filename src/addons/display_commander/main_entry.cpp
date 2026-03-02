@@ -2091,10 +2091,22 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     OutputDebugStringA("ReShade 111111");
     DetectMultipleReShadeVersions();
+    wchar_t exe_path_buf[MAX_PATH] = {};
+    const wchar_t* exe_name_display = L"";
+    if (GetModuleFileNameW(nullptr, exe_path_buf, MAX_PATH) > 0) {
+        const wchar_t* last_slash = wcsrchr(exe_path_buf, L'\\');
+        exe_name_display = (last_slash != nullptr) ? (last_slash + 1) : exe_path_buf;
+    }
+    char exe_name_utf8[MAX_PATH] = {};
+    if (exe_name_display[0] != L'\0') {
+        WideCharToMultiByte(CP_UTF8, 0, exe_name_display, -1, exe_name_utf8, static_cast<int>(std::size(exe_name_utf8)),
+                            nullptr, nullptr);
+    }
     LogInfoDirect(
-        "Display Commander v%s - ReShade addon registration successful (API version 17 supported)g_hmodule: "
-        "0x%p current module: 0x%p",
-        DISPLAY_COMMANDER_VERSION_STRING, g_hmodule, GetModuleHandleA(nullptr));
+        "Display Commander v%s - ReShade addon registration successful (API version 17 supported) g_hmodule: "
+        "0x%p current module: 0x%p exe: %s",
+        DISPLAY_COMMANDER_VERSION_STRING, g_hmodule, GetModuleHandleA(nullptr),
+        (exe_name_utf8[0] != '\0') ? exe_name_utf8 : "(unknown)");
     reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
     LogInfoDirect("Display Commander overlay registered");
     OutputDebugStringA("[DisplayCommander] DllMain: DLL_PROCESS_ATTACH - Starting entry point detection\n");
@@ -2136,6 +2148,20 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         OutputDebugStringA(msg);
         g_process_attached.store(true);
         return ProcessAttachEarlyResult::RefuseLoad;
+    }
+
+    // Refuse to load in Unity crash handler (helper process, not the game)
+    {
+        WCHAR exe_path[MAX_PATH] = {};
+        if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) > 0) {
+            const wchar_t* last_slash = wcsrchr(exe_path, L'\\');
+            const wchar_t* exe_name = (last_slash != nullptr) ? (last_slash + 1) : exe_path;
+            if (_wcsicmp(exe_name, L"UnityCrashHandler64.exe") == 0) {
+                OutputDebugStringA("[DisplayCommander] Refusing to load in UnityCrashHandler64.exe.\n");
+                g_process_attached.store(true);
+                return ProcessAttachEarlyResult::RefuseLoad;
+            }
+        }
     }
 
     // Loader mode: when we're not under stable\ or Debug\, act as loader. GetDcDirectoryForLoading(h_module) returns
@@ -2361,7 +2387,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
             // ETW sessions are system-wide and persist until explicitly stopped
             // If not stopped, they can interfere with future processes
-            presentmon::g_presentMonManager.StopWorker(presentmon::PresentMonStopReason::AddonShutdown);
+            presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdown);
 
             // Try to remove post-ReShade addon temp dir (may fail while loaded DLLs still hold files)
             CleanupPostReShadeAddonTempDir();

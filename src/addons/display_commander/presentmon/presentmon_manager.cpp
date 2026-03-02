@@ -1,5 +1,6 @@
 #include "presentmon_manager.hpp"
 #include "../globals.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 
@@ -14,6 +15,17 @@
 namespace presentmon {
 
 PresentMonManager g_presentMonManager;
+
+void CreateAndStartPresentMon() {
+    if (g_presentMonManager.IsRunning()) {
+        return;
+    }
+    g_presentMonManager.StartWorker();
+}
+
+void StopAndDestroyPresentMon(PresentMonStopReason reason) {
+    g_presentMonManager.StopWorker(reason);
+}
 
 namespace {
 
@@ -300,21 +312,21 @@ static ULONGLONG GetProviderKeywordMaskBestEffort(const GUID& provider_guid) {
 
 const char* PresentMonFlipModeToString(PresentMonFlipMode mode) {
     switch (mode) {
-        case PresentMonFlipMode::Unset: return "Unset";
-        case PresentMonFlipMode::Composed: return "Composed";
-        case PresentMonFlipMode::Overlay: return "Hardware Overlay (MPO)";
+        case PresentMonFlipMode::Unset:           return "Unset";
+        case PresentMonFlipMode::Composed:        return "Composed";
+        case PresentMonFlipMode::Overlay:         return "Hardware Overlay (MPO)";
         case PresentMonFlipMode::IndependentFlip: return "Independent Flip";
-        case PresentMonFlipMode::Unknown: return "Unknown";
-        default: return "Unknown";
+        case PresentMonFlipMode::Unknown:         return "Unknown";
+        default:                                  return "Unknown";
     }
 }
 
 const char* PresentMonStopReasonToString(PresentMonStopReason reason) {
     switch (reason) {
-        case PresentMonStopReason::UserDisabled: return "UserDisabled";
+        case PresentMonStopReason::UserDisabled:  return "UserDisabled";
         case PresentMonStopReason::AddonShutdown: return "AddonShutdown";
-        case PresentMonStopReason::Destructor: return "Destructor";
-        default: return "Unknown";
+        case PresentMonStopReason::Destructor:    return "Destructor";
+        default:                                  return "Unknown";
     }
 }
 
@@ -473,6 +485,12 @@ void PresentMonManager::StartWorker() {
 }
 
 void PresentMonManager::StopWorker(PresentMonStopReason reason) {
+    // Always stop the ETW session when we have a name (exit/destructor paths). Ensures session is
+    // cleared even if the worker already exited or crashed (!m_running), so restart works.
+    if (m_session_name[0] != 0) {
+        RequestStopEtw();
+    }
+
     if (!m_running.load()) {
         return;
     }
@@ -480,9 +498,6 @@ void PresentMonManager::StopWorker(PresentMonStopReason reason) {
     LogInfo("PresentMon: Stopping worker thread (reason: %s)", PresentMonStopReasonToString(reason));
 
     m_should_stop.store(true);
-
-    // Stop ETW session to unblock ProcessTrace
-    RequestStopEtw();
 
     // Wait for thread to finish (with timeout)
     if (m_worker_thread.joinable()) {
@@ -678,7 +693,10 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
     if (err_str != nullptr) {
         LogWarn("[PresentMon] Worker thread exiting with code %d, last_error: %s", result, err_str);
     } else {
-        LogInfo("[PresentMon] Worker thread exiting with code %d (0=normal stop, 1=oom, 2=StartTrace failed, 3=no providers, 4=OpenTrace failed)", result);
+        LogInfo(
+            "[PresentMon] Worker thread exiting with code %d (0=normal stop, 1=oom, 2=StartTrace failed, 3=no "
+            "providers, 4=OpenTrace failed)",
+            result);
     }
 
     // Update thread status
@@ -690,22 +708,23 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
 
 void PresentMonManager::RequestStopEtw() {
     uint64_t sh = m_etw_session_handle.load();
-    if (m_session_name[0] == 0) return;
+    if (m_session_name[0] == 0) {
+        return;
+    }
 
-    // If we have a handle, use it; otherwise try to stop by name
+    // Stop by handle when available (unblocks ProcessTrace quickly)
     if (sh != 0) {
-        // Stop session using handle
         EVENT_TRACE_PROPERTIES props = {};
         props.Wnode.BufferSize = sizeof(EVENT_TRACE_PROPERTIES);
         ULONG status = ControlTraceW(static_cast<TRACEHANDLE>(sh), m_session_name, &props, EVENT_TRACE_CONTROL_STOP);
         if (status == ERROR_SUCCESS || status == ERROR_WMI_INSTANCE_NOT_FOUND) {
-            // Successfully stopped or already stopped
             m_etw_session_handle.store(0);
         }
-    } else {
-        // No handle available, try to stop by name (fallback for cleanup)
-        StopEtwSessionByName(m_session_name);
     }
+
+    // Always stop by name as well: handles process terminate (handle may be invalid or ControlTrace
+    // didn't complete before process tear-down) and ensures session is cleared for next run.
+    StopEtwSessionByName(m_session_name);
 }
 
 bool PresentMonManager::QueryEtwSessionByName(const wchar_t* session_name, TRACEHANDLE& out_handle) {
@@ -756,7 +775,7 @@ void PresentMonManager::StopEtwSessionByName(const wchar_t* session_name) {
 }
 
 void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names,
-                                                  std::string* out_error) {
+                                                 std::string* out_error) {
     out_session_names.clear();
     if (out_error) out_error->clear();
     if (prefix == nullptr) return;
@@ -792,7 +811,8 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
     ULONG status = QueryAllTracesW(prop_ptrs.data(), max_sessions, &session_count);
     if (status != ERROR_SUCCESS && status != ERROR_MORE_DATA) {
         char msg[128] = {};
-        StringCchPrintfA(msg, std::size(msg), "QueryAllTracesW failed: %lu (e.g. access denied)", static_cast<unsigned long>(status));
+        StringCchPrintfA(msg, std::size(msg), "QueryAllTracesW failed: %lu (e.g. access denied)",
+                         static_cast<unsigned long>(status));
         if (out_error) *out_error = msg;
         LogWarn("PresentMon: %s", msg);
         return;
@@ -820,6 +840,9 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
 }
 
 void PresentMonManager::LogAllEtwSessions() {
+    if (true) {
+        return;
+    }
     constexpr ULONG max_sessions = 128;
     ULONG session_count = 0;
     constexpr ULONG props_size = sizeof(EVENT_TRACE_PROPERTIES) + 2048;
@@ -829,7 +852,8 @@ void PresentMonManager::LogAllEtwSessions() {
     for (ULONG i = 0; i < max_sessions; ++i) {
         prop_buffers[i] = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[props_size]);
         if (!prop_buffers[i]) {
-            LogWarn("[PresentMon] LogAllEtwSessions: out of memory allocating buffer %lu", static_cast<unsigned long>(i));
+            LogWarn("[PresentMon] LogAllEtwSessions: out of memory allocating buffer %lu",
+                    static_cast<unsigned long>(i));
             return;
         }
         ZeroMemory(prop_buffers[i].get(), props_size);
@@ -884,9 +908,8 @@ void PresentMonManager::LogAllEtwSessions() {
                 continue;
             }
             if (qstatus == ERROR_SUCCESS && (q->EventsLost != 0 || q->RealTimeBuffersLost != 0)) {
-                LogInfo("[PresentMon]   ETW session: %ls (EventsLost=%lu RealTimeBuffersLost=%lu)",
-                        session_name, static_cast<unsigned long>(q->EventsLost),
-                        static_cast<unsigned long>(q->RealTimeBuffersLost));
+                LogInfo("[PresentMon]   ETW session: %ls (EventsLost=%lu RealTimeBuffersLost=%lu)", session_name,
+                        static_cast<unsigned long>(q->EventsLost), static_cast<unsigned long>(q->RealTimeBuffersLost));
                 continue;
             }
         }
@@ -895,10 +918,24 @@ void PresentMonManager::LogAllEtwSessions() {
 }
 
 void PresentMonManager::StopAllDcEtwSessions() {
+    const DWORD our_pid = GetCurrentProcessId();
     std::vector<std::string> sessions;
     GetEtwSessionsWithPrefix(L"DC_", sessions);
 
     for (const std::string& name : sessions) {
+        DWORD session_pid = 0;
+        if (ParsePidFromDcPresentMonSessionName(name, session_pid)) {
+            if (session_pid == our_pid) {
+                LogInfo("[PresentMon] Skip our own DC_ session at startup (pid %lu): %s",
+                        static_cast<unsigned long>(our_pid), name.c_str());
+                continue;
+            }
+            if (IsProcessRunning(session_pid)) {
+                LogInfo("[PresentMon] Skip live DC_ session at startup (pid %lu still running): %s",
+                        static_cast<unsigned long>(session_pid), name.c_str());
+                continue;
+            }
+        }
         std::wstring wide_name = Widen(name);
         if (!wide_name.empty()) {
             StopEtwSessionByName(wide_name.c_str());
@@ -942,17 +979,17 @@ void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) 
         std::wstring wide_name = Widen(name);
         if (!wide_name.empty()) {
             StopEtwSessionByName(wide_name.c_str());
-            LogInfo("PresentMon: Stopped orphaned DC_ ETW session %s (pid %lu not running)",
-                    name.c_str(), static_cast<unsigned long>(session_pid));
+            LogInfo("PresentMon: Stopped orphaned DC_ ETW session %s (pid %lu not running)", name.c_str(),
+                    static_cast<unsigned long>(session_pid));
         }
     }
 }
 
 void PresentMonManager::CleanupThread(PresentMonManager* manager) {
-    constexpr int64_t k_no_events_interval_ns = 10LL * 1000000000LL;  // 10 seconds
+    constexpr int64_t k_no_events_interval_ns = 15LL * 1000000000LL;  // 15 seconds
 
     while (!manager->m_should_stop.load()) {
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 15; ++i) {
             if (manager->m_should_stop.load()) {
                 return;
             }
@@ -973,9 +1010,14 @@ void PresentMonManager::CleanupThread(PresentMonManager* manager) {
 
 void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record) {
     if (event_record == nullptr) return;
-    // Route via TLS if possible; otherwise use global instance
-    PresentMonManager* mgr = (t_active_manager != nullptr) ? t_active_manager : &g_presentMonManager;
-    mgr->OnEtwEvent(event_record);
+    // Route via TLS if possible; otherwise use global instance (if created)
+    PresentMonManager* mgr = t_active_manager;
+    if (mgr == nullptr) {
+        mgr = &g_presentMonManager;
+    }
+    if (mgr != nullptr) {
+        mgr->OnEtwEvent(event_record);
+    }
 }
 
 void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
@@ -1570,9 +1612,17 @@ int PresentMonManager::PresentMonMain() {
     m_have_dxgi = ProviderGuidByName(L"Microsoft-Windows-DXGI", m_guid_dxgi);
     m_have_dwm = ProviderGuidByName(L"Microsoft-Windows-Dwm-Core", m_guid_dwm);
 
-    if (!m_have_dxgkrnl && !m_have_dxgi && !m_have_dwm) {
-        LogWarn("[PresentMon] Could not locate ETW providers via TDH");
-        UpdateDebugInfo("Running", "Failed", "Could not locate ETW providers via TDH", 0, 0);
+    const bool want_dxgkrnl = settings::g_advancedTabSettings.presentmon_provider_dxgkrnl.GetValue();
+    const bool want_dxgi = settings::g_advancedTabSettings.presentmon_provider_dxgi.GetValue();
+    const bool want_dwm = settings::g_advancedTabSettings.presentmon_provider_dwm.GetValue();
+
+    const bool enable_dxgkrnl = m_have_dxgkrnl && want_dxgkrnl;
+    const bool enable_dxgi = m_have_dxgi && want_dxgi;
+    const bool enable_dwm = m_have_dwm && want_dwm;
+
+    if (!enable_dxgkrnl && !enable_dxgi && !enable_dwm) {
+        LogWarn("[PresentMon] No ETW providers enabled (none selected or TDH lookup failed)");
+        UpdateDebugInfo("Running", "Failed", "No ETW providers enabled", 0, 0);
         RequestStopEtw();
         return 3;
     }
@@ -1594,9 +1644,9 @@ int PresentMonManager::PresentMonMain() {
         return st;
     };
 
-    ULONG st_dxgkrnl = m_have_dxgkrnl ? enable_provider(m_guid_dxgkrnl, L"Microsoft-Windows-DxgKrnl") : ERROR_NOT_FOUND;
-    ULONG st_dxgi = m_have_dxgi ? enable_provider(m_guid_dxgi, L"Microsoft-Windows-DXGI") : ERROR_NOT_FOUND;
-    ULONG st_dwm = m_have_dwm ? enable_provider(m_guid_dwm, L"Microsoft-Windows-Dwm-Core") : ERROR_NOT_FOUND;
+    ULONG st_dxgkrnl = enable_dxgkrnl ? enable_provider(m_guid_dxgkrnl, L"Microsoft-Windows-DxgKrnl") : ERROR_NOT_FOUND;
+    ULONG st_dxgi = enable_dxgi ? enable_provider(m_guid_dxgi, L"Microsoft-Windows-DXGI") : ERROR_NOT_FOUND;
+    ULONG st_dwm = enable_dwm ? enable_provider(m_guid_dwm, L"Microsoft-Windows-Dwm-Core") : ERROR_NOT_FOUND;
 
     {
         char status_msg[256] = {};

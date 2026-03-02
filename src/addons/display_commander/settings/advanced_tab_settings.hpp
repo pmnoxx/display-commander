@@ -99,6 +99,10 @@ class AdvancedTabSettings {
 
     // PresentMon ETW tracing setting
     BoolSetting enable_presentmon_tracing;
+    // Which ETW providers to subscribe to (take effect on next PresentMon start)
+    BoolSetting presentmon_provider_dxgkrnl;
+    BoolSetting presentmon_provider_dxgi;
+    BoolSetting presentmon_provider_dwm;
 
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;

@@ -245,6 +245,7 @@ ChooseReshadeVersionResult ChooseReshadeVersion(const std::vector<ReshadeLocatio
         std::vector<ReshadeLocation> sorted = locations;
         std::sort(sorted.begin(), sorted.end(), by_version_desc);
 
+        // fallback to local
         for (const auto& loc : locations) {
             if (loc.type == ReshadeLocationType::Local) {
                 result.directory = loc.directory;

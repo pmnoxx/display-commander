@@ -80,10 +80,10 @@ AdvancedTabSettings::AdvancedTabSettings()
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
       enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander"),
-      presentmon_provider_dxgkrnl("PresentMonProviderDxgKrnl", true, "DisplayCommander"),
-      presentmon_provider_dxgi("PresentMonProviderDXGI", true, "DisplayCommander"),
+      presentmon_provider_dxgkrnl("PresentMonProviderDxgKrnl", false, "DisplayCommander"),
+      presentmon_provider_dxgi("PresentMonProviderDXGI", false, "DisplayCommander"),
       presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),
-      presentmon_provider_d3d9("PresentMonProviderD3D9", true, "DisplayCommander"),
+      presentmon_provider_d3d9("PresentMonProviderD3D9", false, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
 
       // Continuous monitoring

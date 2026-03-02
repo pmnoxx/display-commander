@@ -1,5 +1,5 @@
 # Build script for Display Commander addon only
-# This script builds only the zzz_display_commander.addon64 file
+# This script builds the zzz_display_commander.addon64 addon and DisplayCommander.exe standalone.
 
 param(
     [string]$BuildType = "RelWithDebInfo",
@@ -33,9 +33,9 @@ if ($DebugSymbols) {
     Write-Host "Debug symbols: FORCED" -ForegroundColor Yellow
 }
 
-# Configure and build only the display commander addon
+# Configure and build the display commander addon and standalone exe
 cmake $cmakeArgs
-cmake --build build --config "$BuildType" --target zzz_display_commander
+cmake --build build --config "$BuildType" --target zzz_display_commander display_commander_exe
 
 # Check if build was successful
 if ($LASTEXITCODE -eq 0) {

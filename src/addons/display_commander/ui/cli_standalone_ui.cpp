@@ -9,6 +9,7 @@
 #include "ui/imgui_wrapper_standalone.hpp"
 #include "ui/new_ui/advanced_tab.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
+#include "ui/new_ui/games_tab.hpp"
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/main_new_tab_standalone.hpp"
 #include "ui/new_ui/performance_tab.hpp"
@@ -816,6 +817,97 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                 }
                 ImGui::EndTabBar();
             }
+        }
+        ImGui::End();
+
+        ImGui::Render();
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        SwapBuffers(g_hDC);
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+    CleanupContextOpenGL(hwnd);
+    standalone_ui_settings::SetStandaloneUiHwnd(0);
+    DestroyWindow(hwnd);
+    UnregisterClassW(wc.lpszClassName, wc.hInstance);
+}
+
+void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    ImGui_ImplWin32_EnableDpiAwareness();
+
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_CLASSDC;
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = (HINSTANCE)hInst;
+    wc.lpszClassName = L"DisplayCommanderGamesUI";
+    if (!RegisterClassExW(&wc)) return;
+
+    std::string titleUtf8 = "Display Commander - Games v";
+    titleUtf8 += DISPLAY_COMMANDER_VERSION_STRING;
+    int titleLen = MultiByteToWideChar(CP_UTF8, 0, titleUtf8.c_str(), (int)titleUtf8.size() + 1, nullptr, 0);
+    std::wstring titleW(titleLen > 0 ? (size_t)titleLen : 0, 0);
+    if (titleLen > 0)
+        MultiByteToWideChar(CP_UTF8, 0, titleUtf8.c_str(), (int)titleUtf8.size() + 1, &titleW[0], titleLen);
+
+    HWND hwnd = standalone_ui_settings::CreateWindowW_Direct(
+        wc.lpszClassName, titleW.empty() ? L"Display Commander - Games" : titleW.c_str(), WS_OVERLAPPEDWINDOW, 100, 100,
+        600, 800, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
+    if (!hwnd) {
+        UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        return;
+    }
+    standalone_ui_settings::SetStandaloneUiHwnd(reinterpret_cast<uintptr_t>(hwnd));
+
+    if (!CreateContextOpenGL(hwnd)) {
+        standalone_ui_settings::SetStandaloneUiHwnd(0);
+        CleanupContextOpenGL(hwnd);
+        DestroyWindow(hwnd);
+        UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        return;
+    }
+
+    ShowWindow(hwnd, SW_SHOWDEFAULT);
+    UpdateWindow(hwnd);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    ImGui::StyleColorsDark();
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplOpenGL3_Init();
+
+    bool done = false;
+    while (!done) {
+        MSG msg;
+        while (PeekMessageW(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+            if (msg.message == WM_QUIT) done = true;
+        }
+        if (done) break;
+
+        if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
+            glViewport(0, 0, (GLsizei)g_ResizeWidth, (GLsizei)g_ResizeHeight);
+            g_ResizeWidth = g_ResizeHeight = 0;
+        }
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(920, 860), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Games", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            display_commander::ui::ImGuiWrapperStandalone wrapper;
+            ui::new_ui::DrawGamesTab(wrapper);
         }
         ImGui::End();
 

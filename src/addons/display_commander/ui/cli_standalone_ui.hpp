@@ -13,3 +13,6 @@ void RunStandaloneSettingsUI(HINSTANCE hInst);
 // Standalone .exe entry point: initializes Display Commander (no-ReShade path) and runs RunStandaloneSettingsUI on the
 // current thread. Only used when building the .exe (DISPLAY_COMMANDER_BUILD_EXE); declare here for main_exe.cpp.
 void RunDisplayCommanderStandalone(HINSTANCE hInst);
+
+// Standalone .exe UI: Games tab only (used by DisplayCommander_x64.exe so the window shows only the Games tab).
+void RunStandaloneGamesOnlyUI(HINSTANCE hInst);

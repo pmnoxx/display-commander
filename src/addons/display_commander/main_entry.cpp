@@ -114,6 +114,7 @@ void LoadAddonsFromPluginsDirectory();
 
 // Standalone settings UI when .NO_RESHADE (no ReShade loaded); implemented in ui/cli_standalone_ui.cpp
 void RunStandaloneSettingsUI(HINSTANCE hInst);
+void RunStandaloneGamesOnlyUI(HINSTANCE hInst);
 
 // Export for multi-proxy coordination: other DC instances (dxgi, winmm, version.dll) scan this to decide HOOKED vs
 // PROXY_DLL_ONLY
@@ -2424,11 +2425,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 #endif  // !DISPLAY_COMMANDER_BUILD_EXE
 
 #if defined(DISPLAY_COMMANDER_BUILD_EXE)
-// Standalone .exe entry: same init as no-ReShade DLL path, then run settings UI on main thread.
+// Standalone .exe entry: same init as no-ReShade DLL path, then run Games-tab-only UI on main thread.
+// Set HOOKED so DoInitializationWithoutHwndSafe_Late runs (StartContinuousMonitoring), which fills the
+// running-games cache so the Games tab can show other processes with the addon loaded.
 void RunDisplayCommanderStandalone(HINSTANCE hInst) {
     g_shutdown.store(false);
+    g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
     ProcessAttach_NoReShadeModeInit(reinterpret_cast<HMODULE>(hInst));
-    RunStandaloneSettingsUI(hInst);
+    RunStandaloneGamesOnlyUI(hInst);
 }
 #endif  // DISPLAY_COMMANDER_BUILD_EXE
 

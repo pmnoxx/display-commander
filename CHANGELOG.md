@@ -5,6 +5,10 @@
 ## v0.12.223 (unreleased)
 
 - **Standalone .exe build** - Project builds both the ReShade addon DLL and a standalone executable (DisplayCommander.exe / DisplayCommander32.exe) from the same codebase. EXE uses the same init path as the DLL in no-ReShade mode then runs the standalone settings UI on the main thread. New CMake target `display_commander_exe`; entry in `main_exe.cpp` (wWinMain → RunDisplayCommanderStandalone). DllMain is compiled only for the DLL (guarded with DISPLAY_COMMANDER_BUILD_EXE).
+- **Standalone exe: Games tab only** - DisplayCommander.exe shows only the Games tab (RunStandaloneGamesOnlyUI): running games table, Steam list, Focus/Mini/Rest/Stop/Kill. Window title "Display Commander - Games"; default size 960×900.
+- **Standalone exe: running games list** - Exe sets `g_display_commander_state` to HOOKED so DoInitializationWithoutHwndSafe_Late runs and StartContinuousMonitoring starts; the monitoring thread fills the running-games cache so the Games tab shows other processes with the addon loaded.
+- **CI: latest_debug ships exe** - GitHub Actions build-debug job collects DisplayCommander_x64.exe (64-bit only) and includes it in the Latest Debug Build release assets and release body.
+- **bd.ps1 builds DLL and exe** - `build_display_commander.ps1` builds both `zzz_display_commander` and `display_commander_exe`; `bd_core.ps1` copies DisplayCommander.exe to `build\` after a successful build.
 
 ---
 

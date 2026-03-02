@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.219 (2026-03-02)
+
+- **Subscribe to fewer PresentMon events by default** - PresentMon ETW now subscribes only to DWM by default; DxgKrnl, DXGI, and D3D9 providers are off. Reduces event volume and overhead unless the user enables additional providers in Advanced → PresentMon ETW Tracing.
+
+---
+
 ## v0.12.218 (2026-03-02)
 
 - **Cleaned up ReShade loading logic** - ReShade location selection and fallbacks: added debug logging for selected setting, all considered locations (type, version, dir), and chosen result (dir, fallback_selected, fallback_loaded). When setting is "global" and the global base folder has no ReShade DLLs, we now fall back to the highest versioned location (e.g. Reshade\\Dll\\X.Y.Z) and set fallback_selected/fallback_loaded so the UI can show that global was requested but a versioned path was used; avoids returning a path with no DLLs. Logic aligned with "local" fallback behavior.

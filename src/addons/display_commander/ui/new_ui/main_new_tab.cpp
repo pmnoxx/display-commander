@@ -1453,11 +1453,15 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             if (cmp >= 0) {
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Version info from: GitHub (crosire/reshade), reshade.me");
+                }
             } else {
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("%s -> %s", loaded_ver.c_str(), newest_available.c_str());
+                    imgui.SetTooltip("%s -> %s\n\nVersion info from: GitHub (crosire/reshade), reshade.me",
+                                    loaded_ver.c_str(), newest_available.c_str());
                 }
             }
         }
@@ -1691,11 +1695,15 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             if (dc_cmp >= 0) {
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Version info from: GitHub (Display Commander stable releases)");
+                }
             } else {
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("%s -> %s", current_dc_ver.c_str(), s_dc_latest_stable_ver.c_str());
+                    imgui.SetTooltip("%s -> %s\n\nVersion info from: GitHub (Display Commander stable releases)",
+                                    current_dc_ver.c_str(), s_dc_latest_stable_ver.c_str());
                 }
             }
         }
@@ -1917,7 +1925,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     if (display_commander::config::HasActiveOverrides()) {
         g_rendering_ui_section.store("ui:tab:main_new:default_overrides", std::memory_order_release);
         imgui.Spacing();
-        imgui.TextColored(ImVec4(0.4f, 0.6f, 0.9f, 1.0f), ICON_FK_FILE " Game default overrides are in use for this game.");
+        imgui.TextColored(ImVec4(0.4f, 0.6f, 0.9f, 1.0f),
+                          ICON_FK_FILE " Game default overrides are in use for this game.");
         if (imgui.IsItemHovered()) {
             std::string tooltip = "Active overrides (from embedded game_default_overrides.toml):\n";
             for (const auto& e : display_commander::config::GetActiveOverrideEntries()) {
@@ -2033,6 +2042,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             } else if (status == VersionComparison::UpdateAvailable && latest_version_ptr != nullptr) {
                 imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s",
                                   latest_version_ptr->c_str());
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Version info from: GitHub (Display Commander stable releases)");
+                }
                 imgui.SameLine();
 
 // Determine if we're 64-bit or 32-bit (simplified check - you may want to improve this)
@@ -2065,6 +2077,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 }
             } else if (status == VersionComparison::UpToDate) {
                 imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Version info from: GitHub (Display Commander stable releases)");
+                }
             } else if (status == VersionComparison::CheckFailed && error_ptr != nullptr) {
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Check failed: %s", error_ptr->c_str());
             }

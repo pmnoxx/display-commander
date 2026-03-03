@@ -3826,7 +3826,8 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                 imgui.SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
             }
         }
-        if (!IsNativeReflexActive()) {
+        // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via DrawPclStatsCheckbox
+        if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
             imgui.Spacing();
             if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
                 LogInfo("Inject Reflex %s",

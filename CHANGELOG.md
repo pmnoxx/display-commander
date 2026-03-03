@@ -2,6 +2,11 @@
 
 ---
 
+## v0.12.248 (2026-03-03)
+
+- **D3D11 device vtable logging** - Added optional vtable hooks on ID3D11Device for CreateBuffer, CreateTexture1D/2D/3D, CreateShaderResourceView, CreateRenderTargetView, and CreateDepthStencilView. On first call per method a single log line is emitted; on failures a throttled error is logged and the first failure per method gets extra detail (e.g. desc fields). Install once per process when hooking the D3D11 device from the swapchain init path. Details: `hooks/d3d11/d3d11_device_hooks.cpp`, `d3d11_vtable_indices.hpp`.
+- **D3D11 hooks: first-call/first-error flags in detours** - First-call and first-error flags for the D3D11 device detours are now function-local `static std::atomic<bool>` inside each detour instead of file-scope variables, keeping state encapsulated per method.
+
 ## v0.12.247 (2026-03-03)
 
 - **Main tab: simplified Flip / PresentMon line** - The Main tab now shows a single "Flip: &lt;mode&gt;" line (Composed, Overlay, Independent Flip) when PresentMon is running; full surface and compatibility details remain in the tooltip. When PresentMon is off, the line shows "Flip: (enable PresentMon if needed)" and clicking the parenthetical enables PresentMon (same as Advanced tab). Specs added: `private_docs/specs/flip_state_main_tab.md`, `private_docs/specs/main_tab_spec.md`.

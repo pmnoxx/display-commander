@@ -7069,10 +7069,10 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         // Separator
         imgui.Separator();
 
-        // Grid layout for overlay display checkboxes (4 columns)
+        // Grid layout for overlay display checkboxes (4 columns), grouped
+        imgui.TextUnformatted("FPS & core display");
         imgui.Columns(4, "overlay_checkboxes", false);
 
-        // Show Playtime Control
         bool show_playtime = settings::g_mainTabSettings.show_playtime.GetValue();
         if (imgui.Checkbox("Playtime", &show_playtime)) {
             settings::g_mainTabSettings.show_playtime.SetValue(show_playtime);
@@ -7082,7 +7082,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show FPS Counter
         bool show_fps_counter = settings::g_mainTabSettings.show_fps_counter.GetValue();
         if (imgui.Checkbox("FPS Counter", &show_fps_counter)) {
             settings::g_mainTabSettings.show_fps_counter.SetValue(show_fps_counter);
@@ -7092,7 +7091,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show Native FPS
         bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
         if (imgui.Checkbox("Native FPS", &show_native_fps)) {
             settings::g_mainTabSettings.show_native_fps.SetValue(show_native_fps);
@@ -7104,7 +7102,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show Flip Status
         bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
         if (imgui.Checkbox("Flip Status", &show_flip_status)) {
             settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
@@ -7116,7 +7113,12 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show Cpu busy
+        // --- CPU / limiter ---
+        imgui.Columns(1);
+        imgui.Separator();
+        imgui.TextUnformatted("CPU / limiter");
+        imgui.Columns(4, "overlay_checkboxes", false);
+
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
         if (imgui.Checkbox("Cpu busy", &show_cpu_usage)) {
             settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
@@ -7128,7 +7130,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show Cpu FPS (current FPS / cpu busy %)
         bool show_cpu_fps = settings::g_mainTabSettings.show_cpu_fps.GetValue();
         if (imgui.Checkbox("Cpu FPS", &show_cpu_fps)) {
             settings::g_mainTabSettings.show_cpu_fps.SetValue(show_cpu_fps);
@@ -7140,7 +7141,58 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show DLSS-FG Mode
+        // --- Frame timing & graphs ---
+        imgui.Columns(1);
+        imgui.Separator();
+        imgui.TextUnformatted("Frame timing & graphs");
+        imgui.Columns(4, "overlay_checkboxes", false);
+
+        bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
+        if (imgui.Checkbox("Show frame time graph", &show_frame_time_graph)) {
+            settings::g_mainTabSettings.show_frame_time_graph.SetValue(show_frame_time_graph);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows a graph of frame times in the overlay.");
+        }
+        imgui.NextColumn();
+
+        bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
+        if (imgui.Checkbox("Show frame time stats", &show_frame_time_stats)) {
+            settings::g_mainTabSettings.show_frame_time_stats.SetValue(show_frame_time_stats);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
+        }
+        imgui.NextColumn();
+
+        bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
+        if (imgui.Checkbox("Show native frame time graph", &show_native_frame_time_graph)) {
+            settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
+                "overlay.\nOnly available when limit real frames is enabled.");
+        }
+        imgui.NextColumn();
+
+        bool show_frame_timeline_bar = settings::g_mainTabSettings.show_frame_timeline_bar.GetValue();
+        if (imgui.Checkbox("Show frame timeline bar", &show_frame_timeline_bar)) {
+            settings::g_mainTabSettings.show_frame_timeline_bar.SetValue(show_frame_timeline_bar);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Shows a compact frame timeline in the overlay (Simulation, Render Submit, Present, etc. as bars). "
+                "Updates every 1 s.");
+        }
+        imgui.NextColumn();
+
+        // --- DLSS / NGX ---
+        imgui.Columns(1);
+        imgui.Separator();
+        imgui.TextUnformatted("DLSS / NGX");
+        imgui.Columns(4, "overlay_checkboxes", false);
+
         bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
         if (imgui.Checkbox("FG Mode", &show_fg_mode)) {
             settings::g_mainTabSettings.show_fg_mode.SetValue(show_fg_mode);
@@ -7150,7 +7202,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show DLSS Internal Resolution
         bool show_dlss_internal_resolution = settings::g_mainTabSettings.show_dlss_internal_resolution.GetValue();
         if (imgui.Checkbox("DLSS Res", &show_dlss_internal_resolution)) {
             settings::g_mainTabSettings.show_dlss_internal_resolution.SetValue(show_dlss_internal_resolution);
@@ -7160,17 +7211,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show VRAM (used / budget) in overlay - DXGI adapter memory budget
-        bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
-        if (imgui.Checkbox("VRAM", &show_overlay_vram)) {
-            settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
-        }
-        imgui.NextColumn();
-
-        // Show DLSS Status
         bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
         if (imgui.Checkbox("DLSS Status", &show_dlss_status)) {
             settings::g_mainTabSettings.show_dlss_status.SetValue(show_dlss_status);
@@ -7180,7 +7220,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show DLSS Quality Preset
         bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
         if (imgui.Checkbox("DLSS Quality Preset", &show_dlss_quality_preset)) {
             settings::g_mainTabSettings.show_dlss_quality_preset.SetValue(show_dlss_quality_preset);
@@ -7192,7 +7231,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show DLSS Render Preset
         bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
         if (imgui.Checkbox("DLSS Render Preset", &show_dlss_render_preset)) {
             settings::g_mainTabSettings.show_dlss_render_preset.SetValue(show_dlss_render_preset);
@@ -7205,27 +7243,21 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show Stopwatch Control
-        bool show_stopwatch = settings::g_mainTabSettings.show_stopwatch.GetValue();
-        if (imgui.Checkbox("Stopwatch", &show_stopwatch)) {
-            settings::g_mainTabSettings.show_stopwatch.SetValue(show_stopwatch);
+        // --- GPU & memory ---
+        imgui.Columns(1);
+        imgui.Separator();
+        imgui.TextUnformatted("GPU & memory");
+        imgui.Columns(4, "overlay_checkboxes", false);
+
+        bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
+        if (imgui.Checkbox("VRAM", &show_overlay_vram)) {
+            settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
+            imgui.SetTooltip("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
         }
         imgui.NextColumn();
 
-        // Show VU bars (per-channel level) in overlay
-        bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
-        if (imgui.Checkbox("VU bars", &show_overlay_vu_bars)) {
-            settings::g_mainTabSettings.show_overlay_vu_bars.SetValue(show_overlay_vu_bars);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows per-channel audio level (VU) bars in the performance overlay.");
-        }
-        imgui.NextColumn();
-
-        // GPU Measurement Enable/Disable Control
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
         if (imgui.Checkbox("Show latency", &gpu_measurement)) {
             settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
@@ -7238,7 +7270,30 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show Clock Control
+        // --- Misc ---
+        imgui.Columns(1);
+        imgui.Separator();
+        imgui.TextUnformatted("Misc");
+        imgui.Columns(4, "overlay_checkboxes", false);
+
+        bool show_stopwatch = settings::g_mainTabSettings.show_stopwatch.GetValue();
+        if (imgui.Checkbox("Stopwatch", &show_stopwatch)) {
+            settings::g_mainTabSettings.show_stopwatch.SetValue(show_stopwatch);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
+        }
+        imgui.NextColumn();
+
+        bool show_overlay_vu_bars = settings::g_mainTabSettings.show_overlay_vu_bars.GetValue();
+        if (imgui.Checkbox("VU bars", &show_overlay_vu_bars)) {
+            settings::g_mainTabSettings.show_overlay_vu_bars.SetValue(show_overlay_vu_bars);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Shows per-channel audio level (VU) bars in the performance overlay.");
+        }
+        imgui.NextColumn();
+
         bool show_clock = settings::g_mainTabSettings.show_clock.GetValue();
         if (imgui.Checkbox("Show clock", &show_clock)) {
             settings::g_mainTabSettings.show_clock.SetValue(show_clock);
@@ -7248,59 +7303,12 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Show Frame Time Graph Control
-        bool show_frame_time_graph = settings::g_mainTabSettings.show_frame_time_graph.GetValue();
-        if (imgui.Checkbox("Show frame time graph", &show_frame_time_graph)) {
-            settings::g_mainTabSettings.show_frame_time_graph.SetValue(show_frame_time_graph);
+        bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
+        if (imgui.Checkbox("Show volume", &show_volume)) {
+            settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows a graph of frame times in the overlay.");
-        }
-        imgui.NextColumn();
-
-        // Show Frame Time Stats Control
-        bool show_frame_time_stats = settings::g_mainTabSettings.show_frame_time_stats.GetValue();
-        if (imgui.Checkbox("Show frame time stats", &show_frame_time_stats)) {
-            settings::g_mainTabSettings.show_frame_time_stats.SetValue(show_frame_time_stats);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
-        }
-        imgui.NextColumn();
-
-        // Show Native Frame Time Graph Control
-        bool show_native_frame_time_graph = settings::g_mainTabSettings.show_native_frame_time_graph.GetValue();
-        if (imgui.Checkbox("Show native frame time graph", &show_native_frame_time_graph)) {
-            settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
-                "overlay.\nOnly available when limit real frames is enabled.");
-        }
-        imgui.NextColumn();
-
-        // Show Frame Timeline Bar Control
-        bool show_frame_timeline_bar = settings::g_mainTabSettings.show_frame_timeline_bar.GetValue();
-        if (imgui.Checkbox("Show frame timeline bar", &show_frame_timeline_bar)) {
-            settings::g_mainTabSettings.show_frame_timeline_bar.SetValue(show_frame_timeline_bar);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Shows a compact frame timeline in the overlay (Simulation, Render Submit, Present, etc. as bars). "
-                "Updates every 1 s.");
-        }
-        imgui.NextColumn();
-
-        // Show Volume Control (experimental feature)
-        {
-            bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
-            if (imgui.Checkbox("Show volume", &show_volume)) {
-                settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Shows the current audio volume percentage in the overlay.");
-            }
+            imgui.SetTooltip("Shows the current audio volume percentage in the overlay.");
         }
         imgui.NextColumn();
 

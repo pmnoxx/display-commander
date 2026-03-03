@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.253 (2026-03-03)
+- **Main tab: overlay checkboxes grouped with labels** - Performance overlay options on the main tab are now grouped with separators and section labels: FPS & core display, CPU / limiter, Frame timing & graphs, DLSS / NGX, GPU & memory, Misc, then NVAPI stats at the bottom. Makes it easier to find related options (e.g. all frame-timing toggles or all DLSS toggles in one place). Details: `main_new_tab.cpp` (overlay checkboxes reorder and group labels).
+
 ## v0.12.252 (2026-03-03)
 - **Main tab: NVAPI overlay options at bottom with hiccup notice** - VRR Status, VRR Debug Mode, Refresh rate, Refresh rate time graph, and Refresh rate time stats are now grouped at the bottom of the overlay checkboxes under a clear "NVAPI stats (NVIDIA only)" label. The UI states that these options may cause occasional hiccups and are not available on Intel/AMD or Linux, so users can avoid confusion and expect possible frame-time spikes when enabling them. Details: `main_new_tab.cpp` (overlay checkboxes reorder and subsection).
 

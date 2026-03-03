@@ -23,8 +23,8 @@ struct ImportantSettingDef {
 };
 
 static const ImportantSettingDef k_important_settings[] = {
-    {VSYNCSMOOTHAFR_ID, "Smooth Motion (AFR)", VSYNCSMOOTHAFR_DEFAULT, false},
-    {NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID, "Smooth Motion - Allowed APIs", 0, true},
+    {VSYNCSMOOTHAFR_ID, "Smooth Motion (AFR) (591 or below 4000 series)", VSYNCSMOOTHAFR_DEFAULT, false},
+    {NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID, "Smooth Motion - Allowed APIs (591 or below 4000 series)", 0, true},
     {NGX_DLSS_SR_MODE_ID, "DLSS-SR mode", static_cast<NvU32>(NGX_DLSS_SR_MODE_DEFAULT), false},
     {NGX_DLSS_SR_OVERRIDE_ID, "DLSS-SR override", static_cast<NvU32>(NGX_DLSS_SR_OVERRIDE_DEFAULT), false},
     {NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID, "DLSS-SR preset",

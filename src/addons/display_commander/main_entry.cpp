@@ -844,6 +844,8 @@ std::atomic<bool> g_wait_and_inject_stop(false);
 // No-ReShade mode and standalone UI (see globals.hpp)
 std::atomic<bool> g_no_reshade_mode(false);
 std::atomic<bool> g_standalone_ui_pending(false);
+// No-DC mode: .NODC present - load ReShade only, do not register as addon (proxy-only)
+std::atomic<bool> g_no_dc_mode(false);
 
 void TryStartStandaloneUIFromSafeContext() {
     if (!g_no_reshade_mode.load() || !g_standalone_ui_pending.load()) {
@@ -1676,16 +1678,47 @@ std::wstring ProcessAttach_GetConfigDirectoryW() {
     return std::filesystem::path(exe_path).parent_path().wstring();
 }
 
+// Returns true if any file in dir has a name that split by '.' has parts[1] equal to one of segment_names
+// (case-insensitive). E.g. ".NORESHADE", ".NORESHADE.off" match segment "NORESHADE".
+static bool DirectoryHasFileWithSegment(const std::wstring& dir,
+                                        std::initializer_list<const wchar_t*> segment_names) {
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
+        if (ec || !entry.is_regular_file(ec)) continue;
+        std::wstring name = entry.path().filename().wstring();
+        if (name.empty() || name[0] != L'.') continue;
+        std::vector<std::wstring> parts;
+        for (size_t pos = 0; pos <= name.size();) {
+            size_t next = name.find(L'.', pos);
+            if (next == std::wstring::npos) {
+                parts.push_back(name.substr(pos));
+                break;
+            }
+            parts.push_back(name.substr(pos, next - pos));
+            pos = next + 1;
+        }
+        if (parts.size() < 2) continue;
+        for (const wchar_t* seg : segment_names) {
+            if (_wcsicmp(parts[1].c_str(), seg) == 0) return true;
+        }
+    }
+    return false;
+}
+
 void ProcessAttach_CheckNoReShadeMode() {
     const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
     if (dc_config_dir.empty()) return;
-    std::filesystem::path no_reshade(dc_config_dir + L"\\.NO_RESHADE");
-    std::filesystem::path noreshade(dc_config_dir + L"\\.NORESHADE");
-    if (std::filesystem::exists(no_reshade) || std::filesystem::exists(noreshade)) {
+    if (DirectoryHasFileWithSegment(dc_config_dir, {L"NO_RESHADE", L"NORESHADE"})) {
         g_no_reshade_mode.store(true);
         OutputDebugStringA(
-            "[DisplayCommander] .NO_RESHADE/.NORESHADE found - ReShade will not be loaded; standalone "
+            "[DisplayCommander] .NO_RESHADE/.NORESHADE (or .* variant) found - ReShade will not be loaded; standalone "
             "settings UI will start.\n");
+    }
+    if (DirectoryHasFileWithSegment(dc_config_dir, {L"NODC"})) {
+        g_no_dc_mode.store(true);
+        OutputDebugStringA(
+            "[DisplayCommander] .NODC (or .NODC.*) found - ReShade will be loaded; Display Commander will not "
+            "register as addon (proxy-only).\n");
     }
 }
 
@@ -2304,6 +2337,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 break;
             }
 
+            if (g_no_dc_mode.load()) {
+                LogInfo("[main_entry] DLL_PROCESS_ATTACH: .NODC - proxy only, not registering as addon");
+                g_dll_initialization_complete.store(true);
+                break;
+            }
+
             if (!reshade::register_addon(h_module)) {
                 {
                     char msg[512];
@@ -2351,6 +2390,9 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
         case DLL_PROCESS_DETACH:
             if (g_reshade_module == nullptr) {
                 return TRUE;
+            }
+            if (g_no_dc_mode.load(std::memory_order_acquire)) {
+                return TRUE;  // .NODC: we never registered or inited, nothing to clean up
             }
             LogInfo("DLL_PROCESS_DETACH: DLL process detach");
             g_shutdown.store(true);

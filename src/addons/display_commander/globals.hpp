@@ -273,6 +273,8 @@ extern std::atomic<bool> g_dll_initialization_complete;
 // No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded, standalone settings UI
 // used
 extern std::atomic<bool> g_no_reshade_mode;
+// No-DC mode: .NODC file present in game exe dir; ReShade is loaded (proxy only), addon does not register or run
+extern std::atomic<bool> g_no_dc_mode;
 // When true, TryStartStandaloneUIFromSafeContext() will start the standalone settings UI (e.g. from LoadLibrary detour)
 extern std::atomic<bool> g_standalone_ui_pending;
 void TryStartStandaloneUIFromSafeContext();

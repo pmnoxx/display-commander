@@ -2,8 +2,14 @@
 
 ---
 
+## v0.12.244 (2026-03-03)
+
+- (none)
+
 ## v0.12.243 (2026-03-03)
 
+- **.NODC file** - When a `.NODC` file (or `.NODC.<any extension>`) is present in the game executable directory, Display Commander loads ReShade only and does not register as an addon (proxy-only).
+- **.NORESHADE / .NODC matching** - Both flags match by splitting the filename by `.` (like an array): any file whose first segment after the leading dot is `NO_RESHADE`, `NORESHADE`, or `NODC` is recognized (e.g. `.NORESHADE`, `.NORESHADE.off`, `.NODC.disabled`).
 - **PresentMon disabled by default** - PresentMon tracing (`EnablePresentMonTracing_defoff`) is now off by default; enable it in the Advanced tab if needed.
 
 

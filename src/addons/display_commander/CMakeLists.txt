@@ -25,7 +25,7 @@ endif()
 # Version (single source of truth for addon and exe; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 233)
+set(DISPLAY_COMMANDER_VERSION_PATCH 234)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(DISPLAY_COMMANDER_BITNESS "32-bit")
@@ -314,7 +314,6 @@ add_custom_target(launcher_icon ALL DEPENDS "${LAUNCHER_ICON_ICO}")
 add_executable(display_commander_exe WIN32
   ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
   ${CMAKE_CURRENT_LIST_DIR}/main_exe.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/utils/jump_list.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.rc
   ${CMAKE_CURRENT_LIST_DIR}/res/launcher_icon.rc
 )

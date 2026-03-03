@@ -67,6 +67,34 @@ static void SaveLauncherWindowPosition(HWND hwnd);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+// Build default font + merge Japanese glyphs from a Windows system font so the launcher can display Japanese.
+static void BuildStandaloneFontsWithJapanese() {
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->AddFontDefault();
+
+    wchar_t win_dir[MAX_PATH] = {};
+    if (GetWindowsDirectoryW(win_dir, (UINT)std::size(win_dir)) == 0) return;
+    std::wstring fonts_dir = std::wstring(win_dir) + L"\\Fonts\\";
+
+    static const wchar_t* jp_font_names[] = {L"meiryo.ttc", L"msgothic.ttc", L"yugothm.ttc"};
+    for (const wchar_t* name : jp_font_names) {
+        std::wstring path_w = fonts_dir + name;
+        if (GetFileAttributesW(path_w.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+
+        std::string path_utf8;
+        int need = WideCharToMultiByte(CP_UTF8, 0, path_w.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (need <= 0) continue;
+        path_utf8.resize(need);
+        WideCharToMultiByte(CP_UTF8, 0, path_w.c_str(), -1, path_utf8.data(), need, nullptr, nullptr);
+
+        ImFontConfig merge_cfg = {};
+        merge_cfg.MergeMode = true;
+        merge_cfg.GlyphRanges = io.Fonts->GetGlyphRangesJapanese();
+        if (io.Fonts->AddFontFromFileTTF(path_utf8.c_str(), 18.0f, &merge_cfg, nullptr) != nullptr)
+            break;
+    }
+}
+
 static const wchar_t* s_reshadeDllNames[] = {L"dxgi.dll",     L"d3d9.dll",      L"d3d11.dll",    L"d3d12.dll",
                                              L"opengl32.dll", L"ReShade64.dll", L"ReShade32.dll"};
 
@@ -742,6 +770,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
+    BuildStandaloneFontsWithJapanese();
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplOpenGL3_Init();
 
@@ -1082,6 +1111,7 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark();
+    BuildStandaloneFontsWithJapanese();
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplOpenGL3_Init();
 

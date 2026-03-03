@@ -465,6 +465,20 @@ bool EnsureNvApiInitialized() {
         return false;
     }
 
+    // Log NVIDIA driver version once after first successful init
+    NvU32 driver_version = 0;
+    NvAPI_ShortString branch_string = {};
+    if (NvAPI_SYS_GetDriverAndBranchVersion(&driver_version, branch_string) == NVAPI_OK) {
+        // NVIDIA encodes as major*100 + minor (e.g. 56094 -> 560.94)
+        const unsigned major = driver_version / 100;
+        const unsigned minor = driver_version % 100;
+        char branch_buf[64] = {};
+        if (branch_string[0] != '\0') {
+            (void)snprintf(branch_buf, sizeof(branch_buf), " (branch: %s)", branch_string);
+        }
+        display_commander::logger::LogInfo("NVIDIA driver version (NVAPI): %u.%02u%s", major, minor, branch_buf);
+    }
+
     g_inited.store(true, std::memory_order_release);
     return true;
 }

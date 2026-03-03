@@ -11,6 +11,7 @@
 #include "utils.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
+#include "utils/logging.hpp"
 #include "utils/timing.hpp"
 
 namespace exit_handler {
@@ -18,23 +19,8 @@ namespace exit_handler {
 // Atomic flag to prevent multiple exit calls
 static std::atomic<bool> g_exit_handled{false};
 
-// Helper function to write to both ReShade log and DisplayCommander.log
-// Uses LogInfoDirectSynchronized so crash/exception handlers write directly to file without queue.
-void WriteToDebugLog(const std::string& message) {
-    try {
-        // Write to DisplayCommander.log using direct synchronized logging (safe during crash/VEH)
-        display_commander::logger::DisplayCommanderLogger::GetInstance().LogInfoDirectSynchronized(message);
-
-        // Also write to ReShade log for comprehensive coverage
-        // reshade::log::message(reshade::log::level::info, message.c_str());
-    } catch (...) {
-        // Ignore any errors during logging to prevent crashes
-    }
-}
-
 void WriteMultiLineToDebugLog(const std::string& text, const char* empty_fallback) {
     if (text.empty()) {
-        WriteToDebugLog(empty_fallback);
         return;
     }
     std::istringstream iss(text);
@@ -44,47 +30,48 @@ void WriteMultiLineToDebugLog(const std::string& text, const char* empty_fallbac
             line.pop_back();
         }
         if (!line.empty()) {
-            WriteToDebugLog(line);
+            LogInfo("%s", line.c_str());
         }
     }
 }
 
 void OnHandleExit(ExitSource source, const std::string& message) {
-    // Ensure only one thread performs exit logging and cleanup (avoids duplicate "[Exit Handler] Detected exit..." lines)
+    // Ensure only one thread performs exit logging and cleanup (avoids duplicate "[Exit Handler] Detected exit..."
+    // lines)
     bool expected = false;
     if (!g_exit_handled.compare_exchange_strong(expected, true)) {
         return;
     }
-
-    presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdown);
-    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
-    display_commander::logger::FlushLogs();
+    LogInfo("[exit_handler] OnHandleExit: Detected exit from %s: %s", GetExitSourceString(source), message.c_str());
 
     std::ostringstream exit_message;
-    exit_message << "[Exit Handler] Detected exit from " << GetExitSourceString(source) << ": " << message;
-    WriteToDebugLog(exit_message.str());
-    display_commander::logger::LogInfoDirectSynchronized("%s", exit_message.str().c_str());
+    exit_message << "[exit_handler] Detected exit from " << GetExitSourceString(source) << ": " << message;
+    LogInfo("%s", exit_message.str().c_str());
 
     // Print undestroyed guard information (crash detection)
     uint64_t exit_timestamp_ns = utils::get_real_time_ns();  // Use real time to avoid spoofed timers
     std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(exit_timestamp_ns);
-    WriteToDebugLog("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
+    LogInfo("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
     WriteMultiLineToDebugLog(undestroyed_guards_info, "Undestroyed Detour Guards: 0");
-    WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
+    LogInfo("=== END UNDESTROYED DETOUR GUARDS ===");
 
     // Enumerate loaded modules and report any hookable module we never saw (e.g. LdrLoadDll or load before hooks)
     std::vector<std::string> missed_modules = display_commanderhooks::ReportMissedModulesOnExit();
     if (!missed_modules.empty()) {
-        WriteToDebugLog("=== MISSED MODULES (loaded but we never received OnModuleLoaded) ===");
+        LogInfo("=== MISSED MODULES (loaded but we never received OnModuleLoaded) ===");
         for (const std::string& name : missed_modules) {
-            WriteToDebugLog(std::string("Missed: ") + name);
+            LogInfo("Missed: %s", name.c_str());
         }
-        WriteToDebugLog("=== END MISSED MODULES ===");
+        LogInfo("=== END MISSED MODULES ===");
     }
 
     // Best-effort display restoration on any exit
     display_restore::RestoreAllIfEnabled();
 
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
+    display_commander::logger::FlushLogs();
+
+    presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdownExitHandler);
     // Flush all logs before exit to ensure all messages are written to disk
 }
 

@@ -10,6 +10,7 @@
 #include "hooks/nvapi_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
+#include "nvapi/nvapi_init.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
@@ -227,7 +228,10 @@ void HandleDiscordOverlayAutoHide() {
             if (title_lower.find(L"discord overlay") != std::wstring::npos) {
                 // Hide the Discord Overlay window
                 ShowWindow(overlay.hwnd, SW_HIDE);
-                LogInfo("Auto-hid Discord Overlay window (HWND: 0x%p) to prevent MPO iFlip interference", overlay.hwnd);
+                LogInfo(
+                    "[continuous_monitoring] Auto-hid Discord Overlay window (HWND: 0x%p) to prevent MPO iFlip "
+                    "interference",
+                    overlay.hwnd);
                 break;  // Only hide the first matching window
             }
         }
@@ -260,8 +264,9 @@ static void Every1sScreensaver() {
         if (display_commanderhooks::SetThreadExecutionState_Original) {
             EXECUTION_STATE result = display_commanderhooks::SetThreadExecutionState_Original(desired_state);
             if (result != 0) {
-                LogDebug("Prevent display sleep & screensaver: SetThreadExecutionState(0x%x) = 0x%x", desired_state,
-                         result);
+                LogDebug(
+                    "[continuous_monitoring] Prevent display sleep & screensaver: SetThreadExecutionState(0x%x) = 0x%x",
+                    desired_state, result);
             }
         }
     }
@@ -447,42 +452,6 @@ void HandleKeyboardShortcuts() {
 
 namespace {
 
-bool EnsureNvApiInitialized() {
-    static std::atomic<bool> g_inited{false};
-    static std::atomic<bool> g_failed{false};
-
-    if (g_inited.load(std::memory_order_acquire)) {
-        return true;
-    }
-    if (g_failed.load(std::memory_order_acquire)) {
-        return false;
-    }
-
-    const NvAPI_Status st = NvAPI_Initialize();
-    if (st != NVAPI_OK) {
-        // Don't spam; the caller may query per frame in UI
-        g_failed.store(true, std::memory_order_release);
-        return false;
-    }
-
-    // Log NVIDIA driver version once after first successful init
-    NvU32 driver_version = 0;
-    NvAPI_ShortString branch_string = {};
-    if (NvAPI_SYS_GetDriverAndBranchVersion(&driver_version, branch_string) == NVAPI_OK) {
-        // NVIDIA encodes as major*100 + minor (e.g. 56094 -> 560.94)
-        const unsigned major = driver_version / 100;
-        const unsigned minor = driver_version % 100;
-        char branch_buf[64] = {};
-        if (branch_string[0] != '\0') {
-            (void)snprintf(branch_buf, sizeof(branch_buf), " (branch: %s)", branch_string);
-        }
-        display_commander::logger::LogInfo("NVIDIA driver version (NVAPI): %u.%02u%s", major, minor, branch_buf);
-    }
-
-    g_inited.store(true, std::memory_order_release);
-    return true;
-}
-
 std::string WideToUtf8(const wchar_t* wstr) {
     if (wstr == nullptr) {
         return {};
@@ -515,17 +484,12 @@ std::string NormalizeDxgiDeviceNameForNvapi(std::string name) {
 NvAPI_Status ResolveDisplayIdByNameWithReinit(const std::string& display_name, NvU32& out_display_id) {
     out_display_id = 0;
 
-    NvAPI_Status st = NvAPI_DISP_GetDisplayIdByDisplayName(display_name.c_str(), &out_display_id);
-    if (st == NVAPI_API_NOT_INITIALIZED) {
-        // NVAPI may have been unloaded by another feature; try to re-init and retry once.
-        const NvAPI_Status init_st = NvAPI_Initialize();
-        if (init_st == NVAPI_OK) {
-            st = NvAPI_DISP_GetDisplayIdByDisplayName(display_name.c_str(), &out_display_id);
-        } else {
-            return init_st;
-        }
+    if (!nvapi::EnsureNvApiInitialized()) {
+        return NVAPI_ERROR;
     }
-    return st;
+
+    // NVAPI may have been unloaded by another feature; try to re-init and retry once.
+    return NvAPI_DISP_GetDisplayIdByDisplayName(display_name.c_str(), &out_display_id);
 }
 
 }  // anonymous namespace
@@ -536,7 +500,7 @@ bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t* dxgi_output_device
     RECORD_DETOUR_CALL(utils::get_now_ns());
     out_status = nvapi::VrrStatus{};
 
-    if (!EnsureNvApiInitialized()) {
+    if (!nvapi::EnsureNvApiInitialized()) {
         out_status.nvapi_initialized = false;
         return false;
     }
@@ -612,8 +576,7 @@ namespace {
 
 // Stuck methods detection: if g_global_frame_id does not increase for 15s, log undestroyed detour guards
 // (indicates a detour may be stuck and helps identify which call path is blocking the render thread).
-// All log output is written directly from this thread via LogInfoDirectSynchronized (relative time only, no system
-// calls).
+// All log output from this thread uses LogInfo (relative time only, no system calls).
 void CheckStuckMethodsAndLogUndestroyedGuards() {
     constexpr LONGLONG STUCK_THRESHOLD_NS = 25 * utils::SEC_TO_NS;
 
@@ -656,9 +619,8 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         const double ago_s = static_cast<double>(now_real_ns - last_updated_ns) / 1e9;
         sprintf_s(last_updated_buf, sizeof(last_updated_buf), "last_updated=%.2fs ago", ago_s);
     }
-    display_commander::logger::LogInfoDirectSynchronized(
-        "=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu, %s) ===",
-        static_cast<uint64_t>(current_frame_id), last_updated_buf);
+    LogInfo("=== STUCK METHODS DETECTION: no new frame for 15s (g_global_frame_id=%llu, %s) ===",
+            static_cast<uint64_t>(current_frame_id), last_updated_buf);
 
     char last_wndproc_buf[80] = "last Windows message processed: never";
     const LONGLONG last_wndproc_ns = g_last_window_message_processed_ns.load(std::memory_order_acquire);
@@ -667,27 +629,24 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
         sprintf_s(last_wndproc_buf, sizeof(last_wndproc_buf),
                   "last Windows message processed: %.2fs ago (queue may be stuck if this is old)", ago_s);
     }
-    display_commander::logger::LogInfoDirectSynchronized("%s", last_wndproc_buf);
+    LogInfo("%s", last_wndproc_buf);
 
     LONGLONG last_loop_ns = g_last_continuous_monitoring_loop_real_ns.load(std::memory_order_acquire);
     const char* section = g_continuous_monitoring_section.load(std::memory_order_acquire);
     if (last_loop_ns > 0) {
         const double loop_ago_s = static_cast<double>(now_real_ns - last_loop_ns) / 1e9;
-        display_commander::logger::LogInfoDirectSynchronized("Continuous monitoring last looped: %.2f s ago",
-                                                             loop_ago_s);
+        LogInfo("Continuous monitoring last looped: %.2f s ago", loop_ago_s);
     } else {
-        display_commander::logger::LogInfoDirectSynchronized("Continuous monitoring: no iteration completed yet");
+        LogInfo("Continuous monitoring: no iteration completed yet");
     }
     if (section != nullptr && section[0] != '\0') {
-        display_commander::logger::LogInfoDirectSynchronized(
-            "Continuous monitoring current section: %s (stuck here if not sleeping)", section);
+        LogInfo("Continuous monitoring current section: %s (stuck here if not sleeping)", section);
     }
     const char* ui_section = g_rendering_ui_section.load(std::memory_order_acquire);
     if (ui_section != nullptr && ui_section[0] != '\0') {
-        display_commander::logger::LogInfoDirectSynchronized(
-            "Rendering UI current section: %s (stuck here if overlay was open)", ui_section);
+        LogInfo("Rendering UI current section: %s (stuck here if overlay was open)", ui_section);
     } else {
-        display_commander::logger::LogInfoDirectSynchronized("Rendering UI: no section set");
+        LogInfo("Rendering UI: no section set");
     }
 
     utils::LogAllSrwlockStatus();
@@ -701,7 +660,7 @@ void CheckStuckMethodsAndLogUndestroyedGuards() {
 
     std::string undestroyed_info = detour_call_tracker::FormatUndestroyedGuards(static_cast<uint64_t>(now_real_ns));
     exit_handler::WriteMultiLineToDebugLog(undestroyed_info, "Undestroyed Detour Guards: 0");
-    display_commander::logger::LogInfoDirectSynchronized("=== END STUCK METHODS (undestroyed guards) ===");
+    LogInfo("=== END STUCK METHODS (undestroyed guards) ===");
 }
 
 // Dedicated thread that periodically calls CheckStuckMethodsAndLogUndestroyedGuards
@@ -1022,4 +981,3 @@ void StopContinuousMonitoring() {
 
     LogInfo("Continuous monitoring stopped");
 }
-

@@ -2,6 +2,17 @@
 
 ---
 
+## v0.12.242 (unreleased)
+
+- **Init stage limit removed** - Removed binary-search debug feature: `ENTER_INIT_STAGE()`, `REACH_MAX_ALLOWED_STAGE()`, `ProcessAttachEarlyResult::MaxStageReached`, and `utils/init_stage_limit.hpp/.cpp`. Init now always runs to completion.
+- **WriteToDebugLog replaced with LogInfo** - Removed `WriteToDebugLog`; exit and crash-report paths now call `LogInfo` directly. `exit_handler` no longer exposes `WriteToDebugLog`; `WriteMultiLineToDebugLog` still exists and logs line-by-line via `LogInfo`. `process_exit_hooks.cpp` includes `utils/logging.hpp` and uses `LogInfo` for all former `exit_handler::WriteToDebugLog` calls.
+- **Exit handler: use normal LogInfo** - Added `#include "utils/logging.hpp"` in exit_handler.cpp so the exit path logs with `LogInfo` for the initial "[exit_handler] OnHandleExit..." message, making it easier to confirm the standard log path during shutdown.
+- **PresentMon: two AddonShutdown stop reasons** - Replaced single `PresentMonStopReason::AddonShutdown` with `AddonShutdownExitHandler` (exit handler / OnHandleExit path) and `AddonShutdownUnload` (main_entry addon unload path). Log message "Stopping worker thread (reason: ...)" now distinguishes exit-handler shutdown from normal DLL unload.
+
+## v0.12.241 (2026-03-03)
+
+- **NVAPI one-time init centralization** - Moved one-time NVAPI initialization into `nvapi/nvapi_init.hpp` and `nvapi/nvapi_init.cpp` as `nvapi::EnsureNvApiInitialized()`. Replaces the previous implementation in an anonymous namespace in `continuous_monitoring.cpp`. All addon code that calls NvAPI now ensures init before use: ReflexManager (ApplySleepMode, SetMarker, Sleep, GetSleepStatus, RestoreSleepMode, Shutdown), VRR status and display-id resolution in continuous monitoring, and the actual refresh rate monitor (`NvAPI_DISP_GetAdaptiveSyncData`). Fixes the missing `display_commander::continuous_monitoring::EnsureNvApiInitialized` symbol that ReflexManager had been calling.
+
 ## v0.12.240 (2026-03-03)
 
 - **NVIDIA driver version in logs** - After the first successful NVAPI init, the addon logs the NVIDIA driver version (and optional branch string) via `NvAPI_SYS_GetDriverAndBranchVersion` so logs show e.g. "NVIDIA driver version (NVAPI): 560.94 (branch: r560_94)".
@@ -13,7 +24,6 @@
 
 ## v0.12.236 (2026-03-02)
 
-- **Init stage limit (binary-search debug)** - When a file named `.DCMAX_STAGE.<N>` exists in the game (process) directory, initialization stops after N stages so you can binary-search which stage causes a game to fail to start. Use macros `ENTER_INIT_STAGE()` and `REACH_MAX_ALLOWED_STAGE()` (return when true). No file = no limit (0 = all stages). Implemented in `utils/init_stage_limit.hpp/.cpp`; stages are spread across early checks, ReShade detection, `register_addon`, and post-init (config, overlay, DoInitializationWithoutHwndSafe, etc.).
 - **GetSharedDXGIFactory** - Fixed shared DXGI factory not working when used before process attach completed; factory creation is deferred until `g_process_attached` is true so callers (display cache, resolution helpers, VRAM info) no longer get null or invalid factory during early init.
 - **NVIDIA submodules** - Updated external/Streamline, external/nvapi, and external/nvidia-dlss to latest remote; discarded local changes in nvidia-dlss.
 

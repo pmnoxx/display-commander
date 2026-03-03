@@ -1,11 +1,12 @@
 #include "stack_trace.hpp"
-#include "utils/dbghelp_loader.hpp"
-#include <windows.h>
 #include <dbghelp.h>
-#include <sstream>
-#include <iomanip>
 #include <tlhelp32.h>
+#include <windows.h>
 #include <cstring>
+#include <iomanip>
+#include <sstream>
+#include "utils/dbghelp_loader.hpp"
+
 
 namespace stack_trace {
 
@@ -15,8 +16,8 @@ std::string GetModuleName(HANDLE process, DWORD64 address) {
     IMAGEHLP_MODULE64 module_info = {};
     module_info.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
 
-    if (dbghelp_loader::SymGetModuleInfo64_Original &&
-        dbghelp_loader::SymGetModuleInfo64_Original(process, address, &module_info) != FALSE) {
+    if (dbghelp_loader::SymGetModuleInfo64_Original
+        && dbghelp_loader::SymGetModuleInfo64_Original(process, address, &module_info) != FALSE) {
         return module_info.ModuleName;
     }
     return "Unknown";
@@ -31,8 +32,8 @@ std::string GetSymbolName(HANDLE process, DWORD64 address) {
     symbol_info->MaxNameLen = SYMBOL_BUFFER_SIZE;
 
     DWORD64 displacement = 0;
-    if (dbghelp_loader::SymFromAddr_Original &&
-        dbghelp_loader::SymFromAddr_Original(process, address, &displacement, symbol_info) != FALSE) {
+    if (dbghelp_loader::SymFromAddr_Original
+        && dbghelp_loader::SymFromAddr_Original(process, address, &displacement, symbol_info) != FALSE) {
         return symbol_info->Name;
     }
     return "Unknown";
@@ -44,8 +45,8 @@ std::string GetSourceInfo(HANDLE process, DWORD64 address) {
     line_info.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
 
     DWORD displacement = 0;
-    if (dbghelp_loader::SymGetLineFromAddr64_Original &&
-        dbghelp_loader::SymGetLineFromAddr64_Original(process, address, &displacement, &line_info) != FALSE) {
+    if (dbghelp_loader::SymGetLineFromAddr64_Original
+        && dbghelp_loader::SymGetLineFromAddr64_Original(process, address, &displacement, &line_info) != FALSE) {
         std::ostringstream oss;
         oss << line_info.FileName << ":" << line_info.LineNumber;
         return oss.str();
@@ -54,13 +55,8 @@ std::string GetSourceInfo(HANDLE process, DWORD64 address) {
 }
 
 // Memory read routine for StackWalk64
-BOOL CALLBACK ReadProcessMemoryRoutine64(
-    HANDLE h_process,
-    DWORD64 lp_base_address,
-    PVOID lp_buffer,
-    DWORD n_size,
-    LPDWORD lp_number_of_bytes_read) {
-
+BOOL CALLBACK ReadProcessMemoryRoutine64(HANDLE h_process, DWORD64 lp_base_address, PVOID lp_buffer, DWORD n_size,
+                                         LPDWORD lp_number_of_bytes_read) {
     SIZE_T bytes_read = 0;
     if (ReadProcessMemory(h_process, reinterpret_cast<LPCVOID>(lp_base_address), lp_buffer, n_size, &bytes_read)) {
         if (lp_number_of_bytes_read) {
@@ -70,7 +66,7 @@ BOOL CALLBACK ReadProcessMemoryRoutine64(
     }
     return FALSE;
 }
-} // namespace
+}  // namespace
 
 bool IsNvngxUpdateRunning() {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -104,7 +100,10 @@ namespace {
 std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     std::vector<std::string> stack_trace;
 
-    // Check if DbgHelp is available
+    // Try to load DbgHelp on demand if not yet available (e.g. game never loaded dbghelp.dll)
+    if (!dbghelp_loader::IsDbgHelpAvailable()) {
+        dbghelp_loader::LoadDbgHelp();
+    }
     if (!dbghelp_loader::IsDbgHelpAvailable()) {
         stack_trace.push_back("DbgHelp not available - cannot generate stack trace");
         return stack_trace;
@@ -122,14 +121,16 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
             // SYMOPT_DEFERRED_LOADS: Load symbols on demand
             // SYMOPT_INCLUDE_32BIT_MODULES: Include 32-bit modules in 64-bit process
             // SYMOPT_LOAD_LINES: Load line number information
-            DWORD sym_options = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
+            DWORD sym_options =
+                SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
             dbghelp_loader::SymSetOptions_Original(sym_options);
 
             // Get the directory where the DLL is located to help DbgHelp find the PDB
             char module_path[MAX_PATH] = {};
             HMODULE current_module = nullptr;
-            if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                   reinterpret_cast<LPCSTR>(&GenerateStackTraceInternal), &current_module)) {
+            if (GetModuleHandleExA(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    reinterpret_cast<LPCSTR>(&GenerateStackTraceInternal), &current_module)) {
                 if (GetModuleFileNameA(current_module, module_path, MAX_PATH)) {
                     // Extract directory path
                     char* last_slash = strrchr(module_path, '\\');
@@ -198,15 +199,8 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
 #else
             IMAGE_FILE_MACHINE_I386,
 #endif
-            process,
-            thread,
-            &stack_frame,
-            &context,
-            ReadProcessMemoryRoutine64,
-            dbghelp_loader::SymFunctionTableAccess64_Original,
-            dbghelp_loader::SymGetModuleBase64_Original,
-            nullptr
-        );
+            process, thread, &stack_frame, &context, ReadProcessMemoryRoutine64,
+            dbghelp_loader::SymFunctionTableAccess64_Original, dbghelp_loader::SymGetModuleBase64_Original, nullptr);
 
         if (result == FALSE) {
             break;
@@ -241,20 +235,13 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
 
     return stack_trace;
 }
-} // anonymous namespace
+}  // anonymous namespace
 
-std::vector<std::string> GenerateStackTrace() {
-    return GenerateStackTraceInternal(nullptr);
-}
+std::vector<std::string> GenerateStackTrace() { return GenerateStackTraceInternal(nullptr); }
 
-std::vector<std::string> GenerateStackTrace(CONTEXT* context) {
-    return GenerateStackTraceInternal(context);
-}
+std::vector<std::string> GenerateStackTrace(CONTEXT* context) { return GenerateStackTraceInternal(context); }
 
-
-std::string GetStackTraceString() {
-    return GetStackTraceString(nullptr);
-}
+std::string GetStackTraceString() { return GetStackTraceString(nullptr); }
 
 std::string GetStackTraceString(CONTEXT* context) {
     try {
@@ -285,4 +272,4 @@ std::string GetStackTraceString(CONTEXT* context) {
     }
 }
 
-} // namespace stack_trace
+}  // namespace stack_trace

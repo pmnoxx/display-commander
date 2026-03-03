@@ -293,10 +293,7 @@ extern std::atomic<bool> g_module_pinned;
 // DLL load timestamp in nanoseconds (for conflict resolution)
 extern std::atomic<LONGLONG> g_dll_load_time_ns;
 
-// Shared DXGI factory to avoid redundant CreateDXGIFactory calls
-extern std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory;
-
-// Helper function to get shared DXGI factory (thread-safe)
+// Helper: create a DXGI factory on demand (no global cache; caller owns the returned ComPtr)
 Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 
 // Enums

@@ -11,6 +11,7 @@
 #include "utils/dbghelp_loader.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
+#include "utils/logging.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/srwlock_wrapper.hpp"
@@ -34,19 +35,19 @@ bool CheckAndRecordExceptionAddress(uintptr_t address) {
 // Helper function to print process information
 void PrintProcessInfo() {
     try {
-        exit_handler::WriteToDebugLog("=== PROCESS INFORMATION ===");
+        LogInfo("=== PROCESS INFORMATION ===");
 
         // Process ID
         DWORD process_id = GetCurrentProcessId();
         std::ostringstream pid_msg;
         pid_msg << "Process ID: " << process_id;
-        exit_handler::WriteToDebugLog(pid_msg.str());
+        LogInfo("%s", pid_msg.str().c_str());
 
         // Thread ID
         DWORD thread_id = GetCurrentThreadId();
         std::ostringstream tid_msg;
         tid_msg << "Thread ID: " << thread_id;
-        exit_handler::WriteToDebugLog(tid_msg.str());
+        LogInfo("%s", tid_msg.str().c_str());
 
         // Process executable path
         wchar_t process_path[MAX_PATH];
@@ -57,7 +58,7 @@ void PrintProcessInfo() {
                 WideCharToMultiByte(CP_UTF8, 0, process_path, -1, buffer.data(), size_needed, nullptr, nullptr);
                 std::ostringstream path_msg;
                 path_msg << "Process Path: " << buffer.data();
-                exit_handler::WriteToDebugLog(path_msg.str());
+                LogInfo("%s", path_msg.str().c_str());
             }
         }
 
@@ -66,7 +67,7 @@ void PrintProcessInfo() {
         if (command_line != nullptr) {
             std::ostringstream cmd_msg;
             cmd_msg << "Command Line: " << command_line;
-            exit_handler::WriteToDebugLog(cmd_msg.str());
+            LogInfo("%s", cmd_msg.str().c_str());
         }
 
         // Process memory information
@@ -79,21 +80,21 @@ void PrintProcessInfo() {
             mem_msg << "Process Memory - Working Set: " << (mem_counters.WorkingSetSize / 1024 / 1024) << " MB, "
                     << "Peak Working Set: " << (mem_counters.PeakWorkingSetSize / 1024 / 1024) << " MB, "
                     << "Page Faults: " << mem_counters.PageFaultCount;
-            exit_handler::WriteToDebugLog(mem_msg.str());
+            LogInfo("%s", mem_msg.str().c_str());
         }
 
-        exit_handler::WriteToDebugLog("=== END PROCESS INFORMATION ===");
+        LogInfo("=== END PROCESS INFORMATION ===");
     } catch (...) {
-        exit_handler::WriteToDebugLog("=== PROCESS INFORMATION ERROR ===");
-        exit_handler::WriteToDebugLog("Exception occurred while gathering process information");
-        exit_handler::WriteToDebugLog("=== END PROCESS INFORMATION ===");
+        LogInfo("=== PROCESS INFORMATION ERROR ===");
+        LogInfo("Exception occurred while gathering process information");
+        LogInfo("=== END PROCESS INFORMATION ===");
     }
 }
 
 // Helper function to print system information
 void PrintSystemInfo() {
     try {
-        exit_handler::WriteToDebugLog("=== SYSTEM INFORMATION ===");
+        LogInfo("=== SYSTEM INFORMATION ===");
 
         // OS Version (using RtlGetVersion which is safer than GetVersionEx)
         typedef NTSTATUS(WINAPI * RtlGetVersionFunc)(OSVERSIONINFOEXW*);
@@ -111,7 +112,7 @@ void PrintSystemInfo() {
                     if (os_info.wServicePackMajor > 0) {
                         os_msg << " SP" << os_info.wServicePackMajor;
                     }
-                    exit_handler::WriteToDebugLog(os_msg.str());
+                    LogInfo("%s", os_msg.str().c_str());
                 }
             }
         }
@@ -128,7 +129,7 @@ void PrintSystemInfo() {
             case PROCESSOR_ARCHITECTURE_ARM64: cpu_msg << "ARM64"; break;
             default:                           cpu_msg << "Unknown (0x" << std::hex << sys_info.wProcessorArchitecture << ")"; break;
         }
-        exit_handler::WriteToDebugLog(cpu_msg.str());
+        LogInfo("%s", cpu_msg.str().c_str());
 
         // System memory (more detailed)
         MEMORYSTATUSEX mem_status = {};
@@ -138,7 +139,7 @@ void PrintSystemInfo() {
             mem_msg << "System Memory - Total: " << (mem_status.ullTotalPhys / 1024 / 1024 / 1024) << " GB, "
                     << "Available: " << (mem_status.ullAvailPhys / 1024 / 1024 / 1024) << " GB, "
                     << "Load: " << mem_status.dwMemoryLoad << "%";
-            exit_handler::WriteToDebugLog(mem_msg.str());
+            LogInfo("%s", mem_msg.str().c_str());
         }
 
         // Current time
@@ -150,37 +151,37 @@ void PrintSystemInfo() {
             strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &time_info);
             std::ostringstream time_msg;
             time_msg << "Crash Time: " << time_str;
-            exit_handler::WriteToDebugLog(time_msg.str());
+            LogInfo("%s", time_msg.str().c_str());
         }
 
-        exit_handler::WriteToDebugLog("=== END SYSTEM INFORMATION ===");
+        LogInfo("=== END SYSTEM INFORMATION ===");
     } catch (...) {
-        exit_handler::WriteToDebugLog("=== SYSTEM INFORMATION ERROR ===");
-        exit_handler::WriteToDebugLog("Exception occurred while gathering system information");
-        exit_handler::WriteToDebugLog("=== END SYSTEM INFORMATION ===");
+        LogInfo("=== SYSTEM INFORMATION ERROR ===");
+        LogInfo("Exception occurred while gathering system information");
+        LogInfo("=== END SYSTEM INFORMATION ===");
     }
 }
 
 // Helper function to print version information
 void PrintVersionInfo() {
     try {
-        exit_handler::WriteToDebugLog("=== VERSION INFORMATION ===");
+        LogInfo("=== VERSION INFORMATION ===");
 
         // Display Commander version
-        exit_handler::WriteToDebugLog(DISPLAY_COMMANDER_FULL_VERSION);
+        LogInfo("%s", DISPLAY_COMMANDER_FULL_VERSION);
 
-        exit_handler::WriteToDebugLog("=== END VERSION INFORMATION ===");
+        LogInfo("=== END VERSION INFORMATION ===");
     } catch (...) {
-        exit_handler::WriteToDebugLog("=== VERSION INFORMATION ERROR ===");
-        exit_handler::WriteToDebugLog("Exception occurred while gathering version information");
-        exit_handler::WriteToDebugLog("=== END VERSION INFORMATION ===");
+        LogInfo("=== VERSION INFORMATION ERROR ===");
+        LogInfo("Exception occurred while gathering version information");
+        LogInfo("=== END VERSION INFORMATION ===");
     }
 }
 
 // Helper function to print list of loaded modules
 void PrintLoadedModules() {
     try {
-        exit_handler::WriteToDebugLog("=== LOADED MODULES ===");
+        LogInfo("=== LOADED MODULES ===");
 
         HANDLE process_handle = GetCurrentProcess();
         HMODULE modules[1024];
@@ -189,15 +190,15 @@ void PrintLoadedModules() {
         if (EnumProcessModules(process_handle, modules, sizeof(modules), &bytes_needed) == 0) {
             std::ostringstream error_msg;
             error_msg << "Failed to enumerate process modules - Error: " << GetLastError();
-            exit_handler::WriteToDebugLog(error_msg.str());
-            exit_handler::WriteToDebugLog("=== END LOADED MODULES ===");
+            LogInfo("%s", error_msg.str().c_str());
+            LogInfo("=== END LOADED MODULES ===");
             return;
         }
 
         DWORD module_count = bytes_needed / sizeof(HMODULE);
         std::ostringstream count_msg;
         count_msg << "Total loaded modules: " << module_count;
-        exit_handler::WriteToDebugLog(count_msg.str());
+        LogInfo("%s", count_msg.str().c_str());
 
         for (DWORD i = 0; i < module_count; i++) {
             wchar_t module_path[MAX_PATH];
@@ -217,28 +218,28 @@ void PrintLoadedModules() {
                     } else {
                         module_msg << "  [" << i << "] " << buffer.data();
                     }
-                    exit_handler::WriteToDebugLog(module_msg.str());
+                    LogInfo("%s", module_msg.str().c_str());
                 }
             } else {
                 std::ostringstream module_msg;
                 module_msg << "  [" << i << "] <Unknown Module> (Handle: 0x" << std::hex << std::uppercase
                            << reinterpret_cast<uintptr_t>(modules[i]) << ")";
-                exit_handler::WriteToDebugLog(module_msg.str());
+                LogInfo("%s", module_msg.str().c_str());
             }
         }
 
-        exit_handler::WriteToDebugLog("=== END LOADED MODULES ===");
+        LogInfo("=== END LOADED MODULES ===");
     } catch (...) {
-        exit_handler::WriteToDebugLog("=== LOADED MODULES ERROR ===");
-        exit_handler::WriteToDebugLog("Exception occurred while enumerating loaded modules");
-        exit_handler::WriteToDebugLog("=== END LOADED MODULES ===");
+        LogInfo("=== LOADED MODULES ERROR ===");
+        LogInfo("Exception occurred while enumerating loaded modules");
+        LogInfo("=== END LOADED MODULES ===");
     }
 }
 
 // Shared crash report: header, optional section context, version/system/process info,
 // exception details, memory load, recent detour calls, undestroyed guards, stack trace, loaded modules.
 void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line, bool log_section_context) {
-    exit_handler::WriteToDebugLog(header_line);
+    LogInfo("%s", header_line);
 
     if (log_section_context) {
         const char* monitoring_section = g_continuous_monitoring_section.load(std::memory_order_acquire);
@@ -246,10 +247,10 @@ void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line,
         std::ostringstream section_msg;
         section_msg << "g_continuous_monitoring_section: "
                     << (monitoring_section != nullptr ? monitoring_section : "(null)");
-        exit_handler::WriteToDebugLog(section_msg.str());
+        LogInfo("%s", section_msg.str().c_str());
         section_msg.str("");
         section_msg << "g_rendering_ui_section: " << (rendering_section != nullptr ? rendering_section : "(null)");
-        exit_handler::WriteToDebugLog(section_msg.str());
+        LogInfo("%s", section_msg.str().c_str());
     }
 
     PrintVersionInfo();
@@ -260,14 +261,14 @@ void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line,
         const EXCEPTION_RECORD* rec = exception_info->ExceptionRecord;
         std::ostringstream oss;
         oss << "Exception Code: 0x" << std::hex << std::uppercase << rec->ExceptionCode;
-        exit_handler::WriteToDebugLog(oss.str());
+        LogInfo("%s", oss.str().c_str());
         oss.str("");
         oss << "Exception Flags: 0x" << std::hex << std::uppercase << rec->ExceptionFlags;
-        exit_handler::WriteToDebugLog(oss.str());
+        LogInfo("%s", oss.str().c_str());
         oss.str("");
         oss << "Exception Address: 0x" << std::hex << std::uppercase
             << reinterpret_cast<uintptr_t>(rec->ExceptionAddress);
-        exit_handler::WriteToDebugLog(oss.str());
+        LogInfo("%s", oss.str().c_str());
     }
 
     MEMORYSTATUSEX mem_status = {};
@@ -275,29 +276,29 @@ void LogCrashReport(PEXCEPTION_POINTERS exception_info, const char* header_line,
     if (GlobalMemoryStatusEx(&mem_status)) {
         std::ostringstream mem_details;
         mem_details << "System Memory Load: " << mem_status.dwMemoryLoad << "%";
-        exit_handler::WriteToDebugLog(mem_details.str());
+        LogInfo("%s", mem_details.str().c_str());
     }
 
     uint64_t crash_timestamp_ns = utils::get_real_time_ns();
     std::string recent_detour_info = detour_call_tracker::FormatRecentDetourCalls(crash_timestamp_ns, 256);
-    exit_handler::WriteToDebugLog("=== RECENT DETOUR CALLS ===");
+    LogInfo("=== RECENT DETOUR CALLS ===");
     exit_handler::WriteMultiLineToDebugLog(recent_detour_info, "Recent Detour Calls: <none recorded>");
-    exit_handler::WriteToDebugLog("=== END RECENT DETOUR CALLS ===");
+    LogInfo("=== END RECENT DETOUR CALLS ===");
 
     std::string undestroyed_guards_info = detour_call_tracker::FormatUndestroyedGuards(crash_timestamp_ns);
-    exit_handler::WriteToDebugLog("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
+    LogInfo("=== UNDESTROYED DETOUR GUARDS (CRASH DETECTION) ===");
     exit_handler::WriteMultiLineToDebugLog(undestroyed_guards_info, "Undestroyed Detour Guards: 0");
-    exit_handler::WriteToDebugLog("=== END UNDESTROYED DETOUR GUARDS ===");
+    LogInfo("=== END UNDESTROYED DETOUR GUARDS ===");
 
-    exit_handler::WriteToDebugLog("=== GENERATING STACK TRACE ===");
+    LogInfo("=== GENERATING STACK TRACE ===");
     CONTEXT* exception_context =
         (exception_info && exception_info->ContextRecord) ? exception_info->ContextRecord : nullptr;
     auto stack_trace = stack_trace::GenerateStackTrace(exception_context);
-    exit_handler::WriteToDebugLog("=== STACK TRACE ===");
+    LogInfo("=== STACK TRACE ===");
     for (const auto& frame : stack_trace) {
-        exit_handler::WriteToDebugLog(frame);
+        LogInfo("%s", frame.c_str());
     }
-    exit_handler::WriteToDebugLog("=== END STACK TRACE ===");
+    LogInfo("=== END STACK TRACE ===");
 
     PrintLoadedModules();
 
@@ -333,7 +334,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
             // std::ostringstream skip_msg;
             // skip_msg << "Exception at address 0x" << std::hex << std::uppercase << exception_address
             //          << " already logged, skipping duplicate report";
-            // exit_handler::WriteToDebugLog(skip_msg.str());
+            // LogInfo("%s", skip_msg.str().c_str());
 
             // Do not chain to ReShade (or other) crash handler
             return EXCEPTION_EXECUTE_HANDLER;
@@ -373,7 +374,7 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
             std::ostringstream skip_msg;
             skip_msg << "Vectored exception at address 0x" << std::hex << std::uppercase << exception_address
                      << " already logged, skipping duplicate report";
-            exit_handler::WriteToDebugLog(skip_msg.str());
+            LogInfo("%s", skip_msg.str().c_str());
             return EXCEPTION_CONTINUE_SEARCH;
         }
     }
@@ -395,18 +396,18 @@ void Initialize() {
     std::atexit(&AtExitHandler);
 
     // SEH unhandled exception filter for most crash scenarios
-    exit_handler::WriteToDebugLog("Installing SEH unhandled exception filter");
+    LogInfo("Installing SEH unhandled exception filter");
     g_last_detour_handler = ::SetUnhandledExceptionFilter(&UnhandledExceptionHandler);
 
     // Install vectored exception handler to catch exceptions early (before SetUnhandledExceptionFilter)
     // This allows us to print stack traces for all crashes, similar to ReShade's approach
     // First parameter (1) means this handler is called first (before other handlers)
-    exit_handler::WriteToDebugLog("Installing vectored exception handler");
+    LogInfo("Installing vectored exception handler");
     g_vectored_exception_handler_handle = ::AddVectoredExceptionHandler(1, &VectoredExceptionHandler);
     if (g_vectored_exception_handler_handle == nullptr) {
-        exit_handler::WriteToDebugLog("Failed to install vectored exception handler");
+        LogInfo("Failed to install vectored exception handler");
     } else {
-        exit_handler::WriteToDebugLog("Vectored exception handler installed successfully");
+        LogInfo("Vectored exception handler installed successfully");
     }
 }
 
@@ -426,7 +427,7 @@ void Shutdown() {
     if (g_vectored_exception_handler_handle != nullptr) {
         ::RemoveVectoredExceptionHandler(g_vectored_exception_handler_handle);
         g_vectored_exception_handler_handle = nullptr;
-        exit_handler::WriteToDebugLog("Vectored exception handler removed");
+        LogInfo("Vectored exception handler removed");
     }
 
     // Clear seen exception addresses

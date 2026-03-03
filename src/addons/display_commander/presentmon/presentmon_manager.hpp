@@ -140,9 +140,10 @@ struct PresentMonPerDrawStats {
 
 // Reason for stopping the PresentMon worker (logged when StopWorker is called)
 enum class PresentMonStopReason {
-    UserDisabled,    // User turned off the checkbox in Advanced tab
-    AddonShutdown,   // Addon exit handler or main_entry unload
-    Destructor,      // PresentMonManager destructor
+    UserDisabled,              // User turned off the checkbox in Advanced tab
+    AddonShutdownExitHandler,  // Exit handler (OnHandleExit: crash/VEH/detected exit)
+    AddonShutdownUnload,       // main_entry addon unload (DLL unload path)
+    Destructor,                // PresentMonManager destructor
 };
 
 const char* PresentMonStopReasonToString(PresentMonStopReason reason);

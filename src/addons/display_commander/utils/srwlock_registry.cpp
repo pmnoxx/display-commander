@@ -30,7 +30,7 @@ SRWLOCK g_hdr_upgrade_back_buffers_lock = SRWLOCK_INIT;
 namespace {
 
 static void LogOne(const char* name, bool held) {
-    display_commander::logger::LogInfoDirectSynchronized("SRWLOCK %s: %s", name, held ? "HELD" : "free");
+    LogInfo("SRWLOCK %s: %s", name, held ? "HELD" : "free");
 }
 
 }  // namespace

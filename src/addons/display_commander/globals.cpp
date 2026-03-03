@@ -59,8 +59,6 @@ std::atomic<LONGLONG> g_dll_load_time_ns{0};
 // Display Commander state for multi-proxy: HOOKED (one instance) vs PROXY_DLL_ONLY (others)
 std::atomic<DisplayCommanderState> g_display_commander_state{DisplayCommanderState::DC_STATE_UNDECIDED};
 
-// Shared DXGI factory to avoid redundant CreateDXGIFactory calls
-std::atomic<Microsoft::WRL::ComPtr<IDXGIFactory1>*> g_shared_dxgi_factory{nullptr};
 
 // Window settings
 std::atomic<WindowMode> s_window_mode{
@@ -449,38 +447,18 @@ std::atomic<LONGLONG> g_stopwatch_elapsed_time_ns{0};
 // Game playtime tracking (time from game start)
 std::atomic<LONGLONG> g_game_start_time_ns{0};
 
-// Helper function to get shared DXGI factory (thread-safe)
+// Helper: create a DXGI factory on demand (no global cache; caller owns the returned ComPtr)
 Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
-    // Skip DXGI calls during DLL initialization to avoid loader lock violations
     if (!g_dll_initialization_complete.load()) {
         return nullptr;
     }
-    // Check if factory already exists
-    auto factory_ptr = g_shared_dxgi_factory.load();
-    if (factory_ptr && *factory_ptr) {
-        return *factory_ptr;
-    }
-
-    // Create new factory
-    auto new_factory_ptr = std::make_unique<Microsoft::WRL::ComPtr<IDXGIFactory1>>();
-    LogInfo("[GetSharedDXGIFactory] Creating shared DXGI factory (CreateDXGIFactory1_Direct)");
-    HRESULT hr = display_commanderhooks::CreateDXGIFactory1_Direct(IID_PPV_ARGS(new_factory_ptr->GetAddressOf()));
-    LogInfo("[GetSharedDXGIFactory] CreateDXGIFactory1_Direct returned hr=0x%x", static_cast<unsigned>(hr));
+    Microsoft::WRL::ComPtr<IDXGIFactory1> factory;
+    HRESULT hr = display_commanderhooks::CreateDXGIFactory1_Direct(IID_PPV_ARGS(factory.GetAddressOf()));
     if (FAILED(hr)) {
-        LogWarn("Failed to create shared DXGI factory");
+        LogWarn("[GetSharedDXGIFactory] CreateDXGIFactory1_Direct failed hr=0x%x", static_cast<unsigned>(hr));
         return nullptr;
     }
-
-    // Try to store the new factory atomically
-    Microsoft::WRL::ComPtr<IDXGIFactory1>* expected = nullptr;
-    if (g_shared_dxgi_factory.compare_exchange_strong(expected, new_factory_ptr.get())) {
-        LogInfo("Shared DXGI factory created successfully");
-        (void)new_factory_ptr.release();  // Don't delete, it's now managed by the atomic
-        return *g_shared_dxgi_factory.load();
-    } else {
-        // Another thread created the factory first, use the existing one
-        return *expected;
-    }
+    return factory;
 }
 
 // Swapchain event counters - reset on each swapchain creation

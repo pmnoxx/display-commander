@@ -8,6 +8,7 @@
 #include "../swapchain_events.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "nvapi_init.hpp"
 #include "utils/timing.hpp"
 
 // Include Streamline PCLStats header for PCLSTATS_MARKER macro
@@ -27,8 +28,7 @@ bool ReflexManager::EnsureNvApi() {
     }
     static std::atomic<bool> g_nvapi_inited{false};
     if (!g_nvapi_inited.load(std::memory_order_acquire)) {
-        if (NvAPI_Initialize() != NVAPI_OK) {
-            LogWarn("NVAPI Initialize failed for Reflex");
+        if (!nvapi::EnsureNvApiInitialized()) {
             return false;
         }
         g_nvapi_inited.store(true, std::memory_order_release);
@@ -81,15 +81,17 @@ bool ReflexManager::InitializeNative(void* native_device, DeviceTypeDC device_ty
 void ReflexManager::Shutdown() {
     if (!initialized_.exchange(false, std::memory_order_release)) return;
 
-    // Disable sleep mode by setting all parameters to false/disabled
-    NV_SET_SLEEP_MODE_PARAMS params = {};
-    params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
-    params.bLowLatencyMode = NV_FALSE;
-    params.bLowLatencyBoost = NV_FALSE;
-    params.bUseMarkersToOptimize = NV_FALSE;
-    params.minimumIntervalUs = 0;  // No frame rate limit
+    if (d3d_device_ != nullptr && nvapi::EnsureNvApiInitialized()) {
+        // Disable sleep mode by setting all parameters to false/disabled
+        NV_SET_SLEEP_MODE_PARAMS params = {};
+        params.version = NV_SET_SLEEP_MODE_PARAMS_VER;
+        params.bLowLatencyMode = NV_FALSE;
+        params.bLowLatencyBoost = NV_FALSE;
+        params.bUseMarkersToOptimize = NV_FALSE;
+        params.minimumIntervalUs = 0;  // No frame rate limit
 
-    NvAPI_D3D_SetSleepMode_Direct(d3d_device_, &params);
+        NvAPI_D3D_SetSleepMode_Direct(d3d_device_, &params);
+    }
     d3d_device_ = nullptr;
 }
 
@@ -98,6 +100,7 @@ bool ReflexManager::ApplySleepMode(bool low_latency, bool boost, bool use_marker
         return true;
     }
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
+    if (!EnsureNvApi()) return false;
 
     {
         static bool first_call = true;
@@ -130,6 +133,7 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
         return true;
     }
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
+    if (!EnsureNvApi()) return false;
     {
         static bool first_call = true;
         if (first_call) {
@@ -181,6 +185,7 @@ bool ReflexManager::Sleep() {
         return true;
     }
     if (!initialized_.load(std::memory_order_acquire) || d3d_device_ == nullptr) return false;
+    if (!EnsureNvApi()) return false;
     {
         static bool first_call = true;
         if (first_call) {
@@ -212,6 +217,10 @@ bool ReflexManager::GetSleepStatus(NV_GET_SLEEP_STATUS_PARAMS* status_params,
         if (out_reason) *out_reason = SleepStatusUnavailableReason::kNoD3DDevice;
         return false;
     }
+    if (!EnsureNvApi()) {
+        if (out_reason) *out_reason = SleepStatusUnavailableReason::kNvApiError;
+        return false;
+    }
 
     // Initialize the structure
     *status_params = {};
@@ -236,6 +245,9 @@ void ReflexManager::RestoreSleepMode(IUnknown* d3d_device_, NV_SET_SLEEP_MODE_PA
     if (d3d_device_ == nullptr) {
         return;  // No device to restore on (e.g. game never called SetSleepMode). Calling NVAPI with null device
                  // crashes in dxgi.
+    }
+    if (!nvapi::EnsureNvApiInitialized()) {
+        return;
     }
     NV_SET_SLEEP_MODE_PARAMS default_params = {};
     if (params == nullptr) {

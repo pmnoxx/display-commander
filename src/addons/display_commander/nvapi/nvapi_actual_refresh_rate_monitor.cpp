@@ -1,4 +1,5 @@
 #include "nvapi_actual_refresh_rate_monitor.hpp"
+#include "nvapi_init.hpp"
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
@@ -62,6 +63,11 @@ void MonitorThreadFunc() {
             g_has_prev = false;
             g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
             g_consecutive_failures.store(0, std::memory_order_relaxed);
+            continue;
+        }
+        if (!::nvapi::EnsureNvApiInitialized()) {
+            g_has_prev = false;
+            g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
             continue;
         }
 

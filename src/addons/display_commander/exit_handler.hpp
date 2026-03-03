@@ -27,9 +27,6 @@ void OnHandleExit(ExitSource source, const std::string& message);
 // Helper function to get string representation of exit source
 const char* GetExitSourceString(ExitSource source);
 
-// Helper function to write to DisplayCommander.log (for use by other modules)
-void WriteToDebugLog(const std::string& message);
-
 // Write multi-line text to debug log line by line; if text is empty, write empty_fallback once.
 // Shared by crash report, stuck detection, and exit handler.
 void WriteMultiLineToDebugLog(const std::string& text, const char* empty_fallback);

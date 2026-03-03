@@ -367,10 +367,11 @@ const char* PresentMonFlipModeToString(PresentMonFlipMode mode) {
 
 const char* PresentMonStopReasonToString(PresentMonStopReason reason) {
     switch (reason) {
-        case PresentMonStopReason::UserDisabled:  return "UserDisabled";
-        case PresentMonStopReason::AddonShutdown: return "AddonShutdown";
-        case PresentMonStopReason::Destructor:    return "Destructor";
-        default:                                  return "Unknown";
+        case PresentMonStopReason::UserDisabled:             return "UserDisabled";
+        case PresentMonStopReason::AddonShutdownExitHandler: return "AddonShutdownExitHandler";
+        case PresentMonStopReason::AddonShutdownUnload:      return "AddonShutdownUnload";
+        case PresentMonStopReason::Destructor:               return "Destructor";
+        default:                                             return "Unknown";
     }
 }
 

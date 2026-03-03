@@ -54,7 +54,8 @@ bool ShouldBlockSpecialKDLL(const std::wstring& dll_path) {
     return (filename == L"specialk32.dll" || filename == L"specialk64.dll");
 }
 
-// Returns true if path or filename contains "renodx" (case-insensitive) but not "renodx-devkit". Used to detect RenoDX game addons.
+// Returns true if path or filename contains "renodx" (case-insensitive) but not "renodx-devkit". Used to detect RenoDX
+// game addons.
 static bool IsRenoDxAddonPath(const std::wstring& path_or_name) {
     std::filesystem::path p(path_or_name);
     std::wstring filename = p.filename().wstring();
@@ -962,13 +963,15 @@ BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
 VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode) {
     // Record detour call but don't create guard (this function never returns, so guard would be incorrectly flagged as
     // crash)
+    auto caller_module = GetCallingDLL();
+
     static const uint32_t s_fle_detour_idx = detour_call_tracker::AllocateEntryIndex(DETOUR_CALL_SITE_KEY);
     detour_call_tracker::RecordCallNoGuard(s_fle_detour_idx, utils::get_now_ns());
 
     // Check if this is the ReShade module being unloaded
     // FreeLibraryAndExitThread always unloads the module (doesn't check refcount)
     if (hLibModule != nullptr && hLibModule == g_reshade_module) {
-        LogInfo("FreeLibraryAndExitThread: Detected ReShade module unload (0x%p)", hLibModule);
+        LogInfo("FreeLibraryAndExitThread: Detected ReShade module unload (0x%p) by 0x%p", hLibModule, caller_module);
         OnReshadeUnload();
     }
 

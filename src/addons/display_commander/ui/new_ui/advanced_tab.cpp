@@ -737,8 +737,8 @@ void DrawDcServiceStatusIndicators(display_commander::ui::IImGuiWrapper& imgui, 
     }
 
     auto draw_indicator = [&imgui, &include_version_in_tooltip](
-        const char* label, ServiceArchitecture arch, bool running,
-        const display_commander::dc_service::ServiceStatus& st) {
+                              const char* label, ServiceArchitecture arch, bool running,
+                              const display_commander::dc_service::ServiceStatus& st) {
         std::filesystem::path addon_path = GetAddonPathForArch(arch);
         bool can_start = !addon_path.empty();
         bool disabled = !running && !can_start;
@@ -760,14 +760,16 @@ void DrawDcServiceStatusIndicators(display_commander::ui::IImGuiWrapper& imgui, 
 
         if (imgui.IsItemHovered()) {
             const char* arch_name = (arch == ServiceArchitecture::X64) ? "64-bit" : "32-bit";
-            std::string tip = running
-                ? (std::string(arch_name) + " DC Service: running (PID " + std::to_string(st.pid) + ").")
-                : (std::string(arch_name) + " DC Service: stopped.");
+            std::string tip =
+                running ? (std::string(arch_name) + " DC Service: running (PID " + std::to_string(st.pid) + ").")
+                        : (std::string(arch_name) + " DC Service: stopped.");
             if (include_version_in_tooltip || !can_start) {
                 if (!addon_path.empty()) {
                     std::string ver = GetDLLVersionString(addon_path.wstring());
-                    if (!ver.empty()) tip += "\n" + addon_path.filename().string() + " v" + ver;
-                    else tip += "\n" + addon_path.filename().string();
+                    if (!ver.empty())
+                        tip += "\n" + addon_path.filename().string() + " v" + ver;
+                    else
+                        tip += "\n" + addon_path.filename().string();
                 } else {
                     tip += "\n(Addon not installed)";
                 }
@@ -809,8 +811,8 @@ void DrawDcServiceIndicatorsOnLine(display_commander::ui::IImGuiWrapper& imgui, 
     constexpr ImVec4 kGreyedRedUnavailable = ImVec4(0.6f, 0.25f, 0.25f, 1.0f);
 
     auto draw_indicator = [&imgui, &include_version_in_tooltip, kGreyedRedUnavailable](
-        const char* label, ServiceArchitecture arch, bool running,
-        const display_commander::dc_service::ServiceStatus& st) {
+                              const char* label, ServiceArchitecture arch, bool running,
+                              const display_commander::dc_service::ServiceStatus& st) {
         std::filesystem::path addon_path = GetAddonPathForArch(arch);
         bool can_start = !addon_path.empty();
         bool disabled = !running && !can_start;
@@ -840,14 +842,16 @@ void DrawDcServiceIndicatorsOnLine(display_commander::ui::IImGuiWrapper& imgui, 
 
         if (imgui.IsItemHovered()) {
             const char* arch_name = (arch == ServiceArchitecture::X64) ? "64-bit" : "32-bit";
-            std::string tip = running
-                ? (std::string(arch_name) + " DC Service: running (PID " + std::to_string(st.pid) + ").")
-                : (std::string(arch_name) + " DC Service: stopped.");
+            std::string tip =
+                running ? (std::string(arch_name) + " DC Service: running (PID " + std::to_string(st.pid) + ").")
+                        : (std::string(arch_name) + " DC Service: stopped.");
             if (include_version_in_tooltip || !can_start) {
                 if (!addon_path.empty()) {
                     std::string ver = GetDLLVersionString(addon_path.wstring());
-                    if (!ver.empty()) tip += "\n" + addon_path.filename().string() + " v" + ver;
-                    else tip += "\n" + addon_path.filename().string();
+                    if (!ver.empty())
+                        tip += "\n" + addon_path.filename().string() + " v" + ver;
+                    else
+                        tip += "\n" + addon_path.filename().string();
                 } else {
                     tip += "\n(Addon not installed)";
                 }

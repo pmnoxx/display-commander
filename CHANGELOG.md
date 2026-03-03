@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.245 (2026-03-03)
+
+- **NVIDIA driver 595 / Hollow Knight** - Fixed the addon not working with NVIDIA driver 595 when playing Hollow Knight; the game should now run correctly with this driver. Details: Disabled **EnqueueGPUCompletion** in the present path (presentBefore). The call that enqueued GPU fence completion for latency/Reflex timing is no longer invoked there, avoiding compatibility issues. Perf measurement can still suppress it via Experimental → Performance; the present path simply no longer calls it by default.
+
 ## v0.12.244 (2026-03-03)
 
 - (none)

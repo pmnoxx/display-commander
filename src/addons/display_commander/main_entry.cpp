@@ -1680,8 +1680,7 @@ std::wstring ProcessAttach_GetConfigDirectoryW() {
 
 // Returns true if any file in dir has a name that split by '.' has parts[1] equal to one of segment_names
 // (case-insensitive). E.g. ".NORESHADE", ".NORESHADE.off" match segment "NORESHADE".
-static bool DirectoryHasFileWithSegment(const std::wstring& dir,
-                                        std::initializer_list<const wchar_t*> segment_names) {
+static bool DirectoryHasFileWithSegment(const std::wstring& dir, std::initializer_list<const wchar_t*> segment_names) {
     std::error_code ec;
     for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
         if (ec || !entry.is_regular_file(ec)) continue;

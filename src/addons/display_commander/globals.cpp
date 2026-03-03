@@ -4,6 +4,7 @@
 #include <cctype>
 #include <filesystem>
 #include "../../../external/nvapi/nvapi.h"
+#include "hooks/api_hooks.hpp"
 #include "latency/reflex_provider.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/advanced_tab_settings.hpp"
@@ -18,7 +19,6 @@
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
-#include "hooks/api_hooks.hpp"
 
 #include <d3d11.h>
 #include <wrl/client.h>
@@ -33,9 +33,6 @@
 
 // DLL initialization state - prevents DXGI calls during DllMain
 std::atomic<bool> g_dll_initialization_complete{false};
-
-// Process attach state - tracks when DLL_PROCESS_ATTACH has completed
-std::atomic<bool> g_process_attached{false};
 
 // Wine/Proton detection
 std::atomic<bool> g_using_wine{false};
@@ -458,11 +455,6 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     if (!g_dll_initialization_complete.load()) {
         return nullptr;
     }
-    // Do not create factory until process attach has completed (hooks and DXGI state are ready)
-    if (!g_process_attached.load()) {
-        return nullptr;
-    }
-
     // Check if factory already exists
     auto factory_ptr = g_shared_dxgi_factory.load();
     if (factory_ptr && *factory_ptr) {
@@ -472,8 +464,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     // Create new factory
     auto new_factory_ptr = std::make_unique<Microsoft::WRL::ComPtr<IDXGIFactory1>>();
     LogInfo("[GetSharedDXGIFactory] Creating shared DXGI factory (CreateDXGIFactory1_Direct)");
-    HRESULT hr =
-        display_commanderhooks::CreateDXGIFactory1_Direct(IID_PPV_ARGS(new_factory_ptr->GetAddressOf()));
+    HRESULT hr = display_commanderhooks::CreateDXGIFactory1_Direct(IID_PPV_ARGS(new_factory_ptr->GetAddressOf()));
     LogInfo("[GetSharedDXGIFactory] CreateDXGIFactory1_Direct returned hr=0x%x", static_cast<unsigned>(hr));
     if (FAILED(hr)) {
         LogWarn("Failed to create shared DXGI factory");

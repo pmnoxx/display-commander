@@ -1556,7 +1556,6 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
     display_commanderhooks::InstallApiHooks();
     InstallRealDXGIMinHookHooks();
-    g_dll_initialization_complete.store(true);
     OverrideReShadeSettings();
 }
 
@@ -2002,7 +2001,6 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     if (detected_platforms.empty() && !found_proxy && !whitelist) {
         LogInfo("[reshade] No platforms detected and not found in whitelist, refusing to load found_proxy: %d",
                 found_proxy);
-        g_process_attached.store(true);
         return false;
     }
     std::filesystem::path game_directory = std::filesystem::path(executable_path).parent_path();
@@ -2017,7 +2015,6 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     auto path_exists = std::filesystem::exists(reshade_path);
     LogInfo("[reshade] path_exists = %d path = %s", path_exists, reshade_path.string().c_str());
     if (!path_exists) {
-        g_process_attached.store(true);
         return true;
     }
     std::error_code ec;
@@ -2075,7 +2072,6 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     }
     OutputDebugStringA(msg);
     MessageBoxA(nullptr, msg, msg, MB_OK | MB_ICONWARNING | MB_TOPMOST);
-    g_process_attached.store(true);
     return false;
 }
 
@@ -2086,7 +2082,6 @@ void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
     utils::initialize_qpc_timing_constants();
     DoInitializationWithoutHwndSafe(h_module);
     g_standalone_ui_pending.store(true);
-    g_process_attached.store(true);
 }
 
 void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& entry_point) {
@@ -2129,7 +2124,6 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     DoInitializationWithoutHwnd(h_module);
     ProcessAttach_LoadLocalAddonDllsAfterReShade(h_module);
     LoadAddonsFromPluginsDirectory();
-    g_process_attached.store(true);
 }
 
 // Minimum Display Commander version allowed to load (below this we refuse).
@@ -2149,7 +2143,6 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         snprintf(msg, sizeof(msg), "[DisplayCommander] Version %s is below minimum allowed %s - refusing to load.\n",
                  DISPLAY_COMMANDER_VERSION_STRING, kDisplayCommanderMinLoadVersion);
         OutputDebugStringA(msg);
-        g_process_attached.store(true);
         return ProcessAttachEarlyResult::RefuseLoad;
     }
 
@@ -2161,7 +2154,6 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
             const wchar_t* exe_name = (last_slash != nullptr) ? (last_slash + 1) : exe_path;
             if (_wcsicmp(exe_name, L"UnityCrashHandler64.exe") == 0) {
                 OutputDebugStringA("[DisplayCommander] Refusing to load in UnityCrashHandler64.exe.\n");
-                g_process_attached.store(true);
                 return ProcessAttachEarlyResult::RefuseLoad;
             }
         }
@@ -2217,7 +2209,6 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
                             g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
                                                             std::memory_order_release);
                             if (LoadLibraryW(addon_path.c_str()) != nullptr) {
-                                g_process_attached.store(true);
                                 return ProcessAttachEarlyResult::LoaderOnly;
                             }
                             g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,
@@ -2240,7 +2231,6 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
     ProcessAttach_ScanDisplayCommanderState(&another_undecided);
     if (IsDisplayCommanderHookingInstance() && DetectMultipleDisplayCommanderVersions()) {
         OutputDebugStringA("[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
-        g_process_attached.store(true);
         return ProcessAttachEarlyResult::RefuseLoad;
     }
     if (another_undecided) {
@@ -2255,7 +2245,6 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         OutputDebugStringA("\n");
         if (strstr(command_line, "rundll32") != nullptr) {
             OutputDebugStringA("Run32DLL command line detected");
-            g_process_attached.store(true);
             return ProcessAttachEarlyResult::EarlySuccess;
         }
     } else {
@@ -2270,6 +2259,15 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
+            auto set_process_attached_on_exit = []() { g_dll_initialization_complete.store(true); };
+            struct ScopeGuard {
+                void (*run)();
+                explicit ScopeGuard(void (*fn)()) : run(fn) {}
+                ~ScopeGuard() {
+                    if (run != nullptr) run();
+                }
+            } guard(+set_process_attached_on_exit);
+
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) return TRUE;
             if (early == ProcessAttachEarlyResult::EarlySuccess) return TRUE;
@@ -2299,6 +2297,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             if (g_no_reshade_mode.load()) {
                 ProcessAttach_NoReShadeModeInit(h_module);
+                g_dll_initialization_complete.store(true);
                 break;
             }
 
@@ -2325,11 +2324,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                         reshade::log::message(reshade::log::level::info, msg);
                     }
                 }
-                g_process_attached.store(true);
                 return TRUE;
             }
 
             ProcessAttach_RegisterAndPostInit(h_module, entry_point);
+            g_dll_initialization_complete.store(true);
             break;
         }
         case DLL_THREAD_ATTACH: {
@@ -2428,7 +2427,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 // Used by: (1) .exe build (main_exe.cpp), (2) rundll32 Launcher export (DLL build).
 // Set HOOKED so DoInitializationWithoutHwndSafe_Late runs (StartContinuousMonitoring), which fills the
 // running-games cache so the Games tab can show other processes with the addon loaded.
-// Single-instance: a named mutex prevents multiple Launcher/exe copies; if one is already running we bring it to focus and exit.
+// Single-instance: a named mutex prevents multiple Launcher/exe copies; if one is already running we bring it to focus
+// and exit.
 void RunDisplayCommanderStandalone(HINSTANCE hInst) {
 #ifdef _WIN64
     static const wchar_t* kLauncherMutexName = L"Local\\DisplayCommander_LauncherMutex64";

@@ -270,9 +270,6 @@ class UnifiedParameterMap {
 // DLL initialization state
 extern std::atomic<bool> g_dll_initialization_complete;
 
-// Process attach state - tracks when DLL_PROCESS_ATTACH has completed
-extern std::atomic<bool> g_process_attached;
-
 // No-ReShade mode: .NO_RESHADE or .NORESHADE file present in game exe dir; ReShade not loaded, standalone settings UI
 // used
 extern std::atomic<bool> g_no_reshade_mode;
@@ -1500,4 +1497,3 @@ extern std::atomic<bool> g_swapchain_wrapper_present1_called;
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();
 void HandleReflexAutoConfigure();
-

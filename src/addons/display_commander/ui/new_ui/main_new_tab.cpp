@@ -7211,13 +7211,20 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_flip_status = settings::g_mainTabSettings.show_flip_status.GetValue();
+        const bool presentmon_enabled = settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue();
+        if (!presentmon_enabled) {
+            imgui.BeginDisabled();
+        }
         if (imgui.Checkbox("Flip Status", &show_flip_status)) {
             settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance "
-                "overlay.");
+                "overlay.%s", presentmon_enabled ? "" : " Requires PresentMon (enable in Advanced tab).");
+        }
+        if (!presentmon_enabled) {
+            imgui.EndDisabled();
         }
         imgui.NextColumn();
 
@@ -7508,6 +7515,9 @@ static void DrawImportantInfo_FpsCounterAndReset(display_commander::ui::IImGuiWr
     }
 }
 
+static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGuiWrapper& imgui);
+static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::IImGuiWrapper& imgui);
+
 void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
     RECORD_DETOUR_CALL(utils::get_now_ns());
@@ -7723,14 +7733,10 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
             }
-        }
+}
 
-        imgui.Spacing();
-
-        g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
-        // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
-        if (imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
-            bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
+static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::IImGuiWrapper& imgui) {
+    bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
 
             if (imgui.Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
                 if (is_monitoring) {
@@ -7830,11 +7836,6 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
                 imgui.TextColored(ui::colors::TEXT_DIMMED,
                                   "No refresh rate data (start monitoring or enable overlay refresh rate).");
             }
-        }
-        imgui.Unindent();  // Unindent content
-    }
-    ui::colors::PopNestedHeaderColors(&imgui);
-    imgui.Unindent();  // Unindent nested header section
 }
 
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {

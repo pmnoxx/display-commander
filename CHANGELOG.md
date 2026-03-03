@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.255 (2026-03-03)
+- **Main tab: Flip Status checkbox disabled when PresentMon off** - The "Flip Status" overlay checkbox is now grayed out (BeginDisabled) when PresentMon tracing is not enabled, since flip mode is shown from PresentMon data. The tooltip when disabled explains that PresentMon must be enabled in the Advanced tab.
+
 ## v0.12.254 (2026-03-03)
 - **Main tab: NVAPI stats subsection refactor** - The NVAPI stats overlay block (VRR Status, VRR Debug Mode, Refresh rate, Refresh rate time graph, Refresh rate time stats plus warning and Refresh poll slider) is now drawn by a dedicated subfunction `DrawNvapiStatsOverlaySubsection`, shortening the main tab and keeping the subsection in one place. The entire subsection is grayed out (BeginDisabled) when NVAPI is not initialized (e.g. non-NVIDIA GPU or init failure), so users cannot enable options that would do nothing. Details: `main_new_tab.cpp` (DrawNvapiStatsOverlaySubsection, nvapi_init.hpp include).
 

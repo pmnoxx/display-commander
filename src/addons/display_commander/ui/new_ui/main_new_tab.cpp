@@ -7116,56 +7116,6 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        {
-            // Show VRR Status
-            bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-            if (imgui.Checkbox("VRR Status", &show_vrr_status)) {
-                settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Shows whether Variable Refresh Rate (VRR) is active in the performance overlay.");
-            }
-            imgui.NextColumn();
-
-            // Actual refresh rate (NVAPI Adaptive Sync) - replaces old "Refresh rate" in overlay
-            bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-            if (imgui.Checkbox("Refresh rate", &show_actual_refresh_rate)) {
-                settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
-                    "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on.");
-            }
-            imgui.NextColumn();
-
-            // VRR Debug Mode
-            bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-            if (imgui.Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
-                settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
-                    "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
-                    "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
-                    "  req: VRR has been requested (e.g. by the application or swap chain).\n"
-                    "  poss: The display and link support VRR (capability).\n"
-                    "  in_mode: The display is currently operating in VRR mode (authoritative hardware state).");
-            }
-            imgui.NextColumn();
-        }
-
-        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
-            && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-            imgui.Columns(1);
-            imgui.TextColored(
-                ui::colors::TEXT_WARNING,
-                "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
-                "Refresh rate and refresh rate time graph may show no data.");
-            imgui.Columns(4, "overlay_checkboxes", false);
-        }
-
         // Show Cpu busy
         bool show_cpu_usage = settings::g_mainTabSettings.show_cpu_usage.GetValue();
         if (imgui.Checkbox("Cpu busy", &show_cpu_usage)) {
@@ -7342,46 +7292,102 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        // Refresh Rate Time Graph Control
-        bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-        // Warning: about this introducing heartbeat issue
-        if (imgui.Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
-            settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
-                "Requires NVAPI and a resolved display.\n"
-                "WARNING: This may introduces a heartbeat issue, with frame time spike once a second.");
+        // Show Volume Control (experimental feature)
+        {
+            bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
+            if (imgui.Checkbox("Show volume", &show_volume)) {
+                settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Shows the current audio volume percentage in the overlay.");
+            }
         }
         imgui.NextColumn();
 
-        // Show Refresh Rate Time Stats Control
-        bool show_refresh_rate_frame_time_stats =
-            settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
-        if (imgui.Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
-            settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows refresh rate time statistics (avg, deviation, min, max) in the overlay.");
-        }
+        imgui.Columns(1);  // Reset to single column
+        imgui.Separator();
+        imgui.TextWrapped(
+            "NVAPI stats (NVIDIA only). These options may cause occasional hiccups; not available on Intel/AMD or Linux.");
+        imgui.Columns(4, "overlay_checkboxes", false);
+
+        // NVAPI stats subsection — at bottom of overlay checkboxes (programmatic NVAPI polling)
         {
+            bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+            if (imgui.Checkbox("VRR Status", &show_vrr_status)) {
+                settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Shows whether Variable Refresh Rate (VRR) is active in the performance overlay. "
+                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+            }
             imgui.NextColumn();
 
-            // Show Volume Control (experimental feature)
-            {
-                bool show_volume = settings::g_experimentalTabSettings.show_volume.GetValue();
-                if (imgui.Checkbox("Show volume", &show_volume)) {
-                    settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Shows the current audio volume percentage in the overlay.");
-                }
+            bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+            if (imgui.Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
+                settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
+                    "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
+                    "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
+                    "  req: VRR has been requested (e.g. by the application or swap chain).\n"
+                    "  poss: The display and link support VRR (capability).\n"
+                    "  in_mode: The display is currently operating in VRR mode (authoritative hardware state).\n"
+                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+            }
+            imgui.NextColumn();
+
+            bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
+            if (imgui.Checkbox("Refresh rate", &show_actual_refresh_rate)) {
+                settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
+                    "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on. "
+                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+            }
+            imgui.NextColumn();
+
+            bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
+            if (imgui.Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
+                settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
+                    "Requires NVAPI and a resolved display.\n"
+                    "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
+            }
+            imgui.NextColumn();
+
+            bool show_refresh_rate_frame_time_stats =
+                settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
+            if (imgui.Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
+                settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Shows refresh rate time statistics (avg, deviation, min, max) in the overlay. "
+                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
             }
         }
 
+        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
+            && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+            imgui.Columns(1);
+            imgui.TextColored(
+                ui::colors::TEXT_WARNING,
+                "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
+                "Refresh rate and refresh rate time graph may show no data.");
+            imgui.Columns(4, "overlay_checkboxes", false);
+        }
+
         imgui.Columns(1);  // Reset to single column
-        if (show_refresh_rate_frame_times || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
+        if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()
+            || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
             if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)", "%d ms",
                                  imgui)) {
                 // Setting is automatically saved by SliderIntSetting

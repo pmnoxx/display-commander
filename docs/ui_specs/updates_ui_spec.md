@@ -100,3 +100,4 @@ Implementation may choose one. Copies/links should be cleaned when possible (e.g
 - Task / redesign: `docs/tasks/reshade_dc_updates_redesign.md`
 - ReShade load path: `docs/reshade_load_path_design.md`
 - DC upgrades plan: `docs/tasks/display_commander_upgrades_plan.md`
+- Main tab overlay NVAPI stats (private): `private_docs/ui_spec_main_tab_overlay_nvapi.md`

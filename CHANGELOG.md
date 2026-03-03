@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.252 (2026-03-03)
+- **Main tab: NVAPI overlay options at bottom with hiccup notice** - VRR Status, VRR Debug Mode, Refresh rate, Refresh rate time graph, and Refresh rate time stats are now grouped at the bottom of the overlay checkboxes under a clear "NVAPI stats (NVIDIA only)" label. The UI states that these options may cause occasional hiccups and are not available on Intel/AMD or Linux, so users can avoid confusion and expect possible frame-time spikes when enabling them. Details: `main_new_tab.cpp` (overlay checkboxes reorder and subsection).
+
 ## v0.12.251 (2026-03-03)
 - **Continuous monitoring: fixed constants** - The continuous monitoring triggers and intervals (high-frequency updates, per-second tasks, display cache refresh, screensaver/FPS/volume/VRR/Reflex/auto-apply toggles) are no longer user-configurable. They are now compile-time constants so users cannot change them and break behavior. The "Triggers Settings (for debugging purposes)" section has been removed from the Advanced tab. Details: `continuous_monitoring.cpp` (anonymous-namespace constants), `advanced_tab_settings`, `advanced_tab.cpp` (section removed).
 

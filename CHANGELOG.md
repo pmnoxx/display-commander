@@ -2,8 +2,13 @@
 
 ---
 
-## v0.12.236 (unreleased)
+## v0.12.237 (unreleased)
 
+- (none)
+
+## v0.12.236 (2026-03-02)
+
+- **Init stage limit (binary-search debug)** - When a file named `.DCMAX_STAGE.<N>` exists in the game (process) directory, initialization stops after N stages so you can binary-search which stage causes a game to fail to start. Use macros `ENTER_INIT_STAGE()` and `REACH_MAX_ALLOWED_STAGE()` (return when true). No file = no limit (0 = all stages). Implemented in `utils/init_stage_limit.hpp/.cpp`; stages are spread across early checks, ReShade detection, `register_addon`, and post-init (config, overlay, DoInitializationWithoutHwndSafe, etc.).
 - **GetSharedDXGIFactory** - Fixed shared DXGI factory not working when used before process attach completed; factory creation is deferred until `g_process_attached` is true so callers (display cache, resolution helpers, VRAM info) no longer get null or invalid factory during early init.
 - **NVIDIA submodules** - Updated external/Streamline, external/nvapi, and external/nvidia-dlss to latest remote; discarded local changes in nvidia-dlss.
 

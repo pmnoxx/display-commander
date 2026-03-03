@@ -10,7 +10,7 @@
 namespace display_commander::nvapi {
 
 struct ImportantProfileSetting {
-    std::string label;   // e.g. "Smooth Motion", "DLSS-SR override"
+    std::string label;   // e.g. "Smooth Motion (591 or below 4000 series)", "DLSS-SR override"
     std::string value;   // Human-readable value (e.g. "On", "Preset K")
     std::uint32_t setting_id = 0;   // DRS setting ID (0 = not editable)
     std::uint32_t value_id = 0;     // Current or default raw DWORD value

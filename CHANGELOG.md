@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.249 (2026-03-03)
+
+- **VBlank Monitor tooltip: debug details and time-in-state** - The Main tab tooltip for "VBlank Monitor: ACTIVE" and "VBlank Monitor: STARTING" now shows debug-oriented details: current thread phase (waiting for Latent Sync, binding to display, or collecting scanlines), how long the monitor has been in that state (e.g. "in this state 12.34s"), and phase index for correlation with code. Helps diagnose why the monitor might be stuck in a given state. Details: `latent_sync/vblank_monitor.cpp` (phase timestamps, `GetStatusStringForTooltip`), `latent_sync_limiter` (`GetVBlankMonitorStatusString`), Main tab tooltip text.
+
 ## v0.12.248 (2026-03-03)
 
 - **D3D11 device vtable logging** - Added optional vtable hooks on ID3D11Device for CreateBuffer, CreateTexture1D/2D/3D, CreateShaderResourceView, CreateRenderTargetView, and CreateDepthStencilView. On first call per method a single log line is emitted; on failures a throttled error is logged and the first failure per method gets extra detail (e.g. desc fields). Install once per process when hooking the D3D11 device from the swapchain init path. Details: `hooks/d3d11/d3d11_device_hooks.cpp`, `d3d11_vtable_indices.hpp`.

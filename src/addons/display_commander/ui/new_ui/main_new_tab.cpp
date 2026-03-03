@@ -3893,8 +3893,10 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                     imgui.Spacing();
                     imgui.TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
                     if (imgui.IsItemHovered()) {
+                        std::string status = latent.GetVBlankMonitorStatusString();
                         imgui.SetTooltip(
-                            "VBlank monitoring thread is running and collecting scanline data for frame pacing.");
+                            "VBlank monitoring thread is running and collecting scanline data for frame pacing.\n\n%s",
+                            status.c_str());
                     }
 
                     imgui.TextColored(ui::colors::STATUS_INACTIVE, "  refresh time: %.3fms",
@@ -3909,8 +3911,14 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                     imgui.Spacing();
                     imgui.TextColored(ui::colors::STATUS_STARTING, ICON_FK_WARNING " VBlank Monitor: STARTING...");
                     if (imgui.IsItemHovered()) {
+                        std::string status = latent.GetVBlankMonitorStatusString();
                         imgui.SetTooltip(
-                            "VBlank monitoring is enabled but the monitoring thread is still starting up.");
+                            "VBlank monitoring is enabled in settings but the thread is not running yet.\n\n"
+                            "• %s\n\n"
+                            "The thread starts when the FPS limiter runs (i.e. when a frame is presented with "
+                            "VBlank Sync Divisor > 0). After start it may briefly wait for Latent Sync mode, "
+                            "then bind to the display and collect scanline data for frame pacing.",
+                            status.c_str());
                     }
                 }
             }

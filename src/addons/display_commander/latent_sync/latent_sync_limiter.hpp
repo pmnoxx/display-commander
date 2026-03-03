@@ -29,6 +29,7 @@ class LatentSyncLimiter {
 
     // VBlank monitoring statistics
     bool IsVBlankMonitoringActive() const { return m_vblank_monitor && m_vblank_monitor->IsMonitoring(); }
+    std::string GetVBlankMonitorStatusString() const;
 
   private:
     bool EnsureAdapterBinding();

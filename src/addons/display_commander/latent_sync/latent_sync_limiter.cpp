@@ -188,4 +188,12 @@ void LatentSyncLimiter::StopVBlankMonitoring() {
     }
 }
 
+std::string LatentSyncLimiter::GetVBlankMonitorStatusString() const {
+    if (!m_vblank_monitor)
+        return "Not started (monitor not created)";
+    if (!m_vblank_monitor->IsMonitoring())
+        return "Not started (thread will start when FPS limiter runs with VBlank Sync Divisor > 0)";
+    return m_vblank_monitor->GetStatusStringForTooltip();
+}
+
 }  // namespace dxgi::fps_limiter

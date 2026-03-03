@@ -82,6 +82,10 @@ class VBlankMonitor {
     // Manual display binding (if needed)
     bool BindToDisplay(HWND hwnd);
 
+    // Thread phase for UI tooltips (0=not started, 1=waiting for mode, 2=binding/init, 3=main loop)
+    int GetThreadPhase() const { return m_thread_phase.load(std::memory_order_relaxed); }
+    std::string GetStatusStringForTooltip() const;
+
   private:
     void MonitoringThread();
     bool EnsureAdapterBinding();
@@ -112,6 +116,8 @@ class VBlankMonitor {
     std::thread m_monitor_thread;
     std::atomic<bool> m_monitoring{false};
     std::atomic<bool> m_should_stop{false};
+    std::atomic<int> m_thread_phase{0}; // 0=not started, 1=waiting for mode, 2=binding/init, 3=main loop
+    std::atomic<uint64_t> m_phase_start_time_ns{0}; // when current phase was entered (for debug tooltip)
 
     // Display binding
     D3DKMT_HANDLE m_hAdapter = 0;

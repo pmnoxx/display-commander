@@ -5,6 +5,7 @@
 #include "../utils/logging.hpp"
 #include "utils/timing.hpp"
 #include <dxgi1_6.h>
+#include <iomanip>
 #include <sstream>
 #include <winnt.h>
 
@@ -138,6 +139,8 @@ void VBlankMonitor::StartMonitoring() {
         return;
 
     m_should_stop = false;
+    m_thread_phase.store(0, std::memory_order_relaxed);
+    m_phase_start_time_ns.store(0, std::memory_order_relaxed);
     m_monitor_thread = std::thread(&VBlankMonitor::MonitoringThread, this);
     m_monitoring = true;
 
@@ -155,6 +158,8 @@ void VBlankMonitor::StopMonitoring() {
         m_monitor_thread.join();
     }
     m_monitoring = false;
+    m_thread_phase.store(0, std::memory_order_relaxed);
+    m_phase_start_time_ns.store(static_cast<uint64_t>(utils::get_now_ns()), std::memory_order_relaxed);
 
     LogMessage("VBlank monitoring thread stopped");
     LogInfo("VBlank monitoring thread: StopMonitoring() completed - thread joined and stopped");
@@ -357,7 +362,44 @@ long double expected_current_scanline_uncapped_ns(LONGLONG now_ns, LONGLONG tota
     return cur_scanline;
 }
 
+std::string VBlankMonitor::GetStatusStringForTooltip() const {
+    const int phase = m_thread_phase.load(std::memory_order_relaxed);
+    const uint64_t start_ns = m_phase_start_time_ns.load(std::memory_order_relaxed);
+    const LONGLONG now_ns = utils::get_now_ns();
+    const uint64_t elapsed_ns = (start_ns > 0 && static_cast<uint64_t>(now_ns) >= start_ns)
+                                    ? (static_cast<uint64_t>(now_ns) - start_ns)
+                                    : 0;
+    const double elapsed_s = static_cast<double>(elapsed_ns) / static_cast<double>(utils::SEC_TO_NS);
+
+    std::ostringstream oss;
+    if (!m_monitoring.load(std::memory_order_relaxed)) {
+        oss << "Not started";
+        return oss.str();
+    }
+    switch (phase) {
+    case 1:
+        oss << "Thread: waiting for Latent Sync mode";
+        break;
+    case 2:
+        oss << "Thread: binding to display / loading D3DKMT";
+        break;
+    case 3:
+        oss << "Thread: running, collecting scanline data";
+        break;
+    default:
+        oss << "Thread: starting up";
+        break;
+    }
+    if (elapsed_ns > 0) {
+        oss << " (in this state " << std::fixed << std::setprecision(2) << elapsed_s << "s)";
+    }
+    oss << " [phase=" << phase << "]";
+    return oss.str();
+}
+
 void VBlankMonitor::MonitoringThread() {
+    m_thread_phase.store(1, std::memory_order_relaxed);
+    m_phase_start_time_ns.store(static_cast<uint64_t>(utils::get_now_ns()), std::memory_order_relaxed);
     ::LogInfo("VBlank monitoring thread: entering main loop");
     ::LogInfo("VBlank monitoring thread: STARTED - monitoring scanlines for frame pacing");
 
@@ -369,6 +411,8 @@ void VBlankMonitor::MonitoringThread() {
     // Note: This thread is started when VBlank Scanline Sync mode (FPS mode 1) is enabled
     ::LogInfo("VBlank monitoring thread: This thread runs when VBlank Scanline Sync mode is active");
 
+    m_thread_phase.store(2, std::memory_order_relaxed);
+    m_phase_start_time_ns.store(static_cast<uint64_t>(utils::get_now_ns()), std::memory_order_relaxed);
     if (!EnsureAdapterBinding()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -414,11 +458,14 @@ void VBlankMonitor::MonitoringThread() {
         LogWarn("GetScanLine function pointer is null, attempting to reload...");
         if (!LoadProcCached(m_pfnGetScanLine, L"gdi32.dll", "D3DKMTGetScanLine")) {
             LogError("Failed to load GetScanLine function, sleeping...");
+            m_thread_phase.store(0, std::memory_order_relaxed);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             return;
         }
     }
 
+    m_thread_phase.store(3, std::memory_order_relaxed);
+    m_phase_start_time_ns.store(static_cast<uint64_t>(utils::get_now_ns()), std::memory_order_relaxed);
     LONGLONG min_scanline_duration_ns = 0;
     LONGLONG correction_ticks_local = 0;
     LONGLONG last_display_timing_refresh_ns = 0;
@@ -497,6 +544,7 @@ void VBlankMonitor::MonitoringThread() {
         }
     }
 
+    m_thread_phase.store(0, std::memory_order_relaxed);
     ::LogInfo("VBlank monitoring thread: exiting main loop");
     ::LogInfo("VBlank monitoring thread: STOPPED - no longer monitoring scanlines");
 }

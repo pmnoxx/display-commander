@@ -2,8 +2,10 @@
 
 ---
 
-## v0.12.250 (2026-03-03)
+## v0.12.251 (2026-03-03)
+- **Continuous monitoring: fixed constants** - The continuous monitoring triggers and intervals (high-frequency updates, per-second tasks, display cache refresh, screensaver/FPS/volume/VRR/Reflex/auto-apply toggles) are no longer user-configurable. They are now compile-time constants so users cannot change them and break behavior. The "Triggers Settings (for debugging purposes)" section has been removed from the Advanced tab. Details: `continuous_monitoring.cpp` (anonymous-namespace constants), `advanced_tab_settings`, `advanced_tab.cpp` (section removed).
 
+## v0.12.250 (2026-03-03)
 - **VRR overlay: "NO NVAPI" when NVAPI unavailable** - When VRR status is shown in the performance overlay but NVAPI VRR data is not available (e.g. non-NVIDIA GPU or NVAPI not initialized), the label now shows "VRR: NO NVAPI" instead of "VRR: Off", so users can tell that the addon is not using NVIDIA's VRR query rather than reporting VRR as disabled.
 
 ## v0.12.249 (2026-03-03)

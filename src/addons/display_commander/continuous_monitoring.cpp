@@ -44,6 +44,25 @@
 // External reference to prevent display sleep & screensaver mode setting
 extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
+// Continuous monitoring behavior (fixed constants; not user-configurable)
+namespace {
+constexpr bool kMonitorHighFreqEnabled = true;
+constexpr int kMonitorHighFreqIntervalMs = 8;
+constexpr bool kMonitorPerSecondEnabled = true;
+constexpr int kMonitorPerSecondIntervalSec = 1;
+constexpr bool kMonitorScreensaver = true;
+constexpr bool kMonitorFpsAggregate = true;
+constexpr bool kMonitorVolume = true;
+constexpr bool kMonitorRefreshRate = true;
+constexpr bool kMonitorVrrStatus = true;
+constexpr bool kMonitorExclusiveKeyGroups = true;
+constexpr bool kMonitorDiscordOverlay = true;
+constexpr bool kMonitorReflexAutoConfigure = true;
+constexpr bool kMonitorAutoApplyTrigger = true;
+constexpr bool kMonitorDisplayCache = true;
+constexpr int kMonitorDisplayCacheIntervalSec = 2;
+}  // namespace
+
 // Stuck detection: last time the continuous monitoring loop started an iteration (real time ns)
 static std::atomic<LONGLONG> g_last_continuous_monitoring_loop_real_ns{0};
 // Current section of the loop (so when stuck we know where; "sleeping" = in sleep_for)
@@ -427,19 +446,19 @@ static void Every1sVrrStatus() {
 
 void every1s_tasks() {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (settings::g_advancedTabSettings.monitor_screensaver.GetValue()) {
+    if (kMonitorScreensaver) {
         Every1sScreensaver();
     }
-    if (settings::g_advancedTabSettings.monitor_fps_aggregate.GetValue()) {
+    if (kMonitorFpsAggregate) {
         Every1sFpsAggregate();
     }
-    if (settings::g_advancedTabSettings.monitor_volume.GetValue()) {
+    if (kMonitorVolume) {
         Every1sVolume();
     }
-    if (settings::g_advancedTabSettings.monitor_refresh_rate.GetValue()) {
+    if (kMonitorRefreshRate) {
         Every1sRefreshRate();
     }
-    if (settings::g_advancedTabSettings.monitor_vrr_status.GetValue()) {
+    if (kMonitorVrrStatus) {
         Every1sVrrStatus();
     }
 }
@@ -692,8 +711,8 @@ void ContinuousMonitoringThread() {
     LONGLONG last_exclusive_keys_cache_update_ns = start_time;
 
     while (g_monitoring_thread_running.load()) {
-        const bool high_freq_enabled = settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue();
-        const int high_freq_ms = settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue();
+        const bool high_freq_enabled = kMonitorHighFreqEnabled;
+        const int high_freq_ms = kMonitorHighFreqIntervalMs;
         const LONGLONG sleep_ns = high_freq_enabled ? (static_cast<LONGLONG>(high_freq_ms) * 1000000)
                                                     : (50 * 1000000);  // 50 ms when high-freq disabled
         g_continuous_monitoring_section.store("sleeping", std::memory_order_release);
@@ -716,9 +735,8 @@ void ContinuousMonitoringThread() {
         {
             RECORD_DETOUR_CALL(utils::get_now_ns());
             LONGLONG now_ns = utils::get_now_ns();
-            if (settings::g_advancedTabSettings.monitor_display_cache.GetValue()) {
-                const int cache_interval_sec =
-                    settings::g_advancedTabSettings.monitor_display_cache_interval_sec.GetValue();
+            if (kMonitorDisplayCache) {
+                const int cache_interval_sec = kMonitorDisplayCacheIntervalSec;
                 if (now_ns - last_cache_refresh_ns >= static_cast<LONGLONG>(cache_interval_sec) * utils::SEC_TO_NS) {
                     g_continuous_monitoring_section.store("display_cache_refresh", std::memory_order_release);
                     display_cache::g_displayCache.Refresh();
@@ -796,10 +814,8 @@ void ContinuousMonitoringThread() {
         // High-frequency updates (background check, ADHD, keyboard, hotkeys)
         LONGLONG now_ns = utils::get_now_ns();
         const LONGLONG high_freq_interval_ns =
-            static_cast<LONGLONG>(settings::g_advancedTabSettings.monitor_high_freq_interval_ms.GetValue())
-            * utils::NS_TO_MS;
-        if (settings::g_advancedTabSettings.monitor_high_freq_enabled.GetValue()
-            && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
+            static_cast<LONGLONG>(kMonitorHighFreqIntervalMs) * utils::NS_TO_MS;
+        if (kMonitorHighFreqEnabled && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
             RECORD_DETOUR_CALL(utils::get_now_ns());
             g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
             check_is_background();
@@ -822,21 +838,22 @@ void ContinuousMonitoringThread() {
         }
         g_continuous_monitoring_section.store("after_60fps", std::memory_order_release);
 
-        const int per_second_interval_sec = settings::g_advancedTabSettings.monitor_per_second_interval_sec.GetValue();
-        if (settings::g_advancedTabSettings.monitor_per_second_enabled.GetValue()
+        const int per_second_interval_sec = kMonitorPerSecondIntervalSec;
+        if (kMonitorPerSecondEnabled
             && now_ns - last_1s_update_ns >= static_cast<LONGLONG>(per_second_interval_sec) * utils::SEC_TO_NS) {
             RECORD_DETOUR_CALL(utils::get_now_ns());
             last_1s_update_ns = now_ns;
+            check_is_background();
             g_continuous_monitoring_section.store("every1s_tasks", std::memory_order_release);
             every1s_tasks();
 
-            if (settings::g_advancedTabSettings.monitor_exclusive_key_groups.GetValue()) {
+            if (kMonitorExclusiveKeyGroups) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("exclusive_key_groups", std::memory_order_release);
                 display_commanderhooks::exclusive_key_groups::UpdateCachedActiveKeys();
             }
 
-            if (settings::g_advancedTabSettings.monitor_discord_overlay.GetValue()) {
+            if (kMonitorDiscordOverlay) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("discord_overlay", std::memory_order_release);
                 HandleDiscordOverlayAutoHide();
@@ -874,14 +891,13 @@ void ContinuousMonitoringThread() {
                 }
             }
 
-            if (settings::g_advancedTabSettings.monitor_reflex_auto_configure.GetValue()
-                && now_ns - start_time >= 10 * utils::SEC_TO_NS) {
+            if (kMonitorReflexAutoConfigure && now_ns - start_time >= 10 * utils::SEC_TO_NS) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("reflex_auto_configure", std::memory_order_release);
                 HandleReflexAutoConfigure();
             }
 
-            if (settings::g_advancedTabSettings.monitor_auto_apply_trigger.GetValue()) {
+            if (kMonitorAutoApplyTrigger) {
                 RECORD_DETOUR_CALL(utils::get_now_ns());
                 g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
                 ui::new_ui::AutoApplyTrigger();

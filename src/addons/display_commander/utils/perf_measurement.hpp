@@ -20,7 +20,6 @@ enum class Metric : std::uint8_t {
     TrackPresentStatistics,
     OnPresentFlags2,
     HandlePresentAfter,
-    FlushCommandQueueFromSwapchain,
     EnqueueGPUCompletion,
     OnPresentUpdateBefore,
     Count
@@ -60,8 +59,6 @@ inline bool IsMetricEnabled(Metric metric) {
         return settings::g_experimentalTabSettings.perf_measure_on_present_flags2_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentAfter:
         return settings::g_experimentalTabSettings.perf_measure_handle_present_after_enabled.GetAtomic().load(std::memory_order_relaxed);
-    case Metric::FlushCommandQueueFromSwapchain:
-        return settings::g_experimentalTabSettings.perf_measure_flush_command_queue_from_swapchain_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::EnqueueGPUCompletion:
         return settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled.GetAtomic().load(std::memory_order_relaxed);
     case Metric::OnPresentUpdateBefore:
@@ -98,8 +95,6 @@ inline bool IsMetricSuppressed(Metric metric) {
         return settings::g_experimentalTabSettings.perf_suppress_on_present_flags2.GetAtomic().load(std::memory_order_relaxed);
     case Metric::HandlePresentAfter:
         return settings::g_experimentalTabSettings.perf_suppress_handle_present_after.GetAtomic().load(std::memory_order_relaxed);
-    case Metric::FlushCommandQueueFromSwapchain:
-        return settings::g_experimentalTabSettings.perf_suppress_flush_command_queue_from_swapchain.GetAtomic().load(std::memory_order_relaxed);
     case Metric::EnqueueGPUCompletion:
         return settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion.GetAtomic().load(std::memory_order_relaxed);
     case Metric::OnPresentUpdateBefore:

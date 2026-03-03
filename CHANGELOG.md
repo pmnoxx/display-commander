@@ -2,9 +2,9 @@
 
 ---
 
-## v0.12.237 (unreleased)
+## v0.12.238 (unreleased)
 
-- (none)
+- **Fix: crash in DX11 when using SM** - Removed `FlushCommandQueueFromSwapchain` (D3D11 immediate context flush from swapchain); it could crash in DX11 when using ReShade/SM. Present path now relies on existing present/EnqueueGPUCompletion logic only.
 
 ## v0.12.236 (2026-03-02)
 

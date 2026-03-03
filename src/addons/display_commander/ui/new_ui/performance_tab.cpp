@@ -134,10 +134,6 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
         row("HandlePresentAfter", perf_measurement::Metric::HandlePresentAfter,
             settings::g_experimentalTabSettings.perf_measure_handle_present_after_enabled, "##perf_handle_after",
             settings::g_experimentalTabSettings.perf_suppress_handle_present_after, "##suppress_handle_after");
-        row("FlushCommandQueueFromSwapchain", perf_measurement::Metric::FlushCommandQueueFromSwapchain,
-            settings::g_experimentalTabSettings.perf_measure_flush_command_queue_from_swapchain_enabled,
-            "##perf_flush_cmdq", settings::g_experimentalTabSettings.perf_suppress_flush_command_queue_from_swapchain,
-            "##suppress_flush_cmdq");
         row("EnqueueGPUCompletion", perf_measurement::Metric::EnqueueGPUCompletion,
             settings::g_experimentalTabSettings.perf_measure_enqueue_gpu_completion_enabled,
             "##perf_enqueue_gpu_completion", settings::g_experimentalTabSettings.perf_suppress_enqueue_gpu_completion,

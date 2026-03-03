@@ -276,9 +276,6 @@ IDXGIOutput6* CreateOutputWrapper(IDXGIOutput* output);
 // Helper function to create a swapchain wrapper
 IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain4* swapchain4, SwapChainHook hookType);
 
-// Helper function to flush command queue from swapchain using native DirectX APIs (DX11 only)
-void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain);
-
 // Helper function to check if a factory is a DXGIFactoryWrapper
 // Returns the wrapper if it is one, nullptr otherwise
 // Usage example:

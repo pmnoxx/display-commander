@@ -458,6 +458,10 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory() {
     if (!g_dll_initialization_complete.load()) {
         return nullptr;
     }
+    // Do not create factory until process attach has completed (hooks and DXGI state are ready)
+    if (!g_process_attached.load()) {
+        return nullptr;
+    }
 
     // Check if factory already exists
     auto factory_ptr = g_shared_dxgi_factory.load();

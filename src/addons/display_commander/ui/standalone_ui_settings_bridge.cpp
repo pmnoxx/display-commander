@@ -8,6 +8,10 @@ void SetStandaloneUiHwnd(uintptr_t hwnd) {
     ::g_standalone_ui_hwnd.store(reinterpret_cast<HWND>(hwnd), std::memory_order_release);
 }
 
+HWND GetStandaloneUiHwnd() {
+    return ::g_standalone_ui_hwnd.load(std::memory_order_acquire);
+}
+
 HWND CreateWindowW_Direct(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int X, int Y, int nWidth,
                           int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) {
     return display_commanderhooks::CreateWindowW_Direct(lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight,

@@ -2,8 +2,9 @@
 
 ---
 
-## v0.12.228 (unreleased)
+## v0.12.229 (unreleased)
 
+- **Launcher: Games + Settings tabs** - When running via Launcher (rundll32 or exe), the window now has two tabs: "Games" (default) and "Settings". Settings tab includes: font size slider (0.5–2.0, persisted in config section Launcher/FontScale); ReShade (global install) status and version with an **Update** button (downloads latest ReShade Addon to global folder); Display Commander (global install) path and version with an **Update** button (runs CheckForUpdates for GitHub release).
 - **Launcher single-instance mutex** - The Games-only UI (rundll32 Launcher and standalone exe) uses a named mutex (`Local\DisplayCommander_LauncherMutex64` / `...32`) so only one instance runs. If another is already running, the new process brings the existing window to focus (ShowWindow SW_RESTORE, SetForegroundWindow) and exits.
 - **Games window (Launcher/exe): resize both ways, non-movable, more list rows** - Inner Games window now uses GetClientRect every frame so it grows and shrinks with the outer window. Added NoTitleBar so the tab cannot be dragged. Steam "Launch Steam game" search list uses remaining vertical space (BeginChild 0,0) so more rows are visible when the window is large.
 

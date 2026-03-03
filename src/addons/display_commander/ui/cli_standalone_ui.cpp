@@ -18,6 +18,8 @@
 #include "ui/nvidia_profile_tab_shared.hpp"
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
+#include "utils/general_utils.hpp"
+#include "utils/reshade_load_path.hpp"
 #include "utils/reshade_sha256_database.hpp"
 #include "utils/steam_library.hpp"
 #include "utils/version_check.hpp"
@@ -837,6 +839,101 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
 }
 
+// Launcher Settings tab: font scale, ReShade global status, Display Commander global version.
+static void DrawLauncherSettingsTab() {
+    float font_scale = 1.0f;
+    display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigValue("Launcher", "FontScale",
+                                                                                          font_scale);
+    if (font_scale <= 0.0f || font_scale > 3.0f) font_scale = 1.0f;
+
+    if (ImGui::SliderFloat("Font size", &font_scale, 0.5f, 2.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+        display_commander::config::DisplayCommanderConfigManager::GetInstance().SetConfigValue("Launcher", "FontScale",
+                                                                                               font_scale);
+        display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("Launcher font scale");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Scale the Launcher window text. Takes effect immediately.");
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::TextUnformatted("ReShade (global install)");
+    std::filesystem::path reshade_global = display_commander::utils::GetGlobalReshadeDirectory();
+    std::string reshade_ver = display_commander::utils::GetGlobalReshadeVersion();
+    if (reshade_global.empty()) {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Not installed");
+    } else {
+        ImGui::Text("Path: %s", reshade_global.string().c_str());
+        if (reshade_ver.empty()) {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: (unknown)");
+        } else {
+            ImGui::Text("Version: %s", reshade_ver.c_str());
+        }
+    }
+    bool reshade_updating = s_reshadeUpdateInProgress.load(std::memory_order_acquire);
+    if (reshade_updating) {
+        ImGui::BeginDisabled();
+    }
+    if (ImGui::Button("Update##reshade_global")) {
+        std::wstring central = GetCentralReshadeDir();
+        if (!central.empty()) {
+            auto* params = new ReshadeUpdateParams;
+            params->centralDir = central;
+            params->selectedVersion = "latest";
+            params->forGameDetails = false;
+            s_reshadeUpdateResult.clear();
+            s_reshadeUpdateInProgress.store(true, std::memory_order_release);
+            HANDLE h = CreateThread(nullptr, 0, ReshadeUpdateWorker, params, 0, nullptr);
+            if (h != nullptr) {
+                CloseHandle(h);
+            } else {
+                s_reshadeUpdateInProgress.store(false, std::memory_order_release);
+                delete params;
+                s_reshadeUpdateResult = "Failed to start update thread.";
+            }
+        }
+    }
+    if (reshade_updating) {
+        ImGui::EndDisabled();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Download latest ReShade Addon and install to global folder.");
+    }
+    if (!s_reshadeUpdateResult.empty()) {
+        ImGui::TextColored(ImVec4(0.7f, 0.85f, 0.7f, 1.0f), "%s", s_reshadeUpdateResult.c_str());
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Display Commander (global install)");
+    std::filesystem::path dc_appdata = GetDisplayCommanderAppDataFolder();
+    if (dc_appdata.empty()) {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Folder not available");
+    } else {
+#ifdef _WIN64
+        std::filesystem::path addon_path = dc_appdata / L"zzz_display_commander.addon64";
+#else
+        std::filesystem::path addon_path = dc_appdata / L"zzz_display_commander.addon32";
+#endif
+        ImGui::Text("Path: %s", dc_appdata.string().c_str());
+        std::string dc_ver = GetFileVersionStringUtf8(addon_path.native());
+        if (dc_ver.empty()) {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: not installed or not found");
+        } else {
+            ImGui::Text("Version: %s", dc_ver.c_str());
+        }
+        ImGui::Text("This instance: %s", DISPLAY_COMMANDER_VERSION_STRING);
+    }
+    if (ImGui::Button("Update##dc_global")) {
+        display_commander::utils::version_check::CheckForUpdates();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Check for Display Commander updates (GitHub). Result in main app or next launch.");
+    }
+}
+
 void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -910,13 +1007,30 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
         if (GetClientRect(hwnd, &rc)) {
             ImGui::GetIO().DisplaySize = ImVec2((float)(rc.right - rc.left), (float)(rc.bottom - rc.top));
         }
+
+        float launcher_font_scale = 1.0f;
+        display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigValue("Launcher", "FontScale",
+                                                                                              launcher_font_scale);
+        if (launcher_font_scale <= 0.0f || launcher_font_scale > 3.0f) launcher_font_scale = 1.0f;
+        ImGui::GetIO().FontGlobalScale = launcher_font_scale;
+
         ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
         if (ImGui::Begin("Games", nullptr,
                          ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
                              | ImGuiWindowFlags_NoTitleBar)) {
-            display_commander::ui::ImGuiWrapperStandalone wrapper;
-            ui::new_ui::DrawGamesTab(wrapper);
+            if (ImGui::BeginTabBar("##LauncherTabs", ImGuiTabBarFlags_None)) {
+                if (ImGui::BeginTabItem("Games")) {
+                    display_commander::ui::ImGuiWrapperStandalone wrapper;
+                    ui::new_ui::DrawGamesTab(wrapper);
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Settings")) {
+                    DrawLauncherSettingsTab();
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+            }
         }
         ImGui::End();
 

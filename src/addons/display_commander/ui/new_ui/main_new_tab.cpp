@@ -7200,13 +7200,20 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool show_native_fps = settings::g_mainTabSettings.show_native_fps.GetValue();
+        const bool native_reflex_active = IsNativeReflexActive();
+        if (!native_reflex_active) {
+            imgui.BeginDisabled();
+        }
         if (imgui.Checkbox("Native FPS", &show_native_fps)) {
             settings::g_mainTabSettings.show_native_fps.SetValue(show_native_fps);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / "
-                "YY.Y fps");
+                "YY.Y fps%s", native_reflex_active ? "" : ". Requires a game with native Reflex.");
+        }
+        if (!native_reflex_active) {
+            imgui.EndDisabled();
         }
         imgui.NextColumn();
 
@@ -7308,12 +7315,20 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.TextUnformatted("DLSS / NGX");
         imgui.Columns(4, "overlay_checkboxes", false);
 
+        const DLSSGSummary dlss_overlay_summary = GetDLSSGSummary();
+        const bool dlss_ngx_seen =
+            dlss_overlay_summary.any_dlss_was_active_once || dlss_overlay_summary.any_dlss_dll_loaded;
+        if (!dlss_ngx_seen) {
+            imgui.BeginDisabled();
+        }
+
         bool show_fg_mode = settings::g_mainTabSettings.show_fg_mode.GetValue();
         if (imgui.Checkbox("FG Mode", &show_fg_mode)) {
             settings::g_mainTabSettings.show_fg_mode.SetValue(show_fg_mode);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.");
+            imgui.SetTooltip("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.%s",
+                             dlss_ngx_seen ? "" : " Requires a game that uses DLSS/NGX.");
         }
         imgui.NextColumn();
 
@@ -7357,6 +7372,10 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "overlay.");
         }
         imgui.NextColumn();
+
+        if (!dlss_ngx_seen) {
+            imgui.EndDisabled();
+        }
 
         // --- GPU & memory ---
         imgui.Columns(1);

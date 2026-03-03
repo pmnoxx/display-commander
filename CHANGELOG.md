@@ -2,8 +2,13 @@
 
 ---
 
-## v0.12.233 (unreleased)
+## v0.12.234 (unreleased)
 
+- (none yet)
+
+## v0.12.233 (2026-03-02)
+
+- **Launcher: Japanese font support** - Standalone launcher and no-ReShade settings UI now merge Japanese glyphs from a Windows system font (Meiryo, MS Gothic, or Yu Gothic) into the default ImGui font so Japanese text (e.g. game names, paths) displays correctly.
 - **Deadlock fix on startup** - Fixed a deadlock that could occur during addon startup; initialization order and locking are adjusted so startup completes without hanging.
 
 ## v0.12.232 (unreleased)

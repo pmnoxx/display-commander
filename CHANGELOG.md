@@ -2,7 +2,12 @@
 
 ---
 
-## v0.12.230 (unreleased)
+## v0.12.231 (unreleased)
+
+## v0.12.230 (2026-03-02)
+
+- **Games tab: Add to Favorites / Remove from Favorites** - Right-click context menu on Steam search results now shows "Add to Favorites" or "Remove from Favorites" depending on whether the game is in the favorites list. Favorites are stored in HKCU\\Software\\Display Commander\\SteamFavorites.
+- **Games tab: Favorites first, star and highlight** - Steam search list shows favorited games first (then by last opened, then name). Favorites are marked with a ★ prefix and highlighted text color so they are easy to spot.
 
 ## v0.12.229 (2026-03-02)
 

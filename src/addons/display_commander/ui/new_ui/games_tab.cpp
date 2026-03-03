@@ -6,6 +6,7 @@
 #include "../../utils/process_window_enumerator.hpp"
 #include "../../utils/standalone_launcher.hpp"
 #include "../standalone_ui_settings_bridge.hpp"
+#include "../../utils/steam_favorites.hpp"
 #include "../../utils/steam_hidden_games.hpp"
 #include "../../utils/steam_launch_history.hpp"
 #include "../../utils/steam_library.hpp"
@@ -523,6 +524,9 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     std::sort(filtered.begin(), filtered.end(), [](const auto& a, const auto& b) {
+        const bool a_fav = display_commander::steam_favorites::IsSteamGameFavorite(a.first.app_id);
+        const bool b_fav = display_commander::steam_favorites::IsSteamGameFavorite(b.first.app_id);
+        if (a_fav != b_fav) return a_fav;  // Favorites first
         if (a.second != b.second) return a.second > b.second;
         return a.first.name < b.first.name;
     });
@@ -543,8 +547,21 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.TableNextRow();
                 imgui.TableSetColumnIndex(0);
                 imgui.PushID(static_cast<int>(game.app_id));
-                if (imgui.Selectable(game.name.c_str(), false)) {
+                const bool is_favorite =
+                    display_commander::steam_favorites::IsSteamGameFavorite(game.app_id);
+                if (is_favorite) {
+                    imgui.PushStyleColor(ImGuiCol_Text, ::ui::colors::TEXT_HIGHLIGHT);
+                }
+                std::string display_name;
+                if (is_favorite) {
+                    display_name = "\xE2\x98\x85 ";  // ★ (U+2605) UTF-8
+                    display_name += game.name;
+                }
+                if (imgui.Selectable(is_favorite ? display_name.c_str() : game.name.c_str(), false)) {
                     display_commander::steam_library::LaunchSteamGame(game.app_id);
+                }
+                if (is_favorite) {
+                    imgui.PopStyleColor();
                 }
                 if (imgui.IsItemHovered()) {
                     if (game.install_dir.empty()) {
@@ -558,6 +575,15 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
                         auto& steam_state = GetSteamState();
                         steam_state.details_steam_game = game;
                         steam_state.show_details_modal = true;
+                    }
+                    if (display_commander::steam_favorites::IsSteamGameFavorite(game.app_id)) {
+                        if (imgui.MenuItem("Remove from Favorites")) {
+                            display_commander::steam_favorites::RemoveSteamGameFromFavorites(game.app_id);
+                        }
+                    } else {
+                        if (imgui.MenuItem("Add to Favorites")) {
+                            display_commander::steam_favorites::AddSteamGameToFavorites(game.app_id);
+                        }
                     }
                     if (imgui.MenuItem("Hide Game")) {
                         display_commander::steam_hidden_games::AddSteamGameToHidden(game.app_id);

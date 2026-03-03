@@ -7,6 +7,7 @@
 #include <cwchar>
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include "../utils.hpp"
@@ -427,6 +428,117 @@ static NvidiaProfileSearchResult GetProfileDetailsForCurrentExe() {
     return result;
 }
 
+// Builds list of all driver settings with current profile value and driver default. Used by GetDriverSettingsWithProfileValues().
+// Also appends settings that are in the profile but not in the driver's recognized list (known_to_driver = false).
+static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesImpl() {
+    std::vector<ImportantProfileSetting> out;
+    std::vector<DriverAvailableSetting> driverList = GetDriverAvailableSettings();
+    if (driverList.empty()) {
+        return out;
+    }
+    std::set<std::uint32_t> driverIds;
+    for (const DriverAvailableSetting& drv : driverList) {
+        driverIds.insert(drv.setting_id);
+    }
+
+    NvDRSSessionHandle hSession = nullptr;
+    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    if (st != NVAPI_OK) {
+        return out;
+    }
+    st = NvAPI_DRS_LoadSettings(hSession);
+    if (st != NVAPI_OK) {
+        NvAPI_DRS_DestroySession(hSession);
+        return out;
+    }
+    NvDRSProfileHandle hProfile = nullptr;
+    NVDRS_APPLICATION app = {0};
+    const bool hasProfile = FindApplicationByPathForCurrentExe(hSession, &hProfile, &app);
+
+    NVDRS_SETTING nvSetting;
+    NVDRS_SETTING_VALUES vals;
+    constexpr NvU32 kMaxVal = NVAPI_SETTING_MAX_VALUES;
+    for (const DriverAvailableSetting& drv : driverList) {
+        ImportantProfileSetting s;
+        s.setting_id = drv.setting_id;
+        s.label = drv.name;
+        s.default_value = 0;
+        s.is_bit_field = (drv.setting_id == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID);
+        s.known_to_driver = true;
+
+        memset(&vals, 0, sizeof(vals));
+        vals.version = NVDRS_SETTING_VALUES_VER;
+        NvU32 maxNum = kMaxVal;
+        if (NvAPI_DRS_EnumAvailableSettingValues(drv.setting_id, &maxNum, &vals) == NVAPI_OK
+            && vals.settingType == NVDRS_DWORD_TYPE) {
+            s.default_value = vals.u32DefaultValue;
+        }
+
+        if (hasProfile && hProfile != nullptr) {
+            memset(&nvSetting, 0, sizeof(nvSetting));
+            nvSetting.version = NVDRS_SETTING_VER;
+            if (NvAPI_DRS_GetSetting(hSession, hProfile, drv.setting_id, &nvSetting) == NVAPI_OK
+                && nvSetting.settingType == NVDRS_DWORD_TYPE) {
+                s.value_id = nvSetting.u32CurrentValue;
+                s.value = FormatImportantValue(drv.setting_id, nvSetting.u32CurrentValue);
+            } else {
+                s.value = "Not set";
+                s.value_id = 0;
+            }
+        } else {
+            s.value = "Not set";
+            s.value_id = 0;
+        }
+        out.push_back(std::move(s));
+    }
+
+    // Append settings that are in the profile but not in the driver's recognized list (unknown keys with values).
+    if (hasProfile && hProfile != nullptr) {
+        constexpr NvU32 kBatchSize = 64;
+        std::vector<NVDRS_SETTING> batch(kBatchSize);
+        for (NvU32 startIndex = 0;;) {
+            for (auto& b : batch) {
+                memset(&b, 0, sizeof(b));
+                b.version = NVDRS_SETTING_VER;
+            }
+            NvU32 count = kBatchSize;
+            if (NvAPI_DRS_EnumSettings(hSession, hProfile, startIndex, &count, batch.data()) != NVAPI_OK) {
+                break;
+            }
+            if (count == 0) {
+                break;
+            }
+            for (NvU32 i = 0; i < count; ++i) {
+                const NVDRS_SETTING& ps = batch[i];
+                if (driverIds.count(static_cast<std::uint32_t>(ps.settingId)) != 0) {
+                    continue;
+                }
+                ImportantProfileSetting s;
+                s.setting_id = static_cast<std::uint32_t>(ps.settingId);
+                s.label = WideToUtf8(reinterpret_cast<const wchar_t*>(ps.settingName));
+                if (s.label.empty()) {
+                    std::ostringstream o;
+                    o << "0x" << std::hex << ps.settingId;
+                    s.label = o.str();
+                }
+                s.value = FormatSettingValue(ps, WideToUtf8);
+                s.value_id = (ps.settingType == NVDRS_DWORD_TYPE) ? static_cast<std::uint32_t>(ps.u32CurrentValue) : 0;
+                s.default_value = 0;
+                s.is_bit_field = false;
+                s.known_to_driver = false;
+                out.push_back(std::move(s));
+            }
+            startIndex += count;
+            if (count < kBatchSize) {
+                break;
+            }
+        }
+    }
+
+    NvAPI_DRS_DestroySession(hSession);
+    return out;
+}
+
 }  // namespace
 
 // Fills fullPathBuf with current process exe path (normalized). Returns false if exe path unavailable.
@@ -668,6 +780,18 @@ std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& filePat
         return {false, "Write error while dumping to " + filePath};
     }
     return {true, ""};
+}
+
+std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValues() {
+    return GetDriverSettingsWithProfileValuesImpl();
+}
+
+std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t settingId) {
+    std::wstring path = GetCurrentProcessPathW();
+    if (path.empty()) {
+        return {false, "GetModuleFileName failed."};
+    }
+    return SetOrDeleteProfileSettingForExe(path, settingId, true, 0);
 }
 
 // Setting name for NVPI custom setting (not in NvApiDriverSettings.h). Required when creating the setting in a profile.

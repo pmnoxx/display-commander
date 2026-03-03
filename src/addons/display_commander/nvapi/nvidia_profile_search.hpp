@@ -16,6 +16,7 @@ struct ImportantProfileSetting {
     std::uint32_t value_id = 0;     // Current or default raw DWORD value
     std::uint32_t default_value = 0; // NVIDIA default (for reset button)
     bool is_bit_field = false;      // If true, value_id is a bitmask; UI shows checkboxes per flag.
+    bool known_to_driver = true;    // If false, setting is in profile but not in driver's recognized list (show key + value, Delete only).
 };
 
 // Per-profile application entry data (one row in "Matching profile(s)" list).
@@ -120,5 +121,15 @@ std::vector<DriverAvailableSetting> GetDriverAvailableSettings();
 // filePath: full path for the output file (e.g. addon dir + "nvidia_driver_settings_dump.txt").
 // Returns (true, "") on success; (false, error_message) on failure.
 std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& filePath);
+
+// Returns all driver-recognized settings with current profile value (or "Not set") and driver default.
+// Uses the same list as GetDriverAvailableSettings(); for each setting, reads value from the first
+// profile matching the current exe (if any) and default from EnumAvailableSettingValues.
+// Use for "All driver settings" UI with edit capability. Requires a DRS session internally.
+std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValues();
+
+// Removes a setting from the profile for the current exe (reset to driver default).
+// Returns (true, "") on success; (false, error_message) on failure. Invalidates profile cache on success.
+std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t settingId);
 
 }  // namespace display_commander::nvapi

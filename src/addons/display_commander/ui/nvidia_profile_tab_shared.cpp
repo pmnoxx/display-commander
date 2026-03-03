@@ -30,6 +30,9 @@ static std::string s_dumpDriverSettingsResult;
 static std::uint32_t s_lastFailedSettingId = 0;
 static std::uint32_t s_lastFailedSettingValue = 0;
 static std::atomic<bool> s_requestProfileRefreshAfterAdmin{false};
+static std::vector<nvapi::ImportantProfileSetting> s_allDriverSettingsCache;
+static bool s_allDriverSettingsCacheValid = false;
+static bool s_showOnlySetDriverSettings = true;  // default on: show only settings that have a value set in the profile
 
 static DWORD WINAPI WaitForAdminProcessThenRequestRefresh(LPVOID param) {
     HANDLE hProcess = static_cast<HANDLE>(param);
@@ -49,11 +52,13 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
     if (s_requestProfileRefreshAfterAdmin.exchange(false)) {
         s_nvidiaProfileSetError.clear();
         s_lastFailedSettingId = 0;
+        s_allDriverSettingsCacheValid = false;
         nvapi::InvalidateProfileSearchCache();
     }
     imgui.Text("NVIDIA Inspector profile search");
     imgui.SameLine();
     if (imgui.Button("Refresh")) {
+        s_allDriverSettingsCacheValid = false;
         nvapi::InvalidateProfileSearchCache();
         s_nvidiaProfileSetError.clear();
         s_nvidiaProfileDeleteError.clear();
@@ -456,6 +461,152 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     }
                     imgui.EndTable();
                 }
+            }
+            imgui.EndChild();
+        }
+    }
+
+    imgui.Spacing();
+    if (imgui.CollapsingHeader("All driver settings (editable)")) {
+        imgui.TextColored(TEXT_DIMMED,
+                          "Every setting recognized by the current driver. Same list as the dump file. Set value or reset to default.");
+        if (imgui.Checkbox("Show only settings with values set", &s_showOnlySetDriverSettings)) { }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("When on, only settings that have a value in this profile are shown. Turn off to see all driver settings.");
+        }
+        if (!s_allDriverSettingsCacheValid) {
+            s_allDriverSettingsCache = nvapi::GetDriverSettingsWithProfileValues();
+            s_allDriverSettingsCacheValid = true;
+        }
+        if (imgui.BeginChild("NvidiaProfileAllDriverSettingsTable", ImVec2(-1.f, 400.f), true)) {
+            const int tableFlagsAll = TableFlags_BordersOuter | TableFlags_BordersH | TableFlags_SizingStretchProp
+                | TableFlags_ScrollY;
+            if (imgui.BeginTable("NvidiaProfileAllDriverSettings", 3, tableFlagsAll)) {
+                imgui.TableSetupColumn("Setting", TableColumnFlags_WidthStretch, 0.4f);
+                imgui.TableSetupColumn("Value", TableColumnFlags_WidthStretch, 0.45f);
+                imgui.TableSetupColumn("", TableColumnFlags_WidthFixed, 120.f);
+                imgui.TableSetupScrollFreeze(0, 1);
+                imgui.TableHeadersRow();
+                for (size_t idx = 0; idx < s_allDriverSettingsCache.size(); ++idx) {
+                    nvapi::ImportantProfileSetting& s = s_allDriverSettingsCache[idx];
+                    if (s_showOnlySetDriverSettings && s.value == "Not set") {
+                        continue;
+                    }
+                    imgui.TableNextRow();
+                    imgui.TableSetColumnIndex(0);
+                    imgui.TextUnformatted(s.label.c_str());
+                    if (imgui.IsItemHovered() && s.setting_id != 0) {
+                        char keyBuf[24];
+                        (void)snprintf(keyBuf, sizeof(keyBuf), "Key: 0x%08X", static_cast<unsigned>(s.setting_id));
+                        imgui.SetTooltip("%s", keyBuf);
+                    }
+                    imgui.TableSetColumnIndex(1);
+                    if (!s.known_to_driver) {
+                        imgui.TextUnformatted(s.value.c_str());
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("In profile but not in driver's recognized list. Edit in NVIDIA Profile Inspector or Delete to remove.");
+                        }
+                    } else if (s.is_bit_field && s.setting_id == nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+                        std::vector<std::pair<std::uint32_t, std::string>> flags =
+                            nvapi::GetSmoothMotionAllowedApisFlags();
+                        std::uint32_t cur = s.value_id;
+                        for (size_t fi = 0; fi < flags.size(); ++fi) {
+                            const auto& fl = flags[fi];
+                            bool checked = (cur & fl.first) != 0;
+                            imgui.PushID(static_cast<int>(fl.first + (s.setting_id << 16)));
+                            std::string cbLabel = fl.second + "##all_" + std::to_string(idx) + "_"
+                                + std::to_string(static_cast<unsigned>(fl.first));
+                            if (imgui.Checkbox(cbLabel.c_str(), &checked)) {
+                                std::uint32_t newVal = (cur & ~fl.first) | (checked ? fl.first : 0);
+                                auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, newVal);
+                                if (ok) {
+                                    s_nvidiaProfileSetError.clear();
+                                    s_allDriverSettingsCacheValid = false;
+                                    nvapi::InvalidateProfileSearchCache();
+                                } else {
+                                    s_nvidiaProfileSetError = err;
+                                    if (IsPrivilegeError(err)) {
+                                        s_lastFailedSettingId = s.setting_id;
+                                        s_lastFailedSettingValue = newVal;
+                                    }
+                                }
+                            }
+                            imgui.PopID();
+                            if (fi + 1 < flags.size()) imgui.SameLine();
+                        }
+                    } else {
+                        std::vector<std::pair<std::uint32_t, std::string>> opts =
+                            nvapi::GetSettingAvailableValues(s.setting_id);
+                        if (!opts.empty()) {
+                            ImVec2 avail = imgui.GetContentRegionAvail();
+                            imgui.SetNextItemWidth(avail.x - 100.f);
+                            char comboBuf[64];
+                            (void)snprintf(comboBuf, sizeof(comboBuf), "##AllDriver_%zu", idx);
+                            if (imgui.BeginCombo(comboBuf, s.value.c_str(), 0)) {
+                                for (const auto& opt : opts) {
+                                    const bool selected = (opt.first == s.value_id);
+                                    if (imgui.Selectable(opt.second.c_str(), selected)) {
+                                        auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, opt.first);
+                                        if (ok) {
+                                            s_nvidiaProfileSetError.clear();
+                                            s_allDriverSettingsCacheValid = false;
+                                            nvapi::InvalidateProfileSearchCache();
+                                        } else {
+                                            s_nvidiaProfileSetError = err;
+                                            if (IsPrivilegeError(err)) {
+                                                s_lastFailedSettingId = s.setting_id;
+                                                s_lastFailedSettingValue = opt.first;
+                                            }
+                                        }
+                                    }
+                                    if (selected) imgui.SetItemDefaultFocus();
+                                }
+                                imgui.EndCombo();
+                            }
+                        } else {
+                            imgui.TextUnformatted(s.value.c_str());
+                        }
+                    }
+                    imgui.TableSetColumnIndex(2);
+                    imgui.PushID(static_cast<int>(idx + (s.setting_id << 16)));
+                    if (s.known_to_driver) {
+                        const bool atDefault = (s.value_id == s.default_value);
+                        if (atDefault) imgui.BeginDisabled();
+                        if (imgui.SmallButton("Default")) {
+                            auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, s.default_value);
+                            if (ok) {
+                                s_nvidiaProfileSetError.clear();
+                                s_allDriverSettingsCacheValid = false;
+                                nvapi::InvalidateProfileSearchCache();
+                            } else {
+                                s_nvidiaProfileSetError = err;
+                                if (IsPrivilegeError(err)) {
+                                    s_lastFailedSettingId = s.setting_id;
+                                    s_lastFailedSettingValue = s.default_value;
+                                }
+                            }
+                        }
+                        if (atDefault) imgui.EndDisabled();
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("Set to driver default.");
+                        }
+                        imgui.SameLine();
+                    }
+                    if (imgui.SmallButton("Delete")) {
+                        auto [ok, err] = nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
+                        if (ok) {
+                            s_nvidiaProfileSetError.clear();
+                            s_allDriverSettingsCacheValid = false;
+                        } else {
+                            s_nvidiaProfileSetError = err;
+                        }
+                    }
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip("Remove from profile (use driver default).");
+                    }
+                    imgui.PopID();
+                }
+                imgui.EndTable();
             }
             imgui.EndChild();
         }

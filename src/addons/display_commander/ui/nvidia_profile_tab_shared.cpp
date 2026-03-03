@@ -255,6 +255,11 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     imgui.TableNextRow();
                     imgui.TableSetColumnIndex(0);
                     imgui.TextUnformatted(s.label.c_str());
+                    if (imgui.IsItemHovered() && s.setting_id != 0) {
+                        char keyBuf[24];
+                        (void)snprintf(keyBuf, sizeof(keyBuf), "Key: 0x%08X", static_cast<unsigned>(s.setting_id));
+                        imgui.SetTooltip("%s", keyBuf);
+                    }
                     imgui.TableSetColumnIndex(1);
                     if (s.setting_id != 0) {
                         if (s.is_bit_field && s.setting_id == nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
@@ -419,6 +424,11 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         imgui.TableNextRow();
                         imgui.TableSetColumnIndex(0);
                         imgui.TextUnformatted(s.label.c_str());
+                        if (imgui.IsItemHovered() && s.setting_id != 0) {
+                            char keyBuf[24];
+                            (void)snprintf(keyBuf, sizeof(keyBuf), "Key: 0x%08X", static_cast<unsigned>(s.setting_id));
+                            imgui.SetTooltip("%s", keyBuf);
+                        }
                         imgui.TableSetColumnIndex(1);
                         imgui.TextUnformatted(s.value.c_str());
                     }

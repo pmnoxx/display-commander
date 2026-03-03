@@ -279,6 +279,7 @@ static void ReadAllSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hPro
         for (NvU32 i = 0; i < count; ++i) {
             const NVDRS_SETTING& s = batch[i];
             ImportantProfileSetting entry;
+            entry.setting_id = static_cast<std::uint32_t>(s.settingId);
             entry.label = WideToUtf8(reinterpret_cast<const wchar_t*>(s.settingName));
             if (entry.label.empty()) {
                 std::ostringstream o;
@@ -286,6 +287,9 @@ static void ReadAllSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hPro
                 entry.label = o.str();
             }
             entry.value = FormatSettingValue(s, WideToUtf8);
+            if (s.settingType == NVDRS_DWORD_TYPE) {
+                entry.value_id = static_cast<std::uint32_t>(s.u32CurrentValue);
+            }
             out.push_back(std::move(entry));
         }
         startIndex += count;

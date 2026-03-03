@@ -3,12 +3,14 @@
 ---
 
 ## v0.12.258 (2026-03-03)
+- **Reflex mode: single "Inject Reflex" checkbox** - When the FPS limiter mode is set to Reflex, the "Inject Reflex" checkbox was shown twice (next to the Reflex combo and again under PCL stats). It is now shown only once: next to the Reflex combo when PCL stats reporting is allowed, or as a standalone checkbox when PCL stats is not allowed.
+
+- **NVIDIA Profile tab: setting key in tooltip** - Hovering over a setting name in the "Important profile settings" or "All settings in profile" table now shows a tooltip with the driver setting key (e.g. `Key: 0x101AE763`), so users can correlate with NVIDIA Profile Inspector or documentation. Details: `nvidia_profile_tab_shared.cpp` (tooltip on Setting column), `nvidia_profile_search.cpp` (ReadAllSettings now fills `setting_id` and `value_id` for "All settings" rows).
 
 (Unreleased.)
 
 ## v0.12.257 (2026-03-03)
 - **DXGI VSync override** - For DXGI (D3D10/11/12) games, the Main tab "VSync & Tearing" section now shows a single **VSync** dropdown instead of the two "Force VSync ON" / "Force VSync OFF" checkboxes. Options: No override, Force ON, FORCED 1/2, FORCED 1/3, FORCED 1/4 (NO VRR), FORCED OFF. The chosen value is applied at **Present** time (runtime, no game restart). Vulkan/OpenGL keep the existing two checkboxes (applied at swap chain creation).
-- **Reflex mode: single "Inject Reflex" checkbox** - When the FPS limiter mode is set to Reflex, the "Inject Reflex" checkbox was shown twice (next to the Reflex combo and again under PCL stats). It is now shown only once: next to the Reflex combo when PCL stats reporting is allowed, or as a standalone checkbox when PCL stats is not allowed.
 
 ## v0.12.256 (2026-03-03)
 - **Main tab: Native FPS checkbox disabled without native Reflex** - The "Native FPS" overlay checkbox is now grayed out (BeginDisabled) when the game does not have native Reflex, since native FPS is derived from native Reflex sleep calls. The tooltip when disabled explains that a game with native Reflex is required.

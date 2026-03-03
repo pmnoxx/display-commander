@@ -2,8 +2,13 @@
 
 ---
 
+## v0.12.233 (unreleased)
+
+- **Deadlock fix on startup** - Fixed a deadlock that could occur during addon startup; initialization order and locking are adjusted so startup completes without hanging.
+
 ## v0.12.232 (unreleased)
 
+- **Launcher: Win32 Jump List for recently launched games** - When running the standalone Display Commander Launcher exe, the taskbar Jump List (right-click the taskbar icon) shows a "Recently launched" category. Items from: (1) Steam games launched from the launcher (steam_launch_history), (2) games in the game launcher registry (last run with Display Commander). Up to 16 items, sorted by most recent. Uses SetCurrentProcessExplicitAppUserModelID so the custom list is shown. Steam items use launcher exe + `--steam-run <appid>` (IShellLink does not accept steam:// URLs); registry items use game exe path + arguments. Clicking a Jump List item launches the game; for Steam the exe handles `--steam-run` and exits after starting the game.
 - **Shared DXGI factory: defer until process attach** - `GetSharedDXGIFactory()` no longer creates the shared DXGI factory until `g_process_attached` is true. This avoids calling `CreateDXGIFactory1` (and getting DXGI_ERROR_INVALID_CALL / 0x887a0001) during early init before process attach has completed. Callers (display cache, resolution helpers, VRAM info) already handle a null factory and skip DXGI work.
 - **Crash fix: shared DXGI factory** - The shared DXGI factory (used for VRAM info, display enumeration, and resolution helpers) now uses `CreateDXGIFactory1_Direct`, which bypasses the CreateDXGIFactory1 detour and calls the original API. This avoids going through the redirect-to-CreateDXGIFactory2 path and prevents crashes that could occur when the addon created the shared factory via the hooked path.
 

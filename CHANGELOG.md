@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.256 (2026-03-03)
+- **Main tab: Native FPS checkbox disabled without native Reflex** - The "Native FPS" overlay checkbox is now grayed out (BeginDisabled) when the game does not have native Reflex, since native FPS is derived from native Reflex sleep calls. The tooltip when disabled explains that a game with native Reflex is required.
+- **Main tab: DLSS/NGX overlay checkboxes disabled until game uses DLSS/NGX** - The DLSS/NGX overlay block (FG Mode, DLSS Res, DLSS Status, DLSS Quality Preset, DLSS Render Preset) is now grayed out (BeginDisabled) until the addon has seen the game use DLSS/NGX (either a DLSS feature was active at least once or a DLSS DLL is loaded). Avoids enabling overlay options that would show no data. The FG Mode tooltip when disabled explains that a game that uses DLSS/NGX is required.
+
 ## v0.12.255 (2026-03-03)
 - **Main tab: Flip Status checkbox disabled when PresentMon off** - The "Flip Status" overlay checkbox is now grayed out (BeginDisabled) when PresentMon tracing is not enabled, since flip mode is shown from PresentMon data. The tooltip when disabled explains that PresentMon must be enabled in the Advanced tab.
 

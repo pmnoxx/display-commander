@@ -6,6 +6,7 @@
 #include "globals.hpp"
 #include "hdr_upgrade/hdr_upgrade.hpp"
 #include "hooks/api_hooks.hpp"
+#include "hooks/d3d11/d3d11_device_hooks.hpp"
 #include "hooks/d3d9/d3d9_device_vtable_logging.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
@@ -268,6 +269,28 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
         LogInfo("Vulkan API detected, not supported yet");
     } else {
         LogError("Unsupported API: %d", api);
+    }
+}
+
+void hookToD3D11Device(reshade::api::swapchain* swapchain) {
+    if (true) {
+        // suppress for now due to crashes
+        return;
+    }
+    if (swapchain == nullptr) {
+        return;
+    }
+    reshade::api::device* const device = swapchain->get_device();
+    if (device == nullptr || device->get_api() != reshade::api::device_api::d3d11) {
+        return;
+    }
+    IUnknown* const device_native = reinterpret_cast<IUnknown*>(device->get_native());
+    if (device_native == nullptr) {
+        return;
+    }
+    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
+    if (SUCCEEDED(device_native->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
+        display_commanderhooks::d3d11::HookD3D11Device(d3d11_device.Get());
     }
 }
 
@@ -1788,11 +1811,12 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
     } else if (dx_dx11) {
-        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
+        IUnknown* swapchain_native = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
+        if (swapchain_native != nullptr && SUCCEEDED(swapchain_native->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
         }
+        hookToD3D11Device(swapchain);
     } else if (dx_dx10) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};

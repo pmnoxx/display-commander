@@ -39,6 +39,7 @@
 #include "utils/dc_service_status.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
+#include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
 #include "utils/process_window_enumerator.hpp"
@@ -2178,14 +2179,14 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         return ProcessAttachEarlyResult::RefuseLoad;
     }
 
-    // Refuse to load in Unity crash handler (helper process, not the game)
+    // Don't load DC into helper/crash-handler processes (e.g. UnityCrashHandler, PlatformProcess.exe)
     {
         WCHAR exe_path[MAX_PATH] = {};
         if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) > 0) {
             const wchar_t* last_slash = wcsrchr(exe_path, L'\\');
             const wchar_t* exe_name = (last_slash != nullptr) ? (last_slash + 1) : exe_path;
-            if (_wcsicmp(exe_name, L"UnityCrashHandler64.exe") == 0) {
-                OutputDebugStringA("[DisplayCommander] Refusing to load in UnityCrashHandler64.exe.\n");
+            if (is_helper_or_crash_handler_exe(exe_name)) {
+                OutputDebugStringA("[DisplayCommander] Refusing to load in helper/crash-handler process.\n");
                 return ProcessAttachEarlyResult::RefuseLoad;
             }
         }

@@ -4418,17 +4418,16 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(display_
                 imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw events (one per Present call):");
                 {
                     presentmon::PresentMonPerDrawStats per_draw;
-                    presentmon::g_presentMonManager.GetPerDrawStats(per_draw,
-                                                                   reinterpret_cast<uint64_t>(game_hwnd));
+                    presentmon::g_presentMonManager.GetPerDrawStats(per_draw, reinterpret_cast<uint64_t>(game_hwnd));
                     if (per_draw.rate_global_per_sec > 0.0) {
-                        imgui.Text("Any surface: %llu  (rate: %.1f/s)", static_cast<unsigned long long>(per_draw.global_count),
-                                  per_draw.rate_global_per_sec);
+                        imgui.Text("Any surface: %llu  (rate: %.1f/s)",
+                                   static_cast<unsigned long long>(per_draw.global_count),
+                                   per_draw.rate_global_per_sec);
                     } else {
                         imgui.Text("Any surface: %llu", static_cast<unsigned long long>(per_draw.global_count));
                     }
                     if (per_draw.window_matched) {
-                        imgui.Text("This window: %llu",
-                                   static_cast<unsigned long long>(per_draw.count_for_window));
+                        imgui.Text("This window: %llu", static_cast<unsigned long long>(per_draw.count_for_window));
                     } else {
                         imgui.TextColored(ui::colors::TEXT_DIMMED,
                                           "This window: (no DxgKrnl Present_Info for this HWND)");
@@ -4668,203 +4667,128 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
     }
 }
 
-/// Draws PresentMon ON/OFF status line. When PresentMon is ON, also draws surface LUID,
-/// flip-from-surface, and surface tooltip when available (all APIs: DX9, DXGI, Vulkan, OpenGL).
+/// Draws a single "Flip: <mode>" line. When PresentMon is running and we have surface data, shows
+/// flip mode with a detailed tooltip. When PresentMon is off or not running, shows
+/// "Flip: (enable PresentMon if needed)" with the parenthetical clickable to enable PresentMon.
 static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
-        && presentmon::g_presentMonManager.IsRunning()) {
-        imgui.TextColored(ui::colors::TEXT_SUCCESS, "PresentMon: ON");
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("PresentMon ETW tracing is active and monitoring presentation events.");
-        }
+    const bool pm_enabled = settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue();
+    const bool pm_running = presentmon::g_presentMonManager.IsRunning();
+
+    if (pm_enabled && pm_running) {
         HWND game_hwnd = g_last_swapchain_hwnd.load();
+        const presentmon::PresentMonSurfaceCompatibilitySummary* found_surface = nullptr;
         if (game_hwnd != nullptr && IsWindow(game_hwnd)) {
             std::vector<presentmon::PresentMonSurfaceCompatibilitySummary> surfaces;
             presentmon::g_presentMonManager.GetRecentFlipCompatibilitySurfaces(surfaces, 3600000);
-            const presentmon::PresentMonSurfaceCompatibilitySummary* found_surface = nullptr;
             for (const auto& surface : surfaces) {
                 if (surface.hwnd == reinterpret_cast<uint64_t>(game_hwnd)) {
                     found_surface = &surface;
                     break;
                 }
             }
-            if (found_surface != nullptr) {
-                presentmon::PresentMonFlipMode determined_flip_mode = presentmon::PresentMonFlipMode::Composed;
-                if (found_surface->is_overlay_compatible
-                    && (found_surface->is_overlay_required || found_surface->no_overlapping_content)) {
-                    determined_flip_mode = presentmon::PresentMonFlipMode::Overlay;
-                } else if (found_surface->is_advanced_direct_flip_compatible
-                           || found_surface->is_direct_flip_compatible) {
-                    determined_flip_mode = presentmon::PresentMonFlipMode::IndependentFlip;
-                }
-                const char* flip_str = presentmon::PresentMonFlipModeToString(determined_flip_mode);
-                ImVec4 flip_color;
-                if (determined_flip_mode == presentmon::PresentMonFlipMode::Composed) {
-                    flip_color = ui::colors::FLIP_COMPOSED;
-                } else if (determined_flip_mode == presentmon::PresentMonFlipMode::Overlay
-                           || determined_flip_mode == presentmon::PresentMonFlipMode::IndependentFlip) {
-                    flip_color = ui::colors::FLIP_INDEPENDENT;
+        }
+        if (found_surface != nullptr) {
+            presentmon::PresentMonFlipMode determined_flip_mode = presentmon::PresentMonFlipMode::Composed;
+            if (found_surface->is_overlay_compatible
+                && (found_surface->is_overlay_required || found_surface->no_overlapping_content)) {
+                determined_flip_mode = presentmon::PresentMonFlipMode::Overlay;
+            } else if (found_surface->is_advanced_direct_flip_compatible || found_surface->is_direct_flip_compatible) {
+                determined_flip_mode = presentmon::PresentMonFlipMode::IndependentFlip;
+            }
+            const char* flip_str = presentmon::PresentMonFlipModeToString(determined_flip_mode);
+            ImVec4 flip_color;
+            if (determined_flip_mode == presentmon::PresentMonFlipMode::Composed) {
+                flip_color = ui::colors::FLIP_COMPOSED;
+            } else if (determined_flip_mode == presentmon::PresentMonFlipMode::Overlay
+                       || determined_flip_mode == presentmon::PresentMonFlipMode::IndependentFlip) {
+                flip_color = ui::colors::FLIP_INDEPENDENT;
+            } else {
+                flip_color = ui::colors::FLIP_UNKNOWN;
+            }
+            imgui.TextColored(flip_color, "Flip: %s", flip_str);
+            if (imgui.IsItemHovered()) {
+                imgui.BeginTooltip();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon Surface Information:");
+                imgui.Separator();
+                imgui.Text("Surface LUID: 0x%llX", found_surface->surface_luid);
+                imgui.Text("Surface Size: %ux%u", found_surface->surface_width, found_surface->surface_height);
+                if (found_surface->pixel_format != 0) imgui.Text("Pixel Format: 0x%X", found_surface->pixel_format);
+                if (found_surface->flags != 0) imgui.Text("Flags: 0x%X", found_surface->flags);
+                if (found_surface->color_space != 0) imgui.Text("Color Space: 0x%X", found_surface->color_space);
+                imgui.Separator();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Surface Delays:");
+                if (found_surface->last_update_time_ns > 0) {
+                    LONGLONG now_ns = utils::get_now_ns();
+                    LONGLONG age_ns = now_ns - static_cast<LONGLONG>(found_surface->last_update_time_ns);
+                    double age_ms = static_cast<double>(age_ns) / 1000000.0;
+                    if (age_ms < 1000.0) {
+                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
+                    } else {
+                        imgui.TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
+                    }
                 } else {
-                    flip_color = ui::colors::FLIP_UNKNOWN;
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "Last Update: Unknown");
                 }
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_LABEL, "Surface: 0x%llX", found_surface->surface_luid);
-                if (imgui.IsItemHovered()) {
-                    imgui.BeginTooltip();
-                    imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon Surface Information:");
-                    imgui.Separator();
-                    imgui.Text("Surface LUID: 0x%llX", found_surface->surface_luid);
-                    imgui.Text("Surface Size: %ux%u", found_surface->surface_width, found_surface->surface_height);
-                    if (found_surface->pixel_format != 0) {
-                        imgui.Text("Pixel Format: 0x%X", found_surface->pixel_format);
-                    }
-                    if (found_surface->flags != 0) {
-                        imgui.Text("Flags: 0x%X", found_surface->flags);
-                    }
-                    if (found_surface->color_space != 0) {
-                        imgui.Text("Color Space: 0x%X", found_surface->color_space);
-                    }
-                    imgui.Separator();
-                    imgui.TextColored(ui::colors::TEXT_LABEL, "Surface Delays:");
-                    if (found_surface->last_update_time_ns > 0) {
-                        LONGLONG now_ns = utils::get_now_ns();
-                        LONGLONG age_ns = now_ns - static_cast<LONGLONG>(found_surface->last_update_time_ns);
-                        double age_ms = static_cast<double>(age_ns) / 1000000.0;
-                        if (age_ms < 1000.0) {
-                            imgui.TextColored(ui::colors::TEXT_SUCCESS, "Last Update: %.1f ms ago", age_ms);
-                        } else {
-                            imgui.TextColored(ui::colors::TEXT_WARNING, "Last Update: %.1f s ago", age_ms / 1000.0);
-                        }
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "Last Update: Unknown");
-                    }
-                    if (found_surface->count > 0) {
-                        imgui.Text("Event Count: %llu", found_surface->count);
-                        if (found_surface->count > 1 && found_surface->last_update_time_ns > 0) {
-                            double avg_delay_ms = static_cast<double>(found_surface->last_update_time_ns) / 1000000.0
-                                                  / static_cast<double>(found_surface->count);
-                            imgui.TextColored(ui::colors::TEXT_DIMMED, "Avg Delay: ~%.2f ms", avg_delay_ms);
-                        }
-                    }
-                    imgui.Separator();
-                    imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw events (one per Present call):");
-                    {
-                        presentmon::PresentMonPerDrawStats per_draw;
-                        presentmon::g_presentMonManager.GetPerDrawStats(per_draw,
-                                                                       reinterpret_cast<uint64_t>(game_hwnd));
-                        if (per_draw.rate_global_per_sec > 0.0) {
-                            imgui.Text("Any surface: %llu  (rate: %.1f/s)", static_cast<unsigned long long>(per_draw.global_count),
-                                       per_draw.rate_global_per_sec);
-                        } else {
-                            imgui.Text("Any surface: %llu", static_cast<unsigned long long>(per_draw.global_count));
-                        }
-                        if (per_draw.window_matched) {
-                            imgui.Text("This window: %llu",
-                                       static_cast<unsigned long long>(per_draw.count_for_window));
-                        } else {
-                            imgui.TextColored(ui::colors::TEXT_DIMMED,
-                                              "This window: (no DxgKrnl Present_Info for this HWND)");
-                        }
-                    }
-                    imgui.Separator();
-                    imgui.TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
-                    if (found_surface->is_direct_flip_compatible) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Direct Flip Compatible");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Direct Flip Compatible");
-                    }
-                    if (found_surface->is_advanced_direct_flip_compatible) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Advanced Direct Flip Compatible");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED,
-                                          "  " ICON_FK_CANCEL " Advanced Direct Flip Compatible");
-                    }
-                    if (found_surface->is_overlay_compatible) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " Overlay Compatible");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " Overlay Compatible");
-                    }
-                    if (found_surface->is_overlay_required) {
-                        imgui.TextColored(ui::colors::TEXT_WARNING, "  " ICON_FK_WARNING " Overlay Required");
-                    }
-                    if (found_surface->no_overlapping_content) {
-                        imgui.TextColored(ui::colors::TEXT_SUCCESS, "  " ICON_FK_OK " No Overlapping Content");
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "  " ICON_FK_CANCEL " No Overlapping Content");
-                    }
-                    imgui.Separator();
-                    imgui.TextColored(ui::colors::TEXT_LABEL, "Flip State (from surface):");
-                    imgui.TextColored(flip_color, "Mode: %s", flip_str);
-                    imgui.EndTooltip();
+                if (found_surface->count > 0) {
+                    imgui.Text("Event Count: %llu", found_surface->count);
                 }
+                imgui.Separator();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw events:");
                 {
                     presentmon::PresentMonPerDrawStats per_draw;
-                    presentmon::g_presentMonManager.GetPerDrawStats(per_draw,
-                                                                   reinterpret_cast<uint64_t>(game_hwnd));
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
-                    imgui.SameLine();
-                    if (per_draw.window_matched) {
-                        if (per_draw.rate_global_per_sec > 0.0) {
-                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any) / %llu (win) @ %.1f/s",
-                                              static_cast<unsigned long long>(per_draw.global_count),
-                                              static_cast<unsigned long long>(per_draw.count_for_window),
-                                              per_draw.rate_global_per_sec);
-                        } else {
-                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any) / %llu (win)",
-                                              static_cast<unsigned long long>(per_draw.global_count),
-                                              static_cast<unsigned long long>(per_draw.count_for_window));
-                        }
+                    presentmon::g_presentMonManager.GetPerDrawStats(per_draw, reinterpret_cast<uint64_t>(game_hwnd));
+                    if (per_draw.rate_global_per_sec > 0.0) {
+                        imgui.Text("Any: %llu  This window: %llu  @ %.1f/s",
+                                   static_cast<unsigned long long>(per_draw.global_count),
+                                   static_cast<unsigned long long>(per_draw.count_for_window),
+                                   per_draw.rate_global_per_sec);
                     } else {
-                        if (per_draw.rate_global_per_sec > 0.0) {
-                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any) @ %.1f/s",
-                                              static_cast<unsigned long long>(per_draw.global_count),
-                                              per_draw.rate_global_per_sec);
-                        } else {
-                            imgui.TextColored(ui::colors::TEXT_LABEL, "Per-draw: %llu (any)",
-                                              static_cast<unsigned long long>(per_draw.global_count));
-                        }
+                        imgui.Text("Any: %llu  This window: %llu",
+                                   static_cast<unsigned long long>(per_draw.global_count),
+                                   static_cast<unsigned long long>(per_draw.count_for_window));
                     }
                 }
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
-                imgui.SameLine();
-                imgui.TextColored(flip_color, "Flip: %s", flip_str);
-            } else {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "Surface: nullptr");
+                imgui.Separator();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Flip Compatibility:");
+                imgui.TextColored(
+                    found_surface->is_direct_flip_compatible ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_DIMMED,
+                    "  Direct Flip: %s", found_surface->is_direct_flip_compatible ? "Yes" : "No");
+                imgui.TextColored(found_surface->is_advanced_direct_flip_compatible ? ui::colors::TEXT_SUCCESS
+                                                                                    : ui::colors::TEXT_DIMMED,
+                                  "  Advanced Direct Flip: %s",
+                                  found_surface->is_advanced_direct_flip_compatible ? "Yes" : "No");
+                imgui.TextColored(
+                    found_surface->is_overlay_compatible ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_DIMMED,
+                    "  Overlay: %s", found_surface->is_overlay_compatible ? "Yes" : "No");
+                imgui.Separator();
+                imgui.TextColored(ui::colors::TEXT_LABEL, "Flip State:");
+                imgui.TextColored(flip_color, "Mode: %s", flip_str);
+                imgui.EndTooltip();
             }
         } else {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, " | ");
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "HWND: nullptr");
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Flip: (waiting..., may require restart)");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Waiting for PresentMon events. Flip mode will appear once ETW data is available.");
+            }
         }
-    } else {
-        if (!settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon: OFF");
-        } else if (!presentmon::g_presentMonManager.IsRunning()) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon: ON, but not running");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.BeginTooltip();
-            imgui.TextColored(ui::colors::TEXT_LABEL, "PresentMon: OFF");
-            imgui.Separator();
-            imgui.Text("To enable PresentMon ETW tracing:");
-            imgui.BulletText("Go to the Advanced tab");
-            imgui.BulletText("Enable 'Enable PresentMon ETW Tracing'");
-            imgui.BulletText("PresentMon will start automatically");
-            imgui.Separator();
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "PresentMon provides detailed flip mode");
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "and surface compatibility information.");
-            imgui.EndTooltip();
-        }
+        return;
+    }
+
+    // PresentMon off or not running: show "Flip: (enable PresentMon if needed)" with clickable link
+    imgui.TextColored(ui::colors::TEXT_DIMMED, "Flip: ");
+    imgui.SameLine();
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::TEXT_LABEL);
+    if (imgui.Selectable("(enable PresentMon if needed)", false)) {
+        settings::g_advancedTabSettings.enable_presentmon_tracing.SetValue(true);
+        settings::g_advancedTabSettings.enable_presentmon_tracing.Save();
+        presentmon::CreateAndStartPresentMon();
+        LogInfo("PresentMon enabled from Main tab (Flip status line).");
+    }
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Click to enable PresentMon ETW tracing. Same as Advanced tab -> Enable PresentMon ETW Tracing.");
     }
 }
 

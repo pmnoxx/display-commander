@@ -3,6 +3,7 @@
 #include <string>
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
+#include "../nvapi/nvapi_init.hpp"
 #include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -26,6 +27,7 @@ static std::atomic<bool> g_process_exit_hooks_installed{false};
 
 // Log caller module (captured early in detour), mode/state data, caller frame (stack frame 1), and full stack trace
 static void LogExitCallerAndStackTrace(const char* exit_api_name, HMODULE caller_mod) {
+    nvapi::EnsureNvApiInitialized();
     if (caller_mod != nullptr) {
         wchar_t module_path[MAX_PATH] = {};
         if (GetModuleFileNameW(caller_mod, module_path, MAX_PATH) != 0) {

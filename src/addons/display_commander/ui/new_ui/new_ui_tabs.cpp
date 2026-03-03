@@ -5,19 +5,19 @@
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../ui/imgui_wrapper_reshade.hpp"
+#include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/logging.hpp"
 #include "../../widgets/remapping_widget/remapping_widget.hpp"
 #include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "addons_tab.hpp"
 #include "advanced_tab.hpp"
 #include "experimental_tab.hpp"
+#include "games_tab.hpp"
 #include "hotkeys_tab.hpp"
 #include "main_new_tab.hpp"
 #include "performance_tab.hpp"
 #include "swapchain_tab.hpp"
 #include "vulkan_tab.hpp"
-#include "games_tab.hpp"
-
 
 // Current section of the rendering UI (for crash/stuck reporting). Global namespace to match globals.hpp extern.
 std::atomic<const char*> g_rendering_ui_section{nullptr};
@@ -187,6 +187,9 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
 
 // Initialize the new UI system
 void InitializeNewUI() {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    // call guard
+
     LogInfo("Initializing new UI");
 
     // Ensure settings for main and advanced tabs are loaded at UI init time

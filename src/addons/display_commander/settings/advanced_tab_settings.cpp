@@ -79,7 +79,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
-      enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander"),
+      enable_presentmon_tracing("EnablePresentMonTracing_defoff", false, "DisplayCommander"),
       presentmon_provider_dxgkrnl("PresentMonProviderDxgKrnl", false, "DisplayCommander"),
       presentmon_provider_dxgi("PresentMonProviderDXGI", false, "DisplayCommander"),
       presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),

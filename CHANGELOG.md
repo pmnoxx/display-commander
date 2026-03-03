@@ -3,12 +3,14 @@
 ---
 
 ## v0.12.258 (2026-03-03)
+- **Driver settings enumeration and dump** - The addon can now query all setting IDs recognized by the current NVIDIA driver (same approach as Nvidia Profile Inspector Revamped). New API: `GetDriverAvailableSettings()` returns (setting ID, name) for every setting the driver supports; `DumpDriverSettingsToFile(path)` writes a text file with ID (hex), name, type, and allowed values per setting. In the NVIDIA Profile tab, a "Dump driver settings to file" button writes `nvidia_driver_settings_dump.txt` next to the addon DLL. Use this to see which settings are valid for your driver (e.g. to find new Smooth Motion or other options) or to compare driver versions. Details: `nvidia_profile_search.hpp` (DriverAvailableSetting, GetDriverAvailableSettings, DumpDriverSettingsToFile), `nvidia_profile_search.cpp` (NvAPI_DRS_EnumAvailableSettingIds, NvAPI_DRS_GetSettingNameFromId, dump loop), `nvidia_profile_tab_shared.cpp` (button and result message).
+
+- **Smooth Motion settings label (591 or below 4000 series)** - In the NVIDIA Profile tab, the two Smooth Motion–related settings ("Smooth Motion (AFR)" and "Smooth Motion - Allowed APIs") now show the suffix "(591 or below 4000 series)" so users know these options apply to driver 591 or pre–4000-series GPUs. Details: `nvidia_profile_search.cpp` (k_important_settings labels only; driver setting name unchanged).
+
 - **Reflex mode: single "Inject Reflex" checkbox** - When the FPS limiter mode is set to Reflex, the "Inject Reflex" checkbox was shown twice (next to the Reflex combo and again under PCL stats). It is now shown only once: next to the Reflex combo when PCL stats reporting is allowed, or as a standalone checkbox when PCL stats is not allowed.
 
 - **NVIDIA Profile tab: setting key in tooltip** - Hovering over a setting name in the "Important profile settings" or "All settings in profile" table now shows a tooltip with the driver setting key (e.g. `Key: 0x101AE763`), so users can correlate with NVIDIA Profile Inspector or documentation. Details: `nvidia_profile_tab_shared.cpp` (tooltip on Setting column), `nvidia_profile_search.cpp` (ReadAllSettings now fills `setting_id` and `value_id` for "All settings" rows).
 
-(Unreleased.)
-- **Smooth Motion settings label (591 or below 4000 series)** - In the NVIDIA Profile tab, the two Smooth Motion–related settings ("Smooth Motion (AFR)" and "Smooth Motion - Allowed APIs") now show the suffix "(591 or below 4000 series)" so users know these options apply to driver 591 or pre–4000-series GPUs. Details: `nvidia_profile_search.cpp` (k_important_settings labels only; driver setting name unchanged).
 
 ## v0.12.257 (2026-03-03)
 - **DXGI VSync override** - For DXGI (D3D10/11/12) games, the Main tab "VSync & Tearing" section now shows a single **VSync** dropdown instead of the two "Force VSync ON" / "Force VSync OFF" checkboxes. Options: No override, Force ON, FORCED 1/2, FORCED 1/3, FORCED 1/4 (NO VRR), FORCED OFF. The chosen value is applied at **Present** time (runtime, no game restart). Vulkan/OpenGL keep the existing two checkboxes (applied at swap chain creation).

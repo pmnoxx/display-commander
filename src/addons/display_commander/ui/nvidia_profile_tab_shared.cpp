@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include <filesystem>
+
 namespace display_commander {
 namespace ui {
 
@@ -24,6 +26,7 @@ using namespace wrapper_flags;
 static std::string s_nvidiaProfileCreateError;
 static std::string s_nvidiaProfileSetError;
 static std::string s_nvidiaProfileDeleteError;
+static std::string s_dumpDriverSettingsResult;
 static std::uint32_t s_lastFailedSettingId = 0;
 static std::uint32_t s_lastFailedSettingValue = 0;
 static std::atomic<bool> s_requestProfileRefreshAfterAdmin{false};
@@ -58,6 +61,25 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Re-scan driver profiles (e.g. after changing settings in NVIDIA Profile Inspector).");
+    }
+    imgui.SameLine();
+    if (imgui.Button("Dump driver settings to file")) {
+        std::string dir = nvapi::GetAddonModuleDirectory();
+        if (dir.empty()) {
+            s_dumpDriverSettingsResult = "Addon directory not found.";
+        } else {
+            std::filesystem::path path = std::filesystem::path(dir) / "nvidia_driver_settings_dump.txt";
+            auto [ok, err] = nvapi::DumpDriverSettingsToFile(path.string());
+            s_dumpDriverSettingsResult = ok ? ("Dumped to " + path.string()) : err;
+        }
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Enumerate all setting IDs recognized by the current NVIDIA driver and write them to a text file next to the addon DLL.");
+    }
+    if (!s_dumpDriverSettingsResult.empty()) {
+        imgui.SameLine();
+        imgui.TextColored(s_dumpDriverSettingsResult.substr(0, 5) == "Dumped" ? TEXT_DIMMED : TEXT_ERROR,
+                          "%s", s_dumpDriverSettingsResult.c_str());
     }
     imgui.TextColored(TEXT_DIMMED,
                       "Searches all NVIDIA driver profiles for one that includes the current game executable.");

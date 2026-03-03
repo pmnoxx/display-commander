@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cwchar>
+#include <fstream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -547,6 +548,126 @@ std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std
     }
     s_availableValuesCache[settingId] = list;
     return list;
+}
+
+// Helper for driver enumeration/dump: NvAPI_UnicodeString (UTF-16) to UTF-8. Used outside anonymous namespace.
+static std::string SettingNameToUtf8(const NvAPI_UnicodeString& name) {
+    const wchar_t* wsz = reinterpret_cast<const wchar_t*>(name);
+    if (!wsz || !wsz[0]) {
+        return {};
+    }
+    int len = ::WideCharToMultiByte(CP_UTF8, 0, wsz, -1, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) {
+        return {};
+    }
+    std::string out(static_cast<size_t>(len), '\0');
+    ::WideCharToMultiByte(CP_UTF8, 0, wsz, -1, &out[0], len, nullptr, nullptr);
+    if (!out.empty() && out.back() == '\0') {
+        out.pop_back();
+    }
+    return out;
+}
+
+std::vector<DriverAvailableSetting> GetDriverAvailableSettings() {
+    std::vector<DriverAvailableSetting> out;
+    constexpr NvU32 kMaxIds = 4096u;
+    std::vector<NvU32> ids(kMaxIds);
+    NvU32 count = kMaxIds;
+    NvAPI_Status st = NvAPI_DRS_EnumAvailableSettingIds(ids.data(), &count);
+    if (st == NVAPI_END_ENUMERATION) {
+        // Buffer too small; retry with returned count if reasonable.
+        if (count > 0u && count <= 65536u) {
+            ids.resize(count);
+            NvU32 c2 = count;
+            st = NvAPI_DRS_EnumAvailableSettingIds(ids.data(), &c2);
+            if (st == NVAPI_OK) {
+                count = c2;
+            } else {
+                return out;
+            }
+        } else {
+            return out;
+        }
+    } else if (st != NVAPI_OK) {
+        return out;
+    }
+    out.reserve(count);
+    NvAPI_UnicodeString nameBuf;
+    for (NvU32 i = 0; i < count; ++i) {
+        memset(&nameBuf, 0, sizeof(nameBuf));
+        if (NvAPI_DRS_GetSettingNameFromId(ids[i], &nameBuf) != NVAPI_OK) {
+            // Fallback: ID only (e.g. setting not found in this driver)
+            std::ostringstream o;
+            o << "0x" << std::hex << ids[i];
+            out.push_back({ids[i], o.str()});
+            continue;
+        }
+        std::string nameUtf8 = SettingNameToUtf8(nameBuf);
+        if (nameUtf8.empty()) {
+            std::ostringstream o;
+            o << "0x" << std::hex << ids[i];
+            nameUtf8 = o.str();
+        }
+        out.push_back({ids[i], std::move(nameUtf8)});
+    }
+    return out;
+}
+
+static const char* SettingTypeToString(NVDRS_SETTING_TYPE t) {
+    switch (t) {
+        case NVDRS_DWORD_TYPE: return "DWORD";
+        case NVDRS_BINARY_TYPE: return "BINARY";
+        case NVDRS_STRING_TYPE: return "STRING";
+        case NVDRS_WSTRING_TYPE: return "WSTRING";
+        default: return "?";
+    }
+}
+
+std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& filePath) {
+    std::vector<DriverAvailableSetting> settings = GetDriverAvailableSettings();
+    if (settings.empty()) {
+        return {false, "No driver settings enumerated (NVAPI not initialized or no NVIDIA GPU?)."};
+    }
+    std::ofstream f(filePath, std::ios::out | std::ios::trunc);
+    if (!f.is_open() || !f) {
+        return {false, "Could not open file for writing: " + filePath};
+    }
+    // Header
+    f << "# NVIDIA Driver Settings Dump - all setting IDs recognized by the current driver.\n";
+    f << "# Format: SettingID(hex)\tName\tType\tNumValues\tValue1(hex), Value2(hex), ...\n";
+    f << "# One line per setting. Names may contain spaces; fields separated by tab.\n";
+
+    NVDRS_SETTING_VALUES vals;
+    constexpr NvU32 kMaxVal = NVAPI_SETTING_MAX_VALUES;
+    for (const DriverAvailableSetting& s : settings) {
+        // Escape name: replace tab and newline so one line per setting
+        std::string nameEsc = s.name;
+        for (char& c : nameEsc) {
+            if (c == '\t') c = ' ';
+            if (c == '\r' || c == '\n') c = ' ';
+        }
+        f << "0x" << std::hex << s.setting_id << "\t" << nameEsc << "\t";
+
+        memset(&vals, 0, sizeof(vals));
+        vals.version = NVDRS_SETTING_VALUES_VER;
+        NvU32 maxNum = kMaxVal;
+        if (NvAPI_DRS_EnumAvailableSettingValues(s.setting_id, &maxNum, &vals) != NVAPI_OK) {
+            f << "?\t0\n";
+            continue;
+        }
+        f << SettingTypeToString(vals.settingType) << "\t" << std::dec << vals.numSettingValues << "\t";
+        if (vals.settingType == NVDRS_DWORD_TYPE && vals.numSettingValues > 0) {
+            for (NvU32 i = 0; i < vals.numSettingValues && i < kMaxVal; ++i) {
+                if (i != 0) f << ", ";
+                f << "0x" << std::hex << vals.settingValues[i].u32Value;
+            }
+        }
+        f << "\n";
+    }
+    if (!f) {
+        return {false, "Write error while dumping to " + filePath};
+    }
+    return {true, ""};
 }
 
 // Setting name for NVPI custom setting (not in NvApiDriverSettings.h). Required when creating the setting in a profile.

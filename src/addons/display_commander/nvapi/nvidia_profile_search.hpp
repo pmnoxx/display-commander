@@ -105,4 +105,20 @@ std::pair<bool, std::string> ClearDriverDlssPresetOverride();
 std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exeName, std::uint32_t settingId,
                                                             bool deleteSetting, std::uint32_t valueIfSet);
 
+// One setting recognized by the current driver (from NvAPI_DRS_EnumAvailableSettingIds + GetSettingNameFromId).
+// Use to show only settings valid for this driver version, or to dump the full list.
+struct DriverAvailableSetting {
+    std::uint32_t setting_id = 0;
+    std::string name;  // Official name from driver (UTF-8)
+};
+
+// Enumerates all setting IDs recognized by the current NVIDIA driver and their official names.
+// Does not require a DRS session. Empty on error (e.g. NVAPI not initialized, no NVIDIA GPU).
+std::vector<DriverAvailableSetting> GetDriverAvailableSettings();
+
+// Dumps all driver-recognized settings to a text file: one line per setting with ID (hex), name, type, and allowed values.
+// filePath: full path for the output file (e.g. addon dir + "nvidia_driver_settings_dump.txt").
+// Returns (true, "") on success; (false, error_message) on failure.
+std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& filePath);
+
 }  // namespace display_commander::nvapi

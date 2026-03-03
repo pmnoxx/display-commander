@@ -2,8 +2,9 @@
 
 ---
 
-## v0.12.238 (unreleased)
+## v0.12.238 (2026-03-02)
 
+- **PresentMon: stop other DC_ ETW sessions even when PIDs exist** - `StopAllDcEtwSessions` and `StopOtherDcEtwSessions` no longer skip DC_PresentMon_&lt;pid&gt; sessions whose process is still running. Only our own session (by PID) is skipped; all other DC_ sessions are stopped so they get cleaned up. Stopping an ETW session does not terminate the process.
 - **Fix: crash in DX11 when using SM** - Removed `FlushCommandQueueFromSwapchain` (D3D11 immediate context flush from swapchain); it could crash in DX11 when using ReShade/SM. Present path now relies on existing present/EnqueueGPUCompletion logic only.
 
 ## v0.12.236 (2026-03-02)

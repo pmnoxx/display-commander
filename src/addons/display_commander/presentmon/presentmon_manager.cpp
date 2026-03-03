@@ -978,11 +978,7 @@ void PresentMonManager::StopAllDcEtwSessions() {
                         static_cast<unsigned long>(our_pid), name.c_str());
                 continue;
             }
-            if (IsProcessRunning(session_pid)) {
-                LogInfo("[PresentMon] Skip live DC_ session at startup (pid %lu still running): %s",
-                        static_cast<unsigned long>(session_pid), name.c_str());
-                continue;
-            }
+            // Stop all other DC_ sessions so we can start clean (even if that PID is still running).
         }
         std::wstring wide_name = Widen(name);
         if (!wide_name.empty()) {
@@ -1018,17 +1014,16 @@ void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) 
             continue;
         }
 
-        if (IsProcessRunning(session_pid)) {
-            LogInfo("[PresentMon] Skip live DC_ session (pid %lu still running): %s",
-                    static_cast<unsigned long>(session_pid), name.c_str());
-            continue;
-        }
-
         std::wstring wide_name = Widen(name);
         if (!wide_name.empty()) {
             StopEtwSessionByName(wide_name.c_str());
-            LogInfo("PresentMon: Stopped orphaned DC_ ETW session %s (pid %lu not running)", name.c_str(),
-                    static_cast<unsigned long>(session_pid));
+            if (IsProcessRunning(session_pid)) {
+                LogInfo("PresentMon: Stopped other DC_ ETW session %s (pid %lu still running)", name.c_str(),
+                        static_cast<unsigned long>(session_pid));
+            } else {
+                LogInfo("PresentMon: Stopped orphaned DC_ ETW session %s (pid %lu not running)", name.c_str(),
+                        static_cast<unsigned long>(session_pid));
+            }
         }
     }
 }
@@ -1044,12 +1039,12 @@ void PresentMonManager::CleanupThread(PresentMonManager* manager) {
             Sleep(1000);
         }
 
-        // If we haven't seen any events for 10s, try to stop only *orphaned* other DC_ sessions
-        // (sessions whose owning process has exited). We must not stop another live process's session.
+        // If we haven't seen any events for 10s, stop other DC_ ETW sessions (orphaned or not).
+        // Stopping a session only ends the trace; it does not terminate the process.
         int64_t now_ns = static_cast<int64_t>(utils::get_now_ns());
         int64_t last_ns = static_cast<int64_t>(manager->m_last_event_time.load());
         if (last_ns > 0 && (now_ns - last_ns) >= k_no_events_interval_ns) {
-            LogInfo("[PresentMon] No events for 10s; checking other DC_ sessions for orphans (our session: %ls)",
+            LogInfo("[PresentMon] No events for 10s; stopping other DC_ ETW sessions (our session: %ls)",
                     manager->m_session_name);
             StopOtherDcEtwSessions(manager->m_session_name);
         }

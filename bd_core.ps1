@@ -75,11 +75,11 @@ if ($Experimental) {
 }
 Copy-Item "build\src\addons\display_commander\zzz_display_commander.addon64" "build\zzz_display_commander.addon64" -Force
 
-# Copy standalone exe to build root if it exists
-$exeSource = "build\src\addons\display_commander\DisplayCommander.exe"
+# Copy standalone Launcher exe to build root if it exists
+$exeSource = "build\src\addons\display_commander\Display Commander Launcher.exe"
 if (Test-Path $exeSource) {
-    Copy-Item $exeSource "build\DisplayCommander.exe" -Force
-    Write-Host "DisplayCommander.exe copied to build\" -ForegroundColor Cyan
+    Copy-Item $exeSource "build\Display Commander Launcher.exe" -Force
+    Write-Host "Display Commander Launcher.exe copied to build\" -ForegroundColor Cyan
 }
 
 # Copy PDB file if it exists (for debugging crash dumps)

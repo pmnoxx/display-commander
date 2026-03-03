@@ -1,5 +1,5 @@
 # Build script for Display Commander addon only
-# This script builds the zzz_display_commander.addon64 addon and DisplayCommander.exe standalone.
+# This script builds the zzz_display_commander.addon64 addon and Display Commander Launcher.exe standalone.
 
 param(
     [string]$BuildType = "RelWithDebInfo",

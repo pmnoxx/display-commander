@@ -135,11 +135,11 @@ jobs:
           if [ -n "$pdb_file" ]; then
             cp "$pdb_file" "artifacts-debug/zzz_display_commander_${{ matrix.pdb_suffix }}.pdb"
           fi
-          # Standalone .exe (64-bit only)
+          # Standalone Launcher .exe (64-bit only)
           if [ "${{ matrix.arch }}" = "x64" ]; then
-            exe_file=$(find build-debug -type f -name "DisplayCommander.exe" | head -1)
+            exe_file=$(find build-debug -type f -name "Display Commander Launcher.exe" | head -1)
             if [ -n "$exe_file" ]; then
-              cp "$exe_file" "artifacts-debug/DisplayCommander_x64.exe"
+              cp "$exe_file" "artifacts-debug/Display Commander Launcher_x64.exe"
             fi
           fi
           echo "artifact_dir=artifacts-debug" >> $GITHUB_OUTPUT
@@ -263,7 +263,7 @@ jobs:
           - \`zzz_display_commander.addon32\` - 32-bit addon
           - \`zzz_display_commander_x64.pdb\` - 64-bit symbols
           - \`zzz_display_commander_x86.pdb\` - 32-bit symbols
-          - \`DisplayCommander_x64.exe\` - 64-bit standalone settings UI (no ReShade)
+          - \`Display Commander Launcher_x64.exe\` - 64-bit standalone Launcher (Games + Settings, no ReShade)
 
           Place the PDB next to the addon (or in the same folder as the game) for symbol resolution in a debugger.
           EOF

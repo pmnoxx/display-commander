@@ -9,5 +9,5 @@ void RunStandaloneSettingsUI(HINSTANCE hInst);
 // current thread. Only used when building the .exe (DISPLAY_COMMANDER_BUILD_EXE); declare here for main_exe.cpp.
 void RunDisplayCommanderStandalone(HINSTANCE hInst);
 
-// Standalone .exe UI: Games tab only (used by DisplayCommander_x64.exe so the window shows only the Games tab).
+// Standalone Launcher .exe UI: Games + Settings (used by Display Commander Launcher / Display Commander Launcher_x64.exe).
 void RunStandaloneGamesOnlyUI(HINSTANCE hInst);

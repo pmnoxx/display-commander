@@ -1,0 +1,4 @@
+// Icon resource for Display Commander Launcher exe (Games + Settings window).
+// Application icon (Explorer, taskbar). ID 1 = default app icon.
+#pragma code_page(65001)
+1 ICON "launcher_icon.ico"

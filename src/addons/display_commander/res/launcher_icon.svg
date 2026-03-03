@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Display Commander Launcher: monitor/screen with play (launch) symbol -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded monitor frame -->
+  <rect x="2" y="4" width="28" height="20" rx="2" ry="2" fill="url(#bg)"/>
+  <!-- Screen area (slightly lighter) -->
+  <rect x="4" y="6" width="24" height="14" rx="1" ry="1" fill="#1e40af"/>
+  <!-- Play triangle (launch) centered -->
+  <path d="M14 10 L14 18 L22 14 Z" fill="#93c5fd"/>
+</svg>

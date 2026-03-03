@@ -63,6 +63,7 @@ static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 
 static bool CreateContextOpenGL(HWND hWnd);
 static void CleanupContextOpenGL(HWND hWnd);
+static void SaveLauncherWindowPosition(HWND hwnd);
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -464,6 +465,12 @@ static std::string RedactPathForDisplay(const std::string& pathUtf8) {
 static const char* const kReshadeUpdateUrlLatest = "https://reshade.me/downloads/ReShade_Setup_Addon.exe";
 
 static std::atomic<bool> s_reshadeUpdateInProgress{false};
+
+// Newest available version (ReShade from reshade.me, DC from GitHub releases/latest). Fetched once in background.
+static std::atomic<bool> s_latestVersionsFetchStarted{false};
+static std::atomic<bool> s_latestVersionsFetchDone{false};
+static std::atomic<std::string*> s_latestReShadeVersion{nullptr};
+static std::atomic<std::string*> s_latestDcVersion{nullptr};
 static std::string s_reshadeUpdateResult;
 static std::string s_gameDetailsReshadeResult;  // result of install action from Game Details popup (DC as proxy)
 
@@ -835,12 +842,39 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     ImGui::DestroyContext();
     CleanupContextOpenGL(hwnd);
     standalone_ui_settings::SetStandaloneUiHwnd(0);
+    SaveLauncherWindowPosition(hwnd);
     DestroyWindow(hwnd);
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
 }
 
+// Background worker: fetch newest ReShade (reshade.me) and Display Commander (GitHub latest) versions once.
+static void LatestVersionsFetchWorker() {
+    std::string reshade_ver;
+    std::string reshade_err;
+    if (display_commander::utils::version_check::FetchReShadeLatestFromReshadeMe(&reshade_ver, &reshade_err)) {
+        s_latestReShadeVersion.store(new std::string(reshade_ver), std::memory_order_release);
+    } else {
+        s_latestReShadeVersion.store(new std::string(), std::memory_order_release);
+    }
+    std::string dc_ver;
+    std::string dc_err;
+    if (display_commander::utils::version_check::FetchLatestStableReleaseVersion(&dc_ver, &dc_err)) {
+        s_latestDcVersion.store(new std::string(dc_ver), std::memory_order_release);
+    } else {
+        s_latestDcVersion.store(new std::string(), std::memory_order_release);
+    }
+    s_latestVersionsFetchDone.store(true, std::memory_order_release);
+}
+
 // Launcher Settings tab: font scale, ReShade global status, Display Commander global version.
 static void DrawLauncherSettingsTab() {
+    // Start one-time background fetch of newest available versions (ReShade, DC).
+    bool expected = false;
+    if (s_latestVersionsFetchStarted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+        std::thread t(LatestVersionsFetchWorker);
+        t.detach();
+    }
+
     float font_scale = 1.0f;
     display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigValue("Launcher", "FontScale",
                                                                                           font_scale);
@@ -864,12 +898,24 @@ static void DrawLauncherSettingsTab() {
     if (reshade_global.empty()) {
         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Not installed");
     } else {
-        ImGui::Text("Path: %s", reshade_global.string().c_str());
         if (reshade_ver.empty()) {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: (unknown)");
         } else {
             ImGui::Text("Version: %s", reshade_ver.c_str());
         }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", reshade_global.string().c_str());
+        }
+    }
+    if (s_latestVersionsFetchDone.load(std::memory_order_acquire)) {
+        std::string* latest = s_latestReShadeVersion.load(std::memory_order_acquire);
+        if (latest && !latest->empty()) {
+            ImGui::Text("Newest available: %s", latest->c_str());
+        } else {
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (unavailable)");
+        }
+    } else {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (checking...)");
     }
     bool reshade_updating = s_reshadeUpdateInProgress.load(std::memory_order_acquire);
     if (reshade_updating) {
@@ -917,14 +963,26 @@ static void DrawLauncherSettingsTab() {
 #else
         std::filesystem::path addon_path = dc_appdata / L"zzz_display_commander.addon32";
 #endif
-        ImGui::Text("Path: %s", dc_appdata.string().c_str());
         std::string dc_ver = GetFileVersionStringUtf8(addon_path.native());
         if (dc_ver.empty()) {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: not installed or not found");
         } else {
             ImGui::Text("Version: %s", dc_ver.c_str());
         }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", dc_appdata.string().c_str());
+        }
         ImGui::Text("This instance: %s", DISPLAY_COMMANDER_VERSION_STRING);
+    }
+    if (s_latestVersionsFetchDone.load(std::memory_order_acquire)) {
+        std::string* latest = s_latestDcVersion.load(std::memory_order_acquire);
+        if (latest && !latest->empty()) {
+            ImGui::Text("Newest available: %s", latest->c_str());
+        } else {
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (unavailable)");
+        }
+    } else {
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (checking...)");
     }
     if (ImGui::Button("Update##dc_global")) {
         display_commander::utils::version_check::CheckForUpdates();
@@ -932,6 +990,25 @@ static void DrawLauncherSettingsTab() {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Check for Display Commander updates (GitHub). Result in main app or next launch.");
     }
+}
+
+// Save Launcher (Games) window position/size to config. No-op if hwnd is not the Launcher window class.
+static void SaveLauncherWindowPosition(HWND hwnd) {
+    wchar_t buf[64] = {};
+    if (GetClassNameW(hwnd, buf, (int)std::size(buf)) == 0) return;
+    if (wcscmp(buf, L"DisplayCommanderGamesUI") != 0) return;
+    RECT r = {};
+    if (!GetWindowRect(hwnd, &r)) return;
+    int x = r.left;
+    int y = r.top;
+    int w = r.right - r.left;
+    int h = r.bottom - r.top;
+    auto& cfg = display_commander::config::DisplayCommanderConfigManager::GetInstance();
+    cfg.SetConfigValue("Launcher", "WindowX", x);
+    cfg.SetConfigValue("Launcher", "WindowY", y);
+    cfg.SetConfigValue("Launcher", "WindowWidth", w);
+    cfg.SetConfigValue("Launcher", "WindowHeight", h);
+    cfg.SaveConfig("Launcher window position");
 }
 
 void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
@@ -945,6 +1022,11 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     wc.lpfnWndProc = WndProc;
     wc.hInstance = (HINSTANCE)hInst;
     wc.lpszClassName = L"DisplayCommanderGamesUI";
+    // Use embedded app icon (resource ID 1) for window and taskbar (exe build only; DLL has no icon resource)
+#ifdef DISPLAY_COMMANDER_BUILD_EXE
+    wc.hIcon = LoadIcon((HINSTANCE)hInst, MAKEINTRESOURCE(1));
+    wc.hIconSm = LoadIcon((HINSTANCE)hInst, MAKEINTRESOURCE(1));
+#endif
     if (!RegisterClassExW(&wc)) return;
 
     std::string titleUtf8 = "Display Commander - Games v";
@@ -954,9 +1036,30 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     if (titleLen > 0)
         MultiByteToWideChar(CP_UTF8, 0, titleUtf8.c_str(), (int)titleUtf8.size() + 1, &titleW[0], titleLen);
 
+    // Restore Win32 window position/size from config (saved on previous close).
+    int launcher_x = 100;
+    int launcher_y = 100;
+    int launcher_w = 600;
+    int launcher_h = 800;
+    auto& launcher_cfg = display_commander::config::DisplayCommanderConfigManager::GetInstance();
+    const bool has_x = launcher_cfg.GetConfigValue("Launcher", "WindowX", launcher_x);
+    const bool has_y = launcher_cfg.GetConfigValue("Launcher", "WindowY", launcher_y);
+    const bool has_w = launcher_cfg.GetConfigValue("Launcher", "WindowWidth", launcher_w);
+    const bool has_h = launcher_cfg.GetConfigValue("Launcher", "WindowHeight", launcher_h);
+    if (!(has_x && has_y && has_w && has_h)) {
+        launcher_x = 100;
+        launcher_y = 100;
+        launcher_w = 600;
+        launcher_h = 800;
+    }
+    if (launcher_w < 400) launcher_w = 400;
+    if (launcher_h < 300) launcher_h = 300;
+    if (launcher_w > 4096) launcher_w = 4096;
+    if (launcher_h > 4096) launcher_h = 4096;
+
     HWND hwnd = standalone_ui_settings::CreateWindowW_Direct(
-        wc.lpszClassName, titleW.empty() ? L"Display Commander - Games" : titleW.c_str(), WS_OVERLAPPEDWINDOW, 100, 100,
-        600, 800, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
+        wc.lpszClassName, titleW.empty() ? L"Display Commander - Games" : titleW.c_str(), WS_OVERLAPPEDWINDOW,
+        launcher_x, launcher_y, launcher_w, launcher_h, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
     if (!hwnd) {
         UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return;
@@ -1046,6 +1149,7 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     ImGui::DestroyContext();
     CleanupContextOpenGL(hwnd);
     standalone_ui_settings::SetStandaloneUiHwnd(0);
+    SaveLauncherWindowPosition(hwnd);
     DestroyWindow(hwnd);
     UnregisterClassW(wc.lpszClassName, wc.hInstance);
 }

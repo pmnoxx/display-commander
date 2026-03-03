@@ -19,6 +19,7 @@
 #include "utils/file_sha256.hpp"
 #include "utils/game_launcher_registry.hpp"
 #include "utils/general_utils.hpp"
+#include "utils/helper_exe_filter.hpp"
 #include "utils/reshade_load_path.hpp"
 #include "utils/reshade_sha256_database.hpp"
 #include "utils/steam_library.hpp"
@@ -386,14 +387,11 @@ static std::wstring FindLargestExeInDir(const std::wstring& dir) {
     ULONGLONG best_size = 0;
     do {
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
-        const wchar_t* n = fd.cFileName;
-        if (_wcsicmp(n, L"unrealcefsubprocess.exe") == 0 || _wcsicmp(n, L"crashreportclient.exe") == 0
-            || _wcsicmp(n, L"unitycrashhandler64.exe") == 0 || _wcsicmp(n, L"unitycrashhandler32.exe") == 0)
-            continue;
+        if (is_helper_or_crash_handler_exe(fd.cFileName)) continue;
         ULONGLONG size = (ULONGLONG)fd.nFileSizeHigh << 32 | fd.nFileSizeLow;
         if (size > best_size) {
             best_size = size;
-            best_name = n;
+            best_name = fd.cFileName;
         }
     } while (FindNextFileW(h, &fd));
     FindClose(h);

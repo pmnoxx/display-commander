@@ -20,6 +20,7 @@
 #include "globals.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
 #include "version.hpp"
@@ -151,24 +152,6 @@ static bool read_delay_imports(const std::vector<char>& buf, DWORD delay_dir_rva
         if (doff + (DWORD)((const char*)desc - (buf.data() + doff)) > buf.size()) break;
     }
     return true;
-}
-
-// Return true if the exe filename looks like a helper/crash handler, not the main game.
-static bool is_helper_or_crash_handler_exe(const wchar_t* filename) {
-    if (!filename || !filename[0]) return true;
-    wchar_t lower[512];
-    size_t i = 0;
-    for (; i < 511 && filename[i]; ++i)
-        lower[i] = (wchar_t)(filename[i] >= L'A' && filename[i] <= L'Z' ? filename[i] - L'A' + L'a' : filename[i]);
-    lower[i] = L'\0';
-    const wchar_t* needles[] = {
-        L"unitycrashhandler", L"crashhandler", L"unityhelper",      L"unrealcefsubprocess",
-        L"reportcrash",       L"bugtrap",      L"exceptionhandler", L"launcher",
-    };
-    for (const wchar_t* n : needles) {
-        if (wcsstr(lower, n) != nullptr) return true;
-    }
-    return false;
 }
 
 // Find largest .exe in directory (by file size). Skips helper/crash-handler exes. Returns full path or empty on

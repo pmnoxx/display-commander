@@ -2,6 +2,14 @@
 
 ---
 
+## v0.12.247 (2026-03-03)
+
+- **Main tab: simplified Flip / PresentMon line** - The Main tab now shows a single "Flip: &lt;mode&gt;" line (Composed, Overlay, Independent Flip) when PresentMon is running; full surface and compatibility details remain in the tooltip. When PresentMon is off, the line shows "Flip: (enable PresentMon if needed)" and clicking the parenthetical enables PresentMon (same as Advanced tab). Specs added: `private_docs/specs/flip_state_main_tab.md`, `private_docs/specs/main_tab_spec.md`.
+
+## v0.12.246 (2026-03-03)
+
+- **Don't load DC into helper/crash-handler processes (bug fix)** - Display Commander now refuses to load into helper/crash-handler processes (e.g. UnityCrashHandler, PlatformProcess.exe), not just UnityCrashHandler64.exe, so the addon does not run in launcher subprocesses or crash reporters.
+
 ## v0.12.245 (2026-03-03)
 
 - **NVIDIA driver 595 / Hollow Knight** - Fixed the addon not working with NVIDIA driver 595 when playing Hollow Knight; the game should now run correctly with this driver. Details: Disabled **EnqueueGPUCompletion** in the present path (presentBefore). The call that enqueued GPU fence completion for latency/Reflex timing is no longer invoked there, avoiding compatibility issues. Perf measurement can still suppress it via Experimental → Performance; the present path simply no longer calls it by default.

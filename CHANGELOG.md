@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.254 (2026-03-03)
+- **Main tab: NVAPI stats subsection refactor** - The NVAPI stats overlay block (VRR Status, VRR Debug Mode, Refresh rate, Refresh rate time graph, Refresh rate time stats plus warning and Refresh poll slider) is now drawn by a dedicated subfunction `DrawNvapiStatsOverlaySubsection`, shortening the main tab and keeping the subsection in one place. The entire subsection is grayed out (BeginDisabled) when NVAPI is not initialized (e.g. non-NVIDIA GPU or init failure), so users cannot enable options that would do nothing. Details: `main_new_tab.cpp` (DrawNvapiStatsOverlaySubsection, nvapi_init.hpp include).
+
 ## v0.12.253 (2026-03-03)
 - **Main tab: overlay checkboxes grouped with labels** - Performance overlay options on the main tab are now grouped with separators and section labels: FPS & core display, CPU / limiter, Frame timing & graphs, DLSS / NGX, GPU & memory, Misc, then NVAPI stats at the bottom. Makes it easier to find related options (e.g. all frame-timing toggles or all DLSS toggles in one place). Details: `main_new_tab.cpp` (overlay checkboxes reorder and group labels).
 

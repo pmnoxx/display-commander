@@ -26,6 +26,7 @@
 #include "../../latent_sync/latent_sync_limiter.hpp"
 #include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../nvapi/nvapi_actual_refresh_rate_monitor.hpp"
+#include "../../nvapi/nvapi_init.hpp"
 #include "../../nvapi/nvidia_profile_search.hpp"
 #include "../../nvapi/reflex_manager.hpp"
 #include "../../performance_types.hpp"
@@ -94,6 +95,115 @@ bool DidNativeReflexSleepRecently(uint64_t now_ns) {
     auto last_injected_call = g_nvapi_last_sleep_timestamp_ns.load();
     return last_injected_call > 0 && (now_ns - last_injected_call) < utils::SEC_TO_NS;  // 1s in nanoseconds
 }
+
+// Draw NVAPI stats subsection (5 checkboxes + warning + refresh poll slider). Whole subsection is disabled when NVAPI
+// is not initialized.
+void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Columns(1);  // Reset to single column
+    imgui.Separator();
+    imgui.TextWrapped(
+        "NVAPI stats (NVIDIA only). These options may cause occasional hiccups; not available on Intel/AMD or "
+        "Linux.");
+    imgui.Columns(4, "overlay_checkboxes", false);
+
+    const bool nvapi_initialized = nvapi::EnsureNvApiInitialized();
+    if (!nvapi_initialized) {
+        imgui.BeginDisabled();
+    }
+
+    bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
+    if (imgui.Checkbox("VRR Status", &show_vrr_status)) {
+        settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows whether Variable Refresh Rate (VRR) is active in the performance overlay. "
+            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+    }
+    imgui.NextColumn();
+
+    bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
+    if (imgui.Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
+        settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
+            "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
+            "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
+            "  req: VRR has been requested (e.g. by the application or swap chain).\n"
+            "  poss: The display and link support VRR (capability).\n"
+            "  in_mode: The display is currently operating in VRR mode (authoritative hardware state).\n"
+            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+    }
+    imgui.NextColumn();
+
+    bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
+    if (imgui.Checkbox("Refresh rate", &show_actual_refresh_rate)) {
+        settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
+            "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on. "
+            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+    }
+    imgui.NextColumn();
+
+    bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
+    if (imgui.Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
+        settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
+            "Requires NVAPI and a resolved display.\n"
+            "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
+    }
+    imgui.NextColumn();
+
+    bool show_refresh_rate_frame_time_stats =
+        settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
+    if (imgui.Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
+        settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(
+            show_refresh_rate_frame_time_stats);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows refresh rate time statistics (avg, deviation, min, max) in the overlay. "
+            "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
+    }
+
+    if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
+        && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+        imgui.Columns(1);
+        imgui.TextColored(
+            ui::colors::TEXT_WARNING,
+            "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
+            "Refresh rate and refresh rate time graph may show no data.");
+        imgui.Columns(4, "overlay_checkboxes", false);
+    }
+
+    imgui.Columns(1);  // Reset to single column
+    if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()
+        || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
+        if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)", "%d ms",
+                             imgui)) {
+            // Setting is automatically saved by SliderIntSetting
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
+                "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
+                "polling defaults to 1 s and this setting is not used.");
+        }
+    }
+
+    if (!nvapi_initialized) {
+        imgui.EndDisabled();
+    }
+}
+
 }  // anonymous namespace
 
 void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
@@ -7040,9 +7150,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.EndGroup();
 }
 
-void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapper& imgui) {
     // Test Overlay Control
     {
         bool show_test_overlay = settings::g_mainTabSettings.show_test_overlay.GetValue();
@@ -7312,101 +7420,7 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
         }
         imgui.NextColumn();
 
-        imgui.Columns(1);  // Reset to single column
-        imgui.Separator();
-        imgui.TextWrapped(
-            "NVAPI stats (NVIDIA only). These options may cause occasional hiccups; not available on Intel/AMD or Linux.");
-        imgui.Columns(4, "overlay_checkboxes", false);
-
-        // NVAPI stats subsection — at bottom of overlay checkboxes (programmatic NVAPI polling)
-        {
-            bool show_vrr_status = settings::g_mainTabSettings.show_vrr_status.GetValue();
-            if (imgui.Checkbox("VRR Status", &show_vrr_status)) {
-                settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Shows whether Variable Refresh Rate (VRR) is active in the performance overlay. "
-                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
-            }
-            imgui.NextColumn();
-
-            bool vrr_debug_mode = settings::g_mainTabSettings.vrr_debug_mode.GetValue();
-            if (imgui.Checkbox("VRR Debug Mode", &vrr_debug_mode)) {
-                settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
-                    "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
-                    "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
-                    "  req: VRR has been requested (e.g. by the application or swap chain).\n"
-                    "  poss: The display and link support VRR (capability).\n"
-                    "  in_mode: The display is currently operating in VRR mode (authoritative hardware state).\n"
-                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
-            }
-            imgui.NextColumn();
-
-            bool show_actual_refresh_rate = settings::g_mainTabSettings.show_actual_refresh_rate.GetValue();
-            if (imgui.Checkbox("Refresh rate", &show_actual_refresh_rate)) {
-                settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
-                    "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on. "
-                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
-            }
-            imgui.NextColumn();
-
-            bool show_refresh_rate_frame_times = settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue();
-            if (imgui.Checkbox("Refresh rate time graph" ICON_FK_WARNING, &show_refresh_rate_frame_times)) {
-                settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
-                    "Requires NVAPI and a resolved display.\n"
-                    "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
-            }
-            imgui.NextColumn();
-
-            bool show_refresh_rate_frame_time_stats =
-                settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
-            if (imgui.Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
-                settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Shows refresh rate time statistics (avg, deviation, min, max) in the overlay. "
-                    "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
-            }
-        }
-
-        if (display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive()
-            && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-            imgui.Columns(1);
-            imgui.TextColored(
-                ui::colors::TEXT_WARNING,
-                "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (e.g. driver/display may not support it). "
-                "Refresh rate and refresh rate time graph may show no data.");
-            imgui.Columns(4, "overlay_checkboxes", false);
-        }
-
-        imgui.Columns(1);  // Reset to single column
-        if (settings::g_mainTabSettings.show_refresh_rate_frame_times.GetValue()
-            || settings::g_mainTabSettings.show_actual_refresh_rate.GetValue()) {
-            if (SliderIntSetting(settings::g_mainTabSettings.refresh_rate_monitor_poll_ms, "Refresh poll (ms)", "%d ms",
-                                 imgui)) {
-                // Setting is automatically saved by SliderIntSetting
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
-                    "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
-                    "polling defaults to 1 s and this setting is not used.");
-            }
-        }
+        DrawNvapiStatsOverlaySubsection(imgui);
 
         imgui.Spacing();
         // Overlay background transparency slider
@@ -7472,9 +7486,9 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
                 "Positive values move the overlay to the right, negative values move it to the left.");
         }
     }
+}
 
-    imgui.Spacing();
-
+static void DrawImportantInfo_FpsCounterAndReset(display_commander::ui::IImGuiWrapper& imgui) {
     // FPS Counter with 1% Low and 0.1% Low over past 60s (computed in background)
     {
         std::string local_text;
@@ -7492,7 +7506,14 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
         }
     }
+}
 
+void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
+    RECORD_DETOUR_CALL(utils::get_now_ns());
+    DrawImportantInfo_OverlayControls(imgui);
+    imgui.Spacing();
+    DrawImportantInfo_FpsCounterAndReset(imgui);
     imgui.Spacing();
 
     // Frame Time Graph Section (see docs/UI_STYLE_GUIDE.md for depth/indent rules)
@@ -7502,39 +7523,54 @@ void DrawImportantInfo(display_commander::ui::IImGuiWrapper& imgui) {
     ui::colors::PushNestedHeaderColors(&imgui);
     if (imgui.CollapsingHeader("Frame Time Graph", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();  // Indent content inside subsection
-        {
-            // Display GPU fence status/failure reason
-            if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
-                const char* failure_reason = ::g_gpu_fence_failure_reason.load();
-                if (failure_reason != nullptr) {
-                    imgui.Indent();
-                    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ERROR);
-                    imgui.TextUnformatted(ICON_FK_WARNING);
-                    imgui.PopStyleColor();
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_ERROR, "GPU Fence Failed: %s", failure_reason);
-                    imgui.Unindent();
-                } else {
-                    imgui.Indent();
-                    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
-                    imgui.TextUnformatted(ICON_FK_OK);
-                    imgui.PopStyleColor();
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "GPU Fence Active");
-                    imgui.Unindent();
-                }
-            }
+        DrawImportantInfo_FrameTimeGraphContent(imgui);
+        imgui.Unindent();  // Unindent content inside subsection
+        imgui.Spacing();
 
-            imgui.Spacing();
+        g_rendering_ui_section.store("ui:tab:main_new:refresh_rate_monitor", std::memory_order_release);
+        // Refresh Rate Monitor Section (NvAPI_DISP_GetAdaptiveSyncData)
+        if (imgui.CollapsingHeader("Refresh Rate Monitor", ImGuiTreeNodeFlags_None)) {
+            DrawImportantInfo_RefreshRateMonitorContent(imgui);
+        }
+        imgui.Unindent();  // Unindent content
+    }
+    ui::colors::PopNestedHeaderColors(&imgui);
+    imgui.Unindent();  // Unindent nested header section
+}
 
-            DrawFrameTimeGraph(imgui);
+static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGuiWrapper& imgui) {
+    // Display GPU fence status/failure reason
+    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0) {
+        const char* failure_reason = ::g_gpu_fence_failure_reason.load();
+        if (failure_reason != nullptr) {
+            imgui.Indent();
+            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ERROR);
+            imgui.TextUnformatted(ICON_FK_WARNING);
+            imgui.PopStyleColor();
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_ERROR, "GPU Fence Failed: %s", failure_reason);
+            imgui.Unindent();
+        } else {
+            imgui.Indent();
+            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
+            imgui.TextUnformatted(ICON_FK_OK);
+            imgui.PopStyleColor();
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, "GPU Fence Active");
+            imgui.Unindent();
+        }
+    }
 
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Spacing();
+    imgui.Spacing();
 
-            // Frame timeline bar (Simulation | Render Submit | ReShade | Present | Sleep | GPU)
-            DrawFrameTimelineBar(imgui);
+    DrawFrameTimeGraph(imgui);
+
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+
+    // Frame timeline bar (Simulation | Render Submit | ReShade | Present | Sleep | GPU)
+    DrawFrameTimelineBar(imgui);
 
             imgui.Spacing();
             imgui.Separator();

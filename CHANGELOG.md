@@ -4,6 +4,7 @@
 
 ## v0.12.232 (unreleased)
 
+- **Shared DXGI factory: defer until process attach** - `GetSharedDXGIFactory()` no longer creates the shared DXGI factory until `g_process_attached` is true. This avoids calling `CreateDXGIFactory1` (and getting DXGI_ERROR_INVALID_CALL / 0x887a0001) during early init before process attach has completed. Callers (display cache, resolution helpers, VRAM info) already handle a null factory and skip DXGI work.
 - **Crash fix: shared DXGI factory** - The shared DXGI factory (used for VRAM info, display enumeration, and resolution helpers) now uses `CreateDXGIFactory1_Direct`, which bypasses the CreateDXGIFactory1 detour and calls the original API. This avoids going through the redirect-to-CreateDXGIFactory2 path and prevents crashes that could occur when the addon created the shared factory via the hooked path.
 
 ## v0.12.230 (2026-03-02)

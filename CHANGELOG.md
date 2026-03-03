@@ -2,8 +2,9 @@
 
 ---
 
-## v0.12.227 (unreleased)
+## v0.12.228 (unreleased)
 
+- **Launcher single-instance mutex** - The Games-only UI (rundll32 Launcher and standalone exe) uses a named mutex (`Local\DisplayCommander_LauncherMutex64` / `...32`) so only one instance runs. If another is already running, the new process brings the existing window to focus (ShowWindow SW_RESTORE, SetForegroundWindow) and exits.
 - **Games window (Launcher/exe): resize both ways, non-movable, more list rows** - Inner Games window now uses GetClientRect every frame so it grows and shrinks with the outer window. Added NoTitleBar so the tab cannot be dragged. Steam "Launch Steam game" search list uses remaining vertical space (BeginChild 0,0) so more rows are visible when the window is large.
 
 ## v0.12.226 (unreleased)

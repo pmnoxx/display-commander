@@ -2428,7 +2428,25 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 // Used by: (1) .exe build (main_exe.cpp), (2) rundll32 Launcher export (DLL build).
 // Set HOOKED so DoInitializationWithoutHwndSafe_Late runs (StartContinuousMonitoring), which fills the
 // running-games cache so the Games tab can show other processes with the addon loaded.
+// Single-instance: a named mutex prevents multiple Launcher/exe copies; if one is already running we bring it to focus and exit.
 void RunDisplayCommanderStandalone(HINSTANCE hInst) {
+#ifdef _WIN64
+    static const wchar_t* kLauncherMutexName = L"Local\\DisplayCommander_LauncherMutex64";
+#else
+    static const wchar_t* kLauncherMutexName = L"Local\\DisplayCommander_LauncherMutex32";
+#endif
+    HANDLE launcher_mutex = CreateMutexW(nullptr, FALSE, kLauncherMutexName);
+    if (launcher_mutex != nullptr && GetLastError() == ERROR_ALREADY_EXISTS) {
+        CloseHandle(launcher_mutex);
+        HWND existing = FindWindowW(L"DisplayCommanderGamesUI", nullptr);
+        if (existing != nullptr) {
+            ShowWindow(existing, SW_RESTORE);
+            SetForegroundWindow(existing);
+        }
+        return;
+    }
+    // Hold mutex for process lifetime (do not close launcher_mutex so only one instance runs).
+
     g_shutdown.store(false);
     g_display_commander_state.store(DisplayCommanderState::DC_STATE_HOOKED, std::memory_order_release);
     ProcessAttach_NoReShadeModeInit(reinterpret_cast<HMODULE>(hInst));

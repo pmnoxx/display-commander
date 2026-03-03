@@ -5633,7 +5633,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     if (cached_stats.all_last_20_within_1s && cached_stats.samples_below_threshold_last_10s >= 2) {
                         imgui.TextColored(ui::colors::TEXT_SUCCESS, "VRR: On");
                     } else {
-                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: Off");
+                        imgui.TextColored(ui::colors::TEXT_DIMMED, "VRR: NO NVAPI");
                     }
                 }
             }

@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.250 (2026-03-03)
+
+- **VRR overlay: "NO NVAPI" when NVAPI unavailable** - When VRR status is shown in the performance overlay but NVAPI VRR data is not available (e.g. non-NVIDIA GPU or NVAPI not initialized), the label now shows "VRR: NO NVAPI" instead of "VRR: Off", so users can tell that the addon is not using NVIDIA's VRR query rather than reporting VRR as disabled.
+
 ## v0.12.249 (2026-03-03)
 
 - **VBlank Monitor tooltip: debug details and time-in-state** - The Main tab tooltip for "VBlank Monitor: ACTIVE" and "VBlank Monitor: STARTING" now shows debug-oriented details: current thread phase (waiting for Latent Sync, binding to display, or collecting scanlines), how long the monitor has been in that state (e.g. "in this state 12.34s"), and phase index for correlation with code. Helps diagnose why the monitor might be stuck in a given state. Details: `latent_sync/vblank_monitor.cpp` (phase timestamps, `GetStatusStringForTooltip`), `latent_sync_limiter` (`GetVBlankMonitorStatusString`), Main tab tooltip text.

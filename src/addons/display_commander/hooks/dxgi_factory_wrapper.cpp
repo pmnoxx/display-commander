@@ -30,31 +30,6 @@ DEFINE_GUID(IID_IDXGISwapChain4Wrapper, 0xb2c3d4e5, 0xf6a7, 0x4890, 0xb1, 0x23, 
 
 namespace display_commanderhooks {
 
-// Helper function to flush command queue from swapchain using native DirectX APIs (DX11 only)
-void FlushCommandQueueFromSwapchain(IDXGISwapChain* swapchain) {
-    if (swapchain == nullptr) {
-        return;
-    }
-
-    if (perf_measurement::IsSuppressionEnabled()
-        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::FlushCommandQueueFromSwapchain)) {
-        return;
-    }
-
-    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::FlushCommandQueueFromSwapchain);
-
-    // For D3D11: Get device, get immediate context, flush it
-    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
-    HRESULT hr = swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device));
-    if (SUCCEEDED(hr) && d3d11_device) {
-        Microsoft::WRL::ComPtr<ID3D11DeviceContext> immediate_context;
-        d3d11_device->GetImmediateContext(&immediate_context);
-        if (immediate_context) {
-            immediate_context->Flush();
-        }
-    }
-}
-
 namespace {
 
 // Helper function to track present statistics (shared between Present and Present1)
@@ -107,8 +82,7 @@ void TrackPresentStatistics(SwapChainWrapperStats* stats, std::atomic<uint64_t>&
 }
 // Log DXGI factory/swapchain creation errors (up to 10 per method to avoid spam).
 inline void LogDxgiFactoryErrorUpTo10(const char* method, HRESULT hr, int* pCount) {
-    if (SUCCEEDED(hr) || pCount == nullptr || *pCount >= 10)
-        return;
+    if (SUCCEEDED(hr) || pCount == nullptr || *pCount >= 10) return;
     LogError("[DXGI error] %s returned 0x%08X", method, static_cast<unsigned>(hr));
     (*pCount)++;
 }
@@ -238,8 +212,6 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present(UINT SyncInterval, UINT Flags) {
 
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            // Flush command queue from swapchain using native DirectX APIs
-            FlushCommandQueueFromSwapchain(baseSwapChain.Get());
             OnPresentFlags2(false,
                             true);  // Called from wrapper, not present_detour
             RecordNativeFrameTime();
@@ -333,8 +305,6 @@ STDMETHODIMP DXGISwapChain4Wrapper::Present1(UINT SyncInterval, UINT PresentFlag
     auto use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_factory_wrapper);
     if (use_fps_limiter) {
         if (SUCCEEDED(QueryInterface(IID_PPV_ARGS(&baseSwapChain)))) {
-            // Flush command queue from swapchain using native DirectX APIs
-            FlushCommandQueueFromSwapchain(baseSwapChain.Get());
             OnPresentFlags2(false, true);  // Called from wrapper, not present_detour
             RecordNativeFrameTime();
         }
@@ -437,8 +407,7 @@ DXGIFactoryWrapper::DXGIFactoryWrapper(IDXGIFactory7* originalFactory, SwapChain
       m_slGetNativeInterface(nullptr),
       m_slUpgradeInterface(nullptr),
       m_commandQueueMap(nullptr) {
-    if (m_originalFactory != nullptr)
-        m_originalFactory->AddRef();
+    if (m_originalFactory != nullptr) m_originalFactory->AddRef();
     const char* hookTypeName = (hookType == SwapChainHook::Proxy)       ? "Proxy"
                                : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw"
                                                                         : "Native";
@@ -527,9 +496,10 @@ STDMETHODIMP DXGIFactoryWrapper::GetWindowAssociation(HWND* pWindowHandle) {
 // If DXGIFactoryWrapper is created but CreateSwapChain/CreateSwapChainForHwnd are never called on it, the swap chain
 // is likely created via D3D11CreateDeviceAndSwapChain. ReShade hooks that API and does not call the original in one go:
 // it creates only the device (trampoline with ppSwapChain=nullptr), then gets the factory via
-// device->GetAdapter()->GetParent(IID_PPV_ARGS(&factory)). That factory is the D3D runtime's *internal* factory (created
-// when the device was created), not the one we return from CreateDXGIFactory2. ReShade then calls CreateSwapChain on
-// that internal factory (or its own proxy around it), so our wrapper is never used for the actual swap chain creation.
+// device->GetAdapter()->GetParent(IID_PPV_ARGS(&factory)). That factory is the D3D runtime's *internal* factory
+// (created when the device was created), not the one we return from CreateDXGIFactory2. ReShade then calls
+// CreateSwapChain on that internal factory (or its own proxy around it), so our wrapper is never used for the actual
+// swap chain creation.
 STDMETHODIMP DXGIFactoryWrapper::CreateSwapChain(IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc,
                                                  IDXGISwapChain** ppSwapChain) {
     LogInfo("DXGIFactoryWrapper::CreateSwapChain called");

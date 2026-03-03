@@ -1842,9 +1842,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            // Flush command queue using native DirectX APIs (DX11 only) - don't rely on ReShade runtime
             perf_timer.pause();
-            display_commanderhooks::FlushCommandQueueFromSwapchain(dxgi_swapchain.Get());
             EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
             perf_timer.resume();
         }

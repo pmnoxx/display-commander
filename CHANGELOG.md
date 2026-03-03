@@ -2,7 +2,9 @@
 
 ---
 
-## v0.12.231 (unreleased)
+## v0.12.232 (unreleased)
+
+- **Crash fix: shared DXGI factory** - The shared DXGI factory (used for VRAM info, display enumeration, and resolution helpers) now uses `CreateDXGIFactory1_Direct`, which bypasses the CreateDXGIFactory1 detour and calls the original API. This avoids going through the redirect-to-CreateDXGIFactory2 path and prevents crashes that could occur when the addon created the shared factory via the hooked path.
 
 ## v0.12.230 (2026-03-02)
 

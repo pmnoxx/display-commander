@@ -519,6 +519,17 @@ HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
 
     return CreateDXGIFactory2(0, riid, ppFactory);
 }
+
+HRESULT CreateDXGIFactory1_Direct(REFIID riid, void** ppFactory) {
+    if (ppFactory == nullptr) {
+        return E_POINTER;
+    }
+    if (CreateDXGIFactory1_Original != nullptr) {
+        return CreateDXGIFactory1_Original(riid, ppFactory);
+    }
+    return CreateDXGIFactory1(riid, ppFactory);
+}
+
 // Hooked D3D11CreateDeviceAndSwapChain function
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE DriverType,
                                                     HMODULE Software, UINT Flags,

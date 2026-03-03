@@ -82,6 +82,10 @@ bool IsIconic_direct(HWND hwnd);
 // spoof).
 bool IsWindowVisible_direct(HWND hwnd);
 
+// Create DXGI factory via original API (bypasses CreateDXGIFactory1 detour). Use for addon-internal factory (e.g.
+// shared factory, VRAM, display enumeration). Returns S_OK on success.
+HRESULT CreateDXGIFactory1_Direct(REFIID riid, void** ppFactory);
+
 // Hooked API functions
 HWND WINAPI GetFocus_Detour();
 HWND WINAPI GetForegroundWindow_Detour();

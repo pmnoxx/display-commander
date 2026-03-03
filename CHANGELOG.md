@@ -2,9 +2,14 @@
 
 ---
 
-## v0.12.235 (unreleased)
+## v0.12.236 (unreleased)
 
 - **GetSharedDXGIFactory** - Fixed shared DXGI factory not working when used before process attach completed; factory creation is deferred until `g_process_attached` is true so callers (display cache, resolution helpers, VRAM info) no longer get null or invalid factory during early init.
+- **NVIDIA submodules** - Updated external/Streamline, external/nvapi, and external/nvidia-dlss to latest remote; discarded local changes in nvidia-dlss.
+
+## v0.12.235 (2026-03-02)
+
+- (none)
 
 ## v0.12.234 (2026-03-02)
 

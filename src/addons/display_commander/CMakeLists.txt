@@ -15,6 +15,8 @@ list(FILTER DISPLAY_COMMANDER_DLL_SOURCES EXCLUDE REGEX ".*/main_exe\\.cpp$")
 # Common sources compiled once into an object library and linked into both DLL and exe (main_entry.cpp differs by define).
 set(DISPLAY_COMMANDER_COMMON_SOURCES ${DISPLAY_COMMANDER_DLL_SOURCES})
 list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/main_entry\\.cpp$")
+# jump_list.cpp is exe-only (uses DISPLAY_COMMANDER_BUILD_EXE for Win32 Jump List; not linked into DLL).
+list(FILTER DISPLAY_COMMANDER_COMMON_SOURCES EXCLUDE REGEX ".*/jump_list\\.cpp$")
 
 if(DISPLAY_COMMANDER_DLL_SOURCES STREQUAL "")
   message(FATAL_ERROR "No sources found under src/addons/display_commander")
@@ -23,7 +25,7 @@ endif()
 # Version (single source of truth for addon and exe; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 232)
+set(DISPLAY_COMMANDER_VERSION_PATCH 233)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(DISPLAY_COMMANDER_BITNESS "32-bit")
@@ -312,6 +314,7 @@ add_custom_target(launcher_icon ALL DEPENDS "${LAUNCHER_ICON_ICO}")
 add_executable(display_commander_exe WIN32
   ${CMAKE_CURRENT_LIST_DIR}/main_entry.cpp
   ${CMAKE_CURRENT_LIST_DIR}/main_exe.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/utils/jump_list.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/version.rc
   ${CMAKE_CURRENT_LIST_DIR}/res/launcher_icon.rc
 )
@@ -321,7 +324,7 @@ target_sources(display_commander_exe PRIVATE
   $<TARGET_OBJECTS:imgui_standalone_obj>
 )
 target_compile_definitions(display_commander_exe PRIVATE DISPLAY_COMMANDER_BUILD_EXE)
-target_link_libraries(display_commander_exe PRIVATE display_commander_common_options version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt)
+target_link_libraries(display_commander_exe PRIVATE display_commander_common_options version setupapi hid dxgi d3d11 tdh advapi32 wininet bcrypt shell32)
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi")
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/nvapi/x86/nvapi.lib")

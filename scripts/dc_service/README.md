@@ -7,4 +7,5 @@
 ## Notes
 
 - Create a `.NORESHADE` empty file to start without ReShade.
+- Create a `.NODC` empty file to load ReShade but not register Display Commander as an addon (proxy-only; no DC UI or features).
 - Or download `Reshade32.dll` and `Reshade64.dll` (ReShade runtimes) if you want to run with ReShade.

@@ -192,6 +192,10 @@ struct IImGuiWrapper {
 
     // Input (key state; key is ImGuiKey_* as int)
     virtual bool IsKeyDown(int key) = 0;
+    virtual bool IsKeyPressed(int key) = 0;
+
+    // Focus: next item will receive keyboard focus when submitted
+    virtual void SetKeyboardFocusHere(int offset = 0) = 0;
 
     // Popup / modal
     virtual void OpenPopup(const char* str_id) = 0;

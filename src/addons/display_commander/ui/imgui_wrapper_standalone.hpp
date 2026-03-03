@@ -120,6 +120,8 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void EndTabItem() override;
     void EndTabBar() override;
     bool IsKeyDown(int key) override;
+    bool IsKeyPressed(int key) override;
+    void SetKeyboardFocusHere(int offset = 0) override;
     void OpenPopup(const char* str_id) override;
     bool BeginPopupModal(const char* name, bool* p_open, int flags) override;
     void EndPopup() override;

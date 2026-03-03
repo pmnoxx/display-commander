@@ -328,6 +328,12 @@ void ImGuiWrapperStandalone::EndTabBar() {
 bool ImGuiWrapperStandalone::IsKeyDown(int key) {
     return ImGui::IsKeyDown(static_cast<ImGuiKey>(key));
 }
+bool ImGuiWrapperStandalone::IsKeyPressed(int key) {
+    return ImGui::IsKeyPressed(static_cast<ImGuiKey>(key));
+}
+void ImGuiWrapperStandalone::SetKeyboardFocusHere(int offset) {
+    ImGui::SetKeyboardFocusHere(offset);
+}
 void ImGuiWrapperStandalone::OpenPopup(const char* str_id) {
     ImGui::OpenPopup(str_id);
 }

@@ -2,8 +2,12 @@
 
 ---
 
-## v0.12.229 (unreleased)
+## v0.12.230 (unreleased)
 
+## v0.12.229 (2026-03-02)
+
+- **Games tab: Hide Game in Steam search** - Right-click context menu on a Steam game in "Launch Steam game" search results now includes "Hide Game". Adds the game to a persisted hidden list (HKCU\\Software\\Display Commander\\SteamHiddenGames); hidden games are excluded from the search list.
+- **Games UI: type-to-search and Ctrl+A** - On the Games tab (Steam "Launch Steam game" section), typing anywhere in the tab (without clicking the search box first) now focuses the search box and delivers the typed characters so you can quickly type a game name. Ctrl+A anywhere in the Games tab focuses the search box (then Ctrl+A again selects all text in the box). Uses `SetKeyboardFocusHere` and `IsKeyPressed` on the ImGui wrapper; type-ahead is detected via `!WantCaptureKeyboard` and `InputQueueCharacters` / Ctrl+A.
 - **Launcher exe icon** - Display Commander Launcher exe now embeds an application icon (Explorer, taskbar, window title bar). Vector source: `res/launcher_icon.svg` (monitor + play symbol). Build generates `res/launcher_icon.ico` via `res/make_launcher_icon.ps1` (ImageMagick if available, else .NET fallback). Icon resource ID 1; window class sets `hIcon`/`hIconSm` in exe build so the window shows the icon.
 - **Launcher window position/size persistence** - Launcher (Games + Settings) window position and size are saved to config (Launcher section: WindowX, WindowY, WindowWidth, WindowHeight) when the window is closed and restored on next launch. Size is clamped to 400–4096 for width and 300–4096 for height.
 - **Launcher Settings: newest available versions** - Settings tab now shows "Newest available" for both ReShade and Display Commander. A one-time background fetch (ReShade from reshade.me, DC from GitHub releases/latest) runs when the tab is first drawn; installed version and newest available are shown for each. Shows "(checking...)" until the fetch completes, or "(unavailable)" if the fetch failed.

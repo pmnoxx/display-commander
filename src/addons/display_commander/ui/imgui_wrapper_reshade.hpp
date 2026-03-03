@@ -218,6 +218,8 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void EndTabItem() override { ImGui::EndTabItem(); }
     void EndTabBar() override { ImGui::EndTabBar(); }
     bool IsKeyDown(int key) override { return ImGui::IsKeyDown(static_cast<ImGuiKey>(key)); }
+    bool IsKeyPressed(int key) override { return ImGui::IsKeyPressed(static_cast<ImGuiKey>(key)); }
+    void SetKeyboardFocusHere(int offset = 0) override { ImGui::SetKeyboardFocusHere(offset); }
     void OpenPopup(const char* str_id) override { ImGui::OpenPopup(str_id); }
     bool BeginPopupModal(const char* name, bool* p_open, int flags) override {
         return ImGui::BeginPopupModal(name, p_open, static_cast<ImGuiWindowFlags>(flags));

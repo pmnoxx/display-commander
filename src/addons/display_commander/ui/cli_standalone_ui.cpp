@@ -877,7 +877,7 @@ static void DrawLauncherSettingsTab() {
 
     float font_scale = 1.0f;
     display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigValue("Launcher", "FontScale",
-                                                                                          font_scale);
+                                                                                           font_scale);
     if (font_scale <= 0.0f || font_scale > 3.0f) font_scale = 1.0f;
 
     if (ImGui::SliderFloat("Font size", &font_scale, 0.5f, 2.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
@@ -1113,7 +1113,7 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
 
         float launcher_font_scale = 1.0f;
         display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigValue("Launcher", "FontScale",
-                                                                                              launcher_font_scale);
+                                                                                               launcher_font_scale);
         if (launcher_font_scale <= 0.0f || launcher_font_scale > 3.0f) launcher_font_scale = 1.0f;
         ImGui::GetIO().FontGlobalScale = launcher_font_scale;
 

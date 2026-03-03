@@ -6,6 +6,7 @@
 #include "../../utils/process_window_enumerator.hpp"
 #include "../../utils/standalone_launcher.hpp"
 #include "../standalone_ui_settings_bridge.hpp"
+#include "../../utils/steam_hidden_games.hpp"
 #include "../../utils/steam_launch_history.hpp"
 #include "../../utils/steam_library.hpp"
 #include "../../utils/timing.hpp"
@@ -494,6 +495,17 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Text("Launch Steam game");
     imgui.Spacing();
 
+    // Type-to-search: when keyboard is not captured (e.g. focus on table/list), any typing or Ctrl+A
+    // focuses the search box so the user can quickly type the game name without clicking first.
+    const ImGuiIO& io = imgui.GetIO();
+    const bool has_type_ahead = (io.InputQueueCharacters.Size > 0);
+    const bool ctrl_a_pressed =
+        io.KeyCtrl && imgui.IsKeyPressed(static_cast<int>(ImGuiKey_A));
+    const bool want_search_focus = !io.WantCaptureKeyboard && (has_type_ahead || ctrl_a_pressed);
+    if (want_search_focus) {
+        imgui.SetKeyboardFocusHere(0);
+    }
+
     imgui.SetNextItemWidth(-1.0f);
     imgui.InputTextWithHint("##steam_launch_search", "Search installed Steam games...", state.search_buf,
                             sizeof(state.search_buf));
@@ -503,6 +515,7 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
     std::string searchLower = ToLowerAscii(state.search_buf);
     std::vector<std::pair<display_commander::steam_library::SteamGame, int64_t>> filtered;
     for (const auto& game : state.games) {
+        if (display_commander::steam_hidden_games::IsSteamGameHidden(game.app_id)) continue;
         std::string nameLower = ToLowerAscii(game.name);
         if (!searchLower.empty() && nameLower.find(searchLower) == std::string::npos) continue;
         int64_t ts = display_commander::steam_launch_history::GetSteamLaunchTimestamp(game.app_id);
@@ -545,6 +558,9 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
                         auto& steam_state = GetSteamState();
                         steam_state.details_steam_game = game;
                         steam_state.show_details_modal = true;
+                    }
+                    if (imgui.MenuItem("Hide Game")) {
+                        display_commander::steam_hidden_games::AddSteamGameToHidden(game.app_id);
                     }
                     imgui.EndPopup();
                 }

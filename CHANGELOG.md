@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.257 (2026-03-03)
+- **DXGI VSync override** - For DXGI (D3D10/11/12) games, the Main tab "VSync & Tearing" section now shows a single **VSync** dropdown instead of the two "Force VSync ON" / "Force VSync OFF" checkboxes. Options: No override, Force ON, FORCED 1/2, FORCED 1/3, FORCED 1/4 (NO VRR), FORCED OFF. The chosen value is applied at **Present** time (runtime, no game restart). Vulkan/OpenGL keep the existing two checkboxes (applied at swap chain creation). Details: `main_tab_settings` (vsync_override ComboSetting), `main_new_tab.cpp` (DXGI branch draws combo), `dxgi_present_hooks.cpp` (Present/Present1 override SyncInterval), `swapchain_events.cpp` (DXGI no longer applies force_vsync at creation). Spec: `private_docs/specs/presentation_interval_override_spec.md`.
+
 ## v0.12.256 (2026-03-03)
 - **Main tab: Native FPS checkbox disabled without native Reflex** - The "Native FPS" overlay checkbox is now grayed out (BeginDisabled) when the game does not have native Reflex, since native FPS is derived from native Reflex sleep calls. The tooltip when disabled explains that a game with native Reflex is required.
 - **Main tab: DLSS/NGX overlay checkboxes disabled until game uses DLSS/NGX** - The DLSS/NGX overlay block (FG Mode, DLSS Res, DLSS Status, DLSS Quality Preset, DLSS Render Preset) is now grayed out (BeginDisabled) until the addon has seen the game use DLSS/NGX (either a DLSS feature was active at least once or a DLSS DLL is loaded). Avoids enabling overlay options that would show no data. The FG Mode tooltip when disabled explains that a game that uses DLSS/NGX is required.

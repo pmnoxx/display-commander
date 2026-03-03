@@ -397,19 +397,35 @@ void HandlePresentAfter(bool from_wrapper) {
 }
 
 static std::atomic<int> in_present_call(0);
-// Hooked IDXGISwapChain::Present function
-HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT Flags) {
-    if (in_present_call.load() > 0) {
-        return IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
-    }
 
+// VSync override: combo index 0=No override(-1), 1=Force ON(1), 2=1/2(2), 3=1/3(3), 4=1/4(4), 5=FORCED OFF(0). Returns
+// -1 if no override.
+static int VsyncOverrideComboIndexToApiValue(int combo_index) {
+    static const int kMap[] = {-1, 1, 2, 3, 4, 0};
+    if (combo_index < 0 || combo_index > 5) return -1;
+    return kMap[combo_index];
+}
+
+// Hooked IDXGISwapChain::Present function
+HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT PresentFlags) {
+    if (in_present_call.load() > 0) {
+        return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
+    }
+    // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
+    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
+    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
+    if (override_val >= 1) {
+        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
+    } else if (override_val == 0) {
+        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+    }
     const LONGLONG now_ns = utils::get_now_ns();
     display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
     RECORD_DETOUR_CALL(now_ns);
     // Early return if swapchain doesn't match
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
     if (expected_swapchain != nullptr && This != expected_swapchain) {
-        return IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+        return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
     }
 
     // Increment DXGI Present counter
@@ -429,10 +445,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
 
     if (IDXGISwapChain_Present_Original == nullptr) {
         LogError("IDXGISwapChain_Present_Detour: IDXGISwapChain_Present_Original is null");
-        return This->Present(SyncInterval, Flags);
+        return This->Present(effective_interval, PresentFlags);
     }
 
-    auto res = IDXGISwapChain_Present_Original(This, SyncInterval, Flags);
+    auto res = IDXGISwapChain_Present_Original(This, effective_interval, PresentFlags);
     {
         static int s_err_count = 0;
         LogDxgiErrorUpTo10("IDXGISwapChain::Present", res, &s_err_count);
@@ -454,7 +470,17 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     RECORD_DETOUR_CALL(utils::get_now_ns());
     IDXGISwapChain* baseSwapChain = reinterpret_cast<IDXGISwapChain*>(This);
 
+    // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
+    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
+    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
+
+    if (override_val >= 1) {
+        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
+    } else if (override_val == 0) {
+        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+    }
     // Early return if swapchain doesn't match
+
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
     if (expected_swapchain != nullptr && baseSwapChain != expected_swapchain) {
         return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
@@ -478,13 +504,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     in_present_call.fetch_add(1);
     if (IDXGISwapChain_Present1_Original == nullptr) {
         LogError("IDXGISwapChain_Present1_Detour: IDXGISwapChain_Present1_Original is null");
-        auto res = This->Present1(SyncInterval, PresentFlags, pPresentParameters);
+        auto res = This->Present1(effective_interval, PresentFlags, pPresentParameters);
 
         in_present_call.fetch_sub(1);
         return res;
     }
 
-    auto res = IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+    auto res = IDXGISwapChain_Present1_Original(This, effective_interval, PresentFlags, pPresentParameters);
     in_present_call.fetch_sub(1);
     {
         static int s_err_count = 0;

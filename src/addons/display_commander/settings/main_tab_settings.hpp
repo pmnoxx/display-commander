@@ -87,6 +87,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting experimental_safe_mode_fps_limiter;
 
     // VSync & Tearing
+    /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied at Present. */
+    ui::new_ui::ComboSetting vsync_override;
     ui::new_ui::BoolSettingRef force_vsync_on;
     ui::new_ui::BoolSettingRef force_vsync_off;
     ui::new_ui::BoolSettingRef prevent_tearing;

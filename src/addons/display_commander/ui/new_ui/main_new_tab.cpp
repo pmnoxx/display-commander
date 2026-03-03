@@ -4158,38 +4158,50 @@ static const char* GetPresentModeNameNonDxgi(int device_api_value, uint32_t pres
 
 static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_commander::ui::IImGuiWrapper& imgui) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
+    const reshade::api::device_api current_api_pt = g_last_reshade_device_api.load();
+    const bool is_dxgi_pt =
+        (current_api_pt == reshade::api::device_api::d3d10 || current_api_pt == reshade::api::device_api::d3d11
+         || current_api_pt == reshade::api::device_api::d3d12);
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc.load();
-        bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
-        if (imgui.Checkbox("Force VSync ON", &vs_on)) {
-            s_restart_needed_vsync_tearing.store(true);
-            if (vs_on) {
-                settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+        if (is_dxgi_pt) {
+            if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui)) {
+                LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
             }
-            settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
-            LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Forces sync interval = 1 (requires restart).");
-        }
-        imgui.SameLine();
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every "
+                    "frame; 1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no "
+                    "restart).");
+            }
+        } else {
+            bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
+            if (imgui.Checkbox("Force VSync ON", &vs_on)) {
+                s_restart_needed_vsync_tearing.store(true);
+                if (vs_on) {
+                    settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+                }
+                settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
+                LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Forces sync interval = 1 (requires restart).");
+            }
+            imgui.SameLine();
 
-        bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
-        if (imgui.Checkbox("Force VSync OFF", &vs_off)) {
-            s_restart_needed_vsync_tearing.store(true);
-            if (vs_off) {
-                settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+            bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
+            if (imgui.Checkbox("Force VSync OFF", &vs_off)) {
+                s_restart_needed_vsync_tearing.store(true);
+                if (vs_off) {
+                    settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+                }
+                settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
+                LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
             }
-            settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
-            LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Forces sync interval = 0 (requires restart).");
+            }
         }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Forces sync interval = 0 (requires restart).");
-        }
-        const reshade::api::device_api current_api_pt = g_last_reshade_device_api.load();
-        const bool is_dxgi_pt =
-            (current_api_pt == reshade::api::device_api::d3d10 || current_api_pt == reshade::api::device_api::d3d11
-             || current_api_pt == reshade::api::device_api::d3d12);
         if (is_dxgi_pt) {
             imgui.SameLine();
             bool prevent_t = settings::g_mainTabSettings.prevent_tearing.GetValue();
@@ -4301,31 +4313,42 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
     const bool has_dxgi = traffic_apis.find("DXGI") != std::string::npos;
     const bool has_d3d9 = display_commanderhooks::d3d9::g_d3d9_present_hooks_installed.load();
 
-    bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
-    if (imgui.Checkbox("Force VSync ON", &vs_on)) {
-        s_restart_needed_vsync_tearing.store(true);
-        if (vs_on) {
-            settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+    if (has_dxgi) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui)) {
+            LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
         }
-        settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
-        LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Forces sync interval = 1 (requires restart).");
-    }
-    imgui.SameLine();
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every frame; "
+                "1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no restart).");
+        }
+    } else {
+        bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
+        if (imgui.Checkbox("Force VSync ON", &vs_on)) {
+            s_restart_needed_vsync_tearing.store(true);
+            if (vs_on) {
+                settings::g_mainTabSettings.force_vsync_off.SetValue(false);
+            }
+            settings::g_mainTabSettings.force_vsync_on.SetValue(vs_on);
+            LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Forces sync interval = 1 (requires restart).");
+        }
+        imgui.SameLine();
 
-    bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
-    if (imgui.Checkbox("Force VSync OFF", &vs_off)) {
-        s_restart_needed_vsync_tearing.store(true);
-        if (vs_off) {
-            settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+        bool vs_off = settings::g_mainTabSettings.force_vsync_off.GetValue();
+        if (imgui.Checkbox("Force VSync OFF", &vs_off)) {
+            s_restart_needed_vsync_tearing.store(true);
+            if (vs_off) {
+                settings::g_mainTabSettings.force_vsync_on.SetValue(false);
+            }
+            settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
+            LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
-        settings::g_mainTabSettings.force_vsync_off.SetValue(vs_off);
-        LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Forces sync interval = 0 (requires restart).");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Forces sync interval = 0 (requires restart).");
+        }
     }
 
     if (has_dxgi) {

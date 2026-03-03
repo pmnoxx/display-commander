@@ -681,13 +681,15 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         // Apply sync interval setting if enabled
         bool modified = false;
 
-        uint32_t prev_sync_interval = UINT32_MAX;
         uint32_t prev_present_flags = desc.present_flags;
         uint32_t prev_back_buffer_count = desc.back_buffer_count;
         uint32_t prev_present_mode = desc.present_mode;
         const bool is_flip = (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
                               || desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL);
 
+        /*
+        uint32_t prev_sync_interval = UINT32_MAX;
+        BREAKING CHANGES
         // Explicit VSYNC overrides take precedence over generic sync-interval
         // dropdown (applies to all APIs)
         if (s_force_vsync_on.load()) {
@@ -696,7 +698,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         } else if (s_force_vsync_off.load()) {
             desc.sync_interval = 0;  // VSYNC off
             modified = true;
-        }
+        }*/
 
         // DXGI-specific settings (only for D3D10/11/12)
         if (s_prevent_tearing.load() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {

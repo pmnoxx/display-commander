@@ -36,6 +36,7 @@
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/dc_load_path.hpp"
+#include "utils/init_stage_limit.hpp"
 #include "utils/dc_service_status.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
@@ -1515,6 +1516,8 @@ void HandleSafemode() {
 namespace {
 void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     if (!IsDisplayCommanderHookingInstance()) return;
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     if (utils::setup_high_resolution_timer()) {
         LogInfo("High-resolution timer setup successful");
     } else {
@@ -1561,6 +1564,8 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
 
 void DoInitializationWithoutHwndSafe_Late() {
     if (!IsDisplayCommanderHookingInstance()) return;
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
 
     // Log all ETW sessions once at addon init for diagnostics (e.g. why DC_ list may be empty in Advanced tab)
     presentmon::PresentMonManager::LogAllEtwSessions();
@@ -1668,7 +1673,7 @@ constexpr const wchar_t* INJECTION_ACTIVE_EVENT_NAME = L"Local\\DisplayCommander
 constexpr const wchar_t* INJECTION_STOP_EVENT_NAME = L"Local\\DisplayCommander_InjectionStop";
 
 namespace {
-enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly };
+enum class ProcessAttachEarlyResult { Continue, RefuseLoad, EarlySuccess, LoaderOnly, MaxStageReached };
 
 std::wstring ProcessAttach_GetConfigDirectoryW() {
     wchar_t exe_path[MAX_PATH];
@@ -2085,9 +2090,13 @@ void ProcessAttach_NoReShadeModeInit(HMODULE h_module) {
 }
 
 void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& entry_point) {
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     OutputDebugStringA("ReShade 111111");
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     DetectMultipleReShadeVersions();
     wchar_t exe_path_buf[MAX_PATH] = {};
     const wchar_t* exe_name_display = L"";
@@ -2105,6 +2114,8 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
         "0x%p current module: 0x%p exe: %s",
         DISPLAY_COMMANDER_VERSION_STRING, g_hmodule, GetModuleHandleA(nullptr),
         (exe_name_utf8[0] != '\0') ? exe_name_utf8 : "(unknown)");
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     reshade::register_overlay("Display Commander", OnRegisterOverlayDisplayCommander);
     LogInfoDirect("Display Commander overlay registered");
     OutputDebugStringA("[DisplayCommander] DllMain: DLL_PROCESS_ATTACH - Starting entry point detection\n");
@@ -2119,10 +2130,20 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
     char debug_msg[512];
     snprintf(debug_msg, sizeof(debug_msg), "[DisplayCommander] Entry point detected: %s\n", entry_point_utf8.c_str());
     LogInfoDirect("Entry point detected: %s", entry_point_utf8.c_str());
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     utils::initialize_qpc_timing_constants();
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     DoInitializationWithoutHwndSafe(h_module);
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     DoInitializationWithoutHwnd(h_module);
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     ProcessAttach_LoadLocalAddonDllsAfterReShade(h_module);
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return;
     LoadAddonsFromPluginsDirectory();
 }
 
@@ -2130,12 +2151,18 @@ void ProcessAttach_RegisterAndPostInit(HMODULE h_module, const std::wstring& ent
 static constexpr const char* kDisplayCommanderMinLoadVersion = "0.12.194";
 
 ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
+    display_commander::utils::InitStageLimit_LoadFromFile();
+
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     g_hmodule = h_module;
     g_dll_load_time_ns.store(utils::get_now_ns(), std::memory_order_release);
     g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED, std::memory_order_release);
     display_commander::config::DisplayCommanderConfigManager::GetInstance().Initialize();
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
 
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     if (display_commander::utils::version_check::CompareVersions(DISPLAY_COMMANDER_VERSION_STRING,
                                                                  kDisplayCommanderMinLoadVersion)
         < 0) {
@@ -2146,6 +2173,8 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         return ProcessAttachEarlyResult::RefuseLoad;
     }
 
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     // Refuse to load in Unity crash handler (helper process, not the game)
     {
         WCHAR exe_path[MAX_PATH] = {};
@@ -2159,6 +2188,8 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         }
     }
 
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     // Loader mode: when we're not under stable\ or Debug\, act as loader. GetDcDirectoryForLoading(h_module) returns
     // the directory to use (local addon > global > local proxy when mode is "local"; else global/debug/stable path).
     // If that path != base and contains the addon, we load it and stay quiet.
@@ -2220,15 +2251,23 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         }
     }
 
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     DetectWine();
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     if (GetModuleHandleW(L"SpecialK32.dll") != nullptr || GetModuleHandleW(L"SpecialK64.dll") != nullptr) {
         OutputDebugStringA(
             "[DisplayCommander] SpecialK (SpecialK32.dll/SpecialK64.dll) is already loaded - refusing to "
             "load Display Commander.\n");
         return ProcessAttachEarlyResult::RefuseLoad;
     }
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     bool another_undecided = false;
     ProcessAttach_ScanDisplayCommanderState(&another_undecided);
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     if (IsDisplayCommanderHookingInstance() && DetectMultipleDisplayCommanderVersions()) {
         OutputDebugStringA("[DisplayCommander] Multiple Display Commander instances detected - refusing to load.\n");
         return ProcessAttachEarlyResult::RefuseLoad;
@@ -2238,6 +2277,8 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
             "Another Display Commander instance was still Undecided during scan; this instance may have claimed "
             "HOOKED.");
     }
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     LPSTR command_line = GetCommandLineA();
     if (command_line != nullptr && command_line[0] != '\0') {
         OutputDebugStringA("[DisplayCommander] Command line: ");
@@ -2250,6 +2291,8 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
     } else {
         OutputDebugStringA("[DisplayCommander] Command line: (empty)\n");
     }
+    ENTER_INIT_STAGE();
+    if (REACH_MAX_ALLOWED_STAGE()) return ProcessAttachEarlyResult::MaxStageReached;
     g_shutdown.store(false);
     return ProcessAttachEarlyResult::Continue;
 }
@@ -2272,17 +2315,51 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             if (early == ProcessAttachEarlyResult::RefuseLoad) return TRUE;
             if (early == ProcessAttachEarlyResult::EarlySuccess) return TRUE;
             if (early == ProcessAttachEarlyResult::LoaderOnly) return TRUE;
+            if (early == ProcessAttachEarlyResult::MaxStageReached) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
 
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
             ProcessAttach_DetectReShadeInModules();
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
             ProcessAttach_LoadLocalAddonDlls(h_module);
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
             ProcessAttach_CheckNoReShadeMode();
 
             std::wstring entry_point;
             bool found_proxy = false;
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
             ProcessAttach_DetectEntryPoint(h_module, entry_point, found_proxy);
 
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
             if ((g_reshade_module == nullptr) && !g_no_reshade_mode.load()) {
                 ProcessAttach_TryLoadReShadeWhenNotLoaded(h_module, found_proxy);
+            }
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
             }
             // If ReShade still not loaded, use standalone UI (same as .NORESHADE)
             if (g_reshade_module == nullptr) {
@@ -2301,6 +2378,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 break;
             }
 
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
             if (!reshade::register_addon(h_module)) {
                 OutputDebugStringA("ReShade 0000000");
                 {
@@ -2327,6 +2409,11 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 return TRUE;
             }
 
+            ENTER_INIT_STAGE();
+            if (REACH_MAX_ALLOWED_STAGE()) {
+                g_dll_initialization_complete.store(true);
+                break;
+            }
             ProcessAttach_RegisterAndPostInit(h_module, entry_point);
             g_dll_initialization_complete.store(true);
             break;

@@ -47,11 +47,6 @@ void InitAdvancedTab() {
     if (!settings_loaded) {
         // Settings already loaded at startup
         settings_loaded = true;
-
-        // Start PresentMon immediately when enabled
-        if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
-            presentmon::CreateAndStartPresentMon();
-        }
     }
 }
 

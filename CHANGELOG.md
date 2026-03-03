@@ -2,8 +2,12 @@
 
 ---
 
-## v0.12.242 (unreleased)
+## v0.12.243 (2026-03-03)
 
+- **PresentMon disabled by default** - PresentMon tracing (`EnablePresentMonTracing_defoff`) is now off by default; enable it in the Advanced tab if needed.
+
+
+## v0.12.242 (2026-03-03)
 - **Init stage limit removed** - Removed binary-search debug feature: `ENTER_INIT_STAGE()`, `REACH_MAX_ALLOWED_STAGE()`, `ProcessAttachEarlyResult::MaxStageReached`, and `utils/init_stage_limit.hpp/.cpp`. Init now always runs to completion.
 - **WriteToDebugLog replaced with LogInfo** - Removed `WriteToDebugLog`; exit and crash-report paths now call `LogInfo` directly. `exit_handler` no longer exposes `WriteToDebugLog`; `WriteMultiLineToDebugLog` still exists and logs line-by-line via `LogInfo`. `process_exit_hooks.cpp` includes `utils/logging.hpp` and uses `LogInfo` for all former `exit_handler::WriteToDebugLog` calls.
 - **Exit handler: use normal LogInfo** - Added `#include "utils/logging.hpp"` in exit_handler.cpp so the exit path logs with `LogInfo` for the initial "[exit_handler] OnHandleExit..." message, making it easier to confirm the standard log path during shutdown.

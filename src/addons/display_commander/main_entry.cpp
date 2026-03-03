@@ -578,6 +578,7 @@ void DrawCustomCursor() {
 
 // Test callback for reshade_overlay event
 void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* runtime) {
+    RECORD_DETOUR_CALL(utils::get_now_ns());
     const float fixed_width = 1600.0f;
     float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
     float saved_y = settings::g_mainTabSettings.display_commander_ui_window_y.GetValue();

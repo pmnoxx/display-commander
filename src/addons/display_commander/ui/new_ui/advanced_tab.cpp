@@ -35,7 +35,6 @@ void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui);
 void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui);
-void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui);
@@ -75,13 +74,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     // DC Service (RunDLL auto-injection) status
     if (imgui.CollapsingHeader("DC Service (RunDLL auto-injection)", wrapper_flags::TreeNodeFlags_None)) {
         DrawDcServiceSection(imgui);
-    }
-
-    imgui.Spacing();
-
-    // Continuous monitoring Section
-    if (imgui.CollapsingHeader("Triggers Settings (for debugging purposes)", wrapper_flags::TreeNodeFlags_None)) {
-        DrawContinuousMonitoringSection(imgui);
     }
 
     imgui.Spacing();
@@ -1121,76 +1113,6 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
                 "Requires a game restart to take effect.");
         }
         imgui.Unindent();
-    }
-
-    imgui.Unindent();
-}
-
-void DrawContinuousMonitoringSection(display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.Indent();
-
-    if (imgui.TreeNodeEx("High-frequency updates (~120 Hz)", wrapper_flags::TreeNodeFlags_None)) {
-        imgui.Indent();
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_high_freq_enabled, "Enable high-frequency updates",
-                        imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Background/foreground check, ADHD multi-monitor, keyboard tracking, hotkeys.\n"
-                "Disable to reduce CPU when these features are not needed.");
-        }
-        SliderIntSetting(settings::g_advancedTabSettings.monitor_high_freq_interval_ms, "Interval (ms)", "%d ms",
-                         imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Loop interval: 8 = ~120 Hz, 16 = ~60 Hz, 33 = ~30 Hz. When disabled, loop sleeps 50 ms.");
-        }
-        imgui.Unindent();
-        imgui.TreePop();
-    }
-
-    if (imgui.TreeNodeEx("Per-second tasks", wrapper_flags::TreeNodeFlags_None)) {
-        imgui.Indent();
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_per_second_enabled, "Enable per-second tasks", imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Prevent display sleep & screensaver, FPS aggregate, volume, refresh rate, VRR status, and other "
-                "periodic tasks.");
-        }
-        SliderIntSetting(settings::g_advancedTabSettings.monitor_per_second_interval_sec, "Interval (seconds)", "%d s",
-                         imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("How often the per-second block runs (1–60 seconds).");
-        }
-        imgui.Spacing();
-        imgui.TextColored(::ui::colors::TEXT_LABEL, "Triggers:");
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_screensaver, "Prevent display sleep & screensaver",
-                        imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_fps_aggregate, "FPS aggregate (overlay stats)", imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_volume, "Volume (game & system)", imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_refresh_rate, "Refresh rate stats", imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_vrr_status, "VRR status (NVAPI)", imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_exclusive_key_groups, "Exclusive key groups cache",
-                        imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_discord_overlay, "Discord overlay auto-hide", imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_reflex_auto_configure, "Reflex auto-configure", imgui);
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_auto_apply_trigger,
-                        "Auto-apply (HDR/resolution) trigger", imgui);
-        imgui.Unindent();
-        imgui.TreePop();
-    }
-
-    if (imgui.TreeNodeEx("Display cache refresh", wrapper_flags::TreeNodeFlags_None)) {
-        imgui.Indent();
-        CheckboxSetting(settings::g_advancedTabSettings.monitor_display_cache, "Enable display cache refresh", imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Refreshes display list off the UI thread. Disable to reduce overhead.");
-        }
-        SliderIntSetting(settings::g_advancedTabSettings.monitor_display_cache_interval_sec, "Interval (seconds)",
-                         "%d s", imgui);
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("How often to refresh the display cache (1–60 seconds).");
-        }
-        imgui.Unindent();
-        imgui.TreePop();
     }
 
     imgui.Unindent();

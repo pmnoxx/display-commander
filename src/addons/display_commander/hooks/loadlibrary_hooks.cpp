@@ -229,6 +229,7 @@ static void RemoveDlssOverrideHandle(HMODULE hMod) {
 }
 
 // Hook state
+std::atomic<bool> g_hooked_before_reshade{false};
 static std::atomic<bool> g_loadlibrary_hooks_installed{false};
 
 // Module tracking
@@ -459,6 +460,13 @@ HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
     }
 
     return result;
+}
+
+HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName) {
+    if (LoadLibraryW_Original) {
+        return LoadLibraryW_Original(lpLibFileName);
+    }
+    return LoadLibraryW(lpLibFileName);
 }
 
 // Hooked LoadLibraryW function

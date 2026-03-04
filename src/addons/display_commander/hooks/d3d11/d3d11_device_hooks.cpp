@@ -270,52 +270,44 @@ void InstallD3D11DeviceVtableLogging(ID3D11Device* device) {
         return;
     }
     bool ok = true;
-    /*
-    if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateBuffer)],
-                             reinterpret_cast<LPVOID>(&CreateBuffer_Detour),
+    if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateBuffer)], CreateBuffer_Detour,
                              reinterpret_cast<LPVOID*>(&CreateBuffer_Original), "ID3D11Device::CreateBuffer")) {
         LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateBuffer hook failed");
         ok = false;
     }
-        if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateTexture1D)],
-                                 reinterpret_cast<LPVOID>(&CreateTexture1D_Detour),
-                                 reinterpret_cast<LPVOID*>(&CreateTexture1D_Original),
-       "ID3D11Device::CreateTexture1D")) { LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateTexture1D
-       hook failed"); ok = false;
-        }
-        if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateTexture2D)],
-                                 reinterpret_cast<LPVOID>(&CreateTexture2D_Detour),
-                                 reinterpret_cast<LPVOID*>(&CreateTexture2D_Original),
-       "ID3D11Device::CreateTexture2D")) { LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateTexture2D
-       hook failed"); ok = false;
-        }
-        if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateTexture3D)],
-                                 reinterpret_cast<LPVOID>(&CreateTexture3D_Detour),
-                                 reinterpret_cast<LPVOID*>(&CreateTexture3D_Original),
-       "ID3D11Device::CreateTexture3D")) { LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateTexture3D
-       hook failed"); ok = false;
-        }
-        if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateShaderResourceView)],
-                                 reinterpret_cast<LPVOID>(&CreateShaderResourceView_Detour),
-                                 reinterpret_cast<LPVOID*>(&CreateShaderResourceView_Original),
-                                 "ID3D11Device::CreateShaderResourceView")) {
-            LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateShaderResourceView hook failed");
-            ok = false;
-        }
-        if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateRenderTargetView)],
-                                 reinterpret_cast<LPVOID>(&CreateRenderTargetView_Detour),
-                                 reinterpret_cast<LPVOID*>(&CreateRenderTargetView_Original),
-                                 "ID3D11Device::CreateRenderTargetView")) {
-            LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateRenderTargetView hook failed");
-            ok = false;
-        }
-        if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateDepthStencilView)],
-                                  reinterpret_cast<LPVOID>(&CreateDepthStencilView_Detour),
-                                 reinterpret_cast<LPVOID*>(&CreateDepthStencilView_Original),
-                                 "ID3D11Device::CreateDepthStencilView")) {
-            LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateDepthStencilView hook failed");
-            ok = false;
-        }*/
+    if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateTexture1D)], CreateTexture1D_Detour,
+                             reinterpret_cast<LPVOID*>(&CreateTexture1D_Original), "ID3D11Device::CreateTexture1D")) {
+        LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateTexture1D       hook failed");
+        ok = false;
+    }
+    if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateTexture2D)], CreateTexture2D_Detour,
+                             reinterpret_cast<LPVOID*>(&CreateTexture2D_Original), "ID3D11Device::CreateTexture2D")) {
+        LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateTexture2D       hook failed");
+        ok = false;
+    }
+    if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateTexture3D)], CreateTexture3D_Detour,
+                             reinterpret_cast<LPVOID*>(&CreateTexture3D_Original), "ID3D11Device::CreateTexture3D")) {
+        LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateTexture3D       hook failed");
+        ok = false;
+    }
+    if (!CreateAndEnableHook(
+            vtable[static_cast<unsigned>(VTable::CreateShaderResourceView)], CreateShaderResourceView_Detour,
+            reinterpret_cast<LPVOID*>(&CreateShaderResourceView_Original), "ID3D11Device::CreateShaderResourceView")) {
+        LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateShaderResourceView hook failed");
+        ok = false;
+    }
+    if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateRenderTargetView)],
+                             CreateRenderTargetView_Detour, reinterpret_cast<LPVOID*>(&CreateRenderTargetView_Original),
+                             "ID3D11Device::CreateRenderTargetView")) {
+        LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateRenderTargetView hook failed");
+        ok = false;
+    }
+    if (!CreateAndEnableHook(vtable[static_cast<unsigned>(VTable::CreateDepthStencilView)],
+                             CreateDepthStencilView_Detour, reinterpret_cast<LPVOID*>(&CreateDepthStencilView_Original),
+                             "ID3D11Device::CreateDepthStencilView")) {
+        LogWarn("InstallD3D11DeviceVtableLogging: ID3D11Device::CreateDepthStencilView hook failed");
+        ok = false;
+    }
 
     if (ok) {
         LogInfo(
@@ -332,13 +324,14 @@ bool HookD3D11Device(ID3D11Device* device) {
     if (device == nullptr) {
         return false;
     }
-    if (g_hooked_d3d11_devices.contains(device)) {
+    static bool hooked = false;
+    if (hooked) {
         return true;  // Already hooked
     }
-    g_hooked_d3d11_devices.insert(device);
+    hooked = true;
     LogInfo("D3D11 device hooked: 0x%p (from ReShade swapchain->get_device()->get_native())", device);
     InstallD3D11DeviceVtableLogging(device);
-    return true;
+    return hooked;
 }
 
 }  // namespace display_commanderhooks::d3d11

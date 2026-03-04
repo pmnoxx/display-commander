@@ -272,28 +272,6 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     }
 }
 
-void hookToD3D11Device(reshade::api::swapchain* swapchain) {
-    if (true) {
-        // suppress for now due to crashes
-        return;
-    }
-    if (swapchain == nullptr) {
-        return;
-    }
-    reshade::api::device* const device = swapchain->get_device();
-    if (device == nullptr || device->get_api() != reshade::api::device_api::d3d11) {
-        return;
-    }
-    IUnknown* const device_native = reinterpret_cast<IUnknown*>(device->get_native());
-    if (device_native == nullptr) {
-        return;
-    }
-    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
-    if (SUCCEEDED(device_native->QueryInterface(IID_PPV_ARGS(&d3d11_device)))) {
-        display_commanderhooks::d3d11::HookD3D11Device(d3d11_device.Get());
-    }
-}
-
 // Centralized initialization method
 void DoInitializationWithHwnd(HWND hwnd) {
     LogInfo("[DoInit] entry HWND: 0x%p", hwnd);
@@ -1817,8 +1795,15 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (swapchain_native != nullptr && SUCCEEDED(swapchain_native->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
+
+            // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
+            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
+            if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
+                // display_commanderhooks::d3d11::HookD3D11Device(d3d11_device.Get());
+            }
         }
-        hookToD3D11Device(swapchain);
+        // Fallback: hook using ReShade device when DXGI GetDevice path was not used
+        // hookToD3D11Device(swapchain);
     } else if (dx_dx10) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};

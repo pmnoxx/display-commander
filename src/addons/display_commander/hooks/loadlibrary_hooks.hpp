@@ -1,13 +1,17 @@
 #pragma once
 
-#include <windows.h>
-
-#include <psapi.h>
+#include <atomic>
 #include <string>
 #include <vector>
 
+#include <windows.h>
+
+#include <psapi.h>
 
 namespace display_commanderhooks {
+
+// True if InstallLoadLibraryHooks was called before loading reshade64/32.dll (we load it).
+extern std::atomic<bool> g_hooked_before_reshade;
 
 // Function pointer types for LoadLibrary functions
 using LoadLibraryA_pfn = HMODULE(WINAPI *)(LPCSTR);
@@ -47,6 +51,10 @@ extern LoadLibraryExW_pfn LoadLibraryExW_Original;
 extern LoadPackagedLibrary_pfn LoadPackagedLibrary_Original;
 extern FreeLibrary_pfn FreeLibrary_Original;
 extern FreeLibraryAndExitThread_pfn FreeLibraryAndExitThread_Original;
+
+// Bypass detour: call original LoadLibraryW (or real API if hooks not installed). Use when loading ReShade so
+// GetLastError() is preserved and detour logic (blocking, logging, etc.) is skipped.
+HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName);
 
 // Hooked LoadLibrary functions
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName);

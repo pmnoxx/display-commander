@@ -2344,7 +2344,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                                 "scRGB = 16-bit float linear. HDR10 = 10-bit PQ (ST.2084). Change may require game "
                                 "restart.");
                         }
-                        imgui.TextColored(ui::colors::TEXT_WARNING,
+                        imgui.TextColored(
+                            ui::colors::TEXT_WARNING,
                             "May cause black screen issue. For best compatibility use \"RenoDX Unity mod\" to do "
                             "generic SDR->HDR upgrade (for non unity games).");
                     }
@@ -3088,34 +3089,34 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
             if (selected) ui::colors::PopSelectedButtonColors(&imgui);
         }
         first = false;
-        for (int x = 1; x <= 15; ++x) {
-            if (y % x == 0) {
-                int candidate_rounded = y / x;
-                float candidate_precise = refresh_hz / x;
-                if (candidate_rounded >= 30) {
-                    if (!first) imgui.SameLine();
-                    first = false;
-                    std::string label = std::to_string(candidate_rounded);
-                    {
-                        bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise)
-                                         <= selected_epsilon);
-                        if (selected) ui::colors::PushSelectedButtonColors(&imgui);
-                        if (imgui.Button(label.c_str())) {
-                            float target_fps = candidate_precise;
-                            settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
-                        }
-                        if (selected) ui::colors::PopSelectedButtonColors(&imgui);
-                        // Add tooltip showing the precise calculation
-                        if (imgui.IsItemHovered()) {
-                            std::ostringstream tooltip_oss;
-                            tooltip_oss.setf(std::ios::fixed);
-                            tooltip_oss << std::setprecision(3);
-                            tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise
-                                        << " FPS\n\n";
-                            tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
-                            tooltip_oss << "into the monitor's refresh rate.";
-                            imgui.SetTooltip("%s", tooltip_oss.str().c_str());
-                        }
+        const int max_divisor = (y >= 60) ? 6 : 15;
+        for (int x = 1; x <= max_divisor; ++x) {
+            int candidate_rounded = static_cast<int>(std::round(refresh_hz / x));
+            float candidate_precise = static_cast<float>(refresh_hz / x);
+            constexpr int k_quick_fps_min = 40;
+            const bool above_min = (candidate_rounded >= k_quick_fps_min);
+            if (above_min) {
+                if (!first) imgui.SameLine();
+                first = false;
+                std::string label = std::to_string(candidate_rounded);
+                {
+                    bool selected = (std::fabs(settings::g_mainTabSettings.fps_limit.GetValue() - candidate_precise)
+                                     <= selected_epsilon);
+                    if (selected) ui::colors::PushSelectedButtonColors(&imgui);
+                    if (imgui.Button(label.c_str())) {
+                        float target_fps = candidate_precise;
+                        settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
+                    }
+                    if (selected) ui::colors::PopSelectedButtonColors(&imgui);
+                    // Add tooltip showing the precise calculation
+                    if (imgui.IsItemHovered()) {
+                        std::ostringstream tooltip_oss;
+                        tooltip_oss.setf(std::ios::fixed);
+                        tooltip_oss << std::setprecision(3);
+                        tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise << " FPS\n\n";
+                        tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
+                        tooltip_oss << "into the monitor's refresh rate.";
+                        imgui.SetTooltip("%s", tooltip_oss.str().c_str());
                     }
                 }
             }

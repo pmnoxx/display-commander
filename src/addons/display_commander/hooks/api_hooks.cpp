@@ -643,6 +643,37 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
             LogInfo("  Feature Level: 0x%04X", *pFeatureLevel);
         }
     }
+    // Log output parameters if successful
+    if (SUCCEEDED(hr)) {
+        if (ppDevice && *ppDevice) {
+            LogInfo("  Created Device: 0x%p", *ppDevice);
+            // Get DXGI factory from device (same path as ReShade d3d11.cpp: device -> IDXGIDevice -> GetAdapter ->
+            // GetParent) so that IDXGIFactory::CreateSwapChain (and ForHwnd/ForCoreWindow) vtable hooks are installed
+            // when the app never calls CreateDXGIFactory1/2 and only uses D3D11CreateDevice.
+            IDXGIDevice* dxgi_device = nullptr;
+            HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
+            if (SUCCEEDED(qhr) && dxgi_device != nullptr) {
+                IDXGIAdapter* adapter = nullptr;
+                qhr = dxgi_device->GetAdapter(&adapter);
+                dxgi_device->Release();
+                if (SUCCEEDED(qhr) && adapter != nullptr) {
+                    IDXGIFactory* factory = nullptr;
+                    qhr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
+                    adapter->Release();
+                    if (SUCCEEDED(qhr) && factory != nullptr) {
+                        display_commanderhooks::dxgi::HookFactory(factory);
+                        factory->Release();
+                    }
+                }
+            }
+        }
+        if (ppImmediateContext && *ppImmediateContext) {
+            LogInfo("  Created Context: 0x%p", *ppImmediateContext);
+        }
+        if (pFeatureLevel && *pFeatureLevel) {
+            LogInfo("  Feature Level: 0x%04X", *pFeatureLevel);
+        }
+    }
 
     LogInfo("=== D3D11CreateDeviceAndSwapChain Complete ===");
     return hr;
@@ -944,7 +975,7 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
 }
 
 bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
-    if ((g_reshade_module != nullptr)) {
+    if (g_reshade_module != nullptr && !display_commanderhooks::g_hooked_before_reshade.load()) {
         return true;
     }
     // Check if this module is ReShade's proxy by checking for ReShade exports

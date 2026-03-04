@@ -14,13 +14,13 @@ namespace display_commanderhooks {
 extern std::atomic<bool> g_hooked_before_reshade;
 
 // Function pointer types for LoadLibrary functions
-using LoadLibraryA_pfn = HMODULE(WINAPI *)(LPCSTR);
-using LoadLibraryW_pfn = HMODULE(WINAPI *)(LPCWSTR);
-using LoadLibraryExA_pfn = HMODULE(WINAPI *)(LPCSTR, HANDLE, DWORD);
-using LoadLibraryExW_pfn = HMODULE(WINAPI *)(LPCWSTR, HANDLE, DWORD);
-using LoadPackagedLibrary_pfn = HMODULE(WINAPI *)(LPCWSTR, DWORD);
-using FreeLibrary_pfn = BOOL(WINAPI *)(HMODULE);
-using FreeLibraryAndExitThread_pfn = VOID(WINAPI *)(HMODULE, DWORD);
+using LoadLibraryA_pfn = HMODULE(WINAPI*)(LPCSTR);
+using LoadLibraryW_pfn = HMODULE(WINAPI*)(LPCWSTR);
+using LoadLibraryExA_pfn = HMODULE(WINAPI*)(LPCSTR, HANDLE, DWORD);
+using LoadLibraryExW_pfn = HMODULE(WINAPI*)(LPCWSTR, HANDLE, DWORD);
+using LoadPackagedLibrary_pfn = HMODULE(WINAPI*)(LPCWSTR, DWORD);
+using FreeLibrary_pfn = BOOL(WINAPI*)(HMODULE);
+using FreeLibraryAndExitThread_pfn = VOID(WINAPI*)(HMODULE, DWORD);
 
 // Module information structure
 struct ModuleInfo {
@@ -33,7 +33,8 @@ struct ModuleInfo {
     FILETIME loadTime;
     bool loadedBeforeHooks;  // True if module was loaded before Display Commander hooks were installed
 
-    ModuleInfo() : hModule(nullptr), baseAddress(nullptr), sizeOfImage(0), entryPoint(nullptr), loadedBeforeHooks(false) {
+    ModuleInfo()
+        : hModule(nullptr), baseAddress(nullptr), sizeOfImage(0), entryPoint(nullptr), loadedBeforeHooks(false) {
         loadTime.dwHighDateTime = 0;
         loadTime.dwLowDateTime = 0;
     }
@@ -75,13 +76,13 @@ void UninstallLoadLibraryHooks();
 // without clearing; newly discovered modules are marked loadedBeforeHooks=false and OnModuleLoaded is called.
 bool EnumerateLoadedModules(bool modules_loaded_late_without_noticing = false);
 std::vector<ModuleInfo> GetLoadedModules();
-bool IsModuleLoaded(const std::wstring &moduleName);
+bool IsModuleLoaded(const std::wstring& moduleName);
 
 // Call from exit handler: enumerate loaded modules and return hookable module names we never saw
 std::vector<std::string> ReportMissedModulesOnExit();
 
 // Module loading callback
-void OnModuleLoaded(const std::wstring &moduleName, HMODULE hModule);
+void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule);
 
 // DLL blocking functions
 bool ShouldBlockDLL(const std::wstring& dll_path);

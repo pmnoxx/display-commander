@@ -43,6 +43,10 @@ struct SettingData {
     std::uint32_t default_value = 0;
     bool is_bit_field = false;
     bool is_advanced = false;
+    bool resolve_id_from_driver =
+        false;  // If true, use NvAPI_DRS_GetSettingIdFromName at runtime (driver may use different ID, e.g. RTX HDR in group 5).
+    const wchar_t* driver_lookup_name_wide =
+        nullptr;  // When set, use this for GetSettingIdFromName (NVAPI expects UTF-16); avoids UTF-8 conversion issues.
     std::vector<std::pair<std::uint32_t, const char*>> option_values = {};
 };
 
@@ -73,6 +77,8 @@ static const std::array<SettingData, 22> k_settings_data = {{
     {.user_friendly_name = "RTX HDR - Enable",
      .hex_setting_id = NVPI_RTX_HDR_ENABLE_ID,
      .default_value = 0,
+     .resolve_id_from_driver = true,
+     .driver_lookup_name_wide = L"RTX HDR - Enable",  // NVAPI format (UTF-16); no UTF-8 conversion.
      .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
     {.user_friendly_name = "DLSS-SR mode",
      .hex_setting_id = NGX_DLSS_SR_MODE_ID,
@@ -207,10 +213,21 @@ static const std::array<SettingData, 22> k_settings_data = {{
      .option_values = {{0, "Off"}, {1, "On"}}},
 }};
 
+static std::uint32_t ResolveSettingIdByDriverName(const char* nameUtf8);
+static std::uint32_t ResolveSettingIdByDriverName(const wchar_t* nameWide);
+
 static const SettingData* FindSettingData(std::uint32_t settingId) {
     for (const auto& sd : k_settings_data) {
         if (sd.hex_setting_id == settingId) {
             return &sd;
+        }
+        if (sd.resolve_id_from_driver) {
+            const std::uint32_t resolved = sd.driver_lookup_name_wide != nullptr
+                                               ? ResolveSettingIdByDriverName(sd.driver_lookup_name_wide)
+                                               : ResolveSettingIdByDriverName(sd.user_friendly_name);
+            if (resolved == settingId) {
+                return &sd;
+            }
         }
     }
     return nullptr;
@@ -268,16 +285,32 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
                                   std::vector<ImportantProfileSetting>& out) {
     for (std::size_t i = 0; i < k_num_important_settings; ++i) {
         const SettingData& def = k_settings_data[i];
+        const std::uint32_t effective_id =
+            def.resolve_id_from_driver
+                ? (def.driver_lookup_name_wide != nullptr ? ResolveSettingIdByDriverName(def.driver_lookup_name_wide)
+                                                          : ResolveSettingIdByDriverName(def.user_friendly_name))
+                : def.hex_setting_id;
         ImportantProfileSetting entry;
         entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
-        if (NvAPI_DRS_GetSetting(hSession, hProfile, def.hex_setting_id, &s) != NVAPI_OK) {
-            std::string defaultStr = FormatImportantValue(def.hex_setting_id, def.default_value);
+        if (effective_id == 0 && def.resolve_id_from_driver) {
+            std::ostringstream oss;
+            oss << "Not available for this driver (queried name: \""
+                << (def.user_friendly_name ? def.user_friendly_name : "") << "\", fallback ID: 0x" << std::hex
+                << def.hex_setting_id << ")";
+            entry.value = oss.str();
+            entry.setting_id = 0;
+            entry.value_id = def.default_value;
+            out.push_back(std::move(entry));
+            continue;
+        }
+        if (NvAPI_DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
+            std::string defaultStr = FormatImportantValue(effective_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
-            entry.setting_id = def.hex_setting_id;
+            entry.setting_id = effective_id;
             entry.value_id = def.default_value;
             out.push_back(std::move(entry));
             continue;
@@ -289,8 +322,8 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
             out.push_back(std::move(entry));
             continue;
         }
-        entry.value = FormatImportantValue(def.hex_setting_id, s.u32CurrentValue);
-        entry.setting_id = def.hex_setting_id;
+        entry.value = FormatImportantValue(effective_id, s.u32CurrentValue);
+        entry.setting_id = effective_id;
         entry.value_id = s.u32CurrentValue;
         out.push_back(std::move(entry));
     }
@@ -300,16 +333,32 @@ static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle
                                  std::vector<ImportantProfileSetting>& out) {
     for (std::size_t i = k_num_important_settings; i < k_settings_data.size(); ++i) {
         const SettingData& def = k_settings_data[i];
+        const std::uint32_t effective_id =
+            def.resolve_id_from_driver
+                ? (def.driver_lookup_name_wide != nullptr ? ResolveSettingIdByDriverName(def.driver_lookup_name_wide)
+                                                          : ResolveSettingIdByDriverName(def.user_friendly_name))
+                : def.hex_setting_id;
         ImportantProfileSetting entry;
         entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
-        if (NvAPI_DRS_GetSetting(hSession, hProfile, def.hex_setting_id, &s) != NVAPI_OK) {
-            std::string defaultStr = FormatImportantValue(def.hex_setting_id, def.default_value);
+        if (effective_id == 0 && def.resolve_id_from_driver) {
+            std::ostringstream oss;
+            oss << "Not available for this driver (queried name: \""
+                << (def.user_friendly_name ? def.user_friendly_name : "") << "\", fallback ID: 0x" << std::hex
+                << def.hex_setting_id << ")";
+            entry.value = oss.str();
+            entry.setting_id = 0;
+            entry.value_id = def.default_value;
+            out.push_back(std::move(entry));
+            continue;
+        }
+        if (NvAPI_DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
+            std::string defaultStr = FormatImportantValue(effective_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
-            entry.setting_id = def.hex_setting_id;
+            entry.setting_id = effective_id;
             entry.value_id = def.default_value;
             out.push_back(std::move(entry));
             continue;
@@ -321,8 +370,8 @@ static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle
             out.push_back(std::move(entry));
             continue;
         }
-        entry.value = FormatImportantValue(def.hex_setting_id, s.u32CurrentValue);
-        entry.setting_id = def.hex_setting_id;
+        entry.value = FormatImportantValue(effective_id, s.u32CurrentValue);
+        entry.setting_id = effective_id;
         entry.value_id = s.u32CurrentValue;
         out.push_back(std::move(entry));
     }
@@ -436,6 +485,37 @@ static void WideToNvApiUnicode(const std::wstring& src, NvAPI_UnicodeString& des
     if (toCopy > 0) {
         memcpy(dest, src.c_str(), toCopy * sizeof(NvU16));
     }
+}
+
+// Resolve setting ID from driver by name (NvAPI_DRS_GetSettingIdFromName). NVAPI expects NvAPI_UnicodeString (UTF-16).
+// Prefer the wide-string overload (L"…") to avoid UTF-8→wide conversion issues. Returns 0 if not found.
+static std::uint32_t ResolveSettingIdByDriverName(const wchar_t* nameWide) {
+    if (nameWide == nullptr || nameWide[0] == L'\0') {
+        return 0;
+    }
+    NvAPI_UnicodeString nameUnicode;
+    WideToNvApiUnicode(std::wstring(nameWide), nameUnicode);
+    NvU32 settingId = 0;
+    if (NvAPI_DRS_GetSettingIdFromName(nameUnicode, &settingId) != NVAPI_OK) {
+        return 0;
+    }
+    return static_cast<std::uint32_t>(settingId);
+}
+
+static std::uint32_t ResolveSettingIdByDriverName(const char* nameUtf8) {
+    if (nameUtf8 == nullptr || nameUtf8[0] == '\0') {
+        return 0;
+    }
+    int n = MultiByteToWideChar(CP_UTF8, 0, nameUtf8, -1, nullptr, 0);
+    if (n <= 0) {
+        return 0;
+    }
+    std::wstring nameW(static_cast<size_t>(n), L'\0');
+    if (MultiByteToWideChar(CP_UTF8, 0, nameUtf8, -1, nameW.data(), n) == 0) {
+        return 0;
+    }
+    nameW.resize(nameW.size() - 1);  // drop null
+    return ResolveSettingIdByDriverName(nameW.c_str());
 }
 
 // Normalize for comparison: forward slashes, lowercase.
@@ -913,8 +993,10 @@ std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t set
     return SetOrDeleteProfileSettingForExe(path, settingId, true, 0);
 }
 
-// Setting name for NVPI custom setting (not in NvApiDriverSettings.h). Required when creating the setting in a profile.
+// Setting names for NVPI custom settings (not in NvApiDriverSettings.h). Required when creating the setting in a
+// profile.
 static const wchar_t k_smoothMotionAllowedApisName[] = L"Smooth Motion - Allowed APIs";
+static const wchar_t k_rtxHdrEnableName[] = L"RTX HDR - Enable";
 
 std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uint32_t value) {
     NvDRSSessionHandle hSession = nullptr;
@@ -946,9 +1028,14 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
             s.u32CurrentValue = static_cast<NvU32>(value);
         }
     } else {
-        // Setting not in profile yet: fill settingName for known custom IDs so driver accepts the new setting.
-        if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
-            WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
+        // Setting not in profile yet: get name from driver (covers driver-resolved IDs e.g. RTX HDR); else known custom
+        // names.
+        if (NvAPI_DRS_GetSettingNameFromId(static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
+            if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+                WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
+            } else if (settingId == NVPI_RTX_HDR_ENABLE_ID) {
+                WideToNvApiUnicode(k_rtxHdrEnableName, s.settingName);
+            }
         }
     }
 
@@ -1028,8 +1115,12 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
                 s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
             }
         } else {
-            if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
-                WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
+            if (NvAPI_DRS_GetSettingNameFromId(static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
+                if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+                    WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
+                } else if (settingId == NVPI_RTX_HDR_ENABLE_ID) {
+                    WideToNvApiUnicode(k_rtxHdrEnableName, s.settingName);
+                }
             }
         }
 

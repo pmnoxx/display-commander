@@ -14,7 +14,8 @@ constexpr std::uint32_t NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID = 0xB0CC0875;
 // NVPI Reference.xml setting ID for "Smooth Motion - Enable" (50 series). MinRequiredDriverVersion 571.86.
 constexpr std::uint32_t NVPI_SMOOTH_MOTION_ENABLE_50_ID = 0xB0D384C0;
 
-// NVPI Reference.xml setting ID for "RTX HDR - Enable". MinRequiredDriverVersion 0.
+// NVPI Reference.xml setting ID for "RTX HDR - Enable" (fallback). At runtime we resolve ID from driver via
+// NvAPI_DRS_GetSettingIdFromName("RTX HDR - Enable") when resolve_id_from_driver is set (driver may use different ID, e.g. group 5).
 constexpr std::uint32_t NVPI_RTX_HDR_ENABLE_ID = 0x00DD48FB;
 
 // Returns (value, label) pairs for "Smooth Motion - Allowed APIs" from Reference.xml if available,

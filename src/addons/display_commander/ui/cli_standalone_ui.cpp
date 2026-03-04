@@ -101,7 +101,7 @@ static const wchar_t* s_reshadeDllNames[] = {L"dxgi.dll",     L"d3d9.dll",      
 
 // API proxy DLLs: only one of these should exist (game loads one). ReShade64/32 can coexist.
 static const wchar_t* s_reshadeApiProxyNames[] = {L"dxgi.dll",     L"d3d9.dll",    L"d3d11.dll", L"d3d12.dll",
-                                                  L"opengl32.dll", L"version.dll", L"winmm.dll"};
+                                                  L"opengl32.dll", L"version.dll", L"winmm.dll", L"dbghelp.dll"};
 
 static bool IsReshadeApiProxyDll(const std::wstring& name) {
     for (const wchar_t* p : s_reshadeApiProxyNames) {

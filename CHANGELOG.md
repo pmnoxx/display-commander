@@ -2,8 +2,24 @@
 
 ---
 
-## v0.12.270 (2026-03-04)
+## Unreleased
+- (none)
+
+## v0.12.273 (2026-03-04)
+- **D3D9 No-ReShade: FlipEx factory hook gated by setting** - When running without ReShade, the D3D9 Ex factory (Direct3DCreate9Ex) is only hooked when the experimental "D3D9 FlipEx (no ReShade)" setting is enabled. When the setting is off, the factory is not hooked so D3D9 games are left untouched. Reduces impact when the feature is disabled. Details: `Direct3DCreate9Ex_Detour` in `d3d9_hooks.cpp` checks `d3d9_flipex_enabled_no_reshade` before calling `HookD3D9FactoryVtable`.
+- **D3D9 logging** - D3D9 PresentParams logging is commented out to reduce log noise; DisplayModeEx log is null-safe for the prefix parameter. Details: `LogD3D9PresentParams`, `LogD3D9DisplayModeEx` in `d3d9_hooks.cpp`.
+- **DllMain init logging** - At process attach the addon logs the executable path and current module path; when DllMain exits early or completes, the exit reason is logged (RefuseLoad, EarlySuccess, LoaderOnly, .NO_RESHADE, .NODC, ReShade register failed, RegisterAndPostInit complete). Helps diagnose load order and early-exit behavior. Details: scope guard in `DLL_PROCESS_ATTACH` in `main_entry.cpp`.
+- **Logger: IsInitialized** - `DisplayCommanderLogger::IsInitialized()` and global `IsInitialized()` were added so callers can check whether the logger is ready before logging. Details: `display_commander_logger.hpp`/`.cpp`, `logging.hpp`/`.cpp`.
+
+## v0.12.272 (2026-03-04)
+- **Display Commander loadable as dbghelp.dll proxy** - When renamed to dbghelp.dll and placed where a game or tool loads it, Display Commander loads as a proxy: all DbgHelp API exports (SymInitialize, StackWalk64, MiniDumpWriteDump, etc.) are forwarded to the system dbghelp.dll, and the addon/ReShade logic runs as usual. Allows loading DC in scenarios that use dbghelp (e.g. crash reporting, symbol resolution). Details: `proxy_dll/dbghelp_proxy.cpp` (generated), `scripts/specs/dbghelp.spec` from Wine; `scripts/gen_proxy_from_spec.py` extended for Wine dbghelp.spec format (-arch=win32/win64, -import, alias, int64 type).
+- **exports.def note for proxy regeneration** - A comment at the top of `proxy_dll/exports.def` documents that proxy export blocks (winmm, d3d11, dbghelp, etc.) can be regenerated from Wine .spec files using `scripts/gen_proxy_from_spec.py`.
+
+## v0.12.271 (2026-03-04)
+- **DLL detector mode: copy self to dlls_loaded when .DLL_DETECTOR exists** - If a file named `.DLL_DETECTOR` (or e.g. `.DLL_DETECTOR.off`) exists in the same folder as the Display Commander DLL (current module), at the very start of `DLL_PROCESS_ATTACH` the addon copies itself into a **`dlls_loaded`** subfolder under the same filename and **returns TRUE** from DllMain (no further Display Commander initialization). Used with `copy_dc64_to_wine_proxies.py`: run the script, create `.DLL_DETECTOR` in the game folder, then run the game; after exit, `dlls_loaded` contains one copy per DLL name the game actually loaded. Details: `DllDetectorCopyToLoadedIfEnabled` in `main_entry.cpp`, called first in `case DLL_PROCESS_ATTACH`; when it returns true, DllMain returns TRUE immediately.
 - **Reset FPS stats: no longer breaks overlay / frametime graph** - Clicking "Reset Stats" in the performance overlay could race with the overlay and frametime graph readers: the ring buffer head was reset to 0 while readers were still iterating, causing wrong indices (underflow) and garbage or zero data so the frametime graph and FPS measurement stopped working until restart. Readers now take a single snapshot of the ring head and use it for both count and sample indexing, so a concurrent reset no longer corrupts the read. Details: `utils/ring_buffer.hpp` (GetCountFromHead, GetSampleWithHead); all readers in `main_new_tab.cpp` and `continuous_monitoring.cpp` use the snapshot pattern.
+
+## v0.12.270 (2026-03-04)
 - **VRR/Reflex cap: actual NVIDIA formula** - The VRR Cap button and refresh-rate monitor threshold now use the **actual NVIDIA formula for the Reflex cap**: **3600 × refresh / (refresh + 3600)** (replacing the previous refresh − refresh²/3600). Example: at 144 Hz the cap is ~138.46 FPS. The same formula is used in the Main tab VRR Cap button and in the latent-sync refresh-rate monitor for "samples below threshold" stats. The **×0.995** headroom is applied only when the Reflex FPS limiter is enabled; otherwise the raw cap is used. Details: `main_new_tab.cpp` (VRR Cap uses `ShouldReflexBeEnabled()` for 0.995), `refresh_rate_monitor.cpp`, `refresh_rate_monitor_integration.cpp`, `refresh_rate_monitor.hpp`.
 
 ## v0.12.269 (2026-03-04)

@@ -32,6 +32,9 @@ class DisplayCommanderLogger {
     // Shutdown logger (enqueues shutdown message, drains queue, closes file)
     void Shutdown();
 
+    // Returns true if Initialize() has completed successfully
+    bool IsInitialized() const;
+
     // Request flush: enqueues a flush sentinel so writer flushes without blocking the caller
     void FlushLogs();
 
@@ -80,6 +83,7 @@ class DisplayCommanderLogger {
 
 // Global convenience functions
 void Initialize(const std::string& log_path);
+bool IsInitialized();
 void LogDebug(const char* msg, ...);
 void LogInfo(const char* msg, ...);
 void LogWarning(const char* msg, ...);

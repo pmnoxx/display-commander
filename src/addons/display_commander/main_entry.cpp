@@ -72,6 +72,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <reshade.hpp>
 #include <set>
@@ -1989,7 +1990,9 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
          "Display Commander loaded as version.dll proxy - Version functions will be forwarded to system version.dll"},
         {L"opengl32", L"opengl32.dll", "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
          "Display Commander loaded as opengl32.dll proxy - OpenGL/WGL functions will be forwarded to system "
-         "opengl32.dll"}};
+         "opengl32.dll"},
+        {L"dbghelp", L"dbghelp.dll", "[DisplayCommander] Entry point detected: dbghelp.dll (proxy mode)\n",
+         "Display Commander loaded as dbghelp.dll proxy - DbgHelp functions will be forwarded to system dbghelp.dll"}};
     for (const auto& proxy : proxy_dlls) {
         if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
             entry_point = proxy.entry_point_val;
@@ -2287,26 +2290,87 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
 }
 }  // namespace
 
+// Returns true if .DLL_DETECTOR existed and we copied self to dlls_loaded (caller should return TRUE from DllMain).
+static bool DllDetectorCopyToLoadedIfEnabled(HMODULE h_module) {
+    wchar_t module_path_buf[MAX_PATH] = {};
+    if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return false;
+    std::filesystem::path module_path(module_path_buf);
+    std::filesystem::path local_dir = module_path.parent_path();
+    std::error_code ec;
+    bool has_dll_detector = false;
+    for (const auto& entry : std::filesystem::directory_iterator(local_dir, ec)) {
+        if (ec || !entry.is_regular_file(ec)) continue;
+        std::wstring name = entry.path().filename().wstring();
+        if (name.size() < 2 || name[0] != L'.') continue;
+        size_t dot = name.find(L'.', 1);
+        std::wstring first_seg = (dot == std::wstring::npos) ? name.substr(1) : name.substr(1, dot - 1);
+        if (_wcsicmp(first_seg.c_str(), L"DLL_DETECTOR") == 0) {
+            has_dll_detector = true;
+            break;
+        }
+    }
+    if (!has_dll_detector) return false;
+    std::filesystem::path dlls_loaded_dir = local_dir / L"dlls_loaded";
+    std::filesystem::create_directories(dlls_loaded_dir, ec);
+    if (ec) return false;
+    std::filesystem::path dest = dlls_loaded_dir / module_path.filename();
+    if (CopyFileW(module_path.c_str(), dest.c_str(), FALSE) == 0) return false;
+
+    std::ostringstream oss;
+    oss << "[DisplayCommander] .DLL_DETECTOR: copied self to dlls_loaded " << dest.string() << "\n";
+    OutputDebugStringA(oss.str().c_str());
+    return true;
+}
+
 #if !defined(DISPLAY_COMMANDER_BUILD_EXE)
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
-            auto set_process_attached_on_exit = []() {
+            static const char* reason = "";
+            if (DllDetectorCopyToLoadedIfEnabled(h_module)) return TRUE;
+            auto set_process_attached_on_exit = [h_module]() {
                 g_dll_initialization_complete.store(true);
-                LogInfo("[main_entry] DLL_PROCESS_ATTACH: DLL process attach");
+                // log
+                g_dll_initialization_complete.store(true);
+                // log executable path
+                WCHAR executable_path[MAX_PATH] = {0};
+                if (GetModuleFileNameW(nullptr, executable_path, MAX_PATH) > 0) {
+                    char executable_path_narrow[MAX_PATH];
+                    WideCharToMultiByte(CP_ACP, 0, executable_path, -1, executable_path_narrow, MAX_PATH, nullptr,
+                                        nullptr);
+                    LogInfo("[main_entry] DLL_PROCESS_ATTACH: executable path: %s", executable_path_narrow);
+                }
+                // log current
+                WCHAR current_module_path[MAX_PATH] = {0};
+                if (GetModuleFileNameW(h_module, current_module_path, MAX_PATH) > 0) {
+                    char current_module_path_narrow[MAX_PATH];
+                    WideCharToMultiByte(CP_ACP, 0, current_module_path, -1, current_module_path_narrow, MAX_PATH,
+                                        nullptr, nullptr);
+                    LogInfo("[main_entry] DLL_PROCESS_ATTACH: current module path: %s", current_module_path_narrow);
+                }
+                LogInfo("[main_entry] DLL_PROCESS_ATTACH: DLL process attach reason: %s", reason);
             };
             struct ScopeGuard {
-                void (*run)();
-                explicit ScopeGuard(void (*fn)()) : run(fn) {}
+                std::function<void()> run_;
+                explicit ScopeGuard(std::function<void()> fn) : run_(std::move(fn)) {}
                 ~ScopeGuard() {
-                    if (run != nullptr) run();
+                    if (run_) run_();
                 }
-            } guard(+set_process_attached_on_exit);
+            } guard(set_process_attached_on_exit);
 
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
-            if (early == ProcessAttachEarlyResult::RefuseLoad) return TRUE;
-            if (early == ProcessAttachEarlyResult::EarlySuccess) return TRUE;
-            if (early == ProcessAttachEarlyResult::LoaderOnly) return TRUE;
+            if (early == ProcessAttachEarlyResult::RefuseLoad) {
+                reason = "RefuseLoad";
+                return TRUE;
+            }
+            if (early == ProcessAttachEarlyResult::EarlySuccess) {
+                reason = "EarlySuccess";
+                return TRUE;
+            }
+            if (early == ProcessAttachEarlyResult::LoaderOnly) {
+                reason = "LoaderOnly";
+                return TRUE;
+            }
             ProcessAttach_DetectReShadeInModules();
             ProcessAttach_LoadLocalAddonDlls(h_module);
             ProcessAttach_CheckNoReShadeMode();
@@ -2333,12 +2397,14 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                 LogInfo("[main_entry] DLL_PROCESS_ATTACH: No ReShade mode");
                 ProcessAttach_NoReShadeModeInit(h_module);
                 g_dll_initialization_complete.store(true);
+                reason = ".NO_RESHADE/.NORESHADE";
                 break;
             }
 
             if (g_no_dc_mode.load()) {
                 LogInfo("[main_entry] DLL_PROCESS_ATTACH: .NODC - proxy only, not registering as addon");
                 g_dll_initialization_complete.store(true);
+                reason = ".NODC";
                 break;
             }
 
@@ -2364,6 +2430,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                         reshade::log::message(reshade::log::level::info, msg);
                     }
                 }
+                reason = "ReShade register addon failed";
                 return TRUE;
             }
             LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit");
@@ -2371,6 +2438,7 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             ProcessAttach_RegisterAndPostInit(h_module, entry_point);
             LogInfo("[main_entry] DLL_PROCESS_ATTACH: RegisterAndPostInit complete");
             g_dll_initialization_complete.store(true);
+            reason = "RegisterAndPostInit complete";
             break;
         }
         case DLL_THREAD_ATTACH: {

@@ -1,12 +1,16 @@
 #include "logging.hpp"
+#include "../config/display_commander_config.hpp"
 #include "../globals.hpp"
 #include "display_commander_logger.hpp"
-#include "../config/display_commander_config.hpp"
+
 
 #include <cstdio>
 
 // Logging function implementations
-void LogInfo(const char *msg, ...) {
+void LogInfo(const char* msg, ...) {
+    if (!display_commander::logger::IsInitialized()) {
+        return;
+    }
     // Check if info level logging is enabled (log if message level <= min level)
     if (static_cast<int>(LogLevel::Info) > static_cast<int>(g_min_log_level.load())) {
         return;
@@ -25,7 +29,7 @@ void LogInfo(const char *msg, ...) {
     }
 }
 
-void LogWarn(const char *msg, ...) {
+void LogWarn(const char* msg, ...) {
     // Check if warning level logging is enabled (log if message level <= min level)
     if (static_cast<int>(LogLevel::Warning) > static_cast<int>(g_min_log_level.load())) {
         return;
@@ -44,7 +48,7 @@ void LogWarn(const char *msg, ...) {
     }
 }
 
-void LogError(const char *msg, ...) {
+void LogError(const char* msg, ...) {
     // Errors are always logged (lowest level = 1)
     va_list args;
     va_start(args, msg);
@@ -59,7 +63,7 @@ void LogError(const char *msg, ...) {
     }
 }
 
-void LogDebug(const char *msg, ...) {
+void LogDebug(const char* msg, ...) {
     // Check if debug level logging is enabled (log if message level <= min level)
     if (static_cast<int>(LogLevel::Debug) > static_cast<int>(g_min_log_level.load())) {
         return;
@@ -98,7 +102,7 @@ void LogCurrentLogLevel() {
 
 // Direct logging functions that use LogInfo/LogWarn/LogError
 // These are safe during DLLMain as they use the buffered ostream logger
-void LogInfoDirect(const char *msg, ...) {
+void LogInfoDirect(const char* msg, ...) {
     va_list args;
     va_start(args, msg);
     char buffer[1024];

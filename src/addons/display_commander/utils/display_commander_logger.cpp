@@ -95,6 +95,10 @@ void DisplayCommanderLogger::LogWarning(const std::string& message) { Log(LogLev
 
 void DisplayCommanderLogger::LogError(const std::string& message) { Log(LogLevel::Error, message); }
 
+bool DisplayCommanderLogger::IsInitialized() const {
+    return initialized_.load();
+}
+
 void DisplayCommanderLogger::FlushLogs() {
     if (!initialized_.load()) {
         return;
@@ -347,6 +351,8 @@ void DisplayCommanderLogger::RotateLog() {
 
 // Global convenience functions
 void Initialize(const std::string& log_path) { DisplayCommanderLogger::GetInstance().Initialize(log_path); }
+
+bool IsInitialized() { return DisplayCommanderLogger::GetInstance().IsInitialized(); }
 
 void LogDebug(const char* msg, ...) {
     if (!ShouldLogLevel(LogLevel::Debug)) return;

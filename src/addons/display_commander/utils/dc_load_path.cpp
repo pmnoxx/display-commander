@@ -138,7 +138,8 @@ static bool IsKnownDcProxyModulePath(const std::filesystem::path& module_path) {
         if (c >= L'A' && c <= L'Z') c += (L'a' - L'A');
     }
     static const std::wstring known[] = {L"dxgi.dll",  L"d3d11.dll", L"d3d12.dll",    L"d3d9.dll",
-                                         L"ddraw.dll", L"winmm.dll", L"opengl32.dll", L"version.dll"};
+                                         L"ddraw.dll", L"winmm.dll", L"opengl32.dll", L"version.dll",
+                                         L"dbghelp.dll"};
     for (const auto& k : known) {
         if (name == k) return true;
     }

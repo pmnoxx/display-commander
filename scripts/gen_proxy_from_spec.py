@@ -6,6 +6,7 @@ Takes DLL name and path to .spec file. Outputs xxx_proxy.cpp and xxx_exports.def
 
   python scripts/gen_proxy_from_spec.py winmm scripts/specs/winmm.spec
   python scripts/gen_proxy_from_spec.py d3d11 scripts/specs/d3d11.spec
+  python scripts/gen_proxy_from_spec.py dbghelp scripts/specs/dbghelp.spec
 
 Wine .spec format:
   # ordinal exports
@@ -13,8 +14,12 @@ Wine .spec format:
   N stub @                   -> stub at ordinal N (emits WINMM_N for winmm)
   @ stdcall Name(params)     -> forward
   @ stdcall Name(params) AliasOrGdi32  -> forward (alias ignored; gdi32.X = try gdi32)
+  @ stdcall -arch=win64 Foo(params) Bar  -> forward export Bar (alias); -arch=win32/win64 optional
+  @ stdcall -import Name(params) NtDllName  -> forward (export Name)
   @ stub Name                -> stub
   # comment                  -> skipped
+
+Generated proxy exports (winmm, d3d11, dbghelp, etc.) are pasted into proxy_dll/exports.def.
 """
 
 import argparse
@@ -32,6 +37,8 @@ def wine_to_c(wine_type):
         return "LPCSTR"
     if t == "wstr":
         return "LPCWSTR"
+    if t == "int64":
+        return "DWORD64"
     return "LPVOID"
 
 
@@ -73,17 +80,47 @@ def parse_spec(spec_text, dll_name):
                 seen.add(name)
                 yield (name, True, [], False, None)
             continue
-        # @ stdcall Name(params) [AliasOrGdi32]
+        # @ stdcall [-arch=win32|-arch=win64] [-import] Name(params) [Alias]
+        m = re.match(
+            r"@\s+stdcall\s+"
+            r"(?:-arch=win32|-arch=win64\s+)?"
+            r"(-import\s+)?"
+            r"(\w+)\s*\((.*?)\)\s*"
+            r"(\w+)?\s*$",
+            line,
+        )
+        if m:
+            has_import = m.group(1) is not None
+            name = m.group(2)
+            params_str = m.group(3).strip()
+            alias = m.group(4)
+            # -import: export the DLL name (e.g. ImageNtHeader), not the ntdll alias
+            export_name = name if has_import else (alias if alias and "gdi32." not in alias else name)
+            use_gdi32 = False
+            params = [wine_to_c(p) for p in re.split(r"[\s,]+", params_str) if p] if params_str else []
+            # When alias differs from name (e.g. EnumerateLoadedModulesEx -> 64), emit both so both are in .def
+            to_emit = []
+            if export_name not in seen:
+                to_emit.append(export_name)
+            if name != export_name and name not in seen:
+                to_emit.append(name)
+            for ex in to_emit:
+                seen.add(ex)
+                yield (ex, False, params, use_gdi32, None)
+            continue
+        # @ stdcall Name(params) [AliasOrGdi32] (no -arch/-import)
         m = re.match(r"@\s+stdcall\s+(\w+)\s*\((.*?)\)\s*(.*)$", line)
         if m:
             name = m.group(1)
             params_str = m.group(2).strip()
             rest = m.group(3).strip()
             use_gdi32 = "gdi32." in rest
+            alias = rest.split()[-1] if rest and re.match(r"^\w+$", rest.split()[-1]) else None
+            export_name = alias if alias and not use_gdi32 else name
             params = [wine_to_c(p) for p in re.split(r"[\s,]+", params_str) if p] if params_str else []
-            if name not in seen:
-                seen.add(name)
-                yield (name, False, params, use_gdi32, None)
+            if export_name not in seen:
+                seen.add(export_name)
+                yield (export_name, False, params, use_gdi32, None)
             continue
 
 
@@ -93,6 +130,14 @@ def default_return_type(name, dll_name):
         return "HRESULT"
     if dll_lower == "winmm":
         return "UINT"  # MMRESULT
+    if dll_lower == "dbghelp":
+        if name.startswith("Sym") or name.startswith("Image") or "EnumDirTree" in name:
+            return "BOOL"
+        if "ApiVersion" in name or name == "ExtensionApiVersion":
+            return "DWORD"
+        if "UnDecorate" in name or "SymUnDName" in name:
+            return "DWORD"
+        return "LONG"
     return "LONG"
 
 

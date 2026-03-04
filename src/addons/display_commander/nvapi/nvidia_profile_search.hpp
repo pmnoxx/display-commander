@@ -133,4 +133,9 @@ std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValues();
 // Returns (true, "") on success; (false, error_message) on failure. Invalidates profile cache on success.
 std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t settingId);
 
+// Debug tooltip: returns a multi-line string with Key (hex), GetSettingNameFromId result, and
+// GetSettingIdFromName(displayNameUtf8) result. Use when hovering over a setting name in the UI.
+// displayNameUtf8 is the label shown in the UI (e.g. s.label). Empty string on NVAPI/init failure.
+std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::string& displayNameUtf8);
+
 }  // namespace display_commander::nvapi

@@ -332,10 +332,9 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     imgui.TableNextRow();
                     imgui.TableSetColumnIndex(0);
                     imgui.TextUnformatted(s.label.c_str());
-                    if (imgui.IsItemHovered() && s.setting_id != 0) {
-                        char keyBuf[24];
-                        (void)snprintf(keyBuf, sizeof(keyBuf), "Key: 0x%08X", static_cast<unsigned>(s.setting_id));
-                        imgui.SetTooltip("%s", keyBuf);
+                    if (imgui.IsItemHovered()) {
+                        const std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                        imgui.SetTooltip("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);
                     if (s.setting_id != 0) {
@@ -501,10 +500,9 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         imgui.TableNextRow();
                         imgui.TableSetColumnIndex(0);
                         imgui.TextUnformatted(s.label.c_str());
-                        if (imgui.IsItemHovered() && s.setting_id != 0) {
-                            char keyBuf[24];
-                            (void)snprintf(keyBuf, sizeof(keyBuf), "Key: 0x%08X", static_cast<unsigned>(s.setting_id));
-                            imgui.SetTooltip("%s", keyBuf);
+                        if (imgui.IsItemHovered()) {
+                            const std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                            imgui.SetTooltip("%s", tip.c_str());
                         }
                         imgui.TableSetColumnIndex(1);
                         imgui.TextUnformatted(s.value.c_str());
@@ -545,10 +543,9 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     imgui.TableNextRow();
                     imgui.TableSetColumnIndex(0);
                     imgui.TextUnformatted(s.label.c_str());
-                    if (imgui.IsItemHovered() && s.setting_id != 0) {
-                        char keyBuf[24];
-                        (void)snprintf(keyBuf, sizeof(keyBuf), "Key: 0x%08X", static_cast<unsigned>(s.setting_id));
-                        imgui.SetTooltip("%s", keyBuf);
+                    if (imgui.IsItemHovered()) {
+                        const std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                        imgui.SetTooltip("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);
                     if (!s.known_to_driver) {

@@ -1,5 +1,6 @@
 #include "nvapi_actual_refresh_rate_monitor.hpp"
 #include "nvapi_init.hpp"
+#include "nvapi_loader.hpp"
 #include "../globals.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
@@ -71,9 +72,15 @@ void MonitorThreadFunc() {
             continue;
         }
 
+        const display_commander::nvapi_loader::NvApiPtrs* p = display_commander::nvapi_loader::Ptrs();
+        if (!p || !p->DISP_GetAdaptiveSyncData) {
+            g_has_prev = false;
+            g_actual_refresh_rate_hz.store(0.0, std::memory_order_relaxed);
+            continue;
+        }
         NV_GET_ADAPTIVE_SYNC_DATA data = {};
         data.version = NV_GET_ADAPTIVE_SYNC_DATA_VER;
-        NvAPI_Status st = NvAPI_DISP_GetAdaptiveSyncData(display_id, &data);
+        NvAPI_Status st = p->DISP_GetAdaptiveSyncData(display_id, &data);
         if (st != NVAPI_OK) {
             uint32_t prev = g_consecutive_failures.load(std::memory_order_relaxed);
             if (prev < FAILURE_WARNING_THRESHOLD) {

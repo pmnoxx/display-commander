@@ -18,6 +18,7 @@
 #include "latency/reflex_provider.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_actual_refresh_rate_monitor.hpp"
+#include "nvapi/nvapi_init.hpp"
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
 #include "presentmon/presentmon_manager.hpp"
@@ -3043,7 +3044,7 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
     MultiByteToWideChar(CP_ACP, 0, exeNameAnsi.c_str(), -1, exeNameWide.data(), sizeNeeded);
     std::wstring exeName(exeNameWide.data());
 
-    if (NvAPI_Initialize() != NVAPI_OK) {
+    if (!::nvapi::EnsureNvApiInitialized()) {
         const std::string msg = "NVAPI failed to initialize (NVIDIA GPU required).";
         std::printf("%s\n", msg.c_str());
         if (!resultFilePathAnsi.empty()) {

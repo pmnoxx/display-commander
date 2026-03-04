@@ -13,6 +13,7 @@
 #include "../../nvapi/nvidia_profile_search.hpp"
 #include "../../nvapi/nvpi_reference.hpp"
 #include "../../res/forkawesome.h"
+#include "../../res/link_libraries.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/main_tab_settings.hpp"
@@ -1582,6 +1583,23 @@ void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltip(
             "These tools are for developers and debugging purposes.\nUse with caution as they can cause crashes or "
             "unexpected behavior.");
+    }
+
+    imgui.Spacing();
+
+    // Link dependencies (libraries linked into the addon DLL)
+    if (imgui.TreeNode("Link dependencies (addon DLL)")) {
+        imgui.TextDisabled("Libraries linked into Display Commander addon:");
+        imgui.Indent();
+        for (int i = 0; i < display_commander::res::kAddonLinkLibrariesCount; ++i) {
+            const auto& e = display_commander::res::kAddonLinkLibraries[i];
+            imgui.BulletText("%s%s%s", e.name, e.note ? " - " : "", e.note ? e.note : "");
+        }
+        imgui.Unindent();
+        imgui.TreePop();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("System import libs load DLLs at runtime (e.g. setupapi.dll). MinHook is static (code merged into addon).");
     }
 
     imgui.Spacing();

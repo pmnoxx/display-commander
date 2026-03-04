@@ -2,6 +2,11 @@
 
 ---
 
+## v0.12.268 (2026-03-04)
+- **Proxy DLLs: game can load d3d11.dll + d3d12.dll + dxgi.dll at the same time** - The addon no longer statically links d3d11, d3d12, or dxgi. When used as a proxy (renaming Display Commander to d3d11.dll, d3d12.dll, or dxgi.dll), the game can now load multiple of these proxies simultaneously (e.g. d3d11.dll and dxgi.dll in the same folder), so the addon can hook and work with games that load more than one of these DLLs. Details: CMake no longer links d3d11, dxgi, version, or hid for the addon or Launcher exe.
+- **NVAPI: load system nvapi64.dll at runtime (no static link)** - The addon no longer links to nvapi64.lib. It loads the system **nvapi64.dll** (installed with the NVIDIA driver) at runtime via a new NVAPI loader. All NVAPI use (driver version, profile search, VRR/refresh rate, DRS settings, RunDLL profile apply) goes through this loader, so the addon works with whatever NVAPI version the driver provides and avoids import-library dependency. Details: `nvapi_loader.hpp` / `nvapi_loader.cpp` (LoadLibrary, nvapi_QueryInterface, resolve and cache function pointers); `nvapi_init`, `nvidia_profile_search`, `nvapi_actual_refresh_rate_monitor`, `continuous_monitoring`, `main_entry` call through loader; CMake no longer links nvapi64.lib for addon or Launcher exe.
+- **Developer Tools: link dependencies list** - In Experimental → Developer Tools, a new collapsible **"Link dependencies (addon DLL)"** section lists the libraries linked into the addon (setupapi, tdh, advapi32, wininet, bcrypt, minhook) with short descriptions. Helps users and developers see which system and static libraries are included. Details: `res/link_libraries.hpp` (maintained list), `experimental_tab.cpp` (TreeNode and bullet list).
+
 ## v0.12.267 (2026-03-03)
 - **Quick FPS selector: always show /1–/6 at 60 Hz+ (175 Hz fix)** - On high refresh rate displays that don't divide evenly (e.g. 175 Hz), the quick FPS limit buttons no longer hide useful divisor options. When the monitor refresh rate is at least 60 Hz, the selector now always shows the first six divisor options (refresh/1 through refresh/6)—e.g. 175, 87, 58, 43, 35, 29 for 175 Hz—instead of only those that divided evenly or yielded ≥60 FPS. Details: `DrawQuickFpsLimitChanger` uses `max_divisor = 6` and skips the divisibility check when refresh ≥ 60 (`main_new_tab.cpp`).
 

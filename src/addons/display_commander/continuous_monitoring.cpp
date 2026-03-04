@@ -11,6 +11,7 @@
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_init.hpp"
+#include "nvapi/nvapi_loader.hpp"
 #include "nvapi/reflex_manager.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "presentmon/presentmon_manager.hpp"
@@ -508,7 +509,11 @@ NvAPI_Status ResolveDisplayIdByNameWithReinit(const std::string& display_name, N
     }
 
     // NVAPI may have been unloaded by another feature; try to re-init and retry once.
-    return NvAPI_DISP_GetDisplayIdByDisplayName(display_name.c_str(), &out_display_id);
+    const auto* p = display_commander::nvapi_loader::Ptrs();
+    if (!p || !p->DISP_GetDisplayIdByDisplayName) {
+        return NVAPI_ERROR;
+    }
+    return p->DISP_GetDisplayIdByDisplayName(display_name.c_str(), &out_display_id);
 }
 
 }  // anonymous namespace
@@ -572,7 +577,9 @@ bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t* dxgi_output_device
     NV_GET_VRR_INFO vrr = {};
     vrr.version = NV_GET_VRR_INFO_VER;
 
-    const NvAPI_Status query_st = NvAPI_Disp_GetVRRInfo(display_id, &vrr);
+    const auto* p = display_commander::nvapi_loader::Ptrs();
+    const NvAPI_Status query_st =
+        (p && p->Disp_GetVRRInfo) ? p->Disp_GetVRRInfo(display_id, &vrr) : NVAPI_ERROR;
     out_status.query_status = query_st;
     out_status.vrr_info_queried = true;
 

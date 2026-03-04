@@ -1,13 +1,13 @@
 // Source Code <Display Commander> // follow this order for includes in all files
 #include "nvapi_init.hpp"
+#include "nvapi_loader.hpp"
 #include "../utils/logging.hpp"
 
 #include <atomic>
 #include <cstdio>
 
-#include <windows.h>
+#include <Windows.h>
 
-// NVAPI header lives in external/nvapi and is exposed via include paths in the project.
 #include <nvapi.h>
 
 namespace nvapi {
@@ -23,17 +23,20 @@ bool EnsureNvApiInitialized() {
         return false;
     }
 
-    const NvAPI_Status st = NvAPI_Initialize();
-    if (st != NVAPI_OK) {
-        LogWarn("[nvapi] NVAPI_Initialize failed: %d", st);
+    if (!display_commander::nvapi_loader::Load()) {
         g_failed.store(true, std::memory_order_release);
         return false;
     }
-    LogInfo("[nvapi] NVAPI_Initialize succeeded");
+
+    const display_commander::nvapi_loader::NvApiPtrs* p = display_commander::nvapi_loader::Ptrs();
+    if (!p || !p->SYS_GetDriverAndBranchVersion) {
+        g_failed.store(true, std::memory_order_release);
+        return false;
+    }
 
     NvU32 driver_version = 0;
     NvAPI_ShortString branch_string = {};
-    if (NvAPI_SYS_GetDriverAndBranchVersion(&driver_version, branch_string) == NVAPI_OK) {
+    if (p->SYS_GetDriverAndBranchVersion(&driver_version, branch_string) == NVAPI_OK) {
         const unsigned major = driver_version / 100;
         const unsigned minor = driver_version % 100;
         char branch_buf[64] = {};

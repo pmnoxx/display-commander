@@ -1,7 +1,12 @@
 #include "nvidia_profile_search.hpp"
+#include "nvapi_loader.hpp"
+#include "../utils.hpp"
+#include "nvpi_reference.hpp"
+
 #include <nvapi.h>
 #include <NvApiDriverSettings.h>
-#include <windows.h>
+
+#include <Windows.h>
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -12,12 +17,14 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "../utils.hpp"
-#include "nvpi_reference.hpp"
 
 namespace display_commander::nvapi {
 
 namespace {
+
+inline const display_commander::nvapi_loader::NvApiPtrs* NvApi() {
+    return display_commander::nvapi_loader::Ptrs();
+}
 
 // Full metadata for a setting. Data source: NvidiaProfileInspectorRevamped CustomSettingNames.xml
 // https://github.com/xHybred/NvidiaProfileInspectorRevamped/blob/master/nspector/CustomSettingNames.xml
@@ -44,7 +51,7 @@ struct SettingData {
     bool is_bit_field = false;
     bool is_advanced = false;
     bool resolve_id_from_driver =
-        false;  // If true, use NvAPI_DRS_GetSettingIdFromName at runtime (driver may use different ID, e.g. RTX HDR in group 5).
+        false;  // If true, use NvApi()->DRS_GetSettingIdFromName at runtime (driver may use different ID, e.g. RTX HDR in group 5).
     const wchar_t* driver_lookup_name_wide =
         nullptr;  // When set, use this for GetSettingIdFromName (NVAPI expects UTF-16); avoids UTF-8 conversion issues.
     std::vector<std::pair<std::uint32_t, const char*>> option_values = {};
@@ -74,6 +81,8 @@ static const std::array<SettingData, 22> k_settings_data = {{
      .hex_setting_id = NVPI_SMOOTH_MOTION_ENABLE_50_ID,
      .default_value = 0x00000000,
      .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
+    // Revamped CustomSettingNames.xml uses "RTX HDR - Enable"; driver can return "Enable TrueHDR Feature"
+    // (that string is NOT in NvidiaProfileInspectorRevamped — it comes from NVAPI/driver on export).
     {.user_friendly_name = "RTX HDR - Enable",
      .hex_setting_id = NVPI_RTX_HDR_ENABLE_ID,
      .default_value = 0,
@@ -302,12 +311,12 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
                 << (def.user_friendly_name ? def.user_friendly_name : "") << "\", fallback ID: 0x" << std::hex
                 << def.hex_setting_id << ")";
             entry.value = oss.str();
-            entry.setting_id = 0;
+            entry.setting_id = def.hex_setting_id;  // Use fallback ID so tooltip and UI show the real key
             entry.value_id = def.default_value;
             out.push_back(std::move(entry));
             continue;
         }
-        if (NvAPI_DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
+        if (NvApi()->DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
             std::string defaultStr = FormatImportantValue(effective_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
             entry.setting_id = effective_id;
@@ -350,12 +359,12 @@ static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle
                 << (def.user_friendly_name ? def.user_friendly_name : "") << "\", fallback ID: 0x" << std::hex
                 << def.hex_setting_id << ")";
             entry.value = oss.str();
-            entry.setting_id = 0;
+            entry.setting_id = def.hex_setting_id;  // Use fallback ID so tooltip and UI show the real key
             entry.value_id = def.default_value;
             out.push_back(std::move(entry));
             continue;
         }
-        if (NvAPI_DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
+        if (NvApi()->DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
             std::string defaultStr = FormatImportantValue(effective_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
             entry.setting_id = effective_id;
@@ -420,7 +429,7 @@ static void ReadAllSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hPro
             s.version = NVDRS_SETTING_VER;
         }
         NvU32 count = kBatchSize;
-        if (NvAPI_DRS_EnumSettings(hSession, hProfile, startIndex, &count, batch.data()) != NVAPI_OK) {
+        if (NvApi()->DRS_EnumSettings(hSession, hProfile, startIndex, &count, batch.data()) != NVAPI_OK) {
             break;
         }
         if (count == 0) {
@@ -487,7 +496,7 @@ static void WideToNvApiUnicode(const std::wstring& src, NvAPI_UnicodeString& des
     }
 }
 
-// Resolve setting ID from driver by name (NvAPI_DRS_GetSettingIdFromName). NVAPI expects NvAPI_UnicodeString (UTF-16).
+// Resolve setting ID from driver by name (NvApi()->DRS_GetSettingIdFromName). NVAPI expects NvAPI_UnicodeString (UTF-16).
 // Prefer the wide-string overload (L"…") to avoid UTF-8→wide conversion issues. Returns 0 if not found.
 static std::uint32_t ResolveSettingIdByDriverName(const wchar_t* nameWide) {
     if (nameWide == nullptr || nameWide[0] == L'\0') {
@@ -496,7 +505,7 @@ static std::uint32_t ResolveSettingIdByDriverName(const wchar_t* nameWide) {
     NvAPI_UnicodeString nameUnicode;
     WideToNvApiUnicode(std::wstring(nameWide), nameUnicode);
     NvU32 settingId = 0;
-    if (NvAPI_DRS_GetSettingIdFromName(nameUnicode, &settingId) != NVAPI_OK) {
+    if (NvApi()->DRS_GetSettingIdFromName(nameUnicode, &settingId) != NVAPI_OK) {
         return 0;
     }
     return static_cast<std::uint32_t>(settingId);
@@ -535,7 +544,7 @@ static std::wstring NormalizePath(const std::wstring& s) {
 // Build error string: "step: NVAPI description (0xCODE)". Defined early for use in GetProfileDetailsForCurrentExe.
 static std::string MakeNvapiError(const char* step, NvAPI_Status st) {
     NvAPI_ShortString buf = {};
-    if (NvAPI_GetErrorMessage(st, buf) == NVAPI_OK && buf[0] != '\0') {
+    if (NvApi()->GetErrorMessage(st, buf) == NVAPI_OK && buf[0] != '\0') {
         std::ostringstream o;
         o << step << ": " << buf << " (0x" << std::hex << static_cast<unsigned>(st) << ")";
         return o.str();
@@ -572,6 +581,10 @@ static MatchedProfileEntry MakeMatchedProfileEntry(const NVDRS_PROFILE& profileI
 
 static NvidiaProfileSearchResult GetProfileDetailsForCurrentExe() {
     NvidiaProfileSearchResult result;
+    if (!NvApi()) {
+        result.error = "NVAPI not loaded (call EnsureNvApiInitialized first).";
+        return result;
+    }
     std::wstring exePath = GetCurrentProcessPathW();
     if (exePath.empty()) {
         result.error = "GetModuleFileName failed";
@@ -582,14 +595,14 @@ static NvidiaProfileSearchResult GetProfileDetailsForCurrentExe() {
     result.current_exe_name = WideToUtf8(base ? base + 1 : exePath.c_str());
 
     NvDRSSessionHandle hSession = nullptr;
-    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    NvAPI_Status st = NvApi()->DRS_CreateSession(&hSession);
     if (st != NVAPI_OK) {
         result.error = MakeNvapiError("CreateSession", st);
         return result;
     }
-    st = NvAPI_DRS_LoadSettings(hSession);
+    st = NvApi()->DRS_LoadSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         result.error = MakeNvapiError("LoadSettings", st);
         return result;
     }
@@ -598,13 +611,13 @@ static NvidiaProfileSearchResult GetProfileDetailsForCurrentExe() {
     NVDRS_APPLICATION app = {0};
     if (!FindApplicationByPathForCurrentExe(hSession, &hProfile, &app)) {
         result.success = true;
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return result;
     }
 
     NVDRS_PROFILE profileInfo = {0};
     profileInfo.version = NVDRS_PROFILE_VER;
-    if (NvAPI_DRS_GetProfileInfo(hSession, hProfile, &profileInfo) == NVAPI_OK) {
+    if (NvApi()->DRS_GetProfileInfo(hSession, hProfile, &profileInfo) == NVAPI_OK) {
         MatchedProfileEntry entry = MakeMatchedProfileEntry(profileInfo, app);
         result.matching_profiles.push_back(std::move(entry));
         result.matching_profile_names.push_back(WideToUtf8(reinterpret_cast<const wchar_t*>(profileInfo.profileName)));
@@ -613,7 +626,7 @@ static NvidiaProfileSearchResult GetProfileDetailsForCurrentExe() {
     ReadAdvancedSettings(hSession, hProfile, result.advanced_settings);
     ReadAllSettings(hSession, hProfile, result.all_settings);
     result.success = true;
-    NvAPI_DRS_DestroySession(hSession);
+    NvApi()->DRS_DestroySession(hSession);
     return result;
 }
 
@@ -632,13 +645,13 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
     }
 
     NvDRSSessionHandle hSession = nullptr;
-    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    NvAPI_Status st = NvApi()->DRS_CreateSession(&hSession);
     if (st != NVAPI_OK) {
         return out;
     }
-    st = NvAPI_DRS_LoadSettings(hSession);
+    st = NvApi()->DRS_LoadSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return out;
     }
     NvDRSProfileHandle hProfile = nullptr;
@@ -659,7 +672,7 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
         memset(&vals, 0, sizeof(vals));
         vals.version = NVDRS_SETTING_VALUES_VER;
         NvU32 maxNum = kMaxVal;
-        if (NvAPI_DRS_EnumAvailableSettingValues(drv.setting_id, &maxNum, &vals) == NVAPI_OK
+        if (NvApi()->DRS_EnumAvailableSettingValues(drv.setting_id, &maxNum, &vals) == NVAPI_OK
             && vals.settingType == NVDRS_DWORD_TYPE) {
             s.default_value = vals.u32DefaultValue;
         }
@@ -667,7 +680,7 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
         if (hasProfile && hProfile != nullptr) {
             memset(&nvSetting, 0, sizeof(nvSetting));
             nvSetting.version = NVDRS_SETTING_VER;
-            if (NvAPI_DRS_GetSetting(hSession, hProfile, drv.setting_id, &nvSetting) == NVAPI_OK
+            if (NvApi()->DRS_GetSetting(hSession, hProfile, drv.setting_id, &nvSetting) == NVAPI_OK
                 && nvSetting.settingType == NVDRS_DWORD_TYPE) {
                 s.value_id = nvSetting.u32CurrentValue;
                 s.value = FormatImportantValue(drv.setting_id, nvSetting.u32CurrentValue);
@@ -692,7 +705,7 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
                 b.version = NVDRS_SETTING_VER;
             }
             NvU32 count = kBatchSize;
-            if (NvAPI_DRS_EnumSettings(hSession, hProfile, startIndex, &count, batch.data()) != NVAPI_OK) {
+            if (NvApi()->DRS_EnumSettings(hSession, hProfile, startIndex, &count, batch.data()) != NVAPI_OK) {
                 break;
             }
             if (count == 0) {
@@ -725,11 +738,58 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
         }
     }
 
-    NvAPI_DRS_DestroySession(hSession);
+    NvApi()->DRS_DestroySession(hSession);
     return out;
 }
 
 }  // namespace
+
+std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::string& displayNameUtf8) {
+    std::ostringstream o;
+    o << "Key: 0x" << std::hex << settingId << std::dec;
+    NvAPI_UnicodeString nameBuf;
+    memset(&nameBuf, 0, sizeof(nameBuf));
+    if (NvApi()->DRS_GetSettingNameFromId(static_cast<NvU32>(settingId), &nameBuf) == NVAPI_OK) {
+        const wchar_t* wsz = reinterpret_cast<const wchar_t*>(nameBuf);
+        std::string nameFromId;
+        if (wsz && wsz[0]) {
+            const int len = ::WideCharToMultiByte(CP_UTF8, 0, wsz, -1, nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+                nameFromId.resize(static_cast<size_t>(len) - 1);
+                ::WideCharToMultiByte(CP_UTF8, 0, wsz, -1, &nameFromId[0], len, nullptr, nullptr);
+            }
+        }
+        if (!nameFromId.empty()) {
+            o << "\nGetSettingNameFromId: " << nameFromId;
+        } else {
+            o << "\nGetSettingNameFromId: (empty)";
+        }
+    } else {
+        o << "\nGetSettingNameFromId: (failed)";
+    }
+    if (!displayNameUtf8.empty()) {
+        int n = MultiByteToWideChar(CP_UTF8, 0, displayNameUtf8.c_str(), -1, nullptr, 0);
+        if (n > 0) {
+            std::wstring nameW(static_cast<size_t>(n), L'\0');
+            if (MultiByteToWideChar(CP_UTF8, 0, displayNameUtf8.c_str(), -1, nameW.data(), n) != 0) {
+                nameW.resize(nameW.size() - 1);
+                NvAPI_UnicodeString nameUnicode;
+                memset(&nameUnicode, 0, sizeof(nameUnicode));
+                const size_t toCopy = (std::min)(nameW.size(), static_cast<size_t>(NVAPI_UNICODE_STRING_MAX - 1));
+                if (toCopy > 0) {
+                    memcpy(nameUnicode, nameW.c_str(), toCopy * sizeof(NvU16));
+                }
+                NvU32 idFromName = 0;
+                if (NvApi()->DRS_GetSettingIdFromName(nameUnicode, &idFromName) == NVAPI_OK) {
+                    o << "\nGetSettingIdFromName(\"" << displayNameUtf8 << "\"): 0x" << std::hex << idFromName << std::dec;
+                } else {
+                    o << "\nGetSettingIdFromName(\"" << displayNameUtf8 << "\"): (failed)";
+                }
+            }
+        }
+    }
+    return o.str();
+}
 
 // Fills fullPathBuf with current process exe path (normalized). Returns false if exe path unavailable.
 static bool GetProfilePathForCurrentExe(NvAPI_UnicodeString& fullPathBuf) {
@@ -742,7 +802,7 @@ static bool GetProfilePathForCurrentExe(NvAPI_UnicodeString& fullPathBuf) {
     return true;
 }
 
-// Single call site for NvAPI_DRS_FindApplicationByName: finds profile by current exe full path.
+// Single call site for NvApi()->DRS_FindApplicationByName: finds profile by current exe full path.
 // Caller owns hSession (must be created and loaded). Returns true if profile and app found.
 bool FindApplicationByPathForCurrentExe(NvDRSSessionHandle hSession, NvDRSProfileHandle* phProfile,
                                         NVDRS_APPLICATION* pApp) {
@@ -757,7 +817,7 @@ bool FindApplicationByPathForCurrentExe(NvDRSSessionHandle hSession, NvDRSProfil
     if (!GetProfilePathForCurrentExe(fullPathBuf)) {
         return false;
     }
-    NvAPI_Status st = NvAPI_DRS_FindApplicationByName(hSession, fullPathBuf, phProfile, pApp);
+    NvAPI_Status st = NvApi()->DRS_FindApplicationByName(hSession, fullPathBuf, phProfile, pApp);
     return (st == NVAPI_OK && *phProfile != nullptr);
 }
 
@@ -847,7 +907,7 @@ std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std
     memset(&vals, 0, sizeof(vals));
     vals.version = NVDRS_SETTING_VALUES_VER;
     NvU32 maxNum = NVAPI_SETTING_MAX_VALUES;
-    if (NvAPI_DRS_EnumAvailableSettingValues(static_cast<NvU32>(settingId), &maxNum, &vals) != NVAPI_OK) {
+    if (NvApi()->DRS_EnumAvailableSettingValues(static_cast<NvU32>(settingId), &maxNum, &vals) != NVAPI_OK) {
         return list;
     }
     if (vals.settingType != NVDRS_DWORD_TYPE) {
@@ -880,17 +940,20 @@ static std::string SettingNameToUtf8(const NvAPI_UnicodeString& name) {
 }
 
 std::vector<DriverAvailableSetting> GetDriverAvailableSettings() {
+    if (!NvApi()) {
+        return {};
+    }
     std::vector<DriverAvailableSetting> out;
     constexpr NvU32 kMaxIds = 4096u;
     std::vector<NvU32> ids(kMaxIds);
     NvU32 count = kMaxIds;
-    NvAPI_Status st = NvAPI_DRS_EnumAvailableSettingIds(ids.data(), &count);
+    NvAPI_Status st = NvApi()->DRS_EnumAvailableSettingIds(ids.data(), &count);
     if (st == NVAPI_END_ENUMERATION) {
         // Buffer too small; retry with returned count if reasonable.
         if (count > 0u && count <= 65536u) {
             ids.resize(count);
             NvU32 c2 = count;
-            st = NvAPI_DRS_EnumAvailableSettingIds(ids.data(), &c2);
+            st = NvApi()->DRS_EnumAvailableSettingIds(ids.data(), &c2);
             if (st == NVAPI_OK) {
                 count = c2;
             } else {
@@ -906,7 +969,7 @@ std::vector<DriverAvailableSetting> GetDriverAvailableSettings() {
     NvAPI_UnicodeString nameBuf;
     for (NvU32 i = 0; i < count; ++i) {
         memset(&nameBuf, 0, sizeof(nameBuf));
-        if (NvAPI_DRS_GetSettingNameFromId(ids[i], &nameBuf) != NVAPI_OK) {
+        if (NvApi()->DRS_GetSettingNameFromId(ids[i], &nameBuf) != NVAPI_OK) {
             // Fallback: ID only (e.g. setting not found in this driver)
             std::ostringstream o;
             o << "0x" << std::hex << ids[i];
@@ -962,7 +1025,7 @@ std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& filePat
         memset(&vals, 0, sizeof(vals));
         vals.version = NVDRS_SETTING_VALUES_VER;
         NvU32 maxNum = kMaxVal;
-        if (NvAPI_DRS_EnumAvailableSettingValues(s.setting_id, &maxNum, &vals) != NVAPI_OK) {
+        if (NvApi()->DRS_EnumAvailableSettingValues(s.setting_id, &maxNum, &vals) != NVAPI_OK) {
             f << "?\t0\n";
             continue;
         }
@@ -999,20 +1062,23 @@ static const wchar_t k_smoothMotionAllowedApisName[] = L"Smooth Motion - Allowed
 static const wchar_t k_rtxHdrEnableName[] = L"RTX HDR - Enable";
 
 std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uint32_t value) {
+    if (!NvApi()) {
+        return {false, "NVAPI not loaded (call EnsureNvApiInitialized first)."};
+    }
     NvDRSSessionHandle hSession = nullptr;
-    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    NvAPI_Status st = NvApi()->DRS_CreateSession(&hSession);
     if (st != NVAPI_OK) {
         return {false, MakeNvapiError("CreateSession", st)};
     }
-    st = NvAPI_DRS_LoadSettings(hSession);
+    st = NvApi()->DRS_LoadSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeNvapiError("LoadSettings", st)};
     }
     NvDRSProfileHandle hProfile = nullptr;
     NVDRS_APPLICATION app = {0};
     if (!FindApplicationByPathForCurrentExe(hSession, &hProfile, &app)) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "No profile matches current exe (add this game to a profile first)."};
     }
     NVDRS_SETTING s;
@@ -1023,14 +1089,14 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
     s.u32CurrentValue = static_cast<NvU32>(value);
 
     // Get existing setting so we pass a full struct (including settingName); driver may require it for SetSetting.
-    if (NvAPI_DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
+    if (NvApi()->DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
         if (s.settingType == NVDRS_DWORD_TYPE) {
             s.u32CurrentValue = static_cast<NvU32>(value);
         }
     } else {
         // Setting not in profile yet: get name from driver (covers driver-resolved IDs e.g. RTX HDR); else known custom
         // names.
-        if (NvAPI_DRS_GetSettingNameFromId(static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
+        if (NvApi()->DRS_GetSettingNameFromId(static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
             if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
                 WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
             } else if (settingId == NVPI_RTX_HDR_ENABLE_ID) {
@@ -1039,17 +1105,17 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
         }
     }
 
-    st = NvAPI_DRS_SetSetting(hSession, hProfile, &s);
+    st = NvApi()->DRS_SetSetting(hSession, hProfile, &s);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeSetSettingError(settingId, value, st)};
     }
-    st = NvAPI_DRS_SaveSettings(hSession);
+    st = NvApi()->DRS_SaveSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeNvapiError("SaveSettings", st)};
     }
-    NvAPI_DRS_DestroySession(hSession);
+    NvApi()->DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();
     return {true, ""};
 }
@@ -1070,15 +1136,17 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
     if (exePath.empty()) {
         return {false, "Executable path is empty."};
     }
-
+    if (!NvApi()) {
+        return {false, "NVAPI not loaded (call EnsureNvApiInitialized first)."};
+    }
     NvDRSSessionHandle hSession = nullptr;
-    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    NvAPI_Status st = NvApi()->DRS_CreateSession(&hSession);
     if (st != NVAPI_OK) {
         return {false, MakeNvapiError("CreateSession", st)};
     }
-    st = NvAPI_DRS_LoadSettings(hSession);
+    st = NvApi()->DRS_LoadSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeNvapiError("LoadSettings", st)};
     }
 
@@ -1090,16 +1158,16 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
     NVDRS_APPLICATION app = {0};
     memset(&app, 0, sizeof(app));
     app.version = NVDRS_APPLICATION_VER;
-    st = NvAPI_DRS_FindApplicationByName(hSession, pathUnicode, &hProfile, &app);
+    st = NvApi()->DRS_FindApplicationByName(hSession, pathUnicode, &hProfile, &app);
     if (st != NVAPI_OK || hProfile == nullptr) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "No NVIDIA driver profile found for this executable. Add the game to a profile first."};
     }
 
     if (deleteSetting) {
-        st = NvAPI_DRS_DeleteProfileSetting(hSession, hProfile, static_cast<NvU32>(settingId));
+        st = NvApi()->DRS_DeleteProfileSetting(hSession, hProfile, static_cast<NvU32>(settingId));
         if (st != NVAPI_OK) {
-            NvAPI_DRS_DestroySession(hSession);
+            NvApi()->DRS_DestroySession(hSession);
             return {false, MakeNvapiError("DeleteProfileSetting", st)};
         }
     } else {
@@ -1110,12 +1178,12 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
         s.settingType = NVDRS_DWORD_TYPE;
         s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
 
-        if (NvAPI_DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
+        if (NvApi()->DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
             if (s.settingType == NVDRS_DWORD_TYPE) {
                 s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
             }
         } else {
-            if (NvAPI_DRS_GetSettingNameFromId(static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
+            if (NvApi()->DRS_GetSettingNameFromId(static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
                 if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
                     WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
                 } else if (settingId == NVPI_RTX_HDR_ENABLE_ID) {
@@ -1124,19 +1192,19 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
             }
         }
 
-        st = NvAPI_DRS_SetSetting(hSession, hProfile, &s);
+        st = NvApi()->DRS_SetSetting(hSession, hProfile, &s);
         if (st != NVAPI_OK) {
-            NvAPI_DRS_DestroySession(hSession);
+            NvApi()->DRS_DestroySession(hSession);
             return {false, MakeSetSettingError(settingId, valueIfSet, st)};
         }
     }
 
-    st = NvAPI_DRS_SaveSettings(hSession);
+    st = NvApi()->DRS_SaveSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeNvapiError("SaveSettings", st)};
     }
-    NvAPI_DRS_DestroySession(hSession);
+    NvApi()->DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();
     return {true, ""};
 }
@@ -1152,22 +1220,22 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
     std::wstring fullPathNorm = NormalizePath(exePath);
 
     NvDRSSessionHandle hSession = nullptr;
-    NvAPI_Status status = NvAPI_DRS_CreateSession(&hSession);
+    NvAPI_Status status = NvApi()->DRS_CreateSession(&hSession);
     if (status != NVAPI_OK) {
         if (status == NVAPI_API_NOT_INITIALIZED) {
             return {false, "NVAPI not available (NVIDIA GPU required)"};
         }
         return {false, "DRS CreateSession failed"};
     }
-    if (NvAPI_DRS_LoadSettings(hSession) != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+    if (NvApi()->DRS_LoadSettings(hSession) != NVAPI_OK) {
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "DRS LoadSettings failed"};
     }
 
     NvDRSProfileHandle hProfile = nullptr;
     NVDRS_APPLICATION app = {0};
     if (FindApplicationByPathForCurrentExe(hSession, &hProfile, &app)) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         InvalidateProfileSearchCache();
         return {true, ""};  // Profile already exists
     }
@@ -1180,9 +1248,9 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
     profileData.isPredefined = 0;
     WideToNvApiUnicode(profileNameW, profileData.profileName);
 
-    NvAPI_Status createSt = NvAPI_DRS_CreateProfile(hSession, &profileData, &hProfile);
+    NvAPI_Status createSt = NvApi()->DRS_CreateProfile(hSession, &profileData, &hProfile);
     if (createSt != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "DRS CreateProfile failed"};
     }
 
@@ -1192,17 +1260,17 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
     WideToNvApiUnicode(fullPathNorm, app.appName);
     WideToNvApiUnicode(exeNameW, app.userFriendlyName);
 
-    createSt = NvAPI_DRS_CreateApplication(hSession, hProfile, &app);
+    createSt = NvApi()->DRS_CreateApplication(hSession, hProfile, &app);
     if (createSt != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "DRS CreateApplication failed"};
     }
 
-    if (NvAPI_DRS_SaveSettings(hSession) != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+    if (NvApi()->DRS_SaveSettings(hSession) != NVAPI_OK) {
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "DRS SaveSettings failed"};
     }
-    NvAPI_DRS_DestroySession(hSession);
+    NvApi()->DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();
     return {true, ""};
 }
@@ -1221,26 +1289,26 @@ bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& r) {
 
 std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
     NvDRSSessionHandle hSession = nullptr;
-    NvAPI_Status st = NvAPI_DRS_CreateSession(&hSession);
+    NvAPI_Status st = NvApi()->DRS_CreateSession(&hSession);
     if (st != NVAPI_OK) {
         return {false, MakeNvapiError("CreateSession", st)};
     }
-    st = NvAPI_DRS_LoadSettings(hSession);
+    st = NvApi()->DRS_LoadSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeNvapiError("LoadSettings", st)};
     }
 
     NvDRSProfileHandle hProfile = nullptr;
     NVDRS_APPLICATION app = {0};
     if (!FindApplicationByPathForCurrentExe(hSession, &hProfile, &app)) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "No profile found for current exe."};
     }
     NVDRS_PROFILE profileInfo = {0};
     profileInfo.version = NVDRS_PROFILE_VER;
-    if (NvAPI_DRS_GetProfileInfo(hSession, hProfile, &profileInfo) != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+    if (NvApi()->DRS_GetProfileInfo(hSession, hProfile, &profileInfo) != NVAPI_OK) {
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "GetProfileInfo failed."};
     }
     const wchar_t* profileNameW = reinterpret_cast<const wchar_t*>(profileInfo.profileName);
@@ -1248,21 +1316,21 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
     const size_t prefixLen = sizeof(k_displayCommanderProfilePrefix) - 1;
     if (profileNameUtf8.size() < prefixLen
         || profileNameUtf8.compare(0, prefixLen, k_displayCommanderProfilePrefix) != 0) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, "Display Commander profile not found for this exe (profile exists but is not ours)."};
     }
 
-    st = NvAPI_DRS_DeleteProfile(hSession, hProfile);
+    st = NvApi()->DRS_DeleteProfile(hSession, hProfile);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeNvapiError("DeleteProfile", st)};
     }
-    st = NvAPI_DRS_SaveSettings(hSession);
+    st = NvApi()->DRS_SaveSettings(hSession);
     if (st != NVAPI_OK) {
-        NvAPI_DRS_DestroySession(hSession);
+        NvApi()->DRS_DestroySession(hSession);
         return {false, MakeNvapiError("SaveSettings", st)};
     }
-    NvAPI_DRS_DestroySession(hSession);
+    NvApi()->DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();
     return {true, ""};
 }

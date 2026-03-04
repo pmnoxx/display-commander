@@ -3,6 +3,7 @@
 #include <NvApiDriverSettings.h>
 #include <windows.h>
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <cwchar>
 #include <fstream>
@@ -10,6 +11,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <vector>
 #include "../utils.hpp"
 #include "nvpi_reference.hpp"
 
@@ -17,46 +19,207 @@ namespace display_commander::nvapi {
 
 namespace {
 
-struct ImportantSettingDef {
-    NvU32 id;
-    const char* label;
-    NvU32 default_value;  // NVIDIA driver default when not set in profile
-    bool is_bit_field;    // Value is a bitmask; UI uses checkboxes per flag.
+// Full metadata for a setting. Data source: NvidiaProfileInspectorRevamped CustomSettingNames.xml
+// https://github.com/xHybred/NvidiaProfileInspectorRevamped/blob/master/nspector/CustomSettingNames.xml
+// Example XML:
+//   <CustomSetting>
+//     <UserfriendlyName>RTX HDR - Enable</UserfriendlyName>
+//     <HexSettingID>0x00DD48FB</HexSettingID>
+//     <GroupName>0.2.1 - Graphic | HDR</GroupName>
+//     <MinRequiredDriverVersion>0</MinRequiredDriverVersion>
+//     <SettingValues>
+//       <CustomSettingValue><UserfriendlyName>Off</UserfriendlyName><HexValue>0x00000000</HexValue></CustomSettingValue>
+//       <CustomSettingValue><UserfriendlyName>On</UserfriendlyName><HexValue>0x00000001</HexValue></CustomSettingValue>
+//     </SettingValues>
+//   </CustomSetting>
+// All members have defaults so designated initializers can omit fields.
+// option_values: (hex_value, label) from SettingValues. When non-empty, used for presentation and combo.
+// is_advanced: if true, shown in "Show advanced profile settings" only.
+struct SettingData {
+    const char* user_friendly_name = nullptr;
+    std::uint32_t hex_setting_id = 0;
+    const char* group_name = nullptr;
+    unsigned min_required_driver_version = 0;  // e.g. 57186 for 571.86
+    std::uint32_t default_value = 0;
+    bool is_bit_field = false;
+    bool is_advanced = false;
+    std::vector<std::pair<std::uint32_t, const char*>> option_values = {};
 };
 
-static const ImportantSettingDef k_important_settings[] = {
-    {VSYNCSMOOTHAFR_ID, "Smooth Motion (AFR) (591 or below 4000 series)", VSYNCSMOOTHAFR_DEFAULT, false},
-    {NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID, "Smooth Motion - Allowed APIs (591 or below 4000 series)", 0, true},
-    {NGX_DLSS_SR_MODE_ID, "DLSS-SR mode", static_cast<NvU32>(NGX_DLSS_SR_MODE_DEFAULT), false},
-    {NGX_DLSS_SR_OVERRIDE_ID, "DLSS-SR override", static_cast<NvU32>(NGX_DLSS_SR_OVERRIDE_DEFAULT), false},
-    {NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID, "DLSS-SR preset",
-     static_cast<NvU32>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT), false},
-    {NGX_DLSS_FG_OVERRIDE_ID, "DLSS-FG override", static_cast<NvU32>(NGX_DLSS_FG_OVERRIDE_DEFAULT), false},
-    {NGX_DLSS_RR_OVERRIDE_ID, "DLSS-RR override", static_cast<NvU32>(NGX_DLSS_RR_OVERRIDE_DEFAULT), false},
-    {NGX_DLSS_RR_MODE_ID, "DLSS-RR mode", static_cast<NvU32>(NGX_DLSS_RR_MODE_DEFAULT), false},
-    {NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID, "DLSS-RR preset",
-     static_cast<NvU32>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT), false},
-    {NGX_DLAA_OVERRIDE_ID, "DLAA override", static_cast<NvU32>(NGX_DLAA_OVERRIDE_DEFAULT), false},
-    {VSYNCMODE_ID, "Vertical Sync", static_cast<NvU32>(VSYNCMODE_DEFAULT), false},
-    {VSYNCTEARCONTROL_ID, "Sync tear control", static_cast<NvU32>(VSYNCTEARCONTROL_DEFAULT), false},
-    {VRR_APP_OVERRIDE_ID, "G-SYNC / VRR", static_cast<NvU32>(VRR_APP_OVERRIDE_DEFAULT), false},
-    {VRR_MODE_ID, "G-SYNC mode", static_cast<NvU32>(VRR_MODE_DEFAULT), false},
-    {REFRESH_RATE_OVERRIDE_ID, "Preferred refresh rate", static_cast<NvU32>(REFRESH_RATE_OVERRIDE_DEFAULT), false},
-    {PRERENDERLIMIT_ID, "Max pre-rendered frames", static_cast<NvU32>(PRERENDERLIMIT_DEFAULT), false},
-    {PREFERRED_PSTATE_ID, "Power management", static_cast<NvU32>(PREFERRED_PSTATE_DEFAULT), false},
-};
+// All important + advanced settings; first k_num_important_settings are important, rest are advanced.
+static constexpr std::size_t k_num_important_settings = 19;
+static const std::array<SettingData, 22> k_settings_data = {{
+    // Important (order matches previous k_important_settings)
+    {.user_friendly_name = "Smooth Motion (AFR) [40 series]",
+     .hex_setting_id = VSYNCSMOOTHAFR_ID,
+     .default_value = static_cast<std::uint32_t>(VSYNCSMOOTHAFR_DEFAULT),
+     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
+    {.user_friendly_name = "Smooth Motion - Allowed APIs [40 series]",
+     .hex_setting_id = NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
+     .default_value = 0,
+     .is_bit_field = true,
+     .option_values = {{0x00000000, "Allow - None"},
+                       {0x00000001, "Allow - DX12"},
+                       {0x00000002, "Allow - DX11"},
+                       {0x00000003, "Allow - DX11/12"},
+                       {0x00000004, "Allow - VK"},
+                       {0x00000005, "Allow - DX12, VK"},
+                       {0x00000006, "Allow - DX11, VK"},
+                       {0x00000007, "Allow - All [DX11/12, VK]"}}},
+    {.user_friendly_name = "Smooth Motion - Enable [50 series]",
+     .hex_setting_id = NVPI_SMOOTH_MOTION_ENABLE_50_ID,
+     .default_value = 0x00000000,
+     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
+    {.user_friendly_name = "RTX HDR - Enable",
+     .hex_setting_id = NVPI_RTX_HDR_ENABLE_ID,
+     .default_value = 0,
+     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
+    {.user_friendly_name = "DLSS-SR mode",
+     .hex_setting_id = NGX_DLSS_SR_MODE_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLSS_SR_MODE_DEFAULT),
+     .option_values = {{0, "Performance"},
+                       {1, "Balanced"},
+                       {2, "Quality"},
+                       {3, "Snippet controlled"},
+                       {4, "DLAA"},
+                       {5, "Ultra Performance"},
+                       {6, "Custom"}}},
+    {.user_friendly_name = "DLSS-SR override",
+     .hex_setting_id = NGX_DLSS_SR_OVERRIDE_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLSS_SR_OVERRIDE_DEFAULT),
+     .option_values = {{0, "Off"}, {1, "On"}}},
+    {.user_friendly_name = "DLSS-SR preset",
+     .hex_setting_id = NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT),
+     .option_values = {{0, "Off"},
+                       {1, "Preset A"},
+                       {2, "Preset B"},
+                       {3, "Preset C"},
+                       {4, "Preset D"},
+                       {5, "Preset E"},
+                       {6, "Preset F"},
+                       {7, "Preset G"},
+                       {8, "Preset H"},
+                       {9, "Preset I"},
+                       {10, "Preset J"},
+                       {11, "Preset K"},
+                       {12, "Preset L"},
+                       {13, "Preset M"},
+                       {14, "Preset N"},
+                       {15, "Preset O"},
+                       {0x00ffffff, "Latest"}}},
+    {.user_friendly_name = "DLSS-FG override",
+     .hex_setting_id = NGX_DLSS_FG_OVERRIDE_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLSS_FG_OVERRIDE_DEFAULT),
+     .option_values = {{0, "Off"}, {1, "On"}}},
+    {.user_friendly_name = "DLSS-RR override",
+     .hex_setting_id = NGX_DLSS_RR_OVERRIDE_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLSS_RR_OVERRIDE_DEFAULT),
+     .option_values = {{0, "Off"}, {1, "On"}}},
+    {.user_friendly_name = "DLSS-RR mode",
+     .hex_setting_id = NGX_DLSS_RR_MODE_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLSS_RR_MODE_DEFAULT),
+     .option_values = {{0, "Performance"},
+                       {1, "Balanced"},
+                       {2, "Quality"},
+                       {3, "Snippet controlled"},
+                       {4, "DLAA"},
+                       {5, "Ultra Performance"},
+                       {6, "Custom"}}},
+    {.user_friendly_name = "DLSS-RR preset",
+     .hex_setting_id = NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_DEFAULT),
+     .option_values = {{0, "Off"},
+                       {1, "Preset A"},
+                       {2, "Preset B"},
+                       {3, "Preset C"},
+                       {4, "Preset D"},
+                       {5, "Preset E"},
+                       {6, "Preset F"},
+                       {7, "Preset G"},
+                       {8, "Preset H"},
+                       {9, "Preset I"},
+                       {10, "Preset J"},
+                       {11, "Preset K"},
+                       {12, "Preset L"},
+                       {13, "Preset M"},
+                       {14, "Preset N"},
+                       {15, "Preset O"},
+                       {0x00ffffff, "Latest"}}},
+    {.user_friendly_name = "DLAA override",
+     .hex_setting_id = NGX_DLAA_OVERRIDE_ID,
+     .default_value = static_cast<std::uint32_t>(NGX_DLAA_OVERRIDE_DEFAULT),
+     .option_values = {{0, "Default"}, {1, "On"}}},
+    {.user_friendly_name = "Vertical Sync",
+     .hex_setting_id = VSYNCMODE_ID,
+     .default_value = static_cast<std::uint32_t>(VSYNCMODE_DEFAULT),
+     .option_values = {{0x60925292, "Passive (app)"},
+                       {0x08416747, "Force Off"},
+                       {0x47814940, "Force On"},
+                       {0x32610244, "Flip 2"},
+                       {0x71271021, "Flip 3"},
+                       {0x13245256, "Flip 4"},
+                       {0x18888888, "Virtual"}}},
+    {.user_friendly_name = "Sync tear control",
+     .hex_setting_id = VSYNCTEARCONTROL_ID,
+     .default_value = static_cast<std::uint32_t>(VSYNCTEARCONTROL_DEFAULT),
+     .option_values = {{0x99941284, "Enable"}, {0x00000000, "Disable"}}},
+    {.user_friendly_name = "G-SYNC / VRR",
+     .hex_setting_id = VRR_APP_OVERRIDE_ID,
+     .default_value = static_cast<std::uint32_t>(VRR_APP_OVERRIDE_DEFAULT),
+     .option_values = {{0, "Allow"}, {1, "Force Off"}, {2, "Disallow"}, {3, "ULMB"}, {4, "Fixed refresh"}}},
+    {.user_friendly_name = "G-SYNC mode",
+     .hex_setting_id = VRR_MODE_ID,
+     .default_value = static_cast<std::uint32_t>(VRR_MODE_DEFAULT),
+     .option_values = {{0, "Disabled"}, {1, "Fullscreen only"}, {2, "Fullscreen + windowed"}}},
+    {.user_friendly_name = "Preferred refresh rate",
+     .hex_setting_id = REFRESH_RATE_OVERRIDE_ID,
+     .default_value = static_cast<std::uint32_t>(REFRESH_RATE_OVERRIDE_DEFAULT),
+     .option_values = {{REFRESH_RATE_OVERRIDE_APPLICATION_CONTROLLED, "Application controlled"},
+                       {REFRESH_RATE_OVERRIDE_HIGHEST_AVAILABLE, "Highest available"}}},
+    {.user_friendly_name = "Max pre-rendered frames",
+     .hex_setting_id = PRERENDERLIMIT_ID,
+     .default_value = static_cast<std::uint32_t>(PRERENDERLIMIT_DEFAULT)},
+    {.user_friendly_name = "Power management",
+     .hex_setting_id = PREFERRED_PSTATE_ID,
+     .default_value = static_cast<std::uint32_t>(PREFERRED_PSTATE_DEFAULT),
+     .option_values = {{0, "Adaptive"},
+                       {1, "Prefer max"},
+                       {2, "Driver controlled"},
+                       {3, "Consistent perf"},
+                       {4, "Prefer min"},
+                       {5, "Optimal power"}}},
+    // Advanced
+    {.user_friendly_name = "Ansel allow",
+     .hex_setting_id = ANSEL_ALLOW_ID,
+     .default_value = static_cast<std::uint32_t>(ANSEL_ALLOW_DEFAULT),
+     .is_advanced = true,
+     .option_values = {{0, "Disallowed"}, {1, "Allowed"}}},
+    {.user_friendly_name = "Ansel allowlisted",
+     .hex_setting_id = ANSEL_ALLOWLISTED_ID,
+     .default_value = static_cast<std::uint32_t>(ANSEL_ALLOWLISTED_DEFAULT),
+     .is_advanced = true,
+     .option_values = {{0, "Disallowed"}, {1, "Allowed"}}},
+    {.user_friendly_name = "Ansel enable",
+     .hex_setting_id = ANSEL_ENABLE_ID,
+     .default_value = static_cast<std::uint32_t>(ANSEL_ENABLE_DEFAULT),
+     .is_advanced = true,
+     .option_values = {{0, "Off"}, {1, "On"}}},
+}};
 
-// Advanced but useful settings — shown when user enables "Show advanced profile settings"
-static const ImportantSettingDef k_advanced_settings[] = {
-    {ANSEL_ALLOW_ID, "Ansel allow", static_cast<NvU32>(ANSEL_ALLOW_DEFAULT), false},
-    {ANSEL_ALLOWLISTED_ID, "Ansel allowlisted", static_cast<NvU32>(ANSEL_ALLOWLISTED_DEFAULT), false},
-    {ANSEL_ENABLE_ID, "Ansel enable", static_cast<NvU32>(ANSEL_ENABLE_DEFAULT), false},
-};
+static const SettingData* FindSettingData(std::uint32_t settingId) {
+    for (const auto& sd : k_settings_data) {
+        if (sd.hex_setting_id == settingId) {
+            return &sd;
+        }
+    }
+    return nullptr;
+}
 
 static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
-    switch (settingId) {
-        case VSYNCSMOOTHAFR_ID:                  return (value == VSYNCSMOOTHAFR_ON) ? "On" : "Off";
-        case NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID: {
+    const SettingData* sd = FindSettingData(settingId);
+    if (sd != nullptr && !sd->option_values.empty()) {
+        if (sd->is_bit_field) {
             const auto& flags = GetSmoothMotionAllowedApisFlags();
             if (value == 0) {
                 return "None/All";
@@ -72,95 +235,29 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
             std::string s = o.str();
             return s.empty() ? "None/All" : s;
         }
-        case NGX_DLSS_SR_OVERRIDE_ID: return (value == NGX_DLSS_SR_OVERRIDE_ON) ? "On" : "Off";
-        case NGX_DLSS_FG_OVERRIDE_ID: return (value == NGX_DLSS_FG_OVERRIDE_ON) ? "On" : "Off";
-        case NGX_DLSS_RR_OVERRIDE_ID: return (value == NGX_DLSS_RR_OVERRIDE_ON) ? "On" : "Off";
-        case NGX_DLAA_OVERRIDE_ID:    return (value == NGX_DLAA_OVERRIDE_DLAA_ON) ? "On" : "Default";
+        for (const auto& opt : sd->option_values) {
+            if (opt.first == value) {
+                return std::string(opt.second);
+            }
+        }
+    }
+    // Fallbacks for values not in option_values (e.g. PRERENDERLIMIT numeric, REFRESH_RATE low-latency)
+    switch (settingId) {
         case PRERENDERLIMIT_ID:
-            if (value == PRERENDERLIMIT_APP_CONTROLLED) return "App controlled";
-            {
+            if (value != PRERENDERLIMIT_APP_CONTROLLED) {
                 std::ostringstream o;
                 o << value;
                 return o.str();
             }
-            break;
-        case VRR_APP_OVERRIDE_ID:
-            if (value == 0) return "Allow";
-            if (value == 1) return "Force Off";
-            if (value == 2) return "Disallow";
-            if (value == 3) return "ULMB";
-            if (value == 4) return "Fixed refresh";
-            break;
-        case VRR_MODE_ID:
-            if (value == 0) return "Disabled";
-            if (value == 1) return "Fullscreen only";
-            if (value == 2) return "Fullscreen + windowed";
-            break;
+            return "App controlled";
         case REFRESH_RATE_OVERRIDE_ID:
-            if (value == REFRESH_RATE_OVERRIDE_APPLICATION_CONTROLLED) return "Application controlled";
-            if (value == REFRESH_RATE_OVERRIDE_HIGHEST_AVAILABLE) return "Highest available";
             if ((value & REFRESH_RATE_OVERRIDE_LOW_LATENCY_RR_MASK) != 0) {
                 std::ostringstream o;
                 o << "Low latency (0x" << std::hex << value << ")";
                 return o.str();
             }
             break;
-        case NGX_DLSS_SR_MODE_ID:
-            switch (value) {
-                case 0:  return "Performance";
-                case 1:  return "Balanced";
-                case 2:  return "Quality";
-                case 3:  return "Snippet controlled";
-                case 4:  return "DLAA";
-                case 5:  return "Ultra Performance";
-                case 6:  return "Custom";
-                default: break;
-            }
-            break;
-        case NGX_DLSS_RR_MODE_ID:
-            switch (value) {
-                case 0:  return "Performance";
-                case 1:  return "Balanced";
-                case 2:  return "Quality";
-                case 3:  return "Snippet controlled";
-                case 4:  return "DLAA";
-                case 5:  return "Ultra Performance";
-                case 6:  return "Custom";
-                default: break;
-            }
-            break;
-        case NGX_DLSS_SR_OVERRIDE_RENDER_PRESET_SELECTION_ID:
-        case NGX_DLSS_RR_OVERRIDE_RENDER_PRESET_SELECTION_ID: {
-            if (value == 0) return "Off";
-            if (value >= 1 && value <= 15) {
-                const char presets[] = "ABCDEFGHIJKLMNO";
-                return std::string("Preset ") + presets[value - 1];
-            }
-            if (value == 0x00ffffff) return "Latest";
-            break;
-        }
-        case VSYNCMODE_ID:
-            if (value == 0x60925292) return "Passive (app)";
-            if (value == 0x08416747) return "Force Off";
-            if (value == 0x47814940) return "Force On";
-            if (value == 0x32610244) return "Flip 2";
-            if (value == 0x71271021) return "Flip 3";
-            if (value == 0x13245256) return "Flip 4";
-            if (value == 0x18888888) return "Virtual";
-            break;
-        case VSYNCTEARCONTROL_ID: return (value == 0x99941284) ? "Enable" : "Disable";
-        case PREFERRED_PSTATE_ID:
-            if (value == 0) return "Adaptive";
-            if (value == 1) return "Prefer max";
-            if (value == 2) return "Driver controlled";
-            if (value == 3) return "Consistent perf";
-            if (value == 4) return "Prefer min";
-            if (value == 5) return "Optimal power";
-            break;
-        case ANSEL_ALLOW_ID:       return (value == ANSEL_ALLOW_ALLOWED) ? "Allowed" : "Disallowed";
-        case ANSEL_ALLOWLISTED_ID: return (value == ANSEL_ALLOWLISTED_ALLOWED) ? "Allowed" : "Disallowed";
-        case ANSEL_ENABLE_ID:      return (value == ANSEL_ENABLE_ON) ? "On" : "Off";
-        default:                   break;
+        default: break;
     }
     std::ostringstream oss;
     oss << "0x" << std::hex << value << " (" << std::dec << value << ")";
@@ -169,17 +266,18 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
 
 static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                                   std::vector<ImportantProfileSetting>& out) {
-    for (const auto& def : k_important_settings) {
+    for (std::size_t i = 0; i < k_num_important_settings; ++i) {
+        const SettingData& def = k_settings_data[i];
         ImportantProfileSetting entry;
-        entry.label = def.label;
+        entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
-        if (NvAPI_DRS_GetSetting(hSession, hProfile, def.id, &s) != NVAPI_OK) {
-            std::string defaultStr = FormatImportantValue(def.id, def.default_value);
+        if (NvAPI_DRS_GetSetting(hSession, hProfile, def.hex_setting_id, &s) != NVAPI_OK) {
+            std::string defaultStr = FormatImportantValue(def.hex_setting_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
-            entry.setting_id = def.id;
+            entry.setting_id = def.hex_setting_id;
             entry.value_id = def.default_value;
             out.push_back(std::move(entry));
             continue;
@@ -191,8 +289,8 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
             out.push_back(std::move(entry));
             continue;
         }
-        entry.value = FormatImportantValue(def.id, s.u32CurrentValue);
-        entry.setting_id = def.id;
+        entry.value = FormatImportantValue(def.hex_setting_id, s.u32CurrentValue);
+        entry.setting_id = def.hex_setting_id;
         entry.value_id = s.u32CurrentValue;
         out.push_back(std::move(entry));
     }
@@ -200,17 +298,18 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
 
 static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                                  std::vector<ImportantProfileSetting>& out) {
-    for (const auto& def : k_advanced_settings) {
+    for (std::size_t i = k_num_important_settings; i < k_settings_data.size(); ++i) {
+        const SettingData& def = k_settings_data[i];
         ImportantProfileSetting entry;
-        entry.label = def.label;
+        entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
-        if (NvAPI_DRS_GetSetting(hSession, hProfile, def.id, &s) != NVAPI_OK) {
-            std::string defaultStr = FormatImportantValue(def.id, def.default_value);
+        if (NvAPI_DRS_GetSetting(hSession, hProfile, def.hex_setting_id, &s) != NVAPI_OK) {
+            std::string defaultStr = FormatImportantValue(def.hex_setting_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
-            entry.setting_id = def.id;
+            entry.setting_id = def.hex_setting_id;
             entry.value_id = def.default_value;
             out.push_back(std::move(entry));
             continue;
@@ -222,8 +321,8 @@ static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle
             out.push_back(std::move(entry));
             continue;
         }
-        entry.value = FormatImportantValue(def.id, s.u32CurrentValue);
-        entry.setting_id = def.id;
+        entry.value = FormatImportantValue(def.hex_setting_id, s.u32CurrentValue);
+        entry.setting_id = def.hex_setting_id;
         entry.value_id = s.u32CurrentValue;
         out.push_back(std::move(entry));
     }
@@ -366,6 +465,17 @@ static std::string MakeNvapiError(const char* step, NvAPI_Status st) {
     return o.str();
 }
 
+// SetSetting failure: when NVAPI_SETTING_NOT_FOUND, append key and value so user knows what was tried.
+static std::string MakeSetSettingError(std::uint32_t settingId, std::uint32_t value, NvAPI_Status st) {
+    std::string msg = MakeNvapiError("SetSetting", st);
+    if (st == NVAPI_SETTING_NOT_FOUND) {
+        std::ostringstream o;
+        o << msg << " [key 0x" << std::hex << settingId << ", value 0x" << value << "]";
+        return o.str();
+    }
+    return msg;
+}
+
 static MatchedProfileEntry MakeMatchedProfileEntry(const NVDRS_PROFILE& profileInfo, const NVDRS_APPLICATION& app) {
     MatchedProfileEntry entry;
     entry.profile_name = WideToUtf8(reinterpret_cast<const wchar_t*>(profileInfo.profileName));
@@ -417,8 +527,7 @@ static NvidiaProfileSearchResult GetProfileDetailsForCurrentExe() {
     if (NvAPI_DRS_GetProfileInfo(hSession, hProfile, &profileInfo) == NVAPI_OK) {
         MatchedProfileEntry entry = MakeMatchedProfileEntry(profileInfo, app);
         result.matching_profiles.push_back(std::move(entry));
-        result.matching_profile_names.push_back(
-            WideToUtf8(reinterpret_cast<const wchar_t*>(profileInfo.profileName)));
+        result.matching_profile_names.push_back(WideToUtf8(reinterpret_cast<const wchar_t*>(profileInfo.profileName)));
     }
     ReadImportantSettings(hSession, hProfile, result.important_settings);
     ReadAdvancedSettings(hSession, hProfile, result.advanced_settings);
@@ -428,8 +537,9 @@ static NvidiaProfileSearchResult GetProfileDetailsForCurrentExe() {
     return result;
 }
 
-// Builds list of all driver settings with current profile value and driver default. Used by GetDriverSettingsWithProfileValues().
-// Also appends settings that are in the profile but not in the driver's recognized list (known_to_driver = false).
+// Builds list of all driver settings with current profile value and driver default. Used by
+// GetDriverSettingsWithProfileValues(). Also appends settings that are in the profile but not in the driver's
+// recognized list (known_to_driver = false).
 static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesImpl() {
     std::vector<ImportantProfileSetting> out;
     std::vector<DriverAvailableSetting> driverList = GetDriverAvailableSettings();
@@ -634,6 +744,15 @@ using ValueList = std::vector<std::pair<std::uint32_t, std::string>>;
 static std::map<std::uint32_t, ValueList> s_availableValuesCache;
 
 std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std::uint32_t settingId) {
+    const SettingData* sd = FindSettingData(settingId);
+    if (sd != nullptr && !sd->option_values.empty()) {
+        ValueList list;
+        list.reserve(sd->option_values.size());
+        for (const auto& opt : sd->option_values) {
+            list.push_back({opt.first, std::string(opt.second)});
+        }
+        return list;
+    }
     if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
         return GetSmoothMotionAllowedApisValues();
     }
@@ -727,11 +846,11 @@ std::vector<DriverAvailableSetting> GetDriverAvailableSettings() {
 
 static const char* SettingTypeToString(NVDRS_SETTING_TYPE t) {
     switch (t) {
-        case NVDRS_DWORD_TYPE: return "DWORD";
-        case NVDRS_BINARY_TYPE: return "BINARY";
-        case NVDRS_STRING_TYPE: return "STRING";
+        case NVDRS_DWORD_TYPE:   return "DWORD";
+        case NVDRS_BINARY_TYPE:  return "BINARY";
+        case NVDRS_STRING_TYPE:  return "STRING";
         case NVDRS_WSTRING_TYPE: return "WSTRING";
-        default: return "?";
+        default:                 return "?";
     }
 }
 
@@ -836,7 +955,7 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
     st = NvAPI_DRS_SetSetting(hSession, hProfile, &s);
     if (st != NVAPI_OK) {
         NvAPI_DRS_DestroySession(hSession);
-        return {false, MakeNvapiError("SetSetting", st)};
+        return {false, MakeSetSettingError(settingId, value, st)};
     }
     st = NvAPI_DRS_SaveSettings(hSession);
     if (st != NVAPI_OK) {
@@ -859,24 +978,10 @@ std::pair<bool, std::string> ClearDriverDlssPresetOverride() {
     return rr;
 }
 
-std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exeName, std::uint32_t settingId,
+std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exePath, std::uint32_t settingId,
                                                              bool deleteSetting, std::uint32_t valueIfSet) {
-    if (exeName.empty()) {
-        return {false, "Executable name is empty."};
-    }
-    // Only current process exe is supported (find by path). Reject if exeName is not current process.
-    std::wstring currentPath = GetCurrentProcessPathW();
-    if (currentPath.empty()) {
-        return {false, "GetModuleFileName failed."};
-    }
-    const wchar_t* base = wcsrchr(currentPath.c_str(), L'\\');
-    const wchar_t* baseName = base ? base + 1 : currentPath.c_str();
-    std::wstring exeNorm = exeName;
-    std::replace(exeNorm.begin(), exeNorm.end(), L'\\', L'/');
-    const wchar_t* exeBase = wcsrchr(exeNorm.c_str(), L'/');
-    std::wstring exeNameOnly(exeBase ? exeBase + 1 : exeNorm.c_str());
-    if (_wcsicmp(baseName, exeNameOnly.c_str()) != 0) {
-        return {false, "Only current process executable is supported. Run from the game process or use the profile UI."};
+    if (exePath.empty()) {
+        return {false, "Executable path is empty."};
     }
 
     NvDRSSessionHandle hSession = nullptr;
@@ -890,9 +995,16 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
         return {false, MakeNvapiError("LoadSettings", st)};
     }
 
+    std::wstring pathNorm = NormalizePath(exePath);
+    NvAPI_UnicodeString pathUnicode;
+    WideToNvApiUnicode(pathNorm, pathUnicode);
+
     NvDRSProfileHandle hProfile = nullptr;
     NVDRS_APPLICATION app = {0};
-    if (!FindApplicationByPathForCurrentExe(hSession, &hProfile, &app)) {
+    memset(&app, 0, sizeof(app));
+    app.version = NVDRS_APPLICATION_VER;
+    st = NvAPI_DRS_FindApplicationByName(hSession, pathUnicode, &hProfile, &app);
+    if (st != NVAPI_OK || hProfile == nullptr) {
         NvAPI_DRS_DestroySession(hSession);
         return {false, "No NVIDIA driver profile found for this executable. Add the game to a profile first."};
     }
@@ -924,7 +1036,7 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
         st = NvAPI_DRS_SetSetting(hSession, hProfile, &s);
         if (st != NVAPI_OK) {
             NvAPI_DRS_DestroySession(hSession);
-            return {false, MakeNvapiError("SetSetting", st)};
+            return {false, MakeSetSettingError(settingId, valueIfSet, st)};
         }
     }
 
@@ -1043,8 +1155,8 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
     const wchar_t* profileNameW = reinterpret_cast<const wchar_t*>(profileInfo.profileName);
     const std::string profileNameUtf8 = WideToUtf8(profileNameW);
     const size_t prefixLen = sizeof(k_displayCommanderProfilePrefix) - 1;
-    if (profileNameUtf8.size() < prefixLen ||
-        profileNameUtf8.compare(0, prefixLen, k_displayCommanderProfilePrefix) != 0) {
+    if (profileNameUtf8.size() < prefixLen
+        || profileNameUtf8.compare(0, prefixLen, k_displayCommanderProfilePrefix) != 0) {
         NvAPI_DRS_DestroySession(hSession);
         return {false, "Display Commander profile not found for this exe (profile exists but is not ours)."};
     }

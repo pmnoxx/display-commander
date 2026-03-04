@@ -67,6 +67,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -2966,8 +2967,9 @@ extern "C" __declspec(dllexport) void CALLBACK Stop(HWND hwnd, HINSTANCE hInst, 
 }
 
 // RunDLL entry point to set or reset an NVIDIA driver profile DWORD setting (SpecialK-compatible).
-// Allows calling: rundll32.exe "path\to\addon64", RunDLL_NvAPI_SetDWORD <HexID> <HexValue|~> <game.exe>
+// Allows calling: rundll32.exe "path\to\addon64", RunDLL_NvAPI_SetDWORD <HexID> <HexValue|~> <fullExePath> [resultFilePath]
 // Use ~ for value to reset the setting to driver default (calls NvAPI_DRS_DeleteProfileSetting).
+// Optional resultFilePath: if present, the process writes "OK" or "ERROR: <message>" to that file for the caller to read.
 // Requires admin for DRS changes; run rundll32 elevated if you get NVAPI_INVALID_USER_PRIVILEGE.
 extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
                                                                      int nCmdShow) {
@@ -2976,7 +2978,7 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
     UNREFERENCED_PARAMETER(nCmdShow);
 
     if (lpszCmdLine == nullptr) {
-        std::printf("Arguments: <HexID> <HexValue|~> <ExecutableName.exe>\n");
+        std::printf("Arguments: <HexID> <HexValue|~> <fullExePath> [resultFilePath]\n");
         return;
     }
     unsigned int settingId = 0, settingVal = 0;
@@ -2985,12 +2987,12 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
     if (vals != 2) {
         vals = sscanf_s(lpszCmdLine, "%x ~ ", &settingId);
         if (vals != 1) {
-            std::printf("Arguments: <HexID> <HexValue|~> <ExecutableName.exe>\n");
+            std::printf("Arguments: <HexID> <HexValue|~> <fullExePath> [resultFilePath]\n");
             return;
         }
         clearSetting = true;
     }
-    // Executable name: after second space (sscanf doesn't consume the rest)
+    // Remainder after "<HexID> <HexValue|~> ": exe name and optional result file path (last token if it looks like a path)
     const char* p = lpszCmdLine;
     for (int spaceCount = 0; *p && spaceCount < 2; ++p) {
         if (*p == ' ') {
@@ -3001,9 +3003,35 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
         }
     }
     while (*p == ' ') ++p;
-    std::string exeNameAnsi(p);
+    std::string remainder(p);
+    std::string exeNameAnsi;
+    std::string resultFilePathAnsi;
+    {
+        const std::string::size_type lastSpace = remainder.rfind(' ');
+        if (lastSpace != std::string::npos && lastSpace + 1 < remainder.size()) {
+            std::string lastToken = remainder.substr(lastSpace + 1);
+            // Trim quotes from token
+            if (lastToken.size() >= 2 && lastToken.front() == '"' && lastToken.back() == '"') {
+                lastToken = lastToken.substr(1, lastToken.size() - 2);
+            }
+            if (lastToken.find('\\') != std::string::npos || lastToken.find(':') != std::string::npos) {
+                resultFilePathAnsi = lastToken;
+                exeNameAnsi = remainder.substr(0, lastSpace);
+                while (!exeNameAnsi.empty() && exeNameAnsi.back() == ' ') {
+                    exeNameAnsi.pop_back();
+                }
+            }
+        }
+        if (exeNameAnsi.empty()) {
+            exeNameAnsi = remainder;
+        }
+    }
+    // Trim surrounding quotes (e.g. "C:\Program Files\game.exe") so path is passed correctly
+    if (exeNameAnsi.size() >= 2 && exeNameAnsi.front() == '"' && exeNameAnsi.back() == '"') {
+        exeNameAnsi = exeNameAnsi.substr(1, exeNameAnsi.size() - 2);
+    }
     if (exeNameAnsi.empty()) {
-        std::printf("Missing executable name.\n");
+        std::printf("Missing executable path.\n");
         return;
     }
     int sizeNeeded = MultiByteToWideChar(CP_ACP, 0, exeNameAnsi.c_str(), -1, nullptr, 0);
@@ -3016,11 +3044,30 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
     std::wstring exeName(exeNameWide.data());
 
     if (NvAPI_Initialize() != NVAPI_OK) {
-        std::printf("NVAPI failed to initialize (NVIDIA GPU required).\n");
+        const std::string msg = "NVAPI failed to initialize (NVIDIA GPU required).";
+        std::printf("%s\n", msg.c_str());
+        if (!resultFilePathAnsi.empty()) {
+            FILE* f = nullptr;
+            if (fopen_s(&f, resultFilePathAnsi.c_str(), "w") == 0 && f != nullptr) {
+                std::fprintf(f, "ERROR: %s\n", msg.c_str());
+                std::fclose(f);
+            }
+        }
         return;
     }
     auto [ok, err] = display_commander::nvapi::SetOrDeleteProfileSettingForExe(
         exeName, static_cast<std::uint32_t>(settingId), clearSetting, static_cast<std::uint32_t>(settingVal));
+    if (!resultFilePathAnsi.empty()) {
+        FILE* f = nullptr;
+        if (fopen_s(&f, resultFilePathAnsi.c_str(), "w") == 0 && f != nullptr) {
+            if (ok) {
+                std::fprintf(f, "OK\n");
+            } else {
+                std::fprintf(f, "ERROR: %s\n", err.c_str());
+            }
+            std::fclose(f);
+        }
+    }
     if (ok) {
         std::printf("Setting %s.\n", clearSetting ? "reset to default" : "applied");
     } else {
@@ -3031,14 +3078,21 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
 namespace display_commander {
 
 bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value, const std::wstring& exeName,
-                             HANDLE* outProcess) {
+                             HANDLE* outProcess, std::string* outError,
+                             const std::wstring* resultFilePath) {
     HMODULE hMod = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             reinterpret_cast<LPCWSTR>(&RunDLL_NvAPI_SetDWORD), &hMod)) {
+        if (outError != nullptr) {
+            *outError = "Apply as administrator failed: could not get module handle.";
+        }
         return false;
     }
     wchar_t dllPath[MAX_PATH] = {};
     if (GetModuleFileNameW(hMod, dllPath, MAX_PATH) == 0) {
+        if (outError != nullptr) {
+            *outError = "Apply as administrator failed: could not get DLL path.";
+        }
         return false;
     }
     // Parameters: " \"path\", RunDLL_NvAPI_SetDWORD 0x<id> 0x<val> exeName"
@@ -3056,6 +3110,14 @@ bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value, const
     } else {
         params += exeName;
     }
+    if (resultFilePath != nullptr && !resultFilePath->empty()) {
+        params += L" ";
+        if (resultFilePath->find(L' ') != std::wstring::npos) {
+            params += L"\"" + *resultFilePath + L"\"";
+        } else {
+            params += *resultFilePath;
+        }
+    }
     SHELLEXECUTEINFOW sei = {};
     sei.cbSize = sizeof(sei);
     sei.fMask = SEE_MASK_NOCLOSEPROCESS;
@@ -3064,6 +3126,31 @@ bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value, const
     sei.lpParameters = params.c_str();
     sei.nShow = SW_SHOWNORMAL;
     if (ShellExecuteExW(&sei) == FALSE) {
+        if (outError != nullptr) {
+            DWORD err = GetLastError();
+            wchar_t errMsg[256] = {};
+            DWORD len = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, err,
+                                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), errMsg,
+                                       static_cast<DWORD>(sizeof(errMsg) / sizeof(errMsg[0])), nullptr);
+            while (len > 0 && (errMsg[len - 1] == L'\n' || errMsg[len - 1] == L'\r')) {
+                errMsg[--len] = L'\0';
+            }
+            char errMsgNarrow[256] = {};
+            if (len > 0) {
+                WideCharToMultiByte(CP_UTF8, 0, errMsg, -1, errMsgNarrow, sizeof(errMsgNarrow), nullptr, nullptr);
+            }
+            *outError = "Apply as administrator failed: could not start elevated process. ";
+            if (errMsgNarrow[0] != '\0') {
+                *outError += errMsgNarrow;
+            } else {
+                *outError += "(error ";
+                *outError += std::to_string(static_cast<unsigned long>(err));
+                *outError += ")";
+            }
+            if (err == 1225) {  // ERROR_CANCELLED
+                *outError += " (UAC was cancelled—click again and accept the prompt.)";
+            }
+        }
         return false;
     }
     if (outProcess != nullptr) {

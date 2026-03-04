@@ -207,8 +207,9 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
 void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;  // Phase 1: unused; for future standalone migration
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    // Get frame time data from the performance ring buffer
-    const uint32_t count = ::g_perf_ring.GetCount();
+    // Snapshot head so Reset() running on another thread cannot cause wrong reads (GetSample underflow).
+    const uint32_t head = ::g_perf_ring.GetHead();
+    const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
 
     if (count == 0) {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "No frame time data available yet...");
@@ -222,7 +223,7 @@ void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     frame_times.reserve(samples_to_collect);
 
     for (uint32_t i = 0; i < samples_to_collect; ++i) {
-        const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
+        const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
         if (sample.dt > 0.0f) {
             frame_times.push_back(sample.dt);  // Convert FPS to frame time in ms
         }
@@ -979,8 +980,9 @@ void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
         return;
     }
 
-    // Get native frame time data from the ring buffer
-    const uint32_t count = ::g_native_frame_time_ring.GetCount();
+    // Snapshot head so Reset() (or any future reset) cannot cause wrong reads mid-iteration.
+    const uint32_t head = ::g_native_frame_time_ring.GetHead();
+    const uint32_t count = ::g_native_frame_time_ring.GetCountFromHead(head);
 
     if (count == 0) {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "No native frame time data available yet...");
@@ -994,7 +996,7 @@ void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     frame_times.reserve(samples_to_collect);
 
     for (uint32_t i = 0; i < samples_to_collect; ++i) {
-        const ::PerfSample& sample = ::g_native_frame_time_ring.GetSample(i);
+        const ::PerfSample sample = ::g_native_frame_time_ring.GetSampleWithHead(i, head);
         if (sample.dt > 0.0f) {
             frame_times.push_back(1000.0 * sample.dt);  // Convert to frame time in ms
         }
@@ -1143,8 +1145,9 @@ void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool
 
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
 
-    // Get frame time data from the performance ring buffer
-    const uint32_t count = ::g_perf_ring.GetCount();
+    // Snapshot head so Reset() running on another thread cannot cause wrong reads (GetSample underflow).
+    const uint32_t head = ::g_perf_ring.GetHead();
+    const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
 
     if (count == 0) {
         return;  // Don't show anything if no data
@@ -1157,7 +1160,7 @@ void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool
     frame_times.reserve(samples_to_display);
 
     for (uint32_t i = 0; i < samples_to_display; ++i) {
-        const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
+        const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
         frame_times.push_back(1000.0 * sample.dt);  // Convert FPS to frame time in ms
     }
 
@@ -1231,8 +1234,9 @@ void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui
 
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::Overlay);
 
-    // Get native frame time data from the ring buffer
-    const uint32_t count = ::g_native_frame_time_ring.GetCount();
+    // Snapshot head so Reset() (or any future reset) cannot cause wrong reads mid-iteration.
+    const uint32_t head = ::g_native_frame_time_ring.GetHead();
+    const uint32_t count = ::g_native_frame_time_ring.GetCountFromHead(head);
 
     if (count == 0) {
         return;  // Don't show anything if no data
@@ -1245,7 +1249,7 @@ void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui
     frame_times.reserve(samples_to_display);
 
     for (uint32_t i = 0; i < samples_to_display; ++i) {
-        const ::PerfSample& sample = ::g_native_frame_time_ring.GetSample(i);
+        const ::PerfSample sample = ::g_native_frame_time_ring.GetSampleWithHead(i, head);
         if (sample.dt > 0.0f) {
             frame_times.push_back(1000.0 * sample.dt);  // Convert to frame time in ms
         }
@@ -5645,15 +5649,15 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     if (show_fps_counter) {
-        const uint32_t count = ::g_perf_ring.GetCount();
+        const uint32_t head = ::g_perf_ring.GetHead();
+        const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
         double total_time = 0.0;
 
-        // Iterate through samples from the last second
+        // Iterate through samples from the last second (snapshot head avoids race with Reset Stats).
         uint32_t sample_count = 0;
 
-        // Iterate backwards through the ring buffer up to 1 second
         for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
-            const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
+            const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
 
             // not enough data yet
             if (sample.dt == 0.0f || total_time >= 1.0) break;
@@ -6200,13 +6204,14 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
         LONGLONG frame_time_ns = ::g_frame_time_ns.load();
 
-        // Current FPS from perf ring (last second)
+        // Current FPS from perf ring (last second); snapshot head avoids race with Reset Stats.
         double current_fps = 0.0;
-        const uint32_t count = ::g_perf_ring.GetCount();
+        const uint32_t head = ::g_perf_ring.GetHead();
+        const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
         double total_time = 0.0;
         uint32_t sample_count = 0;
         for (uint32_t i = 0; i < count && i < ::kPerfRingCapacity; ++i) {
-            const ::PerfSample& sample = ::g_perf_ring.GetSample(i);
+            const ::PerfSample sample = ::g_perf_ring.GetSampleWithHead(i, head);
             if (sample.dt == 0.0f || total_time >= 1.0) break;
             sample_count++;
             total_time += sample.dt;
@@ -7767,12 +7772,13 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
     // Simulation Start to Present Latency Display
     oss.str("");
     oss.clear();
-    // Calculate latency: frame_time - sleep duration after onPresent
+    // Calculate latency: frame_time - sleep duration after onPresent (snapshot head avoids race with Reset Stats).
     float current_fps = 0.0f;
-    const uint32_t count = ::g_perf_ring.GetCount();
+    const uint32_t head = ::g_perf_ring.GetHead();
+    const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
     if (count > 0) {
-        const ::PerfSample& last_sample = ::g_perf_ring.GetSample(0);
-        current_fps = 1.0f / last_sample.dt;
+        const ::PerfSample last_sample = ::g_perf_ring.GetSampleWithHead(0, head);
+        if (last_sample.dt > 0.0f) current_fps = 1.0f / last_sample.dt;
     }
 
     if (current_fps > 0.0f) {

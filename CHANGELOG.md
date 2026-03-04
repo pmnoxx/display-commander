@@ -3,6 +3,7 @@
 ---
 
 ## v0.12.270 (2026-03-04)
+- **Reset FPS stats: no longer breaks overlay / frametime graph** - Clicking "Reset Stats" in the performance overlay could race with the overlay and frametime graph readers: the ring buffer head was reset to 0 while readers were still iterating, causing wrong indices (underflow) and garbage or zero data so the frametime graph and FPS measurement stopped working until restart. Readers now take a single snapshot of the ring head and use it for both count and sample indexing, so a concurrent reset no longer corrupts the read. Details: `utils/ring_buffer.hpp` (GetCountFromHead, GetSampleWithHead); all readers in `main_new_tab.cpp` and `continuous_monitoring.cpp` use the snapshot pattern.
 - **VRR/Reflex cap: actual NVIDIA formula** - The VRR Cap button and refresh-rate monitor threshold now use the **actual NVIDIA formula for the Reflex cap**: **3600 × refresh / (refresh + 3600)** (replacing the previous refresh − refresh²/3600). Example: at 144 Hz the cap is ~138.46 FPS. The same formula is used in the Main tab VRR Cap button and in the latent-sync refresh-rate monitor for "samples below threshold" stats. The **×0.995** headroom is applied only when the Reflex FPS limiter is enabled; otherwise the raw cap is used. Details: `main_new_tab.cpp` (VRR Cap uses `ShouldReflexBeEnabled()` for 0.995), `refresh_rate_monitor.cpp`, `refresh_rate_monitor_integration.cpp`, `refresh_rate_monitor.hpp`.
 
 ## v0.12.269 (2026-03-04)

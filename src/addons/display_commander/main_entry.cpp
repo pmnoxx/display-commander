@@ -2052,34 +2052,31 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     if (!path_exists) {
         return true;
     }
-    std::error_code ec;
-    std::filesystem::path absolute_path = std::filesystem::canonical(reshade_path, ec);
-    if (ec) {
-        absolute_path = std::filesystem::absolute(reshade_path, ec);
-        if (ec) absolute_path = reshade_path;
-    }
-    std::wstring dll_filename = absolute_path.filename().wstring();
-    HMODULE already_loaded = GetModuleHandleW(dll_filename.c_str());
+    HMODULE already_loaded = GetModuleHandleW(reshade_path.c_str());
     if (already_loaded != nullptr) {
         HMODULE expected = nullptr;
         if (g_reshade_module.compare_exchange_strong(expected, already_loaded)) {
             char path_narrow[MAX_PATH];
-            WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+            WideCharToMultiByte(CP_ACP, 0, reshade_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
             char msg[512];
             snprintf(msg, sizeof(msg), "%s already loaded from Documents folder: %s", dll_name, path_narrow);
             OutputDebugStringA(msg);
             return true;
         }
     }
+    display_commanderhooks::InstallLoadLibraryHooks();
+
     const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
     if (!dc_config_dir.empty()) SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
     SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
-    HMODULE reshade_module = LoadLibraryW(absolute_path.c_str());
+    display_commanderhooks::InstallLoadLibraryHooks();
+    display_commanderhooks::g_hooked_before_reshade.store(true);
+    HMODULE reshade_module = display_commanderhooks::LoadLibraryW_Direct(reshade_path.c_str());
     if (reshade_module != nullptr) {
         HMODULE expected = nullptr;
-        if (g_reshade_module.compare_exchange_strong(expected, reshade_module)) {
+        if (g_reshade_module.compare_exchange_strong(expected, reshade_module) || expected != nullptr) {
             char path_narrow[MAX_PATH];
-            WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+            WideCharToMultiByte(CP_ACP, 0, reshade_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
             char msg[512];
             snprintf(msg, sizeof(msg), "%s loaded successfully from Documents folder: %s", dll_name, path_narrow);
             OutputDebugStringA(msg);
@@ -2092,15 +2089,15 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
                                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error_msg,
                                    sizeof(error_msg) / sizeof(wchar_t), nullptr);
     char path_narrow[MAX_PATH];
-    WideCharToMultiByte(CP_ACP, 0, absolute_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
+    WideCharToMultiByte(CP_ACP, 0, reshade_path.c_str(), -1, path_narrow, MAX_PATH, nullptr, nullptr);
     char msg[1024];
     if (msg_len > 0) {
         while (msg_len > 0 && (error_msg[msg_len - 1] == L'\n' || error_msg[msg_len - 1] == L'\r'))
             error_msg[--msg_len] = L'\0';
         char error_msg_narrow[512];
         WideCharToMultiByte(CP_ACP, 0, error_msg, -1, error_msg_narrow, sizeof(error_msg_narrow), nullptr, nullptr);
-        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error %lu: %s): %s", dll_name, error,
-                 error_msg_narrow, path_narrow);
+        snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error %lu: %s): %s %p", dll_name, error,
+                 error_msg_narrow, path_narrow, reshade_module);
     } else {
         snprintf(msg, sizeof(msg), "Failed to load %s from Documents folder (error: %lu): %s", dll_name, error,
                  path_narrow);
@@ -2968,10 +2965,10 @@ extern "C" __declspec(dllexport) void CALLBACK Stop(HWND hwnd, HINSTANCE hInst, 
 }
 
 // RunDLL entry point to set or reset an NVIDIA driver profile DWORD setting (SpecialK-compatible).
-// Allows calling: rundll32.exe "path\to\addon64", RunDLL_NvAPI_SetDWORD <HexID> <HexValue|~> <fullExePath> [resultFilePath]
-// Use ~ for value to reset the setting to driver default (calls NvAPI_DRS_DeleteProfileSetting).
-// Optional resultFilePath: if present, the process writes "OK" or "ERROR: <message>" to that file for the caller to read.
-// Requires admin for DRS changes; run rundll32 elevated if you get NVAPI_INVALID_USER_PRIVILEGE.
+// Allows calling: rundll32.exe "path\to\addon64", RunDLL_NvAPI_SetDWORD <HexID> <HexValue|~> <fullExePath>
+// [resultFilePath] Use ~ for value to reset the setting to driver default (calls NvAPI_DRS_DeleteProfileSetting).
+// Optional resultFilePath: if present, the process writes "OK" or "ERROR: <message>" to that file for the caller to
+// read. Requires admin for DRS changes; run rundll32 elevated if you get NVAPI_INVALID_USER_PRIVILEGE.
 extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, HINSTANCE hInst, LPSTR lpszCmdLine,
                                                                      int nCmdShow) {
     UNREFERENCED_PARAMETER(hwnd);
@@ -2993,7 +2990,8 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
         }
         clearSetting = true;
     }
-    // Remainder after "<HexID> <HexValue|~> ": exe name and optional result file path (last token if it looks like a path)
+    // Remainder after "<HexID> <HexValue|~> ": exe name and optional result file path (last token if it looks like a
+    // path)
     const char* p = lpszCmdLine;
     for (int spaceCount = 0; *p && spaceCount < 2; ++p) {
         if (*p == ' ') {
@@ -3079,8 +3077,7 @@ extern "C" __declspec(dllexport) void CALLBACK RunDLL_NvAPI_SetDWORD(HWND hwnd, 
 namespace display_commander {
 
 bool RunNvApiSetDwordAsAdmin(std::uint32_t settingId, std::uint32_t value, const std::wstring& exeName,
-                             HANDLE* outProcess, std::string* outError,
-                             const std::wstring* resultFilePath) {
+                             HANDLE* outProcess, std::string* outError, const std::wstring* resultFilePath) {
     HMODULE hMod = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             reinterpret_cast<LPCWSTR>(&RunDLL_NvAPI_SetDWORD), &hMod)) {

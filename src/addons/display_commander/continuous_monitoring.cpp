@@ -305,9 +305,10 @@ static void Every1sFpsAggregate() {
     std::vector<float> frame_times_ms;
     fps_values.reserve(2048);
     frame_times_ms.reserve(2048);
-    const uint32_t count = ::g_perf_ring.GetCount();
+    const uint32_t head = ::g_perf_ring.GetHead();
+    const uint32_t count = ::g_perf_ring.GetCountFromHead(head);
     for (uint32_t i = 0; i < count; ++i) {
-        const PerfSample& s = ::g_perf_ring.GetSample(i);
+        const PerfSample s = ::g_perf_ring.GetSampleWithHead(i, head);
         if (s.dt > 0.0f) {
             fps_values.push_back(1.0f / s.dt);
             frame_times_ms.push_back(1000.0f * s.dt);

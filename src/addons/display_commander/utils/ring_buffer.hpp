@@ -40,6 +40,18 @@ class LockFreeRingBuffer {
         return buffer_[(head - 1 - idx) & (Capacity - 1)];
     }
 
+    // Same as GetCount() but from a previously read head (avoids race with Reset()).
+    uint32_t GetCountFromHead(uint32_t head) const {
+        return (head > static_cast<uint32_t>(Capacity)) ? static_cast<uint32_t>(Capacity) : head;
+    }
+
+    // Access a sample by index using a snapshot of head (use with GetHead() + GetCountFromHead to avoid
+    // reading garbage if Reset() runs mid-iteration). idx: 0 = most recent. Safe when head == 0 (returns default T).
+    T GetSampleWithHead(uint32_t idx, uint32_t head) const {
+        if (head == 0) return T{};
+        return buffer_[(head - 1 - idx) & (Capacity - 1)];
+    }
+
     // Reset the ring buffer
     void Reset() {
         head_.store(0, std::memory_order_release);

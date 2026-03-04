@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.267 (2026-03-03)
+- **Quick FPS selector: always show /1–/6 at 60 Hz+ (175 Hz fix)** - On high refresh rate displays that don't divide evenly (e.g. 175 Hz), the quick FPS limit buttons no longer hide useful divisor options. When the monitor refresh rate is at least 60 Hz, the selector now always shows the first six divisor options (refresh/1 through refresh/6)—e.g. 175, 87, 58, 43, 35, 29 for 175 Hz—instead of only those that divided evenly or yielded ≥60 FPS. Details: `DrawQuickFpsLimitChanger` uses `max_divisor = 6` and skips the divisibility check when refresh ≥ 60 (`main_new_tab.cpp`).
+
 ## v0.12.266 (2026-03-03)
 - **NVIDIA profile: RTX HDR and driver-resolved settings** - "RTX HDR - Enable" (and any setting marked resolve-from-driver) now uses the **driver’s** setting ID via `NvAPI_DRS_GetSettingIdFromName`, so it works when the driver exposes the setting under a different ID (e.g. in group 5 like Nvidia Profile Inspector Revamped). The lookup name is stored in NVAPI’s expected format (wide string `L"RTX HDR - Enable"`) to avoid UTF-8 conversion issues. When the driver doesn’t expose the setting, the row shows "Not available for this driver" with the queried name and fallback ID. When adding a new setting to a profile, the addon gets the setting name from the driver (`GetSettingNameFromId`) when possible. Details: `SettingData.resolve_id_from_driver`, `driver_lookup_name_wide`, `ResolveSettingIdByDriverName` (wide + UTF-8 overloads), `FindSettingData` and Read* use resolved ID; SetSetting uses `GetSettingNameFromId` before hardcoded names.
 - **SetSetting error: show key and value on NVAPI_SETTING_NOT_FOUND** - When changing an NVIDIA profile setting fails with NVAPI_SETTING_NOT_FOUND, the "Last change failed" message now includes the key and value that were tried (e.g. `[key 0xdd48fb, value 0x1]`) so you can correlate with the driver or NPI. Details: `MakeSetSettingError` in `nvidia_profile_search.cpp`.

@@ -162,11 +162,9 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
     }
     imgui.NextColumn();
 
-    bool show_refresh_rate_frame_time_stats =
-        settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
+    bool show_refresh_rate_frame_time_stats = settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.GetValue();
     if (imgui.Checkbox("Refresh rate time stats", &show_refresh_rate_frame_time_stats)) {
-        settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(
-            show_refresh_rate_frame_time_stats);
+        settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
@@ -2346,6 +2344,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                                 "scRGB = 16-bit float linear. HDR10 = 10-bit PQ (ST.2084). Change may require game "
                                 "restart.");
                         }
+                        imgui.TextColored(ui::colors::TEXT_WARNING,
+                            "May cause black screen issue. For best compatibility use \"RenoDX Unity mod\" to do "
+                            "generic SDR->HDR upgrade (for non unity games).");
                     }
                 } else if (!is_dxgi) {
                     const char* api_label = "this API";
@@ -3826,7 +3827,8 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
                 imgui.SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
             }
         }
-        // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via DrawPclStatsCheckbox
+        // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via
+        // DrawPclStatsCheckbox
         if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
             imgui.Spacing();
             if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
@@ -7234,7 +7236,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / "
-                "YY.Y fps%s", native_reflex_active ? "" : ". Requires a game with native Reflex.");
+                "YY.Y fps%s",
+                native_reflex_active ? "" : ". Requires a game with native Reflex.");
         }
         if (!native_reflex_active) {
             imgui.EndDisabled();
@@ -7252,7 +7255,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance "
-                "overlay.%s", presentmon_enabled ? "" : " Requires PresentMon (enable in Advanced tab).");
+                "overlay.%s",
+                presentmon_enabled ? "" : " Requires PresentMon (enable in Advanced tab).");
         }
         if (!presentmon_enabled) {
             imgui.EndDisabled();
@@ -7625,260 +7629,258 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
     // Frame timeline bar (Simulation | Render Submit | ReShade | Present | Sleep | GPU)
     DrawFrameTimelineBar(imgui);
 
-            imgui.Spacing();
-            imgui.Separator();
-            imgui.Spacing();
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
 
-            // Native Frame Time Graph
-            imgui.Text("Native Frame Time Graph");
+    // Native Frame Time Graph
+    imgui.Text("Native Frame Time Graph");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows frame times for frames actually displayed via native swapchain Present when limit real "
+            "frames "
+            "is enabled.");
+    }
+    imgui.Spacing();
+
+    DrawNativeFrameTimeGraph(imgui);
+
+    imgui.Spacing();
+
+    std::ostringstream oss;
+
+    // Present Duration Display
+    oss.str("");
+    oss.clear();
+    oss << "Present Duration: " << std::fixed << std::setprecision(3)
+        << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
+    imgui.TextUnformatted(oss.str().c_str());
+    imgui.SameLine();
+    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+
+    // Frame Duration Display
+    oss.str("");
+    oss.clear();
+    oss << "Frame Duration: " << std::fixed << std::setprecision(3)
+        << (1.0 * ::g_frame_time_ns.load() / utils::NS_TO_MS) << " ms";
+    imgui.TextUnformatted(oss.str().c_str());
+    imgui.SameLine();
+    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+
+    // GPU Duration Display (only show if measurement is enabled and has data)
+    if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0) {
+        oss.str("");
+        oss.clear();
+        oss << "GPU Duration: " << std::fixed << std::setprecision(3)
+            << (1.0 * ::g_gpu_duration_ns.load() / utils::NS_TO_MS) << " ms";
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
+        }
+
+        // Sim-to-Display Latency (only show if we have valid measurement)
+        if (::g_sim_to_display_latency_ns.load() > 0) {
+            oss.str("");
+            oss.clear();
+            oss << "Sim-to-Display Latency: " << std::fixed << std::setprecision(3)
+                << (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS) << " ms";
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Time from simulation start to frame displayed (includes GPU work and present)");
+            }
+
+            // GPU Late Time (how much later GPU finishes compared to Present)
+            oss.str("");
+            oss.clear();
+            oss << "GPU Late Time: " << std::fixed << std::setprecision(3)
+                << (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS) << " ms";
+            imgui.TextUnformatted(oss.str().c_str());
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Shows frame times for frames actually displayed via native swapchain Present when limit real "
-                    "frames "
-                    "is enabled.");
+                    "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
+                    "Present\n>0 ms = GPU finished after Present (GPU is late)");
             }
-            imgui.Spacing();
+        }
+    }
 
-            DrawNativeFrameTimeGraph(imgui);
+    oss.str("");
+    oss.clear();
+    oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
+        << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
+    imgui.TextUnformatted(oss.str().c_str());
+    imgui.SameLine();
+    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-            imgui.Spacing();
+    // Reshade Overhead Display
+    oss.str("");
+    oss.clear();
+    oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
+        << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
+    imgui.TextUnformatted(oss.str().c_str());
+    imgui.SameLine();
+    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-            std::ostringstream oss;
+    // Reshade Overhead Display
+    oss.str("");
+    oss.clear();
+    oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
+        << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
+             - ::fps_sleep_after_on_present_ns.load())
+            / utils::NS_TO_MS)
+        << " ms";
+    imgui.TextUnformatted(oss.str().c_str());
+    imgui.SameLine();
+    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-            // Present Duration Display
-            oss.str("");
-            oss.clear();
-            oss << "Present Duration: " << std::fixed << std::setprecision(3)
-                << (1.0 * ::g_present_duration_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+    oss.str("");
+    oss.clear();
+    oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
+        << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+    imgui.TextUnformatted(oss.str().c_str());
+    imgui.SameLine();
+    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-            // Frame Duration Display
-            oss.str("");
-            oss.clear();
-            oss << "Frame Duration: " << std::fixed << std::setprecision(3)
-                << (1.0 * ::g_frame_time_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
+    // FPS Limiter Start Duration Display
+    oss.str("");
+    oss.clear();
+    oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
+        << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
+    imgui.TextUnformatted(oss.str().c_str());
+    imgui.SameLine();
+    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
 
-            // GPU Duration Display (only show if measurement is enabled and has data)
-            if (settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0 && ::g_gpu_duration_ns.load() > 0) {
-                oss.str("");
-                oss.clear();
-                oss << "GPU Duration: " << std::fixed << std::setprecision(3)
-                    << (1.0 * ::g_gpu_duration_ns.load() / utils::NS_TO_MS) << " ms";
-                imgui.TextUnformatted(oss.str().c_str());
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
-                }
+    // Simulation Start to Present Latency Display
+    oss.str("");
+    oss.clear();
+    // Calculate latency: frame_time - sleep duration after onPresent
+    float current_fps = 0.0f;
+    const uint32_t count = ::g_perf_ring.GetCount();
+    if (count > 0) {
+        const ::PerfSample& last_sample = ::g_perf_ring.GetSample(0);
+        current_fps = 1.0f / last_sample.dt;
+    }
 
-                // Sim-to-Display Latency (only show if we have valid measurement)
-                if (::g_sim_to_display_latency_ns.load() > 0) {
-                    oss.str("");
-                    oss.clear();
-                    oss << "Sim-to-Display Latency: " << std::fixed << std::setprecision(3)
-                        << (1.0 * ::g_sim_to_display_latency_ns.load() / utils::NS_TO_MS) << " ms";
-                    imgui.TextUnformatted(oss.str().c_str());
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
-                            "Time from simulation start to frame displayed (includes GPU work and present)");
-                    }
+    if (current_fps > 0.0f) {
+        float frame_time_ms = 1000.0f / current_fps;
+        float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
+        float latency_ms = frame_time_ms - sleep_duration_ms;
 
-                    // GPU Late Time (how much later GPU finishes compared to Present)
-                    oss.str("");
-                    oss.clear();
-                    oss << "GPU Late Time: " << std::fixed << std::setprecision(3)
-                        << (1.0 * ::g_gpu_late_time_ns.load() / utils::NS_TO_MS) << " ms";
-                    imgui.TextUnformatted(oss.str().c_str());
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
-                            "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
-                            "Present\n>0 ms = GPU finished after Present (GPU is late)");
-                    }
-                }
-            }
-
-            oss.str("");
-            oss.clear();
-            oss << "Simulation Duration: " << std::fixed << std::setprecision(3)
-                << (1.0 * ::g_simulation_duration_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-            // Reshade Overhead Display
-            oss.str("");
-            oss.clear();
-            oss << "Render Submit Duration: " << std::fixed << std::setprecision(3)
-                << (1.0 * ::g_render_submit_duration_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-            // Reshade Overhead Display
-            oss.str("");
-            oss.clear();
-            oss << "Reshade Overhead Duration: " << std::fixed << std::setprecision(3)
-                << ((1.0 * ::g_reshade_overhead_duration_ns.load() - ::fps_sleep_before_on_present_ns.load()
-                     - ::fps_sleep_after_on_present_ns.load())
-                    / utils::NS_TO_MS)
-                << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-            oss.str("");
-            oss.clear();
-            oss << "FPS Limiter Sleep Duration (before onPresent): " << std::fixed << std::setprecision(3)
-                << (1.0 * ::fps_sleep_before_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-            // FPS Limiter Start Duration Display
-            oss.str("");
-            oss.clear();
-            oss << "FPS Limiter Sleep Duration (after onPresent): " << std::fixed << std::setprecision(3)
-                << (1.0 * ::fps_sleep_after_on_present_ns.load() / utils::NS_TO_MS) << " ms";
-            imgui.TextUnformatted(oss.str().c_str());
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
-
-            // Simulation Start to Present Latency Display
-            oss.str("");
-            oss.clear();
-            // Calculate latency: frame_time - sleep duration after onPresent
-            float current_fps = 0.0f;
-            const uint32_t count = ::g_perf_ring.GetCount();
-            if (count > 0) {
-                const ::PerfSample& last_sample = ::g_perf_ring.GetSample(0);
-                current_fps = 1.0f / last_sample.dt;
-            }
-
-            if (current_fps > 0.0f) {
-                float frame_time_ms = 1000.0f / current_fps;
-                float sleep_duration_ms = static_cast<float>(::fps_sleep_after_on_present_ns.load()) / utils::NS_TO_MS;
-                float latency_ms = frame_time_ms - sleep_duration_ms;
-
-                static double sim_start_to_present_latency_ms = 0.0;
-                sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
-                oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3)
-                    << sim_start_to_present_latency_ms << " ms";
-                imgui.TextUnformatted(oss.str().c_str());
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
-            }
+        static double sim_start_to_present_latency_ms = 0.0;
+        sim_start_to_present_latency_ms = (sim_start_to_present_latency_ms * 0.99 + latency_ms * 0.01);
+        oss << "Sim Start to Present Latency: " << std::fixed << std::setprecision(3) << sim_start_to_present_latency_ms
+            << " ms";
+        imgui.TextUnformatted(oss.str().c_str());
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "(frame_time - sleep_duration)");
+    }
 }
 
 static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::IImGuiWrapper& imgui) {
     bool is_monitoring = display_commander::nvapi::IsNvapiActualRefreshRateMonitoringActive();
 
-            if (imgui.Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
-                if (is_monitoring) {
-                    display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
-                } else {
-                    display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
-                }
-            }
+    if (imgui.Button(is_monitoring ? ICON_FK_CANCEL " Stop Monitoring" : ICON_FK_PLUS " Start Monitoring")) {
+        if (is_monitoring) {
+            display_commander::nvapi::StopNvapiActualRefreshRateMonitoring();
+        } else {
+            display_commander::nvapi::StartNvapiActualRefreshRateMonitoring();
+        }
+    }
 
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
-                    "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
-                    "from the configured rate due to VRR, power management, or other factors.");
-            }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
+            "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
+            "from the configured rate due to VRR, power management, or other factors.");
+    }
 
+    imgui.SameLine();
+
+    // Status display
+    const char* status_str = is_monitoring ? "Active" : "Inactive";
+    imgui.TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
+
+    if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
+    }
+
+    // Display DXGI output device name
+    if (g_got_device_name.load()) {
+        auto device_name_ptr = g_dxgi_output_device_name.load();
+        if (device_name_ptr != nullptr) {
+            imgui.Spacing();
+            imgui.Text("DXGI Output Device:");
             imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
+        } else {
+            imgui.Spacing();
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
+        }
+    } else {
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
+    }
 
-            // Status display
-            const char* status_str = is_monitoring ? "Active" : "Inactive";
-            imgui.TextColored(ui::colors::TEXT_DIMMED, "Status: %s", status_str);
-
-            if (is_monitoring && display_commander::nvapi::IsNvapiGetAdaptiveSyncDataFailingRepeatedly()) {
-                imgui.Spacing();
-                imgui.TextColored(
-                    ui::colors::TEXT_WARNING,
-                    "NvAPI_DISP_GetAdaptiveSyncData is failing repeatedly (driver/display may not support it).");
-            }
-
-            // Display DXGI output device name
-            if (g_got_device_name.load()) {
-                auto device_name_ptr = g_dxgi_output_device_name.load();
-                if (device_name_ptr != nullptr) {
-                    imgui.Spacing();
-                    imgui.Text("DXGI Output Device:");
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%ls", device_name_ptr->c_str());
-                } else {
-                    imgui.Spacing();
-                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not available");
-                }
+    // Refresh rate data from NVAPI actual refresh rate monitor (recent samples)
+    double current_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
+    size_t sample_count = 0;
+    double min_hz = 0.0;
+    double max_hz = 0.0;
+    double sum_hz = 0.0;
+    display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate_hz) {
+        if (rate_hz > 0.0) {
+            if (sample_count == 0) {
+                min_hz = max_hz = rate_hz;
             } else {
-                imgui.Spacing();
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI Output Device: Not detected yet");
+                min_hz = (std::min)(min_hz, rate_hz);
+                max_hz = (std::max)(max_hz, rate_hz);
             }
+            sum_hz += rate_hz;
+            ++sample_count;
+        }
+    });
+    double avg_hz = (sample_count > 0) ? (sum_hz / static_cast<double>(sample_count)) : 0.0;
 
-            // Refresh rate data from NVAPI actual refresh rate monitor (recent samples)
-            double current_hz = display_commander::nvapi::GetNvapiActualRefreshRateHz();
-            size_t sample_count = 0;
-            double min_hz = 0.0;
-            double max_hz = 0.0;
-            double sum_hz = 0.0;
-            display_commander::nvapi::ForEachNvapiActualRefreshRateSample([&](double rate_hz) {
-                if (rate_hz > 0.0) {
-                    if (sample_count == 0) {
-                        min_hz = max_hz = rate_hz;
-                    } else {
-                        min_hz = (std::min)(min_hz, rate_hz);
-                        max_hz = (std::max)(max_hz, rate_hz);
-                    }
-                    sum_hz += rate_hz;
-                    ++sample_count;
-                }
-            });
-            double avg_hz = (sample_count > 0) ? (sum_hz / static_cast<double>(sample_count)) : 0.0;
+    if (sample_count > 0) {
+        imgui.Spacing();
 
-            if (sample_count > 0) {
-                imgui.Spacing();
+        // Current refresh rate (large, prominent display)
+        imgui.Text("Measured Refresh Rate:");
+        imgui.SameLine();
+        imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
 
-                // Current refresh rate (large, prominent display)
-                imgui.Text("Measured Refresh Rate:");
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "%.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+        // Detailed statistics
+        imgui.Indent();
+        imgui.Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
+        imgui.Text("Min: %.1f Hz", min_hz);
+        imgui.Text("Max: %.1f Hz", max_hz);
+        imgui.Text("Samples: %zu", sample_count);
+        imgui.Unindent();
 
-                // Detailed statistics
-                imgui.Indent();
-                imgui.Text("Current: %.1f Hz", current_hz > 0.0 ? current_hz : avg_hz);
-                imgui.Text("Min: %.1f Hz", min_hz);
-                imgui.Text("Max: %.1f Hz", max_hz);
-                imgui.Text("Samples: %zu", sample_count);
-                imgui.Unindent();
-
-                // VRR detection hint
-                if (max_hz > min_hz + 1.0) {
-                    imgui.Spacing();
-                    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
-                    imgui.TextUnformatted(ICON_FK_OK);
-                    imgui.PopStyleColor();
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "Variable Refresh Rate (VRR) detected");
-                }
-            } else if (is_monitoring) {
-                imgui.Spacing();
-                imgui.TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
-            } else {
-                imgui.Spacing();
-                imgui.TextColored(ui::colors::TEXT_DIMMED,
-                                  "No refresh rate data (start monitoring or enable overlay refresh rate).");
-            }
+        // VRR detection hint
+        if (max_hz > min_hz + 1.0) {
+            imgui.Spacing();
+            imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_SUCCESS);
+            imgui.TextUnformatted(ICON_FK_OK);
+            imgui.PopStyleColor();
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_SUCCESS, "Variable Refresh Rate (VRR) detected");
+        }
+    } else if (is_monitoring) {
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Collecting data...");
+    } else {
+        imgui.Spacing();
+        imgui.TextColored(ui::colors::TEXT_DIMMED,
+                          "No refresh rate data (start monitoring or enable overlay refresh rate).");
+    }
 }
 
 void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {

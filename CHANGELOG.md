@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.259 (2026-03-03)
+- **Swapchain HDR Upgrade warning** - When "Swapchain HDR Upgrade" is enabled (Main tab → Brightness and AutoHDR), a warning is now shown: it may cause a black screen, and for best compatibility users can use "RenoDX Unity mod" for generic SDR→HDR upgrade (for non-Unity games). Details: `main_new_tab.cpp` (TextColored with TEXT_WARNING when the setting is on).
+
 ## v0.12.258 (2026-03-03)
 - **All driver settings (editable)** - In the NVIDIA Profile tab, a new "All driver settings (editable)" section lists every setting recognized by the current driver (same list as the dump file), including settings not yet set in the profile (shown as "Not set"). You can change values via dropdown or bit-field checkboxes, reset to driver default (Default), or remove from profile (Delete). List is loaded when you expand the section and is cached until you click Refresh or change a setting. A "Show only settings with values set" checkbox (default on) filters the table to only settings that have a value in this profile; turn it off to see all driver settings. **Unknown keys:** settings that are in the profile but not in the driver's recognized list (e.g. deprecated or future IDs) are now included: they show the key (name from profile or hex) and value, with Delete only (no combo/Default). Details: `ImportantProfileSetting.known_to_driver`, `GetDriverSettingsWithProfileValues()` (appends profile-only from EnumSettings), `nvidia_profile_tab_shared.cpp` (collapsible section, table, filter checkbox, unknown-key rows).
 

@@ -383,7 +383,7 @@ uint32_t RefreshRateMonitor::CountSamplesBelowThreshold(double fixed_refresh_hz)
         return 0;
     }
 
-    double threshold = fixed_refresh_hz - ((fixed_refresh_hz * fixed_refresh_hz) / 3600.0);
+    double threshold = 3600.0 * fixed_refresh_hz / (fixed_refresh_hz + 3600.0);
 
     // Get current time
     LONGLONG now_ns = utils::get_now_ns();

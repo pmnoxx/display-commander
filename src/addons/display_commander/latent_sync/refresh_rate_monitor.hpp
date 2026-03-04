@@ -47,9 +47,8 @@ public:
     // Count total samples within last 10 seconds
     uint32_t CountTotalSamplesLast10Seconds() const;
 
-    // Count samples within last 10 seconds that are > 0 and X below fixed refresh rate
-    // where X = fFixedRefreshHz - (fFixedRefreshHz * fFixedRefreshHz) / 3600.0f
-    // This simplifies to: count samples where sample > 0 && sample < (fFixedRefreshHz^2) / 3600.0
+    // Count samples within last 10 seconds that are > 0 and below G-Sync cap threshold
+    // Threshold = 3600 × fixed_refresh_hz / (fixed_refresh_hz + 3600)
     uint32_t CountSamplesBelowThreshold(double fixed_refresh_hz) const;
 
     // Iterate through recent samples (lock-free, thread-safe)

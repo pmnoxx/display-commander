@@ -106,10 +106,9 @@ RefreshRateStats GetRefreshRateStats() {
 
     stats.fixed_refresh_hz = fixed_refresh_hz;
 
-    // Calculate threshold: fixed_refresh_hz - X
-    // where X = fFixedRefreshHz - (fFixedRefreshHz * fFixedRefreshHz) / 3600.0f
+    // Calculate threshold: 3600 × fixed_refresh_hz / (fixed_refresh_hz + 3600) (G-Sync cap formula)
     if (fixed_refresh_hz > 0.0) {
-        stats.threshold_hz = fixed_refresh_hz - ((fixed_refresh_hz * fixed_refresh_hz) / 3600.0);
+        stats.threshold_hz = 3600.0 * fixed_refresh_hz / (fixed_refresh_hz + 3600.0);
         stats.samples_below_threshold_last_10s = g_refresh_rate_monitor->CountSamplesBelowThreshold(fixed_refresh_hz);
     } else {
         stats.threshold_hz = 0.0;

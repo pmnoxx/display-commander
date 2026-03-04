@@ -3127,8 +3127,10 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         {
-            // Gsync formula: refresh_hz - (refresh_hz * refresh_hz / 3600)
-            double gsync_target = (refresh_hz - (refresh_hz * refresh_hz / 3600.0)) * 0.995;
+            // Gsync formula: 3600 × refresh / (refresh + 3600). Apply ×0.995 only when Reflex is enabled.
+            const double raw_cap = 3600.0 * refresh_hz / (refresh_hz + 3600.0);
+            const bool reflex_enabled = ShouldReflexBeEnabled() && ShouldReflexLowLatencyBeEnabled();
+            const double gsync_target = reflex_enabled ? (raw_cap * 0.995) : raw_cap;
             float precise_target = static_cast<float>(gsync_target);
             if (precise_target < 1.0f) precise_target = 1.0f;
             bool selected =
@@ -3136,8 +3138,8 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
 
             if (selected) ui::colors::PushSelectedButtonColors(&imgui);
             if (imgui.Button("VRR Cap")) {
-                double precise_target = gsync_target;  // do not round on apply
-                float target_fps = static_cast<float>(precise_target < 1.0 ? 1.0 : precise_target);
+                double precise_target_val = gsync_target;  // do not round on apply
+                float target_fps = static_cast<float>(precise_target_val < 1.0 ? 1.0 : precise_target_val);
                 settings::g_mainTabSettings.fps_limit.SetValue(target_fps);
             }
             if (selected) ui::colors::PopSelectedButtonColors(&imgui);
@@ -3146,11 +3148,17 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
                 std::ostringstream tooltip_oss;
                 tooltip_oss.setf(std::ios::fixed);
                 tooltip_oss << std::setprecision(3);
-                tooltip_oss << "Gsync Cap: FPS = " << refresh_hz << " - (" << refresh_hz << "² / 3600)\n";
-                tooltip_oss << "= " << refresh_hz << " - " << (refresh_hz * refresh_hz / 3600.0) << " = "
-                            << gsync_target << " FPS\n\n";
+                tooltip_oss << "Gsync Cap: FPS = 3600 × " << refresh_hz << " / (" << refresh_hz << " + 3600)\n";
+                tooltip_oss << "= " << raw_cap << " FPS";
+                if (reflex_enabled) {
+                    tooltip_oss << " × 0.995 = " << gsync_target << " FPS";
+                }
+                tooltip_oss << "\n\n";
                 tooltip_oss << "Creates a ~0.3ms frame time buffer to optimize latency\n";
                 tooltip_oss << "and prevent tearing, similar to NVIDIA Reflex Low Latency Mode.";
+                if (reflex_enabled) {
+                    tooltip_oss << "\n(×0.995 applied because Reflex limiter is enabled.)";
+                }
                 imgui.SetTooltip("%s", tooltip_oss.str().c_str());
             }
         }

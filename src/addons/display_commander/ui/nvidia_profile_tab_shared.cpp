@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -30,17 +31,43 @@ static std::string s_dumpDriverSettingsResult;
 static std::uint32_t s_lastFailedSettingId = 0;
 static std::uint32_t s_lastFailedSettingValue = 0;
 static std::atomic<bool> s_requestProfileRefreshAfterAdmin{false};
+static std::string s_adminApplyResultMessage;
+static std::atomic<bool> s_adminApplyResultReady{false};
 static std::vector<nvapi::ImportantProfileSetting> s_allDriverSettingsCache;
 static bool s_allDriverSettingsCacheValid = false;
 static bool s_showOnlySetDriverSettings = true;  // default on: show only settings that have a value set in the profile
 
+struct AdminWaitParams {
+    HANDLE hProcess = nullptr;
+    std::wstring resultPath;
+};
+
 static DWORD WINAPI WaitForAdminProcessThenRequestRefresh(LPVOID param) {
-    HANDLE hProcess = static_cast<HANDLE>(param);
-    if (hProcess != nullptr) {
-        WaitForSingleObject(hProcess, 60000);
-        CloseHandle(hProcess);
-        s_requestProfileRefreshAfterAdmin.store(true);
+    AdminWaitParams* wp = static_cast<AdminWaitParams*>(param);
+    if (wp == nullptr) {
+        return 0;
     }
+    if (wp->hProcess != nullptr) {
+        WaitForSingleObject(wp->hProcess, 60000);
+        CloseHandle(wp->hProcess);
+    }
+    if (!wp->resultPath.empty()) {
+        std::ifstream f(std::filesystem::path(wp->resultPath));
+        if (f) {
+            std::string line;
+            if (std::getline(f, line)) {
+                const char prefix[] = "ERROR: ";
+                if (line.size() >= sizeof(prefix) - 1 && line.compare(0, sizeof(prefix) - 1, prefix) == 0) {
+                    s_adminApplyResultMessage = line.substr(sizeof(prefix) - 1);
+                } else {
+                    s_adminApplyResultMessage.clear();
+                }
+            }
+        }
+        s_adminApplyResultReady.store(true);
+    }
+    s_requestProfileRefreshAfterAdmin.store(true);
+    delete wp;
     return 0;
 }
 
@@ -50,7 +77,11 @@ static bool IsPrivilegeError(const std::string& err) {
 
 void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* show_advanced_profile_settings) {
     if (s_requestProfileRefreshAfterAdmin.exchange(false)) {
-        s_nvidiaProfileSetError.clear();
+        if (s_adminApplyResultReady.exchange(false)) {
+            s_nvidiaProfileSetError = s_adminApplyResultMessage;
+        } else {
+            s_nvidiaProfileSetError.clear();
+        }
         s_lastFailedSettingId = 0;
         s_allDriverSettingsCacheValid = false;
         nvapi::InvalidateProfileSearchCache();
@@ -225,33 +256,52 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         "Inspector.");
                 }
                 if (IsPrivilegeError(s_nvidiaProfileSetError) && s_lastFailedSettingId != 0
-                    && !r.current_exe_name.empty()) {
+                    && !r.current_exe_path.empty()) {
                     imgui.SameLine();
                     if (imgui.Button("Apply as administrator")) {
-                        std::wstring exeNameW;
-                        int n = MultiByteToWideChar(CP_UTF8, 0, r.current_exe_name.c_str(), -1, nullptr, 0);
+                        std::wstring exePathW;
+                        int n = MultiByteToWideChar(CP_UTF8, 0, r.current_exe_path.c_str(), -1, nullptr, 0);
                         if (n > 0) {
-                            exeNameW.resize(n);
-                            MultiByteToWideChar(CP_UTF8, 0, r.current_exe_name.c_str(), -1, exeNameW.data(), n);
-                            exeNameW.resize(n - 1);
+                            exePathW.resize(n);
+                            MultiByteToWideChar(CP_UTF8, 0, r.current_exe_path.c_str(), -1, exePathW.data(), n);
+                            exePathW.resize(n - 1);
                         }
-                        if (!exeNameW.empty()) {
-                            HANDLE hProcess = nullptr;
-                            bool ok = RunNvApiSetDwordAsAdmin(
-                                s_lastFailedSettingId, s_lastFailedSettingValue, exeNameW, &hProcess);
-                            if (ok && hProcess != nullptr) {
-                                HANDLE hThread = CreateThread(nullptr, 0, WaitForAdminProcessThenRequestRefresh,
-                                                              hProcess, 0, nullptr);
-                                if (hThread != nullptr) {
-                                    CloseHandle(hThread);
+                        if (exePathW.empty()) {
+                            s_nvidiaProfileSetError = "Apply as administrator failed: no executable path (profile not matched).";
+                        } else {
+                            wchar_t tempDir[MAX_PATH] = {};
+                            if (GetTempPathW(static_cast<DWORD>(sizeof(tempDir) / sizeof(tempDir[0])), tempDir) == 0) {
+                                s_nvidiaProfileSetError = "Apply as administrator failed: could not get temp path.";
+                            } else {
+                                wchar_t resultPathBuf[MAX_PATH] = {};
+                                (void)swprintf_s(resultPathBuf, L"%sDisplayCommander_AdminResult_%lu_%lu.txt",
+                                                  tempDir, static_cast<unsigned long>(GetCurrentProcessId()),
+                                                  static_cast<unsigned long>(GetTickCount64()));
+                                std::wstring resultFilePath(resultPathBuf);
+                                HANDLE hProcess = nullptr;
+                                std::string adminError;
+                                bool ok = RunNvApiSetDwordAsAdmin(s_lastFailedSettingId, s_lastFailedSettingValue,
+                                                                  exePathW, &hProcess, &adminError, &resultFilePath);
+                                if (ok && hProcess != nullptr) {
+                                    AdminWaitParams* wp = new AdminWaitParams;
+                                    wp->hProcess = hProcess;
+                                    wp->resultPath = resultFilePath;
+                                    HANDLE hThread = CreateThread(nullptr, 0, WaitForAdminProcessThenRequestRefresh,
+                                                                  wp, 0, nullptr);
+                                    if (hThread != nullptr) {
+                                        CloseHandle(hThread);
+                                    } else {
+                                        CloseHandle(hProcess);
+                                        delete wp;
+                                        s_requestProfileRefreshAfterAdmin.store(true);
+                                    }
+                                } else if (ok) {
+                                    s_nvidiaProfileSetError.clear();
+                                    s_lastFailedSettingId = 0;
+                                    nvapi::InvalidateProfileSearchCache();
                                 } else {
-                                    CloseHandle(hProcess);
-                                    s_requestProfileRefreshAfterAdmin.store(true);
+                                    s_nvidiaProfileSetError = adminError;
                                 }
-                            } else if (ok) {
-                                s_nvidiaProfileSetError.clear();
-                                s_lastFailedSettingId = 0;
-                                nvapi::InvalidateProfileSearchCache();
                             }
                         }
                     }

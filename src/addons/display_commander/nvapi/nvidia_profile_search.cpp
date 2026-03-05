@@ -56,8 +56,8 @@ struct SettingData {
 };
 
 // All important + advanced settings; first k_num_important_settings are important, rest are advanced.
-static constexpr std::size_t k_num_important_settings = 25;
-static const std::array<SettingData, 28> k_settings_data = {{
+static constexpr std::size_t k_num_important_settings = 26;
+static const std::array<SettingData, 29> k_settings_data = {{
     // Important (order matches previous k_important_settings)
     {.user_friendly_name = "Smooth Motion (AFR) [40 series]",
      .hex_setting_id = VSYNCSMOOTHAFR_ID,
@@ -254,6 +254,10 @@ static const std::array<SettingData, 28> k_settings_data = {{
                        {3, "Consistent perf"},
                        {4, "Prefer min"},
                        {5, "Optimal power"}}},
+    {.user_friendly_name = "FPS Limiter V3",
+     .hex_setting_id = FRL_FPS_ID,
+     .default_value = static_cast<std::uint32_t>(FRL_FPS_DEFAULT),
+     .option_values = {}},  // Built in GetSettingAvailableValues (Off + 20–1000 FPS)
     // Advanced
     {.user_friendly_name = "Ansel allow",
      .hex_setting_id = ANSEL_ALLOW_ID,
@@ -319,6 +323,16 @@ static std::string FormatImportantValue(NvU32 settingId, NvU32 value) {
     }
     // Fallbacks for values not in option_values (e.g. PRERENDERLIMIT numeric, REFRESH_RATE low-latency)
     switch (settingId) {
+        case FRL_FPS_ID:
+            if (value == 0) {
+                return "Off";
+            }
+            if (value >= 20 && value <= 1000) {
+                std::ostringstream o;
+                o << value << " FPS";
+                return o.str();
+            }
+            break;
         case PRERENDERLIMIT_ID:
             if (value != PRERENDERLIMIT_APP_CONTROLLED) {
                 std::ostringstream o;
@@ -949,6 +963,15 @@ std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std
     }
     if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
         return GetSmoothMotionAllowedApisValues();
+    }
+    if (settingId == FRL_FPS_ID) {
+        ValueList list;
+        list.reserve(982u);
+        list.push_back({0, "Off"});
+        for (std::uint32_t fps = 20; fps <= 1000; ++fps) {
+            list.push_back({fps, std::to_string(fps) + " FPS"});
+        }
+        return list;
     }
     {
         auto it = s_availableValuesCache.find(settingId);

@@ -1,6 +1,6 @@
 #include "nvidia_profile_search.hpp"
-#include "nvapi_loader.hpp"
 #include "../utils.hpp"
+#include "nvapi_loader.hpp"
 #include "nvpi_reference.hpp"
 
 #include <nvapi.h>
@@ -22,9 +22,7 @@ namespace display_commander::nvapi {
 
 namespace {
 
-inline const display_commander::nvapi_loader::NvApiPtrs* NvApi() {
-    return display_commander::nvapi_loader::Ptrs();
-}
+inline const display_commander::nvapi_loader::NvApiPtrs* NvApi() { return display_commander::nvapi_loader::Ptrs(); }
 
 // Full metadata for a setting. Data source: NvidiaProfileInspectorRevamped CustomSettingNames.xml
 // https://github.com/xHybred/NvidiaProfileInspectorRevamped/blob/master/nspector/CustomSettingNames.xml
@@ -50,8 +48,8 @@ struct SettingData {
     std::uint32_t default_value = 0;
     bool is_bit_field = false;
     bool is_advanced = false;
-    bool resolve_id_from_driver =
-        false;  // If true, use NvApi()->DRS_GetSettingIdFromName at runtime (driver may use different ID, e.g. RTX HDR in group 5).
+    bool resolve_id_from_driver = false;  // If true, use NvApi()->DRS_GetSettingIdFromName at runtime (driver may use
+                                          // different ID, e.g. RTX HDR in group 5).
     const wchar_t* driver_lookup_name_wide =
         nullptr;  // When set, use this for GetSettingIdFromName (NVAPI expects UTF-16); avoids UTF-8 conversion issues.
     std::vector<std::pair<std::uint32_t, const char*>> option_values = {};
@@ -496,8 +494,8 @@ static void WideToNvApiUnicode(const std::wstring& src, NvAPI_UnicodeString& des
     }
 }
 
-// Resolve setting ID from driver by name (NvApi()->DRS_GetSettingIdFromName). NVAPI expects NvAPI_UnicodeString (UTF-16).
-// Prefer the wide-string overload (L"…") to avoid UTF-8→wide conversion issues. Returns 0 if not found.
+// Resolve setting ID from driver by name (NvApi()->DRS_GetSettingIdFromName). NVAPI expects NvAPI_UnicodeString
+// (UTF-16). Prefer the wide-string overload (L"…") to avoid UTF-8→wide conversion issues. Returns 0 if not found.
 static std::uint32_t ResolveSettingIdByDriverName(const wchar_t* nameWide) {
     if (nameWide == nullptr || nameWide[0] == L'\0') {
         return 0;
@@ -781,7 +779,8 @@ std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::str
                 }
                 NvU32 idFromName = 0;
                 if (NvApi()->DRS_GetSettingIdFromName(nameUnicode, &idFromName) == NVAPI_OK) {
-                    o << "\nGetSettingIdFromName(\"" << displayNameUtf8 << "\"): 0x" << std::hex << idFromName << std::dec;
+                    o << "\nGetSettingIdFromName(\"" << displayNameUtf8 << "\"): 0x" << std::hex << idFromName
+                      << std::dec;
                 } else {
                     o << "\nGetSettingIdFromName(\"" << displayNameUtf8 << "\"): (failed)";
                 }

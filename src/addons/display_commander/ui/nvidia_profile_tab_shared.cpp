@@ -1,10 +1,10 @@
 #include "nvidia_profile_tab_shared.hpp"
 
+#include "../res/ui_colors.hpp"
+#include "../utils.hpp"
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/nvpi_reference.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
-#include "../res/ui_colors.hpp"
-#include "../utils.hpp"
 
 #include <windows.h>
 
@@ -110,12 +110,14 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Enumerate all setting IDs recognized by the current NVIDIA driver and write them to a text file next to the addon DLL.");
+        imgui.SetTooltip(
+            "Enumerate all setting IDs recognized by the current NVIDIA driver and write them to a text file next to "
+            "the addon DLL.");
     }
     if (!s_dumpDriverSettingsResult.empty()) {
         imgui.SameLine();
-        imgui.TextColored(s_dumpDriverSettingsResult.substr(0, 5) == "Dumped" ? TEXT_DIMMED : TEXT_ERROR,
-                          "%s", s_dumpDriverSettingsResult.c_str());
+        imgui.TextColored(s_dumpDriverSettingsResult.substr(0, 5) == "Dumped" ? TEXT_DIMMED : TEXT_ERROR, "%s",
+                          s_dumpDriverSettingsResult.c_str());
     }
     imgui.TextColored(TEXT_DIMMED,
                       "Searches all NVIDIA driver profiles for one that includes the current game executable.");
@@ -267,16 +269,17 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             exePathW.resize(n - 1);
                         }
                         if (exePathW.empty()) {
-                            s_nvidiaProfileSetError = "Apply as administrator failed: no executable path (profile not matched).";
+                            s_nvidiaProfileSetError =
+                                "Apply as administrator failed: no executable path (profile not matched).";
                         } else {
                             wchar_t tempDir[MAX_PATH] = {};
                             if (GetTempPathW(static_cast<DWORD>(sizeof(tempDir) / sizeof(tempDir[0])), tempDir) == 0) {
                                 s_nvidiaProfileSetError = "Apply as administrator failed: could not get temp path.";
                             } else {
                                 wchar_t resultPathBuf[MAX_PATH] = {};
-                                (void)swprintf_s(resultPathBuf, L"%sDisplayCommander_AdminResult_%lu_%lu.txt",
-                                                  tempDir, static_cast<unsigned long>(GetCurrentProcessId()),
-                                                  static_cast<unsigned long>(GetTickCount64()));
+                                (void)swprintf_s(resultPathBuf, L"%sDisplayCommander_AdminResult_%lu_%lu.txt", tempDir,
+                                                 static_cast<unsigned long>(GetCurrentProcessId()),
+                                                 static_cast<unsigned long>(GetTickCount64()));
                                 std::wstring resultFilePath(resultPathBuf);
                                 HANDLE hProcess = nullptr;
                                 std::string adminError;
@@ -286,8 +289,8 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                     AdminWaitParams* wp = new AdminWaitParams;
                                     wp->hProcess = hProcess;
                                     wp->resultPath = resultFilePath;
-                                    HANDLE hThread = CreateThread(nullptr, 0, WaitForAdminProcessThenRequestRefresh,
-                                                                  wp, 0, nullptr);
+                                    HANDLE hThread =
+                                        CreateThread(nullptr, 0, WaitForAdminProcessThenRequestRefresh, wp, 0, nullptr);
                                     if (hThread != nullptr) {
                                         CloseHandle(hThread);
                                     } else {
@@ -407,7 +410,8 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         } else {
                             ImVec2 avail = imgui.GetContentRegionAvail();
                             ImVec2 textSize = imgui.CalcTextSize("Default");
-                            float comboWidth = avail.x
+                            float comboWidth =
+                                avail.x
                                 - (imgui.GetStyleItemSpacingX() + textSize.x + imgui.GetStyleFramePaddingX() * 2.f);
                             if (comboWidth < 80.f) comboWidth = 80.f;
                             imgui.SetNextItemWidth(comboWidth);
@@ -485,12 +489,11 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
     if (!r.all_settings.empty()) {
         imgui.Spacing();
         if (imgui.CollapsingHeader("All settings in profile", TreeNodeFlags_DefaultOpen)) {
-            imgui.TextColored(TEXT_DIMMED,
-                              "Every setting present in the first matching profile (%zu total).",
+            imgui.TextColored(TEXT_DIMMED, "Every setting present in the first matching profile (%zu total).",
                               r.all_settings.size());
             if (imgui.BeginChild("NvidiaProfileAllSettingsTable", ImVec2(-1.f, 320.f), true)) {
-                const int tableFlags2 = TableFlags_BordersOuter | TableFlags_BordersH | TableFlags_SizingStretchProp
-                    | TableFlags_ScrollY;
+                const int tableFlags2 =
+                    TableFlags_BordersOuter | TableFlags_BordersH | TableFlags_SizingStretchProp | TableFlags_ScrollY;
                 if (imgui.BeginTable("NvidiaProfileAllSettings", 2, tableFlags2)) {
                     imgui.TableSetupColumn("Setting", TableColumnFlags_WidthStretch, 0.5f);
                     imgui.TableSetupColumn("Value", TableColumnFlags_WidthStretch, 0.5f);
@@ -517,18 +520,22 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
     imgui.Spacing();
     if (imgui.CollapsingHeader("All driver settings (editable)")) {
         imgui.TextColored(TEXT_DIMMED,
-                          "Every setting recognized by the current driver. Same list as the dump file. Set value or reset to default.");
-        if (imgui.Checkbox("Show only settings with values set", &s_showOnlySetDriverSettings)) { }
+                          "Every setting recognized by the current driver. Same list as the dump file. Set value or "
+                          "reset to default.");
+        if (imgui.Checkbox("Show only settings with values set", &s_showOnlySetDriverSettings)) {
+        }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("When on, only settings that have a value in this profile are shown. Turn off to see all driver settings.");
+            imgui.SetTooltip(
+                "When on, only settings that have a value in this profile are shown. Turn off to see all driver "
+                "settings.");
         }
         if (!s_allDriverSettingsCacheValid) {
             s_allDriverSettingsCache = nvapi::GetDriverSettingsWithProfileValues();
             s_allDriverSettingsCacheValid = true;
         }
         if (imgui.BeginChild("NvidiaProfileAllDriverSettingsTable", ImVec2(-1.f, 400.f), true)) {
-            const int tableFlagsAll = TableFlags_BordersOuter | TableFlags_BordersH | TableFlags_SizingStretchProp
-                | TableFlags_ScrollY;
+            const int tableFlagsAll =
+                TableFlags_BordersOuter | TableFlags_BordersH | TableFlags_SizingStretchProp | TableFlags_ScrollY;
             if (imgui.BeginTable("NvidiaProfileAllDriverSettings", 3, tableFlagsAll)) {
                 imgui.TableSetupColumn("Setting", TableColumnFlags_WidthStretch, 0.4f);
                 imgui.TableSetupColumn("Value", TableColumnFlags_WidthStretch, 0.45f);
@@ -551,7 +558,9 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     if (!s.known_to_driver) {
                         imgui.TextUnformatted(s.value.c_str());
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("In profile but not in driver's recognized list. Edit in NVIDIA Profile Inspector or Delete to remove.");
+                            imgui.SetTooltip(
+                                "In profile but not in driver's recognized list. Edit in NVIDIA Profile Inspector or "
+                                "Delete to remove.");
                         }
                     } else if (s.is_bit_field && s.setting_id == nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
                         std::vector<std::pair<std::uint32_t, std::string>> flags =
@@ -562,7 +571,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             bool checked = (cur & fl.first) != 0;
                             imgui.PushID(static_cast<int>(fl.first + (s.setting_id << 16)));
                             std::string cbLabel = fl.second + "##all_" + std::to_string(idx) + "_"
-                                + std::to_string(static_cast<unsigned>(fl.first));
+                                                  + std::to_string(static_cast<unsigned>(fl.first));
                             if (imgui.Checkbox(cbLabel.c_str(), &checked)) {
                                 std::uint32_t newVal = (cur & ~fl.first) | (checked ? fl.first : 0);
                                 auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, newVal);
@@ -663,5 +672,5 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                       "These profiles will apply when this game runs. Edit with NVIDIA Profile Inspector.");
 }
 
-} // namespace ui
-} // namespace display_commander
+}  // namespace ui
+}  // namespace display_commander

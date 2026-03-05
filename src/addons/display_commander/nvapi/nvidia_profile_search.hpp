@@ -10,38 +10,42 @@
 namespace display_commander::nvapi {
 
 struct ImportantProfileSetting {
-    std::string label;   // e.g. "Smooth Motion (591 or below 4000 series)", "DLSS-SR override"
-    std::string value;   // Human-readable value (e.g. "On", "Preset K")
-    std::uint32_t setting_id = 0;   // DRS setting ID (0 = not editable)
-    std::uint32_t value_id = 0;     // Current or default raw DWORD value
-    std::uint32_t default_value = 0; // NVIDIA default (for reset button)
-    bool is_bit_field = false;      // If true, value_id is a bitmask; UI shows checkboxes per flag.
-    bool known_to_driver = true;    // If false, setting is in profile but not in driver's recognized list (show key + value, Delete only).
+    std::string label;                // e.g. "Smooth Motion (591 or below 4000 series)", "DLSS-SR override"
+    std::string value;                // Human-readable value (e.g. "On", "Preset K")
+    std::uint32_t setting_id = 0;     // DRS setting ID (0 = not editable)
+    std::uint32_t value_id = 0;       // Current or default raw DWORD value
+    std::uint32_t default_value = 0;  // NVIDIA default (for reset button)
+    bool is_bit_field = false;        // If true, value_id is a bitmask; UI shows checkboxes per flag.
+    bool known_to_driver =
+        true;  // If false, setting is in profile but not in driver's recognized list (show key + value, Delete only).
 };
 
 // Per-profile application entry data (one row in "Matching profile(s)" list).
 struct MatchedProfileEntry {
     std::string profile_name;
-    std::string app_name;            // Executable path/name in profile
+    std::string app_name;  // Executable path/name in profile
     std::string user_friendly_name;
     std::string launcher;
-    std::string file_in_folder;      // "File in folder" requirement (':' separated if multiple)
+    std::string file_in_folder;  // "File in folder" requirement (':' separated if multiple)
     bool is_metro = false;
     bool is_command_line = false;
     std::string command_line;
-    int score = 0;   // Number of non-empty app-entry fields; higher = more specific match. Used for sorting.
+    int score = 0;  // Number of non-empty app-entry fields; higher = more specific match. Used for sorting.
 };
 
 struct NvidiaProfileSearchResult {
-    bool success = false;           // DRS query succeeded (even if no match)
-    std::string current_exe_path;   // Full path of current process exe
-    std::string current_exe_name;   // Base name (e.g. game.exe)
+    bool success = false;                                // DRS query succeeded (even if no match)
+    std::string current_exe_path;                        // Full path of current process exe
+    std::string current_exe_name;                        // Base name (e.g. game.exe)
     std::vector<MatchedProfileEntry> matching_profiles;  // Matching profiles with full app entry data
-    std::vector<std::string> matching_profile_names;   // Profile names only (derived; for backward compat)
-    std::vector<ImportantProfileSetting> important_settings;  // Key settings from first matching profile (fixed list, "Not set" if missing)
-    std::vector<ImportantProfileSetting> advanced_settings;   // Extra useful settings (Ansel, FXAA, etc.) when "show advanced" is enabled
-    std::vector<ImportantProfileSetting> all_settings;        // All settings actually present in first matching profile (from EnumSettings)
-    std::string error;              // If success is false
+    std::vector<std::string> matching_profile_names;     // Profile names only (derived; for backward compat)
+    std::vector<ImportantProfileSetting>
+        important_settings;  // Key settings from first matching profile (fixed list, "Not set" if missing)
+    std::vector<ImportantProfileSetting>
+        advanced_settings;  // Extra useful settings (Ansel, FXAA, etc.) when "show advanced" is enabled
+    std::vector<ImportantProfileSetting>
+        all_settings;   // All settings actually present in first matching profile (from EnumSettings)
+    std::string error;  // If success is false
 };
 
 // Finds profile for current process exe by full path (single NvAPI_DRS_FindApplicationByName call).
@@ -80,12 +84,12 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe();
 // Status of DLSS render preset overrides in the NVIDIA driver profile for the current exe.
 // Uses the same cached result as GetCachedProfileSearchResult(); safe to call from UI each frame.
 struct DlssDriverPresetStatus {
-    bool has_profile = false;           // true if DRS succeeded and at least one profile matches
-    std::string profile_error;         // non-empty if DRS failed (e.g. no NVIDIA GPU)
-    std::string profile_names;         // comma-separated matching profile names when has_profile
-    std::string sr_preset_value;      // human-readable DLSS-SR preset (e.g. "Not set", "Preset C", "Off", "Latest")
+    bool has_profile = false;            // true if DRS succeeded and at least one profile matches
+    std::string profile_error;           // non-empty if DRS failed (e.g. no NVIDIA GPU)
+    std::string profile_names;           // comma-separated matching profile names when has_profile
+    std::string sr_preset_value;         // human-readable DLSS-SR preset (e.g. "Not set", "Preset C", "Off", "Latest")
     bool sr_preset_is_override = false;  // true if profile sets a non-default DLSS-SR preset
-    std::string rr_preset_value;       // human-readable DLSS-RR preset
+    std::string rr_preset_value;         // human-readable DLSS-RR preset
     bool rr_preset_is_override = false;  // true if profile sets a non-default DLSS-RR preset
 };
 
@@ -105,7 +109,7 @@ std::pair<bool, std::string> ClearDriverDlssPresetOverride();
 // If deleteSetting is false, the setting is set to valueIfSet. Requires NVAPI initialized.
 // Returns (true, "") on success, (false, error_message) on failure.
 std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring& exePath, std::uint32_t settingId,
-                                                            bool deleteSetting, std::uint32_t valueIfSet);
+                                                             bool deleteSetting, std::uint32_t valueIfSet);
 
 // One setting recognized by the current driver (from NvAPI_DRS_EnumAvailableSettingIds + GetSettingNameFromId).
 // Use to show only settings valid for this driver version, or to dump the full list.
@@ -118,9 +122,9 @@ struct DriverAvailableSetting {
 // Does not require a DRS session. Empty on error (e.g. NVAPI not initialized, no NVIDIA GPU).
 std::vector<DriverAvailableSetting> GetDriverAvailableSettings();
 
-// Dumps all driver-recognized settings to a text file: one line per setting with ID (hex), name, type, and allowed values.
-// filePath: full path for the output file (e.g. addon dir + "nvidia_driver_settings_dump.txt").
-// Returns (true, "") on success; (false, error_message) on failure.
+// Dumps all driver-recognized settings to a text file: one line per setting with ID (hex), name, type, and allowed
+// values. filePath: full path for the output file (e.g. addon dir + "nvidia_driver_settings_dump.txt"). Returns (true,
+// "") on success; (false, error_message) on failure.
 std::pair<bool, std::string> DumpDriverSettingsToFile(const std::string& filePath);
 
 // Returns all driver-recognized settings with current profile value (or "Not set") and driver default.

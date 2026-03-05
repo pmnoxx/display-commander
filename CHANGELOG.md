@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.281 (2026-03-05)
+- **NVIDIA Profile internal settings** - The addon now shows NVIDIA Profile internal settings (e.g. RTX HDR status, TrueHDR controls, DLSS-FG overrides, power management) when available. The NVAPI loader prefers internal DRS enum entry points (DRS_EnumSettingsInternal, DRS_EnumAvailableSettingIdsInternal) so the driver can return more settings than the public API; fallback to the public IDs when the internal ones are not present. Internal here means driver-internal/undocumented; it does not mean the values are encrypted. Details: `nvapi_loader.cpp` (internal IDs 0xCFD6983E, 0xE5DE48E5 with fallback to 0xAE3039DA, 0xF020614A).
+
 ## v0.12.280 (2026-03-04)
 - **Removed old reflex UI**
 

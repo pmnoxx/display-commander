@@ -1262,14 +1262,6 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.SetTooltip("No native Reflex activity detected. ");
             }
         }
-        imgui.Spacing();
-
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Enabling Reflex when the game already has it can cause conflicts, instability, or "
-                "performance issues. Check the game's graphics settings first.");
-        }
-
         bool reflex_auto_configure = settings::g_advancedTabSettings.reflex_auto_configure.GetValue();
         bool reflex_delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
         bool reflex_use_markers = settings::g_advancedTabSettings.reflex_use_markers.GetValue();
@@ -1292,6 +1284,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SetTooltip("Configure in Main tab under FPS Limiter Mode (Reflex combo).");
         }
 
+        /*
         if (imgui.Checkbox("Delay Reflex for first 500 frames", &reflex_delay_first_500_frames)) {
             settings::g_advancedTabSettings.reflex_delay_first_500_frames.SetValue(reflex_delay_first_500_frames);
         }
@@ -1361,7 +1354,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");
             }
         }
-
+*/
         // Reflex Sleep Status Section
         imgui.Spacing();
         imgui.Separator();

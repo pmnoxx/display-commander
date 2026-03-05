@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.280 (2026-03-04)
+- **Removed old reflex UI**
+
 ## v0.12.279 (2026-03-04)
 - **VSync override combo width** - The VSync override dropdown on the Main tab (Display settings) no longer stretches too wide; it uses a fixed width so the control is compact. Details: `ComboSettingWrapper` now accepts an optional `combo_width` parameter; both VSync combo call sites pass a width. `settings_wrapper.hpp`/`.cpp`, `main_new_tab.cpp`.
 - **Gamma 2.2 decode checkbox removed** - The "Gamma 2.2 decode" checkbox was removed from the Main tab (Brightness and AutoHDR). The effect uniform is always set to 0 (disabled). Details: `main_tab_settings` (setting removed), `main_new_tab.cpp` (UI removed), `main_entry.cpp` (always pass 0 to ExtraGamma22Decode).

@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.292 (2026-03-05)
+- **NVIDIA Control: restart warning** - When you change any setting in the Main tab **NVIDIA Control** section (combo, Use global, or Default), or change the FPS limit via **NVIDIA Profile** FPS limiter mode, a warning is shown: "Restart the game for profile changes to take effect." Details: `main_new_tab.cpp` file-scope `s_nvidiaProfileChangeRestartNeeded`, set on successful SetProfileSetting/DeleteProfileSettingForCurrentExe and SetProfileFpsLimit; warning shown below the NVIDIA Control table and below the driver FPS combo in FPS limiter section.
+
 ## v0.12.291 (2026-03-05)
 - **Internal DRS_RestoreProfileDefaultSetting** - Loader now resolves internal (0x7DD5B261) and public (0x53F0381E) RestoreProfileDefaultSetting; wrapper `DRS_RestoreProfileDefaultSetting(p, hSession, hProfile, settingId)` prefers internal. Not yet used (Default button still uses SetProfileSetting to default value). NPI GetDelegate pattern.
 - **Internal DRS_GetSettingNameFromId** - Setting name lookup now uses the internal NVAPI (0x1EB13791) when available, with fallback to public (0xD61CBE6E). Matches NvidiaProfileInspectorRevamped. Details: `nvapi_loader` DRS_GetSettingNameFromIdInternal + wrapper; all GetSettingNameFromId call sites use the wrapper.

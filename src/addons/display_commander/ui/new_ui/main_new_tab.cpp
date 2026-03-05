@@ -313,6 +313,8 @@ struct CachedTimelinePhase {
     ImVec4 color;
 };
 static std::vector<CachedTimelinePhase> s_timeline_phases;
+// Set when user changes any NVIDIA profile setting (NVIDIA Control or FPS limit via NVIDIA Profile mode); show restart warning.
+static bool s_nvidiaProfileChangeRestartNeeded = false;
 static double s_timeline_t_min = 0.0;
 static double s_timeline_t_max = 1.0;
 static double s_timeline_time_range = 1.0;
@@ -3541,6 +3543,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
                         std::uint32_t new_value = options[static_cast<size_t>(selected_index)].first;
                         auto [ok, err] = display_commander::nvapi::SetProfileFpsLimit(new_value);
                         if (ok) {
+                            s_nvidiaProfileChangeRestartNeeded = true;
                             LogInfo("NVIDIA profile FPS limit set to %u", new_value);
                         } else {
                             LogError("Set profile FPS limit failed: %s", err.c_str());
@@ -3550,6 +3553,10 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip("FPS limit stored in the NVIDIA driver profile. Takes effect after restart.");
+                }
+                if (s_nvidiaProfileChangeRestartNeeded) {
+                    imgui.TextColored(ui::colors::TEXT_WARNING,
+                                      "Restart the game for profile changes to take effect.");
                 }
             }
         }
@@ -5596,8 +5603,9 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 }
             }
             imgui.Indent();
-            imgui.TextColored(ui::colors::TEXT_DIMMED,
-                              "Smooth Motion, RTX HDR and other profile settings for this game. More in NVIDIA Profile tab.");
+            imgui.TextColored(
+                ui::colors::TEXT_DIMMED,
+                "Smooth Motion, RTX HDR and other profile settings for this game. More in NVIDIA Profile tab.");
             imgui.SameLine();
             if (imgui.SmallButton("Refresh##NvidiaControlMainTab")) {
                 display_commander::nvapi::InvalidateProfileSearchCache();
@@ -5646,7 +5654,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         rtx_settings.push_back(&s);
                     }
                 }
-                // Include advanced settings that are in rtx_ids (e.g. Ultra Low Latency - CPL State, Ultra Low Latency - Enabled).
+                // Include advanced settings that are in rtx_ids (e.g. Ultra Low Latency - CPL State, Ultra Low Latency
+                // - Enabled).
                 for (const auto& s : r.advanced_settings) {
                     if (std::find(rtx_ids.begin(), rtx_ids.end(), s.setting_id) != rtx_ids.end()) {
                         rtx_settings.push_back(&s);
@@ -5669,7 +5678,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                             imgui.TextUnformatted(s.label.c_str());
                         }
                         if (imgui.IsItemHovered()) {
-                            std::string tip = display_commander::nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                            std::string tip =
+                                display_commander::nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
                             if (s.requires_admin && !tip.empty()) tip += "\n";
                             if (s.requires_admin) tip += "Requires admin to change.";
                             if (s.min_required_driver_version != 0) {
@@ -5683,10 +5693,12 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         }
                         imgui.TableSetColumnIndex(1);
                         if (s.setting_id != 0) {
-                            if (s.is_bit_field && s.setting_id == display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
+                            if (s.is_bit_field
+                                && s.setting_id == display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
                                 imgui.TextUnformatted(s.value.c_str());
                                 imgui.SameLine();
-                                const std::uint32_t all_apis_val = display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ALL;
+                                const std::uint32_t all_apis_val =
+                                    display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ALL;
                                 const bool already_all = (s.value_id == all_apis_val);
                                 if (already_all) {
                                     imgui.BeginDisabled();
@@ -5697,6 +5709,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                         display_commander::nvapi::SetProfileSetting(s.setting_id, all_apis_val);
                                     if (ok) {
                                         s_nvidiaMainTabSetError.clear();
+                                        s_nvidiaProfileChangeRestartNeeded = true;
                                         display_commander::nvapi::InvalidateProfileSearchCache();
                                     } else {
                                         s_nvidiaMainTabSetError = err;
@@ -5731,6 +5744,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                             display_commander::nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
                                         if (ok) {
                                             s_nvidiaMainTabSetError.clear();
+                                            s_nvidiaProfileChangeRestartNeeded = true;
                                             display_commander::nvapi::InvalidateProfileSearchCache();
                                         } else {
                                             s_nvidiaMainTabSetError = err;
@@ -5746,6 +5760,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                                 display_commander::nvapi::SetProfileSetting(s.setting_id, opt.first);
                                             if (ok) {
                                                 s_nvidiaMainTabSetError.clear();
+                                                s_nvidiaProfileChangeRestartNeeded = true;
                                                 display_commander::nvapi::InvalidateProfileSearchCache();
                                             } else {
                                                 s_nvidiaMainTabSetError = err;
@@ -5776,6 +5791,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                         display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
                                     if (ok) {
                                         s_nvidiaMainTabSetError.clear();
+                                        s_nvidiaProfileChangeRestartNeeded = true;
                                         display_commander::nvapi::InvalidateProfileSearchCache();
                                     } else {
                                         s_nvidiaMainTabSetError = err;
@@ -5798,6 +5814,10 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         }
                     }
                     imgui.EndTable();
+                }
+                if (s_nvidiaProfileChangeRestartNeeded) {
+                    imgui.TextColored(ui::colors::TEXT_WARNING,
+                                      "Restart the game for profile changes to take effect.");
                 }
             }
             imgui.Unindent();

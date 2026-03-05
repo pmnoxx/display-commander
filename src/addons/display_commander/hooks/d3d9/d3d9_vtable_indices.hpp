@@ -1,14 +1,36 @@
 #pragma once
 
 // IDirect3D9 / IDirect3D9Ex vtable indices (factory; used to hook CreateDevice/CreateDeviceEx).
-// Order matches Windows d3d9.h: IUnknown 0-2, then IDirect3D9 methods, then IDirect3D9Ex::CreateDeviceEx.
+// Order matches Windows d3d9.h: IUnknown 0-2, IDirect3D9 3-16, IDirect3D9Ex 17-21.
+// enum class to avoid redefinition with device VTable enumerators in same namespace.
 namespace display_commanderhooks::d3d9 {
 
-enum D3D9FactoryVTable : unsigned int {
-    // IDirect3D9 ends at CreateDevice = 16
+enum class D3D9FactoryVTable : unsigned int {
+    // IUnknown (0-2)
+    QueryInterface = 0,
+    AddRef = 1,
+    Release = 2,
+    // IDirect3D9 (3-16)
+    RegisterSoftwareDevice = 3,
+    GetAdapterCount = 4,
+    GetAdapterIdentifier = 5,
+    GetAdapterModeCount = 6,
+    EnumAdapterModes = 7,
+    GetAdapterDisplayMode = 8,
+    CheckDeviceType = 9,
+    CheckDeviceFormat = 10,
+    CheckDeviceMultiSampleType = 11,
+    CheckDepthStencilMatch = 12,
+    CheckDeviceFormatConversion = 13,
+    GetDeviceCaps = 14,
+    GetAdapterMonitor = 15,
     CreateDevice = 16,
-    // IDirect3D9Ex adds CreateDeviceEx at 17
-    CreateDeviceEx = 17,
+    // IDirect3D9Ex (17-21)
+    GetAdapterModeCountEx = 17,
+    EnumAdapterModesEx = 18,
+    GetAdapterDisplayModeEx = 19,
+    CreateDeviceEx = 20,
+    GetAdapterLUID = 21,
 };
 
 }  // namespace display_commanderhooks::d3d9

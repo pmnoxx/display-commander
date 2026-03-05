@@ -5,6 +5,9 @@
 ## Unreleased
 - (none)
 
+## v0.12.275 (2026-03-04)
+- **D3D9 Ex factory hook: correct vtable index and detour logic / Fixed Steins;Gate support in No Reshade Mode when loaded as dbghelp.dll** - Fixes hooking to Direct3D 9Ex in games such as Steins;Gate. The CreateDeviceEx vtable slot was wrong (index 17 instead of 20): IDirect3D9Ex adds GetAdapterModeCountEx, EnumAdapterModesEx, GetAdapterDisplayModeEx before CreateDeviceEx, so the correct slot is 20. The CreateDeviceEx detour also had an erroneous early return that skipped present-param upgrades, device callback, and success tracking. D3D9FactoryVTable now lists all IDirect3D9/IDirect3D9Ex factory methods (enum class to avoid name clashes with device VTable). Details: `d3d9_vtable_indices.hpp` (CreateDeviceEx = 20, full factory enum), `d3d9_hooks.cpp` (detour flow fixed, vtable index cast).
+
 ## v0.12.273 (2026-03-04)
 - **D3D9 No-ReShade: FlipEx factory hook gated by setting** - When running without ReShade, the D3D9 Ex factory (Direct3DCreate9Ex) is only hooked when the experimental "D3D9 FlipEx (no ReShade)" setting is enabled. When the setting is off, the factory is not hooked so D3D9 games are left untouched. Reduces impact when the feature is disabled. Details: `Direct3DCreate9Ex_Detour` in `d3d9_hooks.cpp` checks `d3d9_flipex_enabled_no_reshade` before calling `HookD3D9FactoryVtable`.
 - **D3D9 logging** - D3D9 PresentParams logging is commented out to reduce log noise; DisplayModeEx log is null-safe for the prefix parameter. Details: `LogD3D9PresentParams`, `LogD3D9DisplayModeEx` in `d3d9_hooks.cpp`.

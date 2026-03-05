@@ -188,8 +188,7 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
     return hr;
 }
 
-// Detour for IDirect3D9Ex::CreateDeviceEx - mark D3D9Ex in use, apply FLIPEX/VSync upgrades, then hook the device on
-// success
+// Detour for IDirect3D9Ex::CreateDeviceEx - apply FLIPEX/VSync upgrades, call original, then hook the device on success.
 HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType,
                                                 HWND hFocusWindow, DWORD BehaviorFlags,
                                                 D3DPRESENT_PARAMETERS* pPresentationParameters,
@@ -198,7 +197,6 @@ HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter
     if (CreateDeviceEx_Original == nullptr) {
         return D3DERR_INVALIDCALL;
     }
-    s_d3d9e_upgrade_successful.store(true, std::memory_order_relaxed);
 
     // Log all arguments before we change anything
     LogD3D9CreateDeviceArgs("CreateDeviceEx (before)", Adapter, DeviceType, hFocusWindow, BehaviorFlags,
@@ -226,6 +224,7 @@ HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter
                                          pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
 
     if (SUCCEEDED(hr) && ppReturnedDeviceInterface != nullptr && *ppReturnedDeviceInterface != nullptr) {
+        s_d3d9e_upgrade_successful.store(true, std::memory_order_relaxed);
         if (pPresentationParameters != nullptr) {
             StoreD3D9NoReShadeDeviceSnapshot(true, *pPresentationParameters);
         }
@@ -254,32 +253,39 @@ HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter
     return hr;
 }
 
-// Hook the factory's CreateDevice (and optionally CreateDeviceEx) vtable slots. Idempotent per vtable.
-void HookD3D9FactoryVtable(IDirect3D9* d3d9, bool isEx) {
+// Hook the factory's CreateDevice vtable slot. Idempotent (global once per process).
+void HookD3D9FactoryCreateDevice(IDirect3D9* d3d9) {
     if (d3d9 == nullptr) {
         return;
     }
-    void** vtable = *reinterpret_cast<void***>(d3d9);
-
-    if (!g_d3d9_factory_create_device_hooked.load(std::memory_order_relaxed)) {
-        void* createDeviceTarget = vtable[D3D9FactoryVTable::CreateDevice];
-        if (createDeviceTarget != nullptr
-            && CreateAndEnableHook(createDeviceTarget, reinterpret_cast<LPVOID>(&CreateDevice_Detour),
-                                   reinterpret_cast<LPVOID*>(&CreateDevice_Original), "IDirect3D9::CreateDevice")) {
-            g_d3d9_factory_create_device_hooked.store(true, std::memory_order_relaxed);
-            LogInfo("InstallDX9Hooks: IDirect3D9::CreateDevice hooked");
-        }
+    if (g_d3d9_factory_create_device_hooked.load(std::memory_order_relaxed)) {
+        return;
     }
+    void** vtable = *reinterpret_cast<void***>(d3d9);
+    void* createDeviceTarget = vtable[static_cast<unsigned>(D3D9FactoryVTable::CreateDevice)];
+    if (createDeviceTarget != nullptr
+        && CreateAndEnableHook(createDeviceTarget, CreateDevice_Detour,
+                               reinterpret_cast<LPVOID*>(&CreateDevice_Original), "IDirect3D9::CreateDevice")) {
+        g_d3d9_factory_create_device_hooked.store(true, std::memory_order_relaxed);
+        LogInfo("InstallDX9Hooks: IDirect3D9::CreateDevice hooked");
+    }
+}
 
-    if (isEx && !g_d3d9_factory_create_device_ex_hooked.load(std::memory_order_relaxed)) {
-        void* createDeviceExTarget = vtable[D3D9FactoryVTable::CreateDeviceEx];
-        if (createDeviceExTarget != nullptr
-            && CreateAndEnableHook(createDeviceExTarget, reinterpret_cast<LPVOID>(&CreateDeviceEx_Detour),
-                                   reinterpret_cast<LPVOID*>(&CreateDeviceEx_Original),
-                                   "IDirect3D9Ex::CreateDeviceEx")) {
-            g_d3d9_factory_create_device_ex_hooked.store(true, std::memory_order_relaxed);
-            LogInfo("InstallDX9Hooks: IDirect3D9Ex::CreateDeviceEx hooked");
-        }
+// Hook the factory's CreateDeviceEx vtable slot (IDirect3D9Ex only). Idempotent (global once per process).
+void HookD3D9FactoryCreateDeviceEx(IDirect3D9Ex* d3d9ex) {
+    if (d3d9ex == nullptr) {
+        return;
+    }
+    if (g_d3d9_factory_create_device_ex_hooked.load(std::memory_order_relaxed)) {
+        return;
+    }
+    void** vtable = *reinterpret_cast<void***>(d3d9ex);
+    void* createDeviceExTarget = vtable[static_cast<unsigned>(D3D9FactoryVTable::CreateDeviceEx)];
+    if (createDeviceExTarget != nullptr
+        && CreateAndEnableHook(createDeviceExTarget, CreateDeviceEx_Detour,
+                               reinterpret_cast<LPVOID*>(&CreateDeviceEx_Original), "IDirect3D9Ex::CreateDeviceEx")) {
+        g_d3d9_factory_create_device_ex_hooked.store(true, std::memory_order_relaxed);
+        LogInfo("InstallDX9Hooks: IDirect3D9Ex::CreateDeviceEx hooked");
     }
 }
 
@@ -289,7 +295,7 @@ IDirect3D9* WINAPI Direct3DCreate9_Detour(UINT SDKVersion) {
     }
     IDirect3D9* d3d9 = Direct3DCreate9_Original(SDKVersion);
     if (d3d9 != nullptr) {
-        HookD3D9FactoryVtable(d3d9, false);
+        HookD3D9FactoryCreateDevice(d3d9);
     }
     return d3d9;
 }
@@ -300,9 +306,12 @@ HRESULT WINAPI Direct3DCreate9Ex_Detour(UINT SDKVersion, IDirect3D9Ex** ppD3D) {
     }
     HRESULT hr = Direct3DCreate9Ex_Original(SDKVersion, ppD3D);
     if (SUCCEEDED(hr) && *ppD3D != nullptr) {
-        if (settings::g_experimentalTabSettings.d3d9_flipex_enabled_no_reshade.GetValue()) {
-            HookD3D9FactoryVtable(*ppD3D, true);
+        IDirect3D9* d3d9_base = nullptr;
+        if (SUCCEEDED((*ppD3D)->QueryInterface(IID_PPV_ARGS(&d3d9_base)))) {
+            HookD3D9FactoryCreateDevice(d3d9_base);
+            d3d9_base->Release();
         }
+        HookD3D9FactoryCreateDeviceEx(*ppD3D);
     }
     return hr;
 }

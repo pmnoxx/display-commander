@@ -8,6 +8,7 @@
 #include "../../swapchain_events.hpp"
 #include "../../ui/new_ui/new_ui_tabs.hpp"
 #include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/dxgi_color_space.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
@@ -1227,7 +1228,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_SetColorSpace1_Detour(IDXGISwapChain3* 
     g_dxgi_sc3_event_counters[DXGI_SC3_EVENT_SETCOLORSPACE1].fetch_add(1);
     HRESULT hr = IDXGISwapChain_SetColorSpace1_Original(This, ColorSpace);
     static int s_err_count = 0;
-    LogDxgiErrorUpTo10("IDXGISwapChain3::SetColorSpace1", hr, &s_err_count);
+    if (FAILED(hr) && s_err_count < 10) {
+        LogError("[DXGI error] IDXGISwapChain3::SetColorSpace1(ColorSpace=%s (%d)) returned 0x%08X",
+                 utils::GetDXGIColorSpaceString(ColorSpace), static_cast<int>(ColorSpace), static_cast<unsigned>(hr));
+        s_err_count++;
+    }
     return hr;
 }
 

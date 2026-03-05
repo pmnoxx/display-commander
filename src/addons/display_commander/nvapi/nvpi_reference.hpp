@@ -27,6 +27,9 @@ constexpr std::uint32_t NVPI_RTX_HDR_CONTRAST_ID = 0x00DD48FE;
 constexpr std::uint32_t NVPI_RTX_HDR_MIDDLE_GREY_ID = 0x00DD48FD;
 constexpr std::uint32_t NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID = 0x00DD48FC;
 constexpr std::uint32_t NVPI_RTX_HDR_SATURATION_ID = 0x00DD48FF;
+// RTX Dynamic Vibrance - Saturation / Value (0-100; 0x65 = Custom). Group: 0.2.1 - Graphic | HDR.
+constexpr std::uint32_t NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID = 0x00ABAB13;
+constexpr std::uint32_t NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID = 0x00ABAB22;
 
 // Ultra Low Latency - CPL State (2 - Sync and Refresh). MinRequiredDriverVersion 430.00. Tracks ULL for control panel.
 constexpr std::uint32_t ULL_CPL_STATE_ID = 0x0005F543;

@@ -59,8 +59,8 @@ struct SettingData {
 };
 
 // All important + advanced settings; first k_num_important_settings are important, rest are advanced.
-static constexpr std::size_t k_num_important_settings = 25;
-static const std::array<SettingData, 30> k_settings_data = {{
+static constexpr std::size_t k_num_important_settings = 27;
+static const std::array<SettingData, 32> k_settings_data = {{
     // Important (order matches previous k_important_settings)
     {.user_friendly_name = "Smooth Motion - Allowed APIs [40 series]",
      .hex_setting_id = NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
@@ -141,6 +141,26 @@ static const std::array<SettingData, 30> k_settings_data = {{
                        {0x00000096, "150 | +50"},
                        {0x000000C8, "200 | +100"},
                        {0x000000C9, "Custom (0-200)"}}},
+    {.user_friendly_name = "RTX Dynamic Vibrance - Saturation",
+     .hex_setting_id = NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID,
+     .group_name = "0.2.1 - Graphic | HDR",
+     .default_value = 0x00000064,
+     .option_values = {{0x00000000, "0"},   {0x00000005, "5"},   {0x0000000A, "10"},  {0x0000000F, "15"},
+                       {0x00000014, "20"},  {0x00000019, "25"},  {0x0000001E, "30"},  {0x00000023, "35"},
+                       {0x00000028, "40"},  {0x0000002D, "45"},  {0x00000032, "50"},  {0x00000037, "55"},
+                       {0x0000003C, "60"},  {0x00000041, "65"},  {0x00000046, "70"},  {0x0000004B, "75"},
+                       {0x00000050, "80"},  {0x00000055, "85"},  {0x0000005A, "90"},  {0x0000005F, "95"},
+                       {0x00000064, "100"}, {0x00000065, "Custom (0-100)"}}},
+    {.user_friendly_name = "RTX Dynamic Vibrance - Value",
+     .hex_setting_id = NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID,
+     .group_name = "0.2.1 - Graphic | HDR",
+     .default_value = 0x00000064,
+     .option_values = {{0x00000000, "0"},   {0x00000005, "5"},   {0x0000000A, "10"},  {0x0000000F, "15"},
+                       {0x00000014, "20"},  {0x00000019, "25"},  {0x0000001E, "30"},  {0x00000023, "35"},
+                       {0x00000028, "40"},  {0x0000002D, "45"},  {0x00000032, "50"},  {0x00000037, "55"},
+                       {0x0000003C, "60"},  {0x00000041, "65"},  {0x00000046, "70"},  {0x0000004B, "75"},
+                       {0x00000050, "80"},  {0x00000055, "85"},  {0x0000005A, "90"},  {0x0000005F, "95"},
+                       {0x00000064, "100"}, {0x00000065, "Custom (0-100)"}}},
     {.user_friendly_name = "DLSS-SR mode",
      .hex_setting_id = NGX_DLSS_SR_MODE_ID,
      .default_value = static_cast<std::uint32_t>(NGX_DLSS_SR_MODE_DEFAULT),
@@ -1504,6 +1524,8 @@ std::vector<std::uint32_t> GetRtxHdrSettingIds() {
         NVPI_RTX_HDR_MIDDLE_GREY_ID,
         NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
         NVPI_RTX_HDR_SATURATION_ID,
+        NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID,
+        NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID,
         PRERENDERLIMIT_ID,  // Latency - Max Pre-Rendered Frames (NVIDIA); shown after RTX HDR on Main tab
         ULL_CPL_STATE_ID,   // Ultra Low Latency - CPL State (2 - Sync and Refresh); shown on Main tab NVIDIA Control
         ULL_ENABLED_ID,     // Ultra Low Latency - Enabled (2 - Sync and Refresh); shown on Main tab NVIDIA Control

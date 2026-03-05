@@ -334,9 +334,15 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     const auto& s = *to_show[idx];
                     imgui.TableNextRow();
                     imgui.TableSetColumnIndex(0);
-                    imgui.TextUnformatted(s.label.c_str());
+                    if (s.requires_admin) {
+                        imgui.TextColored(TEXT_WARNING, "%s", s.label.c_str());
+                    } else {
+                        imgui.TextUnformatted(s.label.c_str());
+                    }
                     if (imgui.IsItemHovered()) {
-                        const std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                        std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                        if (s.requires_admin && !tip.empty()) tip += "\n";
+                        if (s.requires_admin) tip += "Requires admin to change.";
                         imgui.SetTooltip("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);
@@ -466,9 +472,15 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     for (const auto& s : r.all_settings) {
                         imgui.TableNextRow();
                         imgui.TableSetColumnIndex(0);
-                        imgui.TextUnformatted(s.label.c_str());
+                        if (s.requires_admin) {
+                            imgui.TextColored(TEXT_WARNING, "%s", s.label.c_str());
+                        } else {
+                            imgui.TextUnformatted(s.label.c_str());
+                        }
                         if (imgui.IsItemHovered()) {
-                            const std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                            std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                            if (s.requires_admin && !tip.empty()) tip += "\n";
+                            if (s.requires_admin) tip += "Requires admin to change.";
                             imgui.SetTooltip("%s", tip.c_str());
                         }
                         imgui.TableSetColumnIndex(1);
@@ -513,9 +525,15 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     }
                     imgui.TableNextRow();
                     imgui.TableSetColumnIndex(0);
-                    imgui.TextUnformatted(s.label.c_str());
+                    if (s.requires_admin) {
+                        imgui.TextColored(TEXT_WARNING, "%s", s.label.c_str());
+                    } else {
+                        imgui.TextUnformatted(s.label.c_str());
+                    }
                     if (imgui.IsItemHovered()) {
-                        const std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                        std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                        if (s.requires_admin && !tip.empty()) tip += "\n";
+                        if (s.requires_admin) tip += "Requires admin to change.";
                         imgui.SetTooltip("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);

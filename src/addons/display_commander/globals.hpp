@@ -493,7 +493,6 @@ WindowMode GetCurrentWindowMode();
 /** True when window mode implies "prevent exclusive fullscreen" (all modes except kNoChanges). */
 inline bool ShouldPreventExclusiveFullscreen() { return GetCurrentWindowMode() != WindowMode::kNoChanges; }
 extern std::atomic<AspectRatioType> s_aspect_index;
-extern std::atomic<int> s_aspect_width;
 
 // HDR10 / scRGB color fix setting (10-bit and 16-bit FP back buffer)
 

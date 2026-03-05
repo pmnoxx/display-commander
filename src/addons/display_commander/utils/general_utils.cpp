@@ -13,6 +13,7 @@
 #include "globals.hpp"
 #include "logging.hpp"
 #include "settings/advanced_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
 
 // Version.dll dynamic loading
 namespace {
@@ -98,7 +99,7 @@ AspectRatio GetAspectByIndex(AspectRatioType aspect_type) {
 
 // Helper function to get the actual width value based on the dropdown selection
 int GetAspectWidthValue(int display_width) {
-    const int width_index = s_aspect_width.load();
+    const int width_index = settings::g_mainTabSettings.window_aspect_width.GetValue();
 
     // Width options: 0=Display Width, 1=3840, 2=2560, 3=1920, 4=1600, 5=1280, 6=1080, 7=900, 8=720
     int selected_width;

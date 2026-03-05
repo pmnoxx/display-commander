@@ -321,10 +321,8 @@ void InitializeHotkeyDefinitions() {
         {"background_toggle", "Background Toggle", "",
          "Toggle both 'No Render in Background' and 'No Present in Background' settings",
          []() {
-             bool new_render_state = !s_no_render_in_background.load();
+             bool new_render_state = !settings::g_mainTabSettings.no_render_in_background.GetValue();
              bool new_present_state = new_render_state;
-             s_no_render_in_background.store(new_render_state);
-             s_no_present_in_background.store(new_present_state);
              settings::g_mainTabSettings.no_render_in_background.SetValue(new_render_state);
              settings::g_mainTabSettings.no_present_in_background.SetValue(new_present_state);
              std::ostringstream oss;
@@ -392,7 +390,7 @@ void InitializeHotkeyDefinitions() {
          []() {
              float current_volume = 0.0f;
              if (!GetVolumeForCurrentProcess(&current_volume)) {
-                 current_volume = s_audio_volume_percent.load();
+                 current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
              }
 
              // Calculate percentage-based step: 20% of current volume, minimum 1%
@@ -417,7 +415,7 @@ void InitializeHotkeyDefinitions() {
          []() {
              float current_volume = 0.0f;
              if (!GetVolumeForCurrentProcess(&current_volume)) {
-                 current_volume = s_audio_volume_percent.load();
+                 current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
              }
 
              // Calculate percentage-based step: 20% of current volume, minimum 1%

@@ -8,8 +8,6 @@ namespace settings {
 
 // Bring setting types into scope
 using ui::new_ui::BoolSetting;
-using ui::new_ui::BoolSettingRef;
-using ui::new_ui::FloatSettingRef;
 using ui::new_ui::IntSetting;
 using ui::new_ui::IntSettingRef;
 using ui::new_ui::SettingBase;
@@ -42,17 +40,17 @@ class AdvancedTabSettings {
 
     // Keyboard Shortcut Settings (Experimental)
     BoolSetting enable_hotkeys;
-    BoolSettingRef enable_mute_unmute_shortcut;
-    BoolSettingRef enable_background_toggle_shortcut;
-    BoolSettingRef enable_timeslowdown_shortcut;
-    BoolSettingRef enable_adhd_toggle_shortcut;
-    BoolSettingRef enable_autoclick_shortcut;
-    BoolSettingRef enable_input_blocking_shortcut;
-    BoolSettingRef enable_display_commander_ui_shortcut;
-    BoolSettingRef enable_performance_overlay_shortcut;
+    BoolSetting enable_mute_unmute_shortcut;
+    BoolSetting enable_background_toggle_shortcut;
+    BoolSetting enable_timeslowdown_shortcut;
+    BoolSetting enable_adhd_toggle_shortcut;
+    BoolSetting enable_autoclick_shortcut;
+    BoolSetting enable_input_blocking_shortcut;
+    BoolSetting enable_display_commander_ui_shortcut;
+    BoolSetting enable_performance_overlay_shortcut;
 
     // Minimal NVIDIA Reflex controls
-    BoolSettingRef reflex_auto_configure;
+    BoolSetting reflex_auto_configure;
     BoolSetting reflex_enable;
     BoolSetting reflex_delay_first_500_frames;
     BoolSetting reflex_low_latency;
@@ -60,8 +58,8 @@ class AdvancedTabSettings {
     BoolSetting reflex_use_markers;
     BoolSetting reflex_generate_markers;
     BoolSetting reflex_enable_sleep;
-    BoolSettingRef reflex_logging;
-    BoolSettingRef reflex_supress_native;
+    BoolSetting reflex_logging;
+    BoolSetting reflex_supress_native;
 
     // Safemode setting
     BoolSetting safemode;

@@ -1325,7 +1325,7 @@ void InitMainNewTab() {
         // VSync & Tearing - all automatically synced via BoolSettingRef
 
         // Apply loaded mute state immediately if manual mute is enabled
-        // (BoolSettingRef already synced s_audio_mute, but we need to apply it to the audio system)
+        // Apply mute setting to the audio system
         if (settings::g_mainTabSettings.audio_mute.GetValue()) {
             if (::SetMuteForCurrentProcess(true)) {
                 ::g_muted_applied.store(true);
@@ -2313,7 +2313,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
         if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
-            if (SliderFloatSettingRef(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f",
+            if (SliderFloatSetting(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f",
                                       imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
@@ -2323,7 +2323,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                     "Ctrl+Shift+F5) or game restart.");
             }
-            if (ComboSettingRefWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace",
+            if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace",
                                        imgui)) {
                 // Value is applied in OnReShadePresent each frame (DECODE_METHOD)
             }
@@ -2331,7 +2331,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.SetTooltip(
                     "How to interpret the backbuffer (decode). Auto = detect from pipeline. Default Auto.");
             }
-            if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
+            if (ComboSettingWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
                 // Value is applied in OnReShadePresent each frame (ENCODE_METHOD)
             }
             if (imgui.IsItemHovered()) {
@@ -2424,7 +2424,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                                       " 8-bit buffer. "
                                       "Recommend RenoDX for SDR->HDR swapchain upgrade.");
                 }
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
+                if (SliderFloatSetting(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
                                           imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
@@ -2436,7 +2436,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             ui::colors::PushNestedHeaderColors(&imgui);
             if (imgui.CollapsingHeader("Misc", ImGuiTreeNodeFlags_None)) {
                 imgui.Indent();
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", imgui)) {
+                if (SliderFloatSetting(settings::g_mainTabSettings.gamma_value, "Gamma", "%.2f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -2444,14 +2444,14 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                         "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
                         "Brightness.");
                 }
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", imgui)) {
+                if (SliderFloatSetting(settings::g_mainTabSettings.contrast_value, "Contrast", "%.2f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
                         "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
                 }
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", imgui)) {
+                if (SliderFloatSetting(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -2461,7 +2461,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                         "with "
                         "Brightness.");
                 }
-                if (SliderFloatSettingRef(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", imgui)) {
+                if (SliderFloatSetting(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -2874,7 +2874,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         if (cpu_cores_value > 0 && cpu_cores_value < MIN_CPU_CORES_SELECTABLE) {
             cpu_cores_value = MIN_CPU_CORES_SELECTABLE;
             settings::g_mainTabSettings.cpu_cores.SetValue(cpu_cores_value);
-            s_cpu_cores.store(cpu_cores_value);
         }
 
         // Use actual CPU cores value in slider, but we'll handle invalid values (1-5) by clamping
@@ -2906,7 +2905,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
 
             settings::g_mainTabSettings.cpu_cores.SetValue(new_cpu_cores_value);
-            s_cpu_cores.store(new_cpu_cores_value);
             LogInfo("CPU cores set to %d (0 = default/no change)", new_cpu_cores_value);
             cpu_cores_value = new_cpu_cores_value;  // Update for display below
         }
@@ -3389,9 +3387,9 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
     }
     if (GetCurrentWindowMode() == WindowMode::kAspectRatio) {
         // Width dropdown for aspect ratio mode
-        if (ComboSettingRefWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width", imgui)) {
-            s_aspect_width.store(settings::g_mainTabSettings.window_aspect_width.GetValue());
-            LogInfo("Window width for aspect mode setting changed to: %d", s_aspect_width.load());
+        if (ComboSettingWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width", imgui)) {
+            LogInfo("Window width for aspect mode setting changed to: %d",
+                    settings::g_mainTabSettings.window_aspect_width.GetValue());
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
@@ -3470,7 +3468,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     if (current_item != static_cast<int>(FpsLimiterMode::kNvidiaProfile)) {
         float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
         const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, imgui)) {
+        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, imgui)) {
         }
         float cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
         if (cur_limit > 0.0f && cur_limit < 10.0f) {
@@ -3566,7 +3564,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
+        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
                                   imgui)) {
         }
         if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
@@ -3589,7 +3587,6 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         FpsLimiterMode mode = s_fps_limiter_mode.load();
         if (mode == FpsLimiterMode::kReflex) {
             LogInfo("FPS Limiter: Reflex");
-            s_reflex_auto_configure.store(true);
             settings::g_advancedTabSettings.reflex_auto_configure.SetValue(true);
         } else if (mode == FpsLimiterMode::kOnPresentSync) {
             LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
@@ -3601,7 +3598,6 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
         if (mode == FpsLimiterMode::kReflex && prev_item != static_cast<int>(FpsLimiterMode::kReflex)) {
             settings::g_advancedTabSettings.reflex_auto_configure.SetValue(false);
-            s_reflex_auto_configure.store(false);
         }
     }
     if (imgui.IsItemHovered()) {
@@ -4050,7 +4046,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         int temp_offset = current_offset;
         if (imgui.SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
             settings::g_mainTabSettings.scanline_offset.SetValue(temp_offset);
-            s_scanline_offset.store(temp_offset);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
@@ -4064,7 +4059,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         if (imgui.SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)",
                             &temp_divisor, 0, 8, "%d")) {
             settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
-            s_vblank_sync_divisor.store(temp_divisor);
         }
         if (imgui.IsItemHovered()) {
             // Calculate effective refresh rate based on monitor info
@@ -4219,7 +4213,7 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "BackGround Fps Limit", fmt_bg,
+        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "BackGround Fps Limit", fmt_bg,
                                   imgui)) {
         }
         if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
@@ -6617,7 +6611,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     if (show_volume) {
         perf_measurement::ScopedTimer overlay_show_volume_timer(perf_measurement::Metric::OverlayShowVolume);
         // Get volume values from atomic variables (updated by continuous monitoring thread)
-        float current_volume = s_audio_volume_percent.load();
+        float current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
         float system_volume = s_system_volume_percent.load();
 
         // Check if audio is muted
@@ -7047,9 +7041,9 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:game_volume", std::memory_order_release);
     // Audio Volume slider
-    float volume = s_audio_volume_percent.load();
+    float volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
     if (imgui.SliderFloat("Game Volume (%)", &volume, 0.0f, 100.0f, "%.0f%%")) {
-        s_audio_volume_percent.store(volume);
+        settings::g_mainTabSettings.audio_volume_percent.SetValue(volume);
 
         // Apply immediately only if Auto-apply is enabled
         if (settings::g_mainTabSettings.audio_volume_auto_apply.GetValue()) {
@@ -7103,7 +7097,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:mute", std::memory_order_release);
     // Audio Mute checkbox
-    bool audio_mute = s_audio_mute.load();
+    bool audio_mute = settings::g_mainTabSettings.audio_mute.GetValue();
     if (imgui.Checkbox("Mute", &audio_mute)) {
         settings::g_mainTabSettings.audio_mute.SetValue(audio_mute);
 
@@ -7273,8 +7267,8 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
     g_rendering_ui_section.store("ui:tab:main_new:audio:mute_in_bg", std::memory_order_release);
     // Mute in Background checkbox (disabled if Mute is ON)
-    bool mute_in_bg = s_mute_in_background.load();
-    if (s_audio_mute.load()) {
+    bool mute_in_bg = settings::g_mainTabSettings.mute_in_background.GetValue();
+    if (settings::g_mainTabSettings.audio_mute.GetValue()) {
         imgui.BeginDisabled();
     }
     if (imgui.Checkbox("Mute In Background", &mute_in_bg)) {
@@ -7284,7 +7278,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         // Reset applied flag so the monitor thread reapplies desired state
         ::g_muted_applied.store(false);
         // Also apply the current mute state immediately if manual mute is off
-        if (!s_audio_mute.load()) {
+        if (!settings::g_mainTabSettings.audio_mute.GetValue()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
             // Use actual focus state for background audio (not spoofed)
             bool want_mute =
@@ -7300,20 +7294,20 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Mute the game's audio when it is not the foreground window.");
     }
-    if (s_audio_mute.load()) {
+    if (settings::g_mainTabSettings.audio_mute.GetValue()) {
         imgui.EndDisabled();
     }
     g_rendering_ui_section.store("ui:tab:main_new:audio:mute_in_bg_if_other", std::memory_order_release);
     // Mute in Background only if other app plays audio
-    bool mute_in_bg_if_other = s_mute_in_background_if_other_audio.load();
-    if (s_audio_mute.load()) {
+    bool mute_in_bg_if_other = settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue();
+    if (settings::g_mainTabSettings.audio_mute.GetValue()) {
         imgui.BeginDisabled();
     }
     if (imgui.Checkbox("Mute In Background (only if other app has audio)", &mute_in_bg_if_other)) {
         settings::g_mainTabSettings.mute_in_background_if_other_audio.SetValue(mute_in_bg_if_other);
         settings::g_mainTabSettings.mute_in_background.SetValue(false);
         ::g_muted_applied.store(false);
-        if (!s_audio_mute.load()) {
+        if (!settings::g_mainTabSettings.audio_mute.GetValue()) {
             HWND hwnd = g_last_swapchain_hwnd.load();
             bool is_background = (hwnd != nullptr && display_commanderhooks::GetForegroundWindow_Direct() != hwnd);
             bool want_mute = (mute_in_bg_if_other && is_background && ::IsOtherAppPlayingAudio());
@@ -7328,7 +7322,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip("Mute only if app is background AND another app outputs audio.");
     }
-    if (s_audio_mute.load()) {
+    if (settings::g_mainTabSettings.audio_mute.GetValue()) {
         imgui.EndDisabled();
     }
 

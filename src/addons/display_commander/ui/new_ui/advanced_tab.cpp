@@ -1297,7 +1297,6 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
         if (imgui.Checkbox("Auto Configure Reflex", &reflex_auto_configure)) {
             settings::g_advancedTabSettings.reflex_auto_configure.SetValue(reflex_auto_configure);
-            s_reflex_auto_configure.store(reflex_auto_configure);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Automatically configure Reflex settings on startup");
@@ -1348,7 +1347,6 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             bool reflex_logging = settings::g_advancedTabSettings.reflex_logging.GetValue();
             if (imgui.Checkbox("Enable Reflex Logging", &reflex_logging)) {
                 settings::g_advancedTabSettings.reflex_logging.SetValue(reflex_logging);
-                s_enable_reflex_logging.store(reflex_logging);
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip("Enable detailed logging of Reflex marker operations for debugging purposes.");

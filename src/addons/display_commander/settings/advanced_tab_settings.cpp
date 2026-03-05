@@ -5,22 +5,11 @@
 
 #include <atomic>
 
-// Reflex settings
-std::atomic<bool> s_reflex_auto_configure{false};        // Disabled by default
-std::atomic<bool> s_reflex_enable_current_frame{false};  // Enable NVIDIA Reflex integration for current frame
-std::atomic<bool> s_reflex_supress_native{false};        // Disabled by default
-std::atomic<bool> s_enable_reflex_logging{false};        // Disabled by default
+// Reflex: enable for current frame only (not a persisted setting)
+std::atomic<bool> s_reflex_enable_current_frame{false};
 
-// Shortcut settings
-std::atomic<bool> s_enable_hotkeys{true};  // Enable hotkeys by default
-std::atomic<bool> s_enable_mute_unmute_shortcut{true};
-std::atomic<bool> s_enable_background_toggle_shortcut{false};
-std::atomic<bool> s_enable_timeslowdown_shortcut{false};
-std::atomic<bool> s_enable_adhd_toggle_shortcut{true};
-std::atomic<bool> s_enable_autoclick_shortcut{false};
-std::atomic<bool> s_enable_input_blocking_shortcut{false};
-std::atomic<bool> s_enable_display_commander_ui_shortcut{true};
-std::atomic<bool> s_enable_performance_overlay_shortcut{true};
+// Hotkeys: synced from Hotkeys tab for fast read path
+std::atomic<bool> s_enable_hotkeys{true};
 
 // Input blocking toggle state (controlled by Ctrl+I)
 std::atomic<bool> s_input_blocking_toggle{false};
@@ -37,8 +26,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       auto_colorspace("AutoColorspace2", true, "DisplayCommander"),
 
       // Minimal NVIDIA Reflex controls
-      reflex_auto_configure("ReflexAutoConfigure", s_reflex_auto_configure, s_reflex_auto_configure.load(),
-                            "DisplayCommander"),
+      reflex_auto_configure("ReflexAutoConfigure", false, "DisplayCommander"),
       reflex_enable("ReflexEnable", false, "DisplayCommander"),
       reflex_delay_first_500_frames("ReflexDelayFirst500Frames", true, "DisplayCommander"),
       reflex_low_latency("ReflexLowLatency", true, "DisplayCommander"),
@@ -46,27 +34,18 @@ AdvancedTabSettings::AdvancedTabSettings()
       reflex_use_markers("ReflexUseMarkers", false, "DisplayCommander"),
       reflex_generate_markers("ReflexGenerateMarkers", false, "DisplayCommander"),
       reflex_enable_sleep("ReflexEnableSleep", false, "DisplayCommander"),
-      reflex_logging("ReflexLogging", s_enable_reflex_logging, s_enable_reflex_logging.load(), "DisplayCommander"),
-      reflex_supress_native("ReflexSupressNative", s_reflex_supress_native, s_reflex_supress_native.load(),
-                            "DisplayCommander"),
+      reflex_logging("ReflexLogging", false, "DisplayCommander"),
+      reflex_supress_native("ReflexSupressNative", false, "DisplayCommander"),
 
       enable_hotkeys("EnableHotkeys", true, "DisplayCommander"),
-      enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", s_enable_mute_unmute_shortcut,
-                                  s_enable_mute_unmute_shortcut.load(), "DisplayCommander"),
-      enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", s_enable_background_toggle_shortcut,
-                                        s_enable_background_toggle_shortcut.load(), "DisplayCommander"),
-      enable_timeslowdown_shortcut("EnableTimeslowdownShortcut", s_enable_timeslowdown_shortcut,
-                                   s_enable_timeslowdown_shortcut.load(), "DisplayCommander"),
-      enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", s_enable_adhd_toggle_shortcut,
-                                  s_enable_adhd_toggle_shortcut.load(), "DisplayCommander"),
-      enable_autoclick_shortcut("EnableAutoclickShortcut", s_enable_autoclick_shortcut,
-                                s_enable_autoclick_shortcut.load(), "DisplayCommander"),
-      enable_input_blocking_shortcut("EnableInputBlockingShortcut", s_enable_input_blocking_shortcut,
-                                     s_enable_input_blocking_shortcut.load(), "DisplayCommander"),
-      enable_display_commander_ui_shortcut("EnableDisplayCommanderUiShortcut", s_enable_display_commander_ui_shortcut,
-                                           s_enable_display_commander_ui_shortcut.load(), "DisplayCommander"),
-      enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", s_enable_performance_overlay_shortcut,
-                                          s_enable_performance_overlay_shortcut.load(), "DisplayCommander"),
+      enable_mute_unmute_shortcut("EnableMuteUnmuteShortcut", true, "DisplayCommander"),
+      enable_background_toggle_shortcut("EnableBackgroundToggleShortcut", false, "DisplayCommander"),
+      enable_timeslowdown_shortcut("EnableTimeslowdownShortcut", false, "DisplayCommander"),
+      enable_adhd_toggle_shortcut("EnableAdhdToggleShortcut", true, "DisplayCommander"),
+      enable_autoclick_shortcut("EnableAutoclickShortcut", false, "DisplayCommander"),
+      enable_input_blocking_shortcut("EnableInputBlockingShortcut", false, "DisplayCommander"),
+      enable_display_commander_ui_shortcut("EnableDisplayCommanderUiShortcut", true, "DisplayCommander"),
+      enable_performance_overlay_shortcut("EnablePerformanceOverlayShortcut", true, "DisplayCommander"),
       safemode("Safemode", false, "DisplayCommander.Safemode"),
       dll_loading_delay_ms("DllLoadingDelayMs", 0, 0, 10000, "DisplayCommander"),
       dlls_to_load_before("DllsToLoadBefore", "", "DisplayCommander"),
@@ -93,7 +72,6 @@ void AdvancedTabSettings::LoadAll() {
     // Use smart logging to show only changed settings
     ui::new_ui::LoadTabSettingsWithSmartLogging(all_settings, "Advanced Tab");
 
-    // All Ref classes automatically sync with global variables
 }
 
 void AdvancedTabSettings::SaveAll() {
@@ -119,7 +97,6 @@ void AdvancedTabSettings::SaveAll() {
     presentmon_provider_d3d9.Save();
     disable_dpi_scaling.Save();
 
-    // All Ref classes automatically save when values change
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {

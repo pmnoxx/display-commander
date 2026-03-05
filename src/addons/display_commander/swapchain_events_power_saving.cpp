@@ -23,7 +23,8 @@ std::atomic<bool> s_suppress_query_ops_in_background{true};
 // saving
 bool ShouldBackgroundSuppressOperation() {
     // Check if power saving is enabled and app is in background
-    return s_no_render_in_background.load() && g_app_in_background.load(std::memory_order_acquire);
+    return settings::g_mainTabSettings.no_render_in_background.GetValue()
+           && g_app_in_background.load(std::memory_order_acquire);
 }
 
 // Power saving for compute shader dispatches

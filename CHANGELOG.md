@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.299 (2026-03-05)
+- **PresentMon ETW: thread-safe flip state and debug info** - Fixed a use-after-free when the UI read PresentMon flip state or debug info while the ETW callback was updating the same strings. All shared string state is now stored in `std::atomic<std::shared_ptr<const std::string>>`; readers load the shared_ptr and copy the string, so no pointer is used after the writer updates. PresentMonFlipState and PresentMonDebugInfo are filled safely from this storage. EventTypeEntry string fields use the same pattern. Details: `presentmon_manager.hpp` / `presentmon_manager.cpp` — raw `std::string*` atomics replaced with `shared_ptr<const std::string>`; no `delete` in callback path.
+
 ## v0.12.298 (2026-03-05)
 - **D3D9 FlipEx: fixed log noise for non-D3D9 games** - Fixed unnecessary logging when the game does not use D3D9. The D3D9 to D3D9Ex upgrade path now returns early for DX11/DX12/Vulkan/etc., so "OnCreateDevice" and "D3D9 to D3D9Ex upgrade disabled" are only printed for D3D9 games. Details: `swapchain_events.cpp` `OnCreateDevice` early return before logging for non-D3D9.
 - **D3D9 API version constants** - Replaced magic values 0x9000 and 0x9100 with `display_commander::D3D9ApiVersion` enum (D3D9, D3D9Ex) in `utils/d3d9_api_version.hpp`. Used in swapchain_events, main tab, and experimental tab for create_device version and UI. Details: `utils/d3d9_api_version.hpp`; `swapchain_events.cpp`, `main_new_tab.cpp`, `experimental_tab.cpp`.
@@ -11,7 +14,7 @@
 ## v0.12.297 (2026-03-05)
 - **Flip / PresentMon label** - When PresentMon is off, the Main tab Flip line now shows "(click to enable)" instead of "(enable PresentMon if needed)" for the clickable link that enables PresentMon.
 
-## v0.12.296 (2026-03-05)
+## v0.12.296 (2026-03-05) IDXGISwapChain3::SetColorSpace1 returned
 - **Wine/Proton detection** - Wine detection is now done on first use and cached inside a function (`IsUsingWine()`), instead of using a global variable set at DLL load. Callers no longer depend on init order; behavior is unchanged for users (audio and per-channel volume still skip under Wine when unsupported).
 
 ## v0.12.295 (2026-03-05)

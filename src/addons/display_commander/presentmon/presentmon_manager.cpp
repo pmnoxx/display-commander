@@ -381,35 +381,35 @@ PresentMonManager::PresentMonManager()
       m_flip_mode(PresentMonFlipMode::Unset),
       m_flip_state_valid(false),
       m_flip_state_update_time(0),
-      m_present_mode_str(new std::string("Unknown")),
-      m_debug_info_str(new std::string("")),
+      m_present_mode_str(std::make_shared<const std::string>("Unknown")),
+      m_debug_info_str(std::make_shared<const std::string>("")),
       m_thread_started(false),
       m_etw_session_active(false),
-      m_thread_status(new std::string("Not started")),
-      m_etw_session_status(new std::string("Not initialized")),
-      m_last_error(new std::string("")),
+      m_thread_status(std::make_shared<const std::string>("Not started")),
+      m_etw_session_status(std::make_shared<const std::string>("Not initialized")),
+      m_last_error(std::make_shared<const std::string>("")),
       m_events_processed(0),
       m_events_processed_for_current_pid(0),
       m_events_lost(0),
       m_last_event_time(0),
       m_last_event_pid(0),
-      m_last_provider(new std::string("")),
+      m_last_provider(std::make_shared<const std::string>("")),
       m_last_event_id(0),
-      m_last_present_mode_value(new std::string("")),
-      m_last_provider_name(new std::string("")),
-      m_last_event_name(new std::string("")),
-      m_last_interesting_props(new std::string("")),
+      m_last_present_mode_value(std::make_shared<const std::string>("")),
+      m_last_provider_name(std::make_shared<const std::string>("")),
+      m_last_event_name(std::make_shared<const std::string>("")),
+      m_last_interesting_props(std::make_shared<const std::string>("")),
       m_last_schema_update_time_ns(0),
       m_events_dxgkrnl(0),
       m_events_dxgi(0),
       m_events_dwm(0),
       m_events_d3d9(0),
-      m_last_graphics_provider(new std::string("")),
+      m_last_graphics_provider(std::make_shared<const std::string>("")),
       m_last_graphics_event_id(0),
       m_last_graphics_event_pid(0),
-      m_last_graphics_provider_name(new std::string("")),
-      m_last_graphics_event_name(new std::string("")),
-      m_last_graphics_props(new std::string("")),
+      m_last_graphics_provider_name(std::make_shared<const std::string>("")),
+      m_last_graphics_event_name(std::make_shared<const std::string>("")),
+      m_last_graphics_props(std::make_shared<const std::string>("")),
       m_last_graphics_schema_update_time_ns(0),
       m_flip_compat_valid(false),
       m_flip_compat_last_update_ns(0),
@@ -475,21 +475,7 @@ PresentMonManager::~PresentMonManager() {
         }
     }
 
-    // Clean up string pointers
-    delete m_present_mode_str.load();
-    delete m_debug_info_str.load();
-    delete m_thread_status.load();
-    delete m_etw_session_status.load();
-    delete m_last_error.load();
-    delete m_last_provider.load();
-    delete m_last_present_mode_value.load();
-    delete m_last_provider_name.load();
-    delete m_last_event_name.load();
-    delete m_last_interesting_props.load();
-    delete m_last_graphics_provider.load();
-    delete m_last_graphics_provider_name.load();
-    delete m_last_graphics_event_name.load();
-    delete m_last_graphics_props.load();
+    // shared_ptrs release automatically when atomics are destroyed
 }
 
 void PresentMonManager::StartWorker() {
@@ -510,8 +496,7 @@ void PresentMonManager::StartWorker() {
     m_thread_started.store(true);
 
     // Update thread status
-    std::string* status = new std::string("Starting...");
-    delete m_thread_status.exchange(status);
+    m_thread_status.store(std::make_shared<const std::string>("Starting..."));
 
     // Log all ETW sessions at start for debugging (e.g. why DC_ list may be empty in UI)
     LogAllEtwSessions();
@@ -571,8 +556,7 @@ void PresentMonManager::StopWorker(PresentMonStopReason reason) {
     m_thread_started.store(false);
 
     // Update thread status
-    std::string* status = new std::string("Stopped");
-    delete m_thread_status.exchange(status);
+    m_thread_status.store(std::make_shared<const std::string>("Stopped"));
 
     LogInfo("PresentMon: Worker thread stopped");
 }
@@ -600,18 +584,10 @@ bool PresentMonManager::GetFlipState(PresentMonFlipState& flip_state) const {
     flip_state.last_update_time = m_flip_state_update_time.load();
 
     auto mode_str_ptr = m_present_mode_str.load();
-    if (mode_str_ptr) {
-        flip_state.present_mode_str = *mode_str_ptr;
-    } else {
-        flip_state.present_mode_str = "Unknown";
-    }
+    flip_state.present_mode_str = mode_str_ptr ? *mode_str_ptr : "Unknown";
 
     auto debug_str_ptr = m_debug_info_str.load();
-    if (debug_str_ptr) {
-        flip_state.debug_info = *debug_str_ptr;
-    } else {
-        flip_state.debug_info = "";
-    }
+    flip_state.debug_info = debug_str_ptr ? *debug_str_ptr : "";
 
     return true;
 }
@@ -627,7 +603,6 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
     auto etw_status_ptr = m_etw_session_status.load();
     debug_info.etw_session_status = etw_status_ptr ? *etw_status_ptr : "Unknown";
 
-    // Include session name
     if (m_session_name[0] != 0) {
         debug_info.etw_session_name = Narrow(std::wstring(m_session_name));
     } else {
@@ -672,7 +647,6 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
     auto last_gprops_ptr = m_last_graphics_props.load();
     debug_info.last_graphics_props = last_gprops_ptr ? *last_gprops_ptr : "";
 
-    // Enumerate ETW sessions starting with "DC_"; capture error for UI if enumeration fails
     debug_info.etw_enumeration_error.clear();
     GetEtwSessionsWithPrefix(L"DC_", debug_info.dc_etw_sessions, &debug_info.etw_enumeration_error);
 }
@@ -683,24 +657,17 @@ void PresentMonManager::UpdateFlipState(PresentMonFlipMode mode, const std::stri
     m_flip_state_valid.store(true);
     m_flip_state_update_time.store(utils::get_now_ns());
 
-    std::string* new_mode_str = new std::string(present_mode_str);
-    delete m_present_mode_str.exchange(new_mode_str);
-
-    std::string* new_debug_str = new std::string(debug_info);
-    delete m_debug_info_str.exchange(new_debug_str);
+    m_present_mode_str.store(std::make_shared<const std::string>(present_mode_str));
+    m_debug_info_str.store(std::make_shared<const std::string>(debug_info));
 }
 
 void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const std::string& etw_status,
                                         const std::string& error, uint64_t events_processed, uint64_t events_lost) {
-    std::string* new_thread_status = new std::string(thread_status);
-    delete m_thread_status.exchange(new_thread_status);
-
-    std::string* new_etw_status = new std::string(etw_status);
-    delete m_etw_session_status.exchange(new_etw_status);
+    m_thread_status.store(std::make_shared<const std::string>(thread_status));
+    m_etw_session_status.store(std::make_shared<const std::string>(etw_status));
 
     if (!error.empty()) {
-        std::string* new_error = new std::string(error);
-        delete m_last_error.exchange(new_error);
+        m_last_error.store(std::make_shared<const std::string>(error));
     }
 
     m_events_processed.store(events_processed);
@@ -737,7 +704,7 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
     int result = manager->PresentMonMain();
     t_active_manager = nullptr;
 
-    std::string* err_ptr = manager->m_last_error.load();
+    auto err_ptr = manager->m_last_error.load();
     const char* err_str = (err_ptr && !err_ptr->empty()) ? err_ptr->c_str() : nullptr;
     if (err_str != nullptr) {
         LogWarn("[PresentMon] Worker thread exiting with code %d, last_error: %s", result, err_str);
@@ -1076,11 +1043,9 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
     }
 
     // Store last provider + event id
-    {
-        std::string* p = new std::string(ProviderGuidToString(event_record->EventHeader.ProviderId));
-        delete m_last_provider.exchange(p);
-        m_last_event_id.store(event_record->EventHeader.EventDescriptor.Id);
-    }
+    m_last_provider.store(
+        std::make_shared<const std::string>(ProviderGuidToString(event_record->EventHeader.ProviderId)));
+    m_last_event_id.store(event_record->EventHeader.EventDescriptor.Id);
 
     // Track graphics-relevant providers separately (DxgKrnl/DXGI/DWM/D3D9)
     const bool is_dxgkrnl = m_have_dxgkrnl && IsEqualGUID(event_record->EventHeader.ProviderId, m_guid_dxgkrnl);
@@ -1144,8 +1109,8 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
     }
 
     if (is_graphics_provider) {
-        std::string* p = new std::string(ProviderGuidToString(event_record->EventHeader.ProviderId));
-        delete m_last_graphics_provider.exchange(p);
+        m_last_graphics_provider.store(std::make_shared<const std::string>(
+            ProviderGuidToString(event_record->EventHeader.ProviderId)));
         m_last_graphics_event_id.store(event_record->EventHeader.EventDescriptor.Id);
         m_last_graphics_event_pid.store(event_record->EventHeader.ProcessId);
     }
@@ -1190,11 +1155,15 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                         std::wstring event_name = GetTraceEventInfoString(info, info->EventNameOffset);
 
                         if (is_graphics_provider) {
-                            delete m_last_graphics_provider_name.exchange(new std::string(Narrow(provider_name)));
-                            delete m_last_graphics_event_name.exchange(new std::string(Narrow(event_name)));
+                            m_last_graphics_provider_name.store(
+                                std::make_shared<const std::string>(Narrow(provider_name)));
+                            m_last_graphics_event_name.store(
+                                std::make_shared<const std::string>(Narrow(event_name)));
                         } else {
-                            delete m_last_provider_name.exchange(new std::string(Narrow(provider_name)));
-                            delete m_last_event_name.exchange(new std::string(Narrow(event_name)));
+                            m_last_provider_name.store(
+                                std::make_shared<const std::string>(Narrow(provider_name)));
+                            m_last_event_name.store(
+                                std::make_shared<const std::string>(Narrow(event_name)));
                         }
 
                         // Build a compact "interesting properties" summary
@@ -1271,9 +1240,9 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                         }
 
                         if (is_graphics_provider) {
-                            delete m_last_graphics_props.exchange(new std::string(summary));
+                            m_last_graphics_props.store(std::make_shared<const std::string>(summary));
                         } else {
-                            delete m_last_interesting_props.exchange(new std::string(summary));
+                            m_last_interesting_props.store(std::make_shared<const std::string>(summary));
                         }
 
                         // Try infer from common numeric/bool fields if present
@@ -1298,7 +1267,7 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                             char buf[64] = {};
                             StringCchPrintfA(buf, std::size(buf), "PresentMode=%llu",
                                              static_cast<unsigned long long>(u));
-                            delete m_last_present_mode_value.exchange(new std::string(buf));
+                            m_last_present_mode_value.store(std::make_shared<const std::string>(buf));
                             if (u == 0)
                                 UpdateFlipState(PresentMonFlipMode::Composed, buf, "ETW PresentMode numeric");
                             else if (u == 1)
@@ -1322,10 +1291,7 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
         || TryGetEventPropertyString(event_record, L"CompositionMode", present_mode)
         || TryGetEventPropertyString(event_record, L"compositionMode", present_mode)) {
         // Store last seen present mode-like value for UI/debugging
-        {
-            std::string* v = new std::string(present_mode);
-            delete m_last_present_mode_value.exchange(v);
-        }
+        m_last_present_mode_value.store(std::make_shared<const std::string>(present_mode));
 
         PresentMonFlipMode mode = MapPresentModeStringToFlip(present_mode);
         if (mode != PresentMonFlipMode::Unknown) {
@@ -1589,10 +1555,11 @@ void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graph
                 e.level = level;
                 e.keyword = keyword;
 
-                e.provider_guid.store(new std::string(ProviderGuidToString(event_record->EventHeader.ProviderId)));
-                e.provider_name.store(new std::string(""));
-                e.event_name.store(new std::string(""));
-                e.props.store(new std::string(""));
+                e.provider_guid.store(
+                    std::make_shared<const std::string>(ProviderGuidToString(event_record->EventHeader.ProviderId)));
+                e.provider_name.store(std::make_shared<const std::string>(""));
+                e.event_name.store(std::make_shared<const std::string>(""));
+                e.props.store(std::make_shared<const std::string>(""));
                 e.last_schema_update_ns.store(0);
                 e.count.store(0);
 
@@ -1627,18 +1594,19 @@ void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graph
     std::wstring event_name = GetTraceEventInfoString(info, info->EventNameOffset);
     std::string props_csv = JoinPropNamesCSV(info, 64);
 
-    delete entry->provider_name.exchange(new std::string(Narrow(provider_name)));
-    delete entry->event_name.exchange(new std::string(Narrow(event_name)));
-    delete entry->props.exchange(new std::string(props_csv));
+    entry->provider_name.store(std::make_shared<const std::string>(Narrow(provider_name)));
+    entry->event_name.store(std::make_shared<const std::string>(Narrow(event_name)));
+    entry->props.store(std::make_shared<const std::string>(props_csv));
 
     // Cache one sample per event type for tooltip (name=value for each field)
-    if (entry->props_sample.load(std::memory_order_relaxed) == nullptr) {
+    std::shared_ptr<const std::string> expected_sample = entry->props_sample.load(std::memory_order_relaxed);
+    if (expected_sample == nullptr) {
         std::string sample = BuildEventTypeSampleString(event_record, info, 32);
         if (!sample.empty()) {
-            std::string* new_str = new std::string(sample);
-            std::string* expected = nullptr;
-            if (!entry->props_sample.compare_exchange_strong(expected, new_str, std::memory_order_acq_rel)) {
-                delete new_str;  // another thread stored first
+            std::shared_ptr<const std::string> new_sample = std::make_shared<const std::string>(sample);
+            if (!entry->props_sample.compare_exchange_strong(expected_sample, new_sample,
+                                                            std::memory_order_acq_rel)) {
+                // another thread stored first
             }
         }
     }
@@ -1653,11 +1621,11 @@ void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSum
         uint64_t key = e.key_hash.load();
         if (key == 0) continue;
 
-        auto* guid_ptr = e.provider_guid.load();
-        auto* provider_name_ptr = e.provider_name.load();
-        auto* event_name_ptr = e.event_name.load();
-        auto* props_ptr = e.props.load();
-        auto* props_sample_ptr = e.props_sample.load();
+        auto guid_ptr = e.provider_guid.load();
+        auto provider_name_ptr = e.provider_name.load();
+        auto event_name_ptr = e.event_name.load();
+        auto props_ptr = e.props.load();
+        auto props_sample_ptr = e.props_sample.load();
 
         PresentMonEventTypeSummary s;
         s.provider_guid = guid_ptr ? *guid_ptr : "";
@@ -1791,8 +1759,7 @@ int PresentMonManager::PresentMonMain() {
         if (st != ERROR_SUCCESS) {
             char msg[256] = {};
             StringCchPrintfA(msg, std::size(msg), "EnableTraceEx2 failed for %ls: %lu", name, st);
-            std::string* e = new std::string(msg);
-            delete m_last_error.exchange(e);
+            m_last_error.store(std::make_shared<const std::string>(msg));
         }
         return st;
     };

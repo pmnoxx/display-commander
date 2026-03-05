@@ -78,7 +78,7 @@ enum class PresentMonFlipMode : std::uint8_t {
 
 const char* PresentMonFlipModeToString(PresentMonFlipMode mode);
 
-// PresentMon flip state information
+// PresentMon flip state information (filled by GetFlipState; thread-safe read via shared_ptr-backed storage)
 struct PresentMonFlipState {
     PresentMonFlipMode flip_mode;
     bool is_valid;
@@ -87,7 +87,7 @@ struct PresentMonFlipState {
     std::string debug_info;        // Additional debug information
 };
 
-// PresentMon debug information
+// PresentMon debug information (filled by GetDebugInfo; thread-safe read via shared_ptr-backed storage)
 struct PresentMonDebugInfo {
     bool is_running;
     bool thread_started;
@@ -248,11 +248,11 @@ class PresentMonManager {
         uint8_t level{0};
         uint64_t keyword{0};
 
-        std::atomic<std::string*> provider_guid{nullptr};
-        std::atomic<std::string*> provider_name{nullptr};
-        std::atomic<std::string*> event_name{nullptr};
-        std::atomic<std::string*> props{nullptr};
-        std::atomic<std::string*> props_sample{nullptr};  // one sample (name=value per field) for tooltip
+        std::atomic<std::shared_ptr<const std::string>> provider_guid{nullptr};
+        std::atomic<std::shared_ptr<const std::string>> provider_name{nullptr};
+        std::atomic<std::shared_ptr<const std::string>> event_name{nullptr};
+        std::atomic<std::shared_ptr<const std::string>> props{nullptr};
+        std::atomic<std::shared_ptr<const std::string>> props_sample{nullptr};  // one sample (name=value per field) for tooltip
         std::atomic<uint64_t> last_schema_update_ns{0};
     };
 
@@ -270,19 +270,19 @@ class PresentMonManager {
     std::atomic<bool> m_running;
     std::atomic<bool> m_should_stop;
 
-    // Flip state tracking (thread-safe)
+    // Flip state tracking (thread-safe: readers load shared_ptr and copy string; no use-after-free)
     mutable std::atomic<PresentMonFlipMode> m_flip_mode;
     mutable std::atomic<bool> m_flip_state_valid;
     mutable std::atomic<uint64_t> m_flip_state_update_time;
-    mutable std::atomic<std::string*> m_present_mode_str;
-    mutable std::atomic<std::string*> m_debug_info_str;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_present_mode_str;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_debug_info_str;
 
-    // Debug info tracking
+    // Debug info tracking (thread-safe: shared_ptr prevents use-after-free when UI reads while ETW updates)
     mutable std::atomic<bool> m_thread_started;
     mutable std::atomic<bool> m_etw_session_active;
-    mutable std::atomic<std::string*> m_thread_status;
-    mutable std::atomic<std::string*> m_etw_session_status;
-    mutable std::atomic<std::string*> m_last_error;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_thread_status;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_etw_session_status;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_error;
     mutable std::atomic<uint64_t> m_events_processed;
     mutable std::atomic<uint64_t> m_events_processed_for_current_pid;
     mutable std::atomic<uint64_t> m_events_lost;
@@ -290,12 +290,12 @@ class PresentMonManager {
     mutable std::atomic<uint32_t> m_last_event_pid;
 
     // Last-seen event info (for debugging)
-    mutable std::atomic<std::string*> m_last_provider;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_provider;
     mutable std::atomic<uint16_t> m_last_event_id;
-    mutable std::atomic<std::string*> m_last_present_mode_value;
-    mutable std::atomic<std::string*> m_last_provider_name;
-    mutable std::atomic<std::string*> m_last_event_name;
-    mutable std::atomic<std::string*> m_last_interesting_props;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_present_mode_value;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_provider_name;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_event_name;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_interesting_props;
     mutable std::atomic<uint64_t> m_last_schema_update_time_ns;
 
     // Per-provider counters (graphics-relevant)
@@ -305,12 +305,12 @@ class PresentMonManager {
     mutable std::atomic<uint64_t> m_events_d3d9;
 
     // Last graphics-relevant event info
-    mutable std::atomic<std::string*> m_last_graphics_provider;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_graphics_provider;
     mutable std::atomic<uint16_t> m_last_graphics_event_id;
     mutable std::atomic<uint32_t> m_last_graphics_event_pid;
-    mutable std::atomic<std::string*> m_last_graphics_provider_name;
-    mutable std::atomic<std::string*> m_last_graphics_event_name;
-    mutable std::atomic<std::string*> m_last_graphics_props;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_graphics_provider_name;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_graphics_event_name;
+    mutable std::atomic<std::shared_ptr<const std::string>> m_last_graphics_props;
     mutable std::atomic<uint64_t> m_last_graphics_schema_update_time_ns;
 
     // DWM flip-compatibility state (thread-safe)

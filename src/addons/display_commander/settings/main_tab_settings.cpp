@@ -32,8 +32,10 @@ std::atomic<OnPresentReflexMode> s_reflex_disabled_limiter_mode{OnPresentReflexM
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 std::atomic<int> s_cpu_cores{0};                  // 0 = default (no change), max = all cores
 std::atomic<float> s_brightness_percent{100.0f};  // 0-200%, 100 = neutral (Display Commander brightness effect)
+std::atomic<int> s_swapchain_colorspace{
+    1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; decode only (DECODE_METHOD), default scRGB
 std::atomic<int> s_brightness_colorspace{
-    1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None (DisplayCommander_Control DECODE/ENCODE_METHOD)
+    1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; encode only (ENCODE_METHOD)
 std::atomic<float> s_gamma_value{1.0f};        // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
 std::atomic<float> s_contrast_value{1.0f};     // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
 std::atomic<float> s_saturation_value{1.0f};   // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
@@ -197,8 +199,11 @@ MainTabSettings::MainTabSettings()
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       brightness_percent("brightness_percent", s_brightness_percent, 100.0f, 0.0f, 200.0f, "DisplayCommander"),
-      brightness_colorspace("brightness_colorspace2", s_brightness_colorspace, 0,
+      swapchain_colorspace("swapchain_colorspace", s_swapchain_colorspace, 1,
+                           {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
+      brightness_colorspace("brightness_colorspace2", s_brightness_colorspace, 1,
                             {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
+      brightness_extra_gamma22_decode("brightness_extra_gamma22_decode", false, "DisplayCommander"),
       gamma_value("gamma_value", s_gamma_value, 1.0f, 0.5f, 2.0f, "DisplayCommander"),
       contrast_value("contrast_value", s_contrast_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
       saturation_value("saturation_value", s_saturation_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
@@ -323,7 +328,9 @@ MainTabSettings::MainTabSettings()
         &max_anisotropy,
         &force_mipmap_lod_bias,
         &brightness_percent,
+        &swapchain_colorspace,
         &brightness_colorspace,
+        &brightness_extra_gamma22_decode,
         &gamma_value,
         &contrast_value,
         &saturation_value,

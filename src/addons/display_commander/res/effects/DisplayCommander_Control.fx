@@ -71,6 +71,14 @@ uniform uint ENCODE_METHOD
   ui_category = "Color Space";
 > = 0;
 
+uniform uint ExtraGamma22Decode
+<
+  ui_label    = "Gamma 2.2 decode";
+  ui_type     = "checkbox";
+  ui_tooltip  = "When enabled, applies an extra gamma 2.2 decode at the start of the effect (before color space decode). Set by Display Commander from Main tab.";
+  ui_category = "Color Space";
+> = 0;
+
 uniform float Brightness <
     ui_type = "slider";
     ui_min = 0.0;
@@ -225,6 +233,9 @@ void PostProcessVS2(in uint id : SV_VertexID, out float4 position : SV_Position,
 
 float4 MainPS(float4 pos : SV_Position, float2 tex : TexCoord) : SV_Target {
     float4 color = tex2D(BackBuffer, tex);
+    if (ExtraGamma22Decode != 0) {
+        color.rgb = color::gamma::decodeSafe(color.rgb, 2.2f);
+    }
     color = DecodeColor(color);
 
     // Contrast: pivot 0.5 (1.0 = no change)

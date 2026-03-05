@@ -2315,13 +2315,29 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                     "Ctrl+Shift+F5) or game restart.");
             }
+            if (ComboSettingRefWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace",
+                                        imgui)) {
+                // Value is applied in OnReShadePresent each frame (DECODE_METHOD)
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "How to interpret the backbuffer (decode). Auto = detect from pipeline. Default scRGB.");
+            }
             if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
+                // Value is applied in OnReShadePresent each frame (ENCODE_METHOD)
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Output/encode color space. Auto = match pipeline. sRGB = linearize, multiply, encode.");
+            }
+            if (CheckboxSetting(settings::g_mainTabSettings.brightness_extra_gamma22_decode, "Gamma 2.2 decode",
+                                imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Auto = use backbuffer as-is. sRGB = linearize, multiply, encode. Linear = assume linear, "
-                    "multiply.");
+                    "When enabled, applies an extra gamma 2.2 decode at the start of the brightness effect (before "
+                    "color space decode). Use if the game output is already gamma-encoded.");
             }
             {
                 const reshade::api::device_api api = g_last_reshade_device_api.load();

@@ -3,8 +3,15 @@
 ---
 
 ## Unreleased
-- **D3D9 DisplayModeEx logging commented out** - The DisplayModeEx log in `LogD3D9DisplayModeEx` is now commented out to reduce log noise (the call was already null-safe for the prefix; the whole log is now disabled). Details: `d3d9_hooks.cpp`.
+
+## v0.12.277 (2026-03-04)
+- **Swapchain colorspace (decode) selector** - Main tab → Brightness and AutoHDR now has a separate **Swapchain colorspace** combo for decode only (default scRGB). **Color Space** controls encode only. DECODE_METHOD is driven by Swapchain colorspace; ENCODE_METHOD by Color Space. Same split applied to DisplayCommander_PerceptualBoost.fx (AutoHDR). Details: `main_tab_settings` (`swapchain_colorspace`, default 1), `ApplyDisplayCommanderBrightness` / `ApplyDisplayCommanderAutoHdr`.
+- **Gamma 2.2 decode checkbox (Brightness effect)** - Main tab → Brightness and AutoHDR now has a "Gamma 2.2 decode" checkbox. When enabled, the Display Commander brightness effect applies an extra gamma 2.2 decode step at the very start (before the usual color space decode). Useful when the game output is already gamma-encoded and you want to linearize first. Details: `DisplayCommander_Control.fx` (uniform `ExtraGamma22Decode`, MainPS), `main_tab_settings` (`brightness_extra_gamma22_decode`), `ApplyDisplayCommanderBrightness` sets uniform and enables technique when on.
+
+## v0.12.276 (2026-03-04)
+- **Fixed missing tooltips** - Tooltips that were not showing for some settings or controls are now displayed correctly when hovering. Details: `settings_wrapper.cpp`.
 - **Settings wrapper: reset-to-default button grouping** - The undo (reset to default) button next to sliders, checkboxes, and combo settings is now wrapped in ImGui `BeginGroup`/`EndGroup` so it stays correctly grouped with the control for layout. Details: `SliderFloatSetting`, `SliderFloatSettingRef`, `SliderIntSetting`, `SliderIntSettingRef`, `CheckboxSetting`, `CheckboxSettingRef`, `ComboSettingWrapper`, `ComboSettingRefWrapper`, `ComboSettingEnumRefWrapper` in `settings_wrapper.cpp`.
+
 
 ## v0.12.275 (2026-03-04)
 - **D3D9 Ex factory hook: correct vtable index and detour logic / Fixed Steins;Gate support in No Reshade Mode when loaded as dbghelp.dll** - Fixes hooking to Direct3D 9Ex in games such as Steins;Gate. The CreateDeviceEx vtable slot was wrong (index 17 instead of 20): IDirect3D9Ex adds GetAdapterModeCountEx, EnumAdapterModesEx, GetAdapterDisplayModeEx before CreateDeviceEx, so the correct slot is 20. The CreateDeviceEx detour also had an erroneous early return that skipped present-param upgrades, device callback, and success tracking. D3D9FactoryVTable now lists all IDirect3D9/IDirect3D9Ex factory methods (enum class to avoid name clashes with device VTable). Details: `d3d9_vtable_indices.hpp` (CreateDeviceEx = 20, full factory enum), `d3d9_hooks.cpp` (detour flow fixed, vtable index cast).

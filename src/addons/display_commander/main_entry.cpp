@@ -275,17 +275,20 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (var == 0) {
         return;
     }
-    // Color Space sets both DECODE_METHOD and ENCODE_METHOD (0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None)
-    const int32_t colorspace = static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
+    // Decode = swapchain colorspace (default 1 = scRGB); Encode = brightness color space
+    const int32_t decode_colorspace =
+        static_cast<int32_t>(settings::g_mainTabSettings.swapchain_colorspace.GetValue());
+    const int32_t encode_colorspace =
+        static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
     const reshade::api::effect_uniform_variable var_decode =
         runtime->find_uniform_variable("DisplayCommander_Control.fx", "DECODE_METHOD");
     if (var_decode != 0) {
-        runtime->set_uniform_value_int(var_decode, colorspace);
+        runtime->set_uniform_value_int(var_decode, decode_colorspace);
     }
     const reshade::api::effect_uniform_variable var_encode =
         runtime->find_uniform_variable("DisplayCommander_Control.fx", "ENCODE_METHOD");
     if (var_encode != 0) {
-        runtime->set_uniform_value_int(var_encode, colorspace);
+        runtime->set_uniform_value_int(var_encode, encode_colorspace);
     }
     runtime->set_uniform_value_float(var, multiplier);
     const float gamma_val = settings::g_mainTabSettings.gamma_value.GetValue();
@@ -312,13 +315,19 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (var_hue != 0) {
         runtime->set_uniform_value_float(var_hue, hue_val);
     }
-    // Enable technique when any display tweak is non-neutral
+    const bool extra_gamma22 = settings::g_mainTabSettings.brightness_extra_gamma22_decode.GetValue();
+    const reshade::api::effect_uniform_variable var_extra_gamma22 =
+        runtime->find_uniform_variable("DisplayCommander_Control.fx", "ExtraGamma22Decode");
+    if (var_extra_gamma22 != 0) {
+        runtime->set_uniform_value_int(var_extra_gamma22, extra_gamma22 ? 1 : 0);
+    }
+    // Enable technique when any display tweak is non-neutral or extra gamma 2.2 decode is on
     runtime->set_technique_state(tech, multiplier != 1.0f || gamma_val != 1.0f || contrast_val != 1.0f
-                                           || saturation_val != 1.0f || hue_val != 0.0f);
+                                           || saturation_val != 1.0f || hue_val != 0.0f || extra_gamma22);
 }
 
 // Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same
-// DECODE_METHOD/ENCODE_METHOD as brightness (brightness_colorspace). Requires Generic RenoDX to upgrade SDR->HDR.
+// DECODE_METHOD = swapchain_colorspace, ENCODE_METHOD = brightness_colorspace. Requires Generic RenoDX to upgrade SDR->HDR.
 void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
         return;
@@ -330,16 +339,19 @@ void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
         return;  // Effect not loaded
     }
     if (auto_hdr) {
-        const int32_t colorspace = static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
+        const int32_t decode_colorspace =
+            static_cast<int32_t>(settings::g_mainTabSettings.swapchain_colorspace.GetValue());
+        const int32_t encode_colorspace =
+            static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
         const reshade::api::effect_uniform_variable var_decode =
             runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "DECODE_METHOD");
         if (var_decode != 0) {
-            runtime->set_uniform_value_int(var_decode, colorspace);
+            runtime->set_uniform_value_int(var_decode, decode_colorspace);
         }
         const reshade::api::effect_uniform_variable var_encode =
             runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "ENCODE_METHOD");
         if (var_encode != 0) {
-            runtime->set_uniform_value_int(var_encode, colorspace);
+            runtime->set_uniform_value_int(var_encode, encode_colorspace);
         }
         const reshade::api::effect_uniform_variable var_strength =
             runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "EffectStrength_P3");

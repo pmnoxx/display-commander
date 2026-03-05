@@ -871,22 +871,22 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
 // Explicit template instantiations for ComboSettingEnumRefWrapper
 template class ComboSettingEnumRef<ScreensaverMode>;
 template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>&, const char*,
-                                                          display_commander::ui::IImGuiWrapper&);
+                                                          display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnumRef<OnPresentReflexMode>;
 template bool ComboSettingEnumRefWrapper<OnPresentReflexMode>(ComboSettingEnumRef<OnPresentReflexMode>&, const char*,
-                                                              display_commander::ui::IImGuiWrapper&);
+                                                              display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnumRef<FrameTimeMode>;
 template bool ComboSettingEnumRefWrapper<FrameTimeMode>(ComboSettingEnumRef<FrameTimeMode>&, const char*,
-                                                        display_commander::ui::IImGuiWrapper&);
+                                                        display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnumRef<WindowMode>;
 template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowMode>&, const char*,
-                                                     display_commander::ui::IImGuiWrapper&);
+                                                     display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnumRef<InputBlockingMode>;
 template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode>&, const char*,
-                                                            display_commander::ui::IImGuiWrapper&);
+                                                            display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnumRef<LogLevel>;
 template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel>&, const char*,
-                                                   display_commander::ui::IImGuiWrapper&);
+                                                   display_commander::ui::IImGuiWrapper&, float);
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {

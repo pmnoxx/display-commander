@@ -209,8 +209,8 @@ class MainTabSettings {
     ui::new_ui::ComboSettingRef swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
     /** Encode only: output color space (ENCODE_METHOD). */
     ui::new_ui::ComboSettingRef brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
-    ui::new_ui::FloatSettingRef gamma_value;       // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
-    ui::new_ui::FloatSettingRef contrast_value;    // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
+    ui::new_ui::FloatSettingRef gamma_value;            // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
+    ui::new_ui::FloatSettingRef contrast_value;         // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
     ui::new_ui::FloatSettingRef saturation_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
     ui::new_ui::FloatSettingRef hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
     /** When enabled, upgrades swap chain to HDR (scRGB 16-bit float) on create_swapchain/init_swapchain (DXGI only). */

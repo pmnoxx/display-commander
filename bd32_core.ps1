@@ -98,7 +98,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "32-bit build completed successfully!" -ForegroundColor Green
 
     # Find the 32-bit addon (Ninja: build32\... or build32\src\...; VS: build32\src\...)
-    $addonPath = Get-ChildItem -Path $build32Dir -Recurse -Filter "zzz_display_commander.addon32" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    $addonPath = Get-ChildItem -Path "$build32Dir\src" -Recurse -Filter "zzz_display_commander.addon32" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
     if ($addonPath) {
         $destPath = Join-Path $build32Dir "zzz_display_commander.addon32"
         Copy-Item $addonPath $destPath -Force

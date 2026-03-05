@@ -3638,7 +3638,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
 
             // Reflex mode selector for OnPresent: Low latency (default), Low+boost, Off, Game Defaults
             imgui.Spacing();
-            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui)) {
+            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
                 // Setting is automatically saved via ComboSettingEnumRefWrapper
             }
             if (imgui.IsItemHovered()) {
@@ -3659,7 +3659,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
 
             if (display_input_ratio) {
                 if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
-                                        "Display / Input Ratio", imgui)) {
+                                        "Display / Input Ratio", imgui, 600.f)) {
                     // Setting is automatically saved via ComboSettingWrapper
                 }
                 if (imgui.IsItemHovered()) {
@@ -4188,7 +4188,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc.load();
         if (is_dxgi_pt) {
-            if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui)) {
+            if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 200.f)) {
                 LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
             }
             if (imgui.IsItemHovered()) {
@@ -4337,7 +4337,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
     const bool has_d3d9 = display_commanderhooks::d3d9::g_d3d9_present_hooks_installed.load();
 
     if (has_dxgi) {
-        if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui)) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 100.f)) {
             LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
         }
         if (imgui.IsItemHovered()) {

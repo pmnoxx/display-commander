@@ -423,12 +423,12 @@ bool CheckboxSetting(BoolSetting& setting, const char* label,
 bool CheckboxSetting(BoolSettingRef& setting, const char* label,
                      display_commander::ui::IImGuiWrapper& imgui);
 bool ComboSettingWrapper(ComboSetting& setting, const char* label,
-                         display_commander::ui::IImGuiWrapper& imgui);
+                         display_commander::ui::IImGuiWrapper& imgui, float combo_width = 0.f);
 bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label,
                             display_commander::ui::IImGuiWrapper& imgui);
 template <typename EnumType>
 bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label,
-                                display_commander::ui::IImGuiWrapper& imgui);
+                                display_commander::ui::IImGuiWrapper& imgui, float combo_width = 0.f);
 
 // Utility function to load all settings for a tab
 // Smart logging function that only logs settings changed from default values

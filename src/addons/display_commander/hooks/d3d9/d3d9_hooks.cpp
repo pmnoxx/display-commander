@@ -29,22 +29,22 @@ void LogD3D9CreateDeviceArgs(const char* prefix, UINT adapter, D3DDEVTYPE device
 }
 
 void LogD3D9PresentParams(const char* prefix, const D3DPRESENT_PARAMETERS& pp) {
-    /* LogInfo(
-         "D3D9 %s PresentParams: BackBufferWidth=%u BackBufferHeight=%u BackBufferFormat=%u BackBufferCount=%u "
-         "MultiSampleType=%u MultiSampleQuality=%u SwapEffect=%u hDeviceWindow=%p Windowed=%d "
-         "EnableAutoDepthStencil=%d AutoDepthStencilFormat=%u Flags=0x%08X FullScreen_RefreshRateInHz=%u "
-         "PresentationInterval=%u",
-         prefix, pp.BackBufferWidth, pp.BackBufferHeight, static_cast<unsigned>(pp.BackBufferFormat),
-       pp.BackBufferCount, static_cast<unsigned>(pp.MultiSampleType), static_cast<unsigned>(pp.MultiSampleQuality),
-         static_cast<unsigned>(pp.SwapEffect), static_cast<void*>(pp.hDeviceWindow), pp.Windowed != 0 ? 1 : 0,
-         pp.EnableAutoDepthStencil != 0 ? 1 : 0, static_cast<unsigned>(pp.AutoDepthStencilFormat),
-         static_cast<unsigned>(pp.Flags), pp.FullScreen_RefreshRateInHz, pp.PresentationInterval);*/
+    LogInfo(
+        "D3D9 %s PresentParams: BackBufferWidth=%u BackBufferHeight=%u BackBufferFormat=%u BackBufferCount=%u "
+        "MultiSampleType=%u MultiSampleQuality=%u SwapEffect=%u hDeviceWindow=%p Windowed=%d "
+        "EnableAutoDepthStencil=%d AutoDepthStencilFormat=%u Flags=0x%08X FullScreen_RefreshRateInHz=%u "
+        "PresentationInterval=%u",
+        prefix, pp.BackBufferWidth, pp.BackBufferHeight, static_cast<unsigned>(pp.BackBufferFormat), pp.BackBufferCount,
+        static_cast<unsigned>(pp.MultiSampleType), static_cast<unsigned>(pp.MultiSampleQuality),
+        static_cast<unsigned>(pp.SwapEffect), static_cast<void*>(pp.hDeviceWindow), pp.Windowed != 0 ? 1 : 0,
+        pp.EnableAutoDepthStencil != 0 ? 1 : 0, static_cast<unsigned>(pp.AutoDepthStencilFormat),
+        static_cast<unsigned>(pp.Flags), pp.FullScreen_RefreshRateInHz, pp.PresentationInterval);
 }
 
 void LogD3D9DisplayModeEx(const char* prefix, const D3DDISPLAYMODEEX& mode) {
-    /*  LogInfo("D3D9 %s DisplayModeEx: Size=%u Width=%u Height=%u RefreshRate=%u Format=%u ScanLineOrdering=%u",
-              prefix ? prefix : "", mode.Size, mode.Width, mode.Height, mode.RefreshRate,
-              static_cast<unsigned>(mode.Format), static_cast<unsigned>(mode.ScanLineOrdering));*/
+    LogInfo("D3D9 %s DisplayModeEx: Size=%u Width=%u Height=%u RefreshRate=%u Format=%u ScanLineOrdering=%u",
+            prefix ? prefix : "", mode.Size, mode.Width, mode.Height, mode.RefreshRate,
+            static_cast<unsigned>(mode.Format), static_cast<unsigned>(mode.ScanLineOrdering));
 }
 
 void StoreD3D9NoReShadeDeviceSnapshot(bool created_with_ex, const D3DPRESENT_PARAMETERS& pp) {

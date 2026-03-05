@@ -80,7 +80,7 @@ Note: Applying window operations from the main thread can crash some apps. This 
 
 - **Continue rendering in background**: Game keeps rendering when alt-tabbed (no minimize/focus spoofing)
 - **Standalone / independent UI**: Run settings in a separate window or without ReShade (.NO_RESHADE, SetupDC)
-- **Proxy loading**: Load as dxgi, d3d11, d3d12, d3d9, ddraw, opengl32, or winmm proxy when needed
+- **Proxy loading**: Load as dxgi, d3d11, d3d12, d3d9, ddraw, opengl32, winmm, or dbghelp proxy when needed
 - **Addon directory DLL loading**: From the same folder as the addon, **.dc64 / .dc32 / .dc / .asi** are loaded before ReShade; **.dc64r / .dc32r / .dcr** are loaded after ReShade (for addons that need the ReShade API). Post-ReShade addons use a temp copy so originals can be updated while the game runs.
 - **NVIDIA Profile (Inspector)**: View and edit driver profile for the current game; apply as administrator
 - **CPU control**: Core affinity and process priority (Main / Settings tab in standalone)
@@ -158,7 +158,7 @@ Notes:
 - This project requires the Ninja generator. If another generator is used, configuration will fail.
 - Initialize submodules before building: `git submodule update --init --recursive`.
 - NVAPI features are statically linked if NVIDIA's NVAPI is present under `external/nvapi` (headers at `external/nvapi`, static libs at `external/nvapi/{x86,amd64}`). Missing NVAPI libs will only disable those features. Static linking is used by default to avoid DLL dependency issues.
-- XInput, Windows Multimedia (winmm), and DbgHelp libraries are loaded dynamically to avoid error code 126 (module not found) on systems where these libraries are not available.
+- XInput, Windows Multimedia (winmm), and DbgHelp libraries are loaded dynamically to avoid error code 126 (module not found) on systems where these libraries are not available. DbgHelp is supported both as a runtime dependency (stack traces when available) and as a proxy: the addon can be loaded as dbghelp.dll, forwarding DbgHelp API calls to the system dbghelp.dll.
 
 ## Continuous Integration
 

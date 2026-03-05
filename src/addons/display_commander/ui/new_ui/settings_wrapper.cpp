@@ -594,6 +594,7 @@ double RefreshRatePairSetting::GetHz() const {
 
 bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format,
                         display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
     float value = setting.GetValue();
     bool changed = imgui.SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -615,11 +616,13 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
         imgui.PopID();
         imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
 bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const char* format,
                            display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
     float value = setting.GetValue();
     bool changed = imgui.SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -652,11 +655,13 @@ bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const ch
         imgui.PopID();
         imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
 bool SliderIntSetting(IntSetting& setting, const char* label, const char* format,
                       display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
     int value = setting.GetValue();
     bool changed = imgui.SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -678,11 +683,13 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
         imgui.PopID();
         imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
 bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format,
                       display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
     int value = setting.GetValue();
     bool changed = imgui.SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
     if (changed) {
@@ -703,7 +710,6 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
     int def = setting.GetDefaultValue();
     if (current != def) {
         imgui.SameLine();
-        imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -715,10 +721,12 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
         imgui.PopID();
         imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
 bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
     bool value = setting.GetValue();
     bool changed = imgui.Checkbox(label, &value);
     if (changed) {
@@ -728,7 +736,6 @@ bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander:
     bool def = setting.GetDefaultValue();
     if (current != def) {
         imgui.SameLine();
-        imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -738,12 +745,13 @@ bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander:
             imgui.SetTooltip("Reset to default (%s)", def ? "On" : "Off");
         }
         imgui.PopID();
-        imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
 bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
     bool value = setting.GetValue();
     bool changed = imgui.Checkbox(label, &value);
     if (changed) {
@@ -752,7 +760,6 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_command
     bool current = setting.GetValue();
     bool def = setting.GetDefaultValue();
     if (current != def) {
-        imgui.BeginGroup();
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -763,12 +770,17 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_command
             imgui.SetTooltip("Reset to default (%s)", def ? "On" : "Off");
         }
         imgui.PopID();
-        imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
-bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
+bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui,
+                         float combo_width) {
+    imgui.BeginGroup();
+    if (combo_width > 0.f) {
+        imgui.SetNextItemWidth(combo_width);
+    }
     int value = setting.GetValue();
     const auto& labels = setting.GetLabels();
     int count = static_cast<int>(labels.size());
@@ -780,7 +792,6 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
     int def = setting.GetDefaultValue();
     if (current != def) {
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
-        imgui.BeginGroup();
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -791,12 +802,13 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
             imgui.SetTooltip("Reset to default (%s)", def_label);
         }
         imgui.PopID();
-        imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
 bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.BeginGroup();
     int value = setting.GetValue();
     const auto& labels = setting.GetLabels();
     int count = static_cast<int>(labels.size());
@@ -807,7 +819,6 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display
     int current = setting.GetValue();
     int def = setting.GetDefaultValue();
     if (current != def) {
-        imgui.BeginGroup();
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
@@ -819,14 +830,18 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display
             imgui.SetTooltip("Reset to default (%s)", def_label);
         }
         imgui.PopID();
-        imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 
 template <typename EnumType>
 bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label,
-                                display_commander::ui::IImGuiWrapper& imgui) {
+                                display_commander::ui::IImGuiWrapper& imgui, float combo_width) {
+    imgui.BeginGroup();
+    if (combo_width > 0.f) {
+        imgui.SetNextItemWidth(combo_width);
+    }
     int value = setting.GetValue();
     const auto& labels = setting.GetLabels();
     int count = static_cast<int>(labels.size());
@@ -837,7 +852,6 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
     int current = setting.GetValue();
     int def = setting.GetDefaultValue();
     if (current != def) {
-        imgui.BeginGroup();
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
@@ -849,8 +863,8 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
             imgui.SetTooltip("Reset to default (%s)", def_label);
         }
         imgui.PopID();
-        imgui.EndGroup();
     }
+    imgui.EndGroup();
     return changed;
 }
 

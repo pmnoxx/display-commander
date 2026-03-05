@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.284 (2026-03-05)
+- **FPS Limiter: NVIDIA Profile mode** - Main tab FPS limiter now has a fourth mode: **NVIDIA Profile (driver FPS limit, requires restart)**. When selected, the limit is read from and written to the NVIDIA driver profile (FPS Limiter V3) for the current game; no in-game limiter runs from the addon. The UI shows a dedicated driver FPS selector (Off or 20–1000 FPS), a restart notice, and profile status. If no profile exists, you can create one with a "Create profile" button. Details: `FpsLimiterMode::kNvidiaProfile`, `GetProfileFpsLimit` / `SetProfileFpsLimit` / `GetProfileFpsLimitOptions` in `nvidia_profile_search`, Main tab FPS limiter section and `swapchain_events` (no in-game limiter when this mode is active).
+
 ## v0.12.283 (2026-03-05)
 - **FPS Limiter V3 in NVIDIA Profile tab** - The NVIDIA Profile tab now includes **FPS Limiter V3** (driver setting 0x10835002, "2 - Sync and Refresh"). You can view and edit the driver FPS limit (Off or 20–1000 FPS) for the first matching profile from the Important profile settings list. Details: `nvidia_profile_search.cpp` (new `k_settings_data` entry for `FRL_FPS_ID`, `FormatImportantValue` and `GetSettingAvailableValues` handle Off + 20–1000 FPS).
 
@@ -12,7 +15,7 @@
 - **RTX HDR controls in NVIDIA Profile tab** - The NVIDIA Profile tab now includes full RTX HDR (TrueHDR) controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. You can view and edit these per-profile from the same list as other driver settings. Details: `nvpi_reference.hpp` (new setting IDs), `nvidia_profile_search.cpp` (`k_settings_data` extended with six RTX HDR entries and option values from NPI CustomSettingNames.xml).
 
 ## v0.12.281 (2026-03-05)
-- **NVIDIA Profile internal settings** - The addon now shows NVIDIA Profile internal settings (e.g. RTX HDR status, TrueHDR controls, Driver Fps limit) when available (not editable). 
+- **NVIDIA Profile internal settings** - The addon now shows NVIDIA Profile internal settings (e.g. RTX HDR status, TrueHDR controls, Driver Fps limit) when available (not editable).
 
 ## v0.12.280 (2026-03-04)
 - **Removed old reflex UI**

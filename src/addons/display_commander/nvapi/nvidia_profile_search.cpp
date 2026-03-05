@@ -913,6 +913,37 @@ NvidiaProfileSearchResult GetCachedProfileSearchResult() {
 
 void InvalidateProfileSearchCache() { s_cacheValid = false; }
 
+ProfileFpsLimitResult GetProfileFpsLimit() {
+    ProfileFpsLimitResult out;
+    NvidiaProfileSearchResult r = GetCachedProfileSearchResult();
+    if (!r.success) {
+        out.error = r.error;
+        return out;
+    }
+    if (r.matching_profiles.empty()) {
+        return out;
+    }
+    out.has_profile = true;
+    out.profile_name = r.matching_profile_names.empty() ? r.matching_profiles[0].profile_name
+                                                          : r.matching_profile_names[0];
+    for (const ImportantProfileSetting& s : r.important_settings) {
+        if (s.setting_id == FRL_FPS_ID) {
+            out.value = s.value_id;
+            break;
+        }
+    }
+    // If FRL_FPS not found in list, value stays 0 (Off)
+    return out;
+}
+
+std::pair<bool, std::string> SetProfileFpsLimit(std::uint32_t value) {
+    return SetProfileSetting(FRL_FPS_ID, value);
+}
+
+std::vector<std::pair<std::uint32_t, std::string>> GetProfileFpsLimitOptions() {
+    return GetSettingAvailableValues(FRL_FPS_ID);
+}
+
 DlssDriverPresetStatus GetDlssDriverPresetStatus() {
     DlssDriverPresetStatus out;
     NvidiaProfileSearchResult r = GetCachedProfileSearchResult();

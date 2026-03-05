@@ -163,8 +163,8 @@ std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t set
 // displayNameUtf8 is the label shown in the UI (e.g. s.label). Empty string on NVAPI/init failure.
 std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::string& displayNameUtf8);
 
-// Returns the list of profile setting IDs shown in the Main tab NVIDIA subheader: RTX HDR (Enable,
-// Debanding, Allow, Contrast, Middle Grey, Peak Brightness, Saturation) then Latency - Max Pre-Rendered Frames.
+// Returns the list of profile setting IDs shown in the Main tab "NVIDIA Control" section: Smooth Motion
+// (Allowed APIs, Enable), RTX HDR (excluding admin-only Debanding/Allow), then Latency - Max Pre-Rendered Frames.
 std::vector<std::uint32_t> GetRtxHdrSettingIds();
 
 }  // namespace display_commander::nvapi

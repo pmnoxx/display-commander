@@ -1461,17 +1461,22 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
 }
 
 std::vector<std::uint32_t> GetRtxHdrSettingIds() {
+    // Order: Smooth Motion first, then RTX HDR, then Max Pre-Rendered Frames (matches important_settings order).
     std::vector<std::uint32_t> ids = {
+        NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
+        NVPI_SMOOTH_MOTION_ENABLE_50_ID,
         NVPI_RTX_HDR_ENABLE_ID,     NVPI_RTX_HDR_DEBANDING_ID,   NVPI_RTX_HDR_ALLOW_ID,
         NVPI_RTX_HDR_CONTRAST_ID,   NVPI_RTX_HDR_MIDDLE_GREY_ID, NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
         NVPI_RTX_HDR_SATURATION_ID,
         PRERENDERLIMIT_ID,  // Latency - Max Pre-Rendered Frames (NVIDIA); shown after RTX HDR on Main tab
     };
+    // Hide requires_admin from Main tab except Smooth Motion - Allowed APIs (user requested to show it).
     ids.erase(
         std::remove_if(ids.begin(), ids.end(),
                        [](std::uint32_t id) {
                            const SettingData* sd = FindSettingData(id);
-                           return sd != nullptr && sd->requires_admin;
+                           return sd != nullptr && sd->requires_admin
+                                  && id != NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID;
                        }),
         ids.end());
     return ids;

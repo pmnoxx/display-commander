@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## v0.12.288 (2026-03-05)
+- **NVIDIA Control (Main tab)** - The Main tab section is renamed from "NVIDIA" to **NVIDIA Control**. It now includes a **Refresh** button to reload profile data, shows **Smooth Motion - Allowed APIs** and **Smooth Motion - Enable** (same as NVIDIA Profile tab), and uses the same "Allow - All [DX11/12, VK]" button for Smooth Motion Allowed APIs. Admin-only settings are shown in warning color with tooltip. Details: `main_new_tab.cpp` (header rename, Refresh button, GetRtxHdrSettingIds() order), `nvidia_profile_search.cpp` (Smooth Motion IDs in GetRtxHdrSettingIds(), keep Allowed APIs when filtering requires_admin).
+- **Auto-refresh on first open** - The first time you expand **NVIDIA Control** on the Main tab or open the **NVIDIA Profile** tab, profile data is refreshed automatically so the list is up to date. Details: `main_new_tab.cpp` (static s_nvidiaControlOpenedOnce), `nvidia_profile_tab_shared.cpp` (static s_nvidiaProfileTabOpenedOnce).
+
 ## v0.12.287 (2026-03-05)
 - **Main tab: hide RTX HDR Debanding and Allow** - RTX HDR - Debanding and RTX HDR - Allow are no longer shown in the Main tab NVIDIA section because they require admin privileges and would show privilege errors. They remain available in the NVIDIA Profile tab. Details: `SettingData.requires_admin` in `nvidia_profile_search.cpp`, `GetRtxHdrSettingIds()` filters out requires_admin settings.
 - **NVIDIA Profile tab: color for admin-only settings** - Settings that require admin (e.g. Smooth Motion - Allowed APIs, RTX HDR - Debanding, RTX HDR - Allow) are shown in warning color (orange) in the Important, All settings, and All driver settings tables. Tooltip includes "Requires admin to change." Details: `ImportantProfileSetting.requires_admin`, `nvidia_profile_tab_shared.cpp` uses `TEXT_WARNING` for label when `s.requires_admin`.

@@ -86,6 +86,14 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         s_allDriverSettingsCacheValid = false;
         nvapi::InvalidateProfileSearchCache();
     }
+    {
+        static bool s_nvidiaProfileTabOpenedOnce = false;
+        if (!s_nvidiaProfileTabOpenedOnce) {
+            s_nvidiaProfileTabOpenedOnce = true;
+            s_allDriverSettingsCacheValid = false;
+            nvapi::InvalidateProfileSearchCache();
+        }
+    }
     imgui.Text("NVIDIA Inspector profile search");
     imgui.SameLine();
     if (imgui.Button("Refresh")) {

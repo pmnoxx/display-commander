@@ -56,8 +56,8 @@ struct SettingData {
 };
 
 // All important + advanced settings; first k_num_important_settings are important, rest are advanced.
-static constexpr std::size_t k_num_important_settings = 19;
-static const std::array<SettingData, 22> k_settings_data = {{
+static constexpr std::size_t k_num_important_settings = 25;
+static const std::array<SettingData, 28> k_settings_data = {{
     // Important (order matches previous k_important_settings)
     {.user_friendly_name = "Smooth Motion (AFR) [40 series]",
      .hex_setting_id = VSYNCSMOOTHAFR_ID,
@@ -84,9 +84,61 @@ static const std::array<SettingData, 22> k_settings_data = {{
     {.user_friendly_name = "RTX HDR - Enable",
      .hex_setting_id = NVPI_RTX_HDR_ENABLE_ID,
      .default_value = 0,
-     .resolve_id_from_driver = true,
      .driver_lookup_name_wide = L"RTX HDR - Enable",  // NVAPI format (UTF-16); no UTF-8 conversion.
      .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
+    {.user_friendly_name = "RTX HDR - Debanding",
+     .hex_setting_id = NVPI_RTX_HDR_DEBANDING_ID,
+     .default_value = 0x00000000,
+     .option_values = {{0x00000000, "N/A"},
+                       {0x00000006, "No Debanding"},
+                       {0x0000000A, "Low Debanding"},
+                       {0x00000002, "High Debanding"},
+                       {0x00000003, "High Debanding (Indicator)"},
+                       {0x00000023, "High Debanding (Indicator + Debug)"}}},
+    {.user_friendly_name = "RTX HDR - Allow",
+     .hex_setting_id = NVPI_RTX_HDR_ALLOW_ID,
+     .default_value = 0x00000000,
+     .option_values = {{0x00000000, "Disallow"}, {0x00000001, "Allow"}}},
+    {.user_friendly_name = "RTX HDR - Contrast",
+     .hex_setting_id = NVPI_RTX_HDR_CONTRAST_ID,
+     .default_value = 0x00000064,
+     .option_values = {{0x00000000, "0 | -100"},
+                       {0x00000032, "50 | -50"},
+                       {0x00000064, "100 | 0 [Default]"},
+                       {0x0000007D, "125 | +25 (Gamma 2.2)"},
+                       {0x00000096, "150 | +50 (Gamma 2.4)"},
+                       {0x000000C8, "200 | +100"},
+                       {0x000000C9, "Custom (0-200)"}}},
+    {.user_friendly_name = "RTX HDR - Middle Grey",
+     .hex_setting_id = NVPI_RTX_HDR_MIDDLE_GREY_ID,
+     .default_value = 0x00000032,
+     .option_values = {{0x00000000, "N/A"},
+                       {0x0000000A, "10"},
+                       {0x00000032, "50 [Default]"},
+                       {0x00000064, "100"},
+                       {0x00000065, "Custom (10-100)"}}},
+    {.user_friendly_name = "RTX HDR - Peak Brightness",
+     .hex_setting_id = NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
+     .default_value = 0x00000000,
+     .option_values = {{0x00000000, "N/A"},
+                       {0x00000190, "400"},
+                       {0x00000258, "600"},
+                       {0x00000320, "800"},
+                       {0x000003E8, "1000"},
+                       {0x000004B0, "1200"},
+                       {0x000005DC, "1500"},
+                       {0x000007D0, "2000"},
+                       {0x00000802, "Custom (400-2000)"}}},
+    {.user_friendly_name = "RTX HDR - Saturation",
+     .hex_setting_id = NVPI_RTX_HDR_SATURATION_ID,
+     .default_value = 0x00000064,
+     .option_values = {{0x00000000, "0 | -100"},
+                       {0x0000004B, "75 | -25 (Neutral)"},
+                       {0x00000064, "100 | 0 [Default]"},
+                       {0x0000007D, "125 | +25"},
+                       {0x00000096, "150 | +50"},
+                       {0x000000C8, "200 | +100"},
+                       {0x000000C9, "Custom (0-200)"}}},
     {.user_friendly_name = "DLSS-SR mode",
      .hex_setting_id = NGX_DLSS_SR_MODE_ID,
      .default_value = static_cast<std::uint32_t>(NGX_DLSS_SR_MODE_DEFAULT),
@@ -314,7 +366,8 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
             out.push_back(std::move(entry));
             continue;
         }
-        if (NvApi()->DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
+        if (display_commander::nvapi_loader::DRS_GetSetting(NvApi(), hSession, hProfile, effective_id, &s)
+            != NVAPI_OK) {
             std::string defaultStr = FormatImportantValue(effective_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
             entry.setting_id = effective_id;
@@ -362,7 +415,8 @@ static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle
             out.push_back(std::move(entry));
             continue;
         }
-        if (NvApi()->DRS_GetSetting(hSession, hProfile, effective_id, &s) != NVAPI_OK) {
+        if (display_commander::nvapi_loader::DRS_GetSetting(NvApi(), hSession, hProfile, effective_id, &s)
+            != NVAPI_OK) {
             std::string defaultStr = FormatImportantValue(effective_id, def.default_value);
             entry.value = "Not set (default: " + defaultStr + ")";
             entry.setting_id = effective_id;
@@ -678,7 +732,8 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
         if (hasProfile && hProfile != nullptr) {
             memset(&nvSetting, 0, sizeof(nvSetting));
             nvSetting.version = NVDRS_SETTING_VER;
-            if (NvApi()->DRS_GetSetting(hSession, hProfile, drv.setting_id, &nvSetting) == NVAPI_OK
+            if (display_commander::nvapi_loader::DRS_GetSetting(NvApi(), hSession, hProfile, drv.setting_id, &nvSetting)
+                    == NVAPI_OK
                 && nvSetting.settingType == NVDRS_DWORD_TYPE) {
                 s.value_id = nvSetting.u32CurrentValue;
                 s.value = FormatImportantValue(drv.setting_id, nvSetting.u32CurrentValue);
@@ -1088,7 +1143,8 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
     s.u32CurrentValue = static_cast<NvU32>(value);
 
     // Get existing setting so we pass a full struct (including settingName); driver may require it for SetSetting.
-    if (NvApi()->DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
+    if (display_commander::nvapi_loader::DRS_GetSetting(NvApi(), hSession, hProfile, static_cast<NvU32>(settingId), &s)
+        == NVAPI_OK) {
         if (s.settingType == NVDRS_DWORD_TYPE) {
             s.u32CurrentValue = static_cast<NvU32>(value);
         }
@@ -1104,7 +1160,7 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
         }
     }
 
-    st = NvApi()->DRS_SetSetting(hSession, hProfile, &s);
+    st = display_commander::nvapi_loader::DRS_SetSetting(NvApi(), hSession, hProfile, &s);
     if (st != NVAPI_OK) {
         NvApi()->DRS_DestroySession(hSession);
         return {false, MakeSetSettingError(settingId, value, st)};
@@ -1177,7 +1233,9 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
         s.settingType = NVDRS_DWORD_TYPE;
         s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
 
-        if (NvApi()->DRS_GetSetting(hSession, hProfile, static_cast<NvU32>(settingId), &s) == NVAPI_OK) {
+        if (display_commander::nvapi_loader::DRS_GetSetting(NvApi(), hSession, hProfile, static_cast<NvU32>(settingId),
+                                                            &s)
+            == NVAPI_OK) {
             if (s.settingType == NVDRS_DWORD_TYPE) {
                 s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
             }
@@ -1191,7 +1249,7 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
             }
         }
 
-        st = NvApi()->DRS_SetSetting(hSession, hProfile, &s);
+        st = display_commander::nvapi_loader::DRS_SetSetting(NvApi(), hSession, hProfile, &s);
         if (st != NVAPI_OK) {
             NvApi()->DRS_DestroySession(hSession);
             return {false, MakeSetSettingError(settingId, valueIfSet, st)};

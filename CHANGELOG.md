@@ -5,8 +5,11 @@
 ## Unreleased
 
 
+## v0.12.282 (2026-03-05)
+- **RTX HDR controls in NVIDIA Profile tab** - The NVIDIA Profile tab now includes full RTX HDR (TrueHDR) controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. You can view and edit these per-profile from the same list as other driver settings. Details: `nvpi_reference.hpp` (new setting IDs), `nvidia_profile_search.cpp` (`k_settings_data` extended with six RTX HDR entries and option values from NPI CustomSettingNames.xml).
+
 ## v0.12.281 (2026-03-05)
-- **NVIDIA Profile internal settings** - The addon now shows NVIDIA Profile internal settings (e.g. RTX HDR status, TrueHDR controls, DLSS-FG overrides, power management) when available. The NVAPI loader prefers internal DRS enum entry points (DRS_EnumSettingsInternal, DRS_EnumAvailableSettingIdsInternal) so the driver can return more settings than the public API; fallback to the public IDs when the internal ones are not present. Internal here means driver-internal/undocumented; it does not mean the values are encrypted. Details: `nvapi_loader.cpp` (internal IDs 0xCFD6983E, 0xE5DE48E5 with fallback to 0xAE3039DA, 0xF020614A).
+- **NVIDIA Profile internal settings** - The addon now shows NVIDIA Profile internal settings (e.g. RTX HDR status, TrueHDR controls, Driver Fps limit) when available (not editable). 
 
 ## v0.12.280 (2026-03-04)
 - **Removed old reflex UI**

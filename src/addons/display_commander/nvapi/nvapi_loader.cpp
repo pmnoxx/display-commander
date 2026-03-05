@@ -30,7 +30,9 @@ static constexpr NvU32 ID_DRS_DeleteProfile = 0x17093206;
 static constexpr NvU32 ID_DRS_FindApplicationByName = 0xeee566b2;
 static constexpr NvU32 ID_DRS_CreateApplication = 0x4347a9de;
 static constexpr NvU32 ID_DRS_GetSetting = 0x73bf8338;
+static constexpr NvU32 ID_DRS_GetSettingInternal = 0xEA99498D;
 static constexpr NvU32 ID_DRS_SetSetting = 0x577dd202;
+static constexpr NvU32 ID_DRS_SetSettingInternal = 0x8A2CF5F5;
 static constexpr NvU32 ID_DRS_EnumSettings = 0xae3039da;
 static constexpr NvU32 ID_DRS_EnumSettingsInternal = 0xCFD6983E;
 static constexpr NvU32 ID_DRS_EnumAvailableSettingIds = 0xf020614a;
@@ -106,8 +108,18 @@ bool Load() {
     g_ptrs.DRS_DeleteProfile = Query<NvAPI_DRS_DeleteProfile_pfn>(query, ID_DRS_DeleteProfile);
     g_ptrs.DRS_FindApplicationByName = Query<NvAPI_DRS_FindApplicationByName_pfn>(query, ID_DRS_FindApplicationByName);
     g_ptrs.DRS_CreateApplication = Query<NvAPI_DRS_CreateApplication_pfn>(query, ID_DRS_CreateApplication);
-    g_ptrs.DRS_GetSetting = Query<NvAPI_DRS_GetSetting_pfn>(query, ID_DRS_GetSetting);
-    g_ptrs.DRS_SetSetting = Query<NvAPI_DRS_SetSetting_pfn>(query, ID_DRS_SetSetting);
+    // Prefer internal DRS_GetSetting (NPI NvapiDrsWrapper.cs GetDelegate 0xEA99498D, fallback 0x73BF8338).
+    g_ptrs.DRS_GetSettingInternal =
+        Query<NvAPI_DRS_GetSetting_Internal_pfn>(query, ID_DRS_GetSettingInternal);
+    if (!g_ptrs.DRS_GetSettingInternal) {
+        g_ptrs.DRS_GetSetting = Query<NvAPI_DRS_GetSetting_pfn>(query, ID_DRS_GetSetting);
+    }
+    // Prefer internal DRS_SetSetting (NPI NvapiDrsWrapper.cs GetDelegate 0x8A2CF5F5, fallback 0x577DD202).
+    g_ptrs.DRS_SetSettingInternal =
+        Query<NvAPI_DRS_SetSetting_Internal_pfn>(query, ID_DRS_SetSettingInternal);
+    if (!g_ptrs.DRS_SetSettingInternal) {
+        g_ptrs.DRS_SetSetting = Query<NvAPI_DRS_SetSetting_pfn>(query, ID_DRS_SetSetting);
+    }
     // Prefer internal variants (may enumerate more settings, e.g. internal/encrypted); fallback to public.
     g_ptrs.DRS_EnumSettings = Query<NvAPI_DRS_EnumSettings_pfn>(query, ID_DRS_EnumSettingsInternal);
     if (!g_ptrs.DRS_EnumSettings) {

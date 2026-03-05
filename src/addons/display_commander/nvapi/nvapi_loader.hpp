@@ -46,8 +46,14 @@ using NvAPI_DRS_CreateApplication_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandl
                                                                NVDRS_APPLICATION* pApplication);
 using NvAPI_DRS_GetSetting_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                                                         NvU32 settingId, NVDRS_SETTING* pSetting);
+// Internal variant (NPI NvapiDrsWrapper) has extra ref uint; pass pointer to 0. GetDelegate(0xEA99498D, ..., 0x73BF8338).
+using NvAPI_DRS_GetSetting_Internal_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
+                                                                 NvU32 settingId, NVDRS_SETTING* pSetting, NvU32* pX);
 using NvAPI_DRS_SetSetting_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                                                         NVDRS_SETTING* pSetting);
+// Internal variant (NPI NvapiDrsWrapper) has two extra params; call with 0,0. See NvapiDrsWrapper.cs GetDelegate(0x8A2CF5F5, ..., 0x577DD202).
+using NvAPI_DRS_SetSetting_Internal_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
+                                                                 NVDRS_SETTING* pSetting, NvU32 x, NvU32 y);
 using NvAPI_DRS_EnumSettings_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
                                                           NvU32 startIndex, NvU32* pSettingCount,
                                                           NVDRS_SETTING* pSettings);
@@ -76,7 +82,9 @@ struct NvApiPtrs {
     NvAPI_DRS_DeleteProfile_pfn DRS_DeleteProfile = nullptr;
     NvAPI_DRS_FindApplicationByName_pfn DRS_FindApplicationByName = nullptr;
     NvAPI_DRS_CreateApplication_pfn DRS_CreateApplication = nullptr;
+    NvAPI_DRS_GetSetting_Internal_pfn DRS_GetSettingInternal = nullptr;
     NvAPI_DRS_GetSetting_pfn DRS_GetSetting = nullptr;
+    NvAPI_DRS_SetSetting_Internal_pfn DRS_SetSettingInternal = nullptr;
     NvAPI_DRS_SetSetting_pfn DRS_SetSetting = nullptr;
     NvAPI_DRS_EnumSettings_pfn DRS_EnumSettings = nullptr;
     NvAPI_DRS_EnumAvailableSettingIds_pfn DRS_EnumAvailableSettingIds = nullptr;
@@ -95,5 +103,36 @@ bool IsLoaded();
 
 // Valid only after Load() returns true. Do not call from multiple threads before Load() has completed.
 const NvApiPtrs* Ptrs();
+
+// Prefer internal DRS_GetSetting (0xEA99498D) when present; fallback to public (0x73BF8338). Call with Ptrs().
+inline NvAPI_Status DRS_GetSetting(const NvApiPtrs* p, NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
+                                   NvU32 settingId, NVDRS_SETTING* pSetting) {
+    if (p == nullptr) {
+        return NVAPI_API_NOT_INITIALIZED;
+    }
+    if (p->DRS_GetSettingInternal != nullptr) {
+        NvU32 x = 0;
+        return p->DRS_GetSettingInternal(hSession, hProfile, settingId, pSetting, &x);
+    }
+    if (p->DRS_GetSetting != nullptr) {
+        return p->DRS_GetSetting(hSession, hProfile, settingId, pSetting);
+    }
+    return NVAPI_FUNCTION_NOT_FOUND;
+}
+
+// Prefer internal DRS_SetSetting (0x8A2CF5F5) when present; fallback to public (0x577DD202). Call with Ptrs().
+inline NvAPI_Status DRS_SetSetting(const NvApiPtrs* p, NvDRSSessionHandle hSession, NvDRSProfileHandle hProfile,
+                                   NVDRS_SETTING* pSetting) {
+    if (p == nullptr) {
+        return NVAPI_API_NOT_INITIALIZED;
+    }
+    if (p->DRS_SetSettingInternal != nullptr) {
+        return p->DRS_SetSettingInternal(hSession, hProfile, pSetting, 0, 0);
+    }
+    if (p->DRS_SetSetting != nullptr) {
+        return p->DRS_SetSetting(hSession, hProfile, pSetting);
+    }
+    return NVAPI_FUNCTION_NOT_FOUND;
+}
 
 }  // namespace display_commander::nvapi_loader

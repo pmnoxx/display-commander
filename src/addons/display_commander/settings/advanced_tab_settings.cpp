@@ -79,7 +79,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       auto_hide_discord_overlay("AutoHideDiscordOverlay", true, "DisplayCommander"),
       suppress_window_changes("SuppressWindowChanges", false, "DisplayCommander.Safemode"),
       win_up_grace_seconds("WinUpGraceSeconds", 1, 0, 61, "DisplayCommander"),
-      enable_presentmon_tracing("EnablePresentMonTracing_defoff", false, "DisplayCommander"),
+      enable_presentmon_tracing("EnablePresentMonTracing", true, "DisplayCommander"),
       presentmon_provider_dxgkrnl("PresentMonProviderDxgKrnl", false, "DisplayCommander"),
       presentmon_provider_dxgi("PresentMonProviderDXGI", false, "DisplayCommander"),
       presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),
@@ -137,7 +137,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &enable_performance_overlay_shortcut, &safemode, &dll_loading_delay_ms, &dlls_to_load_before,
             &fake_nvapi_enabled, &suppress_minhook, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
             &debug_layer_enabled, &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes,
-            &win_up_grace_seconds, &enable_presentmon_tracing,             &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi,
+            &win_up_grace_seconds, &enable_presentmon_tracing, &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi,
             &presentmon_provider_dwm, &presentmon_provider_d3d9, &disable_dpi_scaling};
 }
 

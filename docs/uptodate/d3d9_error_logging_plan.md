@@ -26,6 +26,6 @@ Remaining HRESULT methods not yet hooked: GetDeviceCaps, GetDisplayMode, GetCrea
 
 1. Type alias and `*_Original` for the method.
 2. `g_first_<Method>_error` atomic (true).
-3. Detour: `RECORD_DETOUR_CALL`, call original, if `FAILED(hr)` then `LogD3D9Error` and, on first failure, `LogD3D9FirstFailure` + optional one-line key args.
+3. Detour: `CALL_GUARD`, call original, if `FAILED(hr)` then `LogD3D9Error` and, on first failure, `LogD3D9FirstFailure` + optional one-line key args.
 4. `CreateAndEnableHook` in `InstallD3D9DeviceVtableLogging`.
 5. Update final `LogInfo` list when adding new hooks.

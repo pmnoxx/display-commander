@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <exception>
 #include <memory>
 
 namespace presentmon {
@@ -20,11 +21,23 @@ void CreateAndStartPresentMon() {
     if (g_presentMonManager.IsRunning()) {
         return;
     }
-    g_presentMonManager.StartWorker();
+    try {
+        g_presentMonManager.StartWorker();
+    } catch (const std::exception& e) {
+        LogWarn("PresentMon: StartWorker threw exception: %s", e.what());
+    } catch (...) {
+        LogWarn("PresentMon: StartWorker threw unknown exception");
+    }
 }
 
 void StopAndDestroyPresentMon(PresentMonStopReason reason) {
-    g_presentMonManager.StopWorker(reason);
+    try {
+        g_presentMonManager.StopWorker(reason);
+    } catch (const std::exception& e) {
+        LogWarn("PresentMon: StopWorker threw exception: %s", e.what());
+    } catch (...) {
+        LogWarn("PresentMon: StopWorker threw unknown exception");
+    }
 }
 
 namespace {
@@ -227,8 +240,7 @@ static std::string FormatPropValueBestEffort(PEVENT_RECORD event_record, const s
         char buf[64] = {};
         // Pointers and handles: show hex (TDH_INTYPE_POINTER is 14 in Windows SDK)
         const bool as_hex = (in_type == 14);
-        StringCchPrintfA(buf, std::size(buf), as_hex ? "0x%llx" : "%llu",
-                         static_cast<unsigned long long>(v));
+        StringCchPrintfA(buf, std::size(buf), as_hex ? "0x%llx" : "%llu", static_cast<unsigned long long>(v));
         return std::string(buf);
     }
     return {};
@@ -292,9 +304,9 @@ static uint64_t HashSurfaceKey(uint64_t surface_luid) {
 
 // Event IDs for "per draw" events (one event per Present() call). May vary by Windows version.
 // See private_docs/tasks/surface_refresh_rate_and_etw_events.md.
-static constexpr uint16_t k_dxgi_present_start_id = 64;     // Microsoft-Windows-DXGI Present_Start
-static constexpr uint16_t k_dxgkrnl_present_info_id = 68;   // Microsoft-Windows-DxgKrnl Present_Info (has hWnd)
-static constexpr uint16_t k_d3d9_present_start_id = 1;      // Microsoft-Windows-D3D9 Present_Start (often 1)
+static constexpr uint16_t k_dxgi_present_start_id = 64;    // Microsoft-Windows-DXGI Present_Start
+static constexpr uint16_t k_dxgkrnl_present_info_id = 68;  // Microsoft-Windows-DxgKrnl Present_Info (has hWnd)
+static constexpr uint16_t k_d3d9_present_start_id = 1;     // Microsoft-Windows-D3D9 Present_Start (often 1)
 
 static uint64_t HashHwndKey(uint64_t hwnd) {
     uint64_t h = 1469598103934665603ULL;
@@ -498,23 +510,37 @@ void PresentMonManager::StartWorker() {
     // Update thread status
     m_thread_status.store(std::make_shared<const std::string>("Starting..."));
 
-    // Log all ETW sessions at start for debugging (e.g. why DC_ list may be empty in UI)
-    LogAllEtwSessions();
+    try {
+        // Log all ETW sessions at start for debugging (e.g. why DC_ list may be empty in UI)
+        LogAllEtwSessions();
 
-    // Stop all DC_ ETW sessions so we can start ours clean (no PID check)
-    StopAllDcEtwSessions();
+        // Stop all DC_ ETW sessions so we can start ours clean (no PID check)
+        StopAllDcEtwSessions();
 
-    // Precompute session name (unique per process)
-    DWORD pid = GetCurrentProcessId();
-    StringCchPrintfW(m_session_name, std::size(m_session_name), L"DC_PresentMon_%lu", static_cast<unsigned long>(pid));
+        // Precompute session name (unique per process)
+        DWORD pid = GetCurrentProcessId();
+        StringCchPrintfW(m_session_name, std::size(m_session_name), L"DC_PresentMon_%lu", static_cast<unsigned long>(pid));
 
-    // Start worker thread
-    m_worker_thread = std::thread(&PresentMonManager::WorkerThread, this);
+        // Start worker thread
+        m_worker_thread = std::thread(&PresentMonManager::WorkerThread, this);
 
-    // Start cleanup thread: every 10s, if no events for 10s, kill other DC_ sessions
-    m_cleanup_thread = std::thread(&PresentMonManager::CleanupThread, this);
+        // Start cleanup thread: every 10s, if no events for 10s, kill other DC_ sessions
+        m_cleanup_thread = std::thread(&PresentMonManager::CleanupThread, this);
 
-    LogInfo("PresentMon: Worker thread started");
+        LogInfo("PresentMon: Worker thread started");
+    } catch (const std::exception& e) {
+        m_running.store(false);
+        m_thread_started.store(false);
+        m_thread_status.store(std::make_shared<const std::string>("Failed"));
+        m_last_error.store(std::make_shared<const std::string>(std::string("StartWorker exception: ") + e.what()));
+        LogWarn("PresentMon: StartWorker exception: %s", e.what());
+    } catch (...) {
+        m_running.store(false);
+        m_thread_started.store(false);
+        m_thread_status.store(std::make_shared<const std::string>("Failed"));
+        m_last_error.store(std::make_shared<const std::string>("StartWorker unknown exception"));
+        LogWarn("PresentMon: StartWorker unknown exception");
+    }
 }
 
 void PresentMonManager::StopWorker(PresentMonStopReason reason) {
@@ -678,47 +704,57 @@ void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const 
 }
 
 void PresentMonManager::WorkerThread(PresentMonManager* manager) {
-    LogInfo("[PresentMon] Worker thread started");
+    int result = -1;
+    try {
+        LogInfo("[PresentMon] Worker thread started");
 
-    // Update thread status
-    manager->UpdateDebugInfo("Running", "Starting ETW session...", "", 0, 0);
+        // Update thread status
+        manager->UpdateDebugInfo("Running", "Starting ETW session...", "", 0, 0);
 
-    // Set thread description for debugging (Windows 10+)
-    typedef HRESULT(WINAPI * SetThreadDescriptionProc)(HANDLE, PCWSTR);
-    static SetThreadDescriptionProc set_thread_description_func = nullptr;
-    static bool checked = false;
-    if (!checked) {
-        HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
-        if (kernel32 != nullptr) {
-            set_thread_description_func =
-                reinterpret_cast<SetThreadDescriptionProc>(GetProcAddress(kernel32, "SetThreadDescription"));
+        // Set thread description for debugging (Windows 10+)
+        typedef HRESULT(WINAPI * SetThreadDescriptionProc)(HANDLE, PCWSTR);
+        static SetThreadDescriptionProc set_thread_description_func = nullptr;
+        static bool checked = false;
+        if (!checked) {
+            HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
+            if (kernel32 != nullptr) {
+                set_thread_description_func =
+                    reinterpret_cast<SetThreadDescriptionProc>(GetProcAddress(kernel32, "SetThreadDescription"));
+            }
+            checked = true;
         }
-        checked = true;
+        if (set_thread_description_func != nullptr) {
+            set_thread_description_func(GetCurrentThread(), L"[DisplayCommander] PresentMon Worker");
+        }
+
+        // Run ETW collection loop
+        t_active_manager = manager;
+        result = manager->PresentMonMain();
+        t_active_manager = nullptr;
+
+        auto err_ptr = manager->m_last_error.load();
+        const char* err_str = (err_ptr && !err_ptr->empty()) ? err_ptr->c_str() : nullptr;
+        if (err_str != nullptr) {
+            LogWarn("[PresentMon] Worker thread exiting with code %d, last_error: %s", result, err_str);
+        } else {
+            LogInfo(
+                "[PresentMon] Worker thread exiting with code %d (0=normal stop, 1=oom, 2=StartTrace failed, 3=no "
+                "providers, 4=OpenTrace failed)",
+                result);
+        }
+
+        // Update thread status
+        manager->UpdateDebugInfo("Exited", "Stopped", "", manager->m_events_processed.load(),
+                                 manager->m_events_lost.load());
+    } catch (const std::exception& e) {
+        LogWarn("[PresentMon] Worker thread exception: %s", e.what());
+        manager->UpdateDebugInfo("Crashed", "Stopped", std::string("Exception: ") + e.what(),
+                                 manager->m_events_processed.load(), manager->m_events_lost.load());
+    } catch (...) {
+        LogWarn("[PresentMon] Worker thread unknown exception");
+        manager->UpdateDebugInfo("Crashed", "Stopped", "Unknown exception",
+                                 manager->m_events_processed.load(), manager->m_events_lost.load());
     }
-    if (set_thread_description_func != nullptr) {
-        set_thread_description_func(GetCurrentThread(), L"[DisplayCommander] PresentMon Worker");
-    }
-
-    // Run ETW collection loop
-    t_active_manager = manager;
-    int result = manager->PresentMonMain();
-    t_active_manager = nullptr;
-
-    auto err_ptr = manager->m_last_error.load();
-    const char* err_str = (err_ptr && !err_ptr->empty()) ? err_ptr->c_str() : nullptr;
-    if (err_str != nullptr) {
-        LogWarn("[PresentMon] Worker thread exiting with code %d, last_error: %s", result, err_str);
-    } else {
-        LogInfo(
-            "[PresentMon] Worker thread exiting with code %d (0=normal stop, 1=oom, 2=StartTrace failed, 3=no "
-            "providers, 4=OpenTrace failed)",
-            result);
-    }
-
-    // Update thread status
-    manager->UpdateDebugInfo("Exited", "Stopped", "", manager->m_events_processed.load(),
-                             manager->m_events_lost.load());
-
     manager->m_running.store(false);
 }
 
@@ -1007,14 +1043,20 @@ void PresentMonManager::CleanupThread(PresentMonManager* manager) {
             Sleep(1000);
         }
 
-        // If we haven't seen any events for 10s, stop other DC_ ETW sessions (orphaned or not).
-        // Stopping a session only ends the trace; it does not terminate the process.
-        int64_t now_ns = static_cast<int64_t>(utils::get_now_ns());
-        int64_t last_ns = static_cast<int64_t>(manager->m_last_event_time.load());
-        if (last_ns > 0 && (now_ns - last_ns) >= k_no_events_interval_ns) {
-            LogInfo("[PresentMon] No events for 10s; stopping other DC_ ETW sessions (our session: %ls)",
-                    manager->m_session_name);
-            StopOtherDcEtwSessions(manager->m_session_name);
+        try {
+            // If we haven't seen any events for 10s, stop other DC_ ETW sessions (orphaned or not).
+            // Stopping a session only ends the trace; it does not terminate the process.
+            int64_t now_ns = static_cast<int64_t>(utils::get_now_ns());
+            int64_t last_ns = static_cast<int64_t>(manager->m_last_event_time.load());
+            if (last_ns > 0 && (now_ns - last_ns) >= k_no_events_interval_ns) {
+                LogInfo("[PresentMon] No events for 10s; stopping other DC_ ETW sessions (our session: %ls)",
+                        manager->m_session_name);
+                StopOtherDcEtwSessions(manager->m_session_name);
+            }
+        } catch (const std::exception& e) {
+            LogWarn("[PresentMon] CleanupThread exception: %s", e.what());
+        } catch (...) {
+            LogWarn("[PresentMon] CleanupThread unknown exception");
         }
     }
 }
@@ -1027,7 +1069,13 @@ void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record
         mgr = &g_presentMonManager;
     }
     if (mgr != nullptr) {
-        mgr->OnEtwEvent(event_record);
+        try {
+            mgr->OnEtwEvent(event_record);
+        } catch (const std::exception& e) {
+            LogWarn("[PresentMon] EtwEventRecordCallback exception: %s", e.what());
+        } catch (...) {
+            LogWarn("[PresentMon] EtwEventRecordCallback unknown exception");
+        }
     }
 }
 
@@ -1076,14 +1124,13 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
         const uint64_t boundary = m_per_draw_1s_boundary_100ns.load(std::memory_order_relaxed);
         if (boundary == 0 || (time_100ns - boundary) >= 10000000u) {  // 1 s = 10^7 * 100ns
             m_per_draw_global_count_at_1s_ago.store(m_per_draw_global_count.load(std::memory_order_relaxed),
-                                                   std::memory_order_relaxed);
+                                                    std::memory_order_relaxed);
             m_per_draw_1s_boundary_100ns.store(time_100ns, std::memory_order_relaxed);
         }
     }
     if (is_dxgkrnl && event_id == k_dxgkrnl_present_info_id) {
         uint64_t hwnd = 0;
-        if (TryGetEventPropertyU64(event_record, L"hWnd", hwnd)
-            || TryGetEventPropertyU64(event_record, L"hwnd", hwnd)
+        if (TryGetEventPropertyU64(event_record, L"hWnd", hwnd) || TryGetEventPropertyU64(event_record, L"hwnd", hwnd)
             || TryGetEventPropertyU64(event_record, L"HWND", hwnd)) {
             if (hwnd != 0) {
                 const uint64_t key = HashHwndKey(hwnd);
@@ -1109,8 +1156,8 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
     }
 
     if (is_graphics_provider) {
-        m_last_graphics_provider.store(std::make_shared<const std::string>(
-            ProviderGuidToString(event_record->EventHeader.ProviderId)));
+        m_last_graphics_provider.store(
+            std::make_shared<const std::string>(ProviderGuidToString(event_record->EventHeader.ProviderId)));
         m_last_graphics_event_id.store(event_record->EventHeader.EventDescriptor.Id);
         m_last_graphics_event_pid.store(event_record->EventHeader.ProcessId);
     }
@@ -1157,13 +1204,10 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
                         if (is_graphics_provider) {
                             m_last_graphics_provider_name.store(
                                 std::make_shared<const std::string>(Narrow(provider_name)));
-                            m_last_graphics_event_name.store(
-                                std::make_shared<const std::string>(Narrow(event_name)));
+                            m_last_graphics_event_name.store(std::make_shared<const std::string>(Narrow(event_name)));
                         } else {
-                            m_last_provider_name.store(
-                                std::make_shared<const std::string>(Narrow(provider_name)));
-                            m_last_event_name.store(
-                                std::make_shared<const std::string>(Narrow(event_name)));
+                            m_last_provider_name.store(std::make_shared<const std::string>(Narrow(provider_name)));
+                            m_last_event_name.store(std::make_shared<const std::string>(Narrow(event_name)));
                         }
 
                         // Build a compact "interesting properties" summary
@@ -1604,8 +1648,7 @@ void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graph
         std::string sample = BuildEventTypeSampleString(event_record, info, 32);
         if (!sample.empty()) {
             std::shared_ptr<const std::string> new_sample = std::make_shared<const std::string>(sample);
-            if (!entry->props_sample.compare_exchange_strong(expected_sample, new_sample,
-                                                            std::memory_order_acq_rel)) {
+            if (!entry->props_sample.compare_exchange_strong(expected_sample, new_sample, std::memory_order_acq_rel)) {
                 // another thread stored first
             }
         }

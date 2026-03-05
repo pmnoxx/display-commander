@@ -115,7 +115,7 @@ HRESULT STDMETHODCALLTYPE IDirectDrawSurface_Flip_Detour(LPDIRECTDRAWSURFACE Thi
                                                         LPDIRECTDRAWSURFACE lpDDSurfaceTargetOverride, DWORD dwFlags) {
     const LONGLONG now_ns = utils::get_now_ns();
     display_commanderhooks::g_last_ddraw_flip_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
-    RECORD_DETOUR_CALL(now_ns);
+    CALL_GUARD(now_ns);
 
     ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::ddraw_flip);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::ddraw_flip);

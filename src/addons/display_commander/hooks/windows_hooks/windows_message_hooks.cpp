@@ -476,7 +476,7 @@ static void RewriteWmInputBackgroundToForeground(LPMSG lpMsg) {
 // Hooked GetMessageA function
 // Loop until we get a message we do not suppress, so the app never sees suppressed messages.
 BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_GetMessageA].increment_total();
 
     for (;;) {
@@ -531,7 +531,7 @@ BOOL WINAPI GetMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 // Hooked GetMessageW function
 // Loop until we get a message we do not suppress, so the app never sees suppressed messages.
 BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_GetMessageW].increment_total();
 
     for (;;) {
@@ -586,7 +586,7 @@ BOOL WINAPI GetMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 // Hooked PeekMessageA function
 // Loop until we get a message we do not suppress (or no message), so the app never sees suppressed messages.
 BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_PeekMessageA].increment_total();
 
     for (;;) {
@@ -642,7 +642,7 @@ BOOL WINAPI PeekMessageA_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 // Hooked PeekMessageW function
 // Loop until we get a message we do not suppress (or no message), so the app never sees suppressed messages.
 BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_PeekMessageW].increment_total();
 
     for (;;) {
@@ -697,7 +697,7 @@ BOOL WINAPI PeekMessageW_Detour(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 
 // Hooked PostMessageA function
 BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_PostMessageA].increment_total();
 
@@ -746,7 +746,7 @@ BOOL WINAPI PostMessageA_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 
 // Hooked PostMessageW function
 BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_PostMessageW].increment_total();
     if (ShouldBlockMouseInput() && Msg == WM_MOUSEMOVE) {
@@ -794,7 +794,7 @@ BOOL WINAPI PostMessageW_Detour(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPara
 
 // Hooked GetKeyboardState function
 BOOL WINAPI GetKeyboardState_Detour(PBYTE lpKeyState) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (lpKeyState == nullptr) {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
@@ -886,7 +886,7 @@ void ClipCursorToGameWindow() {
 
 // Hooked ClipCursor function
 BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_ClipCursor].increment_total();
 
@@ -918,7 +918,7 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
 
 // Hooked GetCursorPos function
 BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (lpPoint == nullptr) {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
@@ -968,7 +968,7 @@ BOOL WINAPI GetCursorPos_Detour(LPPOINT lpPoint) {
 
 // Hooked SetCursorPos function
 BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetCursorPos].increment_total();
 
@@ -1004,7 +1004,7 @@ BOOL WINAPI SetCursorPos_Detour(int X, int Y) {
 
 // Hooked GetKeyState function
 SHORT WINAPI GetKeyState_Detour(int vKey) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetKeyState].increment_total();
 
@@ -1049,7 +1049,7 @@ SHORT WINAPI GetKeyState_Detour(int vKey) {
 
 // Hooked GetAsyncKeyState function
 SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetAsyncKeyState].increment_total();
 
@@ -1094,7 +1094,7 @@ SHORT WINAPI GetAsyncKeyState_Detour(int vKey) {
 
 // Hooked SetWindowsHookExA function
 HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetWindowsHookExA].increment_total();
 
@@ -1115,7 +1115,7 @@ HHOOK WINAPI SetWindowsHookExA_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 
 // Hooked SetWindowsHookExW function
 HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetWindowsHookExW].increment_total();
 
@@ -1136,7 +1136,7 @@ HHOOK WINAPI SetWindowsHookExW_Detour(int idHook, HOOKPROC lpfn, HINSTANCE hmod,
 
 // Hooked UnhookWindowsHookEx function
 BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_UnhookWindowsHookEx].increment_total();
 
@@ -1152,7 +1152,7 @@ BOOL WINAPI UnhookWindowsHookEx_Detour(HHOOK hhk) {
 
 // Hooked GetRawInputBuffer function
 UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSizeHeader) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetRawInputBuffer].increment_total();
     UpdateHookLastCallTime(HOOK_GetRawInputBuffer);
@@ -1278,7 +1278,7 @@ UINT WINAPI GetRawInputBuffer_Detour(PRAWINPUT pData, PUINT pcbSize, UINT cbSize
 
 // Hooked TranslateMessage function
 BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_TranslateMessage].increment_total();
 
@@ -1307,7 +1307,7 @@ BOOL WINAPI TranslateMessage_Detour(const MSG* lpMsg) {
 
 // Hooked DispatchMessageA function
 LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DispatchMessageA].increment_total();
 
@@ -1343,7 +1343,7 @@ LRESULT WINAPI DispatchMessageA_Detour(const MSG* lpMsg) {
 
 // Hooked DispatchMessageW function
 LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DispatchMessageW].increment_total();
 
@@ -1380,7 +1380,7 @@ LRESULT WINAPI DispatchMessageW_Detour(const MSG* lpMsg) {
 // Hooked GetRawInputData function
 UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize,
                                    UINT cbSizeHeader) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetRawInputData].increment_total();
     UpdateHookLastCallTime(HOOK_GetRawInputData);
@@ -1480,7 +1480,7 @@ UINT WINAPI GetRawInputData_Detour(HRAWINPUT hRawInput, UINT uiCommand, LPVOID p
 
 // Hooked DefRawInputProc function
 LRESULT WINAPI DefRawInputProc_Detour(PRAWINPUT paRawInput, INT nInput, UINT cbSizeHeader) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_DefRawInputProc].increment_total();
 
     // Check if we should block raw input processing
@@ -1515,7 +1515,7 @@ LRESULT WINAPI DefRawInputProc_Detour(PRAWINPUT paRawInput, INT nInput, UINT cbS
 
 // Hooked VkKeyScan function
 SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_VkKeyScan].increment_total();
 
@@ -1533,7 +1533,7 @@ SHORT WINAPI VkKeyScan_Detour(CHAR ch) {
 
 // Hooked VkKeyScanEx function
 SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_VkKeyScanEx].increment_total();
 
@@ -1550,7 +1550,7 @@ SHORT WINAPI VkKeyScanEx_Detour(CHAR ch, HKL dwhkl) {
 
 // Hooked ToAscii function
 int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_ToAscii].increment_total();
 
@@ -1570,7 +1570,7 @@ int WINAPI ToAscii_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState,
 // Hooked ToAsciiEx function
 int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyState, LPWORD lpChar, UINT uFlags,
                             HKL dwhkl) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_ToAsciiEx].increment_total();
 
@@ -1589,7 +1589,7 @@ int WINAPI ToAsciiEx_Detour(UINT uVirtKey, UINT uScanCode, const BYTE* lpKeyStat
 // Hooked ToUnicode function
 int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff,
                             UINT wFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_ToUnicode].increment_total();
 
@@ -1608,7 +1608,7 @@ int WINAPI ToUnicode_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyStat
 // Hooked ToUnicodeEx function
 int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeyState, LPWSTR pwszBuff, int cchBuff,
                               UINT wFlags, HKL dwhkl) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_ToUnicodeEx].increment_total();
 
@@ -1627,7 +1627,7 @@ int WINAPI ToUnicodeEx_Detour(UINT wVirtKey, UINT wScanCode, const BYTE* lpKeySt
 
 // Hooked GetKeyNameTextA function
 int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetKeyNameTextA].increment_total();
 
@@ -1651,7 +1651,7 @@ int WINAPI GetKeyNameTextA_Detour(LONG lParam, LPSTR lpString, int cchSize) {
 
 // Hooked GetKeyNameTextW function
 int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_GetKeyNameTextW].increment_total();
 
@@ -1672,7 +1672,7 @@ int WINAPI GetKeyNameTextW_Detour(LONG lParam, LPWSTR lpString, int cchSize) {
 
 // Hooked SendInput function
 UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (nInputs > 0 && pInputs == nullptr) {
         SetLastError(ERROR_INVALID_PARAMETER);
         return 0;
@@ -1753,7 +1753,7 @@ UINT WINAPI SendInput_Detour(UINT nInputs, LPINPUT pInputs, int cbSize) {
 
 // Hooked keybd_event function
 void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dwExtraInfo) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_keybd_event].increment_total();
 
@@ -1800,7 +1800,7 @@ void WINAPI keybd_event_Detour(BYTE bVk, BYTE bScan, DWORD dwFlags, ULONG_PTR dw
 
 // Hooked mouse_event function
 void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, ULONG_PTR dwExtraInfo) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_mouse_event].increment_total();
 
@@ -1836,7 +1836,7 @@ void WINAPI mouse_event_Detour(DWORD dwFlags, DWORD dx, DWORD dy, DWORD dwData, 
 
 // Hooked SetCapture function
 HWND WINAPI SetCapture_Detour(HWND hWnd) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetCapture].increment_total();
 
@@ -1865,7 +1865,7 @@ HWND WINAPI SetCapture_Detour(HWND hWnd) {
 
 // Hooked ReleaseCapture function
 BOOL WINAPI ReleaseCapture_Detour() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_ReleaseCapture].increment_total();
 
@@ -1883,7 +1883,7 @@ BOOL WINAPI ReleaseCapture_Detour() {
 
 // Hooked MapVirtualKey function
 UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_MapVirtualKey].increment_total();
 
@@ -1900,7 +1900,7 @@ UINT WINAPI MapVirtualKey_Detour(UINT uCode, UINT uMapType) {
 
 // Hooked MapVirtualKeyEx function
 UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_MapVirtualKeyEx].increment_total();
 
@@ -1918,7 +1918,7 @@ UINT WINAPI MapVirtualKeyEx_Detour(UINT uCode, UINT uMapType, HKL dwhkl) {
 
 // Hooked DisplayConfigGetDeviceInfo function
 LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER* requestPacket) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DisplayConfigGetDeviceInfo].increment_total();
 
@@ -1958,7 +1958,7 @@ LONG WINAPI DisplayConfigGetDeviceInfo_Detour(DISPLAYCONFIG_DEVICE_INFO_HEADER* 
 
 LPTOP_LEVEL_EXCEPTION_FILTER WINAPI
 SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetUnhandledExceptionFilter].increment_total();
 
@@ -1990,7 +1990,7 @@ SetUnhandledExceptionFilter_Detour(LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExcept
 }
 
 BOOL WINAPI IsDebuggerPresent_Detour() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_IsDebuggerPresent].increment_total();
 

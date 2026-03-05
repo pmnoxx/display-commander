@@ -357,12 +357,12 @@ static UINT AlignUpToMultipleOf4(UINT value) { return (value + 3u) & ~3u; }
 
 }  // namespace
 
-// Detours: RECORD_DETOUR_CALL, log first call, call original, log on error.
+// Detours: CALL_GUARD, log first call, call original, log on error.
 
 static HRESULT STDMETHODCALLTYPE CreateTexture_Detour(IDirect3DDevice9* This, UINT Width, UINT Height, UINT Levels,
                                                      DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
                                                      IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateTexture");
     }
@@ -396,7 +396,7 @@ static HRESULT STDMETHODCALLTYPE CreateVolumeTexture_Detour(IDirect3DDevice9* Th
                                                             UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
                                                             IDirect3DVolumeTexture9** ppVolumeTexture,
                                                             HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateVolumeTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateVolumeTexture");
     }
@@ -432,7 +432,7 @@ static HRESULT STDMETHODCALLTYPE CreateCubeTexture_Detour(IDirect3DDevice9* This
                                                           DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
                                                           IDirect3DCubeTexture9** ppCubeTexture,
                                                           HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateCubeTexture.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateCubeTexture");
     }
@@ -463,7 +463,7 @@ static HRESULT STDMETHODCALLTYPE CreateCubeTexture_Detour(IDirect3DDevice9* This
 static HRESULT STDMETHODCALLTYPE CreateVertexBuffer_Detour(IDirect3DDevice9* This, UINT Length, DWORD Usage, DWORD FVF,
                                                            D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer,
                                                            HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateVertexBuffer.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateVertexBuffer");
     }
@@ -489,7 +489,7 @@ static HRESULT STDMETHODCALLTYPE CreateIndexBuffer_Detour(IDirect3DDevice9* This
                                                           D3DFORMAT Format, D3DPOOL Pool,
                                                           IDirect3DIndexBuffer9** ppIndexBuffer,
                                                           HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateIndexBuffer.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateIndexBuffer");
     }
@@ -515,7 +515,7 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface_Detour(IDirect3DDev
                                                                     D3DFORMAT Format, D3DPOOL Pool,
                                                                     IDirect3DSurface9** ppSurface,
                                                                     HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateOffscreenPlainSurface.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateOffscreenPlainSurface");
     }
@@ -543,7 +543,7 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTarget_Detour(IDirect3DDevice9* Thi
                                                            D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample,
                                                            DWORD MultisampleQuality, BOOL Lockable,
                                                            IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateRenderTarget.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateRenderTarget");
     }
@@ -573,7 +573,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface_Detour(IDirect3DDevic
                                                                   DWORD MultisampleQuality, BOOL Discard,
                                                                   IDirect3DSurface9** ppSurface,
                                                                   HANDLE* pSharedHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_first_CreateDepthStencilSurface.exchange(false)) {
         LogInfo("[D3D9] First call: IDirect3DDevice9::CreateDepthStencilSurface");
     }
@@ -599,7 +599,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface_Detour(IDirect3DDevic
 }
 
 static HRESULT STDMETHODCALLTYPE Reset_Detour(IDirect3DDevice9* This, D3DPRESENT_PARAMETERS* pPresentationParameters) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = Reset_Original(This, pPresentationParameters);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] Reset returned 0x%08X", static_cast<unsigned>(hr));
@@ -613,7 +613,7 @@ static HRESULT STDMETHODCALLTYPE Reset_Detour(IDirect3DDevice9* This, D3DPRESENT
 }
 
 static HRESULT STDMETHODCALLTYPE BeginScene_Detour(IDirect3DDevice9* This) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = BeginScene_Original(This);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] BeginScene returned 0x%08X", static_cast<unsigned>(hr));
@@ -625,7 +625,7 @@ static HRESULT STDMETHODCALLTYPE BeginScene_Detour(IDirect3DDevice9* This) {
 }
 
 static HRESULT STDMETHODCALLTYPE EndScene_Detour(IDirect3DDevice9* This) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = EndScene_Original(This);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] EndScene returned 0x%08X", static_cast<unsigned>(hr));
@@ -638,7 +638,7 @@ static HRESULT STDMETHODCALLTYPE EndScene_Detour(IDirect3DDevice9* This) {
 
 static HRESULT STDMETHODCALLTYPE Clear_Detour(IDirect3DDevice9* This, DWORD Count, const D3DRECT* pRects, DWORD Flags,
                                               D3DCOLOR Color, float Z, DWORD Stencil) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = Clear_Original(This, Count, pRects, Flags, Color, Z, Stencil);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] Clear returned 0x%08X", static_cast<unsigned>(hr));
@@ -654,7 +654,7 @@ static HRESULT STDMETHODCALLTYPE Clear_Detour(IDirect3DDevice9* This, DWORD Coun
 static HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain_Detour(IDirect3DDevice9* This,
                                                                   D3DPRESENT_PARAMETERS* pPresentationParameters,
                                                                   IDirect3DSwapChain9** ppSwapChain) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreateAdditionalSwapChain_Original(This, pPresentationParameters, ppSwapChain);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateAdditionalSwapChain returned 0x%08X", static_cast<unsigned>(hr));
@@ -669,7 +669,7 @@ static HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain_Detour(IDirect3DDevic
 
 static HRESULT STDMETHODCALLTYPE GetBackBuffer_Detour(IDirect3DDevice9* This, UINT iSwapChain, UINT iBackBuffer,
                                                       D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetBackBuffer_Original(This, iSwapChain, iBackBuffer, Type, ppBackBuffer);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] GetBackBuffer returned 0x%08X", static_cast<unsigned>(hr));
@@ -684,7 +684,7 @@ static HRESULT STDMETHODCALLTYPE GetBackBuffer_Detour(IDirect3DDevice9* This, UI
 
 static HRESULT STDMETHODCALLTYPE SetRenderTarget_Detour(IDirect3DDevice9* This, DWORD RenderTargetIndex,
                                                         IDirect3DSurface9* pRenderTarget) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetRenderTarget_Original(This, RenderTargetIndex, pRenderTarget);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetRenderTarget returned 0x%08X", static_cast<unsigned>(hr));
@@ -699,7 +699,7 @@ static HRESULT STDMETHODCALLTYPE SetRenderTarget_Detour(IDirect3DDevice9* This, 
 
 static HRESULT STDMETHODCALLTYPE SetDepthStencilSurface_Detour(IDirect3DDevice9* This,
                                                                IDirect3DSurface9* pNewZStencil) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetDepthStencilSurface_Original(This, pNewZStencil);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetDepthStencilSurface returned 0x%08X", static_cast<unsigned>(hr));
@@ -714,7 +714,7 @@ static HRESULT STDMETHODCALLTYPE SetDepthStencilSurface_Detour(IDirect3DDevice9*
 
 static HRESULT STDMETHODCALLTYPE CreateStateBlock_Detour(IDirect3DDevice9* This, D3DSTATEBLOCKTYPE Type,
                                                          IDirect3DStateBlock9** ppSB) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreateStateBlock_Original(This, Type, ppSB);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateStateBlock returned 0x%08X", static_cast<unsigned>(hr));
@@ -728,7 +728,7 @@ static HRESULT STDMETHODCALLTYPE CreateStateBlock_Detour(IDirect3DDevice9* This,
 }
 
 static HRESULT STDMETHODCALLTYPE EndStateBlock_Detour(IDirect3DDevice9* This, IDirect3DStateBlock9** ppSB) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = EndStateBlock_Original(This, ppSB);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] EndStateBlock returned 0x%08X", static_cast<unsigned>(hr));
@@ -743,7 +743,7 @@ static HRESULT STDMETHODCALLTYPE EndStateBlock_Detour(IDirect3DDevice9* This, ID
 static HRESULT STDMETHODCALLTYPE CreateVertexDeclaration_Detour(IDirect3DDevice9* This,
                                                                 const D3DVERTEXELEMENT9* pVertexElements,
                                                                 IDirect3DVertexDeclaration9** ppDecl) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreateVertexDeclaration_Original(This, pVertexElements, ppDecl);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateVertexDeclaration returned 0x%08X", static_cast<unsigned>(hr));
@@ -758,7 +758,7 @@ static HRESULT STDMETHODCALLTYPE CreateVertexDeclaration_Detour(IDirect3DDevice9
 
 static HRESULT STDMETHODCALLTYPE CreateVertexShader_Detour(IDirect3DDevice9* This, const DWORD* pFunction,
                                                            IDirect3DVertexShader9** ppShader) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreateVertexShader_Original(This, pFunction, ppShader);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateVertexShader returned 0x%08X", static_cast<unsigned>(hr));
@@ -774,7 +774,7 @@ static HRESULT STDMETHODCALLTYPE CreateVertexShader_Detour(IDirect3DDevice9* Thi
 static HRESULT STDMETHODCALLTYPE SetStreamSource_Detour(IDirect3DDevice9* This, UINT StreamNumber,
                                                         IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes,
                                                         UINT Stride) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetStreamSource_Original(This, StreamNumber, pStreamData, OffsetInBytes, Stride);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetStreamSource returned 0x%08X", static_cast<unsigned>(hr));
@@ -788,7 +788,7 @@ static HRESULT STDMETHODCALLTYPE SetStreamSource_Detour(IDirect3DDevice9* This, 
 }
 
 static HRESULT STDMETHODCALLTYPE SetIndices_Detour(IDirect3DDevice9* This, IDirect3DIndexBuffer9* pIndexData) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetIndices_Original(This, pIndexData);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetIndices returned 0x%08X", static_cast<unsigned>(hr));
@@ -802,7 +802,7 @@ static HRESULT STDMETHODCALLTYPE SetIndices_Detour(IDirect3DDevice9* This, IDire
 
 static HRESULT STDMETHODCALLTYPE CreatePixelShader_Detour(IDirect3DDevice9* This, const DWORD* pFunction,
                                                           IDirect3DPixelShader9** ppShader) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreatePixelShader_Original(This, pFunction, ppShader);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreatePixelShader returned 0x%08X", static_cast<unsigned>(hr));
@@ -816,7 +816,7 @@ static HRESULT STDMETHODCALLTYPE CreatePixelShader_Detour(IDirect3DDevice9* This
 }
 
 static HRESULT STDMETHODCALLTYPE TestCooperativeLevel_Detour(IDirect3DDevice9* This) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = TestCooperativeLevel_Original(This);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] TestCooperativeLevel returned 0x%08X", static_cast<unsigned>(hr));
@@ -829,7 +829,7 @@ static HRESULT STDMETHODCALLTYPE TestCooperativeLevel_Detour(IDirect3DDevice9* T
 
 static HRESULT STDMETHODCALLTYPE GetSwapChain_Detour(IDirect3DDevice9* This, UINT iSwapChain,
                                                      IDirect3DSwapChain9** ppSwapChain) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetSwapChain_Original(This, iSwapChain, ppSwapChain);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] GetSwapChain returned 0x%08X", static_cast<unsigned>(hr));
@@ -845,7 +845,7 @@ static HRESULT STDMETHODCALLTYPE GetSwapChain_Detour(IDirect3DDevice9* This, UIN
 static HRESULT STDMETHODCALLTYPE UpdateSurface_Detour(IDirect3DDevice9* This, IDirect3DSurface9* pSourceSurface,
                                                       const RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface,
                                                       const POINT* pDestPoint) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = UpdateSurface_Original(This, pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] UpdateSurface returned 0x%08X", static_cast<unsigned>(hr));
@@ -860,7 +860,7 @@ static HRESULT STDMETHODCALLTYPE UpdateSurface_Detour(IDirect3DDevice9* This, ID
 
 static HRESULT STDMETHODCALLTYPE UpdateTexture_Detour(IDirect3DDevice9* This, IDirect3DBaseTexture9* pSourceTexture,
                                                       IDirect3DBaseTexture9* pDestinationTexture) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = UpdateTexture_Original(This, pSourceTexture, pDestinationTexture);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] UpdateTexture returned 0x%08X", static_cast<unsigned>(hr));
@@ -875,7 +875,7 @@ static HRESULT STDMETHODCALLTYPE UpdateTexture_Detour(IDirect3DDevice9* This, ID
 
 static HRESULT STDMETHODCALLTYPE GetRenderTargetData_Detour(IDirect3DDevice9* This, IDirect3DSurface9* pRenderTarget,
                                                             IDirect3DSurface9* pDestSurface) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetRenderTargetData_Original(This, pRenderTarget, pDestSurface);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] GetRenderTargetData returned 0x%08X", static_cast<unsigned>(hr));
@@ -890,7 +890,7 @@ static HRESULT STDMETHODCALLTYPE GetRenderTargetData_Detour(IDirect3DDevice9* Th
 
 static HRESULT STDMETHODCALLTYPE GetFrontBufferData_Detour(IDirect3DDevice9* This, UINT iSwapChain,
                                                            IDirect3DSurface9* pDestSurface) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetFrontBufferData_Original(This, iSwapChain, pDestSurface);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] GetFrontBufferData returned 0x%08X", static_cast<unsigned>(hr));
@@ -906,7 +906,7 @@ static HRESULT STDMETHODCALLTYPE GetFrontBufferData_Detour(IDirect3DDevice9* Thi
 static HRESULT STDMETHODCALLTYPE StretchRect_Detour(IDirect3DDevice9* This, IDirect3DSurface9* pSourceSurface,
                                                     const RECT* pSourceRect, IDirect3DSurface9* pDestSurface,
                                                     const RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = StretchRect_Original(This, pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] StretchRect returned 0x%08X", static_cast<unsigned>(hr));
@@ -922,7 +922,7 @@ static HRESULT STDMETHODCALLTYPE StretchRect_Detour(IDirect3DDevice9* This, IDir
 
 static HRESULT STDMETHODCALLTYPE ColorFill_Detour(IDirect3DDevice9* This, IDirect3DSurface9* pSurface,
                                                   const RECT* pRect, D3DCOLOR color) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = ColorFill_Original(This, pSurface, pRect, color);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] ColorFill returned 0x%08X", static_cast<unsigned>(hr));
@@ -936,7 +936,7 @@ static HRESULT STDMETHODCALLTYPE ColorFill_Detour(IDirect3DDevice9* This, IDirec
 }
 
 static HRESULT STDMETHODCALLTYPE BeginStateBlock_Detour(IDirect3DDevice9* This) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = BeginStateBlock_Original(This);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] BeginStateBlock returned 0x%08X", static_cast<unsigned>(hr));
@@ -949,7 +949,7 @@ static HRESULT STDMETHODCALLTYPE BeginStateBlock_Detour(IDirect3DDevice9* This) 
 
 static HRESULT STDMETHODCALLTYPE CreateQuery_Detour(IDirect3DDevice9* This, D3DQUERYTYPE Type,
                                                     IDirect3DQuery9** ppQuery) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreateQuery_Original(This, Type, ppQuery);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CreateQuery returned 0x%08X", static_cast<unsigned>(hr));
@@ -964,7 +964,7 @@ static HRESULT STDMETHODCALLTYPE CreateQuery_Detour(IDirect3DDevice9* This, D3DQ
 
 static HRESULT STDMETHODCALLTYPE DrawPrimitive_Detour(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
                                                       UINT StartVertex, UINT PrimitiveCount) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = DrawPrimitive_Original(This, PrimitiveType, StartVertex, PrimitiveCount);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] DrawPrimitive returned 0x%08X", static_cast<unsigned>(hr));
@@ -980,7 +980,7 @@ static HRESULT STDMETHODCALLTYPE DrawPrimitive_Detour(IDirect3DDevice9* This, D3
 static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive_Detour(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
                                                              INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices,
                                                              UINT startIndex, UINT primCount) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = DrawIndexedPrimitive_Original(This, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices,
                                                startIndex, primCount);
     if (FAILED(hr)) {
@@ -997,7 +997,7 @@ static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive_Detour(IDirect3DDevice9* T
 static HRESULT STDMETHODCALLTYPE DrawPrimitiveUP_Detour(IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType,
                                                         UINT PrimitiveCount, const void* pVertexStreamZeroData,
                                                         UINT VertexStreamZeroStride) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr =
         DrawPrimitiveUP_Original(This, PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
     if (FAILED(hr)) {
@@ -1014,7 +1014,7 @@ static HRESULT STDMETHODCALLTYPE DrawPrimitiveUP_Detour(IDirect3DDevice9* This, 
 static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP_Detour(
     IDirect3DDevice9* This, D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount,
     const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr =
         DrawIndexedPrimitiveUP_Original(This, PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData,
                                         IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -1032,7 +1032,7 @@ static HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP_Detour(
 static HRESULT STDMETHODCALLTYPE ProcessVertices_Detour(IDirect3DDevice9* This, UINT SrcStartIndex, UINT DestIndex,
                                                         UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer,
                                                         IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = ProcessVertices_Original(This, SrcStartIndex, DestIndex, VertexCount, pDestBuffer, pVertexDecl, Flags);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] ProcessVertices returned 0x%08X", static_cast<unsigned>(hr));
@@ -1047,7 +1047,7 @@ static HRESULT STDMETHODCALLTYPE ProcessVertices_Detour(IDirect3DDevice9* This, 
 
 static HRESULT STDMETHODCALLTYPE SetVertexDeclaration_Detour(IDirect3DDevice9* This,
                                                              IDirect3DVertexDeclaration9* pDecl) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetVertexDeclaration_Original(This, pDecl);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetVertexDeclaration returned 0x%08X", static_cast<unsigned>(hr));
@@ -1060,7 +1060,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexDeclaration_Detour(IDirect3DDevice9* T
 }
 
 static HRESULT STDMETHODCALLTYPE SetFVF_Detour(IDirect3DDevice9* This, DWORD FVF) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetFVF_Original(This, FVF);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetFVF returned 0x%08X", static_cast<unsigned>(hr));
@@ -1073,7 +1073,7 @@ static HRESULT STDMETHODCALLTYPE SetFVF_Detour(IDirect3DDevice9* This, DWORD FVF
 }
 
 static HRESULT STDMETHODCALLTYPE SetStreamSourceFreq_Detour(IDirect3DDevice9* This, UINT StreamNumber, UINT Divider) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetStreamSourceFreq_Original(This, StreamNumber, Divider);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetStreamSourceFreq returned 0x%08X", static_cast<unsigned>(hr));
@@ -1088,7 +1088,7 @@ static HRESULT STDMETHODCALLTYPE SetStreamSourceFreq_Detour(IDirect3DDevice9* Th
 
 static HRESULT STDMETHODCALLTYPE GetRenderTarget_Detour(IDirect3DDevice9* This, DWORD RenderTargetIndex,
                                                         IDirect3DSurface9** ppRenderTarget) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetRenderTarget_Original(This, RenderTargetIndex, ppRenderTarget);
     // D3DERR_NOTAVAILABLE is expected when no render target is set at this slot (e.g. index 1+).
     if (FAILED(hr) && static_cast<unsigned>(hr) != kD3DERR_NOTAVAILABLE) {
@@ -1104,7 +1104,7 @@ static HRESULT STDMETHODCALLTYPE GetRenderTarget_Detour(IDirect3DDevice9* This, 
 
 static HRESULT STDMETHODCALLTYPE GetDepthStencilSurface_Detour(IDirect3DDevice9* This,
                                                                IDirect3DSurface9** ppZStencilSurface) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetDepthStencilSurface_Original(This, ppZStencilSurface);
     // D3DERR_NOTAVAILABLE is expected when no depth-stencil surface is set.
     if (FAILED(hr) && static_cast<unsigned>(hr) != kD3DERR_NOTAVAILABLE) {
@@ -1117,7 +1117,7 @@ static HRESULT STDMETHODCALLTYPE GetDepthStencilSurface_Detour(IDirect3DDevice9*
 }
 
 static HRESULT STDMETHODCALLTYPE SetViewport_Detour(IDirect3DDevice9* This, const D3DVIEWPORT9* pViewport) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetViewport_Original(This, pViewport);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetViewport returned 0x%08X", static_cast<unsigned>(hr));
@@ -1132,7 +1132,7 @@ static HRESULT STDMETHODCALLTYPE SetViewport_Detour(IDirect3DDevice9* This, cons
 
 static HRESULT STDMETHODCALLTYPE SetTransform_Detour(IDirect3DDevice9* This, D3DTRANSFORMSTATETYPE State,
                                                      const D3DMATRIX* pMatrix) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetTransform_Original(This, State, pMatrix);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetTransform returned 0x%08X", static_cast<unsigned>(hr));
@@ -1145,7 +1145,7 @@ static HRESULT STDMETHODCALLTYPE SetTransform_Detour(IDirect3DDevice9* This, D3D
 }
 
 static HRESULT STDMETHODCALLTYPE SetRenderState_Detour(IDirect3DDevice9* This, D3DRENDERSTATETYPE State, DWORD Value) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetRenderState_Original(This, State, Value);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetRenderState returned 0x%08X", static_cast<unsigned>(hr));
@@ -1160,7 +1160,7 @@ static HRESULT STDMETHODCALLTYPE SetRenderState_Detour(IDirect3DDevice9* This, D
 
 static HRESULT STDMETHODCALLTYPE GetTexture_Detour(IDirect3DDevice9* This, DWORD Stage,
                                                    IDirect3DBaseTexture9** ppTexture) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetTexture_Original(This, Stage, ppTexture);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] GetTexture returned 0x%08X", static_cast<unsigned>(hr));
@@ -1174,7 +1174,7 @@ static HRESULT STDMETHODCALLTYPE GetTexture_Detour(IDirect3DDevice9* This, DWORD
 
 static HRESULT STDMETHODCALLTYPE SetTexture_Detour(IDirect3DDevice9* This, DWORD Stage,
                                                    IDirect3DBaseTexture9* pTexture) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetTexture_Original(This, Stage, pTexture);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetTexture returned 0x%08X", static_cast<unsigned>(hr));
@@ -1188,7 +1188,7 @@ static HRESULT STDMETHODCALLTYPE SetTexture_Detour(IDirect3DDevice9* This, DWORD
 }
 
 static HRESULT STDMETHODCALLTYPE SetVertexShader_Detour(IDirect3DDevice9* This, IDirect3DVertexShader9* pShader) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetVertexShader_Original(This, pShader);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetVertexShader returned 0x%08X", static_cast<unsigned>(hr));
@@ -1201,7 +1201,7 @@ static HRESULT STDMETHODCALLTYPE SetVertexShader_Detour(IDirect3DDevice9* This, 
 }
 
 static HRESULT STDMETHODCALLTYPE SetPixelShader_Detour(IDirect3DDevice9* This, IDirect3DPixelShader9* pShader) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = SetPixelShader_Original(This, pShader);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] SetPixelShader returned 0x%08X", static_cast<unsigned>(hr));
@@ -1218,7 +1218,7 @@ static HRESULT STDMETHODCALLTYPE CreateRenderTargetEx_Detour(IDirect3DDevice9* T
                                                              DWORD MultisampleQuality, BOOL Lockable,
                                                              IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle,
                                                              DWORD Usage) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreateRenderTargetEx_Original(This, Width, Height, Format, MultiSample, MultisampleQuality, Lockable,
                                                ppSurface, pSharedHandle, Usage);
     if (FAILED(hr)) {
@@ -1236,7 +1236,7 @@ static HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx_Detour(IDirect3DD
                                                                       D3DFORMAT Format, D3DPOOL Pool,
                                                                       IDirect3DSurface9** ppSurface,
                                                                       HANDLE* pSharedHandle, DWORD Usage) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr =
         CreateOffscreenPlainSurfaceEx_Original(This, Width, Height, Format, Pool, ppSurface, pSharedHandle, Usage);
     if (FAILED(hr)) {
@@ -1255,7 +1255,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx_Detour(IDirect3DDev
                                                                     DWORD MultisampleQuality, BOOL Discard,
                                                                     IDirect3DSurface9** ppSurface,
                                                                     HANDLE* pSharedHandle, DWORD Usage) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CreateDepthStencilSurfaceEx_Original(This, Width, Height, Format, MultiSample, MultisampleQuality,
                                                       Discard, ppSurface, pSharedHandle, Usage);
     if (FAILED(hr)) {
@@ -1270,7 +1270,7 @@ static HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx_Detour(IDirect3DDev
 
 static HRESULT STDMETHODCALLTYPE ResetEx_Detour(IDirect3DDevice9* This, D3DPRESENT_PARAMETERS* pPresentationParameters,
                                                 D3DDISPLAYMODEEX* pFullscreenDisplayMode) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = ResetEx_Original(This, pPresentationParameters, pFullscreenDisplayMode);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] ResetEx returned 0x%08X", static_cast<unsigned>(hr));
@@ -1285,7 +1285,7 @@ static HRESULT STDMETHODCALLTYPE ResetEx_Detour(IDirect3DDevice9* This, D3DPRESE
 
 static HRESULT STDMETHODCALLTYPE GetDisplayModeEx_Detour(IDirect3DDevice9* This, UINT iSwapChain,
                                                          D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = GetDisplayModeEx_Original(This, iSwapChain, pMode, pRotation);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] GetDisplayModeEx returned 0x%08X", static_cast<unsigned>(hr));
@@ -1298,7 +1298,7 @@ static HRESULT STDMETHODCALLTYPE GetDisplayModeEx_Detour(IDirect3DDevice9* This,
 }
 
 static HRESULT STDMETHODCALLTYPE CheckDeviceState_Detour(IDirect3DDevice9* This, HWND hDestinationWindow) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HRESULT hr = CheckDeviceState_Original(This, hDestinationWindow);
     if (FAILED(hr)) {
         LogErrorThrottled(10, "[D3D9 error] CheckDeviceState returned 0x%08X", static_cast<unsigned>(hr));

@@ -114,7 +114,7 @@ bool HWNDBelongsToCurrentProcess(HWND hwnd) {
 
 // Hooked GetFocus function
 HWND WINAPI GetFocus_Detour() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     auto hwnd = GetFocus_Original ? GetFocus_Original() : GetFocus();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -140,7 +140,7 @@ HWND WINAPI GetForegroundWindow_Direct() {
 
 // Hooked GetForegroundWindow function
 HWND WINAPI GetForegroundWindow_Detour() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     auto hwnd = GetForegroundWindow_Direct();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -162,7 +162,7 @@ HWND WINAPI GetForegroundWindow_Detour() {
 
 // Hooked GetActiveWindow function
 HWND WINAPI GetActiveWindow_Detour() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     auto hwnd = GetActiveWindow_Original ? GetActiveWindow_Original() : GetActiveWindow();
 
     if (HWNDBelongsToCurrentProcess(hwnd)) {
@@ -197,7 +197,7 @@ HWND WINAPI GetActiveWindow_Detour() {
 
 // Hooked GetGUIThreadInfo function
 BOOL WINAPI GetGUIThreadInfo_Detour(DWORD idThread, PGUITHREADINFO pgui) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (settings::g_advancedTabSettings.continue_rendering.GetValue() && game_hwnd != nullptr && IsWindow(game_hwnd)) {
         // Call original function first
@@ -288,7 +288,7 @@ BOOL WINAPI GetWindowPlacement_Detour(HWND hWnd, WINDOWPLACEMENT* lpwndpl) {
 
 // Hooked SetThreadExecutionState function
 EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_SetThreadExecutionState].increment_total();
 
@@ -310,7 +310,7 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
 
 // Hooked SetWindowLongPtrW function
 LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongPtrW].increment_total();
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_last_swapchain_hwnd.load()) {
@@ -324,7 +324,7 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
 // Hooked SetWindowLongA function
 LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongA].increment_total();
 
     // Check if fullscreen prevention is enabled
@@ -339,7 +339,7 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 // Hooked SetWindowLongW function
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongW].increment_total();
     // Check if fullscreen prevention is enabled
     if (hWnd == g_last_swapchain_hwnd.load()) {
@@ -353,7 +353,7 @@ LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 // Hooked SetWindowLongPtrA function
 LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLong) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongPtrA].increment_total();
 
     // Check if fullscreen prevention is enabled
@@ -371,7 +371,7 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
 
 // Hooked SetWindowPos function
 BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowPos].increment_total();
     // Only process if prevent_always_on_top is enabled
     if (hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
@@ -427,7 +427,7 @@ HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
 
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // if (ShouldBlockMouseInput()) {
     //     hCursor = LoadCursor(nullptr, IDC_ARROW);
     //  }
@@ -444,7 +444,7 @@ int WINAPI ShowCursor_Direct(BOOL bShow) {
 
 // Hooked ShowCursor function
 int WINAPI ShowCursor_Detour(BOOL bShow) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
 
     if (ShouldBlockMouseInput()) {
         bShow = FALSE;
@@ -461,7 +461,7 @@ int WINAPI ShowCursor_Detour(BOOL bShow) {
 
 // Hooked AddVectoredExceptionHandler function
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Log the call for debugging
     LogDebug("AddVectoredExceptionHandler_Detour: First=%lu, Handler=0x%p", First, Handler);
 
@@ -472,7 +472,7 @@ PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION
 
 // Hooked CreateDXGIFactory2 function
 HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFactory) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (ppFactory == nullptr) return E_POINTER;
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY2].fetch_add(1);
@@ -501,7 +501,7 @@ HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFacto
 
 // Hooked CreateDXGIFactory function
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
 
@@ -511,7 +511,7 @@ HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
 
 // Hooked CreateDXGIFactory1 function
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
 
@@ -538,7 +538,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
                                                     IDXGISwapChain** ppSwapChain, ID3D11Device** ppDevice,
                                                     D3D_FEATURE_LEVEL* pFeatureLevel,
                                                     ID3D11DeviceContext** ppImmediateContext) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("=== D3D11CreateDeviceAndSwapChain Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  DriverType: %d", DriverType);
@@ -684,7 +684,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
                                         UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
                                         UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel,
                                         ID3D11DeviceContext** ppImmediateContext) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("=== D3D11CreateDevice Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  DriverType: %d", DriverType);
@@ -790,7 +790,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
 // Hooked D3D12CreateDevice function
 HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid,
                                         void** ppDevice) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("=== D3D12CreateDevice Called ===");
     LogInfo("  pAdapter: 0x%p", pAdapter);
     LogInfo("  MinimumFeatureLevel: 0x%04X", MinimumFeatureLevel);
@@ -867,7 +867,7 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
     if (!enabled_experimental_features) {
         return true;
     }
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Check if this module is ReShade's proxy by checking for ReShade exports
     FARPROC reshade_register = GetProcAddress(dxgi_module, "ReShadeRegisterAddon");
     FARPROC reshade_unregister = GetProcAddress(dxgi_module, "ReShadeUnregisterAddon");
@@ -1213,7 +1213,7 @@ bool InstallWindowsApiHooks() {
 }
 
 bool InstallApiHooks() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (g_api_hooks_installed.load()) {
         // LogInfo("API hooks already installed");
         return true;

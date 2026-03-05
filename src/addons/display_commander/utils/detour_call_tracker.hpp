@@ -7,7 +7,7 @@
 
 namespace detour_call_tracker {
 
-// Maximum number of distinct detour call sites (one entry per RECORD_DETOUR_CALL site)
+// Maximum number of distinct detour call sites (one entry per CALL_GUARD site)
 constexpr size_t MAX_ENTRIES = 65536;
 
 // Optional context string length for crash reporting (e.g. "msg=0x0010 hwnd=0x..." for GetMessage detours).
@@ -32,7 +32,7 @@ uint32_t AllocateEntryIndex(const char* key);
 void RecordCallNoGuard(uint32_t entry_index, uint64_t timestamp_ns);
 
 // Set optional context for a call site (by key, e.g. "GetMessageW_Detour:519"). Shown in undestroyed-guards
-// crash report. Thread-safe. Use DETOUR_SET_CONTEXT_AT(line, fmt, ...) with the line number of RECORD_DETOUR_CALL.
+// crash report. Thread-safe. Use DETOUR_SET_CONTEXT_AT(line, fmt, ...) with the line number of CALL_GUARD.
 void SetCallSiteContextByKey(const char* key, const char* fmt, ...);
 
 // RAII guard: on construction increments entry's inprogress_cnt, total_cnt, sets last_call_ns;
@@ -75,13 +75,13 @@ std::string FormatAllLatestCalls(uint64_t now_ns);
 #define DETOUR_CALL_SITE_KEY (__FUNCTION__ ":" TOSTRING(__LINE__))
 #define CONCAT_IMPL(a, b) a##b
 #define CONCAT(a, b)      CONCAT_IMPL(a, b)
-#define RECORD_DETOUR_CALL(timestamp_ns)                                                                    \
+#define CALL_GUARD(timestamp_ns)                                                                    \
     static const uint32_t CONCAT(_detour_idx_, __LINE__) = detour_call_tracker::AllocateEntryIndex(        \
         DETOUR_CALL_SITE_KEY);                                                                              \
     detour_call_tracker::DetourCallGuard CONCAT(_detour_guard_, __LINE__)(CONCAT(_detour_idx_, __LINE__),  \
                                                                           (timestamp_ns))
 
-// Set context for the RECORD_DETOUR_CALL at the given line (so crash report shows e.g. "msg=0x0010 hwnd=0x...").
+// Set context for the CALL_GUARD at the given line (so crash report shows e.g. "msg=0x0010 hwnd=0x...").
 // Example: DETOUR_SET_CONTEXT_AT(519, "msg=0x%04X hwnd=%p", lpMsg->message, (void*)lpMsg->hwnd);
 #define DETOUR_CALL_SITE_KEY_AT_LINE(line) (__FUNCTION__ ":" TOSTRING(line))
 #define DETOUR_SET_CONTEXT_AT(line, fmt, ...) \

@@ -23,8 +23,8 @@ struct PresentMonEventTypeSummary {
     uint8_t level;
     uint64_t keyword;
     std::string event_name;
-    std::string props;        // comma-separated property names (or name=? markers)
-    std::string props_sample; // one sample per field (name=value, ...) for tooltip; empty if not yet captured
+    std::string props;         // comma-separated property names (or name=? markers)
+    std::string props_sample;  // one sample per field (name=value, ...) for tooltip; empty if not yet captured
     uint64_t count;
 };
 
@@ -68,13 +68,7 @@ struct PresentMonSurfaceCompatibilitySummary {
 };
 
 // Simpler flip mode for PresentMon (no DXGI query-failure variants)
-enum class PresentMonFlipMode : std::uint8_t {
-    Unset,
-    Composed,
-    Overlay,
-    IndependentFlip,
-    Unknown
-};
+enum class PresentMonFlipMode : std::uint8_t { Unset, Composed, Overlay, IndependentFlip, Unknown };
 
 const char* PresentMonFlipModeToString(PresentMonFlipMode mode);
 
@@ -132,9 +126,9 @@ struct PresentMonDebugInfo {
 // Per-draw statistics snapshot (for UI). Filled by GetPerDrawStats().
 // "Per draw" = one Present() call; we count DXGI Present_Start (global) and DxgKrnl Present_Info (per hWnd).
 struct PresentMonPerDrawStats {
-    uint64_t global_count = 0;       // Total per-draw events seen (any surface; DXGI Present_Start)
-    uint64_t count_for_window = 0;   // Per-draw count for the requested HWND (DxgKrnl Present_Info), if any
-    bool window_matched = false;     // True if we had a per-hwnd entry for the requested window
+    uint64_t global_count = 0;         // Total per-draw events seen (any surface; DXGI Present_Start)
+    uint64_t count_for_window = 0;     // Per-draw count for the requested HWND (DxgKrnl Present_Info), if any
+    bool window_matched = false;       // True if we had a per-hwnd entry for the requested window
     double rate_global_per_sec = 0.0;  // Events per second (any surface), 1s sliding window; 0 if not enough data
 };
 
@@ -252,7 +246,8 @@ class PresentMonManager {
         std::atomic<std::shared_ptr<const std::string>> provider_name{nullptr};
         std::atomic<std::shared_ptr<const std::string>> event_name{nullptr};
         std::atomic<std::shared_ptr<const std::string>> props{nullptr};
-        std::atomic<std::shared_ptr<const std::string>> props_sample{nullptr};  // one sample (name=value per field) for tooltip
+        std::atomic<std::shared_ptr<const std::string>> props_sample{
+            nullptr};  // one sample (name=value per field) for tooltip
         std::atomic<uint64_t> last_schema_update_ns{0};
     };
 

@@ -94,7 +94,7 @@ void ClearDInputDevices() {
 
 // DirectInput8Create detour
 HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInput8CreateDevice].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(HOOK_DInput8CreateDevice);
@@ -123,7 +123,7 @@ HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFII
 
 // DirectInputCreateA detour
 HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA *ppDI, LPUNKNOWN punkOuter) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(HOOK_DInputCreateDevice);
@@ -151,7 +151,7 @@ HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 
 // DirectInputCreateW detour
 HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW *ppDI, LPUNKNOWN punkOuter) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(HOOK_DInputCreateDevice);

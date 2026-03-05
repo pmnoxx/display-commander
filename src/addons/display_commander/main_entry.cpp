@@ -180,7 +180,7 @@ struct ReShadeDetectionDebugInfo {
 ReShadeDetectionDebugInfo g_reshade_debug_info;
 
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     // Avoid displaying UI twice
     if (show_display_commander_ui) {
@@ -204,7 +204,7 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
 
 // ReShade effect runtime event handler for input blocking
 void OnInitCommandList(reshade::api::command_list* cmd_list) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Command list initialization tracking
     if (cmd_list == nullptr) {
         return;
@@ -213,7 +213,7 @@ void OnInitCommandList(reshade::api::command_list* cmd_list) {
 }
 
 void OnDestroyCommandList(reshade::api::command_list* cmd_list) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Command list destruction tracking
     if (cmd_list == nullptr) {
         return;
@@ -222,7 +222,7 @@ void OnDestroyCommandList(reshade::api::command_list* cmd_list) {
 }
 
 void OnInitCommandQueue(reshade::api::command_queue* queue) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Command queue initialization tracking
     if (queue == nullptr) {
         return;
@@ -231,7 +231,7 @@ void OnInitCommandQueue(reshade::api::command_queue* queue) {
 }
 
 void OnDestroyCommandQueue(reshade::api::command_queue* queue) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Command queue destruction tracking
     if (queue == nullptr) {
         return;
@@ -240,7 +240,7 @@ void OnDestroyCommandQueue(reshade::api::command_queue* queue) {
 }
 
 void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::command_list* cmd_list) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Command list execution tracking
     if (queue == nullptr || cmd_list == nullptr) {
         return;
@@ -249,7 +249,7 @@ void OnExecuteCommandList(reshade::api::command_queue* queue, reshade::api::comm
 }
 
 void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Present completion tracking
     if (queue == nullptr || swapchain == nullptr) {
         return;
@@ -276,8 +276,7 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
         return;
     }
     // Decode = swapchain colorspace (default 1 = scRGB); Encode = brightness color space
-    const int32_t decode_colorspace =
-        static_cast<int32_t>(settings::g_mainTabSettings.swapchain_colorspace.GetValue());
+    const int32_t decode_colorspace = static_cast<int32_t>(settings::g_mainTabSettings.swapchain_colorspace.GetValue());
     const int32_t encode_colorspace =
         static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
     const reshade::api::effect_uniform_variable var_decode =
@@ -326,7 +325,8 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
 }
 
 // Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same
-// DECODE_METHOD = swapchain_colorspace, ENCODE_METHOD = brightness_colorspace. Requires Generic RenoDX to upgrade SDR->HDR.
+// DECODE_METHOD = swapchain_colorspace, ENCODE_METHOD = brightness_colorspace. Requires Generic RenoDX to upgrade
+// SDR->HDR.
 void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
         return;
@@ -365,7 +365,7 @@ void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
 
 void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                            reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
     }
@@ -376,7 +376,7 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
 void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api::command_list* cmd_list,
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb) {
     if (IsDisplayCommanderHookingInstance()) display_commanderhooks::InstallApiHooks();
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // ReShade effects finish tracking
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
@@ -396,7 +396,7 @@ void OnReShadePresent(reshade::api::effect_runtime* runtime) {
 
 namespace {
 void OnInitEffectRuntime_ExtractShadersOnce() {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     static std::atomic<bool> shader_extract_done{false};
     if (shader_extract_done.exchange(true)) {
         return;
@@ -498,7 +498,7 @@ void OnInitEffectRuntime_InitWithHwndOnce(reshade::api::effect_runtime* runtime)
 
 void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
     LogInfo("[OnInitEffectRuntime] entry");
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (runtime == nullptr) {
         LogInfo("[OnInitEffectRuntime] runtime is null, returning");
         return;
@@ -518,7 +518,7 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 
 // ReShade overlay event handler for input blocking
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
 
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");
@@ -593,7 +593,7 @@ void DrawCustomCursor() {
 
 // Test callback for reshade_overlay event
 void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* runtime) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const float fixed_width = 1600.0f;
     float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
     float saved_y = settings::g_mainTabSettings.display_commander_ui_window_y.GetValue();
@@ -650,7 +650,7 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
 }
 
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui;
 
@@ -1604,7 +1604,7 @@ void DoInitializationWithoutHwndSafe(HMODULE h_module) {
 }
 
 void DoInitializationWithoutHwnd(HMODULE h_module) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Register reshade_overlay event for test code
     reshade::register_event<reshade::addon_event::reshade_overlay>(OnPerformanceOverlay);
 
@@ -2358,7 +2358,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
                                         nullptr, nullptr);
                     LogInfo("[main_entry] DLL_PROCESS_ATTACH: current module path: %s", current_module_path_narrow);
                 }
-                LogInfo("[main_entry] DLL_PROCESS_ATTACH: DLL process attach reason: %s", reason);
+                LogInfo("[main_entry] DLL_PROCESS_ATTACH: DLL process attach reason: %s, state: %d", reason,
+                        static_cast<int>(g_display_commander_state.load(std::memory_order_acquire)));
             };
             struct ScopeGuard {
                 std::function<void()> run_;

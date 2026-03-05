@@ -133,7 +133,7 @@ void wait_until_qpc(LONGLONG target_qpc, HANDLE& timer_handle) {
     }
     static __declspec(align(64)) uint64_t monitor = 0ULL;
     LONGLONG current_time_qpc = get_now_qpc();
-    RECORD_DETOUR_CALL(current_time_qpc * 100);
+    CALL_GUARD(current_time_qpc * 100);
 
     // If target time has already passed, return immediately
     if (target_qpc <= current_time_qpc) return;

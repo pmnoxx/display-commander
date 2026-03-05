@@ -522,7 +522,7 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
             g_getstate_userindex0_last_duration_ns.store(elapsed_ns, std::memory_order_relaxed);
         });
     }
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -563,7 +563,7 @@ static DWORD WINAPI XInputGetState_Detour_Impl(size_t module_index, DWORD dwUser
 }
 
 static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_STATE* pState) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (pState == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -595,7 +595,7 @@ static DWORD WINAPI XInputGetStateEx_Detour_Impl(size_t module_index, DWORD dwUs
 }
 
 static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUserIndex, XINPUT_VIBRATION* pVibration) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (pVibration == nullptr) {
         return ERROR_INVALID_PARAMETER;
     }
@@ -673,7 +673,7 @@ DWORD WINAPI XInputSetState_Detour(DWORD dwUserIndex, XINPUT_VIBRATION* pVibrati
 
 static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD dwUserIndex, DWORD dwFlags,
                                                       XINPUT_CAPABILITIES* pCapabilities) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Track hook statistics (do this first to verify hook is being called)
     g_hook_stats[HOOK_XInputGetCapabilities].increment_total();
     display_commanderhooks::UpdateHookLastCallTime(HOOK_XInputGetCapabilities);

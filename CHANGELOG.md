@@ -3,6 +3,11 @@
 ---
 
 ## Unreleased
+- **PresentMon on by default** - PresentMon (ETW-based present and flip mode tracking) is now enabled by default when you open the addon, so flip mode and present stats are available without clicking to enable. You can still turn it off in the Main tab if needed.
+
+## v0.12.300 (2026-03-05)
+- **PresentMon exception handling** - PresentMon paths are now wrapped in try-catch so exceptions do not crash the addon. `CreateAndStartPresentMon` and `StopAndDestroyPresentMon` catch and log; `StartWorker` catches during thread setup and leaves manager in a consistent "not running" state; `WorkerThread` catches so a thrown exception in the ETW loop is logged and the thread exits cleanly with status "Crashed"; `EtwEventRecordCallback` catches so a bad event does not propagate to ETW; `CleanupThread` catches so one failed cleanup iteration does not kill the thread. Details: `presentmon_manager.cpp` — exception handling in all entry points and callbacks.
+- **CALL_GUARD rename** - Renamed macro `RECORD_DETOUR_CALL` to `CALL_GUARD` everywhere (detour call-site tracking for crash reports). Behavior unchanged.
 
 ## v0.12.299 (2026-03-05)
 - **PresentMon ETW: thread-safe flip state and debug info** - Fixed a use-after-free when the UI read PresentMon flip state or debug info while the ETW callback was updating the same strings. All shared string state is now stored in `std::atomic<std::shared_ptr<const std::string>>`; readers load the shared_ptr and copy the string, so no pointer is used after the writer updates. PresentMonFlipState and PresentMonDebugInfo are filled safely from this storage. EventTypeEntry string fields use the same pattern. Details: `presentmon_manager.hpp` / `presentmon_manager.cpp` — raw `std::string*` atomics replaced with `shared_ptr<const std::string>`; no `delete` in callback path.

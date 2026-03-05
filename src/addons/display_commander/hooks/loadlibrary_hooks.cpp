@@ -365,7 +365,7 @@ std::wstring ExtractModuleName(const std::wstring& fullPath) {
 
 // Hooked LoadLibraryA function
 HMODULE WINAPI LoadLibraryA_Detour(LPCSTR lpLibFileName) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     TryStartStandaloneUIFromSafeContext();
     const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
@@ -471,7 +471,7 @@ HMODULE WINAPI LoadLibraryW_Direct(LPCWSTR lpLibFileName) {
 
 // Hooked LoadLibraryW function
 HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
@@ -567,7 +567,7 @@ HMODULE WINAPI LoadLibraryW_Detour(LPCWSTR lpLibFileName) {
 
 // Hooked LoadLibraryExA function
 HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? lpLibFileName : "NULL";
@@ -669,7 +669,7 @@ HMODULE WINAPI LoadLibraryExA_Detour(LPCSTR lpLibFileName, HANDLE hFile, DWORD d
 
 // Hooked LoadLibraryExW function
 HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string dll_name = lpLibFileName ? WideToNarrow(lpLibFileName) : "NULL";
@@ -762,7 +762,7 @@ HMODULE WINAPI LoadLibraryExW_Detour(LPCWSTR lpLibFileName, HANDLE hFile, DWORD 
 // Hooked LoadPackagedLibrary (Windows 8+; UWP packaged apps). Same blocking/tracking as LoadLibraryW; no DLSS path
 // override (package full name is not a file path).
 HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Reserved) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
     std::string timestamp = GetCurrentTimestamp();
     std::string name_str = lpwszPackageFullName ? WideToNarrow(lpwszPackageFullName) : "NULL";
@@ -814,7 +814,7 @@ HMODULE WINAPI LoadPackagedLibrary_Detour(LPCWSTR lpwszPackageFullName, DWORD Re
 // Hooked LdrLoadDll (ntdll). Catches loads that bypass kernel32 (e.g. direct ntdll calls). Blocking + tracking only
 // (no DLSS path override from this path).
 LONG NTAPI LdrLoadDll_Detour(PWSTR DllPath, PULONG DllCharacteristics, const void* DllName, PVOID* DllHandle) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     const HMODULE load_caller = GetCallingDLL();
     const auto* name = static_cast<const UnicodeStringNtdll*>(DllName);
     std::wstring dll_name_wide;
@@ -945,7 +945,7 @@ BOOL WINAPI GetModuleHandleExA_Detour(DWORD dwFlags, LPCSTR lpModuleName, HMODUL
 
 // Hooked FreeLibrary function
 BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
 
     // Check if this is the ReShade module being unloaded
     bool is_reshade_module = (hLibModule != nullptr && hLibModule == g_reshade_module);
@@ -1527,7 +1527,7 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 }
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
 
     if (IsRenoDxAddonPath(moduleName)) {

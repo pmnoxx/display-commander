@@ -228,7 +228,7 @@ static void UpdateNGXParamsFromDLSSGOptions(const sl::DLSSGOptions& options) {
 
 // Hook functions
 int slInit_Detour(void* pref, uint64_t sdkVersion) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_INIT].fetch_add(1);
 
@@ -247,7 +247,7 @@ int slInit_Detour(void* pref, uint64_t sdkVersion) {
 }
 
 int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_IS_FEATURE_SUPPORTED].fetch_add(1);
 
@@ -267,7 +267,7 @@ int slIsFeatureSupported_Detour(int feature, const void* adapterInfo) {
 }
 
 int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].fetch_add(1);
 
@@ -286,7 +286,7 @@ int slGetNativeInterface_Detour(void* proxyInterface, void** baseInterface) {
 // original
 static int slDLSSGetOptimalSettings_Detour(const sl::DLSSOptions& options, sl::DLSSOptimalSettings& settings) {
     static bool first_call = true;
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_streamline_event_counters[STREAMLINE_EVENT_SL_DLSS_GET_OPTIMAL_SETTINGS].fetch_add(1);
 
     bool optionsLogged = false;
@@ -522,7 +522,7 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
 // Reference:
 // https://github.com/NVIDIA-RTX/Streamline/blob/b998246a3d499c08765c5681b229c9e6b4513348/source/core/sl.api/sl.cpp#L625
 int slUpgradeInterface_Detour(void** baseInterface) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Increment counter
     g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].fetch_add(1);
 

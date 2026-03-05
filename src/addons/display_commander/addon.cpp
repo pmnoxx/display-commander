@@ -432,7 +432,7 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
     if (g_no_dc_mode.load(std::memory_order_acquire)) {
         return true;  // .NODC: proxy-only, do not register or run Display Commander
     }
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     g_module.store(addon_module, std::memory_order_release);
     // Store ReShade module handle for unload detection (don't override if already set)
     HMODULE expected = nullptr;

@@ -28,7 +28,7 @@ static std::atomic<bool> g_display_settings_hooks_installed{false};
 
 // Hook detour functions
 LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsA].increment_total();
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
@@ -42,7 +42,7 @@ LONG WINAPI ChangeDisplaySettingsA_Detour(DEVMODEA* lpDevMode, DWORD dwFlags) {
 }
 
 LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsW].increment_total();
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
@@ -57,7 +57,7 @@ LONG WINAPI ChangeDisplaySettingsW_Detour(DEVMODEW* lpDevMode, DWORD dwFlags) {
 
 LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExA].increment_total();
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
@@ -72,7 +72,7 @@ LONG WINAPI ChangeDisplaySettingsExA_Detour(LPCSTR lpszDeviceName, DEVMODEA* lpD
 
 LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode, HWND hWnd, DWORD dwFlags,
                                             LPVOID lParam) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ChangeDisplaySettingsExW].increment_total();
 
     // Check if fullscreen prevention is enabled (window mode != No changes)
@@ -88,7 +88,7 @@ LONG WINAPI ChangeDisplaySettingsExW_Detour(LPCWSTR lpszDeviceName, DEVMODEW* lp
 // SetWindowPos_Detour function moved to api_hooks.cpp to avoid duplicate hook creation
 
 BOOL WINAPI ShowWindow_Detour(HWND hWnd, int nCmdShow) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     display_commanderhooks::g_hook_stats[display_commanderhooks::HOOK_ShowWindow].increment_total();
 
     // Check if fullscreen prevention is enabled (window mode != No changes)

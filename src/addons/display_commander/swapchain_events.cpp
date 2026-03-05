@@ -83,7 +83,7 @@ std::atomic<bool> g_initialized_with_hwnd{false};
 // ============================================================================
 
 bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("OnCreateDevice: api: %d (%s), api_version: 0x%x", static_cast<int>(api), GetDeviceApiString(api),
             api_version);
 
@@ -114,7 +114,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
 }
 
 void OnInitDevice(reshade::api::device* device) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("OnInitDevice: device: %p", device);
     // Device initialization tracking
     if (device == nullptr) {
@@ -124,7 +124,7 @@ void OnInitDevice(reshade::api::device* device) {
 }
 
 void OnDestroyDevice(reshade::api::device* device) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("OnDestroyDevice: device: %p", device);
     if (device == nullptr) {
         return;
@@ -162,7 +162,7 @@ void OnDestroyDevice(reshade::api::device* device) {
 }
 
 void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (runtime == nullptr) {
         return;
     }
@@ -181,7 +181,7 @@ void OnDestroyEffectRuntime(reshade::api::effect_runtime* runtime) {
 }
 
 void hookToSwapChain(reshade::api::swapchain* swapchain) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
         return;
@@ -529,7 +529,7 @@ static reshade::api::format GetFormatFromComboValue(int combo_value) {
 
 // Capture sync interval during create_swapchain
 bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Don't reset counters on swapchain creation - let them accumulate throughout the session
 
     // Increment event counter
@@ -1008,7 +1008,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 }
 
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
 
     if (api == reshade::api::device_api::d3d9) {
         g_dx9_swapchain_detected.store(true);
@@ -1030,7 +1030,7 @@ std::atomic<bool> s_we_auto_enabled_hdr{false};
 }  // namespace
 
 void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (swapchain == nullptr) {
         return;
     }
@@ -1093,7 +1093,7 @@ void ApplyHdr1000MetadataToSwapchain(reshade::api::swapchain* swapchain) {
 }  // namespace
 
 void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (swapchain == nullptr) {
         LogDebug("OnInitSwapchain: swapchain is null");
         return;
@@ -1204,7 +1204,7 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
 }
 
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reshade_addon_event);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
 
@@ -1216,7 +1216,7 @@ void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swap
 
 void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
     auto now = utils::get_now_ns();
-    RECORD_DETOUR_CALL(now);
+    CALL_GUARD(now);
     // Skip FPS limiter for first N frames (warmup)
     if (g_global_frame_id.load(std::memory_order_relaxed) < kFpsLimiterWarmupFrames) {
         return;
@@ -1227,7 +1227,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
         return;
     }
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
-        RECORD_DETOUR_CALL(now);
+        CALL_GUARD(now);
         auto sleep_until_ns = g_post_sleep_ns.load();
         if (sleep_until_ns > now) {
             utils::wait_until_ns(sleep_until_ns, g_timer_handle_post);
@@ -1240,7 +1240,7 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
 
 void OnPresentUpdateAfter2(bool from_wrapper) {
     auto start_time_ns = utils::get_now_ns();
-    RECORD_DETOUR_CALL(start_time_ns);
+    CALL_GUARD(start_time_ns);
     // Track render thread ID
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::HandlePresentAfter);
     DWORD current_thread_id = GetCurrentThreadId();
@@ -1492,14 +1492,14 @@ float GetDelayBiasFromRatio(int ratio_index) {
 
 void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     auto start_time_ns = utils::get_now_ns();
-    RECORD_DETOUR_CALL(start_time_ns);
+    CALL_GUARD(start_time_ns);
     LONGLONG handle_fps_limiter_start_time_ns = start_time_ns;
     float target_fps = GetTargetFps();
     auto target_fps_native = target_fps;
     late_amount_ns.store(0);
 
     if (from_wrapper) {
-        RECORD_DETOUR_CALL(start_time_ns);
+        CALL_GUARD(start_time_ns);
         const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
 
         switch (lite.fg_mode) {
@@ -1542,7 +1542,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     }
     if (s_fps_limiter_enabled.load()
         && (target_fps > 0.0f || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync)) {
-        RECORD_DETOUR_CALL(start_time_ns);
+        CALL_GUARD(start_time_ns);
         // Note: Command queue flushing is now handled in OnPresentUpdateBefore using native DirectX APIs
         // No need to flush here anymore
 
@@ -1565,7 +1565,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                 float delay_bias = GetDelayBiasFromRatio(ratio_index);
 
                 if (target_fps >= 1.0f) {
-                    RECORD_DETOUR_CALL(start_time_ns);
+                    CALL_GUARD(start_time_ns);
                     // Calculate frame time
                     float adjusted_target_fps = target_fps;
                     const auto onpresent_reflex =
@@ -1595,7 +1595,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     // Always sleep for pre_sleep_ns before starting the frame
                     // When delay_bias = 0: pre_sleep = frame_time, so we sleep for the full frame time
                     // When delay_bias = 1.0: pre_sleep = 0, so we start immediately
-                    RECORD_DETOUR_CALL(start_time_ns);
+                    CALL_GUARD(start_time_ns);
                     if (ideal_frame_start_ns - post_sleep_ns > start_time_ns) {
                         // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
                         utils::wait_until_ns(ideal_frame_start_ns - post_sleep_ns, g_timer_handle_pre);
@@ -1608,7 +1608,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                         late_amount_ns.store(start_time_ns - ideal_frame_start_ns);
                         g_onpresent_sync_pre_sleep_ns.store(0);
                     }
-                    RECORD_DETOUR_CALL(start_time_ns);
+                    CALL_GUARD(start_time_ns);
                     // Record when frame processing actually started
                     g_onpresent_sync_frame_start_ns.store(ideal_frame_start_ns);
                     g_post_sleep_ns.store(ideal_frame_start_ns + post_sleep_ns);
@@ -1634,7 +1634,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     }
     {
         auto end_time_ns = utils::get_now_ns();
-        RECORD_DETOUR_CALL(end_time_ns);
+        CALL_GUARD(end_time_ns);
 
         LONGLONG handle_fps_limiter_start_end_time_ns = end_time_ns;
         g_present_start_time_ns.store(handle_fps_limiter_start_end_time_ns);
@@ -1649,7 +1649,7 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
             max(1, handle_fps_limiter_start_end_time_ns - handle_fps_limiter_start_time_ns);
         fps_sleep_before_on_present_ns.store(
             UpdateRollingAverage(handle_fps_limiter_start_duration_ns, fps_sleep_before_on_present_ns.load()));
-        RECORD_DETOUR_CALL(end_time_ns);
+        CALL_GUARD(end_time_ns);
     }
 }
 
@@ -1755,7 +1755,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                            uint32_t /*dirty_rect_count*/, const reshade::api::rect* /*dirty_rects*/) {
     auto api = swapchain->get_device()->get_api();
     command_queue->flush_immediate_command_list();
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentUpdateBefore)) {
         return;
@@ -1959,7 +1959,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
 bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages,
                     reshade::api::pipeline pipeline) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_BIND_PIPELINE].fetch_add(1);
 
@@ -1973,7 +1973,7 @@ bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline
 
 // Present flags callback to strip DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 void OnPresentFlags2(bool from_present_detour, bool from_wrapper) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::OnPresentFlags2)) {
         return;
@@ -2000,7 +2000,7 @@ void OnPresentFlags2(bool from_present_detour, bool from_wrapper) {
 // Resource creation event handler to upgrade buffer resolutions and texture
 // formats
 void OnDestroyResource(reshade::api::device* device, reshade::api::resource resource) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (device == nullptr) {
         return;
     }
@@ -2010,7 +2010,7 @@ void OnDestroyResource(reshade::api::device* device, reshade::api::resource reso
 
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,
                       reshade::api::subresource_data* /*initial_data*/, reshade::api::resource_usage /*usage*/) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     bool modified = false;
 
     // Only handle 2D textures
@@ -2074,7 +2074,7 @@ bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc&
 
 // Sampler creation event handler to override mipmap bias and anisotropic filtering
 bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& desc) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (device == nullptr) {
         return false;
     }
@@ -2244,7 +2244,7 @@ bool OnCreateSampler(reshade::api::device* device, reshade::api::sampler_desc& d
 // buffer resolution and texture format upgrades
 bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource resource,
                           reshade::api::resource_usage usage_type, reshade::api::resource_view_desc& desc) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     bool modified = false;
 
     if (!device) return false;
@@ -2299,7 +2299,7 @@ bool OnCreateResourceView(reshade::api::device* device, reshade::api::resource r
 // Viewport event handler to scale viewports for buffer resolution upgrade
 void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
                    const reshade::api::viewport* viewports) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Only handle viewport scaling if buffer resolution upgrade is enabled
     if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
         return;  // No modification needed
@@ -2337,7 +2337,7 @@ void OnSetViewport(reshade::api::command_list* cmd_list, uint32_t first, uint32_
 // resolution upgrade
 void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uint32_t count,
                        const reshade::api::rect* rects) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     // Only handle scissor scaling if buffer resolution upgrade is enabled
     if (!settings::g_experimentalTabSettings.buffer_resolution_upgrade_enabled.GetValue()) {
         return;  // No modification needed

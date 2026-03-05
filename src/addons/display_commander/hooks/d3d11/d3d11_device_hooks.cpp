@@ -65,11 +65,11 @@ void LogD3D11FirstFailure(const char* method, ID3D11Device* This, HRESULT hr) {
              static_cast<unsigned>(hr));
 }
 
-// Detours: RECORD_DETOUR_CALL, log first call, call original, on FAILED log throttled + first failure.
+// Detours: CALL_GUARD, log first call, call original, on FAILED log throttled + first failure.
 // All detours guard on *_Original != nullptr before calling (avoid crash if hook install partially failed).
 HRESULT STDMETHODCALLTYPE CreateBuffer_Detour(ID3D11Device* This, const D3D11_BUFFER_DESC* pDesc,
                                               const D3D11_SUBRESOURCE_DATA* pInitialData, ID3D11Buffer** ppBuffer) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (CreateBuffer_Original == nullptr) {
         LogError("[D3D11] CreateBuffer_Detour: Original is null, skipping");
         return E_FAIL;
@@ -97,7 +97,7 @@ HRESULT STDMETHODCALLTYPE CreateBuffer_Detour(ID3D11Device* This, const D3D11_BU
 HRESULT STDMETHODCALLTYPE CreateTexture1D_Detour(ID3D11Device* This, const D3D11_TEXTURE1D_DESC* pDesc,
                                                  const D3D11_SUBRESOURCE_DATA* pInitialData,
                                                  ID3D11Texture1D** ppTexture1D) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (CreateTexture1D_Original == nullptr) {
         LogError("[D3D11] CreateTexture1D_Detour: Original is null, skipping");
         return E_FAIL;
@@ -124,7 +124,7 @@ HRESULT STDMETHODCALLTYPE CreateTexture1D_Detour(ID3D11Device* This, const D3D11
 HRESULT STDMETHODCALLTYPE CreateTexture2D_Detour(ID3D11Device* This, const D3D11_TEXTURE2D_DESC* pDesc,
                                                  const D3D11_SUBRESOURCE_DATA* pInitialData,
                                                  ID3D11Texture2D** ppTexture2D) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (CreateTexture2D_Original == nullptr) {
         LogError("[D3D11] CreateTexture2D_Detour: Original is null, skipping");
         return E_FAIL;
@@ -151,7 +151,7 @@ HRESULT STDMETHODCALLTYPE CreateTexture2D_Detour(ID3D11Device* This, const D3D11
 HRESULT STDMETHODCALLTYPE CreateTexture3D_Detour(ID3D11Device* This, const D3D11_TEXTURE3D_DESC* pDesc,
                                                  const D3D11_SUBRESOURCE_DATA* pInitialData,
                                                  ID3D11Texture3D** ppTexture3D) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (CreateTexture3D_Original == nullptr) {
         LogError("[D3D11] CreateTexture3D_Detour: Original is null, skipping");
         return E_FAIL;
@@ -178,7 +178,7 @@ HRESULT STDMETHODCALLTYPE CreateTexture3D_Detour(ID3D11Device* This, const D3D11
 HRESULT STDMETHODCALLTYPE CreateShaderResourceView_Detour(ID3D11Device* This, ID3D11Resource* pResource,
                                                           const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
                                                           ID3D11ShaderResourceView** ppSRView) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (CreateShaderResourceView_Original == nullptr) {
         LogError("[D3D11] CreateShaderResourceView_Detour: Original is null, skipping");
         return E_FAIL;
@@ -199,7 +199,7 @@ HRESULT STDMETHODCALLTYPE CreateShaderResourceView_Detour(ID3D11Device* This, ID
 HRESULT STDMETHODCALLTYPE CreateRenderTargetView_Detour(ID3D11Device* This, ID3D11Resource* pResource,
                                                         const D3D11_RENDER_TARGET_VIEW_DESC* pDesc,
                                                         ID3D11RenderTargetView** ppRTView) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (CreateRenderTargetView_Original == nullptr) {
         LogError("[D3D11] CreateRenderTargetView_Detour: Original is null, skipping");
         return E_FAIL;
@@ -220,7 +220,7 @@ HRESULT STDMETHODCALLTYPE CreateRenderTargetView_Detour(ID3D11Device* This, ID3D
 HRESULT STDMETHODCALLTYPE CreateDepthStencilView_Detour(ID3D11Device* This, ID3D11Resource* pResource,
                                                         const D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc,
                                                         ID3D11DepthStencilView** ppDepthStencilView) {
-    RECORD_DETOUR_CALL(utils::get_now_ns());
+    CALL_GUARD(utils::get_now_ns());
     if (CreateDepthStencilView_Original == nullptr) {
         LogError("[D3D11] CreateDepthStencilView_Detour: Original is null, skipping");
         return E_FAIL;

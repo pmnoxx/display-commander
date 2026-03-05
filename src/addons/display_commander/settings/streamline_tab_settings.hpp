@@ -1,6 +1,5 @@
 #pragma once
 
-#include <atomic>
 #include <string>
 #include "../ui/new_ui/settings_wrapper.hpp"
 
@@ -23,9 +22,9 @@ class StreamlineTabSettings {
     ui::new_ui::StringSetting dlss_override_subfolder;        // nvngx_dlss.dll subfolder e.g. 310.5.2
     ui::new_ui::StringSetting dlss_override_subfolder_dlssd;  // nvngx_dlssd.dll (D = denoiser / RR) subfolder
     ui::new_ui::StringSetting dlss_override_subfolder_dlssg;  // nvngx_dlssg.dll (G = generation / FG) subfolder
-    ui::new_ui::BoolSettingRef dlss_override_dlss;            // nvngx_dlss.dll
-    ui::new_ui::BoolSettingRef dlss_override_dlss_fg;         // nvngx_dlssg.dll (G = generation / FG)
-    ui::new_ui::BoolSettingRef dlss_override_dlss_rr;         // nvngx_dlssd.dll (D = denoiser / RR)
+    ui::new_ui::BoolSetting dlss_override_dlss;   // nvngx_dlss.dll
+    ui::new_ui::BoolSetting dlss_override_dlss_fg;  // nvngx_dlssg.dll (G = generation / FG)
+    ui::new_ui::BoolSetting dlss_override_dlss_rr;  // nvngx_dlssd.dll (D = denoiser / RR)
 
    private:
     std::vector<ui::new_ui::SettingBase*> all_settings_;

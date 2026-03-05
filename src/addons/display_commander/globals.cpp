@@ -61,7 +61,6 @@ std::atomic<DisplayCommanderState> g_display_commander_state{DisplayCommanderSta
 
 // Window settings
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9};  // Default to 16:9
-std::atomic<int> s_aspect_width{0};                                   // 0 = Display Width, 1 = 3840, 2 = 2560, etc.
 
 // Window alignment when repositioning is needed (0 = Center, 1 = Top Left, 2 = Top Right, 3 = Bottom Left, 4 = Bottom
 // Right)

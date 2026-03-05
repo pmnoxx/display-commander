@@ -672,16 +672,16 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         BREAKING CHANGES
         // Explicit VSYNC overrides take precedence over generic sync-interval
         // dropdown (applies to all APIs)
-        if (s_force_vsync_on.load()) {
+        if (settings::g_mainTabSettings.force_vsync_on.GetValue()) {
             desc.sync_interval = 1;  // VSYNC on
             modified = true;
-        } else if (s_force_vsync_off.load()) {
+        } else if (settings::g_mainTabSettings.force_vsync_off.GetValue()) {
             desc.sync_interval = 0;  // VSYNC off
             modified = true;
         }*/
 
         // DXGI-specific settings (only for D3D10/11/12)
-        if (s_prevent_tearing.load() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
+        if (settings::g_mainTabSettings.prevent_tearing.GetValue() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
             desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
             modified = true;
         }
@@ -877,10 +877,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         // Apply VSYNC overrides (applies to all APIs)
-        if (s_force_vsync_on.load()) {
+        if (settings::g_mainTabSettings.force_vsync_on.GetValue()) {
             desc.sync_interval = 1;  // VSYNC on
             modified = true;
-        } else if (s_force_vsync_off.load()) {
+        } else if (settings::g_mainTabSettings.force_vsync_off.GetValue()) {
             desc.sync_interval = 0;  // VSYNC off
             modified = true;
         }
@@ -955,10 +955,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }
 
         // Apply VSYNC overrides (applies to all APIs)
-        if (s_force_vsync_on.load()) {
+        if (settings::g_mainTabSettings.force_vsync_on.GetValue()) {
             desc.sync_interval = 1;  // VSYNC on
             modified = true;
-        } else if (s_force_vsync_off.load()) {
+        } else if (settings::g_mainTabSettings.force_vsync_off.GetValue()) {
             desc.sync_interval = 0;  // VSYNC off
             modified = true;
         }
@@ -1416,10 +1416,10 @@ float GetTargetFps() {
     // GetForegroundWindow here
     float target_fps = 0.0f;
     bool is_background = g_app_in_background.load();
-    if (is_background && s_background_fps_enabled.load()) {
-        target_fps = s_fps_limit_background.load();
+    if (is_background && settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
+        target_fps = settings::g_mainTabSettings.fps_limit_background.GetValue();
     } else {
-        target_fps = s_fps_limit.load();
+        target_fps = settings::g_mainTabSettings.fps_limit.GetValue();
     }
     if (target_fps > 0.0f && target_fps < 10.0f) {
         target_fps = 0.0f;
@@ -1552,8 +1552,8 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                 // Driver applies FPS limit after restart; no in-game limiter from us
                 break;
             case FpsLimiterMode::kReflex: {
-                if (!s_reflex_auto_configure.load()) {
-                    s_reflex_auto_configure.store(true);
+                if (!settings::g_advancedTabSettings.reflex_auto_configure.GetValue()) {
+                    settings::g_advancedTabSettings.reflex_auto_configure.SetValue(true);
                 }
                 // Reflex mode - auto-configuration is handled when mode is selected
                 // Reflex manages frame rate limiting internally

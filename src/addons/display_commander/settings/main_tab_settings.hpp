@@ -7,32 +7,8 @@
 #include <atomic>
 #include <vector>
 
-// Forward declarations for atomic variables used by main tab settings
-extern std::atomic<int> s_scanline_offset;
-extern std::atomic<int> s_vblank_sync_divisor;
-extern std::atomic<float> s_fps_limit;
-extern std::atomic<float> s_fps_limit_background;
-extern std::atomic<bool> s_background_fps_enabled;
-extern std::atomic<bool> s_force_vsync_on;
-extern std::atomic<bool> s_force_vsync_off;
-extern std::atomic<bool> s_prevent_tearing;
-extern std::atomic<float> s_audio_volume_percent;
+// System volume (not a main-tab setting; used for volume sync)
 extern std::atomic<float> s_system_volume_percent;
-extern std::atomic<bool> s_audio_mute;
-extern std::atomic<bool> s_mute_in_background;
-extern std::atomic<bool> s_mute_in_background_if_other_audio;
-extern std::atomic<bool> s_no_render_in_background;
-extern std::atomic<bool> s_no_present_in_background;
-extern std::atomic<int> s_cpu_cores;
-extern std::atomic<float> s_brightness_percent;
-extern std::atomic<int>
-    s_swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; decode only, default 0 (Auto)
-extern std::atomic<int> s_brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; encode only
-extern std::atomic<float> s_gamma_value;          // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
-extern std::atomic<float> s_contrast_value;       // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-extern std::atomic<float> s_saturation_value;     // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
-extern std::atomic<float> s_hue_degrees;          // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
-extern std::atomic<float> s_auto_hdr_strength;    // 0.0–2.0, EffectStrength_P3 when AutoHDR on (default 1.0)
 
 namespace settings {
 
@@ -51,7 +27,7 @@ class MainTabSettings {
     // Display Settings
     ui::new_ui::ComboSettingEnum<WindowMode> window_mode;
     ui::new_ui::ComboSetting aspect_index;
-    ui::new_ui::ComboSettingRef window_aspect_width;
+    ui::new_ui::ComboSetting window_aspect_width;
     ui::new_ui::ComboSetting alignment;
 
     // ADHD Multi-Monitor Mode Settings
@@ -62,13 +38,13 @@ class MainTabSettings {
     /** When true, FPS limiter is active (mode from fps_limiter_mode). When false, no limiting. Default on. */
     ui::new_ui::BoolSetting fps_limiter_enabled;
     ui::new_ui::ComboSetting fps_limiter_mode;
-    ui::new_ui::IntSettingRef scanline_offset;
-    ui::new_ui::IntSettingRef vblank_sync_divisor;
-    ui::new_ui::FloatSettingRef fps_limit;
-    ui::new_ui::FloatSettingRef fps_limit_background;
+    ui::new_ui::IntSetting scanline_offset;
+    ui::new_ui::IntSetting vblank_sync_divisor;
+    ui::new_ui::FloatSetting fps_limit;
+    ui::new_ui::FloatSetting fps_limit_background;
     /** When true, cap FPS to fps_limit_background when window is in background. When false, use same limit as
      * foreground. Default off. */
-    ui::new_ui::BoolSettingRef background_fps_enabled;
+    ui::new_ui::BoolSetting background_fps_enabled;
     ui::new_ui::BoolSetting suppress_reflex_sleep;
     /** When true and native Reflex is not active, addon injects Reflex (sleep + markers). Default false. */
     ui::new_ui::BoolSetting inject_reflex;
@@ -88,17 +64,17 @@ class MainTabSettings {
     /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied
      * at Present. */
     ui::new_ui::ComboSetting vsync_override;
-    ui::new_ui::BoolSettingRef force_vsync_on;
-    ui::new_ui::BoolSettingRef force_vsync_off;
-    ui::new_ui::BoolSettingRef prevent_tearing;
+    ui::new_ui::BoolSetting force_vsync_on;
+    ui::new_ui::BoolSetting force_vsync_off;
+    ui::new_ui::BoolSetting prevent_tearing;
     ui::new_ui::BoolSetting limit_real_frames;
     ui::new_ui::BoolSetting increase_backbuffer_count_to_3;
 
     // Audio Settings
-    ui::new_ui::FloatSettingRef audio_volume_percent;
-    ui::new_ui::BoolSettingRef audio_mute;
-    ui::new_ui::BoolSettingRef mute_in_background;
-    ui::new_ui::BoolSettingRef mute_in_background_if_other_audio;
+    ui::new_ui::FloatSetting audio_volume_percent;
+    ui::new_ui::BoolSetting audio_mute;
+    ui::new_ui::BoolSetting mute_in_background;
+    ui::new_ui::BoolSetting mute_in_background_if_other_audio;
     ui::new_ui::BoolSetting audio_volume_auto_apply;
 
     // Input Remapping Settings
@@ -112,11 +88,11 @@ class MainTabSettings {
     ui::new_ui::BoolSetting clip_cursor_enabled;
 
     // Render Blocking (Background) Settings
-    ui::new_ui::BoolSettingRef no_render_in_background;
-    ui::new_ui::BoolSettingRef no_present_in_background;
+    ui::new_ui::BoolSetting no_render_in_background;
+    ui::new_ui::BoolSetting no_present_in_background;
 
     // CPU Settings
-    ui::new_ui::IntSettingRef cpu_cores;
+    ui::new_ui::IntSetting cpu_cores;
 
     // Test Overlay Settings
     ui::new_ui::BoolSetting show_test_overlay;
@@ -201,22 +177,22 @@ class MainTabSettings {
     ui::new_ui::BoolSetting vulkan_append_reflex_extensions;
 
     // Brightness (ReShade effect driven by DC)
-    ui::new_ui::FloatSettingRef brightness_percent;
+    ui::new_ui::FloatSetting brightness_percent;
     /** Decode only: how to interpret backbuffer (DECODE_METHOD). Default scRGB (1). */
-    ui::new_ui::ComboSettingRef swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
+    ui::new_ui::ComboSetting swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
     /** Encode only: output color space (ENCODE_METHOD). */
-    ui::new_ui::ComboSettingRef brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
-    ui::new_ui::FloatSettingRef gamma_value;            // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
-    ui::new_ui::FloatSettingRef contrast_value;         // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-    ui::new_ui::FloatSettingRef saturation_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
-    ui::new_ui::FloatSettingRef hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
+    ui::new_ui::ComboSetting brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
+    ui::new_ui::FloatSetting gamma_value;            // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
+    ui::new_ui::FloatSetting contrast_value;         // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
+    ui::new_ui::FloatSetting saturation_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+    ui::new_ui::FloatSetting hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
     /** When enabled, upgrades swap chain to HDR (scRGB 16-bit float) on create_swapchain/init_swapchain (DXGI only). */
     ui::new_ui::BoolSetting swapchain_hdr_upgrade;
     /** 0 = scRGB (default), 1 = HDR10. Only used when swapchain_hdr_upgrade is true. */
     ui::new_ui::ComboSetting swapchain_hdr_upgrade_mode;
     ui::new_ui::BoolSetting
         auto_hdr;  // When enabled, runs DisplayCommander_PerceptualBoost.fx (requires Generic RenoDX for SDR->HDR)
-    ui::new_ui::FloatSettingRef auto_hdr_strength;  // Profile 3 EffectStrength_P3 (0.0–2.0), only used when AutoHDR on
+    ui::new_ui::FloatSetting auto_hdr_strength;  // Profile 3 EffectStrength_P3 (0.0–2.0), only used when AutoHDR on
 
     // HDR Control (Resolution Control / auto enable-disable Windows HDR)
     ui::new_ui::BoolSetting auto_enable_disable_hdr;

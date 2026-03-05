@@ -4,6 +4,7 @@
 #include "../hooks/nvapi_hooks.hpp"
 #include "../hooks/pclstats_etw_hooks.hpp"
 #include "../latency/reflex_provider.hpp"
+#include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../swapchain_events.hpp"
 #include "../utils.hpp"
@@ -143,7 +144,7 @@ bool ReflexManager::SetMarker(NV_LATENCY_MARKER_TYPE marker) {
         }
     }
 
-    if (s_enable_reflex_logging.load()) {
+    if (settings::g_advancedTabSettings.reflex_logging.GetValue()) {
         std::ostringstream oss;
         oss << utils::get_now_ns() % utils::SEC_TO_NS << " Reflex: SetMarker " << marker << " frame_id "
             << g_global_frame_id.load(std::memory_order_acquire);

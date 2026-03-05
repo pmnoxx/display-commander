@@ -6,33 +6,7 @@
 
 #include <windows.h>
 
-// Atomic variables used by main tab settings
-std::atomic<int> s_scanline_offset{0};
-std::atomic<int> s_vblank_sync_divisor{1};
-std::atomic<float> s_fps_limit{0.f};
-std::atomic<float> s_fps_limit_background{60.f};
-std::atomic<bool> s_background_fps_enabled{false};
-std::atomic<bool> s_force_vsync_on{false};
-std::atomic<bool> s_force_vsync_off{false};
-std::atomic<bool> s_prevent_tearing{false};
-std::atomic<float> s_audio_volume_percent{100.f};
 std::atomic<float> s_system_volume_percent{100.f};
-std::atomic<bool> s_audio_mute{false};
-std::atomic<bool> s_mute_in_background{false};
-std::atomic<bool> s_mute_in_background_if_other_audio{false};
-std::atomic<bool> s_no_render_in_background{false};
-std::atomic<bool> s_no_present_in_background{false};
-std::atomic<int> s_cpu_cores{0};                  // 0 = default (no change), max = all cores
-std::atomic<float> s_brightness_percent{100.0f};  // 0-500%, 100 = neutral (Display Commander brightness effect)
-std::atomic<int> s_swapchain_colorspace{
-    0};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; decode only (DECODE_METHOD), default Auto
-std::atomic<int> s_brightness_colorspace{
-    1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; encode only (ENCODE_METHOD)
-std::atomic<float> s_gamma_value{1.0f};        // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
-std::atomic<float> s_contrast_value{1.0f};     // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-std::atomic<float> s_saturation_value{1.0f};   // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
-std::atomic<float> s_hue_degrees{0.0f};        // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
-std::atomic<float> s_auto_hdr_strength{1.0f};  // Profile 3 EffectStrength_P3 (0.0–2.0), default 1.0
 
 namespace settings {
 
@@ -42,7 +16,7 @@ MainTabSettings::MainTabSettings()
                   "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "21.5:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9
-      window_aspect_width("aspect_width", s_aspect_width, 0,
+      window_aspect_width("aspect_width", 0,
                           {"Display Width", "3840", "2560", "1920", "1600", "1280", "1080", "900", "720"},
                           "DisplayCommander"),
       alignment("alignment", 0, {"Center", "Top Left", "Top Right", "Bottom Left", "Bottom Right"}, "DisplayCommander"),
@@ -52,11 +26,11 @@ MainTabSettings::MainTabSettings()
           {"Default", "Reflex (low latency)", "Sync to Display Refresh Rate (fraction of monitor refresh rate)",
            "NVIDIA Profile (driver FPS limit, requires restart)"},
           "DisplayCommander"),
-      scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "DisplayCommander"),
-      vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "DisplayCommander"),
-      fps_limit("fps_limit", s_fps_limit, 0.0f, 0.0f, 240.0f, "DisplayCommander"),
-      fps_limit_background("fps_limit_background", s_fps_limit_background, 60.0f, 0.0f, 240.0f, "DisplayCommander"),
-      background_fps_enabled("background_fps_enabled", s_background_fps_enabled, false, "DisplayCommander"),
+      scanline_offset("scanline_offset", 0, -1000, 1000, "DisplayCommander"),
+      vblank_sync_divisor("vblank_sync_divisor", 1, 0, 8, "DisplayCommander"),
+      fps_limit("fps_limit", 0.0f, 0.0f, 240.0f, "DisplayCommander"),
+      fps_limit_background("fps_limit_background", 60.0f, 0.0f, 240.0f, "DisplayCommander"),
+      background_fps_enabled("background_fps_enabled", false, "DisplayCommander"),
       suppress_reflex_sleep("suppress_reflex_sleep", false, "DisplayCommander"),
       inject_reflex("inject_reflex", false, "DisplayCommander"),
       onpresent_sync_low_latency_ratio(
@@ -81,16 +55,15 @@ MainTabSettings::MainTabSettings()
                      {"No override", "Force ON", "FORCED 1/2 (NO VRR)", "FORCED 1/3 (NO VRR)", "FORCED 1/4 (NO VRR)",
                       "FORCED OFF"},
                      "DisplayCommander"),
-      force_vsync_on("force_vsync_on", s_force_vsync_on, s_force_vsync_on.load(), "DisplayCommander"),
-      force_vsync_off("force_vsync_off", s_force_vsync_off, s_force_vsync_off.load(), "DisplayCommander"),
-      prevent_tearing("prevent_tearing", s_prevent_tearing, s_prevent_tearing.load(), "DisplayCommander"),
+      force_vsync_on("force_vsync_on", false, "DisplayCommander"),
+      force_vsync_off("force_vsync_off", false, "DisplayCommander"),
+      prevent_tearing("prevent_tearing", false, "DisplayCommander"),
       limit_real_frames("limit_real_frames", true, "DisplayCommander"),
       increase_backbuffer_count_to_3("increase_backbuffer_count_to_3", false, "DisplayCommander"),
-      audio_volume_percent("audio_volume_percent", s_audio_volume_percent, 100.0f, 0.0f, 100.0f, "DisplayCommander"),
-      audio_mute("audio_mute", s_audio_mute, s_audio_mute.load(), "DisplayCommander"),
-      mute_in_background("mute_in_background", s_mute_in_background, s_mute_in_background.load(), "DisplayCommander"),
-      mute_in_background_if_other_audio("mute_in_background_if_other_audio", s_mute_in_background_if_other_audio,
-                                        s_mute_in_background_if_other_audio.load(), "DisplayCommander"),
+      audio_volume_percent("audio_volume_percent", 100.0f, 0.0f, 100.0f, "DisplayCommander"),
+      audio_mute("audio_mute", false, "DisplayCommander"),
+      mute_in_background("mute_in_background", false, "DisplayCommander"),
+      mute_in_background_if_other_audio("mute_in_background_if_other_audio", false, "DisplayCommander"),
       audio_volume_auto_apply("audio_volume_auto_apply", true, "DisplayCommander"),
       enable_default_chords("enable_default_chords", true, "DisplayCommander"),
       guide_button_solo_ui_toggle_only("guide_button_solo_ui_toggle_only", true, "DisplayCommander"),
@@ -102,11 +75,9 @@ MainTabSettings::MainTabSettings()
       gamepad_input_blocking("gamepad_input_blocking", static_cast<int>(InputBlockingMode::kDisabled),
                              {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
       clip_cursor_enabled("clip_cursor_enabled", false, "DisplayCommander"),
-      no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(),
-                              "DisplayCommander"),
-      no_present_in_background("no_present_in_background", s_no_present_in_background,
-                               s_no_present_in_background.load(), "DisplayCommander"),
-      cpu_cores("cpu_cores", s_cpu_cores, 0, 0, 64,
+      no_render_in_background("no_render_in_background", false, "DisplayCommander"),
+      no_present_in_background("no_present_in_background", false, "DisplayCommander"),
+      cpu_cores("cpu_cores", 0, 0, 64,
                 "DisplayCommander"),  // Max will be set dynamically based on CPU count
       show_test_overlay("show_test_overlay", false, "DisplayCommander"),
       show_fps_counter("show_fps_counter", true, "DisplayCommander"),
@@ -184,19 +155,19 @@ MainTabSettings::MainTabSettings()
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
-      brightness_percent("brightness_percent", s_brightness_percent, 100.0f, 0.0f, 500.0f, "DisplayCommander"),
-      swapchain_colorspace("swapchain_colorspace", s_swapchain_colorspace, 0,
+      brightness_percent("brightness_percent", 100.0f, 0.0f, 500.0f, "DisplayCommander"),
+      swapchain_colorspace("swapchain_colorspace", 0,
                            {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
-      brightness_colorspace("brightness_colorspace2", s_brightness_colorspace, 0,
+      brightness_colorspace("brightness_colorspace2", 1,
                             {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
-      gamma_value("gamma_value", s_gamma_value, 1.0f, 0.5f, 2.0f, "DisplayCommander"),
-      contrast_value("contrast_value", s_contrast_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
-      saturation_value("saturation_value", s_saturation_value, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
-      hue_degrees("hue_degrees", s_hue_degrees, 0.0f, -15.0f, 15.0f, "DisplayCommander"),
+      gamma_value("gamma_value", 1.0f, 0.5f, 2.0f, "DisplayCommander"),
+      contrast_value("contrast_value", 1.0f, 0.0f, 2.0f, "DisplayCommander"),
+      saturation_value("saturation_value", 1.0f, 0.0f, 2.0f, "DisplayCommander"),
+      hue_degrees("hue_degrees", 0.0f, -15.0f, 15.0f, "DisplayCommander"),
       swapchain_hdr_upgrade("swapchain_hdr_upgrade", false, "DisplayCommander"),
       swapchain_hdr_upgrade_mode("swapchain_hdr_upgrade_mode", 0, {"scRGB (default)", "HDR10"}, "DisplayCommander"),
       auto_hdr("auto_hdr", false, "DisplayCommander"),
-      auto_hdr_strength("auto_hdr_strength", s_auto_hdr_strength, 1.0f, 0.0f, 2.0f, "DisplayCommander"),
+      auto_hdr_strength("auto_hdr_strength", 1.0f, 0.0f, 2.0f, "DisplayCommander"),
       auto_enable_disable_hdr("auto_enable_disable_hdr", false, "DisplayCommander"),
       auto_apply_maxmdl_1000_hdr_metadata("auto_apply_maxmdl_1000_hdr_metadata", false, "DisplayCommander") {
     // Initialize the all_settings_ vector

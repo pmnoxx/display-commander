@@ -666,9 +666,9 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Separator();
 
         // Main power saving toggle
-        static bool main_power_saving = s_no_render_in_background.load();
+        bool main_power_saving = settings::g_mainTabSettings.no_render_in_background.GetValue();
         if (imgui.Checkbox("Enable Power Saving in Background", &main_power_saving)) {
-            s_no_render_in_background.store(main_power_saving);
+            settings::g_mainTabSettings.no_render_in_background.SetValue(main_power_saving);
         }
 
         if (main_power_saving) {

@@ -106,7 +106,7 @@ bool LatentSyncLimiter::UpdateDisplayBindingFromWindow(HWND hwnd) {
 long double last_wait_target_ns = 0.0L;
 
 void LatentSyncLimiter::LimitFrameRate() {
-    if (s_vblank_sync_divisor.load() == 0) {
+    if (settings::g_mainTabSettings.vblank_sync_divisor.GetValue() == 0) {
         return;
     }
     StartVBlankMonitoring();
@@ -127,7 +127,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     long double current_scanline_uncapped = expected_current_scanline_uncapped_ns(now_ns, total_height, true);
 
     long double target_line = mid_vblank_scanline - (m_on_present_ns.load() * total_height / ns_per_refresh.load())
-                              - 60.0 + s_scanline_offset.load();
+                              - 60.0 + settings::g_mainTabSettings.scanline_offset.GetValue();
 
     long double next_scanline_uncapped =
         current_scanline_uncapped - fmod(current_scanline_uncapped, (long double)(total_height)) + target_line;
@@ -150,7 +150,7 @@ void LatentSyncLimiter::LimitFrameRate() {
     long double delta_wait_time_ns = 1.0L * diff_lines * ns_per_refresh.load() / total_height;
 
     // When vblank_sync_divisor is 0 (off), don't add any additional wait time
-    LONGLONG additional_wait_ns = ns_per_refresh.load() * (s_vblank_sync_divisor.load() - 1);
+    LONGLONG additional_wait_ns = ns_per_refresh.load() * (settings::g_mainTabSettings.vblank_sync_divisor.GetValue() - 1);
     LONGLONG wait_target_ns = now_ns + delta_wait_time_ns + additional_wait_ns;
 
     if (wait_target_ns >= utils::get_now_ns()) {

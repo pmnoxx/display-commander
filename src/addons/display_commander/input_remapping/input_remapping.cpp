@@ -1038,7 +1038,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
         float current_volume = 0.0f;
         if (!GetVolumeForCurrentProcess(&current_volume)) {
             // If we can't get current volume, use stored value or default
-            current_volume = ::s_audio_volume_percent.load();
+            current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
         }
 
         float percent_change = 0.0f;
@@ -1058,7 +1058,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
 
         // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
         if (AdjustVolumeForCurrentProcess(percent_change)) {
-            float new_volume = ::s_audio_volume_percent.load();
+            float new_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
             LogInfo("InputRemapper::execute_action() - Volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
                     current_volume, new_volume, percent_change);
         } else {
@@ -1069,7 +1069,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
         float current_volume = 0.0f;
         if (!GetVolumeForCurrentProcess(&current_volume)) {
             // If we can't get current volume, use stored value or default
-            current_volume = ::s_audio_volume_percent.load();
+            current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
         }
 
         if (current_volume <= 0.0f) {
@@ -1088,7 +1088,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
 
         // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
         if (AdjustVolumeForCurrentProcess(percent_change)) {
-            float final_volume = ::s_audio_volume_percent.load();
+            float final_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
             LogInfo("InputRemapper::execute_action() - Volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
                     current_volume, final_volume, percent_change);
         } else {

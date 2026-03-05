@@ -518,7 +518,7 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
     float current_volume = 0.0f;
     if (!GetVolumeForCurrentProcess(&current_volume)) {
         // If we can't get current volume, use the stored value
-        current_volume = s_audio_volume_percent.load();
+        current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
     }
 
     float new_volume = current_volume + percent_change;
@@ -540,7 +540,7 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
 
     if (SetVolumeForCurrentProcess(new_volume)) {
         // Update stored value
-        s_audio_volume_percent.store(new_volume);
+        settings::g_mainTabSettings.audio_volume_percent.SetValue(new_volume);
 
         // Trigger action notification for overlay display
         ActionNotification notification;
@@ -701,11 +701,12 @@ void RunBackgroundAudioMonitor() {
         bool want_mute = false;
 
         // Check if manual mute is enabled - if so, always mute regardless of background state
-        if (s_audio_mute.load()) {
+        if (settings::g_mainTabSettings.audio_mute.GetValue()) {
             want_mute = true;
         }
         // Only apply background mute logic if manual mute is OFF
-        else if (s_mute_in_background.load() || s_mute_in_background_if_other_audio.load()) {
+        else if (settings::g_mainTabSettings.mute_in_background.GetValue()
+                 || settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue()) {
             // Use centralized background state from continuous monitoring system for consistency
             const bool is_background = g_app_in_background.load();
 
@@ -715,15 +716,15 @@ void RunBackgroundAudioMonitor() {
                 std::ostringstream oss;
                 oss << "BackgroundAudio: App background state changed to "
                     << (is_background ? "BACKGROUND" : "FOREGROUND")
-                    << ", mute_in_background=" << (s_mute_in_background.load() ? "true" : "false")
+                    << ", mute_in_background=" << (settings::g_mainTabSettings.mute_in_background.GetValue() ? "true" : "false")
                     << ", mute_in_background_if_other_audio="
-                    << (s_mute_in_background_if_other_audio.load() ? "true" : "false");
+                    << (settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue() ? "true" : "false");
                 LogInfo(oss.str().c_str());
                 last_logged_background = is_background;
             }
 
             if (is_background) {
-                if (s_mute_in_background_if_other_audio.load()) {
+                if (settings::g_mainTabSettings.mute_in_background_if_other_audio.GetValue()) {
                     // Only mute if some other app is outputting audio
                     want_mute = IsOtherAppPlayingAudio();
                 } else {

@@ -42,9 +42,9 @@ void LogD3D9PresentParams(const char* prefix, const D3DPRESENT_PARAMETERS& pp) {
 }
 
 void LogD3D9DisplayModeEx(const char* prefix, const D3DDISPLAYMODEEX& mode) {
-    LogInfo("D3D9 %s DisplayModeEx: Size=%u Width=%u Height=%u RefreshRate=%u Format=%u ScanLineOrdering=%u",
-            prefix ? prefix : "", mode.Size, mode.Width, mode.Height, mode.RefreshRate,
-            static_cast<unsigned>(mode.Format), static_cast<unsigned>(mode.ScanLineOrdering));
+    /*  LogInfo("D3D9 %s DisplayModeEx: Size=%u Width=%u Height=%u RefreshRate=%u Format=%u ScanLineOrdering=%u",
+              prefix ? prefix : "", mode.Size, mode.Width, mode.Height, mode.RefreshRate,
+              static_cast<unsigned>(mode.Format), static_cast<unsigned>(mode.ScanLineOrdering));*/
 }
 
 void StoreD3D9NoReShadeDeviceSnapshot(bool created_with_ex, const D3DPRESENT_PARAMETERS& pp) {
@@ -188,7 +188,8 @@ HRESULT STDMETHODCALLTYPE CreateDevice_Detour(IDirect3D9* This, UINT Adapter, D3
     return hr;
 }
 
-// Detour for IDirect3D9Ex::CreateDeviceEx - apply FLIPEX/VSync upgrades, call original, then hook the device on success.
+// Detour for IDirect3D9Ex::CreateDeviceEx - apply FLIPEX/VSync upgrades, call original, then hook the device on
+// success.
 HRESULT STDMETHODCALLTYPE CreateDeviceEx_Detour(IDirect3D9Ex* This, UINT Adapter, D3DDEVTYPE DeviceType,
                                                 HWND hFocusWindow, DWORD BehaviorFlags,
                                                 D3DPRESENT_PARAMETERS* pPresentationParameters,

@@ -81,7 +81,7 @@ void IntSetting::Load() {
     } else {
         int effective_default;
         display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
-                                                              &effective_default);
+                                                               &effective_default);
         const int safe_default = std::max(min_, std::min(max_, effective_default));
         value_.store(safe_default);
     }
@@ -152,7 +152,7 @@ void BoolSettingRef::Load() {
     } else {
         bool effective_default;
         display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
-                                                              &effective_default);
+                                                               &effective_default);
         external_ref_.get().store(effective_default);
     }
 }
@@ -603,6 +603,7 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
     float def = setting.GetDefaultValue();
     if (fabsf(current - def) > 1e-6f) {
         imgui.SameLine();
+        imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -612,6 +613,7 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
             imgui.SetTooltip("Reset to default (%.3f)", def);
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -638,6 +640,7 @@ bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const ch
     float def = setting.GetDefaultValue();
     if (fabsf(current - def) > 1e-6f) {
         imgui.SameLine();
+        imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -647,6 +650,7 @@ bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const ch
             imgui.SetTooltip("Reset to default (%.3f)", def);
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -662,6 +666,7 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
     int def = setting.GetDefaultValue();
     if (current != def) {
         imgui.SameLine();
+        imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -671,6 +676,7 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
             imgui.SetTooltip("Reset to default (%d)", def);
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -697,6 +703,7 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
     int def = setting.GetDefaultValue();
     if (current != def) {
         imgui.SameLine();
+        imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -706,6 +713,7 @@ bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* for
             imgui.SetTooltip("Reset to default (%d)", def);
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -720,6 +728,7 @@ bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander:
     bool def = setting.GetDefaultValue();
     if (current != def) {
         imgui.SameLine();
+        imgui.BeginGroup();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -729,6 +738,7 @@ bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander:
             imgui.SetTooltip("Reset to default (%s)", def ? "On" : "Off");
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -742,6 +752,7 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_command
     bool current = setting.GetValue();
     bool def = setting.GetDefaultValue();
     if (current != def) {
+        imgui.BeginGroup();
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -752,6 +763,7 @@ bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_command
             imgui.SetTooltip("Reset to default (%s)", def ? "On" : "Off");
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -768,6 +780,7 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
     int def = setting.GetDefaultValue();
     if (current != def) {
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
+        imgui.BeginGroup();
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
@@ -778,6 +791,7 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
             imgui.SetTooltip("Reset to default (%s)", def_label);
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -793,6 +807,7 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display
     int current = setting.GetValue();
     int def = setting.GetDefaultValue();
     if (current != def) {
+        imgui.BeginGroup();
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
@@ -804,6 +819,7 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display
             imgui.SetTooltip("Reset to default (%s)", def_label);
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }
@@ -821,6 +837,7 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
     int current = setting.GetValue();
     int def = setting.GetDefaultValue();
     if (current != def) {
+        imgui.BeginGroup();
         const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
         imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
@@ -832,6 +849,7 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
             imgui.SetTooltip("Reset to default (%s)", def_label);
         }
         imgui.PopID();
+        imgui.EndGroup();
     }
     return changed;
 }

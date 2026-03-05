@@ -3,7 +3,8 @@
 ---
 
 ## Unreleased
-- (none)
+- **D3D9 DisplayModeEx logging commented out** - The DisplayModeEx log in `LogD3D9DisplayModeEx` is now commented out to reduce log noise (the call was already null-safe for the prefix; the whole log is now disabled). Details: `d3d9_hooks.cpp`.
+- **Settings wrapper: reset-to-default button grouping** - The undo (reset to default) button next to sliders, checkboxes, and combo settings is now wrapped in ImGui `BeginGroup`/`EndGroup` so it stays correctly grouped with the control for layout. Details: `SliderFloatSetting`, `SliderFloatSettingRef`, `SliderIntSetting`, `SliderIntSettingRef`, `CheckboxSetting`, `CheckboxSettingRef`, `ComboSettingWrapper`, `ComboSettingRefWrapper`, `ComboSettingEnumRefWrapper` in `settings_wrapper.cpp`.
 
 ## v0.12.275 (2026-03-04)
 - **D3D9 Ex factory hook: correct vtable index and detour logic / Fixed Steins;Gate support in No Reshade Mode when loaded as dbghelp.dll** - Fixes hooking to Direct3D 9Ex in games such as Steins;Gate. The CreateDeviceEx vtable slot was wrong (index 17 instead of 20): IDirect3D9Ex adds GetAdapterModeCountEx, EnumAdapterModesEx, GetAdapterDisplayModeEx before CreateDeviceEx, so the correct slot is 20. The CreateDeviceEx detour also had an erroneous early return that skipped present-param upgrades, device callback, and success tracking. D3D9FactoryVTable now lists all IDirect3D9/IDirect3D9Ex factory methods (enum class to avoid name clashes with device VTable). Details: `d3d9_vtable_indices.hpp` (CreateDeviceEx = 20, full factory enum), `d3d9_hooks.cpp` (detour flow fixed, vtable index cast).

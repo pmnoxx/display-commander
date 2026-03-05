@@ -35,6 +35,8 @@ constexpr std::uint32_t NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID = 0x00ABAB22;
 constexpr std::uint32_t ULL_CPL_STATE_ID = 0x0005F543;
 // Ultra Low Latency - Enabled (2 - Sync and Refresh). MinRequiredDriverVersion 430.00.
 constexpr std::uint32_t ULL_ENABLED_ID = 0x10835000;
+// Vertical Sync (2 - Sync and Refresh). NPI CustomSettingNames.xml.
+constexpr std::uint32_t NVPI_VSYNCMODE_ID = 0x00A879CF;
 
 // Returns (value, label) pairs for "Smooth Motion - Allowed APIs" from Reference.xml if available,
 // otherwise a built-in list matching NvidiaProfileInspectorRevamped Reference.xml.

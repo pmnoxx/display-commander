@@ -5983,14 +5983,21 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 // --- Low latency subsection ---
                 if (imgui.TreeNodeEx("Low latency", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("Ultra Low Latency and max pre-rendered frames for this profile.");
+                        imgui.SetTooltip("Ultra Low Latency, Vertical Sync, and max pre-rendered frames for this profile.");
                     }
                     const float low_latency_ull_label_width = 600.f;
                     const float low_latency_slider_label_width = 500.f;
                     const float low_latency_slider_width = 500.f;
+                    const auto* vsync = find_rtx_setting(display_commander::nvapi::NVPI_VSYNCMODE_ID);
                     const auto* ull_cpl = find_rtx_setting(display_commander::nvapi::ULL_CPL_STATE_ID);
                     const auto* ull_enabled = find_rtx_setting(display_commander::nvapi::ULL_ENABLED_ID);
                     const auto* prerender = find_rtx_setting_by_label("Max pre-rendered frames");
+                    if (vsync) {
+                        imgui.TextUnformatted("Vertical Sync");
+                        draw_setting_tooltip(*vsync);
+                        imgui.SameLine(low_latency_ull_label_width);
+                        draw_combo_or_checkbox(*vsync);
+                    }
                     if (ull_cpl) {
                         imgui.TextUnformatted(ull_cpl->label.c_str());
                         draw_setting_tooltip(*ull_cpl);

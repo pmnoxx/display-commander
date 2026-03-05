@@ -239,14 +239,15 @@ static const std::array<SettingData, 32> k_settings_data = {{
      .option_values = {{0, "Default"}, {1, "On"}}},
     {.user_friendly_name = "Vertical Sync",
      .hex_setting_id = VSYNCMODE_ID,
+     .group_name = "2 - Sync and Refresh",
      .default_value = static_cast<std::uint32_t>(VSYNCMODE_DEFAULT),
-     .option_values = {{0x60925292, "Passive (app)"},
-                       {0x08416747, "Force Off"},
-                       {0x47814940, "Force On"},
-                       {0x32610244, "Flip 2"},
-                       {0x71271021, "Flip 3"},
-                       {0x13245256, "Flip 4"},
-                       {0x18888888, "Virtual"}}},
+     .option_values = {{0x08416747, "Force off"},
+                       {0x47814940, "Force on"},
+                       {0x18888888, "Fast Sync"},
+                       {0x60925292, "Use the 3D application setting"},
+                       {0x32610244, "1/2 Refresh Rate"},
+                       {0x71271021, "1/3 Refresh Rate"},
+                       {0x13245256, "1/4 Refresh Rate"}}},
     {.user_friendly_name = "Sync tear control",
      .hex_setting_id = VSYNCTEARCONTROL_ID,
      .default_value = static_cast<std::uint32_t>(VSYNCTEARCONTROL_DEFAULT),
@@ -1529,6 +1530,7 @@ std::vector<std::uint32_t> GetRtxHdrSettingIds() {
         PRERENDERLIMIT_ID,  // Latency - Max Pre-Rendered Frames (NVIDIA); shown after RTX HDR on Main tab
         ULL_CPL_STATE_ID,   // Ultra Low Latency - CPL State (2 - Sync and Refresh); shown on Main tab NVIDIA Control
         ULL_ENABLED_ID,     // Ultra Low Latency - Enabled (2 - Sync and Refresh); shown on Main tab NVIDIA Control
+        VSYNCMODE_ID,       // Vertical Sync (2 - Sync and Refresh); shown on Main tab NVIDIA Control
     };
     // Hide requires_admin from Main tab except Smooth Motion - Allowed APIs (user requested to show it).
     ids.erase(std::remove_if(ids.begin(), ids.end(),

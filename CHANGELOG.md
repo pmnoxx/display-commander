@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.297 (2026-03-05)
+- **Flip / PresentMon label** - When PresentMon is off, the Main tab Flip line now shows "(click to enable)" instead of "(enable PresentMon if needed)" for the clickable link that enables PresentMon.
+
 ## v0.12.296 (2026-03-05)
 - **Wine/Proton detection** - Wine detection is now done on first use and cached inside a function (`IsUsingWine()`), instead of using a global variable set at DLL load. Callers no longer depend on init order; behavior is unchanged for users (audio and per-channel volume still skip under Wine when unsupported).
 

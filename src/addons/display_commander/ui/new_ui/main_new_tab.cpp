@@ -4920,7 +4920,7 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
 
 /// Draws a single "Flip: <mode>" line. When PresentMon is running and we have surface data, shows
 /// flip mode with a detailed tooltip. When PresentMon is off or not running, shows
-/// "Flip: (enable PresentMon if needed)" with the parenthetical clickable to enable PresentMon.
+/// "Flip: (click to enable)" with the parenthetical clickable to enable PresentMon.
 static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_commander::ui::IImGuiWrapper& imgui) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool pm_enabled = settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue();
@@ -5026,11 +5026,11 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
         return;
     }
 
-    // PresentMon off or not running: show "Flip: (enable PresentMon if needed)" with clickable link
+    // PresentMon off or not running: show "Flip: (click to enable)" with clickable link
     imgui.TextColored(ui::colors::TEXT_DIMMED, "Flip: ");
     imgui.SameLine();
     imgui.PushStyleColor(ImGuiCol_Text, ui::colors::TEXT_LABEL);
-    if (imgui.Selectable("(enable PresentMon if needed)", false)) {
+    if (imgui.Selectable("(click to enable)", false)) {
         settings::g_advancedTabSettings.enable_presentmon_tracing.SetValue(true);
         settings::g_advancedTabSettings.enable_presentmon_tracing.Save();
         presentmon::CreateAndStartPresentMon();

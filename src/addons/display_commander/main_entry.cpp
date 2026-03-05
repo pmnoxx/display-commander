@@ -258,7 +258,7 @@ void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain
 }
 
 namespace {
-// Apply Display Commander brightness (0-200%) via ReShade effect DisplayCommander_Control.fx.
+// Apply Display Commander brightness (0-500%) via ReShade effect DisplayCommander_Control.fx.
 // No-op if the effect is not loaded (e.g. user has not added DC effect path or reloaded effects).
 void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {

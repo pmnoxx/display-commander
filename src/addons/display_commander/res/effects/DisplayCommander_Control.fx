@@ -1,5 +1,5 @@
 // Display Commander - Control (brightness; self-contained, no ReShade.fxh)
-// Simple brightness adjustment driven by Display Commander main tab (0-200%, 100% = neutral).
+// Simple brightness adjustment driven by Display Commander main tab (0-500%, 100% = neutral).
 // Uses ReShade semantics : COLOR for backbuffer; can live in any effect path (e.g. Display_Commander\Reshade\Shaders).
 
 #if !defined(__RESHADE__) || __RESHADE__ < 30000

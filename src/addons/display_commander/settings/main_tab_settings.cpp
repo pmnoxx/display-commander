@@ -31,9 +31,9 @@ std::atomic<OnPresentReflexMode> s_reflex_limiter_reflex_mode{OnPresentReflexMod
 std::atomic<OnPresentReflexMode> s_reflex_disabled_limiter_mode{OnPresentReflexMode::kGameDefaults};
 std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 std::atomic<int> s_cpu_cores{0};                  // 0 = default (no change), max = all cores
-std::atomic<float> s_brightness_percent{100.0f};  // 0-200%, 100 = neutral (Display Commander brightness effect)
+std::atomic<float> s_brightness_percent{100.0f};  // 0-500%, 100 = neutral (Display Commander brightness effect)
 std::atomic<int> s_swapchain_colorspace{
-    1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; decode only (DECODE_METHOD), default scRGB
+    0};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; decode only (DECODE_METHOD), default Auto
 std::atomic<int> s_brightness_colorspace{
     1};  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; encode only (ENCODE_METHOD)
 std::atomic<float> s_gamma_value{1.0f};        // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
@@ -198,8 +198,8 @@ MainTabSettings::MainTabSettings()
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
-      brightness_percent("brightness_percent", s_brightness_percent, 100.0f, 0.0f, 200.0f, "DisplayCommander"),
-      swapchain_colorspace("swapchain_colorspace", s_swapchain_colorspace, 1,
+      brightness_percent("brightness_percent", s_brightness_percent, 100.0f, 0.0f, 500.0f, "DisplayCommander"),
+      swapchain_colorspace("swapchain_colorspace", s_swapchain_colorspace, 0,
                            {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
       brightness_colorspace("brightness_colorspace2", s_brightness_colorspace, 1,
                             {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),

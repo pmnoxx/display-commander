@@ -2311,17 +2311,17 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Adjust brightness via Display Commander's ReShade effect (0-200%%, 100%% = neutral).\n"
+                    "Adjust brightness via Display Commander's ReShade effect (0-500%%, 100%% = neutral).\n"
                     "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                     "Ctrl+Shift+F5) or game restart.");
             }
             if (ComboSettingRefWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace",
-                                        imgui)) {
+                                       imgui)) {
                 // Value is applied in OnReShadePresent each frame (DECODE_METHOD)
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "How to interpret the backbuffer (decode). Auto = detect from pipeline. Default scRGB.");
+                    "How to interpret the backbuffer (decode). Auto = detect from pipeline. Default Auto.");
             }
             if (ComboSettingRefWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
                 // Value is applied in OnReShadePresent each frame (ENCODE_METHOD)

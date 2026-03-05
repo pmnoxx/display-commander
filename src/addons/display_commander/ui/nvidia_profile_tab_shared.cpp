@@ -439,36 +439,27 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             if (imgui.IsItemHovered()) {
                                 imgui.SetTooltip("Change value and apply to profile (saved immediately).");
                             }
-                            imgui.SameLine();
-                            const bool atDefault = (s.value_id == s.default_value);
-                            if (atDefault) {
-                                imgui.BeginDisabled();
-                            }
-                            imgui.PushID(static_cast<int>(s.setting_id));
-                            {
-                                char defaultBtnBuf[64];
-                                (void)snprintf(defaultBtnBuf, sizeof(defaultBtnBuf), "Default##%u",
-                                               static_cast<unsigned>(s.setting_id));
-                                if (imgui.SmallButton(defaultBtnBuf)) {
-                                    auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, s.default_value);
-                                    if (ok) {
-                                        s_nvidiaProfileSetError.clear();
-                                        nvapi::InvalidateProfileSearchCache();
-                                    } else {
-                                        s_nvidiaProfileSetError = err;
-                                        if (IsPrivilegeError(err)) {
-                                            s_lastFailedSettingId = s.setting_id;
-                                            s_lastFailedSettingValue = s.default_value;
+                            if (s.set_in_profile) {
+                                imgui.SameLine();
+                                imgui.PushID(static_cast<int>(s.setting_id));
+                                {
+                                    char defaultBtnBuf[64];
+                                    (void)snprintf(defaultBtnBuf, sizeof(defaultBtnBuf), "Default##%u",
+                                                   static_cast<unsigned>(s.setting_id));
+                                    if (imgui.SmallButton(defaultBtnBuf)) {
+                                        auto [ok, err] = nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
+                                        if (ok) {
+                                            s_nvidiaProfileSetError.clear();
+                                            nvapi::InvalidateProfileSearchCache();
+                                        } else {
+                                            s_nvidiaProfileSetError = err;
                                         }
                                     }
                                 }
-                            }
-                            imgui.PopID();
-                            if (atDefault) {
-                                imgui.EndDisabled();
-                            }
-                            if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("Reset to NVIDIA default value.");
+                                imgui.PopID();
+                                if (imgui.IsItemHovered()) {
+                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                }
                             }
                         }
                     } else {
@@ -659,26 +650,19 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     }
                     imgui.TableSetColumnIndex(2);
                     imgui.PushID(static_cast<int>(idx + (s.setting_id << 16)));
-                    if (s.known_to_driver) {
-                        const bool atDefault = (s.value_id == s.default_value);
-                        if (atDefault) imgui.BeginDisabled();
+                    if (s.known_to_driver && s.set_in_profile) {
                         if (imgui.SmallButton("Default")) {
-                            auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, s.default_value);
+                            auto [ok, err] = nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
                             if (ok) {
                                 s_nvidiaProfileSetError.clear();
                                 s_allDriverSettingsCacheValid = false;
                                 nvapi::InvalidateProfileSearchCache();
                             } else {
                                 s_nvidiaProfileSetError = err;
-                                if (IsPrivilegeError(err)) {
-                                    s_lastFailedSettingId = s.setting_id;
-                                    s_lastFailedSettingValue = s.default_value;
-                                }
                             }
                         }
-                        if (atDefault) imgui.EndDisabled();
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("Set to driver default.");
+                            imgui.SetTooltip("Remove from profile; use driver global default.");
                         }
                         imgui.SameLine();
                     }

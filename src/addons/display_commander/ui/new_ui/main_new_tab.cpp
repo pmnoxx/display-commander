@@ -313,7 +313,8 @@ struct CachedTimelinePhase {
     ImVec4 color;
 };
 static std::vector<CachedTimelinePhase> s_timeline_phases;
-// Set when user changes any NVIDIA profile setting (NVIDIA Control or FPS limit via NVIDIA Profile mode); show restart warning.
+// Set when user changes any NVIDIA profile setting (NVIDIA Control or FPS limit via NVIDIA Profile mode); show restart
+// warning.
 static bool s_nvidiaProfileChangeRestartNeeded = false;
 static double s_timeline_t_min = 0.0;
 static double s_timeline_t_max = 1.0;
@@ -3555,8 +3556,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
                     imgui.SetTooltip("FPS limit stored in the NVIDIA driver profile. Takes effect after restart.");
                 }
                 if (s_nvidiaProfileChangeRestartNeeded) {
-                    imgui.TextColored(ui::colors::TEXT_WARNING,
-                                      "Restart the game for profile changes to take effect.");
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "Restart the game for profile changes to take effect.");
                 }
             }
         }
@@ -5654,170 +5654,384 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         rtx_settings.push_back(&s);
                     }
                 }
-                // Include advanced settings that are in rtx_ids (e.g. Ultra Low Latency - CPL State, Ultra Low Latency
-                // - Enabled).
                 for (const auto& s : r.advanced_settings) {
                     if (std::find(rtx_ids.begin(), rtx_ids.end(), s.setting_id) != rtx_ids.end()) {
                         rtx_settings.push_back(&s);
                     }
                 }
-                if (!rtx_settings.empty()
-                    && imgui.BeginTable(
-                        "NvidiaRtxHdrMainTab", 2,
-                        ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp)) {
-                    imgui.TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 0.5f);
-                    imgui.TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.5f);
-                    imgui.TableHeadersRow();
-                    for (const display_commander::nvapi::ImportantProfileSetting* p : rtx_settings) {
-                        const display_commander::nvapi::ImportantProfileSetting& s = *p;
-                        imgui.TableNextRow();
-                        imgui.TableSetColumnIndex(0);
-                        if (s.requires_admin) {
-                            imgui.TextColored(ui::colors::TEXT_WARNING, "%s", s.label.c_str());
-                        } else {
-                            imgui.TextUnformatted(s.label.c_str());
-                        }
-                        if (imgui.IsItemHovered()) {
-                            std::string tip =
-                                display_commander::nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
-                            if (s.requires_admin && !tip.empty()) tip += "\n";
-                            if (s.requires_admin) tip += "Requires admin to change.";
-                            if (s.min_required_driver_version != 0) {
-                                if (!tip.empty()) tip += "\n";
-                                char buf[64];
-                                snprintf(buf, sizeof(buf), "Requires driver %u.%02u or newer.",
-                                         s.min_required_driver_version / 100, s.min_required_driver_version % 100);
-                                tip += buf;
-                            }
-                            imgui.SetTooltip("%s", tip.c_str());
-                        }
-                        imgui.TableSetColumnIndex(1);
-                        if (s.setting_id != 0) {
-                            if (s.is_bit_field
-                                && s.setting_id == display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
-                                imgui.TextUnformatted(s.value.c_str());
-                                imgui.SameLine();
-                                const std::uint32_t all_apis_val =
-                                    display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ALL;
-                                const bool already_all = (s.value_id == all_apis_val);
-                                if (already_all) {
-                                    imgui.BeginDisabled();
-                                }
-                                imgui.PushID(static_cast<int>(s.setting_id));
-                                if (imgui.SmallButton("Allow - All [DX11/12, VK]")) {
-                                    auto [ok, err] =
-                                        display_commander::nvapi::SetProfileSetting(s.setting_id, all_apis_val);
-                                    if (ok) {
-                                        s_nvidiaMainTabSetError.clear();
-                                        s_nvidiaProfileChangeRestartNeeded = true;
-                                        display_commander::nvapi::InvalidateProfileSearchCache();
-                                    } else {
-                                        s_nvidiaMainTabSetError = err;
-                                        if (is_privilege_error(err)) {
-                                            s_nvidiaMainTabLastFailedId = s.setting_id;
-                                            s_nvidiaMainTabLastFailedValue = all_apis_val;
-                                        }
-                                    }
-                                }
-                                imgui.PopID();
-                                if (already_all) {
-                                    imgui.EndDisabled();
-                                }
-                                if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
-                                }
-                            } else {
-                                ImVec2 avail = imgui.GetContentRegionAvail();
-                                ImVec2 textSize = imgui.CalcTextSize("Default");
-                                float comboWidth =
-                                    avail.x
-                                    - (imgui.GetStyleItemSpacingX() + textSize.x + imgui.GetStyleFramePaddingX() * 2.f);
-                                if (comboWidth < 80.f) comboWidth = 80.f;
-                                imgui.SetNextItemWidth(comboWidth);
-                                char comboBuf[64];
-                                (void)std::snprintf(comboBuf, sizeof(comboBuf), "##NvidiaRtxHdr_%u",
-                                                    static_cast<unsigned>(s.setting_id));
-                                if (imgui.BeginCombo(comboBuf, s.value.c_str(), 0)) {
-                                    const bool use_global_selected = !s.set_in_profile;
-                                    if (imgui.Selectable("Use global (Default)", use_global_selected)) {
-                                        auto [ok, err] =
-                                            display_commander::nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
-                                        if (ok) {
-                                            s_nvidiaMainTabSetError.clear();
-                                            s_nvidiaProfileChangeRestartNeeded = true;
-                                            display_commander::nvapi::InvalidateProfileSearchCache();
-                                        } else {
-                                            s_nvidiaMainTabSetError = err;
-                                        }
-                                    }
-                                    if (use_global_selected) imgui.SetItemDefaultFocus();
-                                    std::vector<std::pair<std::uint32_t, std::string>> opts =
-                                        display_commander::nvapi::GetSettingAvailableValues(s.setting_id);
-                                    for (const auto& opt : opts) {
-                                        const bool selected = (s.set_in_profile && opt.first == s.value_id);
-                                        if (imgui.Selectable(opt.second.c_str(), selected)) {
-                                            auto [ok, err] =
-                                                display_commander::nvapi::SetProfileSetting(s.setting_id, opt.first);
-                                            if (ok) {
-                                                s_nvidiaMainTabSetError.clear();
-                                                s_nvidiaProfileChangeRestartNeeded = true;
-                                                display_commander::nvapi::InvalidateProfileSearchCache();
-                                            } else {
-                                                s_nvidiaMainTabSetError = err;
-                                                if (is_privilege_error(err)) {
-                                                    s_nvidiaMainTabLastFailedId = s.setting_id;
-                                                    s_nvidiaMainTabLastFailedValue = opt.first;
-                                                }
-                                            }
-                                        }
-                                        if (selected) imgui.SetItemDefaultFocus();
-                                    }
-                                    imgui.EndCombo();
-                                }
-                                if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Change value and apply to profile (saved immediately).");
-                                }
-                                imgui.SameLine();
-                                const bool at_default = (s.value_id == s.default_value);
-                                if (at_default) {
-                                    imgui.BeginDisabled();
-                                }
-                                imgui.PushID(static_cast<int>(s.setting_id));
-                                char defaultBtnBuf[64];
-                                (void)std::snprintf(defaultBtnBuf, sizeof(defaultBtnBuf), "Default##RtxHdr_%u",
-                                                    static_cast<unsigned>(s.setting_id));
-                                if (imgui.SmallButton(defaultBtnBuf)) {
-                                    auto [ok, err] =
-                                        display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
-                                    if (ok) {
-                                        s_nvidiaMainTabSetError.clear();
-                                        s_nvidiaProfileChangeRestartNeeded = true;
-                                        display_commander::nvapi::InvalidateProfileSearchCache();
-                                    } else {
-                                        s_nvidiaMainTabSetError = err;
-                                        if (is_privilege_error(err)) {
-                                            s_nvidiaMainTabLastFailedId = s.setting_id;
-                                            s_nvidiaMainTabLastFailedValue = s.default_value;
-                                        }
-                                    }
-                                }
-                                imgui.PopID();
-                                if (at_default) {
-                                    imgui.EndDisabled();
-                                }
-                                if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Reset to NVIDIA default value.");
-                                }
-                            }
-                        } else {
-                            imgui.TextUnformatted(s.value.c_str());
+                auto find_rtx_setting =
+                    [&rtx_settings](std::uint32_t id) -> const display_commander::nvapi::ImportantProfileSetting* {
+                    for (const auto* p : rtx_settings) {
+                        if (p->setting_id == id) return p;
+                    }
+                    return nullptr;
+                };
+                auto find_rtx_setting_by_label =
+                    [&rtx_settings](const char* label) -> const display_commander::nvapi::ImportantProfileSetting* {
+                    for (const auto* p : rtx_settings) {
+                        if (p->label == label) return p;
+                    }
+                    return nullptr;
+                };
+                auto apply_set = [&](std::uint32_t setting_id, std::uint32_t value) {
+                    auto [ok, err] = display_commander::nvapi::SetProfileSetting(setting_id, value);
+                    if (ok) {
+                        s_nvidiaMainTabSetError.clear();
+                        s_nvidiaProfileChangeRestartNeeded = true;
+                        display_commander::nvapi::InvalidateProfileSearchCache();
+                    } else {
+                        s_nvidiaMainTabSetError = err;
+                        if (is_privilege_error(err)) {
+                            s_nvidiaMainTabLastFailedId = setting_id;
+                            s_nvidiaMainTabLastFailedValue = value;
                         }
                     }
-                    imgui.EndTable();
+                };
+                auto apply_delete = [&](std::uint32_t setting_id) {
+                    auto [ok, err] = display_commander::nvapi::DeleteProfileSettingForCurrentExe(setting_id);
+                    if (ok) {
+                        s_nvidiaMainTabSetError.clear();
+                        s_nvidiaProfileChangeRestartNeeded = true;
+                        display_commander::nvapi::InvalidateProfileSearchCache();
+                    } else {
+                        s_nvidiaMainTabSetError = err;
+                    }
+                };
+                auto draw_setting_tooltip = [&](const display_commander::nvapi::ImportantProfileSetting& s) {
+                    if (!imgui.IsItemHovered()) return;
+                    std::string tip = display_commander::nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
+                    if (s.requires_admin && !tip.empty()) tip += "\n";
+                    if (s.requires_admin) tip += "Requires admin to change.";
+                    if (s.min_required_driver_version != 0) {
+                        if (!tip.empty()) tip += "\n";
+                        char buf[64];
+                        snprintf(buf, sizeof(buf), "Requires driver %u.%02u or newer.",
+                                 s.min_required_driver_version / 100, s.min_required_driver_version % 100);
+                        tip += buf;
+                    }
+                    imgui.SetTooltip("%s", tip.c_str());
+                };
+                auto draw_combo_or_checkbox = [&](const display_commander::nvapi::ImportantProfileSetting& s) {
+                    if (s.setting_id == 0) {
+                        imgui.TextUnformatted(s.value.c_str());
+                        return;
+                    }
+                    const bool two_values_only =
+                        (s.setting_id == display_commander::nvapi::NVPI_RTX_HDR_ENABLE_ID
+                         || s.setting_id == display_commander::nvapi::NVPI_SMOOTH_MOTION_ENABLE_50_ID)
+                        && (s.value_id == 0 || s.value_id == 1);
+                    if (two_values_only) {
+                        bool checked = (s.value_id == 1);
+                        imgui.PushID(static_cast<int>(s.setting_id));
+                        if (imgui.Checkbox("##check", &checked)) {
+                            apply_set(s.setting_id, checked ? 1u : 0u);
+                        }
+                        imgui.SameLine();
+                        imgui.TextUnformatted(s.value.c_str());
+                        imgui.PopID();
+                        if (s.set_in_profile) {
+                            imgui.SameLine();
+                            if (imgui.SmallButton("Default")) {
+                                apply_delete(s.setting_id);
+                            }
+                            if (imgui.IsItemHovered()) {
+                                imgui.SetTooltip("Remove from profile; use driver global default.");
+                            }
+                        }
+                    } else {
+                        ImVec2 avail = imgui.GetContentRegionAvail();
+                        float comboWidth = (avail.x - (imgui.GetStyleItemSpacingX() * 2.f + 80.f));
+                        if (comboWidth < 80.f) comboWidth = 80.f;
+                        const bool is_ull = (s.setting_id == display_commander::nvapi::ULL_CPL_STATE_ID
+                                             || s.setting_id == display_commander::nvapi::ULL_ENABLED_ID);
+                        if (is_ull) comboWidth = 500.f;
+                        imgui.SetNextItemWidth(comboWidth);
+                        char comboBuf[64];
+                        (void)std::snprintf(comboBuf, sizeof(comboBuf), "##NvidiaRtx_%u",
+                                            static_cast<unsigned>(s.setting_id));
+                        if (imgui.BeginCombo(comboBuf, s.value.c_str(), 0)) {
+                            if (imgui.Selectable("Use global (Default)", !s.set_in_profile)) {
+                                apply_delete(s.setting_id);
+                            }
+                            std::vector<std::pair<std::uint32_t, std::string>> opts =
+                                display_commander::nvapi::GetSettingAvailableValues(s.setting_id);
+                            for (const auto& opt : opts) {
+                                const bool selected = (s.set_in_profile && opt.first == s.value_id);
+                                if (imgui.Selectable(opt.second.c_str(), selected)) {
+                                    apply_set(s.setting_id, opt.first);
+                                }
+                            }
+                            imgui.EndCombo();
+                        }
+                        if (s.set_in_profile) {
+                            imgui.SameLine();
+                            if (imgui.SmallButton("Default")) {
+                                apply_delete(s.setting_id);
+                            }
+                            if (imgui.IsItemHovered()) {
+                                imgui.SetTooltip("Remove from profile; use driver global default.");
+                            }
+                        }
+                    }
+                };
+
+                // --- Smooth Motion subsection ---
+                if (imgui.TreeNodeEx("Smooth Motion", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip("Smooth Motion profile settings for this game.");
+                    }
+                    const auto* smooth_enable =
+                        find_rtx_setting(display_commander::nvapi::NVPI_SMOOTH_MOTION_ENABLE_50_ID);
+                    const auto* smooth_apis =
+                        find_rtx_setting(display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID);
+                    if (smooth_enable) {
+                        imgui.TextUnformatted("Smooth Motion - Enable");
+                        draw_setting_tooltip(*smooth_enable);
+                        imgui.SameLine(0.f, imgui.GetStyle().ItemSpacing.x * 2.f);
+                        draw_combo_or_checkbox(*smooth_enable);
+                    }
+                    if (smooth_apis) {
+                        imgui.TextUnformatted("Smooth Motion - Allowed APIs");
+                        draw_setting_tooltip(*smooth_apis);
+                        imgui.SameLine(0.f, imgui.GetStyle().ItemSpacing.x * 2.f);
+                        imgui.TextUnformatted(smooth_apis->value.c_str());
+                        imgui.SameLine();
+                        const std::uint32_t all_apis_val =
+                            display_commander::nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ALL;
+                        const bool already_all = (smooth_apis->value_id == all_apis_val);
+                        if (already_all) imgui.BeginDisabled();
+                        imgui.PushID(static_cast<int>(smooth_apis->setting_id));
+                        if (imgui.SmallButton("Allow - All [DX11/12, VK]")) {
+                            apply_set(smooth_apis->setting_id, all_apis_val);
+                        }
+                        imgui.PopID();
+                        if (already_all) imgui.EndDisabled();
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
+                        }
+                    }
+                    imgui.TreePop();
+                }
+
+                // --- RTX HDR subsection ---
+                const auto* rtx_enable = find_rtx_setting(display_commander::nvapi::NVPI_RTX_HDR_ENABLE_ID);
+                const bool rtx_hdr_on = rtx_enable && (rtx_enable->value_id == 1);
+                if (imgui.TreeNodeEx("RTX HDR", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip(
+                            "Enable and tune RTX HDR for this profile. Sub-options only apply when RTX HDR is "
+                            "enabled.");
+                    }
+                    if (rtx_enable) {
+                        imgui.TextUnformatted("RTX HDR - Enable");
+                        draw_setting_tooltip(*rtx_enable);
+                        imgui.SameLine(0.f, imgui.GetStyle().ItemSpacing.x * 2.f);
+                        draw_combo_or_checkbox(*rtx_enable);
+                    }
+                    if (rtx_hdr_on) {
+                        const float nvidia_slider_label_width = 600.f;
+                        const float nvidia_slider_width = 500.f;
+                        // Contrast 0-200 (driver 0x00-0xC8; 0xC9 = Custom -> show 100)
+                        const auto* contrast = find_rtx_setting(display_commander::nvapi::NVPI_RTX_HDR_CONTRAST_ID);
+                        if (contrast) {
+                            int contrast_val =
+                                static_cast<int>(contrast->value_id <= 0xC8u ? contrast->value_id : 100u);
+                            imgui.TextUnformatted("RTX HDR - Contrast");
+                            draw_setting_tooltip(*contrast);
+                            imgui.SameLine(nvidia_slider_label_width);
+                            imgui.SetNextItemWidth(nvidia_slider_width);
+                            imgui.PushID(static_cast<int>(contrast->setting_id));
+                            if (imgui.SliderInt("##contrast", &contrast_val, 0, 200, "%d")) {
+                                apply_set(contrast->setting_id, static_cast<std::uint32_t>(contrast_val));
+                            }
+                            imgui.PopID();
+                            if (contrast->set_in_profile) {
+                                imgui.SameLine();
+                                if (imgui.SmallButton("Default##contrast")) {
+                                    apply_delete(contrast->setting_id);
+                                }
+                                if (imgui.IsItemHovered()) {
+                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                }
+                            }
+                        }
+                        // Middle Grey 10-100 (driver 0x0A-0x64; 0x65 = Custom -> show 50)
+                        const auto* midgrey = find_rtx_setting(display_commander::nvapi::NVPI_RTX_HDR_MIDDLE_GREY_ID);
+                        if (midgrey) {
+                            int mg_val = static_cast<int>(
+                                (midgrey->value_id >= 0x0Au && midgrey->value_id <= 0x64u) ? midgrey->value_id : 50u);
+                            imgui.TextUnformatted("RTX HDR - Middle Grey");
+                            draw_setting_tooltip(*midgrey);
+                            imgui.SameLine(nvidia_slider_label_width);
+                            imgui.SetNextItemWidth(nvidia_slider_width);
+                            imgui.PushID(static_cast<int>(midgrey->setting_id));
+                            if (imgui.SliderInt("##midgrey", &mg_val, 10, 100, "%d")) {
+                                apply_set(midgrey->setting_id, static_cast<std::uint32_t>(mg_val));
+                            }
+                            imgui.PopID();
+                            if (midgrey->set_in_profile) {
+                                imgui.SameLine();
+                                if (imgui.SmallButton("Default##midgrey")) {
+                                    apply_delete(midgrey->setting_id);
+                                }
+                                if (imgui.IsItemHovered()) {
+                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                }
+                            }
+                        }
+                        // Peak Brightness 400-2000 step 100 (driver 0x190-0x7D0; 0x802 = Custom -> show 1000)
+                        const auto* peak = find_rtx_setting(display_commander::nvapi::NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID);
+                        if (peak) {
+                            int peak_val = 1000;
+                            if (peak->value_id >= 0x190u && peak->value_id <= 0x7D0u) {
+                                peak_val = static_cast<int>(peak->value_id);
+                            }
+                            imgui.TextUnformatted("RTX HDR - Peak Brightness (nits)");
+                            draw_setting_tooltip(*peak);
+                            imgui.SameLine(nvidia_slider_label_width);
+                            imgui.SetNextItemWidth(nvidia_slider_width);
+                            imgui.PushID(static_cast<int>(peak->setting_id));
+                            if (imgui.SliderInt("##peak", &peak_val, 400, 2000, "%d")) {
+                                apply_set(peak->setting_id, static_cast<std::uint32_t>(peak_val));
+                            }
+                            imgui.PopID();
+                            if (peak->set_in_profile) {
+                                imgui.SameLine();
+                                if (imgui.SmallButton("Default##peak")) {
+                                    apply_delete(peak->setting_id);
+                                }
+                                if (imgui.IsItemHovered()) {
+                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                }
+                            }
+                        }
+                        // Saturation 0-200 (driver 0x00-0xC8; 0xC9 = Custom -> show 100)
+                        const auto* sat = find_rtx_setting(display_commander::nvapi::NVPI_RTX_HDR_SATURATION_ID);
+                        if (sat) {
+                            int sat_val = static_cast<int>(sat->value_id <= 0xC8u ? sat->value_id : 100u);
+                            imgui.TextUnformatted("RTX HDR - Saturation");
+                            draw_setting_tooltip(*sat);
+                            imgui.SameLine(nvidia_slider_label_width);
+                            imgui.SetNextItemWidth(nvidia_slider_width);
+                            imgui.PushID(static_cast<int>(sat->setting_id));
+                            if (imgui.SliderInt("##saturation", &sat_val, 0, 200, "%d")) {
+                                apply_set(sat->setting_id, static_cast<std::uint32_t>(sat_val));
+                            }
+                            imgui.PopID();
+                            if (sat->set_in_profile) {
+                                imgui.SameLine();
+                                if (imgui.SmallButton("Default##saturation")) {
+                                    apply_delete(sat->setting_id);
+                                }
+                                if (imgui.IsItemHovered()) {
+                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                }
+                            }
+                        }
+                        // RTX Dynamic Vibrance - Saturation 0-100 (driver 0x00-0x64; 0x65 = Custom -> show 100)
+                        const auto* dv_sat =
+                            find_rtx_setting(display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID);
+                        if (dv_sat) {
+                            int dv_sat_val = static_cast<int>(dv_sat->value_id <= 0x64u ? dv_sat->value_id : 100u);
+                            imgui.TextUnformatted("RTX Dynamic Vibrance - Saturation");
+                            draw_setting_tooltip(*dv_sat);
+                            imgui.SameLine(nvidia_slider_label_width);
+                            imgui.SetNextItemWidth(nvidia_slider_width);
+                            imgui.PushID(static_cast<int>(dv_sat->setting_id));
+                            if (imgui.SliderInt("##dv_saturation", &dv_sat_val, 0, 100, "%d")) {
+                                apply_set(dv_sat->setting_id, static_cast<std::uint32_t>(dv_sat_val));
+                            }
+                            imgui.PopID();
+                            if (dv_sat->set_in_profile) {
+                                imgui.SameLine();
+                                if (imgui.SmallButton("Default##dv_saturation")) {
+                                    apply_delete(dv_sat->setting_id);
+                                }
+                                if (imgui.IsItemHovered()) {
+                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                }
+                            }
+                        }
+                        // RTX Dynamic Vibrance - Value 0-100 (driver 0x00-0x64; 0x65 = Custom -> show 100)
+                        const auto* dv_val =
+                            find_rtx_setting(display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID);
+                        if (dv_val) {
+                            int dv_val_val = static_cast<int>(dv_val->value_id <= 0x64u ? dv_val->value_id : 100u);
+                            imgui.TextUnformatted("RTX Dynamic Vibrance - Value");
+                            draw_setting_tooltip(*dv_val);
+                            imgui.SameLine(nvidia_slider_label_width);
+                            imgui.SetNextItemWidth(nvidia_slider_width);
+                            imgui.PushID(static_cast<int>(dv_val->setting_id));
+                            if (imgui.SliderInt("##dv_value", &dv_val_val, 0, 100, "%d")) {
+                                apply_set(dv_val->setting_id, static_cast<std::uint32_t>(dv_val_val));
+                            }
+                            imgui.PopID();
+                            if (dv_val->set_in_profile) {
+                                imgui.SameLine();
+                                if (imgui.SmallButton("Default##dv_value")) {
+                                    apply_delete(dv_val->setting_id);
+                                }
+                                if (imgui.IsItemHovered()) {
+                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                }
+                            }
+                        }
+                    }
+                    imgui.TreePop();
+                }
+
+                // --- Low latency subsection ---
+                if (imgui.TreeNodeEx("Low latency", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip("Ultra Low Latency and max pre-rendered frames for this profile.");
+                    }
+                    const float low_latency_ull_label_width = 600.f;
+                    const float low_latency_slider_label_width = 500.f;
+                    const float low_latency_slider_width = 500.f;
+                    const auto* ull_cpl = find_rtx_setting(display_commander::nvapi::ULL_CPL_STATE_ID);
+                    const auto* ull_enabled = find_rtx_setting(display_commander::nvapi::ULL_ENABLED_ID);
+                    const auto* prerender = find_rtx_setting_by_label("Max pre-rendered frames");
+                    if (ull_cpl) {
+                        imgui.TextUnformatted(ull_cpl->label.c_str());
+                        draw_setting_tooltip(*ull_cpl);
+                        imgui.SameLine(low_latency_ull_label_width);
+                        draw_combo_or_checkbox(*ull_cpl);
+                    }
+                    if (ull_enabled) {
+                        imgui.TextUnformatted(ull_enabled->label.c_str());
+                        draw_setting_tooltip(*ull_enabled);
+                        imgui.SameLine(low_latency_ull_label_width);
+                        draw_combo_or_checkbox(*ull_enabled);
+                    }
+                    if (prerender) {
+                        imgui.TextUnformatted("Max pre-rendered frames");
+                        draw_setting_tooltip(*prerender);
+                        imgui.SameLine(low_latency_ull_label_width);
+                        // 0 = App controlled, 1-8 = frames. Slider 0-8.
+                        int pre_val = static_cast<int>(prerender->value_id <= 8u ? prerender->value_id : 0u);
+                        imgui.SetNextItemWidth(low_latency_slider_width);
+                        imgui.PushID(static_cast<int>(prerender->setting_id));
+                        if (imgui.SliderInt("##prerender", &pre_val, 0, 8, "%d")) {
+                            apply_set(prerender->setting_id, static_cast<std::uint32_t>(pre_val));
+                        }
+                        imgui.PopID();
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("0 = Use the 3D application setting; 1-8 = max pre-rendered frames.");
+                        }
+                        if (prerender->set_in_profile) {
+                            imgui.SameLine();
+                            if (imgui.SmallButton("Default##prerender")) {
+                                apply_delete(prerender->setting_id);
+                            }
+                            if (imgui.IsItemHovered()) {
+                                imgui.SetTooltip("Remove from profile; use driver global default.");
+                            }
+                        }
+                    }
+                    imgui.TreePop();
                 }
                 if (s_nvidiaProfileChangeRestartNeeded) {
-                    imgui.TextColored(ui::colors::TEXT_WARNING,
-                                      "Restart the game for profile changes to take effect.");
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "Restart the game for profile changes to take effect.");
                 }
             }
             imgui.Unindent();

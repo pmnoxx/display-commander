@@ -56,13 +56,9 @@ struct SettingData {
 };
 
 // All important + advanced settings; first k_num_important_settings are important, rest are advanced.
-static constexpr std::size_t k_num_important_settings = 26;
-static const std::array<SettingData, 29> k_settings_data = {{
+static constexpr std::size_t k_num_important_settings = 25;
+static const std::array<SettingData, 28> k_settings_data = {{
     // Important (order matches previous k_important_settings)
-    {.user_friendly_name = "Smooth Motion (AFR) [40 series]",
-     .hex_setting_id = VSYNCSMOOTHAFR_ID,
-     .default_value = static_cast<std::uint32_t>(VSYNCSMOOTHAFR_DEFAULT),
-     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
     {.user_friendly_name = "Smooth Motion - Allowed APIs [40 series]",
      .hex_setting_id = NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
      .default_value = 0,
@@ -75,7 +71,7 @@ static const std::array<SettingData, 29> k_settings_data = {{
                        {0x00000005, "Allow - DX12, VK"},
                        {0x00000006, "Allow - DX11, VK"},
                        {0x00000007, "Allow - All [DX11/12, VK]"}}},
-    {.user_friendly_name = "Smooth Motion - Enable [50 series]",
+    {.user_friendly_name = "Smooth Motion - Enable",
      .hex_setting_id = NVPI_SMOOTH_MOTION_ENABLE_50_ID,
      .default_value = 0x00000000,
      .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
@@ -244,7 +240,16 @@ static const std::array<SettingData, 29> k_settings_data = {{
                        {REFRESH_RATE_OVERRIDE_HIGHEST_AVAILABLE, "Highest available"}}},
     {.user_friendly_name = "Max pre-rendered frames",
      .hex_setting_id = PRERENDERLIMIT_ID,
-     .default_value = static_cast<std::uint32_t>(PRERENDERLIMIT_DEFAULT)},
+     .default_value = static_cast<std::uint32_t>(PRERENDERLIMIT_DEFAULT),
+     .option_values = {{0x00000000, "Use the 3D application setting"},
+                       {0x00000001, "1"},
+                       {0x00000002, "2"},
+                       {0x00000003, "3"},
+                       {0x00000004, "4"},
+                       {0x00000005, "5"},
+                       {0x00000006, "6"},
+                       {0x00000007, "7"},
+                       {0x00000008, "8"}}},
     {.user_friendly_name = "Power management",
      .hex_setting_id = PREFERRED_PSTATE_ID,
      .default_value = static_cast<std::uint32_t>(PREFERRED_PSTATE_DEFAULT),
@@ -1446,13 +1451,10 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
 
 std::vector<std::uint32_t> GetRtxHdrSettingIds() {
     return {
-        NVPI_RTX_HDR_ENABLE_ID,
-        NVPI_RTX_HDR_DEBANDING_ID,
-        NVPI_RTX_HDR_ALLOW_ID,
-        NVPI_RTX_HDR_CONTRAST_ID,
-        NVPI_RTX_HDR_MIDDLE_GREY_ID,
-        NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
+        NVPI_RTX_HDR_ENABLE_ID,     NVPI_RTX_HDR_DEBANDING_ID,   NVPI_RTX_HDR_ALLOW_ID,
+        NVPI_RTX_HDR_CONTRAST_ID,   NVPI_RTX_HDR_MIDDLE_GREY_ID, NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
         NVPI_RTX_HDR_SATURATION_ID,
+        PRERENDERLIMIT_ID,  // Latency - Max Pre-Rendered Frames (NVIDIA); shown after RTX HDR on Main tab
     };
 }
 

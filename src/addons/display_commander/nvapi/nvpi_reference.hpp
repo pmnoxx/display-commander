@@ -10,6 +10,8 @@ namespace display_commander::nvapi {
 // NVPI Reference.xml setting ID for "Smooth Motion - Allowed APIs" (NvidiaProfileInspectorRevamped Reference.xml).
 // MinRequiredDriverVersion 571.86.
 constexpr std::uint32_t NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID = 0xB0CC0875;
+// Value for "Allow - All [DX11/12, VK]" (bitmask DX11|DX12|VK). Used by UI as the only action for this setting.
+constexpr std::uint32_t NVPI_SMOOTH_MOTION_ALLOWED_APIS_ALL = 0x00000007;
 
 // NVPI Reference.xml setting ID for "Smooth Motion - Enable" (50 series). MinRequiredDriverVersion 571.86.
 constexpr std::uint32_t NVPI_SMOOTH_MOTION_ENABLE_50_ID = 0xB0D384C0;

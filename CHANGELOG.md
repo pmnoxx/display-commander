@@ -3,7 +3,13 @@
 ---
 
 ## Unreleased
+
+## v0.12.286 (2026-03-05)
+- **Max Pre-Rendered Frames options and Main tab** - The NVIDIA profile setting "Latency - Max Pre-Rendered Frames" (0x007BA09E) now has correct dropdown options: "Use the 3D application setting", 1–8 (matching NPI CustomSettingNames.xml). It is also shown on the Main tab under the NVIDIA section, after RTX HDR - Saturation. Details: `nvidia_profile_search.cpp` (`k_settings_data` option_values for PRERENDERLIMIT_ID, `GetRtxHdrSettingIds()` includes PRERENDERLIMIT_ID).
 - **NVIDIA subheader on Main tab with RTX HDR** - When NVAPI is initialized (NVIDIA GPU), the Main tab now shows a collapsible **NVIDIA** section with RTX HDR profile controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. Same behavior as the NVIDIA Profile tab (combo + Default per setting; changes apply to the driver profile). If no profile exists for the current game, a "Create profile" button is shown. Details: `GetRtxHdrSettingIds()` in `nvidia_profile_search`, Main tab draw after DLSS Information block; spec: `private_docs/specs/main_tab_nvidia_subheader_rtx_hdr.md`.
+
+## v0.12.285 (2026-03-05)
+- **Simplified smooth motion controls** - In the NVIDIA Profile tab, Smooth Motion controls are simplified: "Smooth Motion (AFR) [40 series]" was removed; "Smooth Motion - Enable [50 series]" is now "Smooth Motion - Enable"; "Smooth Motion - Allowed APIs [40 series]" shows the current value and a single **Allow - All [DX11/12, VK]** button (no per-API toggles or disallow). Details: `nvidia_profile_search.cpp`, `nvidia_profile_tab_shared.cpp`, `nvpi_reference.hpp`.
 
 ## v0.12.284 (2026-03-05)
 - **FPS Limiter: NVIDIA Profile mode** - Main tab FPS limiter now has a fourth mode: **NVIDIA Profile (driver FPS limit, requires restart)**. When selected, the limit is read from and written to the NVIDIA driver profile (FPS Limiter V3) for the current game; no in-game limiter runs from the addon. The UI shows a dedicated driver FPS selector (Off or 20–1000 FPS), a restart notice, and profile status. If no profile exists, you can create one with a "Create profile" button. Details: `FpsLimiterMode::kNvidiaProfile`, `GetProfileFpsLimit` / `SetProfileFpsLimit` / `GetProfileFpsLimitOptions` in `nvidia_profile_search`, Main tab FPS limiter section and `swapchain_events` (no in-game limiter when this mode is active).

@@ -342,70 +342,34 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     imgui.TableSetColumnIndex(1);
                     if (s.setting_id != 0) {
                         if (s.is_bit_field && s.setting_id == nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
-                            std::vector<std::pair<std::uint32_t, std::string>> flags =
-                                nvapi::GetSmoothMotionAllowedApisFlags();
-                            std::uint32_t cur = s.value_id;
-                            for (size_t fi = 0; fi < flags.size(); ++fi) {
-                                const auto& fl = flags[fi];
-                                bool checked = (cur & fl.first) != 0;
-                                imgui.PushID(static_cast<int>(fl.first));
-                                {
-                                    std::string checkbox_label =
-                                        fl.second + "##" + std::to_string(static_cast<unsigned>(s.setting_id)) + "_"
-                                        + std::to_string(static_cast<unsigned>(fl.first));
-                                    if (imgui.Checkbox(checkbox_label.c_str(), &checked)) {
-                                        std::uint32_t newVal = (cur & ~fl.first) | (checked ? fl.first : 0);
-                                        auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, newVal);
-                                        if (ok) {
-                                            s_nvidiaProfileSetError.clear();
-                                            nvapi::InvalidateProfileSearchCache();
-                                        } else {
-                                            s_nvidiaProfileSetError = err;
-                                            if (IsPrivilegeError(err)) {
-                                                s_lastFailedSettingId = s.setting_id;
-                                                s_lastFailedSettingValue = newVal;
-                                            }
-                                        }
-                                    }
-                                }
-                                imgui.PopID();
-                                if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Toggle flag; value is a bitmask (saved immediately).");
-                                }
-                                if (fi + 1 < flags.size()) {
-                                    imgui.SameLine();
-                                }
-                            }
+                            // Show current value; single action "Allow - All [DX11/12, VK]" (no per-API disallow).
+                            imgui.TextUnformatted(s.value.c_str());
                             imgui.SameLine();
-                            const bool atDefault = (cur == s.default_value);
-                            if (atDefault) {
+                            const std::uint32_t allApisVal = nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ALL;
+                            const bool alreadyAll = (s.value_id == allApisVal);
+                            if (alreadyAll) {
                                 imgui.BeginDisabled();
                             }
                             imgui.PushID(static_cast<int>(s.setting_id));
-                            {
-                                char defaultBtnBuf[64];
-                                (void)snprintf(defaultBtnBuf, sizeof(defaultBtnBuf), "Default##%u",
-                                               static_cast<unsigned>(s.setting_id));
-                                if (imgui.SmallButton(defaultBtnBuf)) {
-                                    auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, s.default_value);
-                                    if (ok) {
-                                        s_nvidiaProfileSetError.clear();
-                                        nvapi::InvalidateProfileSearchCache();
-                                    } else {
-                                        s_nvidiaProfileSetError = err;
-                                        if (IsPrivilegeError(err)) {
-                                            s_lastFailedSettingId = s.setting_id;
-                                            s_lastFailedSettingValue = s.default_value;
-                                        }
+                            if (imgui.SmallButton("Allow - All [DX11/12, VK]")) {
+                                auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, allApisVal);
+                                if (ok) {
+                                    s_nvidiaProfileSetError.clear();
+                                    nvapi::InvalidateProfileSearchCache();
+                                } else {
+                                    s_nvidiaProfileSetError = err;
+                                    if (IsPrivilegeError(err)) {
+                                        s_lastFailedSettingId = s.setting_id;
+                                        s_lastFailedSettingValue = allApisVal;
                                     }
                                 }
                             }
                             imgui.PopID();
-                            if (atDefault) {
+                            if (alreadyAll) {
                                 imgui.EndDisabled();
                             }
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("Reset to NVIDIA default value.");
+                                imgui.SetTooltip("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
                             }
                         } else {
                             ImVec2 avail = imgui.GetContentRegionAvail();
@@ -563,32 +527,34 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                 "Delete to remove.");
                         }
                     } else if (s.is_bit_field && s.setting_id == nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
-                        std::vector<std::pair<std::uint32_t, std::string>> flags =
-                            nvapi::GetSmoothMotionAllowedApisFlags();
-                        std::uint32_t cur = s.value_id;
-                        for (size_t fi = 0; fi < flags.size(); ++fi) {
-                            const auto& fl = flags[fi];
-                            bool checked = (cur & fl.first) != 0;
-                            imgui.PushID(static_cast<int>(fl.first + (s.setting_id << 16)));
-                            std::string cbLabel = fl.second + "##all_" + std::to_string(idx) + "_"
-                                                  + std::to_string(static_cast<unsigned>(fl.first));
-                            if (imgui.Checkbox(cbLabel.c_str(), &checked)) {
-                                std::uint32_t newVal = (cur & ~fl.first) | (checked ? fl.first : 0);
-                                auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, newVal);
-                                if (ok) {
-                                    s_nvidiaProfileSetError.clear();
-                                    s_allDriverSettingsCacheValid = false;
-                                    nvapi::InvalidateProfileSearchCache();
-                                } else {
-                                    s_nvidiaProfileSetError = err;
-                                    if (IsPrivilegeError(err)) {
-                                        s_lastFailedSettingId = s.setting_id;
-                                        s_lastFailedSettingValue = newVal;
-                                    }
+                        imgui.TextUnformatted(s.value.c_str());
+                        imgui.SameLine();
+                        const std::uint32_t allApisVal = nvapi::NVPI_SMOOTH_MOTION_ALLOWED_APIS_ALL;
+                        const bool alreadyAll = (s.value_id == allApisVal);
+                        if (alreadyAll) {
+                            imgui.BeginDisabled();
+                        }
+                        imgui.PushID(static_cast<int>(s.setting_id + (static_cast<std::uint32_t>(idx) << 16)));
+                        if (imgui.SmallButton("Allow - All [DX11/12, VK]")) {
+                            auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, allApisVal);
+                            if (ok) {
+                                s_nvidiaProfileSetError.clear();
+                                s_allDriverSettingsCacheValid = false;
+                                nvapi::InvalidateProfileSearchCache();
+                            } else {
+                                s_nvidiaProfileSetError = err;
+                                if (IsPrivilegeError(err)) {
+                                    s_lastFailedSettingId = s.setting_id;
+                                    s_lastFailedSettingValue = allApisVal;
                                 }
                             }
-                            imgui.PopID();
-                            if (fi + 1 < flags.size()) imgui.SameLine();
+                        }
+                        imgui.PopID();
+                        if (alreadyAll) {
+                            imgui.EndDisabled();
+                        }
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
                         }
                     } else {
                         std::vector<std::pair<std::uint32_t, std::string>> opts =

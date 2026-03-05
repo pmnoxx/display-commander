@@ -63,7 +63,7 @@ void InvalidateProfileSearchCache();
 // Result of querying the NVIDIA profile FPS limit (FRL_FPS / FPS Limiter V3) for the current exe.
 // Uses the same cached result as GetCachedProfileSearchResult(); safe to call from UI each frame.
 struct ProfileFpsLimitResult {
-    bool has_profile = false;   // true if at least one profile matches the current exe
+    bool has_profile = false;  // true if at least one profile matches the current exe
     std::uint32_t value = 0;   // 0 = Off, 20-1000 = FPS limit
     std::string profile_name;  // first matching profile name when has_profile; else empty
     std::string error;         // non-empty if DRS failed (e.g. no NVIDIA GPU)
@@ -162,8 +162,8 @@ std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t set
 // displayNameUtf8 is the label shown in the UI (e.g. s.label). Empty string on NVAPI/init failure.
 std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::string& displayNameUtf8);
 
-// Returns the list of RTX HDR profile setting IDs (Enable, Debanding, Allow, Contrast, Middle Grey,
-// Peak Brightness, Saturation). Use to filter important_settings for the Main tab NVIDIA subheader.
+// Returns the list of profile setting IDs shown in the Main tab NVIDIA subheader: RTX HDR (Enable,
+// Debanding, Allow, Contrast, Middle Grey, Peak Brightness, Saturation) then Latency - Max Pre-Rendered Frames.
 std::vector<std::uint32_t> GetRtxHdrSettingIds();
 
 }  // namespace display_commander::nvapi

@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## v0.12.291 (2026-03-05)
+- **Internal DRS_RestoreProfileDefaultSetting** - Loader now resolves internal (0x7DD5B261) and public (0x53F0381E) RestoreProfileDefaultSetting; wrapper `DRS_RestoreProfileDefaultSetting(p, hSession, hProfile, settingId)` prefers internal. Not yet used (Default button still uses SetProfileSetting to default value). NPI GetDelegate pattern.
+- **Internal DRS_GetSettingNameFromId** - Setting name lookup now uses the internal NVAPI (0x1EB13791) when available, with fallback to public (0xD61CBE6E). Matches NvidiaProfileInspectorRevamped. Details: `nvapi_loader` DRS_GetSettingNameFromIdInternal + wrapper; all GetSettingNameFromId call sites use the wrapper.
+- **Internal DRS_DeleteProfileSetting for unset** - "Use global (Default)" / unset now uses the internal NVAPI delete-setting API (0xD20D29DF) when available, with fallback to the public API (0xE4A26362). Some settings cannot be unset with the public API alone (NvidiaProfileInspectorRevamped uses the same internal API). Details: `nvapi_loader` queries both, `DRS_DeleteProfileSetting()` wrapper prefers internal then public; `nvidia_profile_search.cpp` calls the wrapper.
+- **Use global (Default) for NVIDIA profile settings** - Each NVIDIA profile setting now has a **Use global (Default)** option in the dropdown (like the NVIDIA app). Selecting it removes the setting from the profile so the driver uses the global default. When a setting is not in the profile, the UI shows "Use global - X (Default)" where X is the default value (e.g. Off). Details: `ImportantProfileSetting.set_in_profile`, backend sets "Use global - X (Default)" when DRS_GetSetting fails; combo in NVIDIA Profile tab (Important/advanced and All driver settings) and Main tab NVIDIA Control prepend "Use global (Default)" and call `DeleteProfileSettingForCurrentExe` when selected.
+
 ## v0.12.290 (2026-03-05)
 - **Ultra Low Latency on Main tab NVIDIA Control** - **Ultra Low Latency - CPL State** and **Ultra Low Latency - Enabled** are now shown in the Main tab **NVIDIA Control** section (same combo + Default as other profile settings). Details: `GetRtxHdrSettingIds()` includes `ULL_CPL_STATE_ID` and `ULL_ENABLED_ID`; Main tab builds the settings list from both `important_settings` and `advanced_settings` so advanced-only entries in rtx_ids appear.
 

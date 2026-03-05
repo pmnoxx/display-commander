@@ -404,10 +404,21 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             (void)snprintf(comboBuf, sizeof(comboBuf), "##NvidiaProfileSetting_%u",
                                            static_cast<unsigned>(s.setting_id));
                             if (imgui.BeginCombo(comboBuf, s.value.c_str(), 0)) {
+                                const bool useGlobalSelected = !s.set_in_profile;
+                                if (imgui.Selectable("Use global (Default)", useGlobalSelected)) {
+                                    auto [ok, err] = nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
+                                    if (ok) {
+                                        s_nvidiaProfileSetError.clear();
+                                        nvapi::InvalidateProfileSearchCache();
+                                    } else {
+                                        s_nvidiaProfileSetError = err;
+                                    }
+                                }
+                                if (useGlobalSelected) imgui.SetItemDefaultFocus();
                                 std::vector<std::pair<std::uint32_t, std::string>> opts =
                                     nvapi::GetSettingAvailableValues(s.setting_id);
                                 for (const auto& opt : opts) {
-                                    const bool selected = (opt.first == s.value_id);
+                                    const bool selected = (s.set_in_profile && opt.first == s.value_id);
                                     if (imgui.Selectable(opt.second.c_str(), selected)) {
                                         auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, opt.first);
                                         if (ok) {
@@ -421,9 +432,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                             }
                                         }
                                     }
-                                    if (selected) {
-                                        imgui.SetItemDefaultFocus();
-                                    }
+                                    if (selected) imgui.SetItemDefaultFocus();
                                 }
                                 imgui.EndCombo();
                             }
@@ -612,8 +621,20 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             char comboBuf[64];
                             (void)snprintf(comboBuf, sizeof(comboBuf), "##AllDriver_%zu", idx);
                             if (imgui.BeginCombo(comboBuf, s.value.c_str(), 0)) {
+                                const bool useGlobalSelected = !s.set_in_profile;
+                                if (imgui.Selectable("Use global (Default)", useGlobalSelected)) {
+                                    auto [ok, err] = nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
+                                    if (ok) {
+                                        s_nvidiaProfileSetError.clear();
+                                        s_allDriverSettingsCacheValid = false;
+                                        nvapi::InvalidateProfileSearchCache();
+                                    } else {
+                                        s_nvidiaProfileSetError = err;
+                                    }
+                                }
+                                if (useGlobalSelected) imgui.SetItemDefaultFocus();
                                 for (const auto& opt : opts) {
-                                    const bool selected = (opt.first == s.value_id);
+                                    const bool selected = (s.set_in_profile && opt.first == s.value_id);
                                     if (imgui.Selectable(opt.second.c_str(), selected)) {
                                         auto [ok, err] = nvapi::SetProfileSetting(s.setting_id, opt.first);
                                         if (ok) {

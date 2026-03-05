@@ -5725,10 +5725,22 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                 (void)std::snprintf(comboBuf, sizeof(comboBuf), "##NvidiaRtxHdr_%u",
                                                     static_cast<unsigned>(s.setting_id));
                                 if (imgui.BeginCombo(comboBuf, s.value.c_str(), 0)) {
+                                    const bool use_global_selected = !s.set_in_profile;
+                                    if (imgui.Selectable("Use global (Default)", use_global_selected)) {
+                                        auto [ok, err] =
+                                            display_commander::nvapi::DeleteProfileSettingForCurrentExe(s.setting_id);
+                                        if (ok) {
+                                            s_nvidiaMainTabSetError.clear();
+                                            display_commander::nvapi::InvalidateProfileSearchCache();
+                                        } else {
+                                            s_nvidiaMainTabSetError = err;
+                                        }
+                                    }
+                                    if (use_global_selected) imgui.SetItemDefaultFocus();
                                     std::vector<std::pair<std::uint32_t, std::string>> opts =
                                         display_commander::nvapi::GetSettingAvailableValues(s.setting_id);
                                     for (const auto& opt : opts) {
-                                        const bool selected = (opt.first == s.value_id);
+                                        const bool selected = (s.set_in_profile && opt.first == s.value_id);
                                         if (imgui.Selectable(opt.second.c_str(), selected)) {
                                             auto [ok, err] =
                                                 display_commander::nvapi::SetProfileSetting(s.setting_id, opt.first);
@@ -5743,9 +5755,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                                 }
                                             }
                                         }
-                                        if (selected) {
-                                            imgui.SetItemDefaultFocus();
-                                        }
+                                        if (selected) imgui.SetItemDefaultFocus();
                                     }
                                     imgui.EndCombo();
                                 }

@@ -64,6 +64,8 @@ using NvAPI_DRS_GetSettingIdFromName_pfn = NvAPI_Status(__cdecl*)(NvAPI_UnicodeS
 using NvAPI_DRS_GetSettingNameFromId_pfn = NvAPI_Status(__cdecl*)(NvU32 settingId, NvAPI_UnicodeString* pSettingName);
 using NvAPI_DRS_DeleteProfileSetting_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession,
                                                                   NvDRSProfileHandle hProfile, NvU32 settingId);
+using NvAPI_DRS_RestoreProfileDefaultSetting_pfn = NvAPI_Status(__cdecl*)(NvDRSSessionHandle hSession,
+                                                                          NvDRSProfileHandle hProfile, NvU32 settingId);
 
 struct NvApiPtrs {
     NvAPI_Initialize_pfn Initialize = nullptr;
@@ -90,8 +92,12 @@ struct NvApiPtrs {
     NvAPI_DRS_EnumAvailableSettingIds_pfn DRS_EnumAvailableSettingIds = nullptr;
     NvAPI_DRS_EnumAvailableSettingValues_pfn DRS_EnumAvailableSettingValues = nullptr;
     NvAPI_DRS_GetSettingIdFromName_pfn DRS_GetSettingIdFromName = nullptr;
-    NvAPI_DRS_GetSettingNameFromId_pfn DRS_GetSettingNameFromId = nullptr;
-    NvAPI_DRS_DeleteProfileSetting_pfn DRS_DeleteProfileSetting = nullptr;
+    NvAPI_DRS_GetSettingNameFromId_pfn DRS_GetSettingNameFromIdInternal = nullptr;  // 0x1EB13791; prefer over public
+    NvAPI_DRS_GetSettingNameFromId_pfn DRS_GetSettingNameFromId = nullptr;          // 0xD61CBE6E
+    NvAPI_DRS_DeleteProfileSetting_pfn DRS_DeleteProfileSettingInternal = nullptr;  // 0xD20D29DF; prefer over public
+    NvAPI_DRS_DeleteProfileSetting_pfn DRS_DeleteProfileSetting = nullptr;            // 0xE4A26362
+    NvAPI_DRS_RestoreProfileDefaultSetting_pfn DRS_RestoreProfileDefaultSettingInternal = nullptr;  // 0x7DD5B261
+    NvAPI_DRS_RestoreProfileDefaultSetting_pfn DRS_RestoreProfileDefaultSetting = nullptr;          // 0x53F0381E
 };
 
 // Load nvapi64.dll (or nvapi.dll on x86), resolve nvapi_QueryInterface, call NvAPI_Initialize, fill NvApiPtrs.
@@ -131,6 +137,51 @@ inline NvAPI_Status DRS_SetSetting(const NvApiPtrs* p, NvDRSSessionHandle hSessi
     }
     if (p->DRS_SetSetting != nullptr) {
         return p->DRS_SetSetting(hSession, hProfile, pSetting);
+    }
+    return NVAPI_FUNCTION_NOT_FOUND;
+}
+
+// Prefer internal DRS_DeleteProfileSetting (0xD20D29DF) when present; some settings only unset with internal. Fallback public 0xE4A26362.
+inline NvAPI_Status DRS_DeleteProfileSetting(const NvApiPtrs* p, NvDRSSessionHandle hSession,
+                                             NvDRSProfileHandle hProfile, NvU32 settingId) {
+    if (p == nullptr) {
+        return NVAPI_API_NOT_INITIALIZED;
+    }
+    if (p->DRS_DeleteProfileSettingInternal != nullptr) {
+        return p->DRS_DeleteProfileSettingInternal(hSession, hProfile, settingId);
+    }
+    if (p->DRS_DeleteProfileSetting != nullptr) {
+        return p->DRS_DeleteProfileSetting(hSession, hProfile, settingId);
+    }
+    return NVAPI_FUNCTION_NOT_FOUND;
+}
+
+// Prefer internal DRS_GetSettingNameFromId (0x1EB13791) when present; fallback public (0xD61CBE6E). Call with Ptrs().
+inline NvAPI_Status DRS_GetSettingNameFromId(const NvApiPtrs* p, NvU32 settingId,
+                                              NvAPI_UnicodeString* pSettingName) {
+    if (p == nullptr) {
+        return NVAPI_API_NOT_INITIALIZED;
+    }
+    if (p->DRS_GetSettingNameFromIdInternal != nullptr) {
+        return p->DRS_GetSettingNameFromIdInternal(settingId, pSettingName);
+    }
+    if (p->DRS_GetSettingNameFromId != nullptr) {
+        return p->DRS_GetSettingNameFromId(settingId, pSettingName);
+    }
+    return NVAPI_FUNCTION_NOT_FOUND;
+}
+
+// Prefer internal DRS_RestoreProfileDefaultSetting (0x7DD5B261) when present; fallback public (0x53F0381E). Call with Ptrs().
+inline NvAPI_Status DRS_RestoreProfileDefaultSetting(const NvApiPtrs* p, NvDRSSessionHandle hSession,
+                                                      NvDRSProfileHandle hProfile, NvU32 settingId) {
+    if (p == nullptr) {
+        return NVAPI_API_NOT_INITIALIZED;
+    }
+    if (p->DRS_RestoreProfileDefaultSettingInternal != nullptr) {
+        return p->DRS_RestoreProfileDefaultSettingInternal(hSession, hProfile, settingId);
+    }
+    if (p->DRS_RestoreProfileDefaultSetting != nullptr) {
+        return p->DRS_RestoreProfileDefaultSetting(hSession, hProfile, settingId);
     }
     return NVAPI_FUNCTION_NOT_FOUND;
 }

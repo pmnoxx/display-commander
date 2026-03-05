@@ -39,8 +39,12 @@ static constexpr NvU32 ID_DRS_EnumAvailableSettingIds = 0xf020614a;
 static constexpr NvU32 ID_DRS_EnumAvailableSettingIdsInternal = 0xE5DE48E5;
 static constexpr NvU32 ID_DRS_EnumAvailableSettingValues = 0x2ec39f90;
 static constexpr NvU32 ID_DRS_GetSettingIdFromName = 0xcb7309cd;
+static constexpr NvU32 ID_DRS_GetSettingNameFromIdInternal = 0x1EB13791;  // NPI internal
 static constexpr NvU32 ID_DRS_GetSettingNameFromId = 0xd61cbe6e;
+static constexpr NvU32 ID_DRS_DeleteProfileSettingInternal = 0xD20D29DF;  // NPI internal; some settings only unset with this
 static constexpr NvU32 ID_DRS_DeleteProfileSetting = 0xe4a26362;
+static constexpr NvU32 ID_DRS_RestoreProfileDefaultSettingInternal = 0x7DD5B261;  // NPI internal
+static constexpr NvU32 ID_DRS_RestoreProfileDefaultSetting = 0x53F0381E;
 
 NvApiPtrs g_ptrs;
 SRWLOCK g_load_lock = SRWLOCK_INIT;
@@ -109,14 +113,12 @@ bool Load() {
     g_ptrs.DRS_FindApplicationByName = Query<NvAPI_DRS_FindApplicationByName_pfn>(query, ID_DRS_FindApplicationByName);
     g_ptrs.DRS_CreateApplication = Query<NvAPI_DRS_CreateApplication_pfn>(query, ID_DRS_CreateApplication);
     // Prefer internal DRS_GetSetting (NPI NvapiDrsWrapper.cs GetDelegate 0xEA99498D, fallback 0x73BF8338).
-    g_ptrs.DRS_GetSettingInternal =
-        Query<NvAPI_DRS_GetSetting_Internal_pfn>(query, ID_DRS_GetSettingInternal);
+    g_ptrs.DRS_GetSettingInternal = Query<NvAPI_DRS_GetSetting_Internal_pfn>(query, ID_DRS_GetSettingInternal);
     if (!g_ptrs.DRS_GetSettingInternal) {
         g_ptrs.DRS_GetSetting = Query<NvAPI_DRS_GetSetting_pfn>(query, ID_DRS_GetSetting);
     }
     // Prefer internal DRS_SetSetting (NPI NvapiDrsWrapper.cs GetDelegate 0x8A2CF5F5, fallback 0x577DD202).
-    g_ptrs.DRS_SetSettingInternal =
-        Query<NvAPI_DRS_SetSetting_Internal_pfn>(query, ID_DRS_SetSettingInternal);
+    g_ptrs.DRS_SetSettingInternal = Query<NvAPI_DRS_SetSetting_Internal_pfn>(query, ID_DRS_SetSettingInternal);
     if (!g_ptrs.DRS_SetSettingInternal) {
         g_ptrs.DRS_SetSetting = Query<NvAPI_DRS_SetSetting_pfn>(query, ID_DRS_SetSetting);
     }
@@ -134,8 +136,19 @@ bool Load() {
     g_ptrs.DRS_EnumAvailableSettingValues =
         Query<NvAPI_DRS_EnumAvailableSettingValues_pfn>(query, ID_DRS_EnumAvailableSettingValues);
     g_ptrs.DRS_GetSettingIdFromName = Query<NvAPI_DRS_GetSettingIdFromName_pfn>(query, ID_DRS_GetSettingIdFromName);
+    // Prefer internal DRS_GetSettingNameFromId (NPI GetDelegate 0x1EB13791, fallback 0xD61CBE6E).
+    g_ptrs.DRS_GetSettingNameFromIdInternal =
+        Query<NvAPI_DRS_GetSettingNameFromId_pfn>(query, ID_DRS_GetSettingNameFromIdInternal);
     g_ptrs.DRS_GetSettingNameFromId = Query<NvAPI_DRS_GetSettingNameFromId_pfn>(query, ID_DRS_GetSettingNameFromId);
+    // Prefer internal DRS_DeleteProfileSetting (NPI GetDelegate 0xD20D29DF); some settings can't be unset with public (0xE4A26362).
+    g_ptrs.DRS_DeleteProfileSettingInternal =
+        Query<NvAPI_DRS_DeleteProfileSetting_pfn>(query, ID_DRS_DeleteProfileSettingInternal);
     g_ptrs.DRS_DeleteProfileSetting = Query<NvAPI_DRS_DeleteProfileSetting_pfn>(query, ID_DRS_DeleteProfileSetting);
+    // Prefer internal DRS_RestoreProfileDefaultSetting (NPI GetDelegate 0x7DD5B261, fallback 0x53F0381E).
+    g_ptrs.DRS_RestoreProfileDefaultSettingInternal =
+        Query<NvAPI_DRS_RestoreProfileDefaultSetting_pfn>(query, ID_DRS_RestoreProfileDefaultSettingInternal);
+    g_ptrs.DRS_RestoreProfileDefaultSetting =
+        Query<NvAPI_DRS_RestoreProfileDefaultSetting_pfn>(query, ID_DRS_RestoreProfileDefaultSetting);
 
     if (!g_ptrs.Initialize) {
         LogWarn("[nvapi_loader] NvAPI_Initialize not resolved");

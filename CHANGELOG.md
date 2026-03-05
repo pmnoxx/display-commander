@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.283 (2026-03-05)
+- **FPS Limiter V3 in NVIDIA Profile tab** - The NVIDIA Profile tab now includes **FPS Limiter V3** (driver setting 0x10835002, "2 - Sync and Refresh"). You can view and edit the driver FPS limit (Off or 20–1000 FPS) for the first matching profile from the Important profile settings list. Details: `nvidia_profile_search.cpp` (new `k_settings_data` entry for `FRL_FPS_ID`, `FormatImportantValue` and `GetSettingAvailableValues` handle Off + 20–1000 FPS).
+
 ## v0.12.282 (2026-03-05)
 - **RTX HDR controls in NVIDIA Profile tab** - The NVIDIA Profile tab now includes full RTX HDR (TrueHDR) controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. You can view and edit these per-profile from the same list as other driver settings. Details: `nvpi_reference.hpp` (new setting IDs), `nvidia_profile_search.cpp` (`k_settings_data` extended with six RTX HDR entries and option values from NPI CustomSettingNames.xml).
 

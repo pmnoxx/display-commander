@@ -62,7 +62,7 @@ class HotkeysTabSettings {
     // Format: "A,S|W,S|Q,E" where | separates groups and , separates keys within a group
     StringSetting exclusive_keys_custom_groups;
 
-    // Brightness hotkey step (percent per key press; 0-200% range, 100% = neutral)
+    // Brightness hotkey step (percent per key press; brightness range 0-500%, 100% = neutral)
     IntSetting brightness_hotkey_step_percent;
 
     // Get all settings for bulk operations

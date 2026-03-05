@@ -498,7 +498,7 @@ void InitializeHotkeyDefinitions() {
              LogInfo(oss.str().c_str());
          }},
         {"brightness_down", "Brightness Down", "",
-         "Decrease Display Commander brightness (0-200%%, step configurable below, 100%% = neutral)",
+         "Decrease Display Commander brightness (0-500%%, step configurable below, 100%% = neutral)",
          []() {
              float step = static_cast<float>(settings::g_hotkeysTabSettings.brightness_hotkey_step_percent.GetValue());
              constexpr float min_percent = 0.0f;
@@ -510,7 +510,7 @@ void InitializeHotkeyDefinitions() {
              LogInfo(oss.str().c_str());
          }},
         {"brightness_up", "Brightness Up", "",
-         "Increase Display Commander brightness (0-200%%, step configurable below, 100%% = neutral)",
+         "Increase Display Commander brightness (0-500%%, step configurable below, 100%% = neutral)",
          []() {
              float step = static_cast<float>(settings::g_hotkeysTabSettings.brightness_hotkey_step_percent.GetValue());
              constexpr float max_percent = 200.0f;
@@ -1151,7 +1151,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
 
     SliderIntSetting(settings.brightness_hotkey_step_percent, "Brightness hotkey step (%)", "%d%%", imgui);
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Step size for Brightness Up/Down hotkeys (0-200%%, 100%% = neutral). Default 5%%.");
+        imgui.SetTooltip("Step size for Brightness Up/Down hotkeys (0-500%%, 100%% = neutral). Default 5%%.");
     }
 }
 

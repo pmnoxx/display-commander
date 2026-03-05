@@ -4,9 +4,12 @@
 
 ## Unreleased
 
+## v0.12.278 (2026-03-04)
+- **Brightness slider range 0–500%** - Main tab brightness slider maximum increased from 200% to 500% for stronger brightness boost. Tooltips and hotkey descriptions updated. Details: `main_tab_settings.cpp` (FloatSettingRef max 500), `main_new_tab.cpp`, `hotkeys_tab.cpp`, `hotkeys_tab_settings.hpp`, `main_entry.cpp`, `DisplayCommander_Control.fx`.
+
 ## v0.12.277 (2026-03-04)
+- **Swapchain colorspace default 0 (Auto)** - Swapchain colorspace selector now defaults to Auto instead of scRGB. New users and reset-to-default get pipeline-based decode detection.
 - **Swapchain colorspace (decode) selector** - Main tab → Brightness and AutoHDR now has a separate **Swapchain colorspace** combo for decode only (default scRGB). **Color Space** controls encode only. DECODE_METHOD is driven by Swapchain colorspace; ENCODE_METHOD by Color Space. Same split applied to DisplayCommander_PerceptualBoost.fx (AutoHDR). Details: `main_tab_settings` (`swapchain_colorspace`, default 1), `ApplyDisplayCommanderBrightness` / `ApplyDisplayCommanderAutoHdr`.
-- **Gamma 2.2 decode checkbox (Brightness effect)** - Main tab → Brightness and AutoHDR now has a "Gamma 2.2 decode" checkbox. When enabled, the Display Commander brightness effect applies an extra gamma 2.2 decode step at the very start (before the usual color space decode). Useful when the game output is already gamma-encoded and you want to linearize first. Details: `DisplayCommander_Control.fx` (uniform `ExtraGamma22Decode`, MainPS), `main_tab_settings` (`brightness_extra_gamma22_decode`), `ApplyDisplayCommanderBrightness` sets uniform and enables technique when on.
 
 ## v0.12.276 (2026-03-04)
 - **Fixed missing tooltips** - Tooltips that were not showing for some settings or controls are now displayed correctly when hovering. Details: `settings_wrapper.cpp`.

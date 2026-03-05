@@ -12,7 +12,7 @@ void LogInfo(const char* msg, ...) {
         return;
     }
     // Check if info level logging is enabled (log if message level <= min level)
-    if (static_cast<int>(LogLevel::Info) > static_cast<int>(g_min_log_level.load())) {
+    if (static_cast<int>(LogLevel::Info) > static_cast<int>(GetMinLogLevel())) {
         return;
     }
 
@@ -31,7 +31,7 @@ void LogInfo(const char* msg, ...) {
 
 void LogWarn(const char* msg, ...) {
     // Check if warning level logging is enabled (log if message level <= min level)
-    if (static_cast<int>(LogLevel::Warning) > static_cast<int>(g_min_log_level.load())) {
+    if (static_cast<int>(LogLevel::Warning) > static_cast<int>(GetMinLogLevel())) {
         return;
     }
 
@@ -65,7 +65,7 @@ void LogError(const char* msg, ...) {
 
 void LogDebug(const char* msg, ...) {
     // Check if debug level logging is enabled (log if message level <= min level)
-    if (static_cast<int>(LogLevel::Debug) > static_cast<int>(g_min_log_level.load())) {
+    if (static_cast<int>(LogLevel::Debug) > static_cast<int>(GetMinLogLevel())) {
         return;
     }
 
@@ -96,7 +96,7 @@ static const char* LogLevelToString(LogLevel level) {
 void LogCurrentLogLevel() {
     // Always log the current logging level using LogError so it's always visible
     // This helps diagnose if users have disabled logging
-    LogLevel current_level = g_min_log_level.load();
+    LogLevel current_level = GetMinLogLevel();
     LogError("Current logging level: %s (value: %d)", LogLevelToString(current_level), static_cast<int>(current_level));
 }
 

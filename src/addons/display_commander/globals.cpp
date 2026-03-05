@@ -60,9 +60,6 @@ std::atomic<DisplayCommanderState> g_display_commander_state{DisplayCommanderSta
 
 
 // Window settings
-std::atomic<WindowMode> s_window_mode{
-    WindowMode::kPreventFullscreenNoResize};  // default: prevent fullscreen, no resize
-
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9};  // Default to 16:9
 std::atomic<int> s_aspect_width{0};                                   // 0 = Display Width, 1 = 3840, 2 = 2560, etc.
 
@@ -95,8 +92,10 @@ std::atomic<bool> s_restart_needed_nvapi{false};
 // DirectInput hook suppression
 std::atomic<bool> s_suppress_dinput_hooks{false};  // Disabled by default
 
-// Logging level control (default to Debug = everything logged)
-std::atomic<LogLevel> g_min_log_level{LogLevel::Debug};
+// Logging level: read from main tab settings
+LogLevel GetMinLogLevel() {
+    return LogLevelFromComboIndex(settings::g_mainTabSettings.log_level.GetValue());
+}
 
 // Input blocking in background (0.0f off, 1.0f on)
 

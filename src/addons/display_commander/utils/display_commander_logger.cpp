@@ -17,10 +17,10 @@ const std::string kFlushSentinel("\x01", 1);
 constexpr size_t kMaxQueueSize = 16384;
 
 // Map logger::LogLevel (Debug=0, Info=1, Warning=2, Error=3) to globals::LogLevel (Error=1, Warning=2, Info=3, Debug=4).
-// Log when message is at or above min severity, i.e. when (globals) message level <= g_min_log_level.
+// Log when message is at or above min severity, i.e. when (globals) message level <= GetMinLogLevel().
 bool ShouldLogLevel(display_commander::logger::LogLevel logger_level) {
     const int globals_message_level = 4 - static_cast<int>(logger_level);
-    return globals_message_level <= static_cast<int>(g_min_log_level.load());
+    return globals_message_level <= static_cast<int>(GetMinLogLevel());
 }
 
 }  // namespace

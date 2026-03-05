@@ -488,9 +488,10 @@ extern std::atomic<bool> s_auto_apply_refresh_rate_change;
 extern std::atomic<bool> s_resolution_applied_at_least_once;
 
 // Window management
-extern std::atomic<WindowMode> s_window_mode;
+/** Current window mode from main tab settings. */
+WindowMode GetCurrentWindowMode();
 /** True when window mode implies "prevent exclusive fullscreen" (all modes except kNoChanges). */
-inline bool ShouldPreventExclusiveFullscreen() { return s_window_mode.load() != WindowMode::kNoChanges; }
+inline bool ShouldPreventExclusiveFullscreen() { return GetCurrentWindowMode() != WindowMode::kNoChanges; }
 extern std::atomic<AspectRatioType> s_aspect_index;
 extern std::atomic<int> s_aspect_width;
 
@@ -805,8 +806,18 @@ extern std::atomic<DWORD> g_render_thread_id;
 // DirectInput hook suppression
 extern std::atomic<bool> s_suppress_dinput_hooks;
 
-// Logging level control
-extern std::atomic<LogLevel> g_min_log_level;
+// Logging level control (combo index 0=Debug, 1=Info, 2=Warning, 3=Error)
+inline LogLevel LogLevelFromComboIndex(int index) {
+    switch (index) {
+        case 0: return LogLevel::Debug;
+        case 1: return LogLevel::Info;
+        case 2: return LogLevel::Warning;
+        case 3: return LogLevel::Error;
+        default: return LogLevel::Debug;
+    }
+}
+/** Returns current minimum log level from main tab settings. */
+LogLevel GetMinLogLevel();
 
 // Reflex settings
 extern std::atomic<bool> s_reflex_auto_configure;

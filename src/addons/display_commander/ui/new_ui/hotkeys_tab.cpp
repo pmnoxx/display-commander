@@ -568,12 +568,10 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Win+Left: no adjacent display.");
                  return;
              }
-             const WindowMode mode = s_window_mode.load();
+             const WindowMode mode = GetCurrentWindowMode();
              bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
-                 s_window_mode.store(WindowMode::kFullscreen);
-                 settings::g_mainTabSettings.window_mode.Save();
              }
              settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
              settings::g_mainTabSettings.target_extended_display_device_id.SetValue(new_id);
@@ -598,12 +596,10 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Win+Right: no adjacent display.");
                  return;
              }
-             const WindowMode mode = s_window_mode.load();
+             const WindowMode mode = GetCurrentWindowMode();
              bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
-                 s_window_mode.store(WindowMode::kFullscreen);
-                 settings::g_mainTabSettings.window_mode.Save();
              }
              settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(new_id);
              settings::g_mainTabSettings.target_extended_display_device_id.SetValue(new_id);
@@ -626,12 +622,10 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Move to primary: no primary display found.");
                  return;
              }
-             const WindowMode mode = s_window_mode.load();
+             const WindowMode mode = GetCurrentWindowMode();
              bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
-                 s_window_mode.store(WindowMode::kFullscreen);
-                 settings::g_mainTabSettings.window_mode.Save();
              }
              settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(primary_id);
              settings::g_mainTabSettings.target_extended_display_device_id.SetValue(primary_id);
@@ -653,12 +647,10 @@ void InitializeHotkeyDefinitions() {
                  LogInfo("Move to secondary: no non-primary display found.");
                  return;
              }
-             const WindowMode mode = s_window_mode.load();
+             const WindowMode mode = GetCurrentWindowMode();
              bool switched_mode = (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize);
              if (switched_mode) {
                  settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kFullscreen));
-                 s_window_mode.store(WindowMode::kFullscreen);
-                 settings::g_mainTabSettings.window_mode.Save();
              }
              settings::g_mainTabSettings.selected_extended_display_device_id.SetValue(secondary_id);
              settings::g_mainTabSettings.target_extended_display_device_id.SetValue(secondary_id);

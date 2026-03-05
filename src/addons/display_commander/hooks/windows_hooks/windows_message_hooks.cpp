@@ -30,7 +30,8 @@ bool ShouldBlockKeyboardInput(bool assume_foreground) {
     }
 
     const bool is_background = g_app_in_background.load(std::memory_order_acquire) && !assume_foreground;
-    const InputBlockingMode mode = s_keyboard_input_blocking.load();
+    const InputBlockingMode mode =
+        static_cast<InputBlockingMode>(settings::g_mainTabSettings.keyboard_input_blocking.GetValue());
 
     switch (mode) {
         case InputBlockingMode::kDisabled:            return false;
@@ -47,7 +48,8 @@ bool ShouldBlockMouseInput(bool assume_foreground) {
     }
 
     const bool is_background = g_app_in_background.load(std::memory_order_acquire) && !assume_foreground;
-    const InputBlockingMode mode = s_mouse_input_blocking.load();
+    const InputBlockingMode mode =
+        static_cast<InputBlockingMode>(settings::g_mainTabSettings.mouse_input_blocking.GetValue());
 
     switch (mode) {
         case InputBlockingMode::kDisabled:                  return false;
@@ -81,7 +83,8 @@ bool ShouldBlockGamepadInput() {
     }
 
     const bool is_background = g_app_in_background.load(std::memory_order_acquire);
-    const InputBlockingMode mode = s_gamepad_input_blocking.load();
+    const InputBlockingMode mode =
+        static_cast<InputBlockingMode>(settings::g_mainTabSettings.gamepad_input_blocking.GetValue());
 
     switch (mode) {
         case InputBlockingMode::kDisabled:            return false;

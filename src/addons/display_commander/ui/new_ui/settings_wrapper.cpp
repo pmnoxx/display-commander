@@ -331,93 +331,47 @@ void ComboSettingRef::SetValue(int value) {
     display_commander::config::save_config(reason.c_str());  // Write to disk
 }
 
-// Helper functions for LogLevel index <-> enum mapping (declared early for specializations)
-// Mapping: Index 0 -> Debug (4), Index 1 -> Info (3), Index 2 -> Warning (2), Index 3 -> Error (1)
-namespace {
-inline LogLevel LogLevelIndexToEnum(int index) {
-    switch (index) {
-        case 0:  return LogLevel::Debug;
-        case 1:  return LogLevel::Info;
-        case 2:  return LogLevel::Warning;
-        case 3:  return LogLevel::Error;
-        default: return LogLevel::Debug;  // Default to Debug for out-of-range
-    }
-}
-
-inline int LogLevelEnumToIndex(LogLevel level) {
-    switch (level) {
-        case LogLevel::Debug:   return 0;
-        case LogLevel::Info:    return 1;
-        case LogLevel::Warning: return 2;
-        case LogLevel::Error:   return 3;
-        default:                return 0;  // Default to Debug index
-    }
-}
-}  // anonymous namespace
-
-// Forward declarations for LogLevel specializations
-template <>
-void ComboSettingEnumRef<LogLevel>::Load();
-template <>
-void ComboSettingEnumRef<LogLevel>::Save();
-template <>
-std::string ComboSettingEnumRef<LogLevel>::GetValueAsString() const;
-template <>
-int ComboSettingEnumRef<LogLevel>::GetValue() const;
-template <>
-void ComboSettingEnumRef<LogLevel>::SetValue(int value);
-
-// ComboSettingEnumRef implementation
+// ComboSettingEnum implementation
 template <typename EnumType>
-ComboSettingEnumRef<EnumType>::ComboSettingEnumRef(const std::string& key, std::atomic<EnumType>& external_ref,
-                                                   int default_value, const std::vector<const char*>& labels,
-                                                   const std::string& section)
-    : SettingBase(key, section), external_ref_(external_ref), default_value_(default_value), labels_(labels) {}
+ComboSettingEnum<EnumType>::ComboSettingEnum(const std::string& key, int default_value,
+                                            const std::vector<const char*>& labels, const std::string& section)
+    : SettingBase(key, section), value_(default_value), default_value_(default_value), labels_(labels) {}
 
 template <typename EnumType>
-void ComboSettingEnumRef<EnumType>::Load() {
+void ComboSettingEnum<EnumType>::Load() {
     int loaded_value;
     if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_value)) {
-        // If loaded index is out of range (e.g., labels changed), fall back to default
         const int max_index = static_cast<int>(labels_.size()) - 1;
         if (loaded_value < 0 || loaded_value > max_index) {
             int safe_default = default_value_;
             if (safe_default < 0) safe_default = 0;
             if (safe_default > max_index) safe_default = std::max(0, max_index);
-            external_ref_.get().store(static_cast<EnumType>(safe_default));
+            value_ = safe_default;
             Save();
         } else {
-            external_ref_.get().store(static_cast<EnumType>(loaded_value));
+            value_ = loaded_value;
         }
     } else {
-        // Not in config: use game default override if any, else constructor default
         int effective_default;
         display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
                                                                &effective_default);
         const int max_index = static_cast<int>(labels_.size()) - 1;
-        const int safe_default = std::max(0, std::min(max_index, effective_default));
-        external_ref_.get().store(static_cast<EnumType>(safe_default));
+        value_ = std::max(0, std::min(max_index, effective_default));
     }
 }
 
 template <typename EnumType>
-void ComboSettingEnumRef<EnumType>::Save() {
-    display_commander::config::set_config_value(section_.c_str(), key_.c_str(),
-                                                static_cast<int>(external_ref_.get().load()));
+void ComboSettingEnum<EnumType>::Save() {
+    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), value_);
 }
 
 template <typename EnumType>
-std::string ComboSettingEnumRef<EnumType>::GetValueAsString() const {
-    return std::to_string(static_cast<int>(external_ref_.get().load()));
+std::string ComboSettingEnum<EnumType>::GetValueAsString() const {
+    return std::to_string(value_);
 }
 
 template <typename EnumType>
-int ComboSettingEnumRef<EnumType>::GetValue() const {
-    return static_cast<int>(external_ref_.get().load());
-}
-
-template <typename EnumType>
-int ComboSettingEnumRef<EnumType>::GetDefaultValue() const {
+int ComboSettingEnum<EnumType>::GetDefaultValue() const {
     int effective;
     display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
                                                            &effective);
@@ -426,63 +380,11 @@ int ComboSettingEnumRef<EnumType>::GetDefaultValue() const {
 }
 
 template <typename EnumType>
-void ComboSettingEnumRef<EnumType>::SetValue(int value) {
-    int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
-    external_ref_.get().store(static_cast<EnumType>(clamped_value));
-    Save();  // Auto-save when value changes
+void ComboSettingEnum<EnumType>::SetValue(int value) {
+    value_ = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
+    Save();
     std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
-    display_commander::config::save_config(reason.c_str());  // Write to disk
-}
-
-// Explicit template specializations for LogLevel (must be before template instantiation)
-template <>
-void ComboSettingEnumRef<LogLevel>::Load() {
-    int loaded_index;
-    if (display_commander::config::get_config_value(section_.c_str(), key_.c_str(), loaded_index)) {
-        // If loaded index is out of range, fall back to default
-        const int max_index = static_cast<int>(labels_.size()) - 1;
-        if (loaded_index < 0 || loaded_index > max_index) {
-            int safe_default = default_value_;
-            if (safe_default < 0) {
-                safe_default = 0;
-            }
-            if (safe_default > max_index) {
-                safe_default = std::max(0, max_index);
-            }
-            external_ref_.get().store(LogLevelIndexToEnum(safe_default));
-            Save();
-        } else {
-            external_ref_.get().store(LogLevelIndexToEnum(loaded_index));
-        }
-    } else {
-        // Use default value if not found
-        external_ref_.get().store(LogLevelIndexToEnum(default_value_));
-    }
-}
-
-template <>
-void ComboSettingEnumRef<LogLevel>::Save() {
-    int index = LogLevelEnumToIndex(external_ref_.get().load());
-    display_commander::config::set_config_value(section_.c_str(), key_.c_str(), index);
-}
-
-template <>
-std::string ComboSettingEnumRef<LogLevel>::GetValueAsString() const {
-    return std::to_string(LogLevelEnumToIndex(external_ref_.get().load()));
-}
-
-template <>
-int ComboSettingEnumRef<LogLevel>::GetValue() const {
-    return LogLevelEnumToIndex(external_ref_.get().load());
-}
-
-template <>
-void ComboSettingEnumRef<LogLevel>::SetValue(int value) {
-    int clamped_value = std::max(0, std::min(static_cast<int>(labels_.size()) - 1, value));
-    external_ref_.get().store(LogLevelIndexToEnum(clamped_value));
-    Save();  // Auto-save when value changes
-    std::string reason = "setting changed: " + (section_ != DEFAULT_SECTION ? section_ + "." : "") + key_;
-    display_commander::config::save_config(reason.c_str());  // Write to disk
+    display_commander::config::save_config(reason.c_str());
 }
 
 // ResolutionPairSetting implementation
@@ -850,8 +752,8 @@ bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display
 }
 
 template <typename EnumType>
-bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const char* label,
-                                display_commander::ui::IImGuiWrapper& imgui, float combo_width) {
+bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* label,
+                            display_commander::ui::IImGuiWrapper& imgui, float combo_width) {
     imgui.BeginGroup();
     if (combo_width > 0.f) {
         imgui.SetNextItemWidth(combo_width);
@@ -882,25 +784,25 @@ bool ComboSettingEnumRefWrapper(ComboSettingEnumRef<EnumType>& setting, const ch
     return changed;
 }
 
-// Explicit template instantiations for ComboSettingEnumRefWrapper
-template class ComboSettingEnumRef<ScreensaverMode>;
-template bool ComboSettingEnumRefWrapper<ScreensaverMode>(ComboSettingEnumRef<ScreensaverMode>&, const char*,
-                                                          display_commander::ui::IImGuiWrapper&, float);
-template class ComboSettingEnumRef<OnPresentReflexMode>;
-template bool ComboSettingEnumRefWrapper<OnPresentReflexMode>(ComboSettingEnumRef<OnPresentReflexMode>&, const char*,
-                                                              display_commander::ui::IImGuiWrapper&, float);
-template class ComboSettingEnumRef<FrameTimeMode>;
-template bool ComboSettingEnumRefWrapper<FrameTimeMode>(ComboSettingEnumRef<FrameTimeMode>&, const char*,
-                                                        display_commander::ui::IImGuiWrapper&, float);
-template class ComboSettingEnumRef<WindowMode>;
-template bool ComboSettingEnumRefWrapper<WindowMode>(ComboSettingEnumRef<WindowMode>&, const char*,
+// Explicit template instantiations for ComboSettingEnum and ComboSettingEnumWrapper
+template class ComboSettingEnum<ScreensaverMode>;
+template bool ComboSettingEnumWrapper<ScreensaverMode>(ComboSettingEnum<ScreensaverMode>&, const char*,
+                                                      display_commander::ui::IImGuiWrapper&, float);
+template class ComboSettingEnum<OnPresentReflexMode>;
+template bool ComboSettingEnumWrapper<OnPresentReflexMode>(ComboSettingEnum<OnPresentReflexMode>&, const char*,
+                                                           display_commander::ui::IImGuiWrapper&, float);
+template class ComboSettingEnum<FrameTimeMode>;
+template bool ComboSettingEnumWrapper<FrameTimeMode>(ComboSettingEnum<FrameTimeMode>&, const char*,
                                                      display_commander::ui::IImGuiWrapper&, float);
-template class ComboSettingEnumRef<InputBlockingMode>;
-template bool ComboSettingEnumRefWrapper<InputBlockingMode>(ComboSettingEnumRef<InputBlockingMode>&, const char*,
-                                                            display_commander::ui::IImGuiWrapper&, float);
-template class ComboSettingEnumRef<LogLevel>;
-template bool ComboSettingEnumRefWrapper<LogLevel>(ComboSettingEnumRef<LogLevel>&, const char*,
-                                                   display_commander::ui::IImGuiWrapper&, float);
+template class ComboSettingEnum<WindowMode>;
+template bool ComboSettingEnumWrapper<WindowMode>(ComboSettingEnum<WindowMode>&, const char*,
+                                                 display_commander::ui::IImGuiWrapper&, float);
+template class ComboSettingEnum<InputBlockingMode>;
+template bool ComboSettingEnumWrapper<InputBlockingMode>(ComboSettingEnum<InputBlockingMode>&, const char*,
+                                                        display_commander::ui::IImGuiWrapper&, float);
+template class ComboSettingEnum<LogLevel>;
+template bool ComboSettingEnumWrapper<LogLevel>(ComboSettingEnum<LogLevel>&, const char*,
+                                               display_commander::ui::IImGuiWrapper&, float);
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {

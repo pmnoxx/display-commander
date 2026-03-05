@@ -1479,7 +1479,6 @@ void HandleSafemode_ApplySafemodeSettings() {
         "Safemode enabled - disabling auto-apply settings, continue rendering, FPS limiter, XInput hooks, MinHook "
         "initialization, and Streamline loading");
     settings::g_mainTabSettings.window_mode.SetValue(static_cast<int>(WindowMode::kNoChanges));
-    s_window_mode.store(WindowMode::kNoChanges);
     settings::g_advancedTabSettings.continue_rendering.SetValue(false);
     settings::g_mainTabSettings.fps_limiter_enabled.SetValue(false);
     s_fps_limiter_enabled.store(false);

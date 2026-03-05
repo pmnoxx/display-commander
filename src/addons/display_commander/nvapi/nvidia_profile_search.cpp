@@ -280,11 +280,13 @@ static const std::array<SettingData, 30> k_settings_data = {{
      .default_value = static_cast<std::uint32_t>(ANSEL_ALLOWLISTED_DEFAULT),
      .is_advanced = true,
      .option_values = {{0, "Disallowed"}, {1, "Allowed"}}},
-    {.user_friendly_name = "Ansel enable",
+    // Same driver setting as Ansel enable; NPI CustomSettingNames.xml uses "Freestyle Filters - Enable", group HDR.
+    {.user_friendly_name = "Freestyle Filters - Enable",
      .hex_setting_id = ANSEL_ENABLE_ID,
+     .group_name = "0.2.1 - Graphic | HDR",
      .default_value = static_cast<std::uint32_t>(ANSEL_ENABLE_DEFAULT),
      .is_advanced = true,
-     .option_values = {{0, "Off"}, {1, "On"}}},
+     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
     {.user_friendly_name = "Ultra Low Latency - CPL State",
      .hex_setting_id = ULL_CPL_STATE_ID,
      .min_required_driver_version = 43000,  // 430.00
@@ -856,7 +858,8 @@ std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::str
     o << "Key: 0x" << std::hex << settingId << std::dec;
     NvAPI_UnicodeString nameBuf;
     memset(&nameBuf, 0, sizeof(nameBuf));
-    if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(),static_cast<NvU32>(settingId), &nameBuf) == NVAPI_OK) {
+    if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(), static_cast<NvU32>(settingId), &nameBuf)
+        == NVAPI_OK) {
         const wchar_t* wsz = reinterpret_cast<const wchar_t*>(nameBuf);
         std::string nameFromId;
         if (wsz && wsz[0]) {
@@ -1115,7 +1118,7 @@ std::vector<DriverAvailableSetting> GetDriverAvailableSettings() {
     NvAPI_UnicodeString nameBuf;
     for (NvU32 i = 0; i < count; ++i) {
         memset(&nameBuf, 0, sizeof(nameBuf));
-        if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(),ids[i], &nameBuf) != NVAPI_OK) {
+        if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(), ids[i], &nameBuf) != NVAPI_OK) {
             // Fallback: ID only (e.g. setting not found in this driver)
             std::ostringstream o;
             o << "0x" << std::hex << ids[i];
@@ -1243,7 +1246,9 @@ std::pair<bool, std::string> SetProfileSetting(std::uint32_t settingId, std::uin
     } else {
         // Setting not in profile yet: get name from driver (covers driver-resolved IDs e.g. RTX HDR); else known custom
         // names.
-        if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(),static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
+        if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(), static_cast<NvU32>(settingId),
+                                                                      &s.settingName)
+            != NVAPI_OK) {
             if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
                 WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
             } else if (settingId == NVPI_RTX_HDR_ENABLE_ID) {
@@ -1312,8 +1317,8 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
     }
 
     if (deleteSetting) {
-        st = display_commander::nvapi_loader::DRS_DeleteProfileSetting(
-            NvApi(), hSession, hProfile, static_cast<NvU32>(settingId));
+        st = display_commander::nvapi_loader::DRS_DeleteProfileSetting(NvApi(), hSession, hProfile,
+                                                                       static_cast<NvU32>(settingId));
         if (st != NVAPI_OK) {
             NvApi()->DRS_DestroySession(hSession);
             return {false, MakeNvapiError("DeleteProfileSetting", st)};
@@ -1333,7 +1338,9 @@ std::pair<bool, std::string> SetOrDeleteProfileSettingForExe(const std::wstring&
                 s.u32CurrentValue = static_cast<NvU32>(valueIfSet);
             }
         } else {
-            if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(),static_cast<NvU32>(settingId), &s.settingName) != NVAPI_OK) {
+            if (display_commander::nvapi_loader::DRS_GetSettingNameFromId(NvApi(), static_cast<NvU32>(settingId),
+                                                                          &s.settingName)
+                != NVAPI_OK) {
                 if (settingId == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID) {
                     WideToNvApiUnicode(k_smoothMotionAllowedApisName, s.settingName);
                 } else if (settingId == NVPI_RTX_HDR_ENABLE_ID) {

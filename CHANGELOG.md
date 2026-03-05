@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.293 (2026-03-05)
+- **Freestyle Filters - Enable in NVIDIA profile and NVIDIA Control** - The NVIDIA driver setting for enabling Freestyle filters (HexSettingID 0x1075D972, same as Ansel enable) is now exposed as **Freestyle Filters - Enable** with group "0.2.1 - Graphic | HDR" in the NVIDIA Profile tab (advanced list) and in Main tab NVIDIA Control. Matches NvidiaProfileInspectorRevamped CustomSettingNames.xml. Details: `nvidia_profile_search.cpp` — renamed "Ansel enable" entry to "Freestyle Filters - Enable", added `group_name`, normalized option hex values.
+
 ## v0.12.292 (2026-03-05)
 - **NVIDIA Control: restart warning** - When you change any setting in the Main tab **NVIDIA Control** section (combo, Use global, or Default), or change the FPS limit via **NVIDIA Profile** FPS limiter mode, a warning is shown: "Restart the game for profile changes to take effect." Details: `main_new_tab.cpp` file-scope `s_nvidiaProfileChangeRestartNeeded`, set on successful SetProfileSetting/DeleteProfileSettingForCurrentExe and SetProfileFpsLimit; warning shown below the NVIDIA Control table and below the driver FPS combo in FPS limiter section.
 

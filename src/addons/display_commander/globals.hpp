@@ -279,9 +279,8 @@ extern std::atomic<bool> g_no_dc_mode;
 extern std::atomic<bool> g_standalone_ui_pending;
 void TryStartStandaloneUIFromSafeContext();
 
-// Wine/Proton detection - set at DLL load via DetectWine() (ntdll wine_get_version present)
-extern std::atomic<bool> g_using_wine;
-void DetectWine();
+// Wine/Proton detection - cached on first call (ntdll wine_get_version present)
+bool IsUsingWine();
 
 // Module handle for pinning/unpinning
 extern HMODULE g_hmodule;

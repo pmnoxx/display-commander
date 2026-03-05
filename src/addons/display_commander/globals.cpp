@@ -34,14 +34,13 @@
 // DLL initialization state - prevents DXGI calls during DllMain
 std::atomic<bool> g_dll_initialization_complete{false};
 
-// Wine/Proton detection
-std::atomic<bool> g_using_wine{false};
-
-void DetectWine() {
-    HMODULE ntdll = GetModuleHandleW(L"ntdll");
-    if (ntdll != nullptr && GetProcAddress(ntdll, "wine_get_version") != nullptr) {
-        g_using_wine.store(true, std::memory_order_release);
-    }
+// Wine/Proton detection - result cached in function static
+bool IsUsingWine() {
+    static const bool cached = []() {
+        HMODULE ntdll = GetModuleHandleW(L"ntdll");
+        return ntdll != nullptr && GetProcAddress(ntdll, "wine_get_version") != nullptr;
+    }();
+    return cached;
 }
 
 // Module handle for pinning/unpinning

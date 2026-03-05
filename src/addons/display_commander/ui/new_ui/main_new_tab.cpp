@@ -5742,9 +5742,11 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         ImVec2 avail = imgui.GetContentRegionAvail();
                         float comboWidth = (avail.x - (imgui.GetStyleItemSpacingX() * 2.f + 80.f));
                         if (comboWidth < 80.f) comboWidth = 80.f;
-                        const bool is_ull = (s.setting_id == display_commander::nvapi::ULL_CPL_STATE_ID
-                                             || s.setting_id == display_commander::nvapi::ULL_ENABLED_ID);
-                        if (is_ull) comboWidth = 500.f;
+                        const bool is_low_latency_combo =
+                            (s.setting_id == display_commander::nvapi::NVPI_VSYNCMODE_ID
+                             || s.setting_id == display_commander::nvapi::ULL_CPL_STATE_ID
+                             || s.setting_id == display_commander::nvapi::ULL_ENABLED_ID);
+                        if (is_low_latency_combo) comboWidth = 500.f;
                         imgui.SetNextItemWidth(comboWidth);
                         char comboBuf[64];
                         (void)std::snprintf(comboBuf, sizeof(comboBuf), "##NvidiaRtx_%u",
@@ -7173,7 +7175,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
 
-    if (!g_using_wine.load(std::memory_order_acquire)) {
+    if (!IsUsingWine()) {
         g_rendering_ui_section.store("ui:tab:main_new:audio:per_channel_volume", std::memory_order_release);
         // Per-channel volume (when session supports IChannelAudioVolume; L/R for stereo, L/R/C/LFE/RL/RR for 5.1, etc.)
         // Each channel row shows: small VU bar (when available) + volume slider.

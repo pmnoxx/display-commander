@@ -453,7 +453,7 @@ bool GetVolumeForCurrentProcess(float* volume_0_100_out) {
     if (volume_0_100_out == nullptr) {
         return false;
     }
-    if (g_using_wine.load(std::memory_order_acquire)) {
+    if (IsUsingWine()) {
         return false;
     }
 

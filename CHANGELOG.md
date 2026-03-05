@@ -4,7 +4,11 @@
 
 ## Unreleased
 
-- **Vertical Sync in NVIDIA profile and NVIDIA Control** - **Vertical Sync** (0x00A879CF, group "2 - Sync and Refresh") option labels and group are aligned with NvidiaProfileInspectorRevamped CustomSettingNames.xml: Force off, Force on, Fast Sync, Use the 3D application setting, 1/2–1/4 Refresh Rate. The setting appears in the NVIDIA Profile tab (Important list) and on the Main tab under **NVIDIA Control** → Low latency (combo + Default when set). Details: `nvidia_profile_search.cpp` Vertical Sync entry + `GetRtxHdrSettingIds()`; `nvpi_reference.hpp` NVPI_VSYNCMODE_ID; `main_new_tab.cpp` Low latency subsection.
+## v0.12.296 (2026-03-05)
+- **Wine/Proton detection** - Wine detection is now done on first use and cached inside a function (`IsUsingWine()`), instead of using a global variable set at DLL load. Callers no longer depend on init order; behavior is unchanged for users (audio and per-channel volume still skip under Wine when unsupported).
+
+## v0.12.295 (2026-03-05)
+- **Vertical Sync in NVIDIA profile and NVIDIA Control** (placeholder to align changelog with version; see Unreleased for latest) - **Vertical Sync** (0x00A879CF, group "2 - Sync and Refresh") option labels and group are aligned with NvidiaProfileInspectorRevamped CustomSettingNames.xml: Force off, Force on, Fast Sync, Use the 3D application setting, 1/2–1/4 Refresh Rate. The setting appears in the NVIDIA Profile tab (Important list) and on the Main tab under **NVIDIA Control** → Low latency (combo + Default when set). Details: `nvidia_profile_search.cpp` Vertical Sync entry + `GetRtxHdrSettingIds()`; `nvpi_reference.hpp` NVPI_VSYNCMODE_ID; `main_new_tab.cpp` Low latency subsection.
 
 ## v0.12.294 (2026-03-05)
 - **NVIDIA Control layout (Main tab)** - RTX HDR and Low latency controls use consistent widths: RTX HDR sliders (Contrast, Middle Grey, Peak Brightness, Saturation, RTX Dynamic Vibrance Saturation/Value) have a 300px label column and 500px slider width; Ultra Low Latency and Vertical Sync selectors are 500px wide and start at 500px/600px label column; Max pre-rendered frames slider is 500px wide. Details: `main_new_tab.cpp` `nvidia_slider_label_width`, `nvidia_slider_width`, `low_latency_ull_label_width`, `low_latency_slider_width`, ULL combo width in `draw_combo_or_checkbox`.

@@ -2330,15 +2330,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.SetTooltip(
                     "Output/encode color space. Auto = match pipeline. sRGB = linearize, multiply, encode.");
             }
-            if (CheckboxSetting(settings::g_mainTabSettings.brightness_extra_gamma22_decode, "Gamma 2.2 decode",
-                                imgui)) {
-                // Value is applied in OnReShadePresent each frame
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When enabled, applies an extra gamma 2.2 decode at the start of the brightness effect (before "
-                    "color space decode). Use if the game output is already gamma-encoded.");
-            }
             {
                 const reshade::api::device_api api = g_last_reshade_device_api.load();
                 const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11

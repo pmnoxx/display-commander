@@ -28,7 +28,8 @@ extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 extern std::atomic<int> s_cpu_cores;
 extern std::atomic<float> s_brightness_percent;
-extern std::atomic<int> s_swapchain_colorspace;   // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; decode only, default 1
+extern std::atomic<int>
+    s_swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; decode only, default 0 (Auto)
 extern std::atomic<int> s_brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None; encode only
 extern std::atomic<float> s_gamma_value;          // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
 extern std::atomic<float> s_contrast_value;       // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
@@ -87,7 +88,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting experimental_safe_mode_fps_limiter;
 
     // VSync & Tearing
-    /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied at Present. */
+    /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied
+     * at Present. */
     ui::new_ui::ComboSetting vsync_override;
     ui::new_ui::BoolSettingRef force_vsync_on;
     ui::new_ui::BoolSettingRef force_vsync_off;
@@ -206,12 +208,9 @@ class MainTabSettings {
     /** Decode only: how to interpret backbuffer (DECODE_METHOD). Default scRGB (1). */
     ui::new_ui::ComboSettingRef swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
     /** Encode only: output color space (ENCODE_METHOD). */
-    ui::new_ui::ComboSettingRef
-        brightness_colorspace;                   // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
-    /** When true, applies an extra gamma 2.2 decode at the start of DisplayCommander_Control.fx Brightness (before color space decode). */
-    ui::new_ui::BoolSetting brightness_extra_gamma22_decode;
-    ui::new_ui::FloatSettingRef gamma_value;     // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
-    ui::new_ui::FloatSettingRef contrast_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
+    ui::new_ui::ComboSettingRef brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
+    ui::new_ui::FloatSettingRef gamma_value;       // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
+    ui::new_ui::FloatSettingRef contrast_value;    // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
     ui::new_ui::FloatSettingRef saturation_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
     ui::new_ui::FloatSettingRef hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
     /** When enabled, upgrades swap chain to HDR (scRGB 16-bit float) on create_swapchain/init_swapchain (DXGI only). */

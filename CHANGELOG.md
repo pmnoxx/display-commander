@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.279 (2026-03-04)
+- **Gamma 2.2 decode checkbox removed** - The "Gamma 2.2 decode" checkbox was removed from the Main tab (Brightness and AutoHDR). The effect uniform is always set to 0 (disabled). Details: `main_tab_settings` (setting removed), `main_new_tab.cpp` (UI removed), `main_entry.cpp` (always pass 0 to ExtraGamma22Decode).
+
 ## v0.12.278 (2026-03-04)
 - **Brightness slider range 0–500%** - Main tab brightness slider maximum increased from 200% to 500% for stronger brightness boost. Tooltips and hotkey descriptions updated. Details: `main_tab_settings.cpp` (FloatSettingRef max 500), `main_new_tab.cpp`, `hotkeys_tab.cpp`, `hotkeys_tab_settings.hpp`, `main_entry.cpp`, `DisplayCommander_Control.fx`.
 

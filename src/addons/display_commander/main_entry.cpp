@@ -315,15 +315,14 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (var_hue != 0) {
         runtime->set_uniform_value_float(var_hue, hue_val);
     }
-    const bool extra_gamma22 = settings::g_mainTabSettings.brightness_extra_gamma22_decode.GetValue();
     const reshade::api::effect_uniform_variable var_extra_gamma22 =
         runtime->find_uniform_variable("DisplayCommander_Control.fx", "ExtraGamma22Decode");
     if (var_extra_gamma22 != 0) {
-        runtime->set_uniform_value_int(var_extra_gamma22, extra_gamma22 ? 1 : 0);
+        runtime->set_uniform_value_int(var_extra_gamma22, 0);
     }
-    // Enable technique when any display tweak is non-neutral or extra gamma 2.2 decode is on
+    // Enable technique when any display tweak is non-neutral
     runtime->set_technique_state(tech, multiplier != 1.0f || gamma_val != 1.0f || contrast_val != 1.0f
-                                           || saturation_val != 1.0f || hue_val != 0.0f || extra_gamma22);
+                                           || saturation_val != 1.0f || hue_val != 0.0f);
 }
 
 // Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same

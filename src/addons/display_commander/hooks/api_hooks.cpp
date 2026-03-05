@@ -5,6 +5,7 @@
 #include <wrl/client.h>
 #include <cstdio>
 #include "../settings/advanced_tab_settings.hpp"
+#include "../settings/main_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
@@ -26,9 +27,6 @@
 #include "timeslowdown_hooks.hpp"
 #include "windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
-
-// External reference to prevent display sleep & screensaver mode setting
-extern std::atomic<ScreensaverMode> s_screensaver_mode;
 
 namespace display_commanderhooks {
 
@@ -293,7 +291,8 @@ EXECUTION_STATE WINAPI SetThreadExecutionState_Detour(EXECUTION_STATE esFlags) {
     g_hook_stats[HOOK_SetThreadExecutionState].increment_total();
 
     // Check prevent display sleep & screensaver mode setting
-    ScreensaverMode screensaver_mode = s_screensaver_mode.load();
+    ScreensaverMode screensaver_mode =
+        static_cast<ScreensaverMode>(settings::g_mainTabSettings.screensaver_mode.GetValue());
 
     // If mode is DisableWhenFocused or Disable, ignore all calls
     if (screensaver_mode == ScreensaverMode::kDisableWhenFocused || screensaver_mode == ScreensaverMode::kDisable) {

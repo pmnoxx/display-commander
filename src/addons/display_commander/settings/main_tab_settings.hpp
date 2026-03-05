@@ -21,9 +21,6 @@ extern std::atomic<float> s_system_volume_percent;
 extern std::atomic<bool> s_audio_mute;
 extern std::atomic<bool> s_mute_in_background;
 extern std::atomic<bool> s_mute_in_background_if_other_audio;
-extern std::atomic<InputBlockingMode> s_keyboard_input_blocking;
-extern std::atomic<InputBlockingMode> s_mouse_input_blocking;
-extern std::atomic<InputBlockingMode> s_gamepad_input_blocking;
 extern std::atomic<bool> s_no_render_in_background;
 extern std::atomic<bool> s_no_present_in_background;
 extern std::atomic<int> s_cpu_cores;
@@ -52,7 +49,7 @@ class MainTabSettings {
     std::vector<ui::new_ui::SettingBase*> GetAllSettings();
 
     // Display Settings
-    ui::new_ui::ComboSettingEnumRef<WindowMode> window_mode;
+    ui::new_ui::ComboSettingEnum<WindowMode> window_mode;
     ui::new_ui::ComboSetting aspect_index;
     ui::new_ui::ComboSettingRef window_aspect_width;
     ui::new_ui::ComboSetting alignment;
@@ -76,9 +73,9 @@ class MainTabSettings {
     /** When true and native Reflex is not active, addon injects Reflex (sleep + markers). Default false. */
     ui::new_ui::BoolSetting inject_reflex;
     ui::new_ui::ComboSetting onpresent_sync_low_latency_ratio;
-    ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> onpresent_reflex_mode;
-    ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode> reflex_limiter_reflex_mode;  // Used when FPS limiter is Reflex
-    ui::new_ui::ComboSettingEnumRef<OnPresentReflexMode>
+    ui::new_ui::ComboSettingEnum<OnPresentReflexMode> onpresent_reflex_mode;
+    ui::new_ui::ComboSettingEnum<OnPresentReflexMode> reflex_limiter_reflex_mode;  // Used when FPS limiter is Reflex
+    ui::new_ui::ComboSettingEnum<OnPresentReflexMode>
         reflex_disabled_limiter_mode;  // Used when FPS limiter is off (checkbox unchecked) or mode is LatentSync
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting experimental_fg_native_fps_limiter;
@@ -109,9 +106,9 @@ class MainTabSettings {
     ui::new_ui::BoolSetting guide_button_solo_ui_toggle_only;
 
     // Input Blocking Settings
-    ui::new_ui::ComboSettingEnumRef<InputBlockingMode> keyboard_input_blocking;
-    ui::new_ui::ComboSettingEnumRef<InputBlockingMode> mouse_input_blocking;
-    ui::new_ui::ComboSettingEnumRef<InputBlockingMode> gamepad_input_blocking;
+    ui::new_ui::ComboSettingEnum<InputBlockingMode> keyboard_input_blocking;
+    ui::new_ui::ComboSettingEnum<InputBlockingMode> mouse_input_blocking;
+    ui::new_ui::ComboSettingEnum<InputBlockingMode> gamepad_input_blocking;
     ui::new_ui::BoolSetting clip_cursor_enabled;
 
     // Render Blocking (Background) Settings
@@ -164,7 +161,7 @@ class MainTabSettings {
     ui::new_ui::IntSetting gpu_measurement_enabled;
 
     // Frame Time Graph Settings
-    ui::new_ui::ComboSettingEnumRef<FrameTimeMode> frame_time_mode;
+    ui::new_ui::ComboSettingEnum<FrameTimeMode> frame_time_mode;
 
     // Display Information
     /** Extended device ID of the target display (for window move, Win+Left/Right, etc.). */
@@ -174,13 +171,13 @@ class MainTabSettings {
     ui::new_ui::StringSetting selected_extended_display_device_id;
 
     // Prevent display sleep & screensaver
-    ui::new_ui::ComboSettingEnumRef<ScreensaverMode> screensaver_mode;
+    ui::new_ui::ComboSettingEnum<ScreensaverMode> screensaver_mode;
 
     // Advanced Settings
     ui::new_ui::BoolSetting advanced_settings_enabled;
 
     // Logging Level
-    ui::new_ui::ComboSettingEnumRef<LogLevel> log_level;
+    ui::new_ui::ComboSettingEnum<LogLevel> log_level;
 
     // Individual Tab Visibility Settings
     ui::new_ui::BoolSetting show_advanced_tab;

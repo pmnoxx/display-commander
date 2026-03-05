@@ -20,16 +20,8 @@ std::atomic<float> s_system_volume_percent{100.f};
 std::atomic<bool> s_audio_mute{false};
 std::atomic<bool> s_mute_in_background{false};
 std::atomic<bool> s_mute_in_background_if_other_audio{false};
-std::atomic<InputBlockingMode> s_keyboard_input_blocking{InputBlockingMode::kEnabledInBackground};
-std::atomic<InputBlockingMode> s_mouse_input_blocking{InputBlockingMode::kEnabledInBackground};
-std::atomic<InputBlockingMode> s_gamepad_input_blocking{InputBlockingMode::kDisabled};
 std::atomic<bool> s_no_render_in_background{false};
 std::atomic<bool> s_no_present_in_background{false};
-std::atomic<ScreensaverMode> s_screensaver_mode{ScreensaverMode::kDefault};
-std::atomic<OnPresentReflexMode> s_onpresent_reflex_mode{OnPresentReflexMode::kLowLatency};
-std::atomic<OnPresentReflexMode> s_reflex_limiter_reflex_mode{OnPresentReflexMode::kLowLatency};
-std::atomic<OnPresentReflexMode> s_reflex_disabled_limiter_mode{OnPresentReflexMode::kGameDefaults};
-std::atomic<FrameTimeMode> s_frame_time_mode{FrameTimeMode::kPresent};
 std::atomic<int> s_cpu_cores{0};                  // 0 = default (no change), max = all cores
 std::atomic<float> s_brightness_percent{100.0f};  // 0-500%, 100 = neutral (Display Commander brightness effect)
 std::atomic<int> s_swapchain_colorspace{
@@ -45,10 +37,9 @@ std::atomic<float> s_auto_hdr_strength{1.0f};  // Profile 3 EffectStrength_P3 (0
 namespace settings {
 
 MainTabSettings::MainTabSettings()
-    : window_mode(
-          "window_mode", s_window_mode, static_cast<int>(WindowMode::kNoChanges),
-          {"No changes", "Prevent exclusive fullscreen / no resize", "Borderless fullscreen", "Borderless windowed"},
-          "DisplayCommander"),
+    : window_mode("window_mode", static_cast<int>(WindowMode::kNoChanges),
+                  {"No changes", "Prevent exclusive fullscreen / no resize", "Borderless fullscreen", "Borderless windowed"},
+                  "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "21.5:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9
       window_aspect_width("aspect_width", s_aspect_width, 0,
@@ -74,14 +65,11 @@ MainTabSettings::MainTabSettings()
            "62.5% Display / 37.5% Input", "50% Display / 50% Input", "37.5% Display / 62.5% Input",
            "25% Display / 75% Input", "12.5% Display / 87.5% Input", "0% Display / 100% Input"},
           "DisplayCommander"),  // Default to 100% Display / 0% Input (current behavior)
-      onpresent_reflex_mode("onpresent_reflex_mode", s_onpresent_reflex_mode,
-                            static_cast<int>(OnPresentReflexMode::kLowLatency),
+      onpresent_reflex_mode("onpresent_reflex_mode", static_cast<int>(OnPresentReflexMode::kLowLatency),
                             {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
-      reflex_limiter_reflex_mode("reflex_limiter_reflex_mode", s_reflex_limiter_reflex_mode,
-                                 static_cast<int>(OnPresentReflexMode::kLowLatency),
+      reflex_limiter_reflex_mode("reflex_limiter_reflex_mode", static_cast<int>(OnPresentReflexMode::kLowLatency),
                                  {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
-      reflex_disabled_limiter_mode("reflex_disabled_limiter_mode", s_reflex_disabled_limiter_mode,
-                                   static_cast<int>(OnPresentReflexMode::kOff),
+      reflex_disabled_limiter_mode("reflex_disabled_limiter_mode", static_cast<int>(OnPresentReflexMode::kOff),
                                    {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
       pcl_stats_enabled("pcl_stats_enabled.disabled2", false, "DisplayCommander"),
       experimental_fg_native_fps_limiter("experimental_fg_native_fps_limiter", true, "DisplayCommander"),
@@ -106,14 +94,12 @@ MainTabSettings::MainTabSettings()
       audio_volume_auto_apply("audio_volume_auto_apply", true, "DisplayCommander"),
       enable_default_chords("enable_default_chords", true, "DisplayCommander"),
       guide_button_solo_ui_toggle_only("guide_button_solo_ui_toggle_only", true, "DisplayCommander"),
-      keyboard_input_blocking("keyboard_input_blocking", s_keyboard_input_blocking,
-                              static_cast<int>(InputBlockingMode::kEnabledInBackground),
+      keyboard_input_blocking("keyboard_input_blocking", static_cast<int>(InputBlockingMode::kEnabledInBackground),
                               {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
-      mouse_input_blocking(
-          "mouse_input_blocking", s_mouse_input_blocking, static_cast<int>(InputBlockingMode::kEnabledInBackground),
-          {"Disabled", "Enabled", "Enabled (in background)", "Enabled (when XInput detected)"}, "DisplayCommander"),
-      gamepad_input_blocking("gamepad_input_blocking", s_gamepad_input_blocking,
-                             static_cast<int>(InputBlockingMode::kDisabled),
+      mouse_input_blocking("mouse_input_blocking", static_cast<int>(InputBlockingMode::kEnabledInBackground),
+                           {"Disabled", "Enabled", "Enabled (in background)", "Enabled (when XInput detected)"},
+                           "DisplayCommander"),
+      gamepad_input_blocking("gamepad_input_blocking", static_cast<int>(InputBlockingMode::kDisabled),
                              {"Disabled", "Enabled", "Enabled (in background)"}, "DisplayCommander"),
       clip_cursor_enabled("clip_cursor_enabled", false, "DisplayCommander"),
       no_render_in_background("no_render_in_background", s_no_render_in_background, s_no_render_in_background.load(),
@@ -168,15 +154,14 @@ MainTabSettings::MainTabSettings()
       adhd_single_monitor_enabled_for_game_display("adhd_single_monitor_enabled_for_game_display", false,
                                                    "DisplayCommander"),
       adhd_multi_monitor_enabled("adhd_multi_monitor_enabled", false, "DisplayCommander"),
-      screensaver_mode("screensaver_mode", s_screensaver_mode, static_cast<int>(ScreensaverMode::kDefault),
+      screensaver_mode("screensaver_mode", static_cast<int>(ScreensaverMode::kDefault),
                        {"Default (no change)", "Disable when Focused", "Disable"}, "DisplayCommander"),
-      frame_time_mode("frame_time_mode", s_frame_time_mode, static_cast<int>(FrameTimeMode::kPresent),
+      frame_time_mode("frame_time_mode", static_cast<int>(FrameTimeMode::kPresent),
                       {"Frame Present Time", "Frame Start Time (input)",
                        "Frame Display Time later (Present or GPU Completion whichever comes later)"},
                       "DisplayCommander"),
       advanced_settings_enabled("advanced_settings_enabled", false, "DisplayCommander"),
-      log_level("log_level", g_min_log_level, 0, {"Log everything", "Info", "Warning", "Error Only"},
-                "DisplayCommander"),
+      log_level("log_level", 0, {"Log everything", "Info", "Warning", "Error Only"}, "DisplayCommander"),
       show_advanced_tab("show_advanced_tab", false, "DisplayCommander"),
       show_window_info_tab("show_window_info_tab", false, "DisplayCommander"),
       show_swapchain_tab("show_swapchain_tab", false, "DisplayCommander"),
@@ -464,3 +449,7 @@ void UpdateOverlaySpacingMaximums() {
 }
 
 }  // namespace settings
+
+WindowMode GetCurrentWindowMode() {
+    return static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
+}

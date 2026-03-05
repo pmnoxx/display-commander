@@ -42,9 +42,6 @@
 #include <nvapi.h>
 #include <windows.h>
 
-// External reference to prevent display sleep & screensaver mode setting
-extern std::atomic<ScreensaverMode> s_screensaver_mode;
-
 // Continuous monitoring behavior (fixed constants; not user-configurable)
 namespace {
 constexpr bool kMonitorHighFreqEnabled = true;
@@ -209,7 +206,7 @@ void check_is_background() {
     // Skip if suppress_window_changes is enabled (compatibility feature), or if window mode does not imply resize
     // (kNoChanges and kPreventFullscreenNoResize do not resize; only kFullscreen and kAspectRatio do)
     if (hwnd != nullptr) {
-        const WindowMode mode = s_window_mode.load();
+        const WindowMode mode = GetCurrentWindowMode();
         if (!settings::g_advancedTabSettings.suppress_window_changes.GetValue()
             && (mode == WindowMode::kFullscreen || mode == WindowMode::kAspectRatio)) {
             ApplyWindowChange(hwnd, "continuous_monitoring_auto_fix");
@@ -262,7 +259,8 @@ namespace {
 
 static void Every1sScreensaver() {
     g_continuous_monitoring_section.store("every1s_tasks:screensaver", std::memory_order_release);
-    ScreensaverMode screensaver_mode = s_screensaver_mode.load();
+    ScreensaverMode screensaver_mode =
+        static_cast<ScreensaverMode>(settings::g_mainTabSettings.screensaver_mode.GetValue());
     bool is_background = g_app_in_background.load();
     EXECUTION_STATE desired_state = 0;
 

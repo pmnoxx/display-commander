@@ -120,7 +120,7 @@ int GetAspectWidthValue(int display_width) {
 }
 
 void ComputeDesiredSize(int display_width, int display_height, int& out_w, int& out_h) {
-    const WindowMode mode = s_window_mode.load();
+    const WindowMode mode = GetCurrentWindowMode();
     if (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize) {
         // No resize: return current display dimensions (kPreventFullscreenNoResize and kNoChanges)
         out_w = display_width;

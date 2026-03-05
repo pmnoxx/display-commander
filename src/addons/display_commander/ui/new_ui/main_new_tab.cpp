@@ -1317,7 +1317,6 @@ void InitMainNewTab() {
     if (!settings_loaded_once) {
         // Settings already loaded at startup
         settings::g_mainTabSettings.LoadSettings();
-        s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
         s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
         s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
         // FPS limits are now automatically synced via FloatSettingRef
@@ -1354,10 +1353,7 @@ void InitMainNewTab() {
         // Initialize resolution widget
         display_commander::widgets::resolution_widget::InitializeResolutionWidget();
 
-        // Sync log level from settings
-        // Note: The setting already updates g_min_log_level via SetValue() when loaded,
-        // so we don't need to manually update it here. The setting wrapper handles the
-        // index-to-enum conversion automatically.
+        // Log level is read directly from settings::g_mainTabSettings.log_level when needed (GetMinLogLevel()).
     }
 }
 
@@ -1381,9 +1377,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
 
     // Logging Level Control
-    // Note: ComboSettingEnumRefWrapper already updates g_min_log_level via SetValue(),
-    // so we don't need to manually update it here. Just log the change.
-    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.log_level, "Logging Level", imgui)) {
+    if (ComboSettingEnumWrapper(settings::g_mainTabSettings.log_level, "Logging Level", imgui)) {
         // Always log the level change (using LogCurrentLogLevel which uses LogError)
         LogCurrentLogLevel();
     }
@@ -2697,7 +2691,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.NextColumn();
 
         // Second line: Selectors
-        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
+        if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
                                                    imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
@@ -2711,7 +2705,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         imgui.NextColumn();
 
-        if (ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse",
+        if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse",
                                                    imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
@@ -2725,7 +2719,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         imgui.NextColumn();
 
-        ui::new_ui::ComboSettingEnumRefWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad", imgui);
+        ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Controls gamepad input blocking behavior.");
         }
@@ -2841,7 +2835,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.Spacing();
 
         // Prevent display sleep & screensaver mode
-        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.screensaver_mode,
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.screensaver_mode,
                                        "Prevent display sleep & screensaver", imgui)) {
             LogInfo("Prevent display sleep & screensaver mode changed to %d",
                     settings::g_mainTabSettings.screensaver_mode.GetValue());
@@ -3353,7 +3347,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
             imgui.SetTooltip("%s", tooltip_text.c_str());
         }
         // Warn if mode does not resize; moving to another display isn't implemented in those modes
-        const WindowMode mode = s_window_mode.load();
+        const WindowMode mode = GetCurrentWindowMode();
         if (s_target_display_changed
             && (mode == WindowMode::kNoChanges || mode == WindowMode::kPreventFullscreenNoResize)) {
             imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING
@@ -3371,17 +3365,10 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
         was_ever_in_no_changes_mode = true;
     }
 
-    if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.window_mode, "Window Mode", imgui)) {
-        WindowMode old_mode = s_window_mode.load();
-        s_window_mode = static_cast<WindowMode>(settings::g_mainTabSettings.window_mode.GetValue());
-
+    if (ComboSettingEnumWrapper(settings::g_mainTabSettings.window_mode, "Window Mode", imgui)) {
         // Don't apply changes immediately - let the normal window management system handle it
         // This prevents crashes when changing modes during gameplay
-
-        std::ostringstream oss;
-        oss << "Window mode changed from " << static_cast<int>(old_mode) << " to "
-            << settings::g_mainTabSettings.window_mode.GetValue();
-        LogInfo(oss.str().c_str());
+        LogInfo("Window mode changed to %d", settings::g_mainTabSettings.window_mode.GetValue());
     }
     // Warn about restart may be needed for preventing fullscreen
     if (was_ever_in_no_changes_mode
@@ -3391,7 +3378,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
     }
 
     // Aspect Ratio dropdown (only shown in Aspect Ratio mode)
-    if (s_window_mode.load() == WindowMode::kAspectRatio) {
+    if (GetCurrentWindowMode() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(settings::g_mainTabSettings.aspect_index, "Aspect Ratio", imgui)) {
             s_aspect_index = static_cast<AspectRatioType>(settings::g_mainTabSettings.aspect_index.GetValue());
             LogInfo("Aspect ratio changed");
@@ -3400,7 +3387,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
             imgui.SetTooltip("Choose the aspect ratio for window resizing.");
         }
     }
-    if (s_window_mode.load() == WindowMode::kAspectRatio) {
+    if (GetCurrentWindowMode() == WindowMode::kAspectRatio) {
         // Width dropdown for aspect ratio mode
         if (ComboSettingRefWrapper(settings::g_mainTabSettings.window_aspect_width, "Window Width", imgui)) {
             s_aspect_width.store(settings::g_mainTabSettings.window_aspect_width.GetValue());
@@ -3413,7 +3400,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
     }
 
     // Window Alignment dropdown (only shown in Aspect Ratio mode)
-    if (s_window_mode.load() == WindowMode::kAspectRatio) {
+    if (GetCurrentWindowMode() == WindowMode::kAspectRatio) {
         if (ComboSettingWrapper(settings::g_mainTabSettings.alignment, "Alignment", imgui)) {
             s_window_alignment = static_cast<WindowAlignment>(settings::g_mainTabSettings.alignment.GetValue());
             LogInfo("Window alignment changed");
@@ -3725,8 +3712,8 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
 
             // Reflex mode selector for OnPresent: Low latency (default), Low+boost, Off, Game Defaults
             imgui.Spacing();
-            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
-                // Setting is automatically saved via ComboSettingEnumRefWrapper
+            if (ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
+                // Setting is automatically saved via ComboSettingEnumWrapper
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -3908,7 +3895,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
 
             // Reflex mode selector for Reflex FPS limiter (same options as OnPresent)
             imgui.Spacing();
-            if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex", imgui)) {
+            if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex", imgui)) {
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -3968,7 +3955,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
     // active)
     if (!s_fps_limiter_enabled.load() || current_item == static_cast<int>(FpsLimiterMode::kLatentSync)) {
         imgui.Spacing();
-        if (ComboSettingEnumRefWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui)) {
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui)) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## v0.12.303 (2026-03-05)
+- **Sekiro HDR fix** - Fixed HDR handling for Sekiro: Shadows Die Twice.
+- **Combo enum settings: store in settings, not globals** - All main-tab combo enum settings (Window Mode, Reflex modes, Input Blocking, Frame Time Mode, Screensaver Mode, Log Level) now use `ComboSettingEnum` and store their value directly in the setting object instead of syncing to global atomics. Callers read via `settings::g_mainTabSettings.<name>.GetValue()` or helpers `GetCurrentWindowMode()` and `GetMinLogLevel()`. Removed `ComboSettingEnumRef` and the global atomics `s_window_mode`, `g_min_log_level`, `s_keyboard_input_blocking`, `s_mouse_input_blocking`, `s_gamepad_input_blocking`, `s_screensaver_mode`, `s_onpresent_reflex_mode`, `s_reflex_limiter_reflex_mode`, `s_reflex_disabled_limiter_mode`, `s_frame_time_mode`. Details: `settings_wrapper.hpp`/`.cpp` — added `ComboSettingEnum` and `ComboSettingEnumWrapper`, removed `ComboSettingEnumRef`; `main_tab_settings` and all readers updated.
+
 ## v0.12.302 (2026-03-05)
 - **PresentMon on by default** - PresentMon (ETW-based present and flip mode tracking) is now enabled by default when you open the addon, so flip mode and present stats are available without clicking to enable. You can still turn it off in the Main tab if needed.
 

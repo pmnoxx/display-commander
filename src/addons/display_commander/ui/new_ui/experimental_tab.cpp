@@ -20,6 +20,7 @@
 #include "../../ui/imgui_wrapper_base.hpp"
 #include "../../ui/imgui_wrapper_reshade.hpp"
 #include "../../ui/nvidia_profile_tab_shared.hpp"
+#include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/stack_trace.hpp"
 #include "../../utils/timing.hpp"
@@ -1406,12 +1407,12 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  Direct3D 9");
 
         if (s_d3d9e_upgrade_successful.load()) {
-            api_version = 0x9100;  // due to reshade's bug.
+            api_version = static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex);  // due to reshade's bug.
         }
 
-        if (api_version == 0x9100) {
+        if (api_version == static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex)) {
             imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  API Version: Direct3D 9Ex (FLIPEX compatible)");
-        } else if (api_version == 0x9000) {
+        } else if (api_version == static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9)) {
             imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "  API Version: Direct3D 9 (Needs D3D9Ex upgrade)");
         } else {
             imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "  API Version: 0x%x", api_version);

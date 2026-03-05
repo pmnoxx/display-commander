@@ -38,6 +38,7 @@
 #include "swapchain_events_power_saving.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
+#include "utils/d3d9_api_version.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/game_launcher_registry.hpp"
 #include "utils/general_utils.hpp"
@@ -85,27 +86,28 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
     LogInfo("OnCreateDevice: api: %d (%s), api_version: 0x%x", static_cast<int>(api), GetDeviceApiString(api),
             api_version);
-    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
-        LogInfo("D3D9 to D3D9Ex upgrade disabled");
-        return false;
-    }
 
     // Only process D3D9 API
     if (api != reshade::api::device_api::d3d9) {
         return false;
     }
+    if (!settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()) {
+        LogInfo("D3D9 to D3D9Ex upgrade disabled");
+        return false;
+    }
 
-    // Check if already D3D9Ex (0x9100)
-    if (api_version == 0x9100) {
+    // Check if already D3D9Ex
+    if (api_version == static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex)) {
         LogInfo("D3D9Ex already detected, no upgrade needed");
         s_d3d9e_upgrade_successful.store(true);
         // return false; // correct behavior, but reshade's bug, where it doesnt' report d3d9ex version
         return true;  // true to fix reshade's bug, where it doesnt' report d3d9ex version
     }
 
-    // Upgrade D3D9 (0x9000) to D3D9Ex (0x9100)
-    LogInfo("Upgrading Direct3D 9 (0x%x) to Direct3D 9Ex (0x9100)", api_version);
-    api_version = 0x9100;
+    // Upgrade D3D9 to D3D9Ex
+    LogInfo("Upgrading Direct3D 9 (0x%x) to Direct3D 9Ex (0x%x)", api_version,
+            static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex));
+    api_version = static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex);
     s_d3d9e_upgrade_successful.store(true);
 
     return true;
@@ -598,7 +600,7 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         if (settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue()
             && desc.present_mode != D3DSWAPEFFECT_FLIPEX) {
             if (desc.back_buffer_count < 3) {
-                LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 2 (required for FLIPEX)",
+                LogInfo("D3D9 FLIPEX: Increasing back buffer count from %u to 3 (required for FLIPEX)",
                         desc.back_buffer_count);
                 desc.back_buffer_count = 3;
                 modified = true;
@@ -717,10 +719,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             // Check if current present mode is NOT a flip model
 
             if (desc.back_buffer_count < 3) {
+                LogInfo("DXGI FLIP UPGRADE: Increasing back buffer count from %u to 3", desc.back_buffer_count);
+
                 desc.back_buffer_count = 3;
                 modified = true;
-
-                LogInfo("DXGI FLIP UPGRADE: Increasing back buffer count from %u to 2", desc.back_buffer_count);
             }
             if (desc.back_buffer.texture.samples != 1) {
                 LogInfo("DXGI FLIP UPGRADE: Setting multisample type to 1");

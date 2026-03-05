@@ -41,6 +41,7 @@
 #include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils.hpp"
+#include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/dc_load_path.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
@@ -2228,7 +2229,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             imgui.SameLine();
 
             if (api == reshade::api::device_api::d3d9 && s_d3d9e_upgrade_successful.load()) {
-                api_version = 0x9100;  // due to reshade's bug.
+                api_version = static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex);  // due to reshade's bug.
             }
 
             // Display API with version/feature level and bitness
@@ -5030,7 +5031,7 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
     imgui.TextColored(ui::colors::TEXT_DIMMED, "Flip: ");
     imgui.SameLine();
     imgui.PushStyleColor(ImGuiCol_Text, ui::colors::TEXT_LABEL);
-    if (imgui.Selectable("(click to enable)", false)) {
+    if (imgui.Selectable("(click to enable)##presentmon", false)) {
         settings::g_advancedTabSettings.enable_presentmon_tracing.SetValue(true);
         settings::g_advancedTabSettings.enable_presentmon_tracing.Save();
         presentmon::CreateAndStartPresentMon();
@@ -5742,10 +5743,9 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         ImVec2 avail = imgui.GetContentRegionAvail();
                         float comboWidth = (avail.x - (imgui.GetStyleItemSpacingX() * 2.f + 80.f));
                         if (comboWidth < 80.f) comboWidth = 80.f;
-                        const bool is_low_latency_combo =
-                            (s.setting_id == display_commander::nvapi::NVPI_VSYNCMODE_ID
-                             || s.setting_id == display_commander::nvapi::ULL_CPL_STATE_ID
-                             || s.setting_id == display_commander::nvapi::ULL_ENABLED_ID);
+                        const bool is_low_latency_combo = (s.setting_id == display_commander::nvapi::NVPI_VSYNCMODE_ID
+                                                           || s.setting_id == display_commander::nvapi::ULL_CPL_STATE_ID
+                                                           || s.setting_id == display_commander::nvapi::ULL_ENABLED_ID);
                         if (is_low_latency_combo) comboWidth = 500.f;
                         imgui.SetNextItemWidth(comboWidth);
                         char comboBuf[64];
@@ -5985,7 +5985,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 // --- Low latency subsection ---
                 if (imgui.TreeNodeEx("Low latency", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("Ultra Low Latency, Vertical Sync, and max pre-rendered frames for this profile.");
+                        imgui.SetTooltip(
+                            "Ultra Low Latency, Vertical Sync, and max pre-rendered frames for this profile.");
                     }
                     const float low_latency_ull_label_width = 600.f;
                     const float low_latency_slider_label_width = 500.f;

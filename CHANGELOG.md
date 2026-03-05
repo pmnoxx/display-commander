@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## v0.12.298 (2026-03-05)
+- **D3D9 FlipEx: fixed log noise for non-D3D9 games** - Fixed unnecessary logging when the game does not use D3D9. The D3D9 to D3D9Ex upgrade path now returns early for DX11/DX12/Vulkan/etc., so "OnCreateDevice" and "D3D9 to D3D9Ex upgrade disabled" are only printed for D3D9 games. Details: `swapchain_events.cpp` `OnCreateDevice` early return before logging for non-D3D9.
+- **D3D9 API version constants** - Replaced magic values 0x9000 and 0x9100 with `display_commander::D3D9ApiVersion` enum (D3D9, D3D9Ex) in `utils/d3d9_api_version.hpp`. Used in swapchain_events, main tab, and experimental tab for create_device version and UI. Details: `utils/d3d9_api_version.hpp`; `swapchain_events.cpp`, `main_new_tab.cpp`, `experimental_tab.cpp`.
+
 ## v0.12.297 (2026-03-05)
 - **Flip / PresentMon label** - When PresentMon is off, the Main tab Flip line now shows "(click to enable)" instead of "(enable PresentMon if needed)" for the clickable link that enables PresentMon.
 

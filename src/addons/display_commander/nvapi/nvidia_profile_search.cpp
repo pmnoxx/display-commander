@@ -924,8 +924,8 @@ ProfileFpsLimitResult GetProfileFpsLimit() {
         return out;
     }
     out.has_profile = true;
-    out.profile_name = r.matching_profile_names.empty() ? r.matching_profiles[0].profile_name
-                                                          : r.matching_profile_names[0];
+    out.profile_name =
+        r.matching_profile_names.empty() ? r.matching_profiles[0].profile_name : r.matching_profile_names[0];
     for (const ImportantProfileSetting& s : r.important_settings) {
         if (s.setting_id == FRL_FPS_ID) {
             out.value = s.value_id;
@@ -936,9 +936,7 @@ ProfileFpsLimitResult GetProfileFpsLimit() {
     return out;
 }
 
-std::pair<bool, std::string> SetProfileFpsLimit(std::uint32_t value) {
-    return SetProfileSetting(FRL_FPS_ID, value);
-}
+std::pair<bool, std::string> SetProfileFpsLimit(std::uint32_t value) { return SetProfileSetting(FRL_FPS_ID, value); }
 
 std::vector<std::pair<std::uint32_t, std::string>> GetProfileFpsLimitOptions() {
     return GetSettingAvailableValues(FRL_FPS_ID);
@@ -1444,6 +1442,18 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
     NvApi()->DRS_DestroySession(hSession);
     InvalidateProfileSearchCache();
     return {true, ""};
+}
+
+std::vector<std::uint32_t> GetRtxHdrSettingIds() {
+    return {
+        NVPI_RTX_HDR_ENABLE_ID,
+        NVPI_RTX_HDR_DEBANDING_ID,
+        NVPI_RTX_HDR_ALLOW_ID,
+        NVPI_RTX_HDR_CONTRAST_ID,
+        NVPI_RTX_HDR_MIDDLE_GREY_ID,
+        NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
+        NVPI_RTX_HDR_SATURATION_ID,
+    };
 }
 
 }  // namespace display_commander::nvapi

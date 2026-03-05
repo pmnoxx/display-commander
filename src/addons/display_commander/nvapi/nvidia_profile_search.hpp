@@ -162,4 +162,8 @@ std::pair<bool, std::string> DeleteProfileSettingForCurrentExe(std::uint32_t set
 // displayNameUtf8 is the label shown in the UI (e.g. s.label). Empty string on NVAPI/init failure.
 std::string GetSettingDriverDebugTooltip(std::uint32_t settingId, const std::string& displayNameUtf8);
 
+// Returns the list of RTX HDR profile setting IDs (Enable, Debanding, Allow, Contrast, Middle Grey,
+// Peak Brightness, Saturation). Use to filter important_settings for the Main tab NVIDIA subheader.
+std::vector<std::uint32_t> GetRtxHdrSettingIds();
+
 }  // namespace display_commander::nvapi

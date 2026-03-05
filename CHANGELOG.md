@@ -3,7 +3,7 @@
 ---
 
 ## Unreleased
-
+- **NVIDIA subheader on Main tab with RTX HDR** - When NVAPI is initialized (NVIDIA GPU), the Main tab now shows a collapsible **NVIDIA** section with RTX HDR profile controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. Same behavior as the NVIDIA Profile tab (combo + Default per setting; changes apply to the driver profile). If no profile exists for the current game, a "Create profile" button is shown. Details: `GetRtxHdrSettingIds()` in `nvidia_profile_search`, Main tab draw after DLSS Information block; spec: `private_docs/specs/main_tab_nvidia_subheader_rtx_hdr.md`.
 
 ## v0.12.284 (2026-03-05)
 - **FPS Limiter: NVIDIA Profile mode** - Main tab FPS limiter now has a fourth mode: **NVIDIA Profile (driver FPS limit, requires restart)**. When selected, the limit is read from and written to the NVIDIA driver profile (FPS Limiter V3) for the current game; no in-game limiter runs from the addon. The UI shows a dedicated driver FPS selector (Off or 20–1000 FPS), a restart notice, and profile status. If no profile exists, you can create one with a "Create profile" button. Details: `FpsLimiterMode::kNvidiaProfile`, `GetProfileFpsLimit` / `SetProfileFpsLimit` / `GetProfileFpsLimitOptions` in `nvidia_profile_search`, Main tab FPS limiter section and `swapchain_events` (no in-game limiter when this mode is active).

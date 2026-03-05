@@ -15,7 +15,8 @@ constexpr std::uint32_t NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID = 0xB0CC0875;
 constexpr std::uint32_t NVPI_SMOOTH_MOTION_ENABLE_50_ID = 0xB0D384C0;
 
 // NVPI Reference.xml setting ID for "RTX HDR - Enable" (fallback). At runtime we resolve ID from driver via
-// NvAPI_DRS_GetSettingIdFromName("RTX HDR - Enable") when resolve_id_from_driver is set (driver may use different ID, e.g. group 5).
+// NvAPI_DRS_GetSettingIdFromName("RTX HDR - Enable") when resolve_id_from_driver is set (driver may use different ID,
+// e.g. group 5).
 constexpr std::uint32_t NVPI_RTX_HDR_ENABLE_ID = 0x00DD48FB;
 // RTX HDR - Debanding, Allow, Contrast, Middle Grey, Peak Brightness, Saturation (NPI CustomSettingNames.xml).
 constexpr std::uint32_t NVPI_RTX_HDR_DEBANDING_ID = 0x00432F84;

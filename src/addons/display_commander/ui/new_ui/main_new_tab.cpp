@@ -603,12 +603,58 @@ void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bo
     imgui.EndTable();
 }
 
+// Draw DLSS indicator section (registry toggle + DLSS-FG text level). Shown at top of DLSS Information when active.
+static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) {
+    if (imgui.TreeNodeEx("DLSS indicator (Registry)", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Show DLSS on-screen indicator in games. Writes NVIDIA registry; may require restart. Admin if apply "
+                "fails.");
+        }
+        bool reg_enabled = dlss::DlssIndicatorManager::IsDlssIndicatorEnabled();
+        imgui.TextColored(reg_enabled ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_DIMMED, "DLSS indicator: %s",
+                          reg_enabled ? "On" : "Off");
+        if (imgui.Checkbox("Enable DLSS indicator through Registry##MainTab", &reg_enabled)) {
+            LogInfo("DLSS Indicator: %s", reg_enabled ? "enabled" : "disabled");
+            if (!dlss::DlssIndicatorManager::SetDlssIndicatorEnabled(reg_enabled)) {
+                LogInfo("DLSS Indicator: Apply to registry failed (run as admin or use .reg in Experimental tab).");
+            }
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Show DLSS on-screen indicator (resolution/version) in games. Writes NVIDIA registry; may require "
+                "restart. Admin needed if apply fails.");
+        }
+
+        const char* dlssg_indicator_items[] = {"Off", "Minimal", "Detailed"};
+        int dlssg_indicator_current = static_cast<int>(dlss::DlssIndicatorManager::GetDlssgIndicatorTextLevel());
+        if (dlssg_indicator_current < 0 || dlssg_indicator_current > 2) {
+            dlssg_indicator_current = 0;
+        }
+        if (imgui.Combo("DLSS-FG indicator text##MainTab", &dlssg_indicator_current, dlssg_indicator_items,
+                        static_cast<int>(sizeof(dlssg_indicator_items) / sizeof(dlssg_indicator_items[0])))) {
+            DWORD level = static_cast<DWORD>(dlssg_indicator_current);
+            if (!dlss::DlssIndicatorManager::SetDlssgIndicatorTextLevel(level)) {
+                LogInfo("DLSSG_IndicatorText: Apply to registry failed (run as admin).");
+            }
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "DLSS-FG on-screen indicator text level (registry DLSSG_IndicatorText). Off / Minimal / Detailed. "
+                "May require restart. Admin needed if apply fails.");
+        }
+        imgui.TreePop();
+    }
+}
+
 // Draw DLSS information (same format as performance overlay). Caller must pass pre-fetched summary.
 void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummary& dlssg_summary) {
     (void)imgui;
     RECORD_DETOUR_CALL(utils::get_now_ns());
     const bool any_dlss_active =
         dlssg_summary.dlss_active || dlssg_summary.dlss_g_active || dlssg_summary.ray_reconstruction_active;
+
+    DrawDLSSInfo_IndicatorSection(imgui);
 
     // Tracked DLSS modules (from OnModuleLoaded: nvngx_dlss/dlssg/dlssd.dll or .bin identified as such)
     {
@@ -790,43 +836,6 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
             }
-        }
-    }
-
-    // DLSS indicator (registry: NVIDIA NGXCore ShowDlssIndicator — same as Special-K / .reg toggle)
-    if (any_dlss_active) {
-        bool reg_enabled = dlss::DlssIndicatorManager::IsDlssIndicatorEnabled();
-        imgui.TextColored(reg_enabled ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_DIMMED, "DLSS indicator: %s",
-                          reg_enabled ? "On" : "Off");
-        if (imgui.Checkbox("Enable DLSS indicator through Registry##MainTab", &reg_enabled)) {
-            LogInfo("DLSS Indicator: %s", reg_enabled ? "enabled" : "disabled");
-            if (!dlss::DlssIndicatorManager::SetDlssIndicatorEnabled(reg_enabled)) {
-                LogInfo("DLSS Indicator: Apply to registry failed (run as admin or use .reg in Experimental tab).");
-            }
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Show DLSS on-screen indicator (resolution/version) in games. Writes NVIDIA registry; may require "
-                "restart. Admin needed if apply fails.");
-        }
-
-        // DLSS-FG indicator text level (DLSSG_IndicatorText): 0=off, 1=minimal, 2=detailed
-        const char* dlssg_indicator_items[] = {"Off", "Minimal", "Detailed"};
-        int dlssg_indicator_current = static_cast<int>(dlss::DlssIndicatorManager::GetDlssgIndicatorTextLevel());
-        if (dlssg_indicator_current < 0 || dlssg_indicator_current > 2) {
-            dlssg_indicator_current = 0;
-        }
-        if (imgui.Combo("DLSS-FG indicator text##MainTab", &dlssg_indicator_current, dlssg_indicator_items,
-                        static_cast<int>(sizeof(dlssg_indicator_items) / sizeof(dlssg_indicator_items[0])))) {
-            DWORD level = static_cast<DWORD>(dlssg_indicator_current);
-            if (!dlss::DlssIndicatorManager::SetDlssgIndicatorTextLevel(level)) {
-                LogInfo("DLSSG_IndicatorText: Apply to registry failed (run as admin).");
-            }
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "DLSS-FG on-screen indicator text level (registry DLSSG_IndicatorText). Off / Minimal / Detailed. "
-                "May require restart. Admin needed if apply fails.");
         }
     }
 
@@ -3448,10 +3457,9 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     int prev_item = current_item;
 
     bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
-    bool fps_limit_enabled =
-        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
-         && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
-        || ShouldReflexBeEnabled();
+    bool fps_limit_enabled = (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+                              && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
+                             || ShouldReflexBeEnabled();
 
     // (enable checkbox) fps limit slider
     if (imgui.Checkbox("##FPS limiter", &enabled)) {
@@ -3491,8 +3499,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     // NVIDIA Profile mode: show driver FPS selector, restart notice, and profile status
     if (enabled && current_item == static_cast<int>(FpsLimiterMode::kNvidiaProfile)) {
         imgui.TextColored(ui::colors::TEXT_DIMMED, "Requires game restart to take effect.");
-        display_commander::nvapi::ProfileFpsLimitResult profile_fps =
-            display_commander::nvapi::GetProfileFpsLimit();
+        display_commander::nvapi::ProfileFpsLimitResult profile_fps = display_commander::nvapi::GetProfileFpsLimit();
         if (!profile_fps.error.empty()) {
             imgui.TextColored(ui::colors::TEXT_WARNING, "NVIDIA driver: %s", profile_fps.error.c_str());
         } else if (!profile_fps.has_profile) {
@@ -3506,7 +3513,8 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
                 }
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Create an NVIDIA driver profile for this game. You can then set the driver FPS limit.");
+                imgui.SetTooltip(
+                    "Create an NVIDIA driver profile for this game. You can then set the driver FPS limit.");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Profile: %s", profile_fps.profile_name.c_str());
@@ -3642,10 +3650,9 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         current_item = (current_item < 0) ? 0 : 3;
     }
     bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
-    bool fps_limit_enabled =
-        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
-         && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
-        || ShouldReflexBeEnabled();
+    bool fps_limit_enabled = (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+                              && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
+                             || ShouldReflexBeEnabled();
 
     auto DrawPclStatsCheckbox = [&imgui]() {
         if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
@@ -4193,10 +4200,9 @@ struct VSyncTearingTooltipContext {
 
 static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui::IImGuiWrapper& imgui) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    bool fps_limit_enabled =
-        (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
-         && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
-        || ShouldReflexBeEnabled();
+    bool fps_limit_enabled = (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+                              && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
+                             || ShouldReflexBeEnabled();
     imgui.Spacing();
     {
         if (!fps_limit_enabled) {
@@ -5575,6 +5581,145 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 imgui.SetTooltip("Open the folder where you can place custom DLSS DLLs (created if missing).");
             }
 
+            imgui.Unindent();
+        }
+    }
+    // NVIDIA subheader with RTX HDR controls (when NVAPI initialized)
+    if (nvapi::EnsureNvApiInitialized()) {
+        if (imgui.CollapsingHeader("NVIDIA", ImGuiTreeNodeFlags_None)) {
+            imgui.Indent();
+            imgui.TextColored(ui::colors::TEXT_DIMMED,
+                              "RTX HDR and other profile settings for this game. More in NVIDIA Profile tab.");
+            display_commander::nvapi::NvidiaProfileSearchResult r =
+                display_commander::nvapi::GetCachedProfileSearchResult();
+            static std::string s_nvidiaMainTabSetError;
+            static std::uint32_t s_nvidiaMainTabLastFailedId = 0;
+            static std::uint32_t s_nvidiaMainTabLastFailedValue = 0;
+            auto is_privilege_error = [](const std::string& err) {
+                return err.find("INVALID_USER_PRIVILEGE") != std::string::npos
+                       || err.find("0xffffff77") != std::string::npos;
+            };
+            if (!r.success || r.matching_profiles.empty()) {
+                if (!r.error.empty()) {
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "NVIDIA profile: %s", r.error.c_str());
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "No NVIDIA profile for this game.");
+                }
+                if (imgui.Button("Create profile##MainTabNvidia")) {
+                    auto [ok, err] = display_commander::nvapi::CreateProfileForCurrentExe();
+                    if (ok) {
+                        s_nvidiaMainTabSetError.clear();
+                        display_commander::nvapi::InvalidateProfileSearchCache();
+                    } else {
+                        s_nvidiaMainTabSetError = err;
+                    }
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Create a driver profile for the current executable. Then you can set RTX HDR.");
+                }
+            } else {
+                if (!s_nvidiaMainTabSetError.empty()) {
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "%s", s_nvidiaMainTabSetError.c_str());
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip("Use NVIDIA Profile tab to run as admin if needed.");
+                    }
+                }
+                std::vector<std::uint32_t> rtx_ids = display_commander::nvapi::GetRtxHdrSettingIds();
+                std::vector<const display_commander::nvapi::ImportantProfileSetting*> rtx_settings;
+                for (const auto& s : r.important_settings) {
+                    if (std::find(rtx_ids.begin(), rtx_ids.end(), s.setting_id) != rtx_ids.end()) {
+                        rtx_settings.push_back(&s);
+                    }
+                }
+                if (!rtx_settings.empty()
+                    && imgui.BeginTable(
+                        "NvidiaRtxHdrMainTab", 2,
+                        ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersH | ImGuiTableFlags_SizingStretchProp)) {
+                    imgui.TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                    imgui.TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.5f);
+                    imgui.TableHeadersRow();
+                    for (const display_commander::nvapi::ImportantProfileSetting* p : rtx_settings) {
+                        const display_commander::nvapi::ImportantProfileSetting& s = *p;
+                        imgui.TableNextRow();
+                        imgui.TableSetColumnIndex(0);
+                        imgui.TextUnformatted(s.label.c_str());
+                        imgui.TableSetColumnIndex(1);
+                        if (s.setting_id != 0) {
+                            ImVec2 avail = imgui.GetContentRegionAvail();
+                            ImVec2 textSize = imgui.CalcTextSize("Default");
+                            float comboWidth =
+                                avail.x
+                                - (imgui.GetStyleItemSpacingX() + textSize.x + imgui.GetStyleFramePaddingX() * 2.f);
+                            if (comboWidth < 80.f) comboWidth = 80.f;
+                            imgui.SetNextItemWidth(comboWidth);
+                            char comboBuf[64];
+                            (void)std::snprintf(comboBuf, sizeof(comboBuf), "##NvidiaRtxHdr_%u",
+                                                static_cast<unsigned>(s.setting_id));
+                            if (imgui.BeginCombo(comboBuf, s.value.c_str(), 0)) {
+                                std::vector<std::pair<std::uint32_t, std::string>> opts =
+                                    display_commander::nvapi::GetSettingAvailableValues(s.setting_id);
+                                for (const auto& opt : opts) {
+                                    const bool selected = (opt.first == s.value_id);
+                                    if (imgui.Selectable(opt.second.c_str(), selected)) {
+                                        auto [ok, err] =
+                                            display_commander::nvapi::SetProfileSetting(s.setting_id, opt.first);
+                                        if (ok) {
+                                            s_nvidiaMainTabSetError.clear();
+                                            display_commander::nvapi::InvalidateProfileSearchCache();
+                                        } else {
+                                            s_nvidiaMainTabSetError = err;
+                                            if (is_privilege_error(err)) {
+                                                s_nvidiaMainTabLastFailedId = s.setting_id;
+                                                s_nvidiaMainTabLastFailedValue = opt.first;
+                                            }
+                                        }
+                                    }
+                                    if (selected) {
+                                        imgui.SetItemDefaultFocus();
+                                    }
+                                }
+                                imgui.EndCombo();
+                            }
+                            if (imgui.IsItemHovered()) {
+                                imgui.SetTooltip("Change value and apply to profile (saved immediately).");
+                            }
+                            imgui.SameLine();
+                            const bool at_default = (s.value_id == s.default_value);
+                            if (at_default) {
+                                imgui.BeginDisabled();
+                            }
+                            imgui.PushID(static_cast<int>(s.setting_id));
+                            char defaultBtnBuf[64];
+                            (void)std::snprintf(defaultBtnBuf, sizeof(defaultBtnBuf), "Default##RtxHdr_%u",
+                                                static_cast<unsigned>(s.setting_id));
+                            if (imgui.SmallButton(defaultBtnBuf)) {
+                                auto [ok, err] =
+                                    display_commander::nvapi::SetProfileSetting(s.setting_id, s.default_value);
+                                if (ok) {
+                                    s_nvidiaMainTabSetError.clear();
+                                    display_commander::nvapi::InvalidateProfileSearchCache();
+                                } else {
+                                    s_nvidiaMainTabSetError = err;
+                                    if (is_privilege_error(err)) {
+                                        s_nvidiaMainTabLastFailedId = s.setting_id;
+                                        s_nvidiaMainTabLastFailedValue = s.default_value;
+                                    }
+                                }
+                            }
+                            imgui.PopID();
+                            if (at_default) {
+                                imgui.EndDisabled();
+                            }
+                            if (imgui.IsItemHovered()) {
+                                imgui.SetTooltip("Reset to NVIDIA default value.");
+                            }
+                        } else {
+                            imgui.TextUnformatted(s.value.c_str());
+                        }
+                    }
+                    imgui.EndTable();
+                }
+            }
             imgui.Unindent();
         }
     }

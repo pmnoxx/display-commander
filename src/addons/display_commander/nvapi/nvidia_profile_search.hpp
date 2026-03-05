@@ -60,6 +60,26 @@ NvidiaProfileSearchResult GetCachedProfileSearchResult();
 // Invalidates the profile search cache. Next GetCachedProfileSearchResult() will run a fresh search.
 void InvalidateProfileSearchCache();
 
+// Result of querying the NVIDIA profile FPS limit (FRL_FPS / FPS Limiter V3) for the current exe.
+// Uses the same cached result as GetCachedProfileSearchResult(); safe to call from UI each frame.
+struct ProfileFpsLimitResult {
+    bool has_profile = false;   // true if at least one profile matches the current exe
+    std::uint32_t value = 0;   // 0 = Off, 20-1000 = FPS limit
+    std::string profile_name;  // first matching profile name when has_profile; else empty
+    std::string error;         // non-empty if DRS failed (e.g. no NVIDIA GPU)
+};
+
+// Returns the current FPS limit from the NVIDIA driver profile for the current exe.
+// Use for Main tab "NVIDIA Profile" FPS limiter mode. Value is 0 (Off) or 20-1000 (FPS).
+ProfileFpsLimitResult GetProfileFpsLimit();
+
+// Sets the NVIDIA profile FPS limit (FRL_FPS) for the current exe. Value 0 = Off, 20-1000 = FPS.
+// Returns (true, "") on success; (false, error_message) on failure. Invalidates profile cache on success.
+std::pair<bool, std::string> SetProfileFpsLimit(std::uint32_t value);
+
+// Returns available (value, label) pairs for the profile FPS limit setting (Off + 20-1000 FPS). For UI combo.
+std::vector<std::pair<std::uint32_t, std::string>> GetProfileFpsLimitOptions();
+
 // Returns available (value, label) pairs for a DWORD setting. Cached per settingId. Empty on error.
 std::vector<std::pair<std::uint32_t, std::string>> GetSettingAvailableValues(std::uint32_t settingId);
 

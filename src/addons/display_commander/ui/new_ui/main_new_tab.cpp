@@ -1327,11 +1327,11 @@ void InitMainNewTab() {
 
         settings_loaded_once = true;
 
-        // FPS limiter: enabled checkbox + mode (0=OnPresentSync, 1=Reflex, 2=LatentSync; clamp old value 3→2)
+        // FPS limiter: enabled checkbox + mode (0=OnPresentSync, 1=Reflex, 2=LatentSync, 3=NvidiaProfile; clamp to 0-3)
         s_fps_limiter_enabled.store(settings::g_mainTabSettings.fps_limiter_enabled.GetValue());
         int mode_val = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-        if (mode_val > 2) {
-            mode_val = 2;
+        if (mode_val < 0 || mode_val > 3) {
+            mode_val = (mode_val < 0) ? 0 : 3;
             settings::g_mainTabSettings.fps_limiter_mode.SetValue(mode_val);
         }
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(mode_val));
@@ -3436,11 +3436,12 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     imgui.Spacing();
 
     const char* mode_items[] = {"Default", "NVIDIA Reflex (DX11/DX12 only, Vulkan requires native reflex)",
-                                "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR"};
+                                "Sync to Display Refresh Rate (fraction of monitor refresh rate) Non-VRR",
+                                "NVIDIA Profile (driver FPS limit, requires restart)"};
 
     int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-    if (current_item > 2) {
-        current_item = 2;
+    if (current_item < 0 || current_item > 3) {
+        current_item = (current_item < 0) ? 0 : 3;
         settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
     }
@@ -3448,7 +3449,9 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
     bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
     bool fps_limit_enabled =
-        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
+        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+         && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
+        || ShouldReflexBeEnabled();
 
     // (enable checkbox) fps limit slider
     if (imgui.Checkbox("##FPS limiter", &enabled)) {
@@ -3463,57 +3466,120 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     if (!fps_limit_enabled) {
         imgui.BeginDisabled();
     }
-    float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
-    const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
-    if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, imgui)) {
-    }
-    float cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
-    if (cur_limit > 0.0f && cur_limit < 10.0f) {
-        settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
+    // Hide main FPS slider and quick changer when NVIDIA Profile mode (driver limit; separate selector below)
+    if (current_item != static_cast<int>(FpsLimiterMode::kNvidiaProfile)) {
+        float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
+        const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, imgui)) {
+        }
+        float cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
+        if (cur_limit > 0.0f && cur_limit < 10.0f) {
+            settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
+        }
     }
     if (!fps_limit_enabled) {
         imgui.EndDisabled();
     }
 
-    if (enabled) {
+    if (enabled && current_item != static_cast<int>(FpsLimiterMode::kNvidiaProfile)) {
         DrawQuickFpsLimitChanger(imgui);
     }
 
-    // (enable background checkbox) background fps limiter slider
-    bool background_fps_enabled = settings::g_mainTabSettings.background_fps_enabled.GetValue();
-    if (imgui.Checkbox("##Background FPS", &background_fps_enabled)) {
-        settings::g_mainTabSettings.background_fps_enabled.SetValue(background_fps_enabled);
+    // NVIDIA Profile mode: show driver FPS selector, restart notice, and profile status
+    if (enabled && current_item == static_cast<int>(FpsLimiterMode::kNvidiaProfile)) {
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "Requires game restart to take effect.");
+        display_commander::nvapi::ProfileFpsLimitResult profile_fps =
+            display_commander::nvapi::GetProfileFpsLimit();
+        if (!profile_fps.error.empty()) {
+            imgui.TextColored(ui::colors::TEXT_WARNING, "NVIDIA driver: %s", profile_fps.error.c_str());
+        } else if (!profile_fps.has_profile) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "No NVIDIA profile for this game.");
+            if (imgui.Button("Create profile")) {
+                auto [ok, err] = display_commander::nvapi::CreateProfileForCurrentExe();
+                if (ok) {
+                    LogInfo("NVIDIA profile created for current exe.");
+                } else {
+                    LogError("Create profile failed: %s", err.c_str());
+                }
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Create an NVIDIA driver profile for this game. You can then set the driver FPS limit.");
+            }
+        } else {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Profile: %s", profile_fps.profile_name.c_str());
+            std::vector<std::pair<std::uint32_t, std::string>> options =
+                display_commander::nvapi::GetProfileFpsLimitOptions();
+            if (!options.empty()) {
+                int selected_index = 0;
+                for (size_t i = 0; i < options.size(); ++i) {
+                    if (options[i].first == profile_fps.value) {
+                        selected_index = static_cast<int>(i);
+                        break;
+                    }
+                }
+                std::vector<const char*> option_labels;
+                option_labels.reserve(options.size());
+                for (const auto& p : options) {
+                    option_labels.push_back(p.second.c_str());
+                }
+                int prev_index = selected_index;
+                if (imgui.Combo("Driver profile FPS limit", &selected_index, option_labels.data(),
+                                static_cast<int>(option_labels.size()))) {
+                    if (selected_index >= 0 && selected_index < static_cast<int>(options.size())) {
+                        std::uint32_t new_value = options[static_cast<size_t>(selected_index)].first;
+                        auto [ok, err] = display_commander::nvapi::SetProfileFpsLimit(new_value);
+                        if (ok) {
+                            LogInfo("NVIDIA profile FPS limit set to %u", new_value);
+                        } else {
+                            LogError("Set profile FPS limit failed: %s", err.c_str());
+                            selected_index = prev_index;
+                        }
+                    }
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("FPS limit stored in the NVIDIA driver profile. Takes effect after restart.");
+                }
+            }
+        }
     }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "When enabled, cap FPS when the game window is in the background. Slider sets the limit (default 60).");
-    }
-    imgui.SameLine();
-    if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
-        imgui.BeginDisabled();
-    }
-    float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
-    const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-    if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
-                              imgui)) {
-    }
-    if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
-        imgui.EndDisabled();
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the "
-            "Custom FPS Limiter.");
+
+    // (enable background checkbox) background fps limiter slider (not used when NVIDIA Profile mode)
+    if (current_item != static_cast<int>(FpsLimiterMode::kNvidiaProfile)) {
+        bool background_fps_enabled = settings::g_mainTabSettings.background_fps_enabled.GetValue();
+        if (imgui.Checkbox("##Background FPS", &background_fps_enabled)) {
+            settings::g_mainTabSettings.background_fps_enabled.SetValue(background_fps_enabled);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled, cap FPS when the game window is in the background. Slider sets the limit (default 60).");
+        }
+        imgui.SameLine();
+        if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
+            imgui.BeginDisabled();
+        }
+        float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
+        const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
+        if (SliderFloatSettingRef(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
+                                  imgui)) {
+        }
+        if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
+            imgui.EndDisabled();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the "
+                "Custom FPS Limiter.");
+        }
     }
 
     // (fps limiter mode selection)
     if (!enabled) {
         imgui.BeginDisabled();
     }
-    if (imgui.Combo("FPS Limiter Mode", &current_item, mode_items, 3)) {
+    if (imgui.Combo("FPS Limiter Mode", &current_item, mode_items, 4)) {
         settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));
         FpsLimiterMode mode = s_fps_limiter_mode.load();
@@ -3525,6 +3591,8 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             LogInfo("FPS Limiter: OnPresent Frame Synchronizer");
         } else if (mode == FpsLimiterMode::kLatentSync) {
             LogInfo("FPS Limiter: VBlank Scanline Sync for VSYNC-OFF or without VRR");
+        } else if (mode == FpsLimiterMode::kNvidiaProfile) {
+            LogInfo("FPS Limiter: NVIDIA Profile (driver FPS limit, requires restart)");
         }
 
         if (mode == FpsLimiterMode::kReflex && prev_item != static_cast<int>(FpsLimiterMode::kReflex)) {
@@ -3539,6 +3607,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             "Reflex - uses Reflex library to limit FPS.\n"
             "Sync to Display Refresh Rate - synchronizes frame display time to the monitor refresh rate "
             "(Non-VRR).\n"
+            "NVIDIA Profile - FPS limit from driver profile (requires restart).\n"
             " src: %s",
             GetChosenFpsLimiterSiteName());
     }
@@ -3569,12 +3638,14 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
     RECORD_DETOUR_CALL(utils::get_now_ns());
 
     int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-    if (current_item > 2) {
-        current_item = 2;
+    if (current_item < 0 || current_item > 3) {
+        current_item = (current_item < 0) ? 0 : 3;
     }
     bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
     bool fps_limit_enabled =
-        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
+        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+         && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
+        || ShouldReflexBeEnabled();
 
     auto DrawPclStatsCheckbox = [&imgui]() {
         if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
@@ -4122,8 +4193,10 @@ struct VSyncTearingTooltipContext {
 
 static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui::IImGuiWrapper& imgui) {
     RECORD_DETOUR_CALL(utils::get_now_ns());
-    bool fps_limit_enabled = (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync)
-                             || ShouldReflexBeEnabled();
+    bool fps_limit_enabled =
+        (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync
+         && s_fps_limiter_mode.load() != FpsLimiterMode::kNvidiaProfile)
+        || ShouldReflexBeEnabled();
     imgui.Spacing();
     {
         if (!fps_limit_enabled) {

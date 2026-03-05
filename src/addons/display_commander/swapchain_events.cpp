@@ -1406,6 +1406,10 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
 }
 
 float GetTargetFps() {
+    // NVIDIA Profile mode: driver applies limit after restart; no in-game limit from us
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kNvidiaProfile) {
+        return 0.0f;
+    }
     // Use background flag computed by monitoring thread; avoid
     // GetForegroundWindow here
     float target_fps = 0.0f;
@@ -1422,7 +1426,8 @@ float GetTargetFps() {
 }
 
 static OnPresentReflexMode GetEffectiveReflexMode() {
-    if (!s_fps_limiter_enabled.load() || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
+    if (!s_fps_limiter_enabled.load() || s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync
+        || s_fps_limiter_mode.load() == FpsLimiterMode::kNvidiaProfile) {
         return static_cast<OnPresentReflexMode>(settings::g_mainTabSettings.reflex_disabled_limiter_mode.GetValue());
     }
     switch (s_fps_limiter_mode.load()) {
@@ -1541,6 +1546,9 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
 
         // Call FPS Limiter on EVERY frame (not throttled)
         switch (s_fps_limiter_mode.load()) {
+            case FpsLimiterMode::kNvidiaProfile:
+                // Driver applies FPS limit after restart; no in-game limiter from us
+                break;
             case FpsLimiterMode::kReflex: {
                 if (!s_reflex_auto_configure.load()) {
                     s_reflex_auto_configure.store(true);

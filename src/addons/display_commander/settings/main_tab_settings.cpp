@@ -58,7 +58,8 @@ MainTabSettings::MainTabSettings()
       fps_limiter_enabled("fps_limiter_enabled", true, "DisplayCommander"),
       fps_limiter_mode(
           "fps_limiter_mode", 0,
-          {"Default", "Reflex (low latency)", "Sync to Display Refresh Rate (fraction of monitor refresh rate)"},
+          {"Default", "Reflex (low latency)", "Sync to Display Refresh Rate (fraction of monitor refresh rate)",
+           "NVIDIA Profile (driver FPS limit, requires restart)"},
           "DisplayCommander"),
       scanline_offset("scanline_offset", s_scanline_offset, 0, -1000, 1000, "DisplayCommander"),
       vblank_sync_divisor("vblank_sync_divisor", s_vblank_sync_divisor, 1, 0, 8, "DisplayCommander"),

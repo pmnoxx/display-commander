@@ -18,6 +18,7 @@ struct ImportantProfileSetting {
     bool is_bit_field = false;        // If true, value_id is a bitmask; UI shows checkboxes per flag.
     bool known_to_driver =
         true;  // If false, setting is in profile but not in driver's recognized list (show key + value, Delete only).
+    bool requires_admin = false;      // If true, UI shows label in warning color; changing may need admin.
 };
 
 // Per-profile application entry data (one row in "Matching profile(s)" list).

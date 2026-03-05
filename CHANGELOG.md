@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## v0.12.287 (2026-03-05)
+- **Main tab: hide RTX HDR Debanding and Allow** - RTX HDR - Debanding and RTX HDR - Allow are no longer shown in the Main tab NVIDIA section because they require admin privileges and would show privilege errors. They remain available in the NVIDIA Profile tab. Details: `SettingData.requires_admin` in `nvidia_profile_search.cpp`, `GetRtxHdrSettingIds()` filters out requires_admin settings.
+- **NVIDIA Profile tab: color for admin-only settings** - Settings that require admin (e.g. Smooth Motion - Allowed APIs, RTX HDR - Debanding, RTX HDR - Allow) are shown in warning color (orange) in the Important, All settings, and All driver settings tables. Tooltip includes "Requires admin to change." Details: `ImportantProfileSetting.requires_admin`, `nvidia_profile_tab_shared.cpp` uses `TEXT_WARNING` for label when `s.requires_admin`.
+
 ## v0.12.286 (2026-03-05)
 - **Max Pre-Rendered Frames options and Main tab** - The NVIDIA profile setting "Latency - Max Pre-Rendered Frames" (0x007BA09E) now has correct dropdown options: "Use the 3D application setting", 1–8 (matching NPI CustomSettingNames.xml). It is also shown on the Main tab under the NVIDIA section, after RTX HDR - Saturation. Details: `nvidia_profile_search.cpp` (`k_settings_data` option_values for PRERENDERLIMIT_ID, `GetRtxHdrSettingIds()` includes PRERENDERLIMIT_ID).
 - **NVIDIA subheader on Main tab with RTX HDR** - When NVAPI is initialized (NVIDIA GPU), the Main tab now shows a collapsible **NVIDIA** section with RTX HDR profile controls: Enable, Debanding, Allow, Contrast, Middle Grey, Peak Brightness, and Saturation. Same behavior as the NVIDIA Profile tab (combo + Default per setting; changes apply to the driver profile). If no profile exists for the current game, a "Create profile" button is shown. Details: `GetRtxHdrSettingIds()` in `nvidia_profile_search`, Main tab draw after DLSS Information block; spec: `private_docs/specs/main_tab_nvidia_subheader_rtx_hdr.md`.

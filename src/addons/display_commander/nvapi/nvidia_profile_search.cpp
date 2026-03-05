@@ -40,6 +40,7 @@ inline const display_commander::nvapi_loader::NvApiPtrs* NvApi() { return displa
 // All members have defaults so designated initializers can omit fields.
 // option_values: (hex_value, label) from SettingValues. When non-empty, used for presentation and combo.
 // is_advanced: if true, shown in "Show advanced profile settings" only.
+// requires_admin: if true, setting is hidden from Main tab (NVIDIA section) to avoid privilege errors; still shown in NVIDIA Profile tab.
 struct SettingData {
     const char* user_friendly_name = nullptr;
     std::uint32_t hex_setting_id = 0;
@@ -48,6 +49,7 @@ struct SettingData {
     std::uint32_t default_value = 0;
     bool is_bit_field = false;
     bool is_advanced = false;
+    bool requires_admin = false;
     bool resolve_id_from_driver = false;  // If true, use NvApi()->DRS_GetSettingIdFromName at runtime (driver may use
                                           // different ID, e.g. RTX HDR in group 5).
     const wchar_t* driver_lookup_name_wide =
@@ -63,6 +65,7 @@ static const std::array<SettingData, 28> k_settings_data = {{
      .hex_setting_id = NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
      .default_value = 0,
      .is_bit_field = true,
+     .requires_admin = true,
      .option_values = {{0x00000000, "Allow - None"},
                        {0x00000001, "Allow - DX12"},
                        {0x00000002, "Allow - DX11"},
@@ -85,6 +88,7 @@ static const std::array<SettingData, 28> k_settings_data = {{
     {.user_friendly_name = "RTX HDR - Debanding",
      .hex_setting_id = NVPI_RTX_HDR_DEBANDING_ID,
      .default_value = 0x00000000,
+     .requires_admin = true,
      .option_values = {{0x00000000, "N/A"},
                        {0x00000006, "No Debanding"},
                        {0x0000000A, "Low Debanding"},
@@ -94,6 +98,7 @@ static const std::array<SettingData, 28> k_settings_data = {{
     {.user_friendly_name = "RTX HDR - Allow",
      .hex_setting_id = NVPI_RTX_HDR_ALLOW_ID,
      .default_value = 0x00000000,
+     .requires_admin = true,
      .option_values = {{0x00000000, "Disallow"}, {0x00000001, "Allow"}}},
     {.user_friendly_name = "RTX HDR - Contrast",
      .hex_setting_id = NVPI_RTX_HDR_CONTRAST_ID,
@@ -371,6 +376,7 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
         ImportantProfileSetting entry;
         entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
+        entry.requires_admin = def.requires_admin;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
@@ -420,6 +426,7 @@ static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle
         ImportantProfileSetting entry;
         entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
+        entry.requires_admin = def.requires_admin;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
@@ -520,6 +527,8 @@ static void ReadAllSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hPro
             if (s.settingType == NVDRS_DWORD_TYPE) {
                 entry.value_id = static_cast<std::uint32_t>(s.u32CurrentValue);
             }
+            const SettingData* sd = FindSettingData(static_cast<std::uint32_t>(s.settingId));
+            entry.requires_admin = (sd != nullptr && sd->requires_admin);
             out.push_back(std::move(entry));
         }
         startIndex += count;
@@ -739,6 +748,8 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
         s.default_value = 0;
         s.is_bit_field = (drv.setting_id == NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID);
         s.known_to_driver = true;
+        const SettingData* sd = FindSettingData(drv.setting_id);
+        s.requires_admin = (sd != nullptr && sd->requires_admin);
 
         memset(&vals, 0, sizeof(vals));
         vals.version = NVDRS_SETTING_VALUES_VER;
@@ -1450,12 +1461,20 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
 }
 
 std::vector<std::uint32_t> GetRtxHdrSettingIds() {
-    return {
+    std::vector<std::uint32_t> ids = {
         NVPI_RTX_HDR_ENABLE_ID,     NVPI_RTX_HDR_DEBANDING_ID,   NVPI_RTX_HDR_ALLOW_ID,
         NVPI_RTX_HDR_CONTRAST_ID,   NVPI_RTX_HDR_MIDDLE_GREY_ID, NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
         NVPI_RTX_HDR_SATURATION_ID,
         PRERENDERLIMIT_ID,  // Latency - Max Pre-Rendered Frames (NVIDIA); shown after RTX HDR on Main tab
     };
+    ids.erase(
+        std::remove_if(ids.begin(), ids.end(),
+                       [](std::uint32_t id) {
+                           const SettingData* sd = FindSettingData(id);
+                           return sd != nullptr && sd->requires_admin;
+                       }),
+        ids.end());
+    return ids;
 }
 
 }  // namespace display_commander::nvapi

@@ -3,4 +3,8 @@
 # Format: [exe_name.DisplayCommander] then key = value. Exe name is case-insensitive.
 
 [hitman3.exe.DisplayCommander]
-ContinueRendering = 1
+ContinueRendering = '1'
+window_mode = '1'
+
+[sekiro.exe.DisplayCommander]
+window_mode = '1'

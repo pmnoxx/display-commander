@@ -3,7 +3,13 @@
 ---
 
 ## Unreleased
+
+## v0.12.302 (2026-03-05)
 - **PresentMon on by default** - PresentMon (ETW-based present and flip mode tracking) is now enabled by default when you open the addon, so flip mode and present stats are available without clicking to enable. You can still turn it off in the Main tab if needed.
+
+## v0.12.301 (2026-03-05)
+- **Game default overrides: fixed loading** - Per-game defaults from embedded `game_default_overrides.toml` (e.g. `window_mode = 1` for sekiro.exe) were not applied because TOML parses `[hitman3.exe.DisplayCommander]` as nested tables. The loader now recursively collects leaf tables and builds exe/section keys correctly, so overrides load and apply for matching games. Details: `config/default_overrides.cpp` — `CollectLeafTables`; diagnostic logging (exe checked, resource load result, bounded format for exe name).
+- **Game default overrides: window_mode and combo settings** - Combo/enum settings (e.g. Window Mode) now use game default overrides when the key is missing in config: load uses `get_config_value_or_default`, and **Reset to default** uses the effective default (override or constructor default) so reset no longer reverts to 0. Details: `ComboSettingEnumRef::Load()` and `GetDefaultValue()` in `settings_wrapper.cpp`; `window_mode` display name in `default_overrides.cpp`.
 
 ## v0.12.300 (2026-03-05)
 - **PresentMon exception handling** - PresentMon paths are now wrapped in try-catch so exceptions do not crash the addon. `CreateAndStartPresentMon` and `StopAndDestroyPresentMon` catch and log; `StartWorker` catches during thread setup and leaves manager in a consistent "not running" state; `WorkerThread` catches so a thrown exception in the ETW loop is logged and the thread exits cleanly with status "Crashed"; `EtwEventRecordCallback` catches so a bad event does not propagate to ETW; `CleanupThread` catches so one failed cleanup iteration does not kill the thread. Details: `presentmon_manager.cpp` — exception handling in all entry points and callbacks.

@@ -390,8 +390,13 @@ void ComboSettingEnumRef<EnumType>::Load() {
             external_ref_.get().store(static_cast<EnumType>(loaded_value));
         }
     } else {
-        // Use default value if not found
-        external_ref_.get().store(static_cast<EnumType>(default_value_));
+        // Not in config: use game default override if any, else constructor default
+        int effective_default;
+        display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
+                                                               &effective_default);
+        const int max_index = static_cast<int>(labels_.size()) - 1;
+        const int safe_default = std::max(0, std::min(max_index, effective_default));
+        external_ref_.get().store(static_cast<EnumType>(safe_default));
     }
 }
 
@@ -409,6 +414,15 @@ std::string ComboSettingEnumRef<EnumType>::GetValueAsString() const {
 template <typename EnumType>
 int ComboSettingEnumRef<EnumType>::GetValue() const {
     return static_cast<int>(external_ref_.get().load());
+}
+
+template <typename EnumType>
+int ComboSettingEnumRef<EnumType>::GetDefaultValue() const {
+    int effective;
+    display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
+                                                           &effective);
+    const int max_index = static_cast<int>(labels_.size()) - 1;
+    return std::max(0, std::min(max_index, effective));
 }
 
 template <typename EnumType>

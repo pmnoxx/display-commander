@@ -279,7 +279,8 @@ template <typename EnumType> class ComboSettingEnumRef : public SettingBase {
 
     int GetValue() const;
     void SetValue(int value);
-    int GetDefaultValue() const { return default_value_; }
+    // Returns effective default (game default override if any, else constructor default). Used for reset and tooltip.
+    int GetDefaultValue() const;
     const std::vector<const char *> &GetLabels() const { return labels_; }
 
     // Direct access to the referenced atomic value for performance-critical code

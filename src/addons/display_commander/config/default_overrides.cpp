@@ -42,6 +42,7 @@ static const std::map<std::string, std::string>& GetKeyDisplayNames() {
         {"HideHDRCapabilities", "Hide HDR Capabilities"},
         {"EnableFlipChain", "Enable Flip Chain"},
         {"AutoColorspace", "Auto color space"},
+        {"window_mode", "Window Mode"},
     };
     return names;
 }
@@ -70,52 +71,92 @@ static std::string NodeToString(const toml::node& node) {
     return "";
 }
 
+// TOML parses [hitman3.exe.DisplayCommander] as nested tables: tbl["hitman3"]["exe"]["DisplayCommander"].
+// Recursively find leaf tables (tables that contain at least one non-table value) and add them by
+// joining path to "exe.section" and splitting on last dot.
+static void CollectLeafTables(const toml::table& tbl, std::vector<std::string>& path, OverrideMap& out_map) {
+    bool has_non_table = false;
+    for (auto&& [k, v] : tbl) {
+        if (!v.is_table()) {
+            has_non_table = true;
+            break;
+        }
+    }
+    if (has_non_table) {
+        std::string table_name;
+        for (size_t i = 0; i < path.size(); ++i) {
+            if (i > 0) table_name += '.';
+            table_name += path[i];
+        }
+        auto [exe_lower, section] = SplitTableName(table_name);
+        if (section.empty()) return;
+        auto& sec_map = out_map[exe_lower][section];
+        for (auto&& [k2, v2] : tbl) {
+            std::string key(k2.str());
+            std::string value = NodeToString(v2);
+            if (!value.empty()) sec_map[key] = value;
+        }
+        return;
+    }
+    for (auto&& [k, v] : tbl) {
+        if (v.is_table()) {
+            path.push_back(std::string(k.str()));
+            CollectLeafTables(*v.as_table(), path, out_map);
+            path.pop_back();
+        }
+    }
+}
+
 void LoadFromResource() {
-    if (g_hmodule == nullptr) return;
+    if (g_hmodule == nullptr) {
+        LogWarn("Game default overrides: g_hmodule is null, cannot load embedded resource");
+        return;
+    }
     HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCEA(IDR_GAME_DEFAULT_OVERRIDES), RT_RCDATA);
     if (hRes == nullptr) {
-        LogWarn("Game default overrides: resource %d not found", IDR_GAME_DEFAULT_OVERRIDES);
+        LogWarn("Game default overrides: resource %d not found (rebuild addon so game_default_overrides.toml is embedded)", IDR_GAME_DEFAULT_OVERRIDES);
         return;
     }
     HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
-    if (hLoaded == nullptr) return;
+    if (hLoaded == nullptr) {
+        LogWarn("Game default overrides: LoadResource failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
+        return;
+    }
     const void* pData = LockResource(hLoaded);
     const DWORD size = SizeofResource(g_hmodule, hRes);
-    if (pData == nullptr || size == 0) return;
+    if (pData == nullptr || size == 0) {
+        LogWarn("Game default overrides: LockResource/size failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
+        return;
+    }
 
     std::string content(static_cast<const char*>(pData), size);
     try {
         toml::table tbl = toml::parse(content);
-        for (auto&& [k, v] : tbl) {
-            std::string table_name(k.str());
-            if (!v.is_table()) continue;
-            auto [exe_lower, section] = SplitTableName(table_name);
-            if (section.empty()) continue;
-            auto& sec_map = g_override_map[exe_lower][section];
-            for (auto&& [k2, v2] : *v.as_table()) {
-                std::string key(k2.str());
-                std::string value = NodeToString(v2);
-                if (!value.empty()) sec_map[key] = value;
-            }
-        }
+        std::vector<std::string> path;
+        CollectLeafTables(tbl, path, g_override_map);
+        g_loaded = true;
+        LogInfo("Game default overrides: loaded from resource (%zu exe entries)", g_override_map.size());
     } catch (const toml::parse_error& e) {
         LogWarn("Game default overrides: parse error %s", e.what());
         return;
     }
-    g_loaded = true;
 }
 
 void EnsureLoaded() {
     if (g_loaded) return;
     LoadFromResource();
     g_current_exe_lower = GetCurrentExeNameLower();
+    // Bounded format to avoid log garbage if exe string were ever non-null-terminated
+    const std::string& exe = g_current_exe_lower;
+    LogInfo("Game default overrides: checking against exe %.260s", exe.empty() ? "(unknown)" : exe.c_str());
     if (g_loaded && !g_override_map.empty()) {
-        if (g_override_map.count(g_current_exe_lower))
-            LogInfo("Game default override found for %s", g_current_exe_lower.c_str());
-        else
-            LogInfo("No game default override for %s", g_current_exe_lower.c_str());
+        if (g_override_map.count(g_current_exe_lower)) {
+            LogInfo("Game default override found for %.260s", exe.c_str());
+        } else {
+            LogInfo("No game default override for %.260s", exe.c_str());
+        }
     } else if (!g_loaded) {
-        LogInfo("No game default override for %s (resource not loaded)", g_current_exe_lower.c_str());
+        LogInfo("No game default override for %.260s (resource not loaded)", exe.c_str());
     }
 }
 

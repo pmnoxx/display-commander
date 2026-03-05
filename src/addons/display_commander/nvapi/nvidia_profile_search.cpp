@@ -40,7 +40,8 @@ inline const display_commander::nvapi_loader::NvApiPtrs* NvApi() { return displa
 // All members have defaults so designated initializers can omit fields.
 // option_values: (hex_value, label) from SettingValues. When non-empty, used for presentation and combo.
 // is_advanced: if true, shown in "Show advanced profile settings" only.
-// requires_admin: if true, setting is hidden from Main tab (NVIDIA section) to avoid privilege errors; still shown in NVIDIA Profile tab.
+// requires_admin: if true, setting is hidden from Main tab (NVIDIA section) to avoid privilege errors; still shown in
+// NVIDIA Profile tab.
 struct SettingData {
     const char* user_friendly_name = nullptr;
     std::uint32_t hex_setting_id = 0;
@@ -59,7 +60,7 @@ struct SettingData {
 
 // All important + advanced settings; first k_num_important_settings are important, rest are advanced.
 static constexpr std::size_t k_num_important_settings = 25;
-static const std::array<SettingData, 28> k_settings_data = {{
+static const std::array<SettingData, 30> k_settings_data = {{
     // Important (order matches previous k_important_settings)
     {.user_friendly_name = "Smooth Motion - Allowed APIs [40 series]",
      .hex_setting_id = NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
@@ -284,6 +285,18 @@ static const std::array<SettingData, 28> k_settings_data = {{
      .default_value = static_cast<std::uint32_t>(ANSEL_ENABLE_DEFAULT),
      .is_advanced = true,
      .option_values = {{0, "Off"}, {1, "On"}}},
+    {.user_friendly_name = "Ultra Low Latency - CPL State",
+     .hex_setting_id = ULL_CPL_STATE_ID,
+     .min_required_driver_version = 43000,  // 430.00
+     .default_value = 0x00000000,
+     .is_advanced = true,
+     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}, {0x00000002, "Ultra"}}},
+    {.user_friendly_name = "Ultra Low Latency - Enabled",
+     .hex_setting_id = ULL_ENABLED_ID,
+     .min_required_driver_version = 43000,  // 430.00
+     .default_value = 0x00000000,
+     .is_advanced = true,
+     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
 }};
 
 static std::uint32_t ResolveSettingIdByDriverName(const char* nameUtf8);
@@ -377,6 +390,7 @@ static void ReadImportantSettings(NvDRSSessionHandle hSession, NvDRSProfileHandl
         entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
         entry.requires_admin = def.requires_admin;
+        entry.min_required_driver_version = def.min_required_driver_version;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
@@ -427,6 +441,7 @@ static void ReadAdvancedSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle
         entry.label = def.user_friendly_name != nullptr ? def.user_friendly_name : "";
         entry.is_bit_field = def.is_bit_field;
         entry.requires_admin = def.requires_admin;
+        entry.min_required_driver_version = def.min_required_driver_version;
         NVDRS_SETTING s = {0};
         s.version = NVDRS_SETTING_VER;
         entry.default_value = def.default_value;
@@ -529,6 +544,7 @@ static void ReadAllSettings(NvDRSSessionHandle hSession, NvDRSProfileHandle hPro
             }
             const SettingData* sd = FindSettingData(static_cast<std::uint32_t>(s.settingId));
             entry.requires_admin = (sd != nullptr && sd->requires_admin);
+            entry.min_required_driver_version = (sd != nullptr ? sd->min_required_driver_version : 0);
             out.push_back(std::move(entry));
         }
         startIndex += count;
@@ -750,6 +766,7 @@ static std::vector<ImportantProfileSetting> GetDriverSettingsWithProfileValuesIm
         s.known_to_driver = true;
         const SettingData* sd = FindSettingData(drv.setting_id);
         s.requires_admin = (sd != nullptr && sd->requires_admin);
+        s.min_required_driver_version = (sd != nullptr ? sd->min_required_driver_version : 0);
 
         memset(&vals, 0, sizeof(vals));
         vals.version = NVDRS_SETTING_VALUES_VER;
@@ -1465,20 +1482,24 @@ std::vector<std::uint32_t> GetRtxHdrSettingIds() {
     std::vector<std::uint32_t> ids = {
         NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
         NVPI_SMOOTH_MOTION_ENABLE_50_ID,
-        NVPI_RTX_HDR_ENABLE_ID,     NVPI_RTX_HDR_DEBANDING_ID,   NVPI_RTX_HDR_ALLOW_ID,
-        NVPI_RTX_HDR_CONTRAST_ID,   NVPI_RTX_HDR_MIDDLE_GREY_ID, NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
+        NVPI_RTX_HDR_ENABLE_ID,
+        NVPI_RTX_HDR_DEBANDING_ID,
+        NVPI_RTX_HDR_ALLOW_ID,
+        NVPI_RTX_HDR_CONTRAST_ID,
+        NVPI_RTX_HDR_MIDDLE_GREY_ID,
+        NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
         NVPI_RTX_HDR_SATURATION_ID,
         PRERENDERLIMIT_ID,  // Latency - Max Pre-Rendered Frames (NVIDIA); shown after RTX HDR on Main tab
+        ULL_CPL_STATE_ID,   // Ultra Low Latency - CPL State (2 - Sync and Refresh); shown on Main tab NVIDIA Control
+        ULL_ENABLED_ID,     // Ultra Low Latency - Enabled (2 - Sync and Refresh); shown on Main tab NVIDIA Control
     };
     // Hide requires_admin from Main tab except Smooth Motion - Allowed APIs (user requested to show it).
-    ids.erase(
-        std::remove_if(ids.begin(), ids.end(),
-                       [](std::uint32_t id) {
-                           const SettingData* sd = FindSettingData(id);
-                           return sd != nullptr && sd->requires_admin
-                                  && id != NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID;
-                       }),
-        ids.end());
+    ids.erase(std::remove_if(ids.begin(), ids.end(),
+                             [](std::uint32_t id) {
+                                 const SettingData* sd = FindSettingData(id);
+                                 return sd != nullptr && sd->requires_admin && id != NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID;
+                             }),
+              ids.end());
     return ids;
 }
 

@@ -5646,6 +5646,12 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         rtx_settings.push_back(&s);
                     }
                 }
+                // Include advanced settings that are in rtx_ids (e.g. Ultra Low Latency - CPL State, Ultra Low Latency - Enabled).
+                for (const auto& s : r.advanced_settings) {
+                    if (std::find(rtx_ids.begin(), rtx_ids.end(), s.setting_id) != rtx_ids.end()) {
+                        rtx_settings.push_back(&s);
+                    }
+                }
                 if (!rtx_settings.empty()
                     && imgui.BeginTable(
                         "NvidiaRtxHdrMainTab", 2,
@@ -5666,6 +5672,13 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                             std::string tip = display_commander::nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
                             if (s.requires_admin && !tip.empty()) tip += "\n";
                             if (s.requires_admin) tip += "Requires admin to change.";
+                            if (s.min_required_driver_version != 0) {
+                                if (!tip.empty()) tip += "\n";
+                                char buf[64];
+                                snprintf(buf, sizeof(buf), "Requires driver %u.%02u or newer.",
+                                         s.min_required_driver_version / 100, s.min_required_driver_version % 100);
+                                tip += buf;
+                            }
                             imgui.SetTooltip("%s", tip.c_str());
                         }
                         imgui.TableSetColumnIndex(1);

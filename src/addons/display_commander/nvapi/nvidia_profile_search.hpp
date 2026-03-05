@@ -19,6 +19,7 @@ struct ImportantProfileSetting {
     bool known_to_driver =
         true;  // If false, setting is in profile but not in driver's recognized list (show key + value, Delete only).
     bool requires_admin = false;      // If true, UI shows label in warning color; changing may need admin.
+    unsigned min_required_driver_version = 0;  // e.g. 43000 for 430.00, 57186 for 571.86; 0 = not specified. Shown in tooltip.
 };
 
 // Per-profile application entry data (one row in "Matching profile(s)" list).

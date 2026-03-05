@@ -351,6 +351,13 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
                         if (s.requires_admin && !tip.empty()) tip += "\n";
                         if (s.requires_admin) tip += "Requires admin to change.";
+                        if (s.min_required_driver_version != 0) {
+                            if (!tip.empty()) tip += "\n";
+                            char buf[64];
+                            snprintf(buf, sizeof(buf), "Requires driver %u.%02u or newer.",
+                                     s.min_required_driver_version / 100, s.min_required_driver_version % 100);
+                            tip += buf;
+                        }
                         imgui.SetTooltip("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);
@@ -489,6 +496,13 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
                             if (s.requires_admin && !tip.empty()) tip += "\n";
                             if (s.requires_admin) tip += "Requires admin to change.";
+                            if (s.min_required_driver_version != 0) {
+                                if (!tip.empty()) tip += "\n";
+                                char buf[64];
+                                snprintf(buf, sizeof(buf), "Requires driver %u.%02u or newer.",
+                                         s.min_required_driver_version / 100, s.min_required_driver_version % 100);
+                                tip += buf;
+                            }
                             imgui.SetTooltip("%s", tip.c_str());
                         }
                         imgui.TableSetColumnIndex(1);
@@ -542,6 +556,13 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         std::string tip = nvapi::GetSettingDriverDebugTooltip(s.setting_id, s.label);
                         if (s.requires_admin && !tip.empty()) tip += "\n";
                         if (s.requires_admin) tip += "Requires admin to change.";
+                        if (s.min_required_driver_version != 0) {
+                            if (!tip.empty()) tip += "\n";
+                            char buf[64];
+                            snprintf(buf, sizeof(buf), "Requires driver %u.%02u or newer.",
+                                     s.min_required_driver_version / 100, s.min_required_driver_version % 100);
+                            tip += buf;
+                        }
                         imgui.SetTooltip("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);

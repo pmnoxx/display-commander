@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+## v0.12.290 (2026-03-05)
+- **Ultra Low Latency on Main tab NVIDIA Control** - **Ultra Low Latency - CPL State** and **Ultra Low Latency - Enabled** are now shown in the Main tab **NVIDIA Control** section (same combo + Default as other profile settings). Details: `GetRtxHdrSettingIds()` includes `ULL_CPL_STATE_ID` and `ULL_ENABLED_ID`; Main tab builds the settings list from both `important_settings` and `advanced_settings` so advanced-only entries in rtx_ids appear.
+
+## v0.12.289 (2026-03-05)
+- **Min driver version and Ultra Low Latency - CPL State** - Profile settings can now show a minimum required driver version (e.g. "Requires driver 430.00 or newer") in the tooltip on the NVIDIA Profile tab and NVIDIA Control (Main tab). Added the **Ultra Low Latency - CPL State** driver setting (0x0005F543, Off/On/Ultra) to the advanced list with min version 430.00. Details: `ImportantProfileSetting.min_required_driver_version`, `SettingData.min_required_driver_version` propagated in ReadImportantSettings, ReadAdvancedSettings, ReadAllSettings, GetDriverSettingsWithProfileValuesImpl; tooltip in `nvidia_profile_tab_shared.cpp` and `main_new_tab.cpp`; `nvpi_reference.hpp` `ULL_CPL_STATE_ID`, `k_settings_data` +1 entry.
+- **Ultra Low Latency - Enabled** - Added driver setting **Ultra Low Latency - Enabled** (0x10835000, Off/On, min driver 430.00) to the NVIDIA Profile tab advanced list. Details: `nvpi_reference.hpp` `ULL_ENABLED_ID`, `k_settings_data` +1 entry.
+
 ## v0.12.288 (2026-03-05)
 - **NVIDIA Control (Main tab)** - The Main tab section is renamed from "NVIDIA" to **NVIDIA Control**. It now includes a **Refresh** button to reload profile data, shows **Smooth Motion - Allowed APIs** and **Smooth Motion - Enable** (same as NVIDIA Profile tab), and uses the same "Allow - All [DX11/12, VK]" button for Smooth Motion Allowed APIs. Admin-only settings are shown in warning color with tooltip. Details: `main_new_tab.cpp` (header rename, Refresh button, GetRtxHdrSettingIds() order), `nvidia_profile_search.cpp` (Smooth Motion IDs in GetRtxHdrSettingIds(), keep Allowed APIs when filtering requires_admin).
 - **Auto-refresh on first open** - The first time you expand **NVIDIA Control** on the Main tab or open the **NVIDIA Profile** tab, profile data is refreshed automatically so the list is up to date. Details: `main_new_tab.cpp` (static s_nvidiaControlOpenedOnce), `nvidia_profile_tab_shared.cpp` (static s_nvidiaProfileTabOpenedOnce).

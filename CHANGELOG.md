@@ -3,7 +3,11 @@
 ---
 
 ## Unreleased
+
+## v0.12.318
 - **Texture stats: total memory, peak, cache misses on overlay and Advanced tab** - Performance overlay and Advanced tab now both show total memory used, peak memory used, and total cache misses for the texture tracker. The Main tab "Tex stats" overlay checkbox is shown only when Advanced → "Track loaded texture size" is enabled, so the overlay option does not appear when texture tracking is off. Details: overlay block in `main_new_tab.cpp` shows current/peak MiB and cache misses; Advanced tab line extended with "Cache misses"; Tex stats checkbox wrapped in `texture_tracking_enabled` check.
+
+- **PresentMon OnEtwEvent: SEH guard and full error capture** - The ETW event callback `OnEtwEvent` is now wrapped in `__try`/`__except` so access violations and other SEH exceptions during event parsing do not crash the addon; the faulty event is skipped and a warning is logged. A call guard (`CALL_GUARD`) was added so this callback is tracked for crash reporting. All SEH exception codes are captured and logged with both the raw code (hex) and a readable name for known types (e.g. ACCESS_VIOLATION, STACK_OVERFLOW). Details: `presentmon_manager.cpp` — `OnEtwEvent` with CALL_GUARD, __try/__except, and GetExceptionCode() switch for exception names.
 
 ## v0.12.317
 - **Texture memory tracking (optional)** - Optional feature (off by default) that tracks the size of loaded D3D11 textures and hooks their `IUnknown::Release`. When enabled in the Advanced tab, stats show current texture count, current memory (MB), and peak memory with a reset button. Only textures created after enabling are tracked. Details: `utils/texture_tracker.hpp` / `texture_tracker.cpp`; D3D11 CreateTexture1D/2D/3D detours and per-type Release hooks in `hooks/d3d11/d3d11_device_hooks.cpp`; Advanced tab setting `texture_tracking_enabled` and stats UI in `ui/new_ui/advanced_tab.cpp`.

@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.311
+- **HookFactory: ComPtr, single hook, CreateSwapChainForHwnd/CoreWindow** - HookFactory now uses ComPtr for IDXGIFactory and IDXGIFactory1 so interfaces are released correctly and use-after-free is avoided. Factory hooks are installed only once per process via a static flag. Hooking of IDXGIFactory1::CreateSwapChainForHwnd and CreateSwapChainForCoreWindow is re-enabled so swapchain creation through these paths is tracked. Details: `dxgi_present_hooks.cpp` HookFactory.
+
 ## v0.12.310
 - **Factory hook crash fix** - Fixed a crash that could occur when hooking into the DXGI factory. Details: `api_hooks.cpp`, `dxgi_present_hooks.cpp` / `dxgi_present_hooks.hpp`.
 

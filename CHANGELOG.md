@@ -3,7 +3,10 @@
 ---
 
 ## Unreleased
+- **Auto color space: skip when RenoDX addon is loaded** - When a ReShade addon whose path contains "renodx-" (e.g. renodx-silenthill2remake.addon64) has been detected, the HDR10/scRGB auto color space fix no longer runs, avoiding conflicts with RenoDX’s own color handling. Details: `AutoSetColorSpace` in `swapchain_events.cpp` returns early when `g_is_renodx_loaded` is true (set when `IsRenoDxAddonPath` succeeds in loadlibrary hooks).
 
+## v0.12.314 (2026-03-05)
+- **Don't set colorspace to sRGB on failure** - When SetColorSpace1 fails, the addon no longer falls back to sRGB; it logs the error and returns.
 
 ## v0.12.313 (2026-03-05)
 - **D3D11On12CreateDevice hook** - Display Commander now hooks `D3D11On12CreateDevice` in d3d11.dll in addition to `D3D11CreateDevice` and `D3D11CreateDeviceAndSwapChain`. Games that create a D3D11 device on top of D3D12 (D3D11on12) are now intercepted for debug layer, logging, and DXGI factory hook installation, matching ReShade’s coverage. Details: `api_hooks.hpp` / `api_hooks.cpp` — `D3D11On12CreateDevice_pfn`, detour, and install in `InstallD3D11DeviceHooks`; `#include <d3d11on12.h>`.

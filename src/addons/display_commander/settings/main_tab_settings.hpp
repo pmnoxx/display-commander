@@ -126,6 +126,7 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::BoolSetting show_overlay_vu_bars;
     ui::new_ui::BoolSetting show_overlay_vram;
+    ui::new_ui::BoolSetting show_overlay_texture_stats;
     ui::new_ui::FloatSetting overlay_background_alpha;
     ui::new_ui::FloatSetting overlay_chart_alpha;
     ui::new_ui::FloatSetting overlay_graph_scale;

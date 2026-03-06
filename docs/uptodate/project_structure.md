@@ -213,6 +213,7 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **logging.cpp**, **logging.hpp**
 - **perf_measurement.cpp**, **perf_measurement.hpp**
 - **detour_call_tracker.cpp**, **.hpp**
+- **texture_tracker.cpp**, **.hpp**: Thread-safe tracking of loaded D3D11 texture size and count; used by optional Advanced tab texture tracking feature and IUnknown::Release hooks
 - **file_sha256.cpp**, **.hpp**
 - **game_launcher_registry.cpp**, **.hpp**
 - **mpo_registry.cpp**, **.hpp**

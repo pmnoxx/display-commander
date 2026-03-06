@@ -16,6 +16,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
 #include "../../utils/process_window_enumerator.hpp"
+#include "../../utils/texture_tracker.hpp"
 #include "../../utils/timing.hpp"
 #include "settings_wrapper.hpp"
 
@@ -991,6 +992,36 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             "This can help with compatibility issues or debugging.\n"
             "This setting is automatically enabled when safemode is active.\n\n"
             "This setting requires a game restart to take effect.");
+    }
+
+    imgui.Spacing();
+
+    // Texture memory tracking (optional; tracks loaded D3D11 texture size and hooks IUnknown::Release)
+    if (CheckboxSetting(settings::g_advancedTabSettings.texture_tracking_enabled, "Track loaded texture size", imgui)) {
+        LogInfo("Texture tracking setting changed to: %s",
+                settings::g_advancedTabSettings.texture_tracking_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, tracks the size of D3D11 textures created by the game and hooks their Release.\n"
+            "Shows current and peak texture memory in the stats below. Off by default.\n"
+            "Only affects D3D11 games; new textures are tracked after enabling.");
+    }
+    if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
+        const utils::TextureTrackerStats stats = utils::TextureTrackerGetStats();
+        const double current_mb = static_cast<double>(stats.current_bytes) / (1024.0 * 1024.0);
+        const double peak_mb = static_cast<double>(stats.peak_bytes) / (1024.0 * 1024.0);
+        imgui.Indent();
+        imgui.Text("Textures: %llu  |  Total memory: %.2f MB  |  Peak: %.2f MB  |  Cache misses: %llu",
+                   static_cast<unsigned long long>(stats.current_count), current_mb, peak_mb,
+                   static_cast<unsigned long long>(stats.total_misses));
+        if (imgui.Button("Reset peak")) {
+            utils::TextureTrackerResetPeak();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Set peak to current value.");
+        }
+        imgui.Unindent();
     }
 
     imgui.Spacing();

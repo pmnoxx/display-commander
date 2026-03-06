@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.319
+- **Enable DX11 hooks (Advanced tab)** - Added an "Enable DX11 hooks" checkbox in the Advanced tab, placed just above "Track loaded texture size". When disabled, D3D11 device/creation hooks are not installed (reduces overhead for D3D11 games that do not use texture tracking). Default is enabled. A warning is shown when "Track loaded texture size" is enabled but "Enable DX11 hooks" is disabled, since texture tracking requires D3D11 hooks. Details: `enable_dx11_hooks` in `advanced_tab_settings`; `hook_suppression_manager` suppresses D3D11 when `enable_dx11_hooks` is false; Advanced tab UI and tooltip in `advanced_tab.cpp`.
+
 ## v0.12.318
 - **Texture stats: total memory, peak, cache misses on overlay and Advanced tab** - Performance overlay and Advanced tab now both show total memory used, peak memory used, and total cache misses for the texture tracker. The Main tab "Tex stats" overlay checkbox is shown only when Advanced → "Track loaded texture size" is enabled, so the overlay option does not appear when texture tracking is off. Details: overlay block in `main_new_tab.cpp` shows current/peak MiB and cache misses; Advanced tab line extended with "Cache misses"; Tex stats checkbox wrapped in `texture_tracking_enabled` check.
 

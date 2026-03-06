@@ -106,6 +106,9 @@ class AdvancedTabSettings {
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;
 
+    // Enable D3D11 device/creation hooks. When disabled, D3D11 hooks are not installed (e.g. texture tracking won't work). Default true.
+    BoolSetting enable_dx11_hooks;
+
     // Optional texture memory tracking (tracks loaded texture size and hooks IUnknown::Release). Off by default.
     BoolSetting texture_tracking_enabled;
 

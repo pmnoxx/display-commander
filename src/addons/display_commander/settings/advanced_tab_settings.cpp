@@ -64,6 +64,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),
       presentmon_provider_d3d9("PresentMonProviderD3D9", false, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
+      enable_dx11_hooks("EnableDx11Hooks", true, "DisplayCommander"),
       texture_tracking_enabled("TextureTrackingEnabled", false, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
@@ -97,6 +98,7 @@ void AdvancedTabSettings::SaveAll() {
     presentmon_provider_dwm.Save();
     presentmon_provider_d3d9.Save();
     disable_dpi_scaling.Save();
+    enable_dx11_hooks.Save();
     texture_tracking_enabled.Save();
 }
 
@@ -118,7 +120,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &debug_layer_enabled, &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes,
             &win_up_grace_seconds, &enable_presentmon_tracing, &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi,
             &presentmon_provider_dwm, &presentmon_provider_d3d9, &disable_dpi_scaling,
-            &texture_tracking_enabled};
+            &enable_dx11_hooks, &texture_tracking_enabled};
 }
 
 }  // namespace settings

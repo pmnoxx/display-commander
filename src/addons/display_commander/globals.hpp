@@ -299,7 +299,7 @@ Microsoft::WRL::ComPtr<IDXGIFactory1> GetSharedDXGIFactory();
 
 // Enums
 enum class WindowStyleMode : std::uint8_t { KEEP, BORDERLESS, OVERLAPPED_WINDOW };
-enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kLatentSync = 2, kNvidiaProfile = 3 };
+enum class FpsLimiterMode : std::uint8_t { kOnPresentSync = 0, kReflex = 1, kLatentSync = 2 };
 enum class WindowMode : std::uint8_t {
     kNoChanges = 0,                 // No changes; do not prevent exclusive fullscreen
     kFullscreen = 1,                // Borderless fullscreen (resize) + prevent exclusive fullscreen

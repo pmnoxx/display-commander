@@ -2322,7 +2322,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 // OverrideReShadeSettings_AddDisplayCommanderPaths
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "When on: Brightness, AutoHDR and related controls are active, and Display Commander adds its "
                     "Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths. When off: the whole "
                     "section is disabled and DC does not add those paths.");
@@ -2349,7 +2349,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Adjust brightness via Display Commander's ReShade effect (0-500%%, 100%% = neutral).\n"
                     "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                     "Ctrl+Shift+F5) or game restart.");
@@ -2358,14 +2358,14 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 // Value is applied in OnReShadePresent each frame (DECODE_METHOD)
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "How to interpret the backbuffer (decode). Auto = detect from pipeline. Default Auto.");
             }
             if (ComboSettingWrapper(settings::g_mainTabSettings.brightness_colorspace, "Color Space", imgui)) {
                 // Value is applied in OnReShadePresent each frame (ENCODE_METHOD)
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Output/encode color space. Auto = match pipeline. sRGB = linearize, multiply, encode.");
             }
             {
@@ -2379,7 +2379,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                         // Applied in create_swapchain (desc) and init_swapchain (ResizeBuffers + color space)
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Upgrades the swap chain to HDR (scRGB or HDR10) on creation. Requires DXGI (D3D10/11/12) "
                             "and Windows HDR or an HDR display. Game restart may be needed.");
                     }
@@ -2389,7 +2389,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                             // Value applied on next create_swapchain / init_swapchain
                         }
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip(
+                            imgui.SetTooltipEx(
                                 "scRGB = 16-bit float linear. HDR10 = 10-bit PQ (ST.2084). Change may require game "
                                 "restart.");
                         }
@@ -2408,7 +2408,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     }
                     imgui.Text("Use RenoDX to upgrade swapchain to HDR (%s).", api_label);
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Swapchain HDR Upgrade is only available for DXGI (D3D10/11/12). For %s use RenoDX: "
                             "https://github.com/clshortfuse/renodx",
                             api_label);
@@ -2419,7 +2419,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
             }
             // HDR10 / scRGB color fix (DXGI only): 10-bit HDR10 or 16-bit scRGB back buffer
@@ -2433,7 +2433,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                         settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Sets DXGI swap chain and ReShade color space to match the back buffer: "
                             "10-bit HDR10 (R10G10B10A2) -> HDR10 (ST2084), 16-bit FP (R16G16B16A16) -> scRGB (Linear). "
                             "No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. DirectX 11/12.");
@@ -2459,7 +2459,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
+                    imgui.SetTooltipEx("Profile 3 effect strength (0.0 = no effect, 1.0 = full effect, up to 2.0).");
                 }
             }
             // Misc subsection: Gamma, Contrast, Saturation (less prominent)
@@ -2470,7 +2470,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Gamma correction (0.5–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with "
                         "Brightness.");
                 }
@@ -2478,24 +2478,22 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Contrast (0.0–2.0, 1.0 = neutral). Applied in DisplayCommander_Control.fx with Brightness.");
                 }
                 if (SliderFloatSetting(settings::g_mainTabSettings.saturation_value, "Saturation", "%.2f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Saturation (0.0 = grayscale, 1.0 = neutral, up to 2.0). Applied in "
-                        "DisplayCommander_Control.fx "
-                        "with "
-                        "Brightness.");
+                        "DisplayCommander_Control.fx with Brightness.");
                 }
                 if (SliderFloatSetting(settings::g_mainTabSettings.hue_degrees, "Hue (degrees)", "%.1f", imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Hue shift (-15 to +15 degrees, 0 = neutral). Applied in DisplayCommander_Control.fx with "
                         "Brightness.");
                 }

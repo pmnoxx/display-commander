@@ -480,13 +480,12 @@ HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFacto
                                        __uuidof(IDXGIFactory3), __uuidof(IDXGIFactory4), __uuidof(IDXGIFactory5),
                                        __uuidof(IDXGIFactory6), __uuidof(IDXGIFactory7)};
 
-    if (std::find(rrids.begin(), rrids.end(), riid) == rrids.end()) {
-        LogWarn("CreateDXGIFactory2: Unknown interface %s", FormatRefIid(riid).c_str());
-        return E_NOINTERFACE;
+    auto highest_rrid_found = std::find(rrids.begin(), rrids.end(), riid) - rrids.begin();
+
+    GUID rrid_override = riid;
+    if (highest_rrid_found <= 1) {
+        rrid_override = __uuidof(IDXGIFactory2);
     }
-    LogInfo("CreateDXGIFactory2: Found interface %s -> IDXGIFactory7", FormatRefIid(riid).c_str());
-    // Upgrading interface
-    const GUID rrid_override = __uuidof(IDXGIFactory7);
 
     // Call original function
     HRESULT hr = CreateDXGIFactory2_Original ? CreateDXGIFactory2_Original(Flags, rrid_override, ppFactory)

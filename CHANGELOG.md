@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.309 (2026-03-05)
+- **CreateDXGIFactory2 fix** - The CreateDXGIFactory2 hook no longer forces IDXGIFactory7 for every caller. It only overrides the requested interface to IDXGIFactory2 when the application asks for IDXGIFactory or IDXGIFactory1; for IDXGIFactory2 and newer (through IDXGIFactory7) the requested interface is passed through to the real API. This avoids breaking applications that expect a specific factory version. Details: `api_hooks.cpp` — use requested riid unless highest_rrid_found <= 1, then override to IDXGIFactory2; removed E_NOINTERFACE for unknown interfaces and forced upgrade to Factory7.
+
 ## v0.12.308 (2026-03-05)
 - **DXGI hooked by default when loading before ReShade (breaking change)** - When Display Commander loads before ReShade, the addon now hooks into DXGI by default so display and swapchain features work correctly. Previously this path could skip hooking; the new behavior may affect load order or compatibility with other injectors. Details: `api_hooks.cpp` — early return only when `g_hooked_before_reshade` is set.
 

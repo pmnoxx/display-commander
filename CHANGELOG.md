@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.313 (2026-03-05)
+- **D3D11On12CreateDevice hook** - Display Commander now hooks `D3D11On12CreateDevice` in d3d11.dll in addition to `D3D11CreateDevice` and `D3D11CreateDeviceAndSwapChain`. Games that create a D3D11 device on top of D3D12 (D3D11on12) are now intercepted for debug layer, logging, and DXGI factory hook installation, matching ReShade’s coverage. Details: `api_hooks.hpp` / `api_hooks.cpp` — `D3D11On12CreateDevice_pfn`, detour, and install in `InstallD3D11DeviceHooks`; `#include <d3d11on12.h>`.
+
 ## v0.12.312
 - **DXGI factory vtable enum and CreateSwapChainForComposition hook** - Factory vtable indices are now a single enum (`IDXGIFactoryVTable`) covering IDXGIFactory, IDXGIFactory1, and IDXGIFactory2, aligned with ReShade’s indices (CreateSwapChain 10, CreateSwapChainForHwnd/CoreWindow 15/16, CreateSwapChainForComposition 24). IDXGIFactory2::CreateSwapChainForComposition is hooked so swap chains created for composition (e.g. WinUI/XAML) are tracked and hooked like other factory-created swap chains. Details: `dxgi_present_hooks.hpp` enum; `dxgi_present_hooks.cpp` HookFactory + CreateSwapChainForComposition detour.
 

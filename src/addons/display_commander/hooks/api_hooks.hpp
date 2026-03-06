@@ -47,6 +47,9 @@ using D3D11CreateDeviceAndSwapChain_pfn = HRESULT(WINAPI*)(IDXGIAdapter*, D3D_DR
                                                            ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
 using D3D11CreateDevice_pfn = HRESULT(WINAPI*)(IDXGIAdapter*, D3D_DRIVER_TYPE, HMODULE, UINT, const D3D_FEATURE_LEVEL*,
                                                UINT, UINT, ID3D11Device**, D3D_FEATURE_LEVEL*, ID3D11DeviceContext**);
+using D3D11On12CreateDevice_pfn = HRESULT(WINAPI*)(IUnknown*, UINT, const D3D_FEATURE_LEVEL*, UINT, IUnknown* const*,
+                                                  UINT, UINT, ID3D11Device**, ID3D11DeviceContext**,
+                                                  D3D_FEATURE_LEVEL*);
 
 // D3D12 Device creation function pointer types
 using D3D12CreateDevice_pfn = HRESULT(WINAPI*)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
@@ -74,6 +77,7 @@ extern CreateDXGIFactory1_pfn CreateDXGIFactory1_Original;
 extern CreateDXGIFactory2_pfn CreateDXGIFactory2_Original;
 extern D3D11CreateDeviceAndSwapChain_pfn D3D11CreateDeviceAndSwapChain_Original;
 extern D3D11CreateDevice_pfn D3D11CreateDevice_Original;
+extern D3D11On12CreateDevice_pfn D3D11On12CreateDevice_Original;
 extern D3D12CreateDevice_pfn D3D12CreateDevice_Original;
 
 // True minimized state, bypassing IsIconic detour (e.g. for ApplyWindowChange - do not move/resize minimized windows).
@@ -120,6 +124,11 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
                                         UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
                                         UINT SDKVersion, ID3D11Device** ppDevice, D3D_FEATURE_LEVEL* pFeatureLevel,
                                         ID3D11DeviceContext** ppImmediateContext);
+HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags,
+                                            const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
+                                            IUnknown* const* ppCommandQueues, UINT NumQueues, UINT NodeMask,
+                                            ID3D11Device** ppDevice, ID3D11DeviceContext** ppImmediateContext,
+                                            D3D_FEATURE_LEVEL* pChosenFeatureLevel);
 HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL MinimumFeatureLevel, REFIID riid,
                                         void** ppDevice);
 

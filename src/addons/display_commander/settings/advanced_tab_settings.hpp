@@ -110,6 +110,8 @@ class AdvancedTabSettings {
     BoolSetting enable_dx11_vtable_hooks;
     // Optional texture memory tracking (tracks loaded texture size and hooks IUnknown::Release). Off by default.
     BoolSetting texture_tracking_enabled;
+    // D3D11 texture caching: cache CreateTexture2D results by content hash; no eviction, no size limit. Off by default.
+    BoolSetting d3d11_texture_caching_enabled;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

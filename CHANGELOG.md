@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+## v0.12.320
+- **PresentMon ETW tracing defaults to off** - The "Enable PresentMon tracing" setting now defaults to false so ETW tracing is off until the user enables it. Details: `enable_presentmon_tracing` in advanced_tab_settings.cpp.
+- **Texture stats** - When texture tracking is enabled (Advanced tab), stats show texture count, total/peak memory, and in the overlay: min unique keys, lookups, cache hit, cache miss, entries, cache stored (MiB). Skip reasons (no init, track off, cache off, ppNull, key0, size0) explain why CreateTexture2D did not attempt a cache lookup. Details: texture_tracker, advanced_tab.cpp, main_new_tab.cpp.
+- **Texture caching 2D** - Optional D3D11 CreateTexture2D cache (Advanced tab, off by default): cacheable textures (with initial data) are stored by content hash; no per-texture size limit, no eviction. A subsequent CreateTexture2D with the same (desc + initial data) returns the cached texture. Normalized desc hashing; cache-hit handouts are added to the tracker so Release is tracked correctly. Details: d3d11_device_hooks.cpp, TextureCacheGet/Put, HashTexture2DDescNormalized, `d3d11_texture_caching_enabled`.
+
 ## v0.12.319
 - **Enable D3D11 vtable hooks (Advanced tab)** - Added a checkbox "Enable D3D11 vtable hooks (HookD3D11Device)" in the Advanced tab, placed just above "Track loaded texture size", off by default. This controls installation of D3D11 device vtable hooks (e.g. CreateTexture2D) and is required for D3D11 texture stats. If "Track loaded texture size" is enabled without this option, the UI shows a warning. Details: `enable_dx11_vtable_hooks` in advanced_tab_settings; HookD3D11Device called from api_hooks (D3D11CreateDeviceAndSwapChain, D3D11CreateDevice, D3D11On12CreateDevice) and swapchain_events when enabled.
 

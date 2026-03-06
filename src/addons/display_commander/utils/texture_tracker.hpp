@@ -17,10 +17,61 @@ struct TextureTrackerStats {
     uint64_t total_misses{0};
     /** Exponential moving average of misses per second (geometric decay). */
     double misses_per_sec_ema{0.0};
+    /** Texture cache simulator: number of unique (desc + initial data) keys seen so far. Lower bound for cache misses. */
+    uint64_t min_cache_misses_possible{0};
+    /** Texture cache: number of CreateTexture2D calls that returned a cached texture (hit). */
+    uint64_t texture_cache_hits{0};
+    /** Cache lookups attempted (cacheable create with tracking + caching on). */
+    uint64_t texture_cache_lookups{0};
+    /** Lookups that did not find a cached texture (key not in cache). */
+    uint64_t texture_cache_lookup_misses{0};
+    /** New entries inserted into the cache (unique keys stored; no eviction so entries = inserts). */
+    uint64_t texture_cache_inserts{0};
+    /** Total bytes of all textures currently stored in the cache (sum of sizes at insert; no eviction). */
+    uint64_t texture_cache_total_bytes{0};
+    /** CreateTexture2D skipped cache: no initial data (pInitialData null or pSysMem null). */
+    uint64_t texture_cache_skip_no_initial_data{0};
+    /** CreateTexture2D skipped cache: texture tracking disabled. */
+    uint64_t texture_cache_skip_tracking_off{0};
+    /** CreateTexture2D skipped cache: D3D11 texture caching disabled. */
+    uint64_t texture_cache_skip_caching_off{0};
+    /** CreateTexture2D skipped cache: ppTexture2D null. */
+    uint64_t texture_cache_skip_ppTexture2D_null{0};
+    /** CreateTexture2D skipped cache: hash key was 0 (e.g. zero rows). */
+    uint64_t texture_cache_skip_key_zero{0};
+    /** CreateTexture2D skipped cache: computed size was 0 (unsupported format). */
+    uint64_t texture_cache_skip_size_zero{0};
 };
+
+// Record that a cache lookup was attempted (before TextureCacheGet).
+void TextureCacheLookupRecord();
+
+// Record that a lookup did not find a cached texture (TextureCacheGet returned nullptr).
+void TextureCacheLookupMissRecord();
+
+// Record that a new texture was inserted into the cache (TextureCachePut actually stored).
+void TextureCacheInsertRecord();
+
+// Add size_bytes to the total bytes of all cached textures (call when TextureCachePut actually stored).
+void TextureCacheAddBytes(size_t size_bytes);
+
+// Record skip reasons (one per CreateTexture2D that did not attempt cache lookup).
+void TextureCacheRecordSkipNoInitialData();
+void TextureCacheRecordSkipTrackingOff();
+void TextureCacheRecordSkipCachingOff();
+void TextureCacheRecordSkipPpTexture2DNull();
+void TextureCacheRecordSkipKeyZero();
+void TextureCacheRecordSkipSizeZero();
 
 // Add a texture to the tracker (call after successful CreateTexture* when tracking enabled).
 void TextureTrackerAdd(void* texture_ptr, size_t size_bytes);
+
+// Record a cache key in the texture cache simulator (call when a cacheable CreateTexture2D succeeds).
+// Only counts as a new "min miss" if this key has never been seen. Key should be a hash of (desc + pInitialData).
+void TextureCacheSimulatorRecord(uint64_t cache_key);
+
+// Record a texture cache hit (call when CreateTexture2D returns a cached texture instead of creating a new one).
+void TextureCacheHitRecord();
 
 // Remove a texture from the tracker (call from IUnknown::Release detour before calling original).
 // Returns the size that was tracked, or 0 if not found.

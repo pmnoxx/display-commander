@@ -2224,7 +2224,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             imgui.SameLine();
 
             if (api == reshade::api::device_api::d3d9 && s_d3d9e_upgrade_successful.load()) {
-                api_version = static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex);  // due to reshade's bug.
+                api_version =
+                    static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex);  // due to reshade's bug.
             }
 
             // Display API with version/feature level and bitness
@@ -2314,8 +2315,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
         if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
-            if (SliderFloatSetting(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f",
-                                      imgui)) {
+            if (SliderFloatSetting(settings::g_mainTabSettings.brightness_percent, "Brightness (%)", "%.0f", imgui)) {
                 // Value is applied in OnReShadePresent each frame
             }
             if (imgui.IsItemHovered()) {
@@ -2324,8 +2324,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     "Requires DisplayCommander_Control.fx to be in ReShade's Shaders folder and effect reload (e.g. "
                     "Ctrl+Shift+F5) or game restart.");
             }
-            if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace",
-                                       imgui)) {
+            if (ComboSettingWrapper(settings::g_mainTabSettings.swapchain_colorspace, "Swapchain colorspace", imgui)) {
                 // Value is applied in OnReShadePresent each frame (DECODE_METHOD)
             }
             if (imgui.IsItemHovered()) {
@@ -2426,7 +2425,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                                       "Recommend RenoDX for SDR->HDR swapchain upgrade.");
                 }
                 if (SliderFloatSetting(settings::g_mainTabSettings.auto_hdr_strength, "Auto HDR strength", "%.2f",
-                                          imgui)) {
+                                       imgui)) {
                     // Value is applied in OnReShadePresent each frame
                 }
                 if (imgui.IsItemHovered()) {
@@ -2693,7 +2692,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         // Second line: Selectors
         if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
-                                                   imgui)) {
+                                                imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
@@ -2706,8 +2705,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         imgui.NextColumn();
 
-        if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse",
-                                                   imgui)) {
+        if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse", imgui)) {
             // Restore cursor clipping when input blocking is disabled
             if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
@@ -2836,8 +2834,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.Spacing();
 
         // Prevent display sleep & screensaver mode
-        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.screensaver_mode,
-                                       "Prevent display sleep & screensaver", imgui)) {
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver",
+                                    imgui)) {
             LogInfo("Prevent display sleep & screensaver mode changed to %d",
                     settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
@@ -3499,7 +3497,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
-                                  imgui)) {
+                               imgui)) {
         }
         if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
             imgui.EndDisabled();
@@ -4121,9 +4119,8 @@ struct VSyncTearingTooltipContext {
 
 static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui::IImGuiWrapper& imgui) {
     CALL_GUARD(utils::get_now_ns());
-    bool fps_limit_enabled =
-        (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync)
-        || ShouldReflexBeEnabled();
+    bool fps_limit_enabled = (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync)
+                             || ShouldReflexBeEnabled();
     imgui.Spacing();
     {
         if (!fps_limit_enabled) {
@@ -4145,7 +4142,7 @@ static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "BackGround Fps Limit", fmt_bg,
-                                  imgui)) {
+                               imgui)) {
         }
         if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
             imgui.EndDisabled();
@@ -5738,8 +5735,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     }
                 }
                 if (s_nvidiaProfileChangeRestartNeeded) {
-                    imgui.TextColored(ui::colors::TEXT_WARNING,
-                                      "Restart the game for profile changes to take effect.");
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "Restart the game for profile changes to take effect.");
                 }
 
                 // --- Smooth Motion subsection ---
@@ -5905,7 +5901,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                             imgui.SameLine(nvidia_checkbox_label_width);
                             draw_combo_or_checkbox(*dv_enable);
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("When On, enabling globally affects normal apps and may cause graphic bugs.");
+                                imgui.SetTooltip(
+                                    "When On, enabling globally affects normal apps and may cause graphic bugs.");
                             }
                         }
                         // RTX Dynamic Vibrance - Saturation / Value: only when Dynamic Vibrance - Enable is On
@@ -6413,17 +6410,34 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         const utils::TextureTrackerStats tstats = utils::TextureTrackerGetStats();
         const double current_mib = static_cast<double>(tstats.current_bytes) / (1024.0 * 1024.0);
         const double peak_mib = static_cast<double>(tstats.peak_bytes) / (1024.0 * 1024.0);
+        const double cache_stored_mib = static_cast<double>(tstats.texture_cache_total_bytes) / (1024.0 * 1024.0);
         if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            imgui.Text("Total memory: %.2f MiB  Peak: %.2f MiB  Cache misses: %llu",
-                       current_mib, peak_mib, static_cast<unsigned long long>(tstats.total_misses));
+            imgui.Text(
+                "Total: %.2f  Peak: %.2f MiB  min: %llu  lookups: %llu  cache hit: %llu  cache miss: %llu  entries: %llu  stored: %.2f MiB",
+                current_mib, peak_mib, static_cast<unsigned long long>(tstats.min_cache_misses_possible),
+                static_cast<unsigned long long>(tstats.texture_cache_lookups),
+                static_cast<unsigned long long>(tstats.texture_cache_hits),
+                static_cast<unsigned long long>(tstats.texture_cache_lookup_misses),
+                static_cast<unsigned long long>(tstats.texture_cache_inserts), cache_stored_mib);
         } else {
-            imgui.Text("%.2f / %.2f MiB  miss: %llu",
-                       current_mib, peak_mib, static_cast<unsigned long long>(tstats.total_misses));
+            imgui.Text("%.2f/%.2f MiB  min:%llu  lu:%llu  hit:%llu  miss:%llu  ent:%llu  stored:%.2f MiB", current_mib,
+                       peak_mib, static_cast<unsigned long long>(tstats.min_cache_misses_possible),
+                       static_cast<unsigned long long>(tstats.texture_cache_lookups),
+                       static_cast<unsigned long long>(tstats.texture_cache_hits),
+                       static_cast<unsigned long long>(tstats.texture_cache_lookup_misses),
+                       static_cast<unsigned long long>(tstats.texture_cache_inserts), cache_stored_mib);
         }
         if (imgui.IsItemHovered() && show_tooltips) {
             imgui.SetTooltip(
-                "Texture tracker: total memory used, peak memory used, total cache misses (Release not in map). "
-                "Enable Advanced -> Track loaded texture size for tracking.");
+                "Memory, min keys, lookups, cache hit/cache miss, entries, stored MiB. "
+                "Skip = CreateTexture2D did not attempt lookup. "
+                "no_init %llu  track_off %llu  cache_off %llu  ppNull %llu  key0 %llu  size0 %llu",
+                static_cast<unsigned long long>(tstats.texture_cache_skip_no_initial_data),
+                static_cast<unsigned long long>(tstats.texture_cache_skip_tracking_off),
+                static_cast<unsigned long long>(tstats.texture_cache_skip_caching_off),
+                static_cast<unsigned long long>(tstats.texture_cache_skip_ppTexture2D_null),
+                static_cast<unsigned long long>(tstats.texture_cache_skip_key_zero),
+                static_cast<unsigned long long>(tstats.texture_cache_skip_size_zero));
         }
     }
 

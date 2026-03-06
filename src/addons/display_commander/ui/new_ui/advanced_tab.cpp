@@ -1019,6 +1019,17 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             "Shows current and peak texture memory in the stats below. Off by default.\n"
             "Requires \"Enable D3D11 vtable hooks\" to be enabled. Only affects D3D11 games.");
     }
+    if (CheckboxSetting(settings::g_advancedTabSettings.d3d11_texture_caching_enabled,
+                        "D3D11 Texture Caching with no-op texture eviction", imgui)) {
+        LogInfo("D3D11 texture caching setting changed to: %s",
+                settings::g_advancedTabSettings.d3d11_texture_caching_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, caches CreateTexture2D results (textures with initial data, no size limit) by content hash.\n"
+            "Matching subsequent creates return the cached texture instead of creating a new one. No eviction.\n"
+            "Requires \"Track loaded texture size\" (and D3D11 vtable hooks). Only affects D3D11 games.");
+    }
     if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue() &&
         !settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
         imgui.TextColored(::ui::colors::TEXT_WARNING,
@@ -1039,9 +1050,32 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
         const double current_mb = static_cast<double>(stats.current_bytes) / (1024.0 * 1024.0);
         const double peak_mb = static_cast<double>(stats.peak_bytes) / (1024.0 * 1024.0);
         imgui.Indent();
-        imgui.Text("Textures: %llu  |  Total memory: %.2f MB  |  Peak: %.2f MB  |  Cache misses: %llu",
-                   static_cast<unsigned long long>(stats.current_count), current_mb, peak_mb,
-                   static_cast<unsigned long long>(stats.total_misses));
+        imgui.Text("Textures: %llu  |  Total memory: %.2f MB  |  Peak: %.2f MB",
+                   static_cast<unsigned long long>(stats.current_count), current_mb, peak_mb);
+        imgui.Text("Min: %llu  |  lookups: %llu  cache hit: %llu  cache miss: %llu  entries: %llu  |  Cache stored: %.2f MiB",
+                   static_cast<unsigned long long>(stats.min_cache_misses_possible),
+                   static_cast<unsigned long long>(stats.texture_cache_lookups),
+                   static_cast<unsigned long long>(stats.texture_cache_hits),
+                   static_cast<unsigned long long>(stats.texture_cache_lookup_misses),
+                   static_cast<unsigned long long>(stats.texture_cache_inserts),
+                   static_cast<double>(stats.texture_cache_total_bytes) / (1024.0 * 1024.0));
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Min = unique keys. Lookups, cache hit/miss (lookup found/not found), entries. Cache stored = total bytes of cached textures (no eviction).");
+        }
+        imgui.Text("Skip (did not attempt lookup): no init %llu  track off %llu  cache off %llu  ppNull %llu  key0 %llu  size0 %llu",
+                   static_cast<unsigned long long>(stats.texture_cache_skip_no_initial_data),
+                   static_cast<unsigned long long>(stats.texture_cache_skip_tracking_off),
+                   static_cast<unsigned long long>(stats.texture_cache_skip_caching_off),
+                   static_cast<unsigned long long>(stats.texture_cache_skip_ppTexture2D_null),
+                   static_cast<unsigned long long>(stats.texture_cache_skip_key_zero),
+                   static_cast<unsigned long long>(stats.texture_cache_skip_size_zero));
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "CreateTexture2D calls that did NOT attempt a cache lookup (each count is independent). "
+                "no init = no pInitialData/pSysMem (e.g. render targets). "
+                "Cache miss = we attempted lookup but key was not in cache (cacheable creates only).");
+        }
         if (imgui.Button("Reset peak")) {
             utils::TextureTrackerResetPeak();
         }

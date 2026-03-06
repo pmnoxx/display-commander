@@ -860,10 +860,7 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 }
 
 bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
-    if (true) {
-        return true;
-    }
-    if (!enabled_experimental_features) {
+    if (!display_commanderhooks::g_hooked_before_reshade.load()) {
         return true;
     }
     CALL_GUARD(utils::get_now_ns());
@@ -1041,7 +1038,7 @@ bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
 }
 
 bool InstallD3D12DeviceHooks(HMODULE d3d12_module) {
-    if (!enabled_experimental_features) {
+    if (!display_commanderhooks::g_hooked_before_reshade.load()) {
         return true;
     }
     // Check if this module is ReShade's proxy by checking for ReShade exports

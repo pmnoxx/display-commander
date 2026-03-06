@@ -5,6 +5,12 @@
 ## Unreleased
 
 
+## v0.12.308 (2026-03-05)
+- **DXGI hooked by default when loading before ReShade (breaking change)** - When Display Commander loads before ReShade, the addon now hooks into DXGI by default so display and swapchain features work correctly. Previously this path could skip hooking; the new behavior may affect load order or compatibility with other injectors. Details: `api_hooks.cpp` — early return only when `g_hooked_before_reshade` is set.
+
+## v0.12.307 (2026-03-05)
+- **Color space default** - The default for the Main tab **Color Space** (brightness/output encode) setting is now **Auto** instead of scRGB(default), so new installs and resets match pipeline behavior by default.
+
 ## v0.12.306 (2026-03-05)
 - **Dynamic Vibrance - Enable in NVIDIA Control** - Added the NVIDIA driver setting **Dynamic Vibrance - Enable** (0x00980880, group "0.2.0 - Graphic | Post-Process") as a checkbox in the Main tab **NVIDIA Control** → RTX HDR section. When **On**, the two sliders **RTX Dynamic Vibrance - Saturation** and **RTX Dynamic Vibrance - Value** are shown; when **Off**, those sliders are hidden. A tooltip warns that enabling globally affects normal apps and may cause graphic bugs. Details: `nvpi_reference.hpp` NVPI_RTX_DYNAMIC_VIBRANCE_ENABLE_ID; `nvidia_profile_search.cpp` new SettingData entry, `GetRtxHdrSettingIds()`; `main_new_tab.cpp` checkbox + conditional visibility for the two vibrance sliders.
 

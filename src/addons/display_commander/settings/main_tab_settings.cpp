@@ -11,9 +11,10 @@ std::atomic<float> s_system_volume_percent{100.f};
 namespace settings {
 
 MainTabSettings::MainTabSettings()
-    : window_mode("window_mode", static_cast<int>(WindowMode::kNoChanges),
-                  {"No changes", "Prevent exclusive fullscreen / no resize", "Borderless fullscreen", "Borderless windowed"},
-                  "DisplayCommander"),
+    : window_mode(
+          "window_mode", static_cast<int>(WindowMode::kNoChanges),
+          {"No changes", "Prevent exclusive fullscreen / no resize", "Borderless fullscreen", "Borderless windowed"},
+          "DisplayCommander"),
       aspect_index("aspect_index", 3, {"3:2", "4:3", "16:10", "16:9", "19:9", "19.5:9", "21:9", "21.5:9", "32:9"},
                    "DisplayCommander"),  // Default to 16:9
       window_aspect_width("aspect_width", 0,
@@ -155,9 +156,9 @@ MainTabSettings::MainTabSettings()
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
       brightness_percent("brightness_percent", 100.0f, 0.0f, 500.0f, "DisplayCommander"),
-      swapchain_colorspace("swapchain_colorspace", 0,
-                           {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
-      brightness_colorspace("brightness_colorspace2", 1,
+      swapchain_colorspace("swapchain_colorspace", 0, {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"},
+                           "DisplayCommander"),
+      brightness_colorspace("brightness_colorspace2", 0,
                             {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"}, "DisplayCommander"),
       gamma_value("gamma_value", 1.0f, 0.5f, 2.0f, "DisplayCommander"),
       contrast_value("contrast_value", 1.0f, 0.0f, 2.0f, "DisplayCommander"),

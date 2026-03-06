@@ -51,12 +51,49 @@ using IDXGISwapChain_CheckColorSpaceSupport_pfn = HRESULT(STDMETHODCALLTYPE*)(ID
                                                                               DXGI_COLOR_SPACE_TYPE ColorSpace,
                                                                               UINT* pColorSpaceSupport);
 
+// IDXGIFactory / IDXGIFactory1 vtable indices. Aligned with ReShade (external/reshade/source/dxgi/dxgi.cpp):
+//   ReShade uses: CreateSwapChain = 10, CreateSwapChainForHwnd = 15, CreateSwapChainForCoreWindow = 16.
+//   CreateSwapChain at 10 matches ReShade; some SDK layouts use 11 (after GetWindowAssociation).
+enum IDXGIFactoryVTable : int {
+    // IUnknown [0-2]
+    IDXGIFactory_QueryInterface = 0,
+    IDXGIFactory_AddRef = 1,
+    IDXGIFactory_Release = 2,
+    // IDXGIObject [3-7]
+    IDXGIFactory_SetPrivateData = 3,
+    IDXGIFactory_SetPrivateDataInterface = 4,
+    IDXGIFactory_GetPrivateData = 5,
+    IDXGIFactory_GetParent = 6,
+    IDXGIFactory_GetDevice = 7,
+    // IDXGIFactory [8-12]; index 10 = CreateSwapChain (ReShade), 11 = CreateSoftwareAdapter in full layout
+    IDXGIFactory_EnumAdapters = 8,
+    IDXGIFactory_MakeWindowAssociation = 9,
+    IDXGIFactory_CreateSwapChain = 10,
+    IDXGIFactory_GetWindowAssociation = 11,
+    IDXGIFactory_CreateSoftwareAdapter = 12,
+    // IDXGIFactory1 [13-17]; 15/16 match ReShade CreateSwapChainForHwnd / CreateSwapChainForCoreWindow
+    IDXGIFactory1_EnumAdapters1 = 13,
+    IDXGIFactory1_IsCurrent = 14,
+    IDXGIFactory1_CreateSwapChainForHwnd = 15,
+    IDXGIFactory1_CreateSwapChainForCoreWindow = 16,
+    IDXGIFactory1_GetSharedResourceAdapterLuid = 17,
+    // IDXGIFactory2 [18-25]; 24 = CreateSwapChainForComposition (ReShade)
+    IDXGIFactory2_IsWindowedStereoEnabled = 18,
+    IDXGIFactory2_RegisterStereoStatusWindow = 19,
+    IDXGIFactory2_RegisterStereoStatusEvent = 20,
+    IDXGIFactory2_UnregisterStereoStatus = 21,
+    IDXGIFactory2_RegisterOcclusionStatusWindow = 22,
+    IDXGIFactory2_RegisterOcclusionStatusEvent = 23,
+    IDXGIFactory2_CreateSwapChainForComposition = 24,
+    IDXGIFactory2_UnregisterOcclusionStatus = 25,
+};
+
 // Function pointer types for DXGI Factory CreateSwapChain functions
 using IDXGIFactory_CreateSwapChain_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory* This, IUnknown* pDevice,
                                                                      DXGI_SWAP_CHAIN_DESC* pDesc,
                                                                      IDXGISwapChain** ppSwapChain);
 
-// IDXGIFactory1 CreateSwapChainForHwnd / CreateSwapChainForCoreWindow (vtable indices 14, 15)
+// IDXGIFactory1 CreateSwapChainForHwnd / CreateSwapChainForCoreWindow
 using IDXGIFactory1_CreateSwapChainForHwnd_pfn =
     HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
                                 const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
@@ -66,6 +103,10 @@ using IDXGIFactory1_CreateSwapChainForCoreWindow_pfn = HRESULT(STDMETHODCALLTYPE
                                                                                    const DXGI_SWAP_CHAIN_DESC1* pDesc,
                                                                                    IDXGIOutput* pRestrictToOutput,
                                                                                    IDXGISwapChain1** ppSwapChain);
+
+using IDXGIFactory2_CreateSwapChainForComposition_pfn =
+    HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2* This, IUnknown* pDevice, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain);
 
 // Additional function pointer types for DXGI methods
 using IDXGISwapChain_GetBuffer_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT Buffer, REFIID riid,
@@ -147,6 +188,7 @@ extern IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceS
 extern IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original;
 extern IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Original;
 extern IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Original;
+extern IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Original;
 
 // Additional original function pointers
 extern IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original;
@@ -229,6 +271,10 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(IDXG
                                                                             const DXGI_SWAP_CHAIN_DESC1* pDesc,
                                                                             IDXGIOutput* pRestrictToOutput,
                                                                             IDXGISwapChain1** ppSwapChain);
+HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Detour(IDXGIFactory2* This, IUnknown* pDevice,
+                                                                              const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                              IDXGIOutput* pRestrictToOutput,
+                                                                              IDXGISwapChain1** ppSwapChain);
 
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain* swapchain);

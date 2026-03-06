@@ -322,6 +322,7 @@ IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceSupport_
 IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original = nullptr;
 IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Original = nullptr;
 IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Original = nullptr;
+IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Original = nullptr;
 
 // Additional original function pointers
 IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original = nullptr;
@@ -378,6 +379,7 @@ std::atomic<bool> g_createswapchain_vtable_hooked{false};
 std::atomic<bool> g_factory_create_swapchain_hooked{false};
 std::atomic<bool> g_factory_create_swapchain_for_hwnd_hooked{false};
 std::atomic<bool> g_factory_create_swapchain_for_core_window_hooked{false};
+std::atomic<bool> g_factory_create_swapchain_for_composition_hooked{false};
 
 // Track the last native swapchain used in OnPresentUpdateBefore
 std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
@@ -835,11 +837,29 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(IDXG
     return hr;
 }
 
-// IDXGIFactory vtable indices (IDXGIFactory base: 10=CreateSwapChain; IDXGIFactory1: 14=CreateSwapChainForHwnd,
-// 15=CreateSwapChainForCoreWindow)
-static constexpr int kIDXGIFactory_CreateSwapChain = 10;
-static constexpr int kIDXGIFactory1_CreateSwapChainForHwnd = 14;
-static constexpr int kIDXGIFactory1_CreateSwapChainForCoreWindow = 15;
+// IDXGIFactory2::CreateSwapChainForComposition (vtable index 24). Log errors and hook new swapchain on success.
+HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Detour(IDXGIFactory2* This, IUnknown* pDevice,
+                                                                              const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                              IDXGIOutput* pRestrictToOutput,
+                                                                              IDXGISwapChain1** ppSwapChain) {
+    CALL_GUARD(utils::get_now_ns());
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
+
+    if (IDXGIFactory2_CreateSwapChainForComposition_Original == nullptr) {
+        return E_NOINTERFACE;
+    }
+    HRESULT hr = IDXGIFactory2_CreateSwapChainForComposition_Original(This, pDevice, pDesc, pRestrictToOutput,
+                                                                      ppSwapChain);
+    {
+        static int s_err_count = 0;
+        LogDxgiErrorUpTo10("IDXGIFactory2::CreateSwapChainForComposition", hr, &s_err_count);
+    }
+    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
+        LogInfo("IDXGIFactory2::CreateSwapChainForComposition succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
+        HookSwapchain(*ppSwapChain);
+    }
+    return hr;
+}
 
 bool HookFactory(IUnknown* iunknown) {
     if (iunknown == nullptr) {
@@ -872,7 +892,7 @@ bool HookFactory(IUnknown* iunknown) {
 
     {
         void** vtable = *reinterpret_cast<void***>(ifactory.Get());
-        if (CreateAndEnableHook(vtable[kIDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Detour,
+        if (CreateAndEnableHook(vtable[IDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Detour,
                                 reinterpret_cast<LPVOID*>(&IDXGIFactory_CreateSwapChain_Original),
                                 "IDXGIFactory::CreateSwapChain")) {
             g_factory_create_swapchain_hooked.store(true, std::memory_order_relaxed);
@@ -891,7 +911,7 @@ bool HookFactory(IUnknown* iunknown) {
     }
     {
         void** vtable1 = *reinterpret_cast<void***>(ifactory1.Get());
-        if (CreateAndEnableHook(vtable1[kIDXGIFactory1_CreateSwapChainForHwnd],
+        if (CreateAndEnableHook(vtable1[IDXGIFactory1_CreateSwapChainForHwnd],
                                 IDXGIFactory1_CreateSwapChainForHwnd_Detour,
                                 reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Original),
                                 "IDXGIFactory1::CreateSwapChainForHwnd")) {
@@ -899,7 +919,7 @@ bool HookFactory(IUnknown* iunknown) {
             LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
             hooked_dxgifactory = true;
         }
-        if (CreateAndEnableHook(vtable1[kIDXGIFactory1_CreateSwapChainForCoreWindow],
+        if (CreateAndEnableHook(vtable1[IDXGIFactory1_CreateSwapChainForCoreWindow],
                                 IDXGIFactory1_CreateSwapChainForCoreWindow_Detour,
                                 reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Original),
                                 "IDXGIFactory1::CreateSwapChainForCoreWindow")) {
@@ -908,6 +928,21 @@ bool HookFactory(IUnknown* iunknown) {
             hooked_dxgifactory = true;
         }
     }
+
+    Microsoft::WRL::ComPtr<IDXGIFactory2> ifactory2;
+    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory2.GetAddressOf()));
+    if (SUCCEEDED(hr) && ifactory2 != nullptr) {
+        void** vtable2 = *reinterpret_cast<void***>(ifactory2.Get());
+        if (CreateAndEnableHook(vtable2[IDXGIFactory2_CreateSwapChainForComposition],
+                                IDXGIFactory2_CreateSwapChainForComposition_Detour,
+                                reinterpret_cast<LPVOID*>(&IDXGIFactory2_CreateSwapChainForComposition_Original),
+                                "IDXGIFactory2::CreateSwapChainForComposition")) {
+            g_factory_create_swapchain_for_composition_hooked.store(true, std::memory_order_relaxed);
+            LogInfo("HookFactory: IDXGIFactory2::CreateSwapChainForComposition hooked");
+            hooked_dxgifactory = true;
+        }
+    }
+
     return hooked_dxgifactory;
 }
 

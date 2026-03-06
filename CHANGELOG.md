@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.312
+- **DXGI factory vtable enum and CreateSwapChainForComposition hook** - Factory vtable indices are now a single enum (`IDXGIFactoryVTable`) covering IDXGIFactory, IDXGIFactory1, and IDXGIFactory2, aligned with ReShade’s indices (CreateSwapChain 10, CreateSwapChainForHwnd/CoreWindow 15/16, CreateSwapChainForComposition 24). IDXGIFactory2::CreateSwapChainForComposition is hooked so swap chains created for composition (e.g. WinUI/XAML) are tracked and hooked like other factory-created swap chains. Details: `dxgi_present_hooks.hpp` enum; `dxgi_present_hooks.cpp` HookFactory + CreateSwapChainForComposition detour.
+
 ## v0.12.311
 - **HookFactory: ComPtr, single hook, CreateSwapChainForHwnd/CoreWindow** - HookFactory now uses ComPtr for IDXGIFactory and IDXGIFactory1 so interfaces are released correctly and use-after-free is avoided. Factory hooks are installed only once per process via a static flag. Hooking of IDXGIFactory1::CreateSwapChainForHwnd and CreateSwapChainForCoreWindow is re-enabled so swapchain creation through these paths is tracked. Details: `dxgi_present_hooks.cpp` HookFactory.
 

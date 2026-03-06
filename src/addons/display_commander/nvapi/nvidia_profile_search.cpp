@@ -59,8 +59,8 @@ struct SettingData {
 };
 
 // All important + advanced settings; first k_num_important_settings are important, rest are advanced.
-static constexpr std::size_t k_num_important_settings = 27;
-static const std::array<SettingData, 32> k_settings_data = {{
+static constexpr std::size_t k_num_important_settings = 28;
+static const std::array<SettingData, 33> k_settings_data = {{
     // Important (order matches previous k_important_settings)
     {.user_friendly_name = "Smooth Motion - Allowed APIs [40 series]",
      .hex_setting_id = NVPI_SMOOTH_MOTION_ALLOWED_APIS_ID,
@@ -141,6 +141,11 @@ static const std::array<SettingData, 32> k_settings_data = {{
                        {0x00000096, "150 | +50"},
                        {0x000000C8, "200 | +100"},
                        {0x000000C9, "Custom (0-200)"}}},
+    {.user_friendly_name = "Dynamic Vibrance - Enable",
+     .hex_setting_id = NVPI_RTX_DYNAMIC_VIBRANCE_ENABLE_ID,
+     .group_name = "0.2.0 - Graphic | Post-Process",
+     .default_value = 0x00000000,
+     .option_values = {{0x00000000, "Off"}, {0x00000001, "On"}}},
     {.user_friendly_name = "RTX Dynamic Vibrance - Saturation",
      .hex_setting_id = NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID,
      .group_name = "0.2.1 - Graphic | HDR",
@@ -1524,6 +1529,7 @@ std::vector<std::uint32_t> GetRtxHdrSettingIds() {
         NVPI_RTX_HDR_MIDDLE_GREY_ID,
         NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID,
         NVPI_RTX_HDR_SATURATION_ID,
+        NVPI_RTX_DYNAMIC_VIBRANCE_ENABLE_ID,
         NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID,
         NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID,
         PRERENDERLIMIT_ID,  // Latency - Max Pre-Rendered Frames (NVIDIA); shown after RTX HDR on Main tab

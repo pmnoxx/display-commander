@@ -27,6 +27,8 @@ constexpr std::uint32_t NVPI_RTX_HDR_CONTRAST_ID = 0x00DD48FE;
 constexpr std::uint32_t NVPI_RTX_HDR_MIDDLE_GREY_ID = 0x00DD48FD;
 constexpr std::uint32_t NVPI_RTX_HDR_PEAK_BRIGHTNESS_ID = 0x00DD48FC;
 constexpr std::uint32_t NVPI_RTX_HDR_SATURATION_ID = 0x00DD48FF;
+// Dynamic Vibrance - Enable (Off/On). Group: 0.2.0 - Graphic | Post-Process. When On, Saturation/Value sliders apply.
+constexpr std::uint32_t NVPI_RTX_DYNAMIC_VIBRANCE_ENABLE_ID = 0x00980880;
 // RTX Dynamic Vibrance - Saturation / Value (0-100; 0x65 = Custom). Group: 0.2.1 - Graphic | HDR.
 constexpr std::uint32_t NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID = 0x00ABAB13;
 constexpr std::uint32_t NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID = 0x00ABAB22;

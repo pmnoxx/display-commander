@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+
+## v0.12.306 (2026-03-05)
+- **Dynamic Vibrance - Enable in NVIDIA Control** - Added the NVIDIA driver setting **Dynamic Vibrance - Enable** (0x00980880, group "0.2.0 - Graphic | Post-Process") as a checkbox in the Main tab **NVIDIA Control** → RTX HDR section. When **On**, the two sliders **RTX Dynamic Vibrance - Saturation** and **RTX Dynamic Vibrance - Value** are shown; when **Off**, those sliders are hidden. A tooltip warns that enabling globally affects normal apps and may cause graphic bugs. Details: `nvpi_reference.hpp` NVPI_RTX_DYNAMIC_VIBRANCE_ENABLE_ID; `nvidia_profile_search.cpp` new SettingData entry, `GetRtxHdrSettingIds()`; `main_new_tab.cpp` checkbox + conditional visibility for the two vibrance sliders.
+
 ## v0.12.305 (2026-03-05)
 - **NVIDIA profile FPS limit moved to NVIDIA Control** - The FPS limiter mode no longer includes "NVIDIA Profile (driver FPS limit)". Driver-based FPS limiting is now configured in the Main tab under **NVIDIA Control**: use the "FPS limit (driver profile)" combo to set the value in the NVIDIA profile for the current game. Restart the game for the change to take effect. Details: removed `FpsLimiterMode::kNvidiaProfile`; FPS limit (driver) UI moved from FPS limiter section to NVIDIA Control; `main_tab_settings`, `main_new_tab`, `swapchain_events` updated.
 

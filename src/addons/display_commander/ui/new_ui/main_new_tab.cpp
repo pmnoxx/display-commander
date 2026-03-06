@@ -5630,7 +5630,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     }
                     const bool two_values_only =
                         (s.setting_id == display_commander::nvapi::NVPI_RTX_HDR_ENABLE_ID
-                         || s.setting_id == display_commander::nvapi::NVPI_SMOOTH_MOTION_ENABLE_50_ID)
+                         || s.setting_id == display_commander::nvapi::NVPI_SMOOTH_MOTION_ENABLE_50_ID
+                         || s.setting_id == display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_ENABLE_ID)
                         && (s.value_id == 0 || s.value_id == 1);
                     if (two_values_only) {
                         bool checked = (s.value_id == 1);
@@ -5741,6 +5742,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 }
 
                 // --- Smooth Motion subsection ---
+                const float nvidia_checkbox_label_width = 600.f;
                 if (imgui.TreeNodeEx("Smooth Motion", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (imgui.IsItemHovered()) {
                         imgui.SetTooltip("Smooth Motion profile settings for this game.");
@@ -5752,7 +5754,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     if (smooth_enable) {
                         imgui.TextUnformatted("Smooth Motion - Enable");
                         draw_setting_tooltip(*smooth_enable);
-                        imgui.SameLine(0.f, imgui.GetStyle().ItemSpacing.x * 2.f);
+                        imgui.SameLine(nvidia_checkbox_label_width);
                         draw_combo_or_checkbox(*smooth_enable);
                     }
                     if (smooth_apis) {
@@ -5790,7 +5792,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     if (rtx_enable) {
                         imgui.TextUnformatted("RTX HDR - Enable");
                         draw_setting_tooltip(*rtx_enable);
-                        imgui.SameLine(0.f, imgui.GetStyle().ItemSpacing.x * 2.f);
+                        imgui.SameLine(nvidia_checkbox_label_width);
                         draw_combo_or_checkbox(*rtx_enable);
                     }
                     if (rtx_hdr_on) {
@@ -5893,51 +5895,65 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                 }
                             }
                         }
-                        // RTX Dynamic Vibrance - Saturation 0-100 (driver 0x00-0x64; 0x65 = Custom -> show 100)
-                        const auto* dv_sat =
-                            find_rtx_setting(display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID);
-                        if (dv_sat) {
-                            int dv_sat_val = static_cast<int>(dv_sat->value_id <= 0x64u ? dv_sat->value_id : 100u);
-                            imgui.TextUnformatted("RTX Dynamic Vibrance - Saturation");
-                            draw_setting_tooltip(*dv_sat);
-                            imgui.SameLine(nvidia_slider_label_width);
-                            imgui.SetNextItemWidth(nvidia_slider_width);
-                            imgui.PushID(static_cast<int>(dv_sat->setting_id));
-                            if (imgui.SliderInt("##dv_saturation", &dv_sat_val, 0, 100, "%d")) {
-                                apply_set(dv_sat->setting_id, static_cast<std::uint32_t>(dv_sat_val));
-                            }
-                            imgui.PopID();
-                            if (dv_sat->set_in_profile) {
-                                imgui.SameLine();
-                                if (imgui.SmallButton("Default##dv_saturation")) {
-                                    apply_delete(dv_sat->setting_id);
-                                }
-                                if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Remove from profile; use driver global default.");
-                                }
+                        // Dynamic Vibrance - Enable (checkbox); when On, Saturation/Value sliders are shown below
+                        const auto* dv_enable =
+                            find_rtx_setting(display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_ENABLE_ID);
+                        if (dv_enable) {
+                            imgui.TextUnformatted("Dynamic Vibrance - Enable");
+                            draw_setting_tooltip(*dv_enable);
+                            imgui.SameLine(nvidia_checkbox_label_width);
+                            draw_combo_or_checkbox(*dv_enable);
+                            if (imgui.IsItemHovered()) {
+                                imgui.SetTooltip("When On, enabling globally affects normal apps and may cause graphic bugs.");
                             }
                         }
-                        // RTX Dynamic Vibrance - Value 0-100 (driver 0x00-0x64; 0x65 = Custom -> show 100)
-                        const auto* dv_val =
-                            find_rtx_setting(display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID);
-                        if (dv_val) {
-                            int dv_val_val = static_cast<int>(dv_val->value_id <= 0x64u ? dv_val->value_id : 100u);
-                            imgui.TextUnformatted("RTX Dynamic Vibrance - Value");
-                            draw_setting_tooltip(*dv_val);
-                            imgui.SameLine(nvidia_slider_label_width);
-                            imgui.SetNextItemWidth(nvidia_slider_width);
-                            imgui.PushID(static_cast<int>(dv_val->setting_id));
-                            if (imgui.SliderInt("##dv_value", &dv_val_val, 0, 100, "%d")) {
-                                apply_set(dv_val->setting_id, static_cast<std::uint32_t>(dv_val_val));
-                            }
-                            imgui.PopID();
-                            if (dv_val->set_in_profile) {
-                                imgui.SameLine();
-                                if (imgui.SmallButton("Default##dv_value")) {
-                                    apply_delete(dv_val->setting_id);
+                        // RTX Dynamic Vibrance - Saturation / Value: only when Dynamic Vibrance - Enable is On
+                        const bool dv_enabled = dv_enable && (dv_enable->value_id == 0x00000001u);
+                        if (dv_enabled) {
+                            const auto* dv_sat =
+                                find_rtx_setting(display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_SATURATION_ID);
+                            if (dv_sat) {
+                                int dv_sat_val = static_cast<int>(dv_sat->value_id <= 0x64u ? dv_sat->value_id : 100u);
+                                imgui.TextUnformatted("RTX Dynamic Vibrance - Saturation");
+                                draw_setting_tooltip(*dv_sat);
+                                imgui.SameLine(nvidia_slider_label_width);
+                                imgui.SetNextItemWidth(nvidia_slider_width);
+                                imgui.PushID(static_cast<int>(dv_sat->setting_id));
+                                if (imgui.SliderInt("##dv_saturation", &dv_sat_val, 0, 100, "%d")) {
+                                    apply_set(dv_sat->setting_id, static_cast<std::uint32_t>(dv_sat_val));
                                 }
-                                if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                imgui.PopID();
+                                if (dv_sat->set_in_profile) {
+                                    imgui.SameLine();
+                                    if (imgui.SmallButton("Default##dv_saturation")) {
+                                        apply_delete(dv_sat->setting_id);
+                                    }
+                                    if (imgui.IsItemHovered()) {
+                                        imgui.SetTooltip("Remove from profile; use driver global default.");
+                                    }
+                                }
+                            }
+                            const auto* dv_val =
+                                find_rtx_setting(display_commander::nvapi::NVPI_RTX_DYNAMIC_VIBRANCE_VALUE_ID);
+                            if (dv_val) {
+                                int dv_val_val = static_cast<int>(dv_val->value_id <= 0x64u ? dv_val->value_id : 100u);
+                                imgui.TextUnformatted("RTX Dynamic Vibrance - Value");
+                                draw_setting_tooltip(*dv_val);
+                                imgui.SameLine(nvidia_slider_label_width);
+                                imgui.SetNextItemWidth(nvidia_slider_width);
+                                imgui.PushID(static_cast<int>(dv_val->setting_id));
+                                if (imgui.SliderInt("##dv_value", &dv_val_val, 0, 100, "%d")) {
+                                    apply_set(dv_val->setting_id, static_cast<std::uint32_t>(dv_val_val));
+                                }
+                                imgui.PopID();
+                                if (dv_val->set_in_profile) {
+                                    imgui.SameLine();
+                                    if (imgui.SmallButton("Default##dv_value")) {
+                                        apply_delete(dv_val->setting_id);
+                                    }
+                                    if (imgui.IsItemHovered()) {
+                                        imgui.SetTooltip("Remove from profile; use driver global default.");
+                                    }
                                 }
                             }
                         }

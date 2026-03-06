@@ -5,6 +5,11 @@
 ## Unreleased
 - **Auto color space: skip when RenoDX addon is loaded** - When a ReShade addon whose path contains "renodx-" (e.g. renodx-silenthill2remake.addon64) has been detected, the HDR10/scRGB auto color space fix no longer runs, avoiding conflicts with RenoDX’s own color handling. Details: `AutoSetColorSpace` in `swapchain_events.cpp` returns early when `g_is_renodx_loaded` is true (set when `IsRenoDxAddonPath` succeeds in loadlibrary hooks).
 
+## v0.12.315 (2026-03-06)
+- **ID3D11Device vtable indices corrected** - D3D11 device vtable indices now match the Windows SDK: in d3d11.h, ID3D11Device inherits only from IUnknown, so CreateBuffer is index 3, CreateTexture2D is 5, CreateDepthStencilView is 10. Previously wrong indices could hook the wrong methods. Details: `d3d11_vtable_indices.hpp` — indices and static_asserts updated to SDK order.
+- **D3D11 device hooks in all creation APIs** - D3D11 device vtable hooks (e.g. CreateTexture2D logging) are now installed when the device is created via `D3D11CreateDevice` or `D3D11On12CreateDevice`, not only `D3D11CreateDeviceAndSwapChain`. Games that use the former APIs now get the same device hooks. Details: `api_hooks.cpp` — `HookD3D11Device(*ppDevice)` added on success in `D3D11CreateDevice_Detour` and `D3D11On12CreateDevice_Detour`.
+- **api_hooks: add d3d11_device_hooks include** - Fixed compile error "No member named 'd3d11' in namespace 'display_commanderhooks'" by including `d3d11/d3d11_device_hooks.hpp` in `api_hooks.cpp`.
+
 ## v0.12.314 (2026-03-05)
 - **Don't set colorspace to sRGB on failure** - When SetColorSpace1 fails, the addon no longer falls back to sRGB; it logs the error and returns.
 

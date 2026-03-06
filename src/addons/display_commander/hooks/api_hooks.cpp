@@ -12,6 +12,7 @@
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
+#include "d3d11/d3d11_device_hooks.hpp"
 #include "debug_output_hooks.hpp"
 #include "dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
@@ -602,6 +603,10 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
     if (FAILED(hr)) {
         LogError("[D3D11 error] D3D11CreateDeviceAndSwapChain returned 0x%08X", static_cast<unsigned>(hr));
     }
+    if (SUCCEEDED(hr)) {
+        LogInfo("  D3D11CreateDeviceAndSwapChain succeeded");
+        display_commanderhooks::d3d11::HookD3D11Device(*ppDevice);
+    }
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
@@ -725,6 +730,9 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
     if (FAILED(hr)) {
         LogError("[D3D11 error] D3D11CreateDevice returned 0x%08X", static_cast<unsigned>(hr));
     }
+    if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
+        display_commanderhooks::d3d11::HookD3D11Device(*ppDevice);
+    }
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
     if (SUCCEEDED(hr) && ppDevice && *ppDevice && settings::g_advancedTabSettings.debug_layer_enabled.GetValue()) {
@@ -791,10 +799,10 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
 }
 
 // Hooked D3D11On12CreateDevice function
-HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags,
-                                            const D3D_FEATURE_LEVEL* pFeatureLevels, UINT FeatureLevels,
-                                            IUnknown* const* ppCommandQueues, UINT NumQueues, UINT NodeMask,
-                                            ID3D11Device** ppDevice, ID3D11DeviceContext** ppImmediateContext,
+HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags, const D3D_FEATURE_LEVEL* pFeatureLevels,
+                                            UINT FeatureLevels, IUnknown* const* ppCommandQueues, UINT NumQueues,
+                                            UINT NodeMask, ID3D11Device** ppDevice,
+                                            ID3D11DeviceContext** ppImmediateContext,
                                             D3D_FEATURE_LEVEL* pChosenFeatureLevel) {
     CALL_GUARD(utils::get_now_ns());
     LogInfo("=== D3D11On12CreateDevice Called ===");
@@ -823,11 +831,11 @@ HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags,
         }
     }
 
-    HRESULT hr = D3D11On12CreateDevice_Original
-                     ? D3D11On12CreateDevice_Original(pDevice, modifiedFlags, pFeatureLevels, FeatureLevels,
-                                                     ppCommandQueues, NumQueues, NodeMask, ppDevice,
-                                                     ppImmediateContext, pChosenFeatureLevel)
-                     : E_FAIL;
+    HRESULT hr =
+        D3D11On12CreateDevice_Original
+            ? D3D11On12CreateDevice_Original(pDevice, modifiedFlags, pFeatureLevels, FeatureLevels, ppCommandQueues,
+                                             NumQueues, NodeMask, ppDevice, ppImmediateContext, pChosenFeatureLevel)
+            : E_FAIL;
 
     LogInfo("  Result: 0x%08X (%s)", hr, SUCCEEDED(hr) ? "SUCCESS" : "FAILED");
     if (FAILED(hr)) {
@@ -836,6 +844,7 @@ HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags,
 
     if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
         LogInfo("  Created D3D11on12 Device: 0x%p", *ppDevice);
+        display_commanderhooks::d3d11::HookD3D11Device(*ppDevice);
         // Install DXGI factory hooks from the created device (same path as D3D11CreateDevice)
         IDXGIDevice* dxgi_device = nullptr;
         HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));
@@ -1108,12 +1117,11 @@ bool InstallD3D11DeviceHooks(HMODULE d3d11_module) {
     }
 
     // Hook D3D11On12CreateDevice
-    auto D3D11On12CreateDevice_sys = reinterpret_cast<decltype(&D3D11On12CreateDevice)>(
-        GetProcAddress(d3d11_module, "D3D11On12CreateDevice"));
+    auto D3D11On12CreateDevice_sys =
+        reinterpret_cast<decltype(&D3D11On12CreateDevice)>(GetProcAddress(d3d11_module, "D3D11On12CreateDevice"));
     if (D3D11On12CreateDevice_sys != nullptr) {
         if (!CreateAndEnableHook(D3D11On12CreateDevice_sys, D3D11On12CreateDevice_Detour,
-                                 reinterpret_cast<LPVOID*>(&D3D11On12CreateDevice_Original),
-                                 "D3D11On12CreateDevice")) {
+                                 reinterpret_cast<LPVOID*>(&D3D11On12CreateDevice_Original), "D3D11On12CreateDevice")) {
             LogError("Failed to create and enable D3D11On12CreateDevice hook");
             return false;
         }

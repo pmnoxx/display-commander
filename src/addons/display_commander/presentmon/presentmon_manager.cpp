@@ -1,6 +1,7 @@
 #include "presentmon_manager.hpp"
 #include "../globals.hpp"
 #include "../settings/advanced_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 
@@ -18,6 +19,7 @@ namespace presentmon {
 PresentMonManager g_presentMonManager;
 
 void CreateAndStartPresentMon() {
+    CALL_GUARD(utils::get_now_ns());
     if (g_presentMonManager.IsRunning()) {
         return;
     }
@@ -31,6 +33,7 @@ void CreateAndStartPresentMon() {
 }
 
 void StopAndDestroyPresentMon(PresentMonStopReason reason) {
+    CALL_GUARD(utils::get_now_ns());
     try {
         g_presentMonManager.StopWorker(reason);
     } catch (const std::exception& e) {
@@ -450,6 +453,7 @@ PresentMonManager::PresentMonManager()
 }
 
 bool PresentMonManager::GetFlipCompatibility(PresentMonFlipCompatibility& out) const {
+    CALL_GUARD(utils::get_now_ns());
     if (!m_flip_compat_valid.load()) {
         return false;
     }
@@ -491,6 +495,7 @@ PresentMonManager::~PresentMonManager() {
 }
 
 void PresentMonManager::StartWorker() {
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("PresentMon: StartWorker() called (pid=%lu)", static_cast<unsigned long>(GetCurrentProcessId()));
     if (m_running.load()) {
         LogInfo("PresentMon: Worker already running, skipping duplicate start");
@@ -544,6 +549,7 @@ void PresentMonManager::StartWorker() {
 }
 
 void PresentMonManager::StopWorker(PresentMonStopReason reason) {
+    CALL_GUARD(utils::get_now_ns());
     // Always stop the ETW session when we have a name (exit/destructor paths). Ensures session is
     // cleared even if the worker already exited or crashed (!m_running), so restart works.
     if (m_session_name[0] != 0) {
@@ -587,9 +593,13 @@ void PresentMonManager::StopWorker(PresentMonStopReason reason) {
     LogInfo("PresentMon: Worker thread stopped");
 }
 
-bool PresentMonManager::IsRunning() const { return m_running.load(); }
+bool PresentMonManager::IsRunning() const {
+    CALL_GUARD(utils::get_now_ns());
+    return m_running.load();
+}
 
 bool PresentMonManager::IsNeeded() const {
+    CALL_GUARD(utils::get_now_ns());
     // PresentMon is needed for:
     // 1. D3D12 games (for VRR indicator)
     // 2. Non-NVIDIA hardware (for all graphics APIs)
@@ -601,6 +611,7 @@ bool PresentMonManager::IsNeeded() const {
 }
 
 bool PresentMonManager::GetFlipState(PresentMonFlipState& flip_state) const {
+    CALL_GUARD(utils::get_now_ns());
     if (!m_flip_state_valid.load()) {
         return false;
     }
@@ -619,6 +630,7 @@ bool PresentMonManager::GetFlipState(PresentMonFlipState& flip_state) const {
 }
 
 void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
+    CALL_GUARD(utils::get_now_ns());
     debug_info.is_running = m_running.load();
     debug_info.thread_started = m_thread_started.load();
     debug_info.etw_session_active = m_etw_session_active.load();
@@ -679,6 +691,7 @@ void PresentMonManager::GetDebugInfo(PresentMonDebugInfo& debug_info) const {
 
 void PresentMonManager::UpdateFlipState(PresentMonFlipMode mode, const std::string& present_mode_str,
                                         const std::string& debug_info) {
+    CALL_GUARD(utils::get_now_ns());
     m_flip_mode.store(mode);
     m_flip_state_valid.store(true);
     m_flip_state_update_time.store(utils::get_now_ns());
@@ -689,6 +702,7 @@ void PresentMonManager::UpdateFlipState(PresentMonFlipMode mode, const std::stri
 
 void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const std::string& etw_status,
                                         const std::string& error, uint64_t events_processed, uint64_t events_lost) {
+    CALL_GUARD(utils::get_now_ns());
     m_thread_status.store(std::make_shared<const std::string>(thread_status));
     m_etw_session_status.store(std::make_shared<const std::string>(etw_status));
 
@@ -704,6 +718,7 @@ void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const 
 }
 
 void PresentMonManager::WorkerThread(PresentMonManager* manager) {
+    CALL_GUARD(utils::get_now_ns());
     int result = -1;
     try {
         LogInfo("[PresentMon] Worker thread started");
@@ -759,6 +774,7 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
 }
 
 void PresentMonManager::RequestStopEtw() {
+    CALL_GUARD(utils::get_now_ns());
     uint64_t sh = m_etw_session_handle.load();
     if (m_session_name[0] == 0) {
         return;
@@ -780,6 +796,7 @@ void PresentMonManager::RequestStopEtw() {
 }
 
 bool PresentMonManager::QueryEtwSessionByName(const wchar_t* session_name, TRACEHANDLE& out_handle) {
+    CALL_GUARD(utils::get_now_ns());
     out_handle = 0;
     if (session_name == nullptr || session_name[0] == 0) return false;
 
@@ -808,6 +825,7 @@ bool PresentMonManager::QueryEtwSessionByName(const wchar_t* session_name, TRACE
 }
 
 void PresentMonManager::StopEtwSessionByName(const wchar_t* session_name) {
+    CALL_GUARD(utils::get_now_ns());
     if (session_name == nullptr || session_name[0] == 0) return;
 
     // Try to stop the session by name (useful when handle is lost)
@@ -828,6 +846,7 @@ void PresentMonManager::StopEtwSessionByName(const wchar_t* session_name) {
 
 void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names,
                                                  std::string* out_error) {
+    CALL_GUARD(utils::get_now_ns());
     out_session_names.clear();
     if (out_error) out_error->clear();
     if (prefix == nullptr) return;
@@ -892,6 +911,7 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
 }
 
 void PresentMonManager::LogAllEtwSessions() {
+    CALL_GUARD(utils::get_now_ns());
     if (true) {
         return;
     }
@@ -970,6 +990,7 @@ void PresentMonManager::LogAllEtwSessions() {
 }
 
 void PresentMonManager::StopAllDcEtwSessions() {
+    CALL_GUARD(utils::get_now_ns());
     const DWORD our_pid = GetCurrentProcessId();
     std::vector<std::string> sessions;
     GetEtwSessionsWithPrefix(L"DC_", sessions);
@@ -993,6 +1014,7 @@ void PresentMonManager::StopAllDcEtwSessions() {
 }
 
 void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) {
+    CALL_GUARD(utils::get_now_ns());
     if (our_session_name == nullptr || our_session_name[0] == L'\0') return;
 
     const DWORD our_pid = GetCurrentProcessId();
@@ -1033,6 +1055,7 @@ void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) 
 }
 
 void PresentMonManager::CleanupThread(PresentMonManager* manager) {
+    CALL_GUARD(utils::get_now_ns());
     constexpr int64_t k_no_events_interval_ns = 15LL * 1000000000LL;  // 15 seconds
 
     while (!manager->m_should_stop.load()) {
@@ -1062,6 +1085,7 @@ void PresentMonManager::CleanupThread(PresentMonManager* manager) {
 }
 
 void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record) {
+    CALL_GUARD(utils::get_now_ns());
     if (event_record == nullptr) return;
     // Route via TLS if possible; otherwise use global instance (if created)
     PresentMonManager* mgr = t_active_manager;
@@ -1080,6 +1104,8 @@ void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record
 }
 
 void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
+    CALL_GUARD(utils::get_now_ns());
+    __try {
     // Count all events (some relevant present/flip signals can come from DWM/system/kernel context)
     m_events_processed.fetch_add(1);
     m_last_event_time.store(utils::get_now_ns());
@@ -1344,9 +1370,42 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
     }
 
     // Do not overwrite ETW status string here (it contains provider enable return codes).
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        const DWORD code = GetExceptionCode();
+        const char* name = "SEH";
+        switch (code) {
+            case EXCEPTION_ACCESS_VIOLATION: name = "ACCESS_VIOLATION"; break;
+            case EXCEPTION_DATATYPE_MISALIGNMENT: name = "DATATYPE_MISALIGNMENT"; break;
+            case EXCEPTION_BREAKPOINT: name = "BREAKPOINT"; break;
+            case EXCEPTION_SINGLE_STEP: name = "SINGLE_STEP"; break;
+            case EXCEPTION_ARRAY_BOUNDS_EXCEEDED: name = "ARRAY_BOUNDS_EXCEEDED"; break;
+            case EXCEPTION_FLT_DENORMAL_OPERAND: name = "FLT_DENORMAL_OPERAND"; break;
+            case EXCEPTION_FLT_DIVIDE_BY_ZERO: name = "FLT_DIVIDE_BY_ZERO"; break;
+            case EXCEPTION_FLT_INEXACT_RESULT: name = "FLT_INEXACT_RESULT"; break;
+            case EXCEPTION_FLT_INVALID_OPERATION: name = "FLT_INVALID_OPERATION"; break;
+            case EXCEPTION_FLT_OVERFLOW: name = "FLT_OVERFLOW"; break;
+            case EXCEPTION_FLT_STACK_CHECK: name = "FLT_STACK_CHECK"; break;
+            case EXCEPTION_FLT_UNDERFLOW: name = "FLT_UNDERFLOW"; break;
+            case EXCEPTION_INT_DIVIDE_BY_ZERO: name = "INT_DIVIDE_BY_ZERO"; break;
+            case EXCEPTION_INT_OVERFLOW: name = "INT_OVERFLOW"; break;
+            case EXCEPTION_PRIV_INSTRUCTION: name = "PRIV_INSTRUCTION"; break;
+            case EXCEPTION_IN_PAGE_ERROR: name = "IN_PAGE_ERROR"; break;
+            case EXCEPTION_ILLEGAL_INSTRUCTION: name = "ILLEGAL_INSTRUCTION"; break;
+            case EXCEPTION_NONCONTINUABLE_EXCEPTION: name = "NONCONTINUABLE"; break;
+            case EXCEPTION_STACK_OVERFLOW: name = "STACK_OVERFLOW"; break;
+            case EXCEPTION_INVALID_DISPOSITION: name = "INVALID_DISPOSITION"; break;
+            case EXCEPTION_GUARD_PAGE: name = "GUARD_PAGE"; break;
+            case EXCEPTION_INVALID_HANDLE: name = "INVALID_HANDLE"; break;
+            default: break;
+        }
+        LogWarn("[PresentMon] OnEtwEvent SEH exception 0x%08lX (%s), event skipped",
+                static_cast<unsigned long>(code), name);
+    }
 }
 
 void PresentMonManager::UpdateSurfaceWindowMappingFromEvent(PEVENT_RECORD event_record) {
+    CALL_GUARD(utils::get_now_ns());
     // Some DWM events may include both a surface identifier and hwnd.
     uint64_t surface_luid = 0;
     uint64_t hwnd = 0;
@@ -1387,6 +1446,7 @@ void PresentMonManager::UpdateSurfaceWindowMappingFromEvent(PEVENT_RECORD event_
 }
 
 void PresentMonManager::UpdateFlipCompatibilityFromDwmEvent(PEVENT_RECORD event_record) {
+    CALL_GUARD(utils::get_now_ns());
     // We key on the user-discovered event type: DWM-Core EventId=291 Task=207
     const auto& d = event_record->EventHeader.EventDescriptor;
     if (d.Id != 291 || d.Task != 207) {
@@ -1488,6 +1548,7 @@ void PresentMonManager::UpdateFlipCompatibilityFromDwmEvent(PEVENT_RECORD event_
 
 void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMonSurfaceCompatibilitySummary>& out,
                                                            uint64_t within_ms) const {
+    CALL_GUARD(utils::get_now_ns());
     out.clear();
     const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
     const uint64_t within_ns = within_ms * 1000000ULL;
@@ -1530,6 +1591,7 @@ void PresentMonManager::GetRecentFlipCompatibilitySurfaces(std::vector<PresentMo
 }
 
 void PresentMonManager::GetPerDrawStats(PresentMonPerDrawStats& out, uint64_t hwnd_for_window) const {
+    CALL_GUARD(utils::get_now_ns());
     out.global_count = m_per_draw_global_count.load();
     out.count_for_window = 0;
     out.window_matched = false;
@@ -1569,6 +1631,7 @@ void PresentMonManager::GetPerDrawStats(PresentMonPerDrawStats& out, uint64_t hw
 }
 
 void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graphics_provider) {
+    CALL_GUARD(utils::get_now_ns());
     (void)is_graphics_provider;
 
     const auto& d = event_record->EventHeader.EventDescriptor;
@@ -1656,6 +1719,7 @@ void PresentMonManager::TrackEventType(PEVENT_RECORD event_record, bool is_graph
 }
 
 void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSummary>& out, bool graphics_only) const {
+    CALL_GUARD(utils::get_now_ns());
     out.clear();
     out.reserve(k_event_type_cache_size);
 
@@ -1707,6 +1771,7 @@ void PresentMonManager::GetEventTypeSummaries(std::vector<PresentMonEventTypeSum
 }
 
 int PresentMonManager::PresentMonMain() {
+    CALL_GUARD(utils::get_now_ns());
     LogInfo("[PresentMon] ETW session starting: %ls", m_session_name);
 
     // Start session

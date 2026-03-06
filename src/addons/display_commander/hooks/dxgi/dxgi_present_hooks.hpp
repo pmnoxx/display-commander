@@ -58,14 +58,14 @@ using IDXGIFactory_CreateSwapChain_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIFactor
 
 // IDXGIFactory1 CreateSwapChainForHwnd / CreateSwapChainForCoreWindow (vtable indices 14, 15)
 using IDXGIFactory1_CreateSwapChainForHwnd_pfn =
-    HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd,
-                                const DXGI_SWAP_CHAIN_DESC1* pDesc,
-                                const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
-                                IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain);
-using IDXGIFactory1_CreateSwapChainForCoreWindow_pfn =
-    HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow,
-                                const DXGI_SWAP_CHAIN_DESC1* pDesc, IDXGIOutput* pRestrictToOutput,
+    HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
                                 IDXGISwapChain1** ppSwapChain);
+using IDXGIFactory1_CreateSwapChainForCoreWindow_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory1* This,
+                                                                                   IUnknown* pDevice, IUnknown* pWindow,
+                                                                                   const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                                   IDXGIOutput* pRestrictToOutput,
+                                                                                   IDXGISwapChain1** ppSwapChain);
 
 // Additional function pointer types for DXGI methods
 using IDXGISwapChain_GetBuffer_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT Buffer, REFIID riid,
@@ -224,15 +224,17 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Detour(
     IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
     const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
     IDXGISwapChain1** ppSwapChain);
-HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(
-    IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow, const DXGI_SWAP_CHAIN_DESC1* pDesc,
-    IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain);
+HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(IDXGIFactory1* This, IUnknown* pDevice,
+                                                                            IUnknown* pWindow,
+                                                                            const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                            IDXGIOutput* pRestrictToOutput,
+                                                                            IDXGISwapChain1** ppSwapChain);
 
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain* swapchain);
 
 // Hook a specific factory when it's created
-bool HookFactory(IDXGIFactory* factory);
+bool HookFactory(IUnknown* iunknown);
 
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain);

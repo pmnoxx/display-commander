@@ -5,6 +5,9 @@
 ## Unreleased
 
 
+## v0.12.310
+- **Factory hook crash fix** - Fixed a crash that could occur when hooking into the DXGI factory. Details: `api_hooks.cpp`, `dxgi_present_hooks.cpp` / `dxgi_present_hooks.hpp`.
+
 ## v0.12.309 (2026-03-05)
 - **CreateDXGIFactory2 fix** - The CreateDXGIFactory2 hook no longer forces IDXGIFactory7 for every caller. It only overrides the requested interface to IDXGIFactory2 when the application asks for IDXGIFactory or IDXGIFactory1; for IDXGIFactory2 and newer (through IDXGIFactory7) the requested interface is passed through to the real API. This avoids breaking applications that expect a specific factory version. Details: `api_hooks.cpp` — use requested riid unless highest_rrid_found <= 1, then override to IDXGIFactory2; removed E_NOINTERFACE for unknown interfaces and forced upgrade to Factory7.
 

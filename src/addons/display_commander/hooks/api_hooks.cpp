@@ -2,6 +2,7 @@
 #include <d3d11.h>
 #include <d3d12.h>
 #include <MinHook.h>
+#include <unknwnbase.h>
 #include <wrl/client.h>
 #include <cstdio>
 #include "../settings/advanced_tab_settings.hpp"
@@ -476,23 +477,29 @@ HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFacto
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY2].fetch_add(1);
 
-    std::array<const GUID, 8> rrids = {__uuidof(IDXGIFactory),  __uuidof(IDXGIFactory1), __uuidof(IDXGIFactory2),
-                                       __uuidof(IDXGIFactory3), __uuidof(IDXGIFactory4), __uuidof(IDXGIFactory5),
-                                       __uuidof(IDXGIFactory6), __uuidof(IDXGIFactory7)};
-
-    auto highest_rrid_found = std::find(rrids.begin(), rrids.end(), riid) - rrids.begin();
-
-    GUID rrid_override = riid;
-    if (highest_rrid_found <= 1) {
-        rrid_override = __uuidof(IDXGIFactory2);
-    }
-
     // Call original function
-    HRESULT hr = CreateDXGIFactory2_Original ? CreateDXGIFactory2_Original(Flags, rrid_override, ppFactory)
-                                             : CreateDXGIFactory2(Flags, rrid_override, ppFactory);
+    HRESULT hr = CreateDXGIFactory2_Original ? CreateDXGIFactory2_Original(Flags, riid, ppFactory)
+                                             : CreateDXGIFactory2(Flags, riid, ppFactory);
 
     if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
-        display_commanderhooks::dxgi::HookFactory(static_cast<IDXGIFactory*>(*ppFactory));
+        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(*ppFactory));
+    }
+    return hr;
+}
+
+// Hooked CreateDXGIFactory1 function
+HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
+    CALL_GUARD(utils::get_now_ns());
+    if (ppFactory == nullptr) return E_POINTER;
+    // Increment counter
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
+
+    // Call original function
+    HRESULT hr = CreateDXGIFactory1_Original ? CreateDXGIFactory1_Original(riid, ppFactory)
+                                             : CreateDXGIFactory1(riid, ppFactory);
+
+    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
+        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(*ppFactory));
     }
     return hr;
 }
@@ -500,22 +507,18 @@ HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFacto
 // Hooked CreateDXGIFactory function
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory) {
     CALL_GUARD(utils::get_now_ns());
+    if (ppFactory == nullptr) return E_POINTER;
     // Increment counter
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY].fetch_add(1);
 
-    LogInfo("Redirecting CreateDXGIFactory to CreateDXGIFactory2");
-    return CreateDXGIFactory2(0, riid, ppFactory);
-}
+    // Call original function
+    HRESULT hr =
+        CreateDXGIFactory_Original ? CreateDXGIFactory_Original(riid, ppFactory) : CreateDXGIFactory(riid, ppFactory);
 
-// Hooked CreateDXGIFactory1 function
-HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory) {
-    CALL_GUARD(utils::get_now_ns());
-    // Increment counter
-    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATEFACTORY1].fetch_add(1);
-
-    LogInfo("Redirecting CreateDXGIFactory1 to CreateDXGIFactory2");
-
-    return CreateDXGIFactory2(0, riid, ppFactory);
+    if (SUCCEEDED(hr) && ppFactory != nullptr && *ppFactory != nullptr) {
+        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(*ppFactory));
+    }
+    return hr;
 }
 
 HRESULT CreateDXGIFactory1_Direct(REFIID riid, void** ppFactory) {
@@ -659,7 +662,7 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
                     qhr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
                     adapter->Release();
                     if (SUCCEEDED(qhr) && factory != nullptr) {
-                        display_commanderhooks::dxgi::HookFactory(factory);
+                        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(factory));
                         factory->Release();
                     }
                 }
@@ -767,7 +770,7 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
                     qhr = adapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&factory));
                     adapter->Release();
                     if (SUCCEEDED(qhr) && factory != nullptr) {
-                        display_commanderhooks::dxgi::HookFactory(factory);
+                        display_commanderhooks::dxgi::HookFactory(static_cast<IUnknown*>(factory));
                         factory->Release();
                     }
                 }

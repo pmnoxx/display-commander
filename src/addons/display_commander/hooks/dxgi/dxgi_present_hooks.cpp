@@ -841,8 +841,8 @@ static constexpr int kIDXGIFactory_CreateSwapChain = 10;
 static constexpr int kIDXGIFactory1_CreateSwapChainForHwnd = 14;
 static constexpr int kIDXGIFactory1_CreateSwapChainForCoreWindow = 15;
 
-bool HookFactory(IDXGIFactory* factory) {
-    if (factory == nullptr) {
+bool HookFactory(IUnknown* iunknown) {
+    if (iunknown == nullptr) {
         return false;
     }
     if (g_dx9_swapchain_detected.load()) {
@@ -852,12 +852,13 @@ bool HookFactory(IDXGIFactory* factory) {
             display_commanderhooks::HookType::DXGI_SWAPCHAIN)) {
         return false;
     }
-    IDXGIFactory1* factory1 = nullptr;
-    HRESULT hr = factory->QueryInterface(IID_PPV_ARGS(&factory1));
-    if (FAILED(hr) || factory1 == nullptr) {
+    IDXGIFactory* ifactory = nullptr;
+    HRESULT hr = iunknown->QueryInterface(IID_PPV_ARGS(&ifactory));
+    if (FAILED(hr) || ifactory == nullptr) {
         LogInfo("HookFactory: factory does not support IDXGIFactory1, hooking CreateSwapChain only");
+        return false;
     }
-    void** vtable = *reinterpret_cast<void***>(factory);
+    void** vtable = *reinterpret_cast<void***>(ifactory);
 
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {

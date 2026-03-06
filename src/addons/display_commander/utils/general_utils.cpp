@@ -481,6 +481,15 @@ std::filesystem::path GetDisplayCommanderAppDataFolder() {
     return base / L"Programs" / L"Display_Commander";
 }
 
+// Display Commander ReShade root: contains Shaders and Textures subfolders used for EffectSearchPaths/TextureSearchPaths
+std::filesystem::path GetDisplayCommanderReshadeRootFolder() {
+    std::filesystem::path base = GetDisplayCommanderAppDataFolder();
+    if (base.empty()) {
+        return base;
+    }
+    return base / L"Reshade";
+}
+
 // Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized, shared across
 // games)
 std::filesystem::path GetDefaultDlssOverrideFolder() {

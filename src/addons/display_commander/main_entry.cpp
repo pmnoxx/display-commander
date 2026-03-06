@@ -37,6 +37,7 @@
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/dc_load_path.hpp"
+#include "utils/general_utils.hpp"
 #include "utils/dc_service_status.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
@@ -264,6 +265,9 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
         return;
     }
+    if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+        return;
+    }
     const float percent = settings::g_mainTabSettings.brightness_percent.GetValue();
     const float multiplier = percent / 100.0f;
     const reshade::api::effect_technique tech = runtime->find_technique("DisplayCommander_Control.fx", "Brightness");
@@ -329,6 +333,9 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
 // SDR->HDR.
 void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
+        return;
+    }
+    if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
         return;
     }
     const bool auto_hdr = settings::g_mainTabSettings.auto_hdr.GetValue();
@@ -759,13 +766,14 @@ void OverrideReShadeSettings_LoadFromDllMainOnce() {
 }
 
 void OverrideReShadeSettings_AddDisplayCommanderPaths() {
-    wchar_t localappdata_path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
-        LogWarn("Failed to get Documents folder path, skipping ReShade path configuration");
+    if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
         return;
     }
-    std::filesystem::path localappdata_dir(localappdata_path);
-    std::filesystem::path dc_base_dir = localappdata_dir / L"Programs" / L"Display_Commander" / L"Reshade";
+    std::filesystem::path dc_base_dir = GetDisplayCommanderReshadeRootFolder();
+    if (dc_base_dir.empty()) {
+        LogWarn("Failed to get DC Reshade root path, skipping ReShade path configuration");
+        return;
+    }
     std::filesystem::path shaders_dir = dc_base_dir / L"Shaders";
     std::filesystem::path textures_dir = dc_base_dir / L"Textures";
 

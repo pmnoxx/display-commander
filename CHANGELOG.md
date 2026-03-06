@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.322
+- **Brightness and AutoHDR section master switch** - A checkbox "Enable Brightness, AutoHDR and ReShade paths" (default on) at the top of the Brightness and AutoHDR section controls the whole block: when off, Brightness, AutoHDR, and all related controls are disabled, and Display Commander no longer adds global shader/texture paths (EffectSearchPaths, TextureSearchPaths) to ReShade config. Tooltip explains the behavior; an "Open Shaders/Textures folder" button opens the DC ReShade root folder. Details: `brightness_autohdr_section_enabled` in main_tab_settings; gating in ApplyDisplayCommanderBrightness, ApplyDisplayCommanderAutoHdr, OverrideReShadeSettings_AddDisplayCommanderPaths; UI in main_new_tab.cpp with BeginDisabled/EndDisabled; GetDisplayCommanderReshadeRootFolder() in general_utils for the folder path.
+
 ## v0.12.321
 - **SetTooltipEx: tooltips with configurable wrap width** - Added `SetTooltipEx` to the base ImGui wrapper so tooltips can use a maximum text width (default 800px), making long tooltips wrap instead of stretching across the screen. Use `imgui.SetTooltipEx("text")` for default width or `imgui.SetTooltipEx(width, "text")` for a custom width. The "When on: one set of 4 sliders..." (XInput) and "Override DXGI Present SyncInterval..." (Main tab) tooltips now use SetTooltipEx. Details: `imgui_wrapper_base.hpp` (SetTooltipExV + overloads), ReShade and standalone implementations.
 

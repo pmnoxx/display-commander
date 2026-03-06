@@ -178,6 +178,9 @@ class MainTabSettings {
     ui::new_ui::BoolSetting vulkan_append_reflex_extensions;
 
     // Brightness (ReShade effect driven by DC)
+    /** When true, Brightness/AutoHDR controls are active and DC adds EffectSearchPaths/TextureSearchPaths to ReShade.
+     * When false, the whole Brightness and AutoHDR section is disabled and paths are not added. Default on. */
+    ui::new_ui::BoolSetting brightness_autohdr_section_enabled;
     ui::new_ui::FloatSetting brightness_percent;
     /** Decode only: how to interpret backbuffer (DECODE_METHOD). Default scRGB (1). */
     ui::new_ui::ComboSetting swapchain_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None

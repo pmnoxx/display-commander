@@ -8,6 +8,7 @@
  */
 
 #include <imgui.h>
+#include <cstdarg>
 #include <cstddef>
 #include <cstdint>
 
@@ -17,12 +18,12 @@ namespace ui {
 /** Graphics API for display (dx11, dx12, etc.). Used when drawing API-agnostic tabs. */
 enum class GraphicsApi : std::uint32_t {
     Unknown = 0,
-    D3D9    = 0x9000,
-    D3D10   = 0xa000,
-    D3D11   = 0xb000,
-    D3D12   = 0xc000,
-    OpenGL  = 0x10000,
-    Vulkan  = 0x20000
+    D3D9 = 0x9000,
+    D3D10 = 0xa000,
+    D3D11 = 0xb000,
+    D3D12 = 0xc000,
+    OpenGL = 0x10000,
+    Vulkan = 0x20000
 };
 
 /**
@@ -32,20 +33,20 @@ enum class GraphicsApi : std::uint32_t {
 
 /** ImGui table/tree flags as int (same numeric values as imgui.h for compatibility). */
 namespace wrapper_flags {
-constexpr int TreeNodeFlags_None        = 0;
-constexpr int TreeNodeFlags_Leaf        = 1 << 2;   // No expand/collapse
+constexpr int TreeNodeFlags_None = 0;
+constexpr int TreeNodeFlags_Leaf = 1 << 2;  // No expand/collapse
 constexpr int TreeNodeFlags_DefaultOpen = 1 << 5;
-constexpr int TableFlags_BordersOuter   = (1 << 8) | (1 << 10);
-constexpr int TableFlags_BordersH      = (1 << 7) | (1 << 8);
+constexpr int TableFlags_BordersOuter = (1 << 8) | (1 << 10);
+constexpr int TableFlags_BordersH = (1 << 7) | (1 << 8);
 constexpr int TableFlags_SizingStretchProp = 3 << 13;
-constexpr int TableFlags_ScrollY       = 1 << 25;
-constexpr int TableFlags_RowBg         = 1 << 4;
-constexpr int TableFlags_Borders       = (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10);
-constexpr int TableFlags_Resizable     = 1 << 12;   // Columns can be resized by user
+constexpr int TableFlags_ScrollY = 1 << 25;
+constexpr int TableFlags_RowBg = 1 << 4;
+constexpr int TableFlags_Borders = (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10);
+constexpr int TableFlags_Resizable = 1 << 12;  // Columns can be resized by user
 constexpr int TableFlags_SizingFixedFit = 2 << 13;
 constexpr int TableColumnFlags_WidthStretch = 1 << 3;
-constexpr int TableColumnFlags_WidthFixed   = 1 << 4;
-} // namespace wrapper_flags
+constexpr int TableColumnFlags_WidthFixed = 1 << 4;
+}  // namespace wrapper_flags
 
 /**
  * Proxy interface for ImGui draw list. Use this instead of raw ImDrawList* from the wrapper
@@ -55,10 +56,10 @@ constexpr int TableColumnFlags_WidthFixed   = 1 << 4;
 struct IImDrawList {
     virtual ~IImDrawList() = default;
     virtual void AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f) = 0;
-    virtual void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
-                         int flags = 0, float thickness = 1.0f) = 0;
-    virtual void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col,
-                               float rounding = 0.0f, int flags = 0) = 0;
+    virtual void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, int flags = 0,
+                         float thickness = 1.0f) = 0;
+    virtual void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
+                               int flags = 0) = 0;
     virtual void AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments = 0,
                            float thickness = 1.0f) = 0;
     virtual void AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments = 0) = 0;
@@ -81,12 +82,27 @@ struct IImGuiWrapper {
     virtual bool IsItemActive() = 0;
     virtual bool IsItemDeactivatedAfterEdit() = 0;
     virtual void SetTooltip(const char* fmt, ...) = 0;
+    /** Tooltip with word-wrap width (default 800px). Use SetTooltipEx(fmt, ...) or SetTooltipEx(width, fmt, ...). */
+    virtual void SetTooltipExV(float wrap_width, const char* fmt, va_list args) = 0;
+    void SetTooltipEx(const char* fmt, ...) {
+        va_list args;
+        va_start(args, fmt);
+        SetTooltipExV(800.f, fmt, args);
+        va_end(args);
+    }
+    void SetTooltipEx(float wrap_width, const char* fmt, ...) {
+        va_list args;
+        va_start(args, fmt);
+        SetTooltipExV(wrap_width, fmt, args);
+        va_end(args);
+    }
     virtual void Spacing() = 0;
     virtual void Separator() = 0;
     virtual bool BeginChild(const char* str_id, const ImVec2& size, bool border) = 0;
     virtual void EndChild() = 0;
     virtual bool CollapsingHeader(const char* label, int flags = 0) = 0;
-    virtual bool BeginTable(const char* str_id, int columns, int flags, const ImVec2& outer_size = ImVec2(0.f, 0.f)) = 0;
+    virtual bool BeginTable(const char* str_id, int columns, int flags,
+                            const ImVec2& outer_size = ImVec2(0.f, 0.f)) = 0;
     virtual void EndTable() = 0;
     virtual void TableSetupColumn(const char* label, int flags = 0, float width_weight = 0.f) = 0;
     virtual void TableSetupScrollFreeze(int cols, int rows) = 0;
@@ -114,7 +130,7 @@ struct IImGuiWrapper {
     virtual void PushStyleColor(int col_enum, const ImVec4& color) = 0;
     virtual void PopStyleColor(int count = 1) = 0;
     virtual bool TreeNodeEx(const char* label, int flags) = 0;
-    virtual bool TreeNode(const char* label) = 0;   // Same as ImGui::TreeNode(label)
+    virtual bool TreeNode(const char* label) = 0;  // Same as ImGui::TreeNode(label)
     virtual void TreePop() = 0;
     virtual ImVec2 GetContentRegionAvail() = 0;
     virtual float GetStyleItemSpacingX() = 0;
@@ -126,7 +142,7 @@ struct IImGuiWrapper {
 
     // Plot / graphs
     virtual void PlotLines(const char* label, const float* values, int values_count, int values_offset,
-                          const char* overlay_text, float scale_min, float scale_max, const ImVec2& graph_size) = 0;
+                           const char* overlay_text, float scale_min, float scale_max, const ImVec2& graph_size) = 0;
 
     // Combo (int selection, array of item strings)
     virtual bool Combo(const char* label, int* current_item, const char* const items[], int items_count) = 0;
@@ -148,8 +164,7 @@ struct IImGuiWrapper {
     virtual ImU32 ColorConvertFloat4ToU32(const ImVec4& col) = 0;
 
     // Slider float
-    virtual bool SliderFloat(const char* label, float* v, float v_min, float v_max,
-                             const char* format = "%.3f") = 0;
+    virtual bool SliderFloat(const char* label, float* v, float v_min, float v_max, const char* format = "%.3f") = 0;
 
     // Columns (legacy layout)
     virtual void Columns(int count = 1, const char* id = nullptr, bool border = true) = 0;
@@ -206,5 +221,5 @@ struct IImGuiWrapper {
                           bool enabled = true) = 0;
 };
 
-} // namespace ui
-} // namespace display_commander
+}  // namespace ui
+}  // namespace display_commander

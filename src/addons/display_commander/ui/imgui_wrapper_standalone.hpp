@@ -12,10 +12,10 @@ struct ImDrawListProxyStandalone : IImDrawList {
     ImDrawList* list_ = nullptr;
     void set(ImDrawList* L) { list_ = L; }
     void AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f) override;
-    void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
-                 int flags = 0, float thickness = 1.0f) override;
-    void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col,
-                       float rounding = 0.0f, int flags = 0) override;
+    void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, int flags = 0,
+                 float thickness = 1.0f) override;
+    void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
+                       int flags = 0) override;
     void AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments = 0,
                    float thickness = 1.0f) override;
     void AddCircleFilled(const ImVec2& center, float radius, ImU32 col, int num_segments = 0) override;
@@ -37,6 +37,7 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     bool IsItemActive() override;
     bool IsItemDeactivatedAfterEdit() override;
     void SetTooltip(const char* fmt, ...) override;
+    void SetTooltipExV(float wrap_width, const char* fmt, va_list args) override;
     void Spacing() override;
     void Separator() override;
     bool BeginChild(const char* str_id, const ImVec2& size, bool border) override;
@@ -61,8 +62,8 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void Unindent() override;
     bool InputText(const char* label, char* buf, size_t buf_size) override;
     bool InputText(const char* label, char* buf, size_t buf_size, int flags) override;
-    bool InputFloat(const char* label, float* v, float step = 0.0f, float step_fast = 0.0f,
-                    const char* format = "%.3f", int flags = 0) override;
+    bool InputFloat(const char* label, float* v, float step = 0.0f, float step_fast = 0.0f, const char* format = "%.3f",
+                    int flags = 0) override;
     bool InputInt(const char* label, int* v, int step = 1, int step_fast = 0, int flags = 0) override;
     bool SliderInt(const char* label, int* v, int v_min, int v_max, const char* format = "%d") override;
     void TextWrapped(const char* fmt, ...) override;
@@ -81,8 +82,7 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void EndDisabled() override;
 
     void PlotLines(const char* label, const float* values, int values_count, int values_offset,
-                   const char* overlay_text, float scale_min, float scale_max,
-                   const ImVec2& graph_size) override;
+                   const char* overlay_text, float scale_min, float scale_max, const ImVec2& graph_size) override;
     bool Combo(const char* label, int* current_item, const char* const items[], int items_count) override;
     IImDrawList* GetWindowDrawList() override;
     ImVec2 GetCursorScreenPos() override;
@@ -94,8 +94,7 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     void ProgressBar(float fraction, const ImVec2& size_arg, const char* overlay) override;
     ImU32 GetColorU32(int col_enum) override;
     ImU32 ColorConvertFloat4ToU32(const ImVec4& col) override;
-    bool SliderFloat(const char* label, float* v, float v_min, float v_max,
-                     const char* format = "%.3f") override;
+    bool SliderFloat(const char* label, float* v, float v_min, float v_max, const char* format = "%.3f") override;
     void Columns(int count = 1, const char* id = nullptr, bool border = true) override;
     void NextColumn() override;
     void SetColumnWidth(int column_index, float width) override;
@@ -129,5 +128,5 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     bool MenuItem(const char* label, const char* shortcut, bool selected, bool enabled) override;
 };
 
-} // namespace ui
-} // namespace display_commander
+}  // namespace ui
+}  // namespace display_commander

@@ -4189,7 +4189,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
                 LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every "
                     "frame; 1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no "
                     "restart).");
@@ -4338,7 +4338,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
             LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every frame; "
                 "1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no restart).");
         }

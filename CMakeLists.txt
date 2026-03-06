@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(reshade_display_commander VERSION 0.2.4 LANGUAGES CXX)
+project(reshade_display_commander VERSION 0.2.5 LANGUAGES CXX)
 
 # Function to get git commit count for build number
 function(get_git_commit_count OUTPUT_VAR)

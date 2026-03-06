@@ -178,8 +178,8 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Creates an NVIDIA driver profile named \"Display Commander - <exe>\" and adds this executable. You "
-                "can then edit settings here or in NVIDIA Profile Inspector.");
+                "Creates an NVIDIA driver profile named after this executable and adds it. You can then edit settings "
+                "here or in NVIDIA Profile Inspector.");
         }
         if (!s_nvidiaProfileCreateError.empty()) {
             imgui.TextColored(ICON_ERROR, "Error: %s", s_nvidiaProfileCreateError.c_str());
@@ -204,8 +204,8 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Remove the NVIDIA profile created by Display Commander for this game (name starts with \"Display "
-                "Commander -\").");
+                "Remove the NVIDIA profile created by Display Commander for this game (profile name matches the "
+                "executable name).");
         }
     }
     if (!s_nvidiaProfileDeleteError.empty()) {

@@ -1418,9 +1418,8 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
         return {true, ""};  // Profile already exists
     }
 
-    // Create new profile named "Display Commander - <exe name>"
-    std::wstring profileNameW = L"Display Commander - ";
-    profileNameW += exeNameW;
+    // Create new profile named after the exe (e.g. "game.exe")
+    std::wstring profileNameW = exeNameW;
     NVDRS_PROFILE profileData = {0};
     profileData.version = NVDRS_PROFILE_VER;
     profileData.isPredefined = 0;
@@ -1453,12 +1452,10 @@ std::pair<bool, std::string> CreateProfileForCurrentExe() {
     return {true, ""};
 }
 
-static const char k_displayCommanderProfilePrefix[] = "Display Commander - ";
-
+// We identify "our" profile by exact name match: profile name == current exe base name.
 bool HasDisplayCommanderProfile(const NvidiaProfileSearchResult& r) {
-    const size_t prefixLen = sizeof(k_displayCommanderProfilePrefix) - 1;
     for (const std::string& name : r.matching_profile_names) {
-        if (name.size() >= prefixLen && name.compare(0, prefixLen, k_displayCommanderProfilePrefix) == 0) {
+        if (name == r.current_exe_name) {
             return true;
         }
     }
@@ -1489,11 +1486,13 @@ std::pair<bool, std::string> DeleteDisplayCommanderProfileForCurrentExe() {
         NvApi()->DRS_DestroySession(hSession);
         return {false, "GetProfileInfo failed."};
     }
+    std::wstring exePath = GetCurrentProcessPathW();
+    const wchar_t* base = exePath.empty() ? nullptr : wcsrchr(exePath.c_str(), L'\\');
+    std::wstring exeNameW(base ? base + 1 : exePath.c_str());
+    const std::string exeNameUtf8 = WideToUtf8(exeNameW.c_str());
     const wchar_t* profileNameW = reinterpret_cast<const wchar_t*>(profileInfo.profileName);
     const std::string profileNameUtf8 = WideToUtf8(profileNameW);
-    const size_t prefixLen = sizeof(k_displayCommanderProfilePrefix) - 1;
-    if (profileNameUtf8.size() < prefixLen
-        || profileNameUtf8.compare(0, prefixLen, k_displayCommanderProfilePrefix) != 0) {
+    if (profileNameUtf8 != exeNameUtf8) {
         NvApi()->DRS_DestroySession(hSession);
         return {false, "Display Commander profile not found for this exe (profile exists but is not ours)."};
     }

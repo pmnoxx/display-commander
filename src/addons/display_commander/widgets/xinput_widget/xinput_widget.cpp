@@ -15,7 +15,6 @@
 #include "../../hooks/xinput_hooks.hpp"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
-#include "../remapping_widget/remapping_widget.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../settings/hook_suppression_settings.hpp"
 #include "../../ui/imgui_wrapper_base.hpp"
@@ -23,6 +22,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
+#include "../remapping_widget/remapping_widget.hpp"
 
 namespace display_commander::widgets::xinput_widget {
 
@@ -279,7 +279,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 SaveSettings();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("When on: one set of 4 sliders for X and Y. When off: 8 sliders (4 per axis).");
+                imgui.SetTooltipEx("When on: one set of 4 sliders for X and Y. When off: 8 sliders (4 per axis).");
             }
 
             auto Slider4 = [&imgui, this](const char* label, float* v, float v_min, float v_max, const char* fmt,
@@ -490,7 +490,7 @@ void XInputWidget::DrawEventCounters(display_commander::ui::IImGuiWrapper& imgui
         display_commanderhooks::GetXInputGetStateUserIndexZeroLastDurationNs();
     if (getstate0_last_duration_ns > 0) {
         imgui.Text("XInputGetState(0) last duration: %.3f ms",
-                  static_cast<double>(getstate0_last_duration_ns) / 1000000.0);
+                   static_cast<double>(getstate0_last_duration_ns) / 1000000.0);
     }
 
     // Display smooth call rate for XInputGetStateEx
@@ -1686,8 +1686,10 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
     }
     const uint64_t elapsed_ms = now_ms - g_last_getstate0_tick_ms;
     if (elapsed_ms >= 1000) {
-        const uint64_t delta = (getstate0_calls >= g_last_getstate0_count) ? (getstate0_calls - g_last_getstate0_count) : 0;
-        g_getstate0_rate_hz = (elapsed_ms > 0) ? (1000.0f * static_cast<float>(delta) / static_cast<float>(elapsed_ms)) : 0.0f;
+        const uint64_t delta =
+            (getstate0_calls >= g_last_getstate0_count) ? (getstate0_calls - g_last_getstate0_count) : 0;
+        g_getstate0_rate_hz =
+            (elapsed_ms > 0) ? (1000.0f * static_cast<float>(delta) / static_cast<float>(elapsed_ms)) : 0.0f;
         g_last_getstate0_count = getstate0_calls;
         g_last_getstate0_tick_ms = now_ms;
     }

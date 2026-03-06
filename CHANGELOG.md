@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.321
+- **SetTooltipEx: tooltips with configurable wrap width** - Added `SetTooltipEx` to the base ImGui wrapper so tooltips can use a maximum text width (default 800px), making long tooltips wrap instead of stretching across the screen. Use `imgui.SetTooltipEx("text")` for default width or `imgui.SetTooltipEx(width, "text")` for a custom width. The "When on: one set of 4 sliders..." (XInput) and "Override DXGI Present SyncInterval..." (Main tab) tooltips now use SetTooltipEx. Details: `imgui_wrapper_base.hpp` (SetTooltipExV + overloads), ReShade and standalone implementations.
+
 ## v0.12.320
 - **PresentMon ETW tracing defaults to off** - The "Enable PresentMon tracing" setting now defaults to false so ETW tracing is off until the user enables it. Details: `enable_presentmon_tracing` in advanced_tab_settings.cpp.
 - **Texture stats** - When texture tracking is enabled (Advanced tab), stats show texture count, total/peak memory, and in the overlay: min unique keys, lookups, cache hit, cache miss, entries, cache stored (MiB). Skip reasons (no init, track off, cache off, ppNull, key0, size0) explain why CreateTexture2D did not attempt a cache lookup. Details: texture_tracker, advanced_tab.cpp, main_new_tab.cpp.

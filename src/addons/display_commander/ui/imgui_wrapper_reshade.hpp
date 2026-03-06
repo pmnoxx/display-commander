@@ -16,12 +16,12 @@ struct ImDrawListProxyReshade : IImDrawList {
     void AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float thickness = 1.0f) override {
         if (list_) list_->AddLine(p1, p2, col, thickness);
     }
-    void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
-                 int flags = 0, float thickness = 1.0f) override {
+    void AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f, int flags = 0,
+                 float thickness = 1.0f) override {
         if (list_) list_->AddRect(p_min, p_max, col, rounding, static_cast<ImDrawFlags>(flags), thickness);
     }
-    void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col,
-                       float rounding = 0.0f, int flags = 0) override {
+    void AddRectFilled(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding = 0.0f,
+                       int flags = 0) override {
         if (list_) list_->AddRectFilled(p_min, p_max, col, rounding, static_cast<ImDrawFlags>(flags));
     }
     void AddCircle(const ImVec2& center, float radius, ImU32 col, int num_segments = 0,
@@ -36,7 +36,8 @@ struct ImDrawListProxyReshade : IImDrawList {
     }
 };
 
-/** ImGui wrapper that forwards to ReShade's ImGui (used in addon overlay). Header-only so ImGui symbols stay in the same TU as overlay code. */
+/** ImGui wrapper that forwards to ReShade's ImGui (used in addon overlay). Header-only so ImGui symbols stay in the
+ * same TU as overlay code. */
 struct ImGuiWrapperReshade : IImGuiWrapper {
     ImDrawListProxyReshade draw_list_proxy_;
     void SameLine(float offset_from_start_x = 0.f, float spacing_w = -1.f) override {
@@ -67,6 +68,13 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         va_start(args, fmt);
         ImGui::SetTooltipV(fmt, args);
         va_end(args);
+    }
+    void SetTooltipExV(float wrap_width, const char* fmt, va_list args) override {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + wrap_width);
+        ImGui::TextV(fmt, args);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
     }
     void Spacing() override { ImGui::Spacing(); }
     void Separator() override { ImGui::Separator(); }
@@ -106,8 +114,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     bool InputText(const char* label, char* buf, size_t buf_size, int flags) override {
         return ImGui::InputText(label, buf, buf_size, static_cast<ImGuiInputTextFlags>(flags));
     }
-    bool InputFloat(const char* label, float* v, float step, float step_fast, const char* format,
-                    int flags) override {
+    bool InputFloat(const char* label, float* v, float step, float step_fast, const char* format, int flags) override {
         return ImGui::InputFloat(label, v, step, step_fast, format, static_cast<ImGuiInputTextFlags>(flags));
     }
     bool InputInt(const char* label, int* v, int step, int step_fast, int flags) override {
@@ -146,8 +153,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void EndDisabled() override { ImGui::EndDisabled(); }
 
     void PlotLines(const char* label, const float* values, int values_count, int values_offset,
-                   const char* overlay_text, float scale_min, float scale_max,
-                   const ImVec2& graph_size) override {
+                   const char* overlay_text, float scale_min, float scale_max, const ImVec2& graph_size) override {
         ImGui::PlotLines(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
     }
     bool Combo(const char* label, int* current_item, const char* const items[], int items_count) override {
@@ -206,9 +212,7 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
         return ImVec2(io.DisplaySize.x, io.DisplaySize.y);
     }
     const ImGuiIO& GetIO() override { return ImGui::GetIO(); }
-    unsigned int GetFrameCount() override {
-        return static_cast<unsigned int>(ImGui::GetFrameCount());
-    }
+    unsigned int GetFrameCount() override { return static_cast<unsigned int>(ImGui::GetFrameCount()); }
     bool BeginTabBar(const char* str_id, int flags = 0) override {
         return ImGui::BeginTabBar(str_id, static_cast<ImGuiTabBarFlags>(flags));
     }
@@ -233,5 +237,5 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     }
 };
 
-} // namespace ui
-} // namespace display_commander
+}  // namespace ui
+}  // namespace display_commander

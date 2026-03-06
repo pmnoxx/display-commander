@@ -106,6 +106,9 @@ class AdvancedTabSettings {
     // DPI scaling disable setting
     BoolSetting disable_dpi_scaling;
 
+    // Optional texture memory tracking (tracks loaded texture size and hooks IUnknown::Release). Off by default.
+    BoolSetting texture_tracking_enabled;
+
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();
 };

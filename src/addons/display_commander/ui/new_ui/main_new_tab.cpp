@@ -50,6 +50,7 @@
 #include "../../utils/platform_api_detector.hpp"
 #include "../../utils/reshade_load_path.hpp"
 #include "../../utils/reshade_version_download.hpp"
+#include "../../utils/texture_tracker.hpp"
 #include "../../utils/version_check.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
 #include "imgui.h"
@@ -6141,6 +6142,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
+    bool show_overlay_texture_stats = settings::g_mainTabSettings.show_overlay_texture_stats.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
     if (settings::g_mainTabSettings.show_clock.GetValue()) {
@@ -6404,6 +6406,24 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             if (imgui.IsItemHovered() && show_tooltips) {
                 imgui.SetTooltip("System memory info unavailable.");
             }
+        }
+    }
+
+    if (show_overlay_texture_stats && settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
+        const utils::TextureTrackerStats tstats = utils::TextureTrackerGetStats();
+        const double current_mib = static_cast<double>(tstats.current_bytes) / (1024.0 * 1024.0);
+        const double peak_mib = static_cast<double>(tstats.peak_bytes) / (1024.0 * 1024.0);
+        if (settings::g_mainTabSettings.show_labels.GetValue()) {
+            imgui.Text("Total memory: %.2f MiB  Peak: %.2f MiB  Cache misses: %llu",
+                       current_mib, peak_mib, static_cast<unsigned long long>(tstats.total_misses));
+        } else {
+            imgui.Text("%.2f / %.2f MiB  miss: %llu",
+                       current_mib, peak_mib, static_cast<unsigned long long>(tstats.total_misses));
+        }
+        if (imgui.IsItemHovered() && show_tooltips) {
+            imgui.SetTooltip(
+                "Texture tracker: total memory used, peak memory used, total cache misses (Release not in map). "
+                "Enable Advanced -> Track loaded texture size for tracking.");
         }
     }
 
@@ -7959,6 +7979,19 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
+        }
+        imgui.NextColumn();
+
+        if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
+            bool show_overlay_texture_stats = settings::g_mainTabSettings.show_overlay_texture_stats.GetValue();
+            if (imgui.Checkbox("Tex stats", &show_overlay_texture_stats)) {
+                settings::g_mainTabSettings.show_overlay_texture_stats.SetValue(show_overlay_texture_stats);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Shows texture tracker in overlay: total memory, peak memory, cache misses. "
+                    "Requires Advanced -> Track loaded texture size.");
+            }
         }
         imgui.NextColumn();
 

@@ -3,6 +3,11 @@
 ---
 
 ## Unreleased
+- **Texture stats: total memory, peak, cache misses on overlay and Advanced tab** - Performance overlay and Advanced tab now both show total memory used, peak memory used, and total cache misses for the texture tracker. The Main tab "Tex stats" overlay checkbox is shown only when Advanced → "Track loaded texture size" is enabled, so the overlay option does not appear when texture tracking is off. Details: overlay block in `main_new_tab.cpp` shows current/peak MiB and cache misses; Advanced tab line extended with "Cache misses"; Tex stats checkbox wrapped in `texture_tracking_enabled` check.
+
+## v0.12.317
+- **Texture memory tracking (optional)** - Optional feature (off by default) that tracks the size of loaded D3D11 textures and hooks their `IUnknown::Release`. When enabled in the Advanced tab, stats show current texture count, current memory (MB), and peak memory with a reset button. Only textures created after enabling are tracked. Details: `utils/texture_tracker.hpp` / `texture_tracker.cpp`; D3D11 CreateTexture1D/2D/3D detours and per-type Release hooks in `hooks/d3d11/d3d11_device_hooks.cpp`; Advanced tab setting `texture_tracking_enabled` and stats UI in `ui/new_ui/advanced_tab.cpp`.
+- **Texture tracker miss stats and performance overlay** - Texture tracker records "misses" (Release when the texture was not in the map). Total misses and misses-per-second (exponential moving average, geometric decay 0.9) are exposed. Main tab performance overlay has a "Tex stats" checkbox; when enabled the overlay shows total texture misses and misses/s. Details: `TextureTrackerStats.total_misses`, `misses_per_sec_ema`; `RecordMiss()` in `utils/texture_tracker.cpp`; `show_overlay_texture_stats` and overlay line in `main_new_tab.cpp`.
 
 ## v0.12.316 (2026-03-06)
 - **IsLoadedWithDLLExtension** - Loader mode now runs only when Display Commander was loaded as a proxy DLL (e.g. dxgi.dll, d3d11.dll) — i.e. the module filename ends with .dll. When loaded as the ReShade addon (.addon64/.addon32), the loader path is skipped. Details: `utils/dc_load_path.hpp` / `dc_load_path.cpp` — `IsLoadedWithDLLExtension(void* h_module)`; `main_entry.cpp` uses it to gate the loader-only branch.

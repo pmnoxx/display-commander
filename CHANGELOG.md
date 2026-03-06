@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.324
+- **PresentMon OnEtwEvent: fix C2712 (__try and object unwinding)** - MSVC error C2712 ("Cannot use __try in functions that require object unwinding") is resolved by moving the ETW event body into `OnEtwEventImpl` and keeping `OnEtwEvent` as a thin wrapper that only uses `__try`/`__except` with no C++ objects with destructors. This allows the GitHub (MSVC) build to succeed; behavior and SEH handling are unchanged. Details: `presentmon_manager.cpp` / `presentmon_manager.hpp` — `OnEtwEventImpl` holds CALL_GUARD and the former __try body; `OnEtwEvent` calls it inside __try/__except.
+
 ## v0.12.323
 - **Brightness and AutoHDR tooltips use SetTooltipEx** - Long tooltips in the Brightness and AutoHDR section now use SetTooltipEx (800px wrap) so they wrap instead of stretching off-screen. Covers the section master switch, Brightness %, colorspace, Swapchain HDR Upgrade, HDR mode, RenoDX, AutoHDR Perceptual Boost, HDR10/scRGB color fix, Auto HDR strength, and Misc (Gamma, Contrast, Saturation, Hue). Details: main_new_tab.cpp.
 

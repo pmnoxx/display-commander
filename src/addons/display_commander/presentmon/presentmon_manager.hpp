@@ -229,8 +229,9 @@ class PresentMonManager {
     // ETW event callback (static trampoline)
     static void WINAPI EtwEventRecordCallback(PEVENT_RECORD event_record);
 
-    // ETW event handler
+    // ETW event handler (thin __try wrapper; real work in OnEtwEventImpl for C2712 / no unwinding)
     void OnEtwEvent(PEVENT_RECORD event_record);
+    void OnEtwEventImpl(PEVENT_RECORD event_record);
 
     // Event type cache (fixed-size, lock-free-ish; updated from ETW thread)
     struct EventTypeEntry {

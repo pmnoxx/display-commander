@@ -524,7 +524,8 @@ void PresentMonManager::StartWorker() {
 
         // Precompute session name (unique per process)
         DWORD pid = GetCurrentProcessId();
-        StringCchPrintfW(m_session_name, std::size(m_session_name), L"DC_PresentMon_%lu", static_cast<unsigned long>(pid));
+        StringCchPrintfW(m_session_name, std::size(m_session_name), L"DC_PresentMon_%lu",
+                         static_cast<unsigned long>(pid));
 
         // Start worker thread
         m_worker_thread = std::thread(&PresentMonManager::WorkerThread, this);
@@ -767,8 +768,8 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
                                  manager->m_events_processed.load(), manager->m_events_lost.load());
     } catch (...) {
         LogWarn("[PresentMon] Worker thread unknown exception");
-        manager->UpdateDebugInfo("Crashed", "Stopped", "Unknown exception",
-                                 manager->m_events_processed.load(), manager->m_events_lost.load());
+        manager->UpdateDebugInfo("Crashed", "Stopped", "Unknown exception", manager->m_events_processed.load(),
+                                 manager->m_events_lost.load());
     }
     manager->m_running.store(false);
 }
@@ -1104,8 +1105,43 @@ void WINAPI PresentMonManager::EtwEventRecordCallback(PEVENT_RECORD event_record
 }
 
 void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
-    CALL_GUARD(utils::get_now_ns());
     __try {
+        OnEtwEventImpl(event_record);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        const DWORD code = GetExceptionCode();
+        const char* name = "SEH";
+        switch (code) {
+            case EXCEPTION_ACCESS_VIOLATION:         name = "ACCESS_VIOLATION"; break;
+            case EXCEPTION_DATATYPE_MISALIGNMENT:    name = "DATATYPE_MISALIGNMENT"; break;
+            case EXCEPTION_BREAKPOINT:               name = "BREAKPOINT"; break;
+            case EXCEPTION_SINGLE_STEP:              name = "SINGLE_STEP"; break;
+            case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:    name = "ARRAY_BOUNDS_EXCEEDED"; break;
+            case EXCEPTION_FLT_DENORMAL_OPERAND:     name = "FLT_DENORMAL_OPERAND"; break;
+            case EXCEPTION_FLT_DIVIDE_BY_ZERO:       name = "FLT_DIVIDE_BY_ZERO"; break;
+            case EXCEPTION_FLT_INEXACT_RESULT:       name = "FLT_INEXACT_RESULT"; break;
+            case EXCEPTION_FLT_INVALID_OPERATION:    name = "FLT_INVALID_OPERATION"; break;
+            case EXCEPTION_FLT_OVERFLOW:             name = "FLT_OVERFLOW"; break;
+            case EXCEPTION_FLT_STACK_CHECK:          name = "FLT_STACK_CHECK"; break;
+            case EXCEPTION_FLT_UNDERFLOW:            name = "FLT_UNDERFLOW"; break;
+            case EXCEPTION_INT_DIVIDE_BY_ZERO:       name = "INT_DIVIDE_BY_ZERO"; break;
+            case EXCEPTION_INT_OVERFLOW:             name = "INT_OVERFLOW"; break;
+            case EXCEPTION_PRIV_INSTRUCTION:         name = "PRIV_INSTRUCTION"; break;
+            case EXCEPTION_IN_PAGE_ERROR:            name = "IN_PAGE_ERROR"; break;
+            case EXCEPTION_ILLEGAL_INSTRUCTION:      name = "ILLEGAL_INSTRUCTION"; break;
+            case EXCEPTION_NONCONTINUABLE_EXCEPTION: name = "NONCONTINUABLE"; break;
+            case EXCEPTION_STACK_OVERFLOW:           name = "STACK_OVERFLOW"; break;
+            case EXCEPTION_INVALID_DISPOSITION:      name = "INVALID_DISPOSITION"; break;
+            case EXCEPTION_GUARD_PAGE:               name = "GUARD_PAGE"; break;
+            case EXCEPTION_INVALID_HANDLE:           name = "INVALID_HANDLE"; break;
+            default:                                 break;
+        }
+        LogWarn("[PresentMon] OnEtwEvent SEH exception 0x%08lX (%s), event skipped", static_cast<unsigned long>(code),
+                name);
+    }
+}
+
+void PresentMonManager::OnEtwEventImpl(PEVENT_RECORD event_record) {
+    CALL_GUARD(utils::get_now_ns());
     // Count all events (some relevant present/flip signals can come from DWM/system/kernel context)
     m_events_processed.fetch_add(1);
     m_last_event_time.store(utils::get_now_ns());
@@ -1370,38 +1406,6 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
     }
 
     // Do not overwrite ETW status string here (it contains provider enable return codes).
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER) {
-        const DWORD code = GetExceptionCode();
-        const char* name = "SEH";
-        switch (code) {
-            case EXCEPTION_ACCESS_VIOLATION: name = "ACCESS_VIOLATION"; break;
-            case EXCEPTION_DATATYPE_MISALIGNMENT: name = "DATATYPE_MISALIGNMENT"; break;
-            case EXCEPTION_BREAKPOINT: name = "BREAKPOINT"; break;
-            case EXCEPTION_SINGLE_STEP: name = "SINGLE_STEP"; break;
-            case EXCEPTION_ARRAY_BOUNDS_EXCEEDED: name = "ARRAY_BOUNDS_EXCEEDED"; break;
-            case EXCEPTION_FLT_DENORMAL_OPERAND: name = "FLT_DENORMAL_OPERAND"; break;
-            case EXCEPTION_FLT_DIVIDE_BY_ZERO: name = "FLT_DIVIDE_BY_ZERO"; break;
-            case EXCEPTION_FLT_INEXACT_RESULT: name = "FLT_INEXACT_RESULT"; break;
-            case EXCEPTION_FLT_INVALID_OPERATION: name = "FLT_INVALID_OPERATION"; break;
-            case EXCEPTION_FLT_OVERFLOW: name = "FLT_OVERFLOW"; break;
-            case EXCEPTION_FLT_STACK_CHECK: name = "FLT_STACK_CHECK"; break;
-            case EXCEPTION_FLT_UNDERFLOW: name = "FLT_UNDERFLOW"; break;
-            case EXCEPTION_INT_DIVIDE_BY_ZERO: name = "INT_DIVIDE_BY_ZERO"; break;
-            case EXCEPTION_INT_OVERFLOW: name = "INT_OVERFLOW"; break;
-            case EXCEPTION_PRIV_INSTRUCTION: name = "PRIV_INSTRUCTION"; break;
-            case EXCEPTION_IN_PAGE_ERROR: name = "IN_PAGE_ERROR"; break;
-            case EXCEPTION_ILLEGAL_INSTRUCTION: name = "ILLEGAL_INSTRUCTION"; break;
-            case EXCEPTION_NONCONTINUABLE_EXCEPTION: name = "NONCONTINUABLE"; break;
-            case EXCEPTION_STACK_OVERFLOW: name = "STACK_OVERFLOW"; break;
-            case EXCEPTION_INVALID_DISPOSITION: name = "INVALID_DISPOSITION"; break;
-            case EXCEPTION_GUARD_PAGE: name = "GUARD_PAGE"; break;
-            case EXCEPTION_INVALID_HANDLE: name = "INVALID_HANDLE"; break;
-            default: break;
-        }
-        LogWarn("[PresentMon] OnEtwEvent SEH exception 0x%08lX (%s), event skipped",
-                static_cast<unsigned long>(code), name);
-    }
 }
 
 void PresentMonManager::UpdateSurfaceWindowMappingFromEvent(PEVENT_RECORD event_record) {

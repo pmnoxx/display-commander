@@ -852,13 +852,12 @@ bool HookFactory(IUnknown* iunknown) {
             display_commanderhooks::HookType::DXGI_SWAPCHAIN)) {
         return false;
     }
-    IDXGIFactory* ifactory = nullptr;
-    HRESULT hr = iunknown->QueryInterface(IID_PPV_ARGS(&ifactory));
+    Microsoft::WRL::ComPtr<IDXGIFactory> ifactory;
+    HRESULT hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory.GetAddressOf()));
     if (FAILED(hr) || ifactory == nullptr) {
         LogInfo("HookFactory: factory does not support IDXGIFactory1, hooking CreateSwapChain only");
         return false;
     }
-    void** vtable = *reinterpret_cast<void***>(ifactory);
 
     MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::DXGI_SWAPCHAIN);
     if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
@@ -866,47 +865,50 @@ bool HookFactory(IUnknown* iunknown) {
         return false;
     }
 
-    bool any_hooked = false;
+    static bool hooked_dxgifactory = false;
+    if (hooked_dxgifactory) {
+        return true;
+    }
 
-    if (!g_factory_create_swapchain_hooked.load(std::memory_order_relaxed)) {
-        if (IsVTableEntryValid(vtable, kIDXGIFactory_CreateSwapChain)) {
-            if (CreateAndEnableHook(vtable[kIDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Detour,
-                                    reinterpret_cast<LPVOID*>(&IDXGIFactory_CreateSwapChain_Original),
-                                    "IDXGIFactory::CreateSwapChain")) {
-                g_factory_create_swapchain_hooked.store(true, std::memory_order_relaxed);
-                LogInfo("HookFactory: IDXGIFactory::CreateSwapChain hooked");
-                any_hooked = true;
-            }
+    {
+        void** vtable = *reinterpret_cast<void***>(ifactory.Get());
+        if (CreateAndEnableHook(vtable[kIDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Detour,
+                                reinterpret_cast<LPVOID*>(&IDXGIFactory_CreateSwapChain_Original),
+                                "IDXGIFactory::CreateSwapChain")) {
+            g_factory_create_swapchain_hooked.store(true, std::memory_order_relaxed);
+            LogInfo("HookFactory: IDXGIFactory::CreateSwapChain hooked");
+            hooked_dxgifactory = true;
         }
     }
-    /*
-        if (factory1 != nullptr) {
-            if (!g_factory_create_swapchain_for_hwnd_hooked.load(std::memory_order_relaxed)
-                && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForHwnd)) {
-                if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForHwnd],
-                                        IDXGIFactory1_CreateSwapChainForHwnd_Detour,
-                                        reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Original),
-                                        "IDXGIFactory1::CreateSwapChainForHwnd")) {
-                    g_factory_create_swapchain_for_hwnd_hooked.store(true, std::memory_order_relaxed);
-                    LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
-                    any_hooked = true;
-                }
-            }
-            if (!g_factory_create_swapchain_for_core_window_hooked.load(std::memory_order_relaxed)
-                && IsVTableEntryValid(vtable, kIDXGIFactory1_CreateSwapChainForCoreWindow)) {
-                if (CreateAndEnableHook(vtable[kIDXGIFactory1_CreateSwapChainForCoreWindow],
-                                        IDXGIFactory1_CreateSwapChainForCoreWindow_Detour,
-                                        reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Original),
-                                        "IDXGIFactory1::CreateSwapChainForCoreWindow")) {
-                    g_factory_create_swapchain_for_core_window_hooked.store(true, std::memory_order_relaxed);
-                    LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
-                    any_hooked = true;
-                }
-            }
-            factory1->Release();
-        }*/
 
-    return any_hooked;
+    Microsoft::WRL::ComPtr<IDXGIFactory1> ifactory1;
+    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory1.GetAddressOf()));
+    if (FAILED(hr) || ifactory1 == nullptr) {
+        LogInfo(
+            "HookFactory: factory does not support IDXGIFactory1, hooking CreateSwapChainForHwnd and "
+            "CreateSwapChainForCoreWindow only");
+        return false;
+    }
+    {
+        void** vtable1 = *reinterpret_cast<void***>(ifactory1.Get());
+        if (CreateAndEnableHook(vtable1[kIDXGIFactory1_CreateSwapChainForHwnd],
+                                IDXGIFactory1_CreateSwapChainForHwnd_Detour,
+                                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Original),
+                                "IDXGIFactory1::CreateSwapChainForHwnd")) {
+            g_factory_create_swapchain_for_hwnd_hooked.store(true, std::memory_order_relaxed);
+            LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
+            hooked_dxgifactory = true;
+        }
+        if (CreateAndEnableHook(vtable1[kIDXGIFactory1_CreateSwapChainForCoreWindow],
+                                IDXGIFactory1_CreateSwapChainForCoreWindow_Detour,
+                                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Original),
+                                "IDXGIFactory1::CreateSwapChainForCoreWindow")) {
+            g_factory_create_swapchain_for_core_window_hooked.store(true, std::memory_order_relaxed);
+            LogInfo("HookFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
+            hooked_dxgifactory = true;
+        }
+    }
+    return hooked_dxgifactory;
 }
 
 // Additional DXGI detour functions

@@ -604,8 +604,9 @@ HRESULT WINAPI D3D11CreateDeviceAndSwapChain_Detour(IDXGIAdapter* pAdapter, D3D_
         LogError("[D3D11 error] D3D11CreateDeviceAndSwapChain returned 0x%08X", static_cast<unsigned>(hr));
     }
     if (SUCCEEDED(hr)) {
-        LogInfo("  D3D11CreateDeviceAndSwapChain succeeded");
-        // display_commanderhooks::d3d11::HookD3D11Device(*ppDevice);
+        if (settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue() && ppDevice && *ppDevice) {
+            display_commanderhooks::d3d11::HookD3D11DeviceVTable(*ppDevice);
+        }
     }
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
@@ -731,7 +732,9 @@ HRESULT WINAPI D3D11CreateDevice_Detour(IDXGIAdapter* pAdapter, D3D_DRIVER_TYPE 
         LogError("[D3D11 error] D3D11CreateDevice returned 0x%08X", static_cast<unsigned>(hr));
     }
     if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
-        // display_commanderhooks::d3d11::HookD3D11Device(*ppDevice);
+        if (settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
+            display_commanderhooks::d3d11::HookD3D11DeviceVTable(*ppDevice);
+        }
     }
 
     // Setup D3D11 debug info queue if debug layer is enabled and device creation was successful
@@ -844,7 +847,9 @@ HRESULT WINAPI D3D11On12CreateDevice_Detour(IUnknown* pDevice, UINT Flags, const
 
     if (SUCCEEDED(hr) && ppDevice && *ppDevice) {
         LogInfo("  Created D3D11on12 Device: 0x%p", *ppDevice);
-        // display_commanderhooks::d3d11::HookD3D11Device(*ppDevice);
+        if (settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
+            display_commanderhooks::d3d11::HookD3D11DeviceVTable(*ppDevice);
+        }
         //  Install DXGI factory hooks from the created device (same path as D3D11CreateDevice)
         IDXGIDevice* dxgi_device = nullptr;
         HRESULT qhr = (*ppDevice)->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgi_device));

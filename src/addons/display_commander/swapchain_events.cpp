@@ -1800,8 +1800,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
             // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
-            if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))) {
-                // display_commanderhooks::d3d11::HookD3D11Device(d3d11_device.Get());
+            if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device))) &&
+                settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
+                display_commanderhooks::d3d11::HookD3D11DeviceVTable(d3d11_device.Get());
             }
         }
         // Fallback: hook using ReShade device when DXGI GetDevice path was not used

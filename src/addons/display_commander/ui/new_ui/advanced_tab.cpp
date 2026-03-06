@@ -996,16 +996,16 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
 
     imgui.Spacing();
 
-    // Enable D3D11 hooks (device creation and vtable hooks). Required for Track loaded texture size.
-    if (CheckboxSetting(settings::g_advancedTabSettings.enable_dx11_hooks, "Enable DX11 hooks", imgui)) {
-        LogInfo("Enable DX11 hooks setting changed to: %s",
-                settings::g_advancedTabSettings.enable_dx11_hooks.GetValue() ? "enabled" : "disabled");
+    // Enable D3D11 device vtable hooks (HookD3D11DeviceVTable). Required for track loaded texture size.
+    if (CheckboxSetting(settings::g_advancedTabSettings.enable_dx11_vtable_hooks, "Enable D3D11 vtable hooks (HookD3D11DeviceVTable)", imgui)) {
+        LogInfo("Enable D3D11 vtable hooks setting changed to: %s",
+                settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue() ? "enabled" : "disabled");
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
-            "When enabled, D3D11 device creation and vtable hooks are installed.\n"
-            "Required for \"Track loaded texture size\". Disable to avoid D3D11 hook overhead in D3D11 games.\n"
-            "Requires a game restart to take effect.");
+            "When enabled, hooks the D3D11 device vtable (CreateTexture2D, etc.).\n"
+            "Required for \"Track loaded texture size\". Off by default.\n"
+            "Takes effect for devices created after enabling; restart the game to hook existing devices.");
     }
 
     // Texture memory tracking (optional; tracks loaded D3D11 texture size and hooks IUnknown::Release)
@@ -1017,13 +1017,22 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
         imgui.SetTooltip(
             "When enabled, tracks the size of D3D11 textures created by the game and hooks their Release.\n"
             "Shows current and peak texture memory in the stats below. Off by default.\n"
-            "Only affects D3D11 games; new textures are tracked after enabling.\n"
-            "Requires \"Enable DX11 hooks\" to be enabled.");
+            "Requires \"Enable D3D11 vtable hooks\" to be enabled. Only affects D3D11 games.");
     }
     if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue() &&
-        !settings::g_advancedTabSettings.enable_dx11_hooks.GetValue()) {
-        imgui.TextColored(ui::colors::TEXT_WARNING,
-                         "Warning: Track loaded texture size requires Enable DX11 hooks to be enabled.");
+        !settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
+        imgui.TextColored(::ui::colors::TEXT_WARNING,
+                         "Warning: Track loaded texture size requires \"Enable D3D11 vtable hooks\" to be enabled.");
+    }
+    {
+        static bool dx11_restart_warning_shown = false;
+        if ((settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue() ||
+             settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) &&
+            !dx11_restart_warning_shown) {
+            imgui.TextColored(::ui::colors::TEXT_WARNING,
+                             "D3D11 vtable hooks / texture stats require a game restart to take effect.");
+            dx11_restart_warning_shown = true;
+        }
     }
     if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
         const utils::TextureTrackerStats stats = utils::TextureTrackerGetStats();

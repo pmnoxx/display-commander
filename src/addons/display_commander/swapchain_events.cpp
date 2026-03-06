@@ -40,6 +40,7 @@
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/d3d9_api_version.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/dxgi_color_space.hpp"
 #include "utils/game_launcher_registry.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
@@ -681,7 +682,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         }*/
 
         // DXGI-specific settings (only for D3D10/11/12)
-        if (settings::g_mainTabSettings.prevent_tearing.GetValue() && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
+        if (settings::g_mainTabSettings.prevent_tearing.GetValue()
+            && (desc.present_flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) != 0) {
             desc.present_flags &= ~DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
             modified = true;
         }
@@ -1671,6 +1673,8 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
     if (FAILED(hr)) {
         return;
     }
+    LogInfo("SetSwapChainColorSpace: color_space=%s (%d)", utils::GetDXGIColorSpaceString(color_space),
+            static_cast<int>(color_space));
     UINT color_space_support = 0;
     swapchain3->CheckColorSpaceSupport(color_space, &color_space_support);
     const int supported = (color_space_support != 0) ? 1 : 0;
@@ -1679,15 +1683,8 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
 
     hr = swapchain3->SetColorSpace1(color_space);
     if (FAILED(hr)) {
-        DXGI_COLOR_SPACE_TYPE fallback = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-        UINT fallback_support = 0;
-        if (SUCCEEDED(swapchain3->CheckColorSpaceSupport(fallback, &fallback_support)) && fallback_support > 0) {
-            swapchain3->SetColorSpace1(fallback);
-            reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
-            if (runtime != nullptr) {
-                runtime->set_color_space(reshade::api::color_space::srgb_nonlinear);
-            }
-        }
+        LogError("SetSwapChainColorSpace: SetColorSpace1(ColorSpace=%s (%d)) failed 0x%08X",
+                 utils::GetDXGIColorSpaceString(color_space), static_cast<int>(color_space), static_cast<unsigned>(hr));
         return;
     }
     // Log only when values change to avoid repeated identical log lines.
@@ -1719,6 +1716,9 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
         return;
     }
     if (!settings::g_advancedTabSettings.auto_colorspace.GetValue()) {
+        return;
+    }
+    if (g_is_renodx_loaded.load(std::memory_order_relaxed)) {
         return;
     }
     auto desc_ptr = g_last_swapchain_desc.load();

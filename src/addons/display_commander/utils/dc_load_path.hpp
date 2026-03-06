@@ -8,6 +8,10 @@ namespace display_commander::utils {
 // Config: dc_selector_mode ("local"|"global"|"debug"|"stable"), dc_version_for_debug, dc_version_for_stable
 // ("latest" or X.Y.Z). Migration from legacy DcSelectedVersion is done on first read.
 
+// Returns true if the given module was loaded from a file whose name ends with .dll (case-insensitive).
+// Used to detect proxy-DLL loader mode (e.g. dxgi.dll, d3d11.dll) vs addon load (.addon64/.addon32).
+bool IsLoadedWithDLLExtension(void* h_module);
+
 // Returns the directory to load DC from (from config). Optional current_module: HMODULE of the loader (e.g. proxy
 // DLL) for proxy-directory fallback when mode is "local".
 // When mode is "local", resolution order: (1) local zzz_display_commander.addon64/.addon32, (2) global same,

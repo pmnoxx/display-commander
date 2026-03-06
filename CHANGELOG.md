@@ -3,6 +3,9 @@
 ---
 
 ## Unreleased
+
+## v0.12.316 (2026-03-06)
+- **IsLoadedWithDLLExtension** - Loader mode now runs only when Display Commander was loaded as a proxy DLL (e.g. dxgi.dll, d3d11.dll) — i.e. the module filename ends with .dll. When loaded as the ReShade addon (.addon64/.addon32), the loader path is skipped. Details: `utils/dc_load_path.hpp` / `dc_load_path.cpp` — `IsLoadedWithDLLExtension(void* h_module)`; `main_entry.cpp` uses it to gate the loader-only branch.
 - **Auto color space: skip when RenoDX addon is loaded** - When a ReShade addon whose path contains "renodx-" (e.g. renodx-silenthill2remake.addon64) has been detected, the HDR10/scRGB auto color space fix no longer runs, avoiding conflicts with RenoDX’s own color handling. Details: `AutoSetColorSpace` in `swapchain_events.cpp` returns early when `g_is_renodx_loaded` is true (set when `IsRenoDxAddonPath` succeeds in loadlibrary hooks).
 
 ## v0.12.315 (2026-03-06)

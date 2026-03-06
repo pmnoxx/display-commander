@@ -2207,7 +2207,7 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
     // Loader mode: when we're not under stable\ or Debug\, act as loader. GetDcDirectoryForLoading(h_module) returns
     // the directory to use (local addon > global > local proxy when mode is "local"; else global/debug/stable path).
     // If that path != base and contains the addon, we load it and stay quiet.
-    {
+    if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
         WCHAR module_path_buf[MAX_PATH];
         if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) > 0) {
             std::filesystem::path module_dir = std::filesystem::path(module_path_buf).parent_path();

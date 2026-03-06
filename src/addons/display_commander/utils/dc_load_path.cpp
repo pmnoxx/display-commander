@@ -284,6 +284,17 @@ std::filesystem::path GetDcProxyDirectory() {
 
 std::filesystem::path GetDcProxyModulePath() { return GetDcProxyModulePathImpl(nullptr); }
 
+bool IsLoadedWithDLLExtension(void* h_module) {
+    if (h_module == nullptr) return false;
+    WCHAR path[MAX_PATH] = {};
+    if (GetModuleFileNameW(static_cast<HMODULE>(h_module), path, MAX_PATH) == 0) return false;
+    const wchar_t* last_slash = wcsrchr(path, L'\\');
+    const wchar_t* filename = (last_slash != nullptr) ? (last_slash + 1) : path;
+    size_t len = wcslen(filename);
+    if (len < 4) return false;
+    return _wcsicmp(filename + len - 4, L".dll") == 0;
+}
+
 std::string GetDcVersionInDirectory(const std::filesystem::path& dir) {
     if (dir.empty()) return "";
     std::error_code ec;

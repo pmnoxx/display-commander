@@ -578,7 +578,7 @@ void InstallD3D11DeviceVtableLogging(ID3D11Device* device) {
 
 }  // namespace
 
-bool HookD3D11Device(ID3D11Device* device) {
+bool HookD3D11DeviceVTable(ID3D11Device* device) {
     if (device == nullptr) {
         return false;
     }

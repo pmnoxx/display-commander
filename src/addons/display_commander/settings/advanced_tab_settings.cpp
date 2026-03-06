@@ -64,7 +64,7 @@ AdvancedTabSettings::AdvancedTabSettings()
       presentmon_provider_dwm("PresentMonProviderDwm", true, "DisplayCommander"),
       presentmon_provider_d3d9("PresentMonProviderD3D9", false, "DisplayCommander"),
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
-      enable_dx11_hooks("EnableDx11Hooks", true, "DisplayCommander"),
+      enable_dx11_vtable_hooks("EnableDx11VtableHooks", false, "DisplayCommander"),
       texture_tracking_enabled("TextureTrackingEnabled", false, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
@@ -73,7 +73,6 @@ void AdvancedTabSettings::LoadAll() {
 
     // Use smart logging to show only changed settings
     ui::new_ui::LoadTabSettingsWithSmartLogging(all_settings, "Advanced Tab");
-
 }
 
 void AdvancedTabSettings::SaveAll() {
@@ -98,10 +97,9 @@ void AdvancedTabSettings::SaveAll() {
     presentmon_provider_dwm.Save();
     presentmon_provider_d3d9.Save();
     disable_dpi_scaling.Save();
-    enable_dx11_hooks.Save();
+    enable_dx11_vtable_hooks.Save();
     texture_tracking_enabled.Save();
 }
-
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
     return {&continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities, &enable_flip_chain,
@@ -119,8 +117,8 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
             &fake_nvapi_enabled, &suppress_minhook, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games,
             &debug_layer_enabled, &debug_break_on_severity, &auto_hide_discord_overlay, &suppress_window_changes,
             &win_up_grace_seconds, &enable_presentmon_tracing, &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi,
-            &presentmon_provider_dwm, &presentmon_provider_d3d9, &disable_dpi_scaling,
-            &enable_dx11_hooks, &texture_tracking_enabled};
+            &presentmon_provider_dwm, &presentmon_provider_d3d9, &disable_dpi_scaling, &enable_dx11_vtable_hooks,
+            &texture_tracking_enabled};
 }
 
 }  // namespace settings

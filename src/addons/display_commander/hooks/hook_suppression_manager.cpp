@@ -1,9 +1,7 @@
 #include "hook_suppression_manager.hpp"
-#include "../settings/advanced_tab_settings.hpp"
+#include <set>
 #include "../settings/hook_suppression_settings.hpp"
 #include "../utils/logging.hpp"
-
-#include <set>
 
 namespace display_commanderhooks {
 
@@ -155,8 +153,7 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::DXGI_SWAPCHAIN:
             return settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue();
         case HookType::D3D11_DEVICE:
-            return !settings::g_advancedTabSettings.enable_dx11_hooks.GetValue() ||
-                   settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.GetValue();
+            return settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.GetValue();
         case HookType::D3D12_DEVICE:
             return settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.GetValue();
         case HookType::XINPUT:     return settings::g_hook_suppression_settings.suppress_xinput_hooks.GetValue();

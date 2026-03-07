@@ -106,6 +106,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting vrr_debug_mode;
     ui::new_ui::BoolSetting show_flip_status;
     ui::new_ui::BoolSetting show_display_commander_ui;
+    /** When true, continuous monitoring will open the standalone (independent) settings window. ReShade only. */
+    ui::new_ui::BoolSetting show_independent_window;
     ui::new_ui::FloatSetting display_commander_ui_window_x;
     ui::new_ui::FloatSetting display_commander_ui_window_y;
     ui::new_ui::BoolSetting show_labels;

@@ -37,10 +37,10 @@
 #include "ui/new_ui/main_new_tab.hpp"
 #include "ui/new_ui/new_ui_main.hpp"
 #include "utils/dc_load_path.hpp"
-#include "utils/general_utils.hpp"
 #include "utils/dc_service_status.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
+#include "utils/general_utils.hpp"
 #include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
 #include "utils/platform_api_detector.hpp"
@@ -647,13 +647,13 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
     float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
     float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
     overlay_wrapper.SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, 10.0f + vertical_spacing), ImGuiCond_Always,
-                                    ImVec2(0.f, 0.f));
+                                     ImVec2(0.f, 0.f));
     float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
     overlay_wrapper.SetNextWindowBgAlpha(bg_alpha);
     overlay_wrapper.SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
     if (overlay_wrapper.Begin("Test Window", nullptr,
-                              ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings
-                                  | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar
+                              ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
+                                  | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar
                                   | ImGuiWindowFlags_AlwaysAutoResize)) {
         ui::new_ui::DrawPerformanceOverlayContent(overlay_wrapper, ui::new_ui::GetGraphicsApiFromRuntime(runtime),
                                                   show_tooltips);
@@ -871,8 +871,11 @@ void OverrideReShadeSettings_RemoveDisplayCommanderPaths() {
 
     auto pathMatches = [](const std::string& normalized_existing, const std::string& normalized_target) -> bool {
         return normalized_existing.length() == normalized_target.length()
-            && std::equal(normalized_existing.begin(), normalized_existing.end(), normalized_target.begin(),
-                          [](char a, char b) { return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b)); });
+               && std::equal(normalized_existing.begin(), normalized_existing.end(), normalized_target.begin(),
+                             [](char a, char b) {
+                                 return std::tolower(static_cast<unsigned char>(a))
+                                        == std::tolower(static_cast<unsigned char>(b));
+                             });
     };
 
     auto removePathFromSearchPaths = [&](const char* section, const char* key,

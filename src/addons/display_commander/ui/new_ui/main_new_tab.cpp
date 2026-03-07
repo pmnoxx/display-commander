@@ -1472,16 +1472,9 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Spacing();
 
-    // Show independent window (ReShade only): open standalone settings in a separate window
+    // Show independent window (ReShade only): setting controls visibility; continuous monitoring opens/closes the window
     if (!g_no_reshade_mode.load(std::memory_order_acquire)) {
-        bool show_independent = (g_standalone_ui_hwnd.load(std::memory_order_acquire) != nullptr);
-        if (imgui.Checkbox("Show independent window", &show_independent)) {
-            if (show_independent) {
-                RequestShowIndependentWindow();
-            } else {
-                CloseIndependentWindow();
-            }
-        }
+        CheckboxSetting(settings::g_mainTabSettings.show_independent_window, "Show independent window", imgui);
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Open the standalone settings window (Main, Profile, Advanced) in a separate window.\n"

@@ -22,12 +22,12 @@
 #include "ui/new_ui/hotkeys_tab.hpp"
 #include "ui/new_ui/swapchain_tab.hpp"
 #include "utils/detour_call_tracker.hpp"
-#include "utils/taskbar_helper.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
 #include "utils/overlay_window_detector.hpp"
 #include "utils/process_window_enumerator.hpp"
 #include "utils/srwlock_registry.hpp"
+#include "utils/taskbar_helper.hpp"
 #include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
 #include "widgets/resolution_widget/resolution_widget.hpp"
@@ -578,8 +578,7 @@ bool TryQueryVrrStatusFromDxgiOutputDeviceName(const wchar_t* dxgi_output_device
     vrr.version = NV_GET_VRR_INFO_VER;
 
     const auto* p = display_commander::nvapi_loader::Ptrs();
-    const NvAPI_Status query_st =
-        (p && p->Disp_GetVRRInfo) ? p->Disp_GetVRRInfo(display_id, &vrr) : NVAPI_ERROR;
+    const NvAPI_Status query_st = (p && p->Disp_GetVRRInfo) ? p->Disp_GetVRRInfo(display_id, &vrr) : NVAPI_ERROR;
     out_status.query_status = query_st;
     out_status.vrr_info_queried = true;
 
@@ -820,8 +819,7 @@ void ContinuousMonitoringThread() {
 
         // High-frequency updates (background check, ADHD, keyboard, hotkeys)
         LONGLONG now_ns = utils::get_now_ns();
-        const LONGLONG high_freq_interval_ns =
-            static_cast<LONGLONG>(kMonitorHighFreqIntervalMs) * utils::NS_TO_MS;
+        const LONGLONG high_freq_interval_ns = static_cast<LONGLONG>(kMonitorHighFreqIntervalMs) * utils::NS_TO_MS;
         if (kMonitorHighFreqEnabled && now_ns - last_60fps_update_ns >= high_freq_interval_ns) {
             CALL_GUARD(utils::get_now_ns());
             g_continuous_monitoring_section.store("60fps_block", std::memory_order_release);
@@ -921,6 +919,17 @@ void ContinuousMonitoringThread() {
                 CALL_GUARD(utils::get_now_ns());
                 g_continuous_monitoring_section.store("auto_apply_trigger", std::memory_order_release);
                 ui::new_ui::AutoApplyTrigger();
+            }
+
+            // Independent window: open/close based on main-tab setting (ReShade only)
+            if (!g_no_reshade_mode.load(std::memory_order_acquire)) {
+                bool want_show = settings::g_mainTabSettings.show_independent_window.GetValue();
+                HWND standalone = g_standalone_ui_hwnd.load(std::memory_order_acquire);
+                if (want_show && standalone == nullptr) {
+                    RequestShowIndependentWindow();
+                } else if (!want_show && standalone != nullptr) {
+                    CloseIndependentWindow();
+                }
             }
 
             // Auto-apply resolution on game start

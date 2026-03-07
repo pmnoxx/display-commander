@@ -4,6 +4,10 @@
 
 # unreleased
 
+## v0.12.333
+- **Multi-window exit fix** - TLDR: Ignores window close message if app has multiple windows. When the game has more than one window, closing one window (WM_CLOSE, WM_DESTROY, WM_QUIT) no longer triggers the addon exit handler; exit is only triggered when the last window is closed. Prevents premature shutdown when one of several game windows is closed. Details: window_proc_hooks.cpp — CountOtherProcessWindows() excludes the closing HWND and standalone UI; OnHandleExit only called when no other process windows remain.
+- **Show independent window: setting-driven** - The "Show independent window" checkbox in the Main tab is now a persisted BooleanSetting. The checkbox only toggles the setting; the continuous monitoring thread opens or closes the standalone settings window based on that setting, so the window state stays in sync across restarts. Details: show_independent_window in main_tab_settings; main_new_tab uses CheckboxSetting only; continuous_monitoring per-second block calls RequestShowIndependentWindow/CloseIndependentWindow when setting and window state differ.
+
 ## v0.12.332 (unreleased)
 - **Show Independent window: fixed crash** - Opening the "Show independent window" option from the ReShade overlay no longer crashes. The standalone settings window and all related UI (performance overlay, Display Commander window, tab bar) now use the ImGui wrapper instead of calling ImGui directly, so the correct ImGui context is used and symbol/ABI clashes are avoided. Details: cli_standalone_ui.cpp (RunStandaloneSettingsUI, RunStandaloneGamesOnlyUI, DrawLauncherSettingsTab use ImGuiWrapperStandalone); main_entry.cpp (OnPerformanceOverlay_DisplayCommanderWindow, OnPerformanceOverlay_TestWindow, DrawCustomCursor use ImGuiWrapperReshade); new_ui_tabs.cpp TabManager::Draw and NewUISystem::Draw take IImGuiWrapper&; wrapper gains SetNextWindowBgAlpha, GetWindowPos, GetForegroundDrawList.
 

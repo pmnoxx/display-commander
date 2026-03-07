@@ -80,6 +80,33 @@ static bool IsWindowFromCurrentProcess(HWND hwnd) {
     return window_process_id == GetCurrentProcessId();
 }
 
+// Count top-level windows belonging to current process, excluding exclude_hwnd and the standalone UI window.
+// Used to avoid calling OnHandleExit when one of several game windows closes.
+struct CountOtherWindowsData {
+    DWORD pid;
+    HWND exclude;
+    HWND standalone;
+    int count;
+};
+static BOOL CALLBACK EnumCountOtherProcessWindows(HWND hwnd, LPARAM lParam) {
+    CountOtherWindowsData* d = reinterpret_cast<CountOtherWindowsData*>(lParam);
+    if (hwnd == d->exclude || hwnd == d->standalone) {
+        return TRUE;
+    }
+    DWORD pid = 0;
+    GetWindowThreadProcessId(hwnd, &pid);
+    if (pid == d->pid && IsWindow(hwnd)) {
+        d->count++;
+    }
+    return TRUE;
+}
+static int CountOtherProcessWindows(HWND exclude_hwnd) {
+    CountOtherWindowsData data = {GetCurrentProcessId(), exclude_hwnd,
+                                 g_standalone_ui_hwnd.load(std::memory_order_acquire), 0};
+    EnumWindows(EnumCountOtherProcessWindows, reinterpret_cast<LPARAM>(&data));
+    return data.count;
+}
+
 // Process window message - returns true if message should be suppressed
 // This function contains the logic previously in WindowProc_Detour
 bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -257,21 +284,32 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             break;
 
         case WM_QUIT:
-            // Handle window quit message
-            LogInfo("WM_QUIT: Window quit message received - HWND: 0x%p", hwnd);
-            exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_QUIT, "WM_QUIT message received");
+            // Only trigger exit when no other game windows exist (e.g. multi-window games closing one window)
+            if (CountOtherProcessWindows(hwnd) == 0) {
+                LogInfo("WM_QUIT: Window quit message received - HWND: 0x%p (last window)", hwnd);
+                exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_QUIT, "WM_QUIT message received");
+            } else {
+                LogInfo("WM_QUIT: Window quit message received - HWND: 0x%p (other windows still open, not exiting)",
+                        hwnd);
+            }
             break;
 
         case WM_CLOSE:
-            // Handle window close message
-            LogInfo("WM_CLOSE: Window close message received - HWND: 0x%p", hwnd);
-            exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_CLOSE, "WM_CLOSE message received");
+            if (CountOtherProcessWindows(hwnd) == 0) {
+                LogInfo("WM_CLOSE: Window close message received - HWND: 0x%p (last window)", hwnd);
+                exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_CLOSE, "WM_CLOSE message received");
+            } else {
+                LogInfo("WM_CLOSE: Window close - HWND: 0x%p (other windows still open, not exiting)", hwnd);
+            }
             break;
 
         case WM_DESTROY:
-            // Handle window destroy message
-            LogInfo("WM_DESTROY: Window destroy message received - HWND: 0x%p", hwnd);
-            exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_DESTROY, "WM_DESTROY message received");
+            if (CountOtherProcessWindows(hwnd) == 0) {
+                LogInfo("WM_DESTROY: Window destroy message received - HWND: 0x%p (last window)", hwnd);
+                exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_DESTROY, "WM_DESTROY message received");
+            } else {
+                LogInfo("WM_DESTROY: Window destroy - HWND: 0x%p (other windows still open, not exiting)", hwnd);
+            }
             break;
 
         default: break;

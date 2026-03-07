@@ -42,5 +42,8 @@ bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_
 
 // Power saving settings and swapchain utilities (declared in swapchain_events.hpp)
 
+// ReShade config: add/remove Display Commander EffectSearchPaths and TextureSearchPaths
+void OverrideReShadeSettings();
+
 // Initialization functions
 void DoInitializationWithoutHwnd(HMODULE h_module);

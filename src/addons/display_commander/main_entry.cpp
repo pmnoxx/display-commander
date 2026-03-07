@@ -98,9 +98,6 @@ void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api:
                             reshade::api::resource_view rtv, reshade::api::resource_view rtv_srgb);
 void OnReShadePresent(reshade::api::effect_runtime* runtime);
 
-// Forward declaration for ReShade settings override
-void OverrideReShadeSettings();
-
 // Forward declaration for version check
 bool CheckReShadeVersionCompatibility();
 
@@ -844,6 +841,64 @@ void OverrideReShadeSettings_AddDisplayCommanderPaths() {
     addPathToSearchPaths("GENERAL", "EffectSearchPaths", shaders_dir);
     addPathToSearchPaths("GENERAL", "TextureSearchPaths", textures_dir);
 }
+
+void OverrideReShadeSettings_RemoveDisplayCommanderPaths() {
+    std::filesystem::path dc_base_dir = GetDisplayCommanderReshadeRootFolder();
+    if (dc_base_dir.empty()) {
+        LogWarn("Failed to get DC Reshade root path, skipping ReShade path removal");
+        return;
+    }
+    std::filesystem::path shaders_dir = dc_base_dir / L"Shaders";
+    std::filesystem::path textures_dir = dc_base_dir / L"Textures";
+
+    auto normalizeForComparison = [](const std::string& path) -> std::string {
+        std::string normalized = path;
+        if (normalized.length() >= 3 && normalized.substr(normalized.length() - 3) == "\\**") {
+            normalized = normalized.substr(0, normalized.length() - 3);
+        }
+        return normalized;
+    };
+    std::string shaders_norm = normalizeForComparison(shaders_dir.string());
+    std::string textures_norm = normalizeForComparison(textures_dir.string());
+
+    auto pathMatches = [](const std::string& normalized_existing, const std::string& normalized_target) -> bool {
+        return normalized_existing.length() == normalized_target.length()
+            && std::equal(normalized_existing.begin(), normalized_existing.end(), normalized_target.begin(),
+                          [](char a, char b) { return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b)); });
+    };
+
+    auto removePathFromSearchPaths = [&](const char* section, const char* key,
+                                         const std::string& normalized_target) -> bool {
+        char buffer[4096] = {0};
+        size_t buffer_size = sizeof(buffer);
+        std::vector<std::string> existing_paths;
+        if ((g_reshade_module == nullptr) || !reshade::get_config_value(nullptr, section, key, buffer, &buffer_size)) {
+            return false;
+        }
+        const char* ptr = buffer;
+        while (*ptr != '\0' && ptr < buffer + buffer_size) {
+            std::string path(ptr);
+            if (!path.empty()) {
+                std::string normalized = normalizeForComparison(path);
+                if (!pathMatches(normalized, normalized_target)) {
+                    existing_paths.push_back(path);
+                }
+            }
+            ptr += path.length() + 1;
+        }
+        std::string combined;
+        for (const auto& path : existing_paths) {
+            combined += path;
+            combined += '\0';
+        }
+        reshade::set_config_value(nullptr, section, key, combined.c_str(), combined.size());
+        LogInfo("Removed DC path from ReShade %s::%s (target was: %s)", section, key, normalized_target.c_str());
+        return true;
+    };
+
+    removePathFromSearchPaths("GENERAL", "EffectSearchPaths", shaders_norm);
+    removePathFromSearchPaths("GENERAL", "TextureSearchPaths", textures_norm);
+}
 }  // namespace
 
 // Override ReShade settings to set tutorial as viewed and disable auto updates
@@ -856,7 +911,11 @@ void OverrideReShadeSettings() {
     OverrideReShadeSettings_WindowConfig();
     OverrideReShadeSettings_TutorialAndUpdates();
     OverrideReShadeSettings_LoadFromDllMainOnce();
-    OverrideReShadeSettings_AddDisplayCommanderPaths();
+    if (settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+        OverrideReShadeSettings_AddDisplayCommanderPaths();
+    } else {
+        OverrideReShadeSettings_RemoveDisplayCommanderPaths();
+    }
 
     LogInfo("ReShade settings override completed successfully");
 }

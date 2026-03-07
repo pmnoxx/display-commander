@@ -1,6 +1,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "d3d11_device_hooks.hpp"
 #include "../../settings/advanced_tab_settings.hpp"
+#include "../../utils/dds_texture_dump.hpp"
 #include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
@@ -16,7 +17,9 @@
 // Libraries <standard C++>
 #include <atomic>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <set>
 #include <unordered_map>
 
@@ -289,6 +292,14 @@ static uint64_t HashTexture2DDescNormalized(const D3D11_TEXTURE2D_DESC* pDesc) {
     return HashBytesFNV1a64(buf, off);
 }
 
+// Content hash sample cap in bytes (from setting, clamped). Used by 1D/2D/3D cache key hashing.
+static size_t GetTextureCacheContentHashCapBytes() {
+    const int cap_kb = settings::g_advancedTabSettings.texture_cache_content_hash_cap_kb.GetValue();
+    if (cap_kb <= 0) return 65536u;
+    const size_t cap_bytes = static_cast<size_t>(cap_kb) * 1024u;
+    return (cap_bytes > 0) ? cap_bytes : 65536u;
+}
+
 // Compute cache key for (desc + pInitialData) for cacheable CreateTexture2D. Returns 0 if not cacheable.
 // Uses normalized desc hash so padding/uninitialized bytes do not cause key mismatches.
 // Hashes all subresources (MipLevels * ArraySize) so multi-mip/array textures get correct keys.
@@ -332,8 +343,93 @@ static uint64_t HashTexture2DCacheKey(const D3D11_TEXTURE2D_DESC* pDesc, const D
     return h;
 }
 
+// Hash only the defined fields of D3D11_TEXTURE1D_DESC (no padding).
+static uint64_t HashTexture1DDescNormalized(const D3D11_TEXTURE1D_DESC* pDesc) {
+    if (pDesc == nullptr) return 0;
+    uint8_t buf[32];
+    size_t off = 0;
+#define APPEND_U32_1D(x)          \
+    do {                          \
+        const UINT v = (x);       \
+        memcpy(buf + off, &v, 4); \
+        off += 4;                 \
+    } while (0)
+    APPEND_U32_1D(pDesc->Width);
+    APPEND_U32_1D(pDesc->MipLevels);
+    APPEND_U32_1D(pDesc->ArraySize);
+    APPEND_U32_1D(static_cast<UINT>(pDesc->Format));
+    APPEND_U32_1D(static_cast<UINT>(pDesc->Usage));
+    APPEND_U32_1D(pDesc->BindFlags);
+    APPEND_U32_1D(pDesc->CPUAccessFlags);
+    APPEND_U32_1D(pDesc->MiscFlags);
+#undef APPEND_U32_1D
+    return HashBytesFNV1a64(buf, off);
+}
+
+// Compute cache key for (desc + first subresource data) for cacheable CreateTexture1D. Returns 0 if not cacheable.
+static uint64_t HashTexture1DCacheKey(const D3D11_TEXTURE1D_DESC* pDesc, const D3D11_SUBRESOURCE_DATA* pInitialData) {
+    if (pDesc == nullptr || pInitialData == nullptr || pInitialData->pSysMem == nullptr) {
+        return 0;
+    }
+    uint64_t h = HashTexture1DDescNormalized(pDesc);
+    const size_t full_size = static_cast<size_t>(pInitialData->SysMemPitch);
+    const size_t cap = GetTextureCacheContentHashCapBytes();
+    const size_t sample_size = (full_size < cap) ? full_size : cap;
+    const uint8_t* ptr = static_cast<const uint8_t*>(pInitialData->pSysMem);
+    h ^= HashBytesFNV1a64(ptr, sample_size);
+    return h;
+}
+
+// Hash only the defined fields of D3D11_TEXTURE3D_DESC (no padding).
+static uint64_t HashTexture3DDescNormalized(const D3D11_TEXTURE3D_DESC* pDesc) {
+    if (pDesc == nullptr) return 0;
+    uint8_t buf[36];
+    size_t off = 0;
+#define APPEND_U32_3D(x)          \
+    do {                          \
+        const UINT v = (x);       \
+        memcpy(buf + off, &v, 4); \
+        off += 4;                 \
+    } while (0)
+    APPEND_U32_3D(pDesc->Width);
+    APPEND_U32_3D(pDesc->Height);
+    APPEND_U32_3D(pDesc->Depth);
+    APPEND_U32_3D(pDesc->MipLevels);
+    APPEND_U32_3D(static_cast<UINT>(pDesc->Format));
+    APPEND_U32_3D(static_cast<UINT>(pDesc->Usage));
+    APPEND_U32_3D(pDesc->BindFlags);
+    APPEND_U32_3D(pDesc->CPUAccessFlags);
+    APPEND_U32_3D(pDesc->MiscFlags);
+#undef APPEND_U32_3D
+    return HashBytesFNV1a64(buf, off);
+}
+
+// Compute cache key for (desc + first subresource data) for cacheable CreateTexture3D. Returns 0 if not cacheable.
+// First subresource size = SysMemSlicePitch * Depth.
+static uint64_t HashTexture3DCacheKey(const D3D11_TEXTURE3D_DESC* pDesc, const D3D11_SUBRESOURCE_DATA* pInitialData) {
+    if (pDesc == nullptr || pInitialData == nullptr || pInitialData->pSysMem == nullptr) {
+        return 0;
+    }
+    uint64_t h = HashTexture3DDescNormalized(pDesc);
+    const size_t slice_pitch = static_cast<size_t>(pInitialData->SysMemSlicePitch);
+    const size_t depth = static_cast<size_t>(pDesc->Depth);
+    if (depth == 0) return h;
+    const size_t full_size = (slice_pitch <= SIZE_MAX / depth) ? (slice_pitch * depth) : 0;
+    const size_t cap = GetTextureCacheContentHashCapBytes();
+    const size_t sample_size = (full_size < cap) ? full_size : cap;
+    const uint8_t* ptr = static_cast<const uint8_t*>(pInitialData->pSysMem);
+    h ^= HashBytesFNV1a64(ptr, sample_size); /*
+     const size_t full_size = (row_size <= SIZE_MAX / rows) ? (row_size * rows) : cap;
+     const size_t sample_size = (full_size < cap) ? full_size : cap;
+     const uint8_t* ptr = static_cast<const uint8_t*>(pInitialData->pSysMem);
+     h ^= HashBytesFNV1a64(ptr, sample_size);*/
+    return h;
+}
+
 // Texture cache: cache CreateTexture2D results by (desc + initial data) hash. No eviction; no per-texture size limit.
 std::unordered_map<uint64_t, ID3D11Texture2D*> g_texture_cache_2d;
+std::unordered_map<uint64_t, ID3D11Texture1D*> g_texture_cache_1d;
+std::unordered_map<uint64_t, ID3D11Texture3D*> g_texture_cache_3d;
 SRWLOCK g_texture_cache_lock = SRWLOCK_INIT;
 
 // Returns cached texture or nullptr. Caller must AddRef before returning to the game.
@@ -352,6 +448,38 @@ static bool TextureCachePut(uint64_t key, ID3D11Texture2D* ptr, size_t size_byte
     if (g_texture_cache_2d.find(key) != g_texture_cache_2d.end()) return false;  // already cached
     ptr->AddRef();
     g_texture_cache_2d[key] = ptr;
+    return true;
+}
+
+static ID3D11Texture1D* TextureCacheGet1D(uint64_t key) {
+    if (key == 0) return nullptr;
+    utils::SRWLockShared lock(g_texture_cache_lock);
+    auto it = g_texture_cache_1d.find(key);
+    return (it != g_texture_cache_1d.end()) ? it->second : nullptr;
+}
+
+static bool TextureCachePut1D(uint64_t key, ID3D11Texture1D* ptr, size_t size_bytes) {
+    if (key == 0 || ptr == nullptr || size_bytes == 0) return false;
+    utils::SRWLockExclusive lock(g_texture_cache_lock);
+    if (g_texture_cache_1d.find(key) != g_texture_cache_1d.end()) return false;
+    ptr->AddRef();
+    g_texture_cache_1d[key] = ptr;
+    return true;
+}
+
+static ID3D11Texture3D* TextureCacheGet3D(uint64_t key) {
+    if (key == 0) return nullptr;
+    utils::SRWLockShared lock(g_texture_cache_lock);
+    auto it = g_texture_cache_3d.find(key);
+    return (it != g_texture_cache_3d.end()) ? it->second : nullptr;
+}
+
+static bool TextureCachePut3D(uint64_t key, ID3D11Texture3D* ptr, size_t size_bytes) {
+    if (key == 0 || ptr == nullptr || size_bytes == 0) return false;
+    utils::SRWLockExclusive lock(g_texture_cache_lock);
+    if (g_texture_cache_3d.find(key) != g_texture_cache_3d.end()) return false;
+    ptr->AddRef();
+    g_texture_cache_3d[key] = ptr;
     return true;
 }
 
@@ -442,15 +570,46 @@ HRESULT STDMETHODCALLTYPE CreateTexture1D_Detour(ID3D11Device* This, const D3D11
     if (first_call.exchange(false)) {
         LogInfo("[D3D11] First call: ID3D11Device::CreateTexture1D");
     }
+
+    const bool cacheable = (pDesc != nullptr && pInitialData != nullptr && pInitialData->pSysMem != nullptr);
+    const bool tracking_enabled = settings::g_advancedTabSettings.texture_tracking_enabled.GetValue();
+    const bool caching_enabled = settings::g_advancedTabSettings.d3d11_texture_caching_1d_enabled.GetValue();
+
+    if (cacheable && tracking_enabled && caching_enabled && ppTexture1D != nullptr) {
+        const uint64_t cache_key = HashTexture1DCacheKey(pDesc, pInitialData);
+        const size_t size_bytes = GetTexture1DSizeBytes(pDesc);
+        if (cache_key != 0 && size_bytes > 0) {
+            utils::TextureCacheLookupRecord1D();
+            ID3D11Texture1D* cached = TextureCacheGet1D(cache_key);
+            if (cached != nullptr) {
+                *ppTexture1D = cached;
+                cached->AddRef();
+                utils::TextureCacheHitRecord1D();
+                if (size_bytes > 0) {
+                    utils::TextureTrackerAdd(static_cast<void*>(cached), size_bytes);
+                }
+                return S_OK;
+            }
+            utils::TextureCacheLookupMissRecord1D();
+        }
+    }
+
     HRESULT hr = CreateTexture1D_Original(This, pDesc, pInitialData, ppTexture1D);
-    if (SUCCEEDED(hr) && ppTexture1D != nullptr && *ppTexture1D != nullptr
-        && settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
+    if (SUCCEEDED(hr) && ppTexture1D != nullptr && *ppTexture1D != nullptr && tracking_enabled) {
         const size_t size_bytes = GetTexture1DSizeBytes(pDesc);
         if (size_bytes > 0) {
             utils::TextureTrackerAdd(static_cast<void*>(*ppTexture1D), size_bytes);
             TryInstallTextureReleaseHook(*reinterpret_cast<void**>(*ppTexture1D), &Texture1D_Release_Original,
                                          &g_texture1d_release_hooked, Texture1D_Release_Detour,
                                          "ID3D11Texture1D::Release");
+        }
+        if (cacheable && caching_enabled) {
+            const uint64_t cache_key = HashTexture1DCacheKey(pDesc, pInitialData);
+            utils::TextureCacheSimulatorRecord(cache_key);
+            if (cache_key != 0 && size_bytes > 0 && TextureCachePut1D(cache_key, *ppTexture1D, size_bytes)) {
+                utils::TextureCacheInsertRecord1D();
+                utils::TextureCacheAddBytes1D(size_bytes);
+            }
         }
     }
     if (FAILED(hr)) {
@@ -517,6 +676,9 @@ HRESULT STDMETHODCALLTYPE CreateTexture2D_Detour(ID3D11Device* This, const D3D11
         }
     }
 
+    uint64_t cache_key = 0;
+    if (cacheable) cache_key = HashTexture2DCacheKey(pDesc, pInitialData);
+
     HRESULT hr = CreateTexture2D_Original(This, pDesc, pInitialData, ppTexture2D);
     if (SUCCEEDED(hr) && ppTexture2D != nullptr && *ppTexture2D != nullptr && tracking_enabled) {
         const size_t size_bytes = GetTexture2DSizeBytes(pDesc);
@@ -527,12 +689,22 @@ HRESULT STDMETHODCALLTYPE CreateTexture2D_Detour(ID3D11Device* This, const D3D11
                                          "ID3D11Texture2D::Release");
         }
         if (cacheable) {
-            const uint64_t cache_key = HashTexture2DCacheKey(pDesc, pInitialData);
             utils::TextureCacheSimulatorRecord(cache_key);
             if (caching_enabled && cache_key != 0 && size_bytes > 0) {
                 if (TextureCachePut(cache_key, *ppTexture2D, size_bytes)) {
                     utils::TextureCacheInsertRecord();
                     utils::TextureCacheAddBytes(size_bytes);
+                    if (settings::g_advancedTabSettings.dump_textures_enabled.GetValue()) {
+                        const std::wstring exe_path_w = GetCurrentProcessPathW();
+                        if (!exe_path_w.empty()) {
+                            const std::filesystem::path game_dir = std::filesystem::path(exe_path_w).parent_path();
+                            const std::filesystem::path dir = game_dir / "dumped_textures";
+                            char name[32];
+                            (void)std::snprintf(name, sizeof(name), "tex2d_%016llx.dds",
+                                                static_cast<unsigned long long>(cache_key));
+                            utils::DumpTexture2DToDDS(pDesc, pInitialData, dir / name);
+                        }
+                    }
                 }
             }
         }
@@ -563,15 +735,46 @@ HRESULT STDMETHODCALLTYPE CreateTexture3D_Detour(ID3D11Device* This, const D3D11
     if (first_call.exchange(false)) {
         LogInfo("[D3D11] First call: ID3D11Device::CreateTexture3D");
     }
+
+    const bool cacheable = (pDesc != nullptr && pInitialData != nullptr && pInitialData->pSysMem != nullptr);
+    const bool tracking_enabled = settings::g_advancedTabSettings.texture_tracking_enabled.GetValue();
+    const bool caching_enabled = settings::g_advancedTabSettings.d3d11_texture_caching_3d_enabled.GetValue();
+
+    if (cacheable && tracking_enabled && caching_enabled && ppTexture3D != nullptr) {
+        const uint64_t cache_key = HashTexture3DCacheKey(pDesc, pInitialData);
+        const size_t size_bytes = GetTexture3DSizeBytes(pDesc);
+        if (cache_key != 0 && size_bytes > 0) {
+            utils::TextureCacheLookupRecord3D();
+            ID3D11Texture3D* cached = TextureCacheGet3D(cache_key);
+            if (cached != nullptr) {
+                *ppTexture3D = cached;
+                cached->AddRef();
+                utils::TextureCacheHitRecord3D();
+                if (size_bytes > 0) {
+                    utils::TextureTrackerAdd(static_cast<void*>(cached), size_bytes);
+                }
+                return S_OK;
+            }
+            utils::TextureCacheLookupMissRecord3D();
+        }
+    }
+
     HRESULT hr = CreateTexture3D_Original(This, pDesc, pInitialData, ppTexture3D);
-    if (SUCCEEDED(hr) && ppTexture3D != nullptr && *ppTexture3D != nullptr
-        && settings::g_advancedTabSettings.texture_tracking_enabled.GetValue()) {
+    if (SUCCEEDED(hr) && ppTexture3D != nullptr && *ppTexture3D != nullptr && tracking_enabled) {
         const size_t size_bytes = GetTexture3DSizeBytes(pDesc);
         if (size_bytes > 0) {
             utils::TextureTrackerAdd(static_cast<void*>(*ppTexture3D), size_bytes);
             TryInstallTextureReleaseHook(*reinterpret_cast<void**>(*ppTexture3D), &Texture3D_Release_Original,
                                          &g_texture3d_release_hooked, Texture3D_Release_Detour,
                                          "ID3D11Texture3D::Release");
+        }
+        if (cacheable && caching_enabled) {
+            const uint64_t cache_key = HashTexture3DCacheKey(pDesc, pInitialData);
+            utils::TextureCacheSimulatorRecord(cache_key);
+            if (cache_key != 0 && size_bytes > 0 && TextureCachePut3D(cache_key, *ppTexture3D, size_bytes)) {
+                utils::TextureCacheInsertRecord3D();
+                utils::TextureCacheAddBytes3D(size_bytes);
+            }
         }
     }
     if (FAILED(hr)) {

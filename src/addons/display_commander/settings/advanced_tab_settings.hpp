@@ -112,6 +112,14 @@ class AdvancedTabSettings {
     BoolSetting texture_tracking_enabled;
     // D3D11 texture caching: cache CreateTexture2D results by content hash; no eviction, no size limit. Off by default.
     BoolSetting d3d11_texture_caching_enabled;
+    // Same for CreateTexture1D / CreateTexture3D. Off by default.
+    BoolSetting d3d11_texture_caching_1d_enabled;
+    BoolSetting d3d11_texture_caching_3d_enabled;
+    // Max bytes of initial data to include in content hash (in KB). Default 64 = 64 KB. Range 1..1048576 (1 GB).
+    IntSetting texture_cache_content_hash_cap_kb;
+    // When enabled, dump D3D11 CreateTexture* initial data to dumped_textures folder as .dds (only when pInitialData
+    // is provided). Off by default.
+    BoolSetting dump_textures_enabled;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

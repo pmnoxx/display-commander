@@ -6441,28 +6441,34 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         const utils::TextureTrackerStats tstats = utils::TextureTrackerGetStats();
         const double current_mib = static_cast<double>(tstats.current_bytes) / (1024.0 * 1024.0);
         const double peak_mib = static_cast<double>(tstats.peak_bytes) / (1024.0 * 1024.0);
-        const double cache_stored_mib = static_cast<double>(tstats.texture_cache_total_bytes) / (1024.0 * 1024.0);
         if (settings::g_mainTabSettings.show_labels.GetValue()) {
-            imgui.Text(
-                "Total: %.2f  Peak: %.2f MiB  min: %llu  lookups: %llu  cache hit: %llu  cache miss: %llu  entries: %llu  stored: %.2f MiB",
-                current_mib, peak_mib, static_cast<unsigned long long>(tstats.min_cache_misses_possible),
-                static_cast<unsigned long long>(tstats.texture_cache_lookups),
-                static_cast<unsigned long long>(tstats.texture_cache_hits),
-                static_cast<unsigned long long>(tstats.texture_cache_lookup_misses),
-                static_cast<unsigned long long>(tstats.texture_cache_inserts), cache_stored_mib);
+            imgui.Text("Total: %.2f  Peak: %.2f MiB  min: %llu", current_mib, peak_mib,
+                       static_cast<unsigned long long>(tstats.min_cache_misses_possible));
         } else {
-            imgui.Text("%.2f/%.2f MiB  min:%llu  lu:%llu  hit:%llu  miss:%llu  ent:%llu  stored:%.2f MiB", current_mib,
-                       peak_mib, static_cast<unsigned long long>(tstats.min_cache_misses_possible),
-                       static_cast<unsigned long long>(tstats.texture_cache_lookups),
-                       static_cast<unsigned long long>(tstats.texture_cache_hits),
-                       static_cast<unsigned long long>(tstats.texture_cache_lookup_misses),
-                       static_cast<unsigned long long>(tstats.texture_cache_inserts), cache_stored_mib);
+            imgui.Text("%.2f/%.2f MiB  min:%llu", current_mib, peak_mib,
+                       static_cast<unsigned long long>(tstats.min_cache_misses_possible));
         }
+        imgui.Text("  1D: lu %llu  hit %llu  miss %llu  ent %llu  %.2f MiB",
+                   static_cast<unsigned long long>(tstats.texture_cache_1d.lookups),
+                   static_cast<unsigned long long>(tstats.texture_cache_1d.hits),
+                   static_cast<unsigned long long>(tstats.texture_cache_1d.lookup_misses),
+                   static_cast<unsigned long long>(tstats.texture_cache_1d.inserts),
+                   static_cast<double>(tstats.texture_cache_1d.total_bytes) / (1024.0 * 1024.0));
+        imgui.Text("  2D: lu %llu  hit %llu  miss %llu  ent %llu  %.2f MiB",
+                   static_cast<unsigned long long>(tstats.texture_cache_2d.lookups),
+                   static_cast<unsigned long long>(tstats.texture_cache_2d.hits),
+                   static_cast<unsigned long long>(tstats.texture_cache_2d.lookup_misses),
+                   static_cast<unsigned long long>(tstats.texture_cache_2d.inserts),
+                   static_cast<double>(tstats.texture_cache_2d.total_bytes) / (1024.0 * 1024.0));
+        imgui.Text("  3D: lu %llu  hit %llu  miss %llu  ent %llu  %.2f MiB",
+                   static_cast<unsigned long long>(tstats.texture_cache_3d.lookups),
+                   static_cast<unsigned long long>(tstats.texture_cache_3d.hits),
+                   static_cast<unsigned long long>(tstats.texture_cache_3d.lookup_misses),
+                   static_cast<unsigned long long>(tstats.texture_cache_3d.inserts),
+                   static_cast<double>(tstats.texture_cache_3d.total_bytes) / (1024.0 * 1024.0));
         if (imgui.IsItemHovered() && show_tooltips) {
             imgui.SetTooltip(
-                "Memory, min keys, lookups, cache hit/cache miss, entries, stored MiB. "
-                "Skip = CreateTexture2D did not attempt lookup. "
-                "no_init %llu  track_off %llu  cache_off %llu  ppNull %llu  key0 %llu  size0 %llu",
+                "Per-dimension: lookups, hit, miss, entries, stored MiB. Skip (2D): no_init %llu  track_off %llu  cache_off %llu  ppNull %llu  key0 %llu  size0 %llu",
                 static_cast<unsigned long long>(tstats.texture_cache_skip_no_initial_data),
                 static_cast<unsigned long long>(tstats.texture_cache_skip_tracking_off),
                 static_cast<unsigned long long>(tstats.texture_cache_skip_caching_off),

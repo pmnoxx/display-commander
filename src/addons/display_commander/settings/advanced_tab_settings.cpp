@@ -66,7 +66,11 @@ AdvancedTabSettings::AdvancedTabSettings()
       disable_dpi_scaling("DisableDpiScaling", true, "DisplayCommander"),
       enable_dx11_vtable_hooks("EnableDx11VtableHooks", false, "DisplayCommander"),
       texture_tracking_enabled("TextureTrackingEnabled", false, "DisplayCommander"),
-      d3d11_texture_caching_enabled("D3D11TextureCachingEnabled", false, "DisplayCommander") {}
+      d3d11_texture_caching_enabled("D3D11TextureCachingEnabled", false, "DisplayCommander"),
+      d3d11_texture_caching_1d_enabled("D3D11TextureCaching1DEnabled", false, "DisplayCommander"),
+      d3d11_texture_caching_3d_enabled("D3D11TextureCaching3DEnabled", false, "DisplayCommander"),
+      texture_cache_content_hash_cap_kb("TextureCacheContentHashCapKb", 64, 1, 1048576, "DisplayCommander"),
+      dump_textures_enabled("DumpTexturesEnabled", false, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -101,6 +105,10 @@ void AdvancedTabSettings::SaveAll() {
     enable_dx11_vtable_hooks.Save();
     texture_tracking_enabled.Save();
     d3d11_texture_caching_enabled.Save();
+    d3d11_texture_caching_1d_enabled.Save();
+    d3d11_texture_caching_3d_enabled.Save();
+    texture_cache_content_hash_cap_kb.Save();
+    dump_textures_enabled.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
@@ -119,7 +127,9 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
         &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games, &debug_layer_enabled, &debug_break_on_severity,
         &auto_hide_discord_overlay, &suppress_window_changes, &win_up_grace_seconds, &enable_presentmon_tracing,
         &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm, &presentmon_provider_d3d9,
-        &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled, &d3d11_texture_caching_enabled};
+        &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled, &d3d11_texture_caching_enabled,
+        &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled, &texture_cache_content_hash_cap_kb,
+        &dump_textures_enabled};
 }
 
 }  // namespace settings

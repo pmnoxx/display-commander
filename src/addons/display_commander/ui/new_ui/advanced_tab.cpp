@@ -20,6 +20,7 @@
 #include "../../utils/timing.hpp"
 #include "settings_wrapper.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <sstream>
 #include <string>
@@ -1030,6 +1031,50 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
             "Matching subsequent creates return the cached texture instead of creating a new one. No eviction.\n"
             "Requires \"Track loaded texture size\" (and D3D11 vtable hooks). Only affects D3D11 games.");
     }
+    if (CheckboxSetting(settings::g_advancedTabSettings.d3d11_texture_caching_1d_enabled,
+                        "D3D11 Texture Caching (1D)", imgui)) {
+        LogInfo("D3D11 texture caching 1D setting changed to: %s",
+                settings::g_advancedTabSettings.d3d11_texture_caching_1d_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, caches CreateTexture1D results by content hash (same rules as 2D cache). Off by default.");
+    }
+    if (CheckboxSetting(settings::g_advancedTabSettings.d3d11_texture_caching_3d_enabled,
+                        "D3D11 Texture Caching (3D)", imgui)) {
+        LogInfo("D3D11 texture caching 3D setting changed to: %s",
+                settings::g_advancedTabSettings.d3d11_texture_caching_3d_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, caches CreateTexture3D results by content hash (same rules as 2D cache). Off by default.");
+    }
+    {
+        const int min_kb = 1;
+        const int max_kb_ui = 65536;  // 64 MB; config allows up to 1048576 (1 GB)
+        int display_kb = (std::max)(min_kb, (std::min)(max_kb_ui,
+            settings::g_advancedTabSettings.texture_cache_content_hash_cap_kb.GetValue()));
+        if (imgui.SliderInt("Content hash sample max (KB)", &display_kb, min_kb, max_kb_ui, "%d KB")) {
+            display_kb = (std::max)(min_kb, (std::min)(max_kb_ui, display_kb));
+            settings::g_advancedTabSettings.texture_cache_content_hash_cap_kb.SetValue(display_kb);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Max bytes of texture initial data to include in the cache key hash (in KB).\n"
+                "Larger values reduce collision risk for big textures but increase hashing cost.\n"
+                "Default 64 KB. Config allows up to 1048576 KB (1 GB).");
+        }
+    }
+    if (CheckboxSetting(settings::g_advancedTabSettings.dump_textures_enabled, "Dump textures", imgui)) {
+        LogInfo("Dump textures setting changed to: %s",
+                settings::g_advancedTabSettings.dump_textures_enabled.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, passively dump to dumped_textures in the current game folder as .dds only when a new 2D "
+            "texture is added to the cache (CreateTexture2D with initial data and D3D11 Texture Caching enabled). "
+            "Does not dump on cache hit or when caching is off. Off by default.");
+    }
     if (settings::g_advancedTabSettings.texture_tracking_enabled.GetValue() &&
         !settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
         imgui.TextColored(::ui::colors::TEXT_WARNING,
@@ -1052,18 +1097,34 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
         imgui.Indent();
         imgui.Text("Textures: %llu  |  Total memory: %.2f MB  |  Peak: %.2f MB",
                    static_cast<unsigned long long>(stats.current_count), current_mb, peak_mb);
-        imgui.Text("Min: %llu  |  lookups: %llu  cache hit: %llu  cache miss: %llu  entries: %llu  |  Cache stored: %.2f MiB",
-                   static_cast<unsigned long long>(stats.min_cache_misses_possible),
-                   static_cast<unsigned long long>(stats.texture_cache_lookups),
-                   static_cast<unsigned long long>(stats.texture_cache_hits),
-                   static_cast<unsigned long long>(stats.texture_cache_lookup_misses),
-                   static_cast<unsigned long long>(stats.texture_cache_inserts),
-                   static_cast<double>(stats.texture_cache_total_bytes) / (1024.0 * 1024.0));
+        imgui.Text("Min keys: %llu",
+                   static_cast<unsigned long long>(stats.min_cache_misses_possible));
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Unique (desc + initial data) keys seen; lower bound for cache misses.");
+        }
+        imgui.Text("  1D: lookups %llu  hit %llu  miss %llu  entries %llu  stored %.2f MiB",
+                   static_cast<unsigned long long>(stats.texture_cache_1d.lookups),
+                   static_cast<unsigned long long>(stats.texture_cache_1d.hits),
+                   static_cast<unsigned long long>(stats.texture_cache_1d.lookup_misses),
+                   static_cast<unsigned long long>(stats.texture_cache_1d.inserts),
+                   static_cast<double>(stats.texture_cache_1d.total_bytes) / (1024.0 * 1024.0));
+        imgui.Text("  2D: lookups %llu  hit %llu  miss %llu  entries %llu  stored %.2f MiB",
+                   static_cast<unsigned long long>(stats.texture_cache_2d.lookups),
+                   static_cast<unsigned long long>(stats.texture_cache_2d.hits),
+                   static_cast<unsigned long long>(stats.texture_cache_2d.lookup_misses),
+                   static_cast<unsigned long long>(stats.texture_cache_2d.inserts),
+                   static_cast<double>(stats.texture_cache_2d.total_bytes) / (1024.0 * 1024.0));
+        imgui.Text("  3D: lookups %llu  hit %llu  miss %llu  entries %llu  stored %.2f MiB",
+                   static_cast<unsigned long long>(stats.texture_cache_3d.lookups),
+                   static_cast<unsigned long long>(stats.texture_cache_3d.hits),
+                   static_cast<unsigned long long>(stats.texture_cache_3d.lookup_misses),
+                   static_cast<unsigned long long>(stats.texture_cache_3d.inserts),
+                   static_cast<double>(stats.texture_cache_3d.total_bytes) / (1024.0 * 1024.0));
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Min = unique keys. Lookups, cache hit/miss (lookup found/not found), entries. Cache stored = total bytes of cached textures (no eviction).");
+                "Per-dimension cache: lookups, cache hit/miss, entries, stored MiB (no eviction).");
         }
-        imgui.Text("Skip (did not attempt lookup): no init %llu  track off %llu  cache off %llu  ppNull %llu  key0 %llu  size0 %llu",
+        imgui.Text("Skip (2D, did not attempt lookup): no init %llu  track off %llu  cache off %llu  ppNull %llu  key0 %llu  size0 %llu",
                    static_cast<unsigned long long>(stats.texture_cache_skip_no_initial_data),
                    static_cast<unsigned long long>(stats.texture_cache_skip_tracking_off),
                    static_cast<unsigned long long>(stats.texture_cache_skip_caching_off),

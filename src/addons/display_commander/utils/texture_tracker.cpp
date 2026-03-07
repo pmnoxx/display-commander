@@ -35,11 +35,25 @@ std::atomic<double> g_misses_per_sec_ema{0.0};
 // Texture cache simulator: set of (desc + initial data) cache keys ever seen. Size = min cache misses possible.
 std::unordered_set<uint64_t> g_simulator_keys;
 std::atomic<uint64_t> g_min_cache_misses_possible{0};
+// 2D (legacy names)
 std::atomic<uint64_t> g_texture_cache_hits{0};
 std::atomic<uint64_t> g_texture_cache_lookups{0};
 std::atomic<uint64_t> g_texture_cache_lookup_misses{0};
 std::atomic<uint64_t> g_texture_cache_inserts{0};
 std::atomic<uint64_t> g_texture_cache_total_bytes{0};
+// 1D
+std::atomic<uint64_t> g_texture_cache_1d_lookups{0};
+std::atomic<uint64_t> g_texture_cache_1d_hits{0};
+std::atomic<uint64_t> g_texture_cache_1d_lookup_misses{0};
+std::atomic<uint64_t> g_texture_cache_1d_inserts{0};
+std::atomic<uint64_t> g_texture_cache_1d_total_bytes{0};
+// 3D
+std::atomic<uint64_t> g_texture_cache_3d_lookups{0};
+std::atomic<uint64_t> g_texture_cache_3d_hits{0};
+std::atomic<uint64_t> g_texture_cache_3d_lookup_misses{0};
+std::atomic<uint64_t> g_texture_cache_3d_inserts{0};
+std::atomic<uint64_t> g_texture_cache_3d_total_bytes{0};
+// Skip reasons (2D)
 std::atomic<uint64_t> g_texture_cache_skip_no_initial_data{0};
 std::atomic<uint64_t> g_texture_cache_skip_tracking_off{0};
 std::atomic<uint64_t> g_texture_cache_skip_caching_off{0};
@@ -124,22 +138,73 @@ void TextureCacheSimulatorRecord(uint64_t cache_key) {
 void TextureCacheHitRecord() {
     g_texture_cache_hits.fetch_add(1, std::memory_order_relaxed);
 }
+void TextureCacheHitRecord1D() {
+    g_texture_cache_1d_hits.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheHitRecord2D() {
+    g_texture_cache_hits.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheHitRecord3D() {
+    g_texture_cache_3d_hits.fetch_add(1, std::memory_order_relaxed);
+}
 
 void TextureCacheLookupRecord() {
     g_texture_cache_lookups.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheLookupRecord1D() {
+    g_texture_cache_1d_lookups.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheLookupRecord2D() {
+    g_texture_cache_lookups.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheLookupRecord3D() {
+    g_texture_cache_3d_lookups.fetch_add(1, std::memory_order_relaxed);
 }
 
 void TextureCacheLookupMissRecord() {
     g_texture_cache_lookup_misses.fetch_add(1, std::memory_order_relaxed);
 }
+void TextureCacheLookupMissRecord1D() {
+    g_texture_cache_1d_lookup_misses.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheLookupMissRecord2D() {
+    g_texture_cache_lookup_misses.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheLookupMissRecord3D() {
+    g_texture_cache_3d_lookup_misses.fetch_add(1, std::memory_order_relaxed);
+}
 
 void TextureCacheInsertRecord() {
     g_texture_cache_inserts.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheInsertRecord1D() {
+    g_texture_cache_1d_inserts.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheInsertRecord2D() {
+    g_texture_cache_inserts.fetch_add(1, std::memory_order_relaxed);
+}
+void TextureCacheInsertRecord3D() {
+    g_texture_cache_3d_inserts.fetch_add(1, std::memory_order_relaxed);
 }
 
 void TextureCacheAddBytes(size_t size_bytes) {
     if (size_bytes > 0) {
         g_texture_cache_total_bytes.fetch_add(static_cast<uint64_t>(size_bytes), std::memory_order_relaxed);
+    }
+}
+void TextureCacheAddBytes1D(size_t size_bytes) {
+    if (size_bytes > 0) {
+        g_texture_cache_1d_total_bytes.fetch_add(static_cast<uint64_t>(size_bytes), std::memory_order_relaxed);
+    }
+}
+void TextureCacheAddBytes2D(size_t size_bytes) {
+    if (size_bytes > 0) {
+        g_texture_cache_total_bytes.fetch_add(static_cast<uint64_t>(size_bytes), std::memory_order_relaxed);
+    }
+}
+void TextureCacheAddBytes3D(size_t size_bytes) {
+    if (size_bytes > 0) {
+        g_texture_cache_3d_total_bytes.fetch_add(static_cast<uint64_t>(size_bytes), std::memory_order_relaxed);
     }
 }
 
@@ -170,11 +235,26 @@ TextureTrackerStats TextureTrackerGetStats() {
     s.total_misses = g_total_misses.load(std::memory_order_relaxed);
     s.misses_per_sec_ema = g_misses_per_sec_ema.load(std::memory_order_relaxed);
     s.min_cache_misses_possible = g_min_cache_misses_possible.load(std::memory_order_relaxed);
-    s.texture_cache_hits = g_texture_cache_hits.load(std::memory_order_relaxed);
-    s.texture_cache_lookups = g_texture_cache_lookups.load(std::memory_order_relaxed);
-    s.texture_cache_lookup_misses = g_texture_cache_lookup_misses.load(std::memory_order_relaxed);
-    s.texture_cache_inserts = g_texture_cache_inserts.load(std::memory_order_relaxed);
-    s.texture_cache_total_bytes = g_texture_cache_total_bytes.load(std::memory_order_relaxed);
+    s.texture_cache_1d.lookups = g_texture_cache_1d_lookups.load(std::memory_order_relaxed);
+    s.texture_cache_1d.hits = g_texture_cache_1d_hits.load(std::memory_order_relaxed);
+    s.texture_cache_1d.lookup_misses = g_texture_cache_1d_lookup_misses.load(std::memory_order_relaxed);
+    s.texture_cache_1d.inserts = g_texture_cache_1d_inserts.load(std::memory_order_relaxed);
+    s.texture_cache_1d.total_bytes = g_texture_cache_1d_total_bytes.load(std::memory_order_relaxed);
+    s.texture_cache_2d.lookups = g_texture_cache_lookups.load(std::memory_order_relaxed);
+    s.texture_cache_2d.hits = g_texture_cache_hits.load(std::memory_order_relaxed);
+    s.texture_cache_2d.lookup_misses = g_texture_cache_lookup_misses.load(std::memory_order_relaxed);
+    s.texture_cache_2d.inserts = g_texture_cache_inserts.load(std::memory_order_relaxed);
+    s.texture_cache_2d.total_bytes = g_texture_cache_total_bytes.load(std::memory_order_relaxed);
+    s.texture_cache_3d.lookups = g_texture_cache_3d_lookups.load(std::memory_order_relaxed);
+    s.texture_cache_3d.hits = g_texture_cache_3d_hits.load(std::memory_order_relaxed);
+    s.texture_cache_3d.lookup_misses = g_texture_cache_3d_lookup_misses.load(std::memory_order_relaxed);
+    s.texture_cache_3d.inserts = g_texture_cache_3d_inserts.load(std::memory_order_relaxed);
+    s.texture_cache_3d.total_bytes = g_texture_cache_3d_total_bytes.load(std::memory_order_relaxed);
+    s.texture_cache_hits = s.texture_cache_2d.hits;
+    s.texture_cache_lookups = s.texture_cache_2d.lookups;
+    s.texture_cache_lookup_misses = s.texture_cache_2d.lookup_misses;
+    s.texture_cache_inserts = s.texture_cache_2d.inserts;
+    s.texture_cache_total_bytes = s.texture_cache_2d.total_bytes;
     s.texture_cache_skip_no_initial_data = g_texture_cache_skip_no_initial_data.load(std::memory_order_relaxed);
     s.texture_cache_skip_tracking_off = g_texture_cache_skip_tracking_off.load(std::memory_order_relaxed);
     s.texture_cache_skip_caching_off = g_texture_cache_skip_caching_off.load(std::memory_order_relaxed);

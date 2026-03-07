@@ -3,6 +3,7 @@
 ---
 
 ## Unreleased
+- **download_dc_as_addon.bat** - New script in `scripts/dc_service/` that downloads the latest Display Commander addon builds (zzz_display_commander.addon64 and .addon32) from the latest_build release. Only downloads when the release asset is newer (checks via HTTP HEAD: ETag or Last-Modified+Content-Length). Can copy the addon as dc_installer64.dll and run SetupDC via rundll32. Uses curl when available (Windows 10+), falls back to PowerShell.
 
 ## v0.12.324
 - **PresentMon OnEtwEvent: fix C2712 (__try and object unwinding)** - MSVC error C2712 ("Cannot use __try in functions that require object unwinding") is resolved by moving the ETW event body into `OnEtwEventImpl` and keeping `OnEtwEvent` as a thin wrapper that only uses `__try`/`__except` with no C++ objects with destructors. This allows the GitHub (MSVC) build to succeed; behavior and SEH handling are unchanged. Details: `presentmon_manager.cpp` / `presentmon_manager.hpp` — `OnEtwEventImpl` holds CALL_GUARD and the former __try body; `OnEtwEvent` calls it inside __try/__except.

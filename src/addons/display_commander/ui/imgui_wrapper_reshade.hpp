@@ -207,12 +207,28 @@ struct ImGuiWrapperReshade : IImGuiWrapper {
     void SetNextWindowSize(const ImVec2& size, int cond) override {
         ImGui::SetNextWindowSize(size, static_cast<ImGuiCond>(cond));
     }
+    void SetNextWindowBgAlpha(float alpha) override { ImGui::SetNextWindowBgAlpha(alpha); }
+    ImVec2 GetWindowPos() override { return ImGui::GetWindowPos(); }
+    IImDrawList* GetForegroundDrawList() override {
+        ImDrawList* L = ImGui::GetForegroundDrawList(nullptr);
+        draw_list_proxy_.set(L);
+        return L ? &draw_list_proxy_ : nullptr;
+    }
     ImVec2 GetDisplaySize() override {
         const ImGuiIO& io = ImGui::GetIO();
         return ImVec2(io.DisplaySize.x, io.DisplaySize.y);
     }
     const ImGuiIO& GetIO() override { return ImGui::GetIO(); }
     unsigned int GetFrameCount() override { return static_cast<unsigned int>(ImGui::GetFrameCount()); }
+    // No-op in ReShade overlay: ReShade owns the frame lifecycle (NewFrame/Render). Only standalone UI calls these.
+    void NewFrame() override {}
+    void Render() override {}
+    void CreateContext() override {}
+    void DestroyContext() override {}
+    void StyleColorsDark() override {}
+    void SetConfigFlags(uint32_t) override {}
+    void SetDisplaySize(const ImVec2&) override {}
+    void SetFontGlobalScale(float) override {}
     bool BeginTabBar(const char* str_id, int flags = 0) override {
         return ImGui::BeginTabBar(str_id, static_cast<ImGuiTabBarFlags>(flags));
     }

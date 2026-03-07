@@ -1,14 +1,14 @@
 #pragma once
 
-#include <imgui.h>
 #include <dxgi1_6.h>
+#include <imgui.h>
 #include <reshade.hpp>
 
 namespace display_commander {
 namespace ui {
 struct IImGuiWrapper;
 }
-}
+}  // namespace display_commander
 
 namespace ui::new_ui {
 
@@ -49,4 +49,4 @@ const char* GetDXGISwapEffectString(DXGI_SWAP_EFFECT effect);
 const char* GetDXGIAlphaModeString(DXGI_ALPHA_MODE mode);
 const char* GetDXGIColorSpaceString(DXGI_COLOR_SPACE_TYPE color_space);
 
-} // namespace ui::new_ui
+}  // namespace ui::new_ui

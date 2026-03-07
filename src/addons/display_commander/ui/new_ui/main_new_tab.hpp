@@ -3,7 +3,6 @@
 #include <reshade_imgui.hpp>
 #include "../imgui_wrapper_base.hpp"
 
-
 namespace ui::new_ui {
 
 void InitMainNewTab();
@@ -24,7 +23,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
 void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui);
-void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& imgui);  // kept for compatibility; content moved to FpsLimiter
+void DrawDisplaySettings_FpsAndBackground(
+    display_commander::ui::IImGuiWrapper& imgui);  // kept for compatibility; content moved to FpsLimiter
 void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& imgui);
 
 // Draw audio settings section
@@ -57,9 +57,9 @@ void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui,
 void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_tooltips = false);
 
 // Draw performance overlay content (clock, FPS, VRR, VRAM, flip, DLSS, volume, graphs, etc.).
-// Use with IImGuiWrapper (ReShade or standalone). device_api used for flip status; pass GraphicsApi::Unknown when no device.
+// Use with IImGuiWrapper (ReShade or standalone). device_api used for flip status; pass GraphicsApi::Unknown when no
+// device.
 void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
-                                   display_commander::ui::GraphicsApi device_api,
-                                   bool show_tooltips = true);
+                                   display_commander::ui::GraphicsApi device_api, bool show_tooltips = true);
 
 }  // namespace ui::new_ui

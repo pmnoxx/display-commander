@@ -2880,8 +2880,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         }
 
         // Windows taskbar visibility
-        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.taskbar_hide_mode, "Auto-hide Windows taskbar",
-                                    imgui, 320.f)) {
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.taskbar_hide_mode, "Auto-hide Windows taskbar", imgui,
+                                    320.f)) {
             LogInfo("Auto-hide Windows taskbar mode changed to %d",
                     settings::g_mainTabSettings.taskbar_hide_mode.GetValue());
         }

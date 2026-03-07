@@ -1,5 +1,4 @@
 #include "autoclick_manager.hpp"
-#include "../ui/imgui_wrapper_base.hpp"
 #include <imgui.h>
 #include <windows.h>
 #include <algorithm>
@@ -9,6 +8,7 @@
 #include "../globals.hpp"
 #include "../res/forkawesome.h"
 #include "../settings/experimental_tab_settings.hpp"
+#include "../ui/imgui_wrapper_base.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
@@ -570,7 +570,7 @@ void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui) {
             "enabled for better stealth.");
     }
     imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-                     ICON_FK_OK " Mouse position spoofing is always enabled for better stealth");
+                      ICON_FK_OK " Mouse position spoofing is always enabled for better stealth");
 
     if (g_auto_click_enabled.load()) {
         if (g_auto_click_thread_running.load()) {
@@ -599,7 +599,7 @@ void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui) {
 
     if (enabled_sequences > 0 && g_auto_click_enabled.load()) {
         imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-                         "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
+                          "Sequences will execute in order: 1 ↁE2 ↁE3 ↁE4 ↁE5 ↁErepeat");
     }
 
     imgui.Spacing();

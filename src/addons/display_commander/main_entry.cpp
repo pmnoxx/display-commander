@@ -189,7 +189,10 @@ void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
         autoclick::UpdateLastUIDrawTime();
     }
 
-    ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
+    {
+        display_commander::ui::ImGuiWrapperReshade gui_wrapper;
+        ui::new_ui::NewUISystem::GetInstance().Draw(runtime, gui_wrapper);
+    }
 
     // Periodically save config to ensure settings are persisted
     static LONGLONG last_save_time = utils::get_now_ns();
@@ -553,11 +556,11 @@ constexpr std::array<std::array<float, 2>, kCursorOutlineSize> kCursorOutline = 
     {4.0f, 20.0f},
 }};
 
-void DrawCustomCursor() {
-    const ImVec2 pos = ImGui::GetIO().MousePos;
+static void DrawCustomCursor(display_commander::ui::IImGuiWrapper& gui_wrapper) {
+    const ImVec2 pos = gui_wrapper.GetIO().MousePos;
     const float s = 1.0f;
 
-    ImDrawList* draw_list = ImGui::GetForegroundDrawList(nullptr);
+    display_commander::ui::IImDrawList* draw_list = gui_wrapper.GetForegroundDrawList();
     if (draw_list == nullptr) return;
 
     const ImU32 col_border = IM_COL32(0, 0, 0, 255);
@@ -598,6 +601,7 @@ void DrawCustomCursor() {
 // Test callback for reshade_overlay event
 void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* runtime) {
     CALL_GUARD(utils::get_now_ns());
+    display_commander::ui::ImGuiWrapperReshade overlay_wrapper;
     const float fixed_width = 1600.0f;
     float saved_x = settings::g_mainTabSettings.display_commander_ui_window_x.GetValue();
     float saved_y = settings::g_mainTabSettings.display_commander_ui_window_y.GetValue();
@@ -605,52 +609,56 @@ void OnPerformanceOverlay_DisplayCommanderWindow(reshade::api::effect_runtime* r
     static float last_saved_y = 0.0f;
     if (saved_x > 0.0f || saved_y > 0.0f) {
         if (saved_x != last_saved_x || saved_y != last_saved_y) {
-            ImGui::SetNextWindowPos(ImVec2(saved_x, saved_y), ImGuiCond_Once);
+            overlay_wrapper.SetNextWindowPos(ImVec2(saved_x, saved_y), ImGuiCond_Once, ImVec2(0.f, 0.f));
             last_saved_x = saved_x;
             last_saved_y = saved_y;
         }
     }
-    ImGui::SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
+    overlay_wrapper.SetNextWindowSize(ImVec2(fixed_width, 0.0f), ImGuiCond_Always);
     bool window_open = true;
-    if (ImGui::Begin("Display Commander", &window_open, ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
+    if (overlay_wrapper.Begin("Display Commander", &window_open,
+                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize)) {
         if (enabled_experimental_features) {
             autoclick::UpdateLastUIDrawTime();
         }
         if (runtime != nullptr) {
             runtime->block_input_next_frame();
         }
-        ImVec2 current_pos = ImGui::GetWindowPos();
+        ImVec2 current_pos = overlay_wrapper.GetWindowPos();
         if (current_pos.x != saved_x || current_pos.y != saved_y) {
             settings::g_mainTabSettings.display_commander_ui_window_x.SetValue(current_pos.x);
             settings::g_mainTabSettings.display_commander_ui_window_y.SetValue(current_pos.y);
             last_saved_x = current_pos.x;
             last_saved_y = current_pos.y;
         }
-        ui::new_ui::NewUISystem::GetInstance().Draw(runtime);
+        ui::new_ui::NewUISystem::GetInstance().Draw(runtime, overlay_wrapper);
     } else {
         settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
     }
-    ImGui::End();
+    overlay_wrapper.End();
     if (!window_open) {
         settings::g_mainTabSettings.show_display_commander_ui.SetValue(false);
     }
-    DrawCustomCursor();
+    DrawCustomCursor(overlay_wrapper);
 }
 
 void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool show_tooltips) {
+    display_commander::ui::ImGuiWrapperReshade overlay_wrapper;
     float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
     float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
-    ImGui::SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, 10.0f + vertical_spacing), ImGuiCond_Always);
+    overlay_wrapper.SetNextWindowPos(ImVec2(10.0f + horizontal_spacing, 10.0f + vertical_spacing), ImGuiCond_Always,
+                                    ImVec2(0.f, 0.f));
     float bg_alpha = settings::g_mainTabSettings.overlay_background_alpha.GetValue();
-    ImGui::SetNextWindowBgAlpha(bg_alpha);
-    ImGui::SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Test Window", nullptr,
-                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize
-                     | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize);
-    display_commander::ui::ImGuiWrapperReshade overlay_imgui;
-    ui::new_ui::DrawPerformanceOverlayContent(overlay_imgui, ui::new_ui::GetGraphicsApiFromRuntime(runtime),
-                                              show_tooltips);
-    ImGui::End();
+    overlay_wrapper.SetNextWindowBgAlpha(bg_alpha);
+    overlay_wrapper.SetNextWindowSize(ImVec2(450, 65), ImGuiCond_FirstUseEver);
+    if (overlay_wrapper.Begin("Test Window", nullptr,
+                              ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings
+                                  | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar
+                                  | ImGuiWindowFlags_AlwaysAutoResize)) {
+        ui::new_ui::DrawPerformanceOverlayContent(overlay_wrapper, ui::new_ui::GetGraphicsApiFromRuntime(runtime),
+                                                  show_tooltips);
+    }
+    overlay_wrapper.End();
 }
 
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {

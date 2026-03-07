@@ -60,7 +60,7 @@ bool TabManager::HasTab(const std::string& id) const {
     return false;
 }
 
-void TabManager::Draw(reshade::api::effect_runtime* runtime) {
+void TabManager::Draw(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& gui) {
     g_rendering_ui_section.store("ui:draw:entry", std::memory_order_release);
 
     // Get current tabs atomically
@@ -132,7 +132,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
     g_rendering_ui_section.store("ui:draw:tab_bar", std::memory_order_release);
 
     // Draw tab bar only when multiple tabs are visible
-    if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_None)) {
+    if (gui.BeginTabBar("MainTabs", 0)) {
         for (size_t i = 0; i < current_tabs->size(); ++i) {
             // Check if tab should be visible
             bool should_show = (*current_tabs)[i].is_visible;
@@ -166,7 +166,7 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                 continue;
             }
 
-            if (ImGui::BeginTabItem((*current_tabs)[i].name.c_str())) {
+            if (gui.BeginTabItem((*current_tabs)[i].name.c_str(), nullptr, 0)) {
                 active_tab_ = static_cast<int>(i);
 
                 // Draw tab content
@@ -177,10 +177,10 @@ void TabManager::Draw(reshade::api::effect_runtime* runtime) {
                     (*current_tabs)[i].on_draw(runtime);
                 }
 
-                ImGui::EndTabItem();
+                gui.EndTabItem();
             }
         }
-        ImGui::EndTabBar();
+        gui.EndTabBar();
     }
     g_rendering_ui_section.store("ui:draw:done", std::memory_order_release);
 }
@@ -362,6 +362,8 @@ void InitializeNewUI() {
 }
 
 // Draw the new UI
-void DrawNewUI(reshade::api::effect_runtime* runtime) { g_tab_manager.Draw(runtime); }
+void DrawNewUI(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& gui) {
+    g_tab_manager.Draw(runtime, gui);
+}
 
 }  // namespace ui::new_ui

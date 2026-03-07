@@ -1,5 +1,6 @@
 #include "new_ui_main.hpp"
 #include "../../globals.hpp"
+#include "../../ui/imgui_wrapper_reshade.hpp"
 #include "../../utils/logging.hpp"
 #include <reshade.hpp>
 
@@ -26,14 +27,14 @@ void NewUISystem::Initialize() {
     LogInfo("New UI system initialized successfully");
 }
 
-void NewUISystem::Draw(reshade::api::effect_runtime* runtime) {
+void NewUISystem::Draw(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& gui) {
     if (!enabled_ || !initialized_) {
         return;
     }
 
     g_rendering_ui_section.store("ui:overlay", std::memory_order_release);
     // Draw the new UI system
-    DrawNewUI(runtime);
+    DrawNewUI(runtime, gui);
     g_rendering_ui_section.store(nullptr, std::memory_order_release);
 }
 

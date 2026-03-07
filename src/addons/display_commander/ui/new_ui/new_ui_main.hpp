@@ -1,6 +1,7 @@
 #pragma once
 
 #include "new_ui_tabs.hpp"
+#include "../imgui_wrapper_base.hpp"
 #include <reshade.hpp>
 
 namespace ui::new_ui {
@@ -13,8 +14,8 @@ class NewUISystem {
     // Initialize the new UI system
     void Initialize();
 
-    // Draw the new UI
-    void Draw(reshade::api::effect_runtime* runtime);
+    // Draw the new UI (uses gui for all ImGui calls)
+    void Draw(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& gui);
 
     // Check if the new UI system is enabled
     bool IsEnabled() const { return enabled_; }

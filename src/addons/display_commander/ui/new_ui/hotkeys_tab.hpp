@@ -24,12 +24,12 @@ static constexpr int kHotkeyDefinitionCount = 22;
 
 // Parsed hotkey structure (canonical in-memory representation)
 struct ParsedHotkey {
-    int key_code = 0;              // Virtual key code (VK_*)
-    bool ctrl = false;              // Control modifier
-    bool shift = false;            // Shift modifier
-    bool alt = false;              // Alt modifier
-    bool win = false;              // Windows key modifier
-    std::string original_string;   // Original string (for legacy/display; prefer FormatHotkeyString)
+    int key_code = 0;             // Virtual key code (VK_*)
+    bool ctrl = false;            // Control modifier
+    bool shift = false;           // Shift modifier
+    bool alt = false;             // Alt modifier
+    bool win = false;             // Windows key modifier
+    std::string original_string;  // Original string (for legacy/display; prefer FormatHotkeyString)
 
     bool IsValid() const { return key_code != 0; }
     bool IsEmpty() const { return key_code == 0 && !ctrl && !shift && !alt && !win; }
@@ -37,14 +37,14 @@ struct ParsedHotkey {
 
 // Hotkey definition structure
 struct HotkeyDefinition {
-    std::string id;                 // Unique identifier
-    std::string name;               // Display name
-    std::string default_shortcut;   // Default shortcut string
-    std::string description;        // Tooltip description
-    HotkeyAction action;            // Action to execute when triggered
+    std::string id;                // Unique identifier
+    std::string name;              // Display name
+    std::string default_shortcut;  // Default shortcut string
+    std::string description;       // Tooltip description
+    HotkeyAction action;           // Action to execute when triggered
 
-    ParsedHotkey parsed;            // Parsed shortcut (updated when setting changes)
-    bool enabled = true;            // Whether this hotkey is enabled
+    ParsedHotkey parsed;  // Parsed shortcut (updated when setting changes)
+    bool enabled = true;  // Whether this hotkey is enabled
 };
 
 // Parse a shortcut string like "ctrl+t" or "ctrl+shift+backspace"
@@ -72,4 +72,3 @@ void ProcessHotkeys();
 bool IsCapturingHotkey();
 
 }  // namespace ui::new_ui
-

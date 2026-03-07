@@ -685,7 +685,8 @@ static std::string GetCachedFileSha256(const std::wstring& pathW, ReshadeSha256C
 
 // Print ReShade64.dll / ReShade32.dll presence, version, and signature status for the given directory.
 // If onlyCurrentArch is true, only the core for is64bit is shown (ReShade64.dll or ReShade32.dll).
-static void ShowReshadeCoreVersionsForDir(const std::wstring& dir, bool onlyCurrentArch = false, bool is64bit = true) {
+static void ShowReshadeCoreVersionsForDir(display_commander::ui::IImGuiWrapper& imgui, const std::wstring& dir,
+                                          bool onlyCurrentArch = false, bool is64bit = true) {
     if (dir.empty()) return;
     const wchar_t* coreToShow[2] = {is64bit ? L"ReShade64.dll" : L"ReShade32.dll", nullptr};
     const wchar_t* const* names = onlyCurrentArch ? coreToShow : s_reshadeCoreNames;
@@ -695,12 +696,12 @@ static void ShowReshadeCoreVersionsForDir(const std::wstring& dir, bool onlyCurr
         std::wstring path = dir + L"\\" + name;
         DWORD att = GetFileAttributesW(path.c_str());
         if (att == INVALID_FILE_ATTRIBUTES || (att & FILE_ATTRIBUTE_DIRECTORY)) {
-            ImGui::BulletText("%S: (not present)", name);
+            imgui.BulletText("%S: (not present)", name);
             continue;
         }
         std::string ver = GetFileVersionStringUtf8(path);
         if (ver.empty()) ver = "(no version info)";
-        ImGui::BulletText("%S: %s", name, ver.c_str());
+        imgui.BulletText("%S: %s", name, ver.c_str());
 
         bool is64 = (std::wcscmp(name, L"ReShade64.dll") == 0);
         ReshadeSha256CacheEntry& cache = is64 ? s_sha256Cache64 : s_sha256Cache32;
@@ -709,14 +710,14 @@ static void ShowReshadeCoreVersionsForDir(const std::wstring& dir, bool onlyCurr
             std::string versionKey = display_commander::utils::NormalizeReShadeVersionForLookup(ver);
             const char* expected = display_commander::utils::GetReShadeExpectedSha256(versionKey, is64);
             if (expected == nullptr) {
-                ImGui::SameLine();
-                ImGui::TextDisabled("  (signature: not in database)");
+                imgui.SameLine();
+                imgui.TextDisabled("  (signature: not in database)");
             } else if (fileHash == expected) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "  (signature: OK)");
+                imgui.SameLine();
+                imgui.TextColored(ImVec4(0.4f, 0.9f, 0.4f, 1.0f), "  (signature: OK)");
             } else {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1.0f), "  (signature: MISMATCH)");
+                imgui.SameLine();
+                imgui.TextColored(ImVec4(0.95f, 0.4f, 0.4f, 1.0f), "  (signature: MISMATCH)");
             }
         }
     }
@@ -763,10 +764,10 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     UpdateWindow(hwnd);
 
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    ImGui::StyleColorsDark();
+    display_commander::ui::ImGuiWrapperStandalone gui;
+    gui.CreateContext();
+    gui.SetConfigFlags(static_cast<uint32_t>(ImGuiConfigFlags_NavEnableKeyboard));
+    gui.StyleColorsDark();
     BuildStandaloneFontsWithJapanese();
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplOpenGL3_Init();
@@ -792,71 +793,62 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
 
-        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(440, 0), ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Display Commander - Settings (No ReShade)", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            if (ImGui::BeginTabBar("NoReshadeSettingsTabs")) {
-                if (ImGui::BeginTabItem("Main")) {
+        gui.NewFrame();
+        gui.SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+        gui.SetNextWindowSize(ImVec2(440, 0), ImGuiCond_FirstUseEver);
+        if (gui.Begin("Display Commander - Settings (No ReShade)", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            if (gui.BeginTabBar("NoReshadeSettingsTabs", 0)) {
+                if (gui.BeginTabItem("Main", nullptr, 0)) {
                     ui::new_ui::InitMainNewTab();
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawMainNewTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper);
-                    ImGui::EndTabItem();
+                    ui::new_ui::DrawMainNewTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("NVIDIA Profile")) {
+                if (gui.BeginTabItem("NVIDIA Profile", nullptr, 0)) {
                     static bool s_noreshadeShowAdvancedProfile = false;
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper,
+                    display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui,
                                                                 &s_noreshadeShowAdvancedProfile);
-                    ImGui::EndTabItem();
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Advanced")) {
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), wrapper);
-                    ImGui::EndTabItem();
+                if (gui.BeginTabItem("Advanced", nullptr, 0)) {
+                    ui::new_ui::DrawAdvancedTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Hotkeys")) {
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawHotkeysTab(wrapper);
-                    ImGui::EndTabItem();
+                if (gui.BeginTabItem("Hotkeys", nullptr, 0)) {
+                    ui::new_ui::DrawHotkeysTab(gui);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Controller")) {
+                if (gui.BeginTabItem("Controller", nullptr, 0)) {
                     display_commander::widgets::xinput_widget::InitializeXInputWidget();
                     display_commander::widgets::remapping_widget::InitializeRemappingWidget();
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    display_commander::widgets::xinput_widget::DrawXInputWidget(wrapper);
-                    ImGui::Spacing();
-                    display_commander::widgets::remapping_widget::DrawRemappingWidget(wrapper);
-                    ImGui::EndTabItem();
+                    display_commander::widgets::xinput_widget::DrawXInputWidget(gui);
+                    gui.Spacing();
+                    display_commander::widgets::remapping_widget::DrawRemappingWidget(gui);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Performance")) {
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawPerformanceTab(wrapper);
-                    ImGui::EndTabItem();
+                if (gui.BeginTabItem("Performance", nullptr, 0)) {
+                    ui::new_ui::DrawPerformanceTab(gui);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Performance Overlay")) {
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawPerformanceOverlayContent(wrapper, ui::new_ui::GetGraphicsApiFromLastDeviceApi(),
-                                                              true);
-                    ImGui::EndTabItem();
+                if (gui.BeginTabItem("Performance Overlay", nullptr, 0)) {
+                    ui::new_ui::DrawPerformanceOverlayContent(gui, ui::new_ui::GetGraphicsApiFromLastDeviceApi(),
+                                                             true);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Vulkan (Experimental)")) {
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawVulkanTab(wrapper);
-                    ImGui::EndTabItem();
+                if (gui.BeginTabItem("Vulkan (Experimental)", nullptr, 0)) {
+                    ui::new_ui::DrawVulkanTab(gui);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Debug")) {
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawExperimentalTab(wrapper, nullptr);
-                    ImGui::EndTabItem();
+                if (gui.BeginTabItem("Debug", nullptr, 0)) {
+                    ui::new_ui::DrawExperimentalTab(gui, nullptr);
+                    gui.EndTabItem();
                 }
-                ImGui::EndTabBar();
+                gui.EndTabBar();
             }
         }
-        ImGui::End();
+        gui.End();
 
-        ImGui::Render();
+        gui.Render();
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -865,7 +857,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
+    gui.DestroyContext();
     CleanupContextOpenGL(hwnd);
     standalone_ui_settings::SetStandaloneUiHwnd(0);
     SaveLauncherWindowPosition(hwnd);
@@ -893,7 +885,7 @@ static void LatestVersionsFetchWorker() {
 }
 
 // Launcher Settings tab: font scale, ReShade global status, Display Commander global version.
-static void DrawLauncherSettingsTab() {
+static void DrawLauncherSettingsTab(display_commander::ui::IImGuiWrapper& imgui) {
     // Start one-time background fetch of newest available versions (ReShade, DC).
     bool expected = false;
     if (s_latestVersionsFetchStarted.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
@@ -906,48 +898,48 @@ static void DrawLauncherSettingsTab() {
                                                                                            font_scale);
     if (font_scale <= 0.0f || font_scale > 3.0f) font_scale = 1.0f;
 
-    if (ImGui::SliderFloat("Font size", &font_scale, 0.5f, 2.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+    if (imgui.SliderFloat("Font size", &font_scale, 0.5f, 2.0f, "%.2f")) {
         display_commander::config::DisplayCommanderConfigManager::GetInstance().SetConfigValue("Launcher", "FontScale",
                                                                                                font_scale);
         display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("Launcher font scale");
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Scale the Launcher window text. Takes effect immediately.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Scale the Launcher window text. Takes effect immediately.");
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-    ImGui::TextUnformatted("ReShade (global install)");
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+    imgui.TextUnformatted("ReShade (global install)");
     std::filesystem::path reshade_global = display_commander::utils::GetGlobalReshadeDirectory();
     std::string reshade_ver = display_commander::utils::GetGlobalReshadeVersion();
     if (reshade_global.empty()) {
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Not installed");
+        imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Not installed");
     } else {
         if (reshade_ver.empty()) {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: (unknown)");
+            imgui.TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: (unknown)");
         } else {
-            ImGui::Text("Version: %s", reshade_ver.c_str());
+            imgui.Text("Version: %s", reshade_ver.c_str());
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("%s", reshade_global.string().c_str());
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("%s", reshade_global.string().c_str());
         }
     }
     if (s_latestVersionsFetchDone.load(std::memory_order_acquire)) {
         std::string* latest = s_latestReShadeVersion.load(std::memory_order_acquire);
         if (latest && !latest->empty()) {
-            ImGui::Text("Newest available: %s", latest->c_str());
+            imgui.Text("Newest available: %s", latest->c_str());
         } else {
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (unavailable)");
+            imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (unavailable)");
         }
     } else {
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (checking...)");
+        imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (checking...)");
     }
     bool reshade_updating = s_reshadeUpdateInProgress.load(std::memory_order_acquire);
     if (reshade_updating) {
-        ImGui::BeginDisabled();
+        imgui.BeginDisabled();
     }
-    if (ImGui::Button("Update##reshade_global")) {
+    if (imgui.Button("Update##reshade_global")) {
         std::wstring central = GetCentralReshadeDir();
         if (!central.empty()) {
             auto* params = new ReshadeUpdateParams;
@@ -967,22 +959,22 @@ static void DrawLauncherSettingsTab() {
         }
     }
     if (reshade_updating) {
-        ImGui::EndDisabled();
+        imgui.EndDisabled();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Download latest ReShade Addon and install to global folder.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Download latest ReShade Addon and install to global folder.");
     }
     if (!s_reshadeUpdateResult.empty()) {
-        ImGui::TextColored(ImVec4(0.7f, 0.85f, 0.7f, 1.0f), "%s", s_reshadeUpdateResult.c_str());
+        imgui.TextColored(ImVec4(0.7f, 0.85f, 0.7f, 1.0f), "%s", s_reshadeUpdateResult.c_str());
     }
 
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-    ImGui::TextUnformatted("Display Commander (global install)");
+    imgui.Spacing();
+    imgui.Separator();
+    imgui.Spacing();
+    imgui.TextUnformatted("Display Commander (global install)");
     std::filesystem::path dc_appdata = GetDisplayCommanderAppDataFolder();
     if (dc_appdata.empty()) {
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Folder not available");
+        imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Folder not available");
     } else {
 #ifdef _WIN64
         std::filesystem::path addon_path = dc_appdata / L"zzz_display_commander.addon64";
@@ -991,30 +983,30 @@ static void DrawLauncherSettingsTab() {
 #endif
         std::string dc_ver = GetFileVersionStringUtf8(addon_path.native());
         if (dc_ver.empty()) {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: not installed or not found");
+            imgui.TextColored(ImVec4(0.7f, 0.7f, 0.5f, 1.0f), "Version: not installed or not found");
         } else {
-            ImGui::Text("Version: %s", dc_ver.c_str());
+            imgui.Text("Version: %s", dc_ver.c_str());
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("%s", dc_appdata.string().c_str());
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("%s", dc_appdata.string().c_str());
         }
-        ImGui::Text("This instance: %s", DISPLAY_COMMANDER_VERSION_STRING);
+        imgui.Text("This instance: %s", DISPLAY_COMMANDER_VERSION_STRING);
     }
     if (s_latestVersionsFetchDone.load(std::memory_order_acquire)) {
         std::string* latest = s_latestDcVersion.load(std::memory_order_acquire);
         if (latest && !latest->empty()) {
-            ImGui::Text("Newest available: %s", latest->c_str());
+            imgui.Text("Newest available: %s", latest->c_str());
         } else {
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (unavailable)");
+            imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (unavailable)");
         }
     } else {
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (checking...)");
+        imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Newest available: (checking...)");
     }
-    if (ImGui::Button("Update##dc_global")) {
+    if (imgui.Button("Update##dc_global")) {
         display_commander::utils::version_check::CheckForUpdates();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Check for Display Commander updates (GitHub). Result in main app or next launch.");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Check for Display Commander updates (GitHub). Result in main app or next launch.");
     }
 }
 
@@ -1104,10 +1096,10 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     UpdateWindow(hwnd);
 
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    ImGui::StyleColorsDark();
+    display_commander::ui::ImGuiWrapperStandalone gui;
+    gui.CreateContext();
+    gui.SetConfigFlags(static_cast<uint32_t>(ImGuiConfigFlags_NavEnableKeyboard));
+    gui.StyleColorsDark();
     BuildStandaloneFontsWithJapanese();
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplOpenGL3_Init();
@@ -1124,47 +1116,46 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
 
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
             glViewport(0, 0, (GLsizei)g_ResizeWidth, (GLsizei)g_ResizeHeight);
-            ImGui::GetIO().DisplaySize = ImVec2((float)g_ResizeWidth, (float)g_ResizeHeight);
+            gui.SetDisplaySize(ImVec2((float)g_ResizeWidth, (float)g_ResizeHeight));
             g_ResizeWidth = g_ResizeHeight = 0;
         }
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
+
+        gui.NewFrame();
 
         // Use current client size every frame so Games window grows and shrinks with the outer window
         RECT rc = {};
         if (GetClientRect(hwnd, &rc)) {
-            ImGui::GetIO().DisplaySize = ImVec2((float)(rc.right - rc.left), (float)(rc.bottom - rc.top));
+            gui.SetDisplaySize(ImVec2((float)(rc.right - rc.left), (float)(rc.bottom - rc.top)));
         }
 
         float launcher_font_scale = 1.0f;
         display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigValue("Launcher", "FontScale",
                                                                                                launcher_font_scale);
         if (launcher_font_scale <= 0.0f || launcher_font_scale > 3.0f) launcher_font_scale = 1.0f;
-        ImGui::GetIO().FontGlobalScale = launcher_font_scale;
-
-        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
-        if (ImGui::Begin("Games", nullptr,
-                         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
-                             | ImGuiWindowFlags_NoTitleBar)) {
-            if (ImGui::BeginTabBar("##LauncherTabs", ImGuiTabBarFlags_None)) {
-                if (ImGui::BeginTabItem("Games")) {
-                    display_commander::ui::ImGuiWrapperStandalone wrapper;
-                    ui::new_ui::DrawGamesTab(wrapper);
-                    ImGui::EndTabItem();
+        gui.SetFontGlobalScale(launcher_font_scale);
+        gui.SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        gui.SetNextWindowSize(gui.GetDisplaySize(), ImGuiCond_Always);
+        if (gui.Begin("Games", nullptr,
+                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse
+                          | ImGuiWindowFlags_NoTitleBar)) {
+            if (gui.BeginTabBar("##LauncherTabs", 0)) {
+                if (gui.BeginTabItem("Games", nullptr, 0)) {
+                    ui::new_ui::DrawGamesTab(gui);
+                    gui.EndTabItem();
                 }
-                if (ImGui::BeginTabItem("Settings")) {
-                    DrawLauncherSettingsTab();
-                    ImGui::EndTabItem();
+                if (gui.BeginTabItem("Settings", nullptr, 0)) {
+                    DrawLauncherSettingsTab(gui);
+                    gui.EndTabItem();
                 }
-                ImGui::EndTabBar();
+                gui.EndTabBar();
             }
         }
-        ImGui::End();
+        gui.End();
 
-        ImGui::Render();
+        gui.Render();
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -1173,7 +1164,7 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
+    gui.DestroyContext();
     CleanupContextOpenGL(hwnd);
     standalone_ui_settings::SetStandaloneUiHwnd(0);
     SaveLauncherWindowPosition(hwnd);

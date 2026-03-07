@@ -1724,11 +1724,11 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
 
 void DrawControllerTab(display_commander::ui::IImGuiWrapper& imgui) {
     DrawActiveInputApisSection(imgui);
-    ImGui::Spacing();
+    imgui.Spacing();
     DrawControllerPollingRatesSection(imgui);
-    ImGui::Spacing();
+    imgui.Spacing();
     DrawXInputWidget(imgui);
-    ImGui::Spacing();
+    imgui.Spacing();
     display_commander::widgets::remapping_widget::DrawRemappingWidget(imgui);
 }
 

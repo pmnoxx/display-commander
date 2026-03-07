@@ -130,7 +130,7 @@ struct IImGuiWrapper {
     virtual void PushStyleColor(int col_enum, const ImVec4& color) = 0;
     virtual void PopStyleColor(int count = 1) = 0;
     virtual bool TreeNodeEx(const char* label, int flags) = 0;
-    virtual bool TreeNode(const char* label) = 0;  // Same as ImGui::TreeNode(label)
+    virtual bool TreeNode(const char* label) = 0;
     virtual void TreePop() = 0;
     virtual ImVec2 GetContentRegionAvail() = 0;
     virtual float GetStyleItemSpacingX() = 0;
@@ -195,9 +195,28 @@ struct IImGuiWrapper {
     virtual void End() = 0;
     virtual void SetNextWindowPos(const ImVec2& pos, int cond = 0, const ImVec2& pivot = ImVec2(0.f, 0.f)) = 0;
     virtual void SetNextWindowSize(const ImVec2& size, int cond = 0) = 0;
+    virtual void SetNextWindowBgAlpha(float alpha) = 0;
+    virtual ImVec2 GetWindowPos() = 0;
+    /** Foreground draw list (overlay); use for custom cursor etc. Returns proxy to avoid ABI issues. */
+    virtual IImDrawList* GetForegroundDrawList() = 0;
     virtual ImVec2 GetDisplaySize() = 0;
     virtual const ImGuiIO& GetIO() = 0;
     virtual unsigned int GetFrameCount() = 0;
+    /** Start a new frame (call after backend NewFrame). */
+    virtual void NewFrame() = 0;
+    /** Render and submit draw data (call before backend RenderDrawData). */
+    virtual void Render() = 0;
+
+    /** Context lifecycle (no-op in ReShade wrapper; only standalone uses these). */
+    virtual void CreateContext() = 0;
+    virtual void DestroyContext() = 0;
+    virtual void StyleColorsDark() = 0;
+    /** OR in config flags (e.g. NavEnableKeyboard) at init. No-op in ReShade. */
+    virtual void SetConfigFlags(uint32_t flags) = 0;
+    /** Set IO display size (e.g. per-frame from window client rect). No-op in ReShade. */
+    virtual void SetDisplaySize(const ImVec2& size) = 0;
+    /** Set IO font global scale. No-op in ReShade. */
+    virtual void SetFontGlobalScale(float scale) = 0;
 
     // Tab bar
     virtual bool BeginTabBar(const char* str_id, int flags = 0) = 0;

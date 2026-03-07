@@ -201,12 +201,33 @@ void ImGuiWrapperStandalone::SetNextWindowPos(const ImVec2& pos, int cond, const
 void ImGuiWrapperStandalone::SetNextWindowSize(const ImVec2& size, int cond) {
     ImGui::SetNextWindowSize(size, static_cast<ImGuiCond>(cond));
 }
+void ImGuiWrapperStandalone::SetNextWindowBgAlpha(float alpha) { ImGui::SetNextWindowBgAlpha(alpha); }
+ImVec2 ImGuiWrapperStandalone::GetWindowPos() { return ImGui::GetWindowPos(); }
+IImDrawList* ImGuiWrapperStandalone::GetForegroundDrawList() {
+    ImDrawList* L = ImGui::GetForegroundDrawList(nullptr);
+    draw_list_proxy_.set(L);
+    return L ? &draw_list_proxy_ : nullptr;
+}
 ImVec2 ImGuiWrapperStandalone::GetDisplaySize() {
     const ImGuiIO& io = ImGui::GetIO();
     return ImVec2(io.DisplaySize.x, io.DisplaySize.y);
 }
 const ImGuiIO& ImGuiWrapperStandalone::GetIO() { return ImGui::GetIO(); }
 unsigned int ImGuiWrapperStandalone::GetFrameCount() { return static_cast<unsigned int>(ImGui::GetFrameCount()); }
+void ImGuiWrapperStandalone::NewFrame() { ImGui::NewFrame(); }
+void ImGuiWrapperStandalone::Render() { ImGui::Render(); }
+void ImGuiWrapperStandalone::CreateContext() { ImGui::CreateContext(nullptr); }
+void ImGuiWrapperStandalone::DestroyContext() { ImGui::DestroyContext(nullptr); }
+void ImGuiWrapperStandalone::StyleColorsDark() { ImGui::StyleColorsDark(); }
+void ImGuiWrapperStandalone::SetConfigFlags(uint32_t flags) {
+    ImGui::GetIO().ConfigFlags |= flags;
+}
+void ImGuiWrapperStandalone::SetDisplaySize(const ImVec2& size) {
+    ImGui::GetIO().DisplaySize = size;
+}
+void ImGuiWrapperStandalone::SetFontGlobalScale(float scale) {
+    ImGui::GetIO().FontGlobalScale = scale;
+}
 bool ImGuiWrapperStandalone::BeginTabBar(const char* str_id, int flags) {
     return ImGui::BeginTabBar(str_id, static_cast<ImGuiTabBarFlags>(flags));
 }

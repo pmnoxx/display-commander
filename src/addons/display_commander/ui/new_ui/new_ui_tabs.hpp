@@ -1,14 +1,12 @@
 #pragma once
 
-#include <imgui.h>
+#include "../imgui_wrapper_base.hpp"
+#include <reshade.hpp>
 #include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
-
-
-#include <reshade.hpp>
 
 namespace ui::new_ui {
 
@@ -32,8 +30,8 @@ class TabManager {
     void AddTab(const std::string& name, const std::string& id,
                 std::function<void(reshade::api::effect_runtime* runtime)> on_draw, bool is_advanced_tab = false);
 
-    // Draw the tab bar and content (thread-safe)
-    void Draw(reshade::api::effect_runtime* runtime);
+    // Draw the tab bar and content (thread-safe). Uses gui for all ImGui calls.
+    void Draw(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& gui);
 
     // Check if a tab with the given ID exists (thread-safe)
     bool HasTab(const std::string& id) const;
@@ -49,7 +47,7 @@ extern TabManager g_tab_manager;
 // Initialize the new UI system
 void InitializeNewUI();
 
-// Draw the new UI
-void DrawNewUI(reshade::api::effect_runtime* runtime);
+// Draw the new UI (uses gui for all ImGui calls)
+void DrawNewUI(reshade::api::effect_runtime* runtime, display_commander::ui::IImGuiWrapper& gui);
 
 }  // namespace ui::new_ui

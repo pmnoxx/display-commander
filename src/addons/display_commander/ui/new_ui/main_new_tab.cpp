@@ -1472,7 +1472,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Spacing();
 
-    // Show independent window (ReShade only): setting controls visibility; continuous monitoring opens/closes the window
+    // Show independent window (ReShade only): setting controls visibility; continuous monitoring opens/closes the
+    // window
     if (!g_no_reshade_mode.load(std::memory_order_acquire)) {
         CheckboxSetting(settings::g_mainTabSettings.show_independent_window, "Show independent window", imgui);
         if (imgui.IsItemHovered()) {
@@ -3583,12 +3584,34 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     imgui.SameLine();
     imgui.TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Which path is currently applying the FPS limiter this frame.\n"
-            "Priority: reflex_marker > reflex_marker_vk_nvll > reflex_marker_vk_loader > "
-            "reflex_marker_pclstats_etw > dxgi_swapchain1 > dxgi_swapchain > "
-            "dxgi_factory_wrapper > reshade_addon_event. src: %s",
-            GetChosenFpsLimiterSiteName());
+        imgui.BeginTooltip();
+        imgui.TextUnformatted("Which path is currently applying the FPS limiter (per-path status, ~1s window):");
+        imgui.Spacing();
+        const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
+        const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
+        for (size_t i = 0; i < kFpsLimiterCallSiteCount; i++) {
+            const char* name = FpsLimiterSiteName(static_cast<FpsLimiterCallSite>(i));
+            const uint64_t last_ts = g_fps_limiter_last_timestamp_ns[i].load(std::memory_order_relaxed);
+            const bool called_recently =
+                (last_ts != 0 && (now_ns - last_ts) <= static_cast<uint64_t>(utils::SEC_TO_NS));
+            const bool is_active = (chosen != kFpsLimiterChosenUnset && static_cast<size_t>(chosen) == i);
+            const char* status;
+            ImVec4 status_color;
+            if (is_active) {
+                status = "Active";
+                status_color = ui::colors::ICON_SUCCESS;
+            } else if (called_recently) {
+                status = "OK";
+                status_color = ui::colors::TEXT_SUCCESS;
+            } else {
+                status = "-";
+                status_color = ui::colors::TEXT_DIMMED;
+            }
+            imgui.Text("%s: ", name);
+            imgui.SameLine(0.f, 0.f);
+            imgui.TextColored(status_color, "%s", status);
+        }
+        imgui.EndTooltip();
     }
     if (!enabled) {
         imgui.EndDisabled();

@@ -4,6 +4,9 @@
 
 # unreleased
 
+## v0.12.334
+- **FPS limiter: show active entry points in tooltip** - Hovering over the "(src: …)" label next to FPS Limiter Mode now shows a list of all FPS limiter entry points (reflex_marker, dxgi_swapchain1, reshade_addon_event, etc.) with per-path status: **Active** (path currently applying the limiter), **OK** (path called in the last ~1s), or **-** (not called recently). Status text is color-coded (green for Active/OK, dimmed for inactive). Makes it easy to see which path is in use and which paths are available without opening the Experimental tab. Details: main_new_tab.cpp — tooltip uses BeginTooltip/EndTooltip with TextColored per line; status from g_chosen_fps_limiter_site and g_fps_limiter_last_timestamp_ns.
+
 ## v0.12.333
 - **Multi-window exit fix** - TLDR: Ignores window close message if app has multiple windows. When the game has more than one window, closing one window (WM_CLOSE, WM_DESTROY, WM_QUIT) no longer triggers the addon exit handler; exit is only triggered when the last window is closed. Prevents premature shutdown when one of several game windows is closed. Details: window_proc_hooks.cpp — CountOtherProcessWindows() excludes the closing HWND and standalone UI; OnHandleExit only called when no other process windows remain.
 - **Show independent window: setting-driven** - The "Show independent window" checkbox in the Main tab is now a persisted BooleanSetting. The checkbox only toggles the setting; the continuous monitoring thread opens or closes the standalone settings window based on that setting, so the window state stays in sync across restarts. Details: show_independent_window in main_tab_settings; main_new_tab uses CheckboxSetting only; continuous_monitoring per-second block calls RequestShowIndependentWindow/CloseIndependentWindow when setting and window state differ.

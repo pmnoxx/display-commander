@@ -8,6 +8,7 @@
 #include <toml++/toml.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <map>
 #include <set>
@@ -109,23 +110,35 @@ static void CollectLeafTables(const toml::table& tbl, std::vector<std::string>& 
 
 void LoadFromResource() {
     if (g_hmodule == nullptr) {
-        LogWarn("Game default overrides: g_hmodule is null, cannot load embedded resource");
+        static std::atomic<bool> s_warned{false};
+        if (!s_warned.exchange(true)) {
+            LogWarn("Game default overrides: g_hmodule is null, cannot load embedded resource");
+        }
         return;
     }
     HRSRC hRes = FindResourceA(g_hmodule, MAKEINTRESOURCEA(IDR_GAME_DEFAULT_OVERRIDES), RT_RCDATA);
     if (hRes == nullptr) {
-        LogWarn("Game default overrides: resource %d not found (rebuild addon so game_default_overrides.toml is embedded)", IDR_GAME_DEFAULT_OVERRIDES);
+        static std::atomic<bool> s_warned_not_found{false};
+        if (!s_warned_not_found.exchange(true)) {
+            LogWarn("Game default overrides: resource %d not found (rebuild addon so game_default_overrides.toml is embedded)", IDR_GAME_DEFAULT_OVERRIDES);
+        }
         return;
     }
     HGLOBAL hLoaded = LoadResource(g_hmodule, hRes);
     if (hLoaded == nullptr) {
-        LogWarn("Game default overrides: LoadResource failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
+        static std::atomic<bool> s_warned_load_failed{false};
+        if (!s_warned_load_failed.exchange(true)) {
+            LogWarn("Game default overrides: LoadResource failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
+        }
         return;
     }
     const void* pData = LockResource(hLoaded);
     const DWORD size = SizeofResource(g_hmodule, hRes);
     if (pData == nullptr || size == 0) {
-        LogWarn("Game default overrides: LockResource/size failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
+        static std::atomic<bool> s_warned_lock_failed{false};
+        if (!s_warned_lock_failed.exchange(true)) {
+            LogWarn("Game default overrides: LockResource/size failed for resource %d", IDR_GAME_DEFAULT_OVERRIDES);
+        }
         return;
     }
 
@@ -137,7 +150,10 @@ void LoadFromResource() {
         g_loaded = true;
         LogInfo("Game default overrides: loaded from resource (%zu exe entries)", g_override_map.size());
     } catch (const toml::parse_error& e) {
-        LogWarn("Game default overrides: parse error %s", e.what());
+        static std::atomic<bool> s_warned_parse{false};
+        if (!s_warned_parse.exchange(true)) {
+            LogWarn("Game default overrides: parse error %s", e.what());
+        }
         return;
     }
 }
@@ -146,7 +162,9 @@ void EnsureLoaded() {
     if (g_loaded) return;
     LoadFromResource();
     g_current_exe_lower = GetCurrentExeNameLower();
-    // Bounded format to avoid log garbage if exe string were ever non-null-terminated
+    // Log exe check and result only once per process to avoid log spam
+    static std::atomic<bool> s_logged_exe_check{false};
+    if (s_logged_exe_check.exchange(true)) return;
     const std::string& exe = g_current_exe_lower;
     LogInfo("Game default overrides: checking against exe %.260s", exe.empty() ? "(unknown)" : exe.c_str());
     if (g_loaded && !g_override_map.empty()) {

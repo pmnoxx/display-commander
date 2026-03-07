@@ -1660,8 +1660,16 @@ void GetLastColorSpaceSupportForUI(int* out_dxgi, int* out_supported) {
     }
 }
 
+// GUID for Display Commander "last set DXGI color space" on swap chain (SetPrivateData/GetPrivateData).
+// Used to skip SetColorSpace1 when current already matches desired. Do not conflict with ReShade's SKID.
+static constexpr GUID kDcSwapChainColorSpace = {
+    0xdc5a1e70, 0xb3c4, 0x4d9e, { 0x8a, 0x2f, 0x1c, 0x4e, 0x5b, 0x6d, 0x7e, 0x8f }
+};
+
 // Helper to set swap chain and ReShade runtime color space (DXGI path). Tries the requested color space
 // anyway; only falls back to sRGB if SetColorSpace1 fails. Caches support result for UI.
+// On success, stores color_space on the swap chain via SetPrivateData(kDcSwapChainColorSpace) so callers
+// can skip apply when GetPrivateData shows it already matches.
 static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLOR_SPACE_TYPE color_space,
                                    reshade::api::color_space reshade_color_space) {
     auto* unknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
@@ -1687,6 +1695,7 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
                  utils::GetDXGIColorSpaceString(color_space), static_cast<int>(color_space), static_cast<unsigned>(hr));
         return;
     }
+    swapchain3->SetPrivateData(kDcSwapChainColorSpace, sizeof(color_space), &color_space);
     // Log only when values change to avoid repeated identical log lines.
     static std::atomic<int> s_last_color_space{-1};
     static std::atomic<int> s_last_reshade_cs{-1};
@@ -1710,7 +1719,10 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
 
 // Helper: when HDR/scRGB color fix is enabled, set DXGI + ReShade color space from back buffer format:
 // 10-bit (R10G10B10A2) → HDR10 (ST2084), 16-bit FP (R16G16B16A16) → scRGB. No-op for 8-bit.
-void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
+// Reads format from the DXGI swap chain (GetDesc / GetDesc1). Only applies if current color space
+// (from GetPrivateData(kDcSwapChainColorSpace), which we set after each successful SetColorSpace1)
+// does not already match desired; avoids redundant SetColorSpace1 calls.
+void AutoSetColorSpace(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain) {
     if (g_last_reshade_device_api.load() != reshade::api::device_api::d3d12
         && g_last_reshade_device_api.load() != reshade::api::device_api::d3d11) {
         return;
@@ -1721,24 +1733,60 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain) {
     if (g_is_renodx_loaded.load(std::memory_order_relaxed)) {
         return;
     }
-    auto desc_ptr = g_last_swapchain_desc.load();
-    if (!desc_ptr) {
+    if (dxgi_swapchain == nullptr) {
         return;
     }
-    const auto& desc = *desc_ptr;
-    auto format = desc.back_buffer.texture.format;
+
+    DXGI_FORMAT dxgi_format = DXGI_FORMAT_UNKNOWN;
+    DXGI_SWAP_CHAIN_DESC swap_desc = {};
+    if (SUCCEEDED(dxgi_swapchain->GetDesc(&swap_desc))) {
+        dxgi_format = swap_desc.BufferDesc.Format;
+    } else {
+        Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain1;
+        if (SUCCEEDED(dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
+            DXGI_SWAP_CHAIN_DESC1 desc1 = {};
+            if (SUCCEEDED(swapchain1->GetDesc1(&desc1))) {
+                dxgi_format = desc1.Format;
+            }
+        }
+    }
+    if (dxgi_format == DXGI_FORMAT_UNKNOWN) {
+        return;
+    }
 
     DXGI_COLOR_SPACE_TYPE color_space;
     reshade::api::color_space reshade_color_space;
-    if (format == reshade::api::format::r10g10b10a2_unorm) {
+    if (dxgi_format == DXGI_FORMAT_R10G10B10A2_UNORM) {
         color_space = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
         reshade_color_space = reshade::api::color_space::hdr10_st2084;
-    } else if (format == reshade::api::format::r16g16b16a16_float) {
+    } else if (dxgi_format == DXGI_FORMAT_R16G16B16A16_FLOAT) {
         color_space = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
         reshade_color_space = reshade::api::color_space::extended_srgb_linear;
     } else {
         return;
     }
+
+    DXGI_COLOR_SPACE_TYPE current = static_cast<DXGI_COLOR_SPACE_TYPE>(0);
+    UINT size = sizeof(current);
+    HRESULT hr_get = dxgi_swapchain->GetPrivateData(kDcSwapChainColorSpace, &size, &current);
+    const bool have_stored = SUCCEEDED(hr_get) && size == sizeof(current);
+    if (have_stored && current == color_space) {
+        return;
+    }
+
+    const char* reason = nullptr;
+    if (!SUCCEEDED(hr_get)) {
+        reason = "no stored color space (GetPrivateData failed)";
+    } else if (size != sizeof(current)) {
+        reason = "stored data size mismatch";
+    } else {
+        reason = "stored color space does not match desired";
+    }
+    LogInfo("AutoSetColorSpace: applying %s (%d), reason: %s (stored=%s (%d))",
+            utils::GetDXGIColorSpaceString(color_space), static_cast<int>(color_space), reason,
+            have_stored ? utils::GetDXGIColorSpaceString(current) : "n/a",
+            have_stored ? static_cast<int>(current) : -1);
+
     SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);
 }
 // Update composition state after presents (required for valid stats)
@@ -1783,14 +1831,13 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     bool dx_dx10 = api == reshade::api::device_api::d3d10;
     bool dx_d3d9 = api == reshade::api::device_api::d3d9;
     bool is_dxgi = idx_dx12 || dx_dx11 || dx_dx10;
-    if (is_dxgi) {
-        AutoSetColorSpace(swapchain);
-    }
     if (idx_dx12) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
+
+            AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
         }
     } else if (dx_dx11) {
         IUnknown* swapchain_native = reinterpret_cast<IUnknown*>(swapchain->get_native());
@@ -1800,9 +1847,10 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
             // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
-            if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device))) &&
-                settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
+            if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))
+                && settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
                 display_commanderhooks::d3d11::HookD3D11DeviceVTable(d3d11_device.Get());
+                AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
             }
         }
         // Fallback: hook using ReShade device when DXGI GetDevice path was not used

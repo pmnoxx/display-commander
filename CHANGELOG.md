@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.329 (2026-03-07)
+- **Game default overrides: log once per process** - The "resource not found", "checking against exe", and "No game default override" messages are now emitted at most once per process to avoid log spam when the embedded resource is missing or when many callers check overrides. Details: default_overrides.cpp — atomic flags in LoadFromResource (per failure type) and in EnsureLoaded (exe check block).
+
 ## v0.12.328
 - **Brightness/AutoHDR ReShade paths: remove when unchecked** - Unchecking "Enable Brightness, AutoHDR and ReShade paths" now removes the Display Commander Shaders and Textures paths from ReShade's EffectSearchPaths and TextureSearchPaths (previously they were only not re-added). ReShade config is updated immediately when the checkbox is toggled. Tooltip updated to state that paths are removed when off. Details: `OverrideReShadeSettings_RemoveDisplayCommanderPaths` in main_entry.cpp; OverrideReShadeSettings calls add or remove based on setting; UI invokes OverrideReShadeSettings on checkbox change; addon.hpp declares OverrideReShadeSettings for UI.
 

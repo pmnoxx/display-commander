@@ -291,21 +291,44 @@ static uint64_t HashTexture2DDescNormalized(const D3D11_TEXTURE2D_DESC* pDesc) {
 
 // Compute cache key for (desc + pInitialData) for cacheable CreateTexture2D. Returns 0 if not cacheable.
 // Uses normalized desc hash so padding/uninitialized bytes do not cause key mismatches.
+// Hashes all subresources (MipLevels * ArraySize) so multi-mip/array textures get correct keys.
 static uint64_t HashTexture2DCacheKey(const D3D11_TEXTURE2D_DESC* pDesc, const D3D11_SUBRESOURCE_DATA* pInitialData) {
     if (pDesc == nullptr || pInitialData == nullptr || pInitialData->pSysMem == nullptr) {
         return 0;
     }
-    uint64_t h = HashTexture2DDescNormalized(pDesc);
-    const size_t row_size = static_cast<size_t>(pInitialData->SysMemPitch);
-    const size_t rows = static_cast<size_t>(pDesc->Height);
-    if (rows == 0) {
-        return h;
+    const UINT mipLevels = (pDesc->MipLevels != 0) ? pDesc->MipLevels : 1u;
+    const UINT arraySize = pDesc->ArraySize;
+    const UINT numSubresources = mipLevels * arraySize;
+    if (numSubresources == 0) {
+        return 0;
     }
-    const size_t cap = 65536u;
-    const size_t full_size = (row_size <= SIZE_MAX / rows) ? (row_size * rows) : cap;
-    const size_t sample_size = (full_size < cap) ? full_size : cap;
-    const uint8_t* ptr = static_cast<const uint8_t*>(pInitialData->pSysMem);
-    h ^= HashBytesFNV1a64(ptr, sample_size);
+    uint64_t h = HashTexture2DDescNormalized(pDesc);
+    constexpr size_t cap = 65536u;
+    for (UINT i = 0; i < numSubresources; ++i) {
+        const D3D11_SUBRESOURCE_DATA* sr = &pInitialData[i];
+        if (sr->pSysMem == nullptr) {
+            continue;
+        }
+        // Use SysMemSlicePitch for 2D slice size (one 2D image); fallback to SysMemPitch * rows for this mip if zero.
+        size_t slice_bytes = static_cast<size_t>(sr->SysMemSlicePitch);
+        if (slice_bytes == 0) {
+            const UINT mip = i % mipLevels;
+            UINT subH = pDesc->Height;
+            for (UINT m = 0; m < mip && subH > 1; ++m) subH >>= 1;
+            if (subH == 0) subH = 1;
+            const size_t row_size = static_cast<size_t>(sr->SysMemPitch);
+            const size_t rows = static_cast<size_t>(subH);
+            if (rows > 0 && row_size <= SIZE_MAX / rows) {
+                slice_bytes = row_size * rows;
+            }
+        }
+        if (slice_bytes == 0) {
+            continue;
+        }
+        const size_t sample_size = (slice_bytes < cap) ? slice_bytes : cap;
+        const uint8_t* ptr = static_cast<const uint8_t*>(sr->pSysMem);
+        h ^= HashBytesFNV1a64(ptr, sample_size);
+    }
     return h;
 }
 

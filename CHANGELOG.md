@@ -3,6 +3,10 @@
 ---
 
 ## Unreleased
+
+## v0.12.326
+- **Texture cache key: all subresources and SysMemSlicePitch** - The D3D11 texture cache key now hashes all subresources (MipLevels × ArraySize), not just the first, so multi-mip and texture-array textures get correct keys and no longer risk wrong cache hits. Per-subresource slice size uses SysMemSlicePitch when set, with fallback to SysMemPitch × mip height when zero. Fixed typo `cacheabel` → `cacheable` in the CreateTexture2D detour. Details: `HashTexture2DCacheKey` in d3d11_device_hooks.cpp.
+- **dbghelp_loader: include windows.h before dbghelp.h** - Fixed include order in dbghelp_loader.hpp so <windows.h> is included before <dbghelp.h>; dbghelp.h requires Windows types (PSTR, HANDLE, etc.). Resolves Clang build failures. Details: utils/dbghelp_loader.hpp.
 - **download_dc_as_addon.bat** - New script in `scripts/dc_service/` that downloads the latest Display Commander addon builds (zzz_display_commander.addon64 and .addon32) from the latest_build release. Only downloads when the release asset is newer (checks via HTTP HEAD: ETag or Last-Modified+Content-Length). Can copy the addon as dc_installer64.dll and run SetupDC via rundll32. Uses curl when available (Windows 10+), falls back to PowerShell.
 
 ## v0.12.325

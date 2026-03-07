@@ -2,9 +2,13 @@
 
 ---
 
+## Unreleased
+
+## v0.12.327
+- **Advanced tab: Unsupported features section** - D3D11 vtable hooks, texture tracking, texture caching (1D/2D/3D), content hash cap, dump textures, and texture stats are now grouped under a collapsible "Unsupported features" header at the bottom of the Advanced tab. Behavior unchanged; only UI location and grouping changed. Details: advanced_tab.cpp DrawAdvancedTabSettingsSection.
+
 ## v0.12.326
 - **Texture cache: separate 1D/2D/3D stats** - Texture cache stats are now reported per dimension. Advanced tab and performance overlay (Tex stats) show lookups, hit, miss, entries, and stored MiB for 1D, 2D, and 3D caches separately. Details: `TextureCacheDimStats`, `texture_cache_1d`/`texture_cache_2d`/`texture_cache_3d` in `TextureTrackerStats`; dimension-specific record functions (e.g. `TextureCacheLookupRecord1D`); `texture_tracker.hpp`/`texture_tracker.cpp`; Advanced tab and main_new_tab overlay UI.
-- **Texture cache: configurable content hash cap and 1D/3D caching** - The maximum bytes of initial data used for the cache key hash is now configurable in the Advanced tab ("Content hash sample max (KB)", default 64 KB, config up to 1 GB). D3D11 texture caching can be enabled separately for CreateTexture1D and CreateTexture3D via "D3D11 Texture Caching (1D)" and "D3D11 Texture Caching (3D)" (off by default). Same content-hash and no-eviction behavior as the existing 2D cache. Details: `texture_cache_content_hash_cap_kb`, `d3d11_texture_caching_1d_enabled`, `d3d11_texture_caching_3d_enabled` in advanced_tab_settings; HashTexture1D/3DDescNormalized, HashTexture1D/3DCacheKey, TextureCacheGet/Put1D/3D and detour logic in d3d11_device_hooks.cpp; Advanced tab UI.
 
 ## v0.12.324
 - **Dump textures to DDS (fixed texture dumping)** - Optional "Dump textures" checkbox in the Advanced tab (off by default). When enabled, dumping is passive: only when CreateTexture2D adds a **new** texture to the 2D cache (i.e. cache insert, not on cache hit). Requires D3D11 Texture Caching (2D) and vtable hooks. Files are written to a `dumped_textures` subfolder in the **current game folder** (directory of the process executable) as .dds (DX10 header). Filenames use the texture cache key (content hash), e.g. `tex2d_<16-char-hex>.dds`, so identical content overwrites the same file. 2D texture pixel data is written correctly (D3D11 sets SysMemSlicePitch to 0 for 2D textures; dump uses SysMemPitch × Height for the data size). Details: `dump_textures_enabled`; dump runs inside the TextureCachePut success block in CreateTexture2D_Detour; path from GetCurrentProcessPathW().parent_path() / "dumped_textures"; `utils/dds_texture_dump.cpp` DumpTexture2DToDDS.

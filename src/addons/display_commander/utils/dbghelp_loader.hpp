@@ -1,21 +1,24 @@
 #pragma once
 
 #include <windows.h>
+// Other Windows SDK (dbghelp requires Windows types from windows.h)
 #include <dbghelp.h>
 
 namespace dbghelp_loader {
 
 // Function pointer types for dbghelp functions
-using SymGetOptions_pfn = DWORD(WINAPI *)();
-using SymSetOptions_pfn = DWORD(WINAPI *)(DWORD);
-using SymInitialize_pfn = BOOL(WINAPI *)(HANDLE, PCSTR, BOOL);
-using SymCleanup_pfn = BOOL(WINAPI *)(HANDLE);
-using StackWalk64_pfn = BOOL(WINAPI *)(DWORD, HANDLE, HANDLE, LPSTACKFRAME64, PVOID, PREAD_PROCESS_MEMORY_ROUTINE64, PFUNCTION_TABLE_ACCESS_ROUTINE64, PGET_MODULE_BASE_ROUTINE64, PTRANSLATE_ADDRESS_ROUTINE64);
-using SymFunctionTableAccess64_pfn = PVOID(WINAPI *)(HANDLE, DWORD64);
-using SymGetModuleBase64_pfn = DWORD64(WINAPI *)(HANDLE, DWORD64);
-using SymFromAddr_pfn = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD64, PSYMBOL_INFO);
-using SymGetLineFromAddr64_pfn = BOOL(WINAPI *)(HANDLE, DWORD64, PDWORD, PIMAGEHLP_LINE64);
-using SymGetModuleInfo64_pfn = BOOL(WINAPI *)(HANDLE, DWORD64, PIMAGEHLP_MODULE64);
+using SymGetOptions_pfn = DWORD(WINAPI*)();
+using SymSetOptions_pfn = DWORD(WINAPI*)(DWORD);
+using SymInitialize_pfn = BOOL(WINAPI*)(HANDLE, PCSTR, BOOL);
+using SymCleanup_pfn = BOOL(WINAPI*)(HANDLE);
+using StackWalk64_pfn = BOOL(WINAPI*)(DWORD, HANDLE, HANDLE, LPSTACKFRAME64, PVOID, PREAD_PROCESS_MEMORY_ROUTINE64,
+                                      PFUNCTION_TABLE_ACCESS_ROUTINE64, PGET_MODULE_BASE_ROUTINE64,
+                                      PTRANSLATE_ADDRESS_ROUTINE64);
+using SymFunctionTableAccess64_pfn = PVOID(WINAPI*)(HANDLE, DWORD64);
+using SymGetModuleBase64_pfn = DWORD64(WINAPI*)(HANDLE, DWORD64);
+using SymFromAddr_pfn = BOOL(WINAPI*)(HANDLE, DWORD64, PDWORD64, PSYMBOL_INFO);
+using SymGetLineFromAddr64_pfn = BOOL(WINAPI*)(HANDLE, DWORD64, PDWORD, PIMAGEHLP_LINE64);
+using SymGetModuleInfo64_pfn = BOOL(WINAPI*)(HANDLE, DWORD64, PIMAGEHLP_MODULE64);
 
 // Function pointers
 extern SymGetOptions_pfn SymGetOptions_Original;
@@ -42,4 +45,4 @@ bool GetSuppressStackWalkLogging();
 // (SymGetModuleInfo64, SymFromAddr) works when logging stack frames. Idempotent.
 void EnsureSymbolsInitialized(HANDLE process);
 
-} // namespace dbghelp_loader
+}  // namespace dbghelp_loader

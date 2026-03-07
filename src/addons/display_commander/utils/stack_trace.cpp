@@ -208,6 +208,7 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
 
         std::ostringstream frame_info;
         frame_info << "[" << std::setfill('0') << std::setw(2) << frame_count << "] ";
+        bool has_pdb = false;
         if (stack_frame.AddrPC.Offset != 0) {
             // Format the stack frame
 
@@ -219,15 +220,17 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
             std::string symbol_name = GetSymbolName(process, stack_frame.AddrPC.Offset);
             frame_info << symbol_name;
 
-            // Get source info
+            // Get source info (line info requires PDB for the module)
             std::string source_info = GetSourceInfo(process, stack_frame.AddrPC.Offset);
             if (source_info != "Unknown") {
                 frame_info << " (" << source_info << ")";
+                has_pdb = true;
             }
         }
 
         // Add address
         frame_info << " [0x" << std::hex << std::uppercase << stack_frame.AddrPC.Offset << "]";
+        frame_info << (has_pdb ? " [pdb]" : " [no pdb]");
 
         stack_trace.push_back(frame_info.str());
         frame_count++;

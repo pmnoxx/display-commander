@@ -149,7 +149,7 @@ MainTabSettings::MainTabSettings()
       show_reshade_tab("show_reshade_tab", false, "DisplayCommander"),
       show_performance_tab("show_performance_tab", false, "DisplayCommander"),
       show_vulkan_tab("show_vulkan_tab", false, "DisplayCommander"),
-      vulkan_nvll_hooks_enabled("vulkan_nvll_hooks_enabled", false, "DisplayCommander"),
+      vulkan_nvll_hooks_enabled("vulkan_nvll_hooks_enabled_don", true, "DisplayCommander"),
       vulkan_vk_loader_hooks_enabled("vulkan_vk_loader_hooks_enabled", false, "DisplayCommander"),
       vulkan_append_reflex_extensions("vulkan_append_reflex_extensions", false, "DisplayCommander"),
       skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander"),

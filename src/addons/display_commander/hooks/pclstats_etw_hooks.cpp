@@ -112,8 +112,9 @@ ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle, PCEVENT_DESCRIPTOR E
     HMODULE calling_module = GetCallingDLL();
     HMODULE our_module = g_module.load(std::memory_order_relaxed);
     if (calling_module != nullptr && our_module != nullptr && calling_module == our_module) {
-        return EventWriteTransfer_Original(RegHandle, EventDescriptor, ActivityId, RelatedActivityId, UserDataCount,
-                                           UserData);
+        //     return EventWriteTransfer_Original(RegHandle, EventDescriptor, ActivityId, RelatedActivityId,
+        //     UserDataCount,
+        //                                       UserData);
     }
 
     REGHANDLE pcl_handle = g_pclstats_provider_handle.load(std::memory_order_relaxed);
@@ -244,10 +245,9 @@ bool PCLStatsReportingAllowed() {
     const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
                           || api == reshade::api::device_api::d3d12);
 
-    const bool no_game_pclstats =
-        g_count_pclstats_event.load(std::memory_order_relaxed) == 0
-        && g_count_pclstats_event_v2.load(std::memory_order_relaxed) == 0
-        && g_count_pclstats_event_v3.load(std::memory_order_relaxed) == 0;
+    const bool no_game_pclstats = g_count_pclstats_event.load(std::memory_order_relaxed) == 0
+                                  && g_count_pclstats_event_v2.load(std::memory_order_relaxed) == 0
+                                  && g_count_pclstats_event_v3.load(std::memory_order_relaxed) == 0;
     const bool past_warmup = g_global_frame_id.load(std::memory_order_acquire) >= 500;
     return is_dxgi && no_game_pclstats && past_warmup;
 }
@@ -256,13 +256,9 @@ bool PCLStatsReportingEnabled() {
     return PCLStatsReportingAllowed() && settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
 }
 
-void RecordPCLStatsMarkerCall() {
-    g_count_pclstats_marker_calls.fetch_add(1, std::memory_order_relaxed);
-}
+void RecordPCLStatsMarkerCall() { g_count_pclstats_marker_calls.fetch_add(1, std::memory_order_relaxed); }
 
-uint64_t GetPCLStatsMarkerCallCount() {
-    return g_count_pclstats_marker_calls.load(std::memory_order_relaxed);
-}
+uint64_t GetPCLStatsMarkerCallCount() { return g_count_pclstats_marker_calls.load(std::memory_order_relaxed); }
 
 void GetPCLStatsEtwCounts(uint64_t* out_pclstats_event, uint64_t* out_pclstats_event_v2,
                           uint64_t* out_pclstats_event_v3) {

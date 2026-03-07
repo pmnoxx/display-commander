@@ -85,6 +85,8 @@ EXTERN_C const GUID IID_IDirect3DDevice9 = {
 
 // Minimum CPU cores that can be selected (excludes 1-5)
 static constexpr int MIN_CPU_CORES_SELECTABLE = 6;
+// Width for FPS limit sliders and FPS Limiter Mode combo in Main tab
+static constexpr float kFpsLimiterItemWidth = 600.0f;
 
 namespace ui::new_ui {
 
@@ -3503,6 +3505,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     }
     float current_value = settings::g_mainTabSettings.fps_limit.GetValue();
     const char* fmt = (current_value > 0.0f) ? "%.3f FPS" : "No Limit";
+    imgui.SetNextItemWidth(kFpsLimiterItemWidth);
     if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit, "FPS Limit", fmt, imgui)) {
     }
     float cur_limit = settings::g_mainTabSettings.fps_limit.GetValue();
@@ -3536,6 +3539,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         }
         float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
         const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
+        imgui.SetNextItemWidth(kFpsLimiterItemWidth);
         if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "Background FPS Limit", fmt_bg,
                                imgui)) {
         }
@@ -3553,6 +3557,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     if (!enabled) {
         imgui.BeginDisabled();
     }
+    imgui.SetNextItemWidth(kFpsLimiterItemWidth);
     if (imgui.Combo("FPS Limiter Mode", &current_item, mode_items, 3)) {
         settings::g_mainTabSettings.fps_limiter_mode.SetValue(current_item);
         s_fps_limiter_mode.store(static_cast<FpsLimiterMode>(current_item));

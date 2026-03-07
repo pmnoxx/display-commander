@@ -4,6 +4,9 @@
 
 # unreleased
 
+## v0.12.335
+- **Vulkan: re-enabled native frame pacing** - Native frame pacing (Reflex-style FPS limiting via Vulkan latency markers) is enabled again for Vulkan games. The addon can again use the NvLowLatencyVk and/or Vulkan loader paths to apply the FPS limiter when Reflex mode is selected, improving frame pacing on Vulkan. Details: Vulkan hooks and ChooseFpsLimiter integration for reflex_marker_vk_nvll / reflex_marker_vk_loader.
+
 ## v0.12.334
 - **FPS limiter: show active entry points in tooltip** - Hovering over the "(src: …)" label next to FPS Limiter Mode now shows a list of all FPS limiter entry points (reflex_marker, dxgi_swapchain1, reshade_addon_event, etc.) with per-path status: **Active** (path currently applying the limiter), **OK** (path called in the last ~1s), or **-** (not called recently). Status text is color-coded (green for Active/OK, dimmed for inactive). Makes it easy to see which path is in use and which paths are available without opening the Experimental tab. Details: main_new_tab.cpp — tooltip uses BeginTooltip/EndTooltip with TextColored per line; status from g_chosen_fps_limiter_site and g_fps_limiter_last_timestamp_ns.
 

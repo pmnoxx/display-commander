@@ -2318,14 +2318,15 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
                                 "Enable Brightness, AutoHDR and ReShade paths",
                                 imgui)) {
-                // Value gates ApplyDisplayCommanderBrightness, ApplyDisplayCommanderAutoHdr,
-                // OverrideReShadeSettings_AddDisplayCommanderPaths
+                // Value gates ApplyDisplayCommanderBrightness, ApplyDisplayCommanderAutoHdr, and path add/remove.
+                // Re-apply ReShade config so paths are added or removed immediately.
+                OverrideReShadeSettings();
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx(
                     "When on: Brightness, AutoHDR and related controls are active, and Display Commander adds its "
                     "Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths. When off: the whole "
-                    "section is disabled and DC does not add those paths.");
+                    "section is disabled and DC removes those paths from ReShade config.");
             }
             std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
             if (!dc_reshade_root.empty()

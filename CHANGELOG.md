@@ -2,7 +2,10 @@
 
 ---
 
-## Unreleased
+## v0.12.328
+- **Brightness/AutoHDR ReShade paths: remove when unchecked** - Unchecking "Enable Brightness, AutoHDR and ReShade paths" now removes the Display Commander Shaders and Textures paths from ReShade's EffectSearchPaths and TextureSearchPaths (previously they were only not re-added). ReShade config is updated immediately when the checkbox is toggled. Tooltip updated to state that paths are removed when off. Details: `OverrideReShadeSettings_RemoveDisplayCommanderPaths` in main_entry.cpp; OverrideReShadeSettings calls add or remove based on setting; UI invokes OverrideReShadeSettings on checkbox change; addon.hpp declares OverrideReShadeSettings for UI.
+
+- **Auto color space: DXGI format, skip when already set, debug log** - Auto color space now reads the back buffer format from the DXGI swap chain (GetDesc or GetDesc1) instead of ReShade’s cached swapchain desc, so the correct format is used even when the desc is out of sync. The addon only calls SetColorSpace1 when the current color space does not already match the desired one: it stores the last set color space on the swap chain via SetPrivateData (GUID kDcSwapChainColorSpace) and skips apply when GetPrivateData shows it already matches. Before applying, a debug log line prints the reason (no stored color space, stored size mismatch, or stored color space does not match desired) and the desired vs stored values to help diagnose issues. Details: `AutoSetColorSpace`, `SetSwapChainColorSpace` in swapchain_events.cpp.
 
 ## v0.12.327
 - **Advanced tab: Unsupported features section** - D3D11 vtable hooks, texture tracking, texture caching (1D/2D/3D), content hash cap, dump textures, and texture stats are now grouped under a collapsible "Unsupported features" header at the bottom of the Advanced tab. Behavior unchanged; only UI location and grouping changed. Details: advanced_tab.cpp DrawAdvancedTabSettingsSection.

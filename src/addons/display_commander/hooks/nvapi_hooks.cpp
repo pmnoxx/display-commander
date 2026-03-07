@@ -118,6 +118,10 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                                                        NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
     CALL_GUARD(utils::get_now_ns());
+    if (pDev == nullptr || pSetLatencyMarkerParams == nullptr) {
+        // Let's not do anything for invalid arguments
+        return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+    }
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);

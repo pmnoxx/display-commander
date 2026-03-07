@@ -803,6 +803,9 @@ template bool ComboSettingEnumWrapper<InputBlockingMode>(ComboSettingEnum<InputB
 template class ComboSettingEnum<LogLevel>;
 template bool ComboSettingEnumWrapper<LogLevel>(ComboSettingEnum<LogLevel>&, const char*,
                                                display_commander::ui::IImGuiWrapper&, float);
+template class ComboSettingEnum<TaskbarHideMode>;
+template bool ComboSettingEnumWrapper<TaskbarHideMode>(ComboSettingEnum<TaskbarHideMode>&, const char*,
+                                                       display_commander::ui::IImGuiWrapper&, float);
 
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {

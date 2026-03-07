@@ -332,6 +332,13 @@ enum class ScreensaverMode : std::uint8_t {
     kDisable = 2              // Disable
 };
 
+/** Windows taskbar visibility: 0 = no change, 1 = hide when game in foreground, 2 = always hide. */
+enum class TaskbarHideMode : std::uint8_t {
+    kNoChanges = 0,
+    kInForeground = 1,
+    kAlways = 2
+};
+
 // Reflex mode when FPS limiter is OnPresent Sync (main tab combo)
 enum class OnPresentReflexMode : std::uint8_t {
     kLowLatency = 0,       // Low latency (default)
@@ -568,8 +575,12 @@ extern std::atomic<void*>
     g_last_swapchain_ptr_unsafe;  // Using void* to avoid reshade dependency // TODO: unsafe remove later
 extern std::atomic<reshade::api::device_api> g_last_reshade_device_api;
 extern std::atomic<uint32_t> g_last_api_version;  // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
-extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>>
-    g_last_swapchain_desc;  // Store last swapchain description
+/** Swapchain desc before OnCreateSwapchainCapture2 modifications (game-requested). */
+extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_pre;
+/** Swapchain desc after OnCreateSwapchainCapture2 modifications (actual create). */
+extern std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_post;
+/** True when Force Flip Discard upgrade (FLIP_SEQUENTIAL → FLIP_DISCARD) was applied on last create_swapchain. */
+extern std::atomic<bool> g_force_flip_discard_upgrade_done;
 extern std::atomic<HWND> g_last_swapchain_hwnd;
 /** HWND of the standalone settings UI window (No ReShade). Set by standalone UI; used to exclude it when inferring game
  * window from foreground. */
@@ -808,10 +819,10 @@ extern std::atomic<bool> s_suppress_dinput_hooks;
 // Logging level control (combo index 0=Debug, 1=Info, 2=Warning, 3=Error)
 inline LogLevel LogLevelFromComboIndex(int index) {
     switch (index) {
-        case 0: return LogLevel::Debug;
-        case 1: return LogLevel::Info;
-        case 2: return LogLevel::Warning;
-        case 3: return LogLevel::Error;
+        case 0:  return LogLevel::Debug;
+        case 1:  return LogLevel::Info;
+        case 2:  return LogLevel::Warning;
+        case 3:  return LogLevel::Error;
         default: return LogLevel::Debug;
     }
 }

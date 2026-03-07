@@ -2,6 +2,18 @@
 
 ---
 
+# unreleased
+
+## v0.12.331 (unreleased)
+- **Auto-hide Windows taskbar: Window Control selector** - The auto-hide Windows taskbar option is now a three-way selector in the Window Control section: "No changes" (do not hide), "In foreground" (hide taskbar while game is in foreground), "Always" (always hide taskbar while game is running). Replaces the previous checkbox in the ADHD section. If you had the old checkbox enabled, choose "In foreground" for the same behavior. Details: `TaskbarHideMode` enum in globals.hpp; `taskbar_hide_mode` (ComboSettingEnum) in main_tab_settings; `UpdateTaskbarVisibility(in_foreground, mode)` in utils/taskbar_helper; UI in main_new_tab Window Control section.
+- **Auto-hide Windows taskbar: recheck on every background update** - The auto-hide Windows taskbar feature now rechecks visibility whenever the continuous monitoring thread updates the game's foreground/background state, not only in the high-frequency block. The same UpdateTaskbarVisibility call is run after the per-second check_is_background() so that taskbar hide/show stays in sync with background status even when only the 1s path runs (e.g. before high-freq interval has elapsed). Details: continuous_monitoring.cpp — taskbar update block added after check_is_background() in the per-second block.
+- **Auto-hide Windows taskbar (when in foreground)** - New option (now in Window Control as selector "No changes" / "In foreground" / "Always"). When "In foreground" or "Always" is selected, the Windows taskbar (main and secondary monitors) is hidden accordingly and shown again when appropriate or when the addon unloads. Details: `taskbar_hide_mode` in main_tab_settings; `utils/taskbar_helper` (UpdateTaskbarVisibility, RestoreTaskbarIfHidden); exit_handler calls RestoreTaskbarIfHidden.
+- **Main tab DXGI subsection: Force Flip Discard upgrade** - When the game uses FLIP_SEQUENTIAL, a new "DXGI" subsection appears under Display Settings with an option "Force Flip Discard upgrade". When enabled, the addon upgrades the swap chain to FLIP_DISCARD in OnCreateSwapchainCapture2 (better frame pacing; requires restart). Status line shows "Upgrade applied (FLIP_SEQUENTIAL -> FLIP_DISCARD)" when the upgrade was done. The option is only shown when the last swap chain desc (pre-modification) was FLIP_SEQUENTIAL. Details: `g_last_swapchain_desc_pre` / `g_last_swapchain_desc_post` store desc before/after create; `g_force_flip_discard_upgrade_done` for status; main_tab_settings `force_flip_discard_upgrade`; swapchain_events.cpp FLIP_SEQUENTIAL block; main_new_tab.cpp DrawDisplaySettings_DXGI.
+
+## v0.12.330
+- **NvAPI_D3D_SetLatencyMarker: null-argument guard** - The NVAPI latency marker detour now returns early when the device or params pointer is null, forwarding the call to the original API instead of processing. Avoids potential crashes or undefined behavior when callers pass invalid arguments. Details: nvapi_hooks.cpp NvAPI_D3D_SetLatencyMarker_Detour.
+- **Advanced tab: remove Enable flip chain checkbox** - The "Enable flip chain" option has been removed from the HDR Display Settings section in the Advanced tab. Details: advanced_tab.cpp DrawHdrDisplaySettings.
+
 ## v0.12.329 (2026-03-07)
 - **Game default overrides: log once per process** - The "resource not found", "checking against exe", and "No game default override" messages are now emitted at most once per process to avoid log spam when the embedded resource is missing or when many callers check overrides. Details: default_overrides.cpp — atomic flags in LoadFromResource (per failure type) and in EnsureLoaded (exe check block).
 

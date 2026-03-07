@@ -91,8 +91,7 @@ static void BuildStandaloneFontsWithJapanese() {
         ImFontConfig merge_cfg = {};
         merge_cfg.MergeMode = true;
         merge_cfg.GlyphRanges = io.Fonts->GetGlyphRangesJapanese();
-        if (io.Fonts->AddFontFromFileTTF(path_utf8.c_str(), 18.0f, &merge_cfg, nullptr) != nullptr)
-            break;
+        if (io.Fonts->AddFontFromFileTTF(path_utf8.c_str(), 18.0f, &merge_cfg, nullptr) != nullptr) break;
     }
 }
 

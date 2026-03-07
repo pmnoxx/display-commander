@@ -749,6 +749,16 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             flip_oss << " to FLIP_DISCARD (flip model swap chain)";
             LogInfo("%s", flip_oss.str().c_str());
         }
+
+        // Force Flip Discard upgrade (Main tab DXGI subsection): FLIP_SEQUENTIAL → FLIP_DISCARD only
+        if (desc.present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL
+            && settings::g_mainTabSettings.force_flip_discard_upgrade.GetValue()) {
+            desc.present_mode = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            modified = true;
+            g_force_flip_discard_upgrade_done.store(true, std::memory_order_relaxed);
+            LogInfo("DXGI Force Flip Discard: Upgraded FLIP_SEQUENTIAL to FLIP_DISCARD");
+        }
+
         // Apply backbuffer format override if enabled (all APIs)
         if (settings::g_experimentalTabSettings.backbuffer_format_override_enabled.GetValue()) {
             reshade::api::format original_format = desc.back_buffer.texture.format;
@@ -1018,11 +1028,14 @@ bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapch
     if (desc.back_buffer.texture.width < 640) {
         return false;
     }
+
+    // Store pre-upgrade desc for UI (e.g. DXGI subsection: show option only when original was FLIP_SEQUENTIAL)
+    g_last_swapchain_desc_pre.store(std::make_shared<reshade::api::swapchain_desc>(desc));
+
     auto res = OnCreateSwapchainCapture2(api, desc, hwnd);
 
-    // Store swapchain description for UI display
-    auto initial_desc_copy = std::make_shared<reshade::api::swapchain_desc>(desc);
-    g_last_swapchain_desc.store(initial_desc_copy);
+    // Store post-upgrade desc for UI display (current swapchain as created)
+    g_last_swapchain_desc_post.store(std::make_shared<reshade::api::swapchain_desc>(desc));
     return res;
 }
 
@@ -1663,8 +1676,7 @@ void GetLastColorSpaceSupportForUI(int* out_dxgi, int* out_supported) {
 // GUID for Display Commander "last set DXGI color space" on swap chain (SetPrivateData/GetPrivateData).
 // Used to skip SetColorSpace1 when current already matches desired. Do not conflict with ReShade's SKID.
 static constexpr GUID kDcSwapChainColorSpace = {
-    0xdc5a1e70, 0xb3c4, 0x4d9e, { 0x8a, 0x2f, 0x1c, 0x4e, 0x5b, 0x6d, 0x7e, 0x8f }
-};
+    0xdc5a1e70, 0xb3c4, 0x4d9e, {0x8a, 0x2f, 0x1c, 0x4e, 0x5b, 0x6d, 0x7e, 0x8f}};
 
 // Helper to set swap chain and ReShade runtime color space (DXGI path). Tries the requested color space
 // anyway; only falls back to sRGB if SetColorSpace1 fails. Caches support result for UI.

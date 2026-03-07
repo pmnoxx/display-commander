@@ -1,9 +1,9 @@
 // Source Code <Display Commander> // follow this order for includes in all files
 #include "default_overrides.hpp"
-#include "display_commander_config.hpp"
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "display_commander_config.hpp"
 
 #include <toml++/toml.hpp>
 
@@ -42,6 +42,7 @@ static const std::map<std::string, std::string>& GetKeyDisplayNames() {
         {"PreventAlwaysOnTop", "Prevent Always on Top"},
         {"HideHDRCapabilities", "Hide HDR Capabilities"},
         {"EnableFlipChain", "Enable Flip Chain"},
+        {"ForceFlipDiscardUpgrade", "Force Flip Discard upgrade"},
         {"AutoColorspace", "Auto color space"},
         {"window_mode", "Window Mode"},
     };
@@ -120,7 +121,10 @@ void LoadFromResource() {
     if (hRes == nullptr) {
         static std::atomic<bool> s_warned_not_found{false};
         if (!s_warned_not_found.exchange(true)) {
-            LogWarn("Game default overrides: resource %d not found (rebuild addon so game_default_overrides.toml is embedded)", IDR_GAME_DEFAULT_OVERRIDES);
+            LogWarn(
+                "Game default overrides: resource %d not found (rebuild addon so game_default_overrides.toml is "
+                "embedded)",
+                IDR_GAME_DEFAULT_OVERRIDES);
         }
         return;
     }

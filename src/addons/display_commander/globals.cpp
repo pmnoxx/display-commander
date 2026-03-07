@@ -58,7 +58,6 @@ std::atomic<LONGLONG> g_dll_load_time_ns{0};
 // Display Commander state for multi-proxy: HOOKED (one instance) vs PROXY_DLL_ONLY (others)
 std::atomic<DisplayCommanderState> g_display_commander_state{DisplayCommanderState::DC_STATE_UNDECIDED};
 
-
 // Window settings
 std::atomic<AspectRatioType> s_aspect_index{AspectRatioType::k16_9};  // Default to 16:9
 
@@ -92,9 +91,7 @@ std::atomic<bool> s_restart_needed_nvapi{false};
 std::atomic<bool> s_suppress_dinput_hooks{false};  // Disabled by default
 
 // Logging level: read from main tab settings
-LogLevel GetMinLogLevel() {
-    return LogLevelFromComboIndex(settings::g_mainTabSettings.log_level.GetValue());
-}
+LogLevel GetMinLogLevel() { return LogLevelFromComboIndex(settings::g_mainTabSettings.log_level.GetValue()); }
 
 // Input blocking in background (0.0f off, 1.0f on)
 
@@ -163,7 +160,9 @@ std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by def
 std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr};  // TODO: unsafe remove later
 std::atomic<reshade::api::device_api> g_last_reshade_device_api{static_cast<reshade::api::device_api>(0)};
 std::atomic<uint32_t> g_last_api_version{0};
-std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc{nullptr};
+std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_pre{nullptr};
+std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_post{nullptr};
+std::atomic<bool> g_force_flip_discard_upgrade_done{false};
 std::atomic<HWND> g_last_swapchain_hwnd{nullptr};
 std::atomic<HWND> g_standalone_ui_hwnd{nullptr};
 std::atomic<bool> g_shutdown{false};
@@ -726,7 +725,7 @@ DLSSGSummary GetDLSSGSummary() {
         summary.scaling_ratio = std::string(buffer);
     }
 
-    // Get quality preset based on PerfQualityValue (like Special-K does)
+    // Get quality preset based on PerfQualityValue
     unsigned int perf_quality;
     if (g_ngx_parameters.get_as_uint("PerfQualityValue", perf_quality)) {
         switch (static_cast<NVSDK_NGX_PerfQuality_Value>(perf_quality)) {

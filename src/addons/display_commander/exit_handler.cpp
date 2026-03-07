@@ -12,6 +12,7 @@
 #include "utils/detour_call_tracker.hpp"
 #include "utils/display_commander_logger.hpp"
 #include "utils/logging.hpp"
+#include "utils/taskbar_helper.hpp"
 #include "utils/timing.hpp"
 
 namespace exit_handler {
@@ -67,6 +68,9 @@ void OnHandleExit(ExitSource source, const std::string& message) {
 
     // Best-effort display restoration on any exit
     display_restore::RestoreAllIfEnabled();
+
+    // Restore Windows taskbar if we hid it (e.g. ADHD auto-hide taskbar)
+    display_commander::utils::RestoreTaskbarIfHidden();
 
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();

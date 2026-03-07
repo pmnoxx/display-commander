@@ -1136,18 +1136,6 @@ void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_comm
             "so the game may use SDR mode instead.");
     }
 
-    // Enable Flip Chain
-    if (CheckboxSetting(settings::g_advancedTabSettings.enable_flip_chain, "Enable flip chain", imgui)) {
-        LogInfo("Enable flip chain setting changed to: %s",
-                settings::g_advancedTabSettings.enable_flip_chain.GetValue() ? "true" : "false");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
-            "This setting requires a game restart to take effect.\n"
-            "Only works with DirectX 10/11/12 (DXGI) games.");
-    }
-
     // Disable DPI Scaling checkbox
     if (CheckboxSetting(settings::g_advancedTabSettings.disable_dpi_scaling, "Disable DPI scaling", imgui)) {
         bool enabled = settings::g_advancedTabSettings.disable_dpi_scaling.GetValue();

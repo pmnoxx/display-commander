@@ -69,6 +69,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting prevent_tearing;
     ui::new_ui::BoolSetting limit_real_frames;
     ui::new_ui::BoolSetting increase_backbuffer_count_to_3;
+    /** DXGI only: when game uses FLIP_SEQUENTIAL, upgrade to FLIP_DISCARD in OnCreateSwapchainCapture2. */
+    ui::new_ui::BoolSetting force_flip_discard_upgrade;
 
     // Audio Settings
     ui::new_ui::FloatSetting audio_volume_percent;
@@ -149,6 +151,8 @@ class MainTabSettings {
 
     // Prevent display sleep & screensaver
     ui::new_ui::ComboSettingEnum<ScreensaverMode> screensaver_mode;
+    /** Windows taskbar: 0 = no change, 1 = hide when in foreground, 2 = always hide. */
+    ui::new_ui::ComboSettingEnum<TaskbarHideMode> taskbar_hide_mode;
 
     // Advanced Settings
     ui::new_ui::BoolSetting advanced_settings_enabled;
@@ -188,8 +192,8 @@ class MainTabSettings {
     ui::new_ui::ComboSetting brightness_colorspace;  // 0=Auto, 1=scRGB, 2=HDR10, 3=sRGB, 4=Gamma 2.2, 5=None
     ui::new_ui::FloatSetting gamma_value;            // 0.5–2.0, 1.0 = neutral (DisplayCommander_Control.fx Gamma)
     ui::new_ui::FloatSetting contrast_value;         // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Contrast)
-    ui::new_ui::FloatSetting saturation_value;  // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
-    ui::new_ui::FloatSetting hue_degrees;       // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
+    ui::new_ui::FloatSetting saturation_value;       // 0.0–2.0, 1.0 = neutral (DisplayCommander_Control.fx Saturation)
+    ui::new_ui::FloatSetting hue_degrees;            // -15 to +15, 0 = neutral (DisplayCommander_Control.fx HueDegrees)
     /** When enabled, upgrades swap chain to HDR (scRGB 16-bit float) on create_swapchain/init_swapchain (DXGI only). */
     ui::new_ui::BoolSetting swapchain_hdr_upgrade;
     /** 0 = scRGB (default), 1 = HDR10. Only used when swapchain_hdr_upgrade is true. */

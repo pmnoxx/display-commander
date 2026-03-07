@@ -2316,8 +2316,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
             if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
-                                "Enable Brightness, AutoHDR and ReShade paths",
-                                imgui)) {
+                                "Enable Brightness, AutoHDR and ReShade paths", imgui)) {
                 // Value gates ApplyDisplayCommanderBrightness, ApplyDisplayCommanderAutoHdr, and path add/remove.
                 // Re-apply ReShade config so paths are added or removed immediately.
                 OverrideReShadeSettings();
@@ -2325,12 +2324,12 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx(
                     "When on: Brightness, AutoHDR and related controls are active, and Display Commander adds its "
-                    "Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths. When off: the whole "
+                    "Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths. When off: the "
+                    "whole "
                     "section is disabled and DC removes those paths from ReShade config.");
             }
             std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
-            if (!dc_reshade_root.empty()
-                && imgui.Button(ICON_FK_FOLDER_OPEN " Open Shaders/Textures folder")) {
+            if (!dc_reshade_root.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open Shaders/Textures folder")) {
                 std::string folder_str = dc_reshade_root.string();
                 std::thread([folder_str]() {
                     HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
@@ -2443,7 +2442,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
                 // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade
-                auto desc_ptr = g_last_swapchain_desc.load();
+                auto desc_ptr = g_last_swapchain_desc_post.load();
                 bool backbuffer_8bit = false;
                 if (desc_ptr != nullptr) {
                     const auto fmt = desc_ptr->back_buffer.texture.format;
@@ -2867,7 +2866,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         // Prevent display sleep & screensaver mode
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.screensaver_mode, "Prevent display sleep & screensaver",
-                                    imgui)) {
+                                    imgui, 320.f)) {
             LogInfo("Prevent display sleep & screensaver mode changed to %d",
                     settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
@@ -2878,6 +2877,21 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 "- Disable when Focused: Prevents display sleep & screensaver when game window is focused\n"
                 "- Disable: Always prevents display sleep & screensaver while game is running\n\n"
                 "Note: Enable \"Prevent display sleep & screensaver\" in the Advanced tab for this to take effect.");
+        }
+
+        // Windows taskbar visibility
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.taskbar_hide_mode, "Auto-hide Windows taskbar",
+                                    imgui, 320.f)) {
+            LogInfo("Auto-hide Windows taskbar mode changed to %d",
+                    settings::g_mainTabSettings.taskbar_hide_mode.GetValue());
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Controls Windows taskbar visibility (main and secondary monitors):\n\n"
+                "- No changes: Do not hide the taskbar\n"
+                "- In foreground: Hide taskbar while game is in foreground, show when in background\n"
+                "- Always: Always hide the taskbar while the game is running.\n\n"
+                "Taskbar is restored when the addon unloads.");
         }
 
         imgui.Unindent();
@@ -3241,7 +3255,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
             imgui.Text("%dx%d", game_render_w, game_render_h);
 
             // Get bit depth from swapchain format (optional, in parens)
-            auto desc_ptr = g_last_swapchain_desc.load();
+            auto desc_ptr = g_last_swapchain_desc_post.load();
             if (desc_ptr != nullptr) {
                 const char* bit_depth_str = nullptr;
                 switch (desc_ptr->back_buffer.texture.format) {
@@ -4142,7 +4156,7 @@ void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& 
 
 // Context for VSync & Tearing swapchain debug tooltip (filled by PresentModeLine, consumed by SwapchainTooltip).
 // desc_holder keeps the swapchain desc alive for the tooltip duration to avoid use-after-free if
-// g_last_swapchain_desc is updated (e.g. swapchain recreated) while the tooltip is open.
+// g_last_swapchain_desc_post is updated (e.g. swapchain recreated) while the tooltip is open.
 struct VSyncTearingTooltipContext {
     std::shared_ptr<reshade::api::swapchain_desc> desc_holder;
     const reshade::api::swapchain_desc* desc = nullptr;
@@ -4215,7 +4229,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
         (current_api_pt == reshade::api::device_api::d3d10 || current_api_pt == reshade::api::device_api::d3d11
          || current_api_pt == reshade::api::device_api::d3d12);
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
-        auto desc_ptr_cb = g_last_swapchain_desc.load();
+        auto desc_ptr_cb = g_last_swapchain_desc_post.load();
         if (is_dxgi_pt) {
             if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 200.f)) {
                 LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
@@ -4280,7 +4294,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
         }
     }
 
-    auto desc_ptr = g_last_swapchain_desc.load();
+    auto desc_ptr = g_last_swapchain_desc_post.load();
     if (desc_ptr
         && (desc_ptr->back_buffer_count < 3 || settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue())) {
         imgui.SameLine();
@@ -4313,7 +4327,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     bool enable_flip = settings::g_advancedTabSettings.enable_flip_chain.GetValue();
     bool is_flip = false;
     if (is_dxgi) {
-        auto desc_for_flip = g_last_swapchain_desc.load();
+        auto desc_for_flip = g_last_swapchain_desc_post.load();
         if (desc_for_flip
             && (desc_for_flip->present_mode == DXGI_SWAP_EFFECT_FLIP_DISCARD
                 || desc_for_flip->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL)) {
@@ -4988,7 +5002,7 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
 static bool DrawDisplaySettings_VSyncAndTearing_PresentModeLine(display_commander::ui::IImGuiWrapper& imgui,
                                                                 VSyncTearingTooltipContext* out_ctx) {
     CALL_GUARD(utils::get_now_ns());
-    auto desc_ptr = g_last_swapchain_desc.load();
+    auto desc_ptr = g_last_swapchain_desc_post.load();
     if (!desc_ptr) {
         return false;
     }
@@ -5116,7 +5130,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
         }
         g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:swapchain_tooltip", std::memory_order_release);
 
-        if (!g_last_swapchain_desc.load()) {
+        if (!g_last_swapchain_desc_post.load()) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "No swapchain information available");
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -5126,6 +5140,57 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
         }
     }
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing:end", std::memory_order_release);
+}
+
+// Documentation: For best performance, use DXGI flip model (FLIP_DISCARD vs FLIP_SEQUENTIAL, DirectFlip).
+// Learn: https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/for-best-performance--use-dxgi-flip-model
+// Notes (source):
+// https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/direct3ddxgi/for-best-performance--use-dxgi-flip-model.md
+static const char kDxgiFlipModelDocUrl[] =
+    "https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/for-best-performance--use-dxgi-flip-model";
+
+static void DrawDisplaySettings_DXGI(display_commander::ui::IImGuiWrapper& imgui) {
+    auto desc_pre = g_last_swapchain_desc_pre.load();
+    const bool original_was_flip_sequential =
+        desc_pre != nullptr && desc_pre->present_mode == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    const bool upgrade_done = g_force_flip_discard_upgrade_done.load(std::memory_order_relaxed);
+
+    if (!original_was_flip_sequential && !upgrade_done) {
+        return;  // Nothing to show: not FLIP_SEQUENTIAL and no recent upgrade
+    }
+
+    if (imgui.CollapsingHeader("DXGI", ImGuiTreeNodeFlags_None)) {
+        if (original_was_flip_sequential || upgrade_done) {
+            bool force_discard = settings::g_mainTabSettings.force_flip_discard_upgrade.GetValue();
+            if (imgui.Checkbox("Force Flip Discard upgrade", &force_discard)) {
+                settings::g_mainTabSettings.force_flip_discard_upgrade.SetValue(force_discard);
+                s_restart_needed_vsync_tearing.store(true);
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Game requested FLIP_SEQUENTIAL. When enabled, upgrade to FLIP_DISCARD on next swapchain "
+                    "create for better frame pacing (requires restart).\n"
+                    "FLIP_DISCARD allows the OS to drop queued frames and can enable DirectFlip.\n"
+                    "Upgrade DONE: %s\n"
+                    "Doc: %s\n"
+                    "Notes: https://github.com/MicrosoftDocs/win32/blob/docs/desktop-src/direct3ddxgi/"
+                    "for-best-performance--use-dxgi-flip-model.md",
+                    upgrade_done ? "true" : "false", kDxgiFlipModelDocUrl);
+            }
+        }
+        if (upgrade_done) {
+            imgui.TextColored(::ui::colors::TEXT_SUCCESS, "Upgrade applied (FLIP_SEQUENTIAL -> FLIP_DISCARD)");
+        }
+        imgui.SameLine();
+        if (imgui.Button("doc")) {
+            ShellExecuteA(nullptr, "open", kDxgiFlipModelDocUrl, nullptr, nullptr, SW_SHOW);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Opens: %s", kDxgiFlipModelDocUrl);
+        }
+        imgui.Spacing();
+        imgui.Unindent();
+    }
 }
 
 void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
@@ -5138,6 +5203,9 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     const bool is_dxgi = api == display_commander::ui::GraphicsApi::D3D10
                          || api == display_commander::ui::GraphicsApi::D3D11
                          || api == display_commander::ui::GraphicsApi::D3D12;
+    if (is_dxgi) {
+        DrawDisplaySettings_DXGI(imgui);
+    }
     // Show graphics/API libraries loaded by the host (game), not by Display Commander or ReShade
     {
         const std::string host_apis = display_commanderhooks::GetHostLoadedGraphicsApisString();
@@ -6469,7 +6537,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                    static_cast<double>(tstats.texture_cache_3d.total_bytes) / (1024.0 * 1024.0));
         if (imgui.IsItemHovered() && show_tooltips) {
             imgui.SetTooltip(
-                "Per-dimension: lookups, hit, miss, entries, stored MiB. Skip (2D): no_init %llu  track_off %llu  cache_off %llu  ppNull %llu  key0 %llu  size0 %llu",
+                "Per-dimension: lookups, hit, miss, entries, stored MiB. Skip (2D): no_init %llu  track_off %llu  "
+                "cache_off %llu  ppNull %llu  key0 %llu  size0 %llu",
                 static_cast<unsigned long long>(tstats.texture_cache_skip_no_initial_data),
                 static_cast<unsigned long long>(tstats.texture_cache_skip_tracking_off),
                 static_cast<unsigned long long>(tstats.texture_cache_skip_caching_off),
@@ -8532,6 +8601,7 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.adhd_multi_monitor_enabled.GetValue() ? "enabled" : "disabled");
         }
     }
+    imgui.Unindent();
     imgui.EndGroup();
     if (imgui.IsItemHovered()) {
         adhd_multi_monitor::BackgroundWindowDebugInfo info = {};
@@ -8539,7 +8609,7 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
         char buf[384];
         int n = std::snprintf(buf, sizeof(buf),
                               "ADHD on game display: black window on game's monitor.\n"
-                              "ADHD Multi-Monitor Mode: cover all other monitors (like Special-K).\n\n"
+                              "ADHD Multi-Monitor Mode: cover all other monitors.\n\n"
                               "Background window: HWND %p, %s\n"
                               "Position: (%d, %d), Size: %d x %d\n"
                               "Visible: %s",
@@ -8550,7 +8620,7 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
         } else {
             imgui.SetTooltip(
                 "ADHD on game display: black window on game's monitor.\n"
-                "ADHD Multi-Monitor Mode: cover all other monitors (like Special-K).");
+                "ADHD Multi-Monitor Mode: cover all other monitors.");
         }
     }
 }

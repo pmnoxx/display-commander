@@ -64,6 +64,7 @@
 #include <d3d9types.h>
 #include <dxgi.h>
 #include <minwindef.h>
+#include <psapi.h>
 #include <shellapi.h>
 #include <sysinfoapi.h>
 #include <reshade_imgui.hpp>
@@ -3326,7 +3327,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 }
             }
 
-            // RAM (system memory) on the same line
+            // RAM (system memory) on the same line: X(Y)/Z = system used (current process used) / total
             imgui.SameLine();
             MEMORYSTATUSEX mem_status = {};
             mem_status.dwLength = sizeof(mem_status);
@@ -3334,12 +3335,23 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
                 const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
                 const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
+                PROCESS_MEMORY_COUNTERS pmc = {};
+                pmc.cb = sizeof(pmc);
+                const bool have_process =
+                    (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
+                const uint64_t process_mib = have_process ? (pmc.WorkingSetSize / (1024ULL * 1024ULL)) : 0;
                 imgui.TextColored(ui::colors::TEXT_LABEL, "RAM:");
                 imgui.SameLine();
-                imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                           static_cast<unsigned long long>(ram_total_mib));
+                if (have_process) {
+                    imgui.Text("%llu (%llu) / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(process_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+                } else {
+                    imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+                }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
+                    imgui.SetTooltip("System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
                 }
             } else {
                 imgui.TextColored(ui::colors::TEXT_LABEL, "RAM:");
@@ -6501,7 +6513,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             }
         }
 
-        // RAM (system memory) on the same line
+        // RAM (system memory) on the same line: X(Y)/Z = system used (current process used) / total
         imgui.SameLine();
         MEMORYSTATUSEX mem_status = {};
         mem_status.dwLength = sizeof(mem_status);
@@ -6509,15 +6521,32 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             const uint64_t ram_used = mem_status.ullTotalPhys - mem_status.ullAvailPhys;
             const uint64_t ram_used_mib = ram_used / (1024ULL * 1024ULL);
             const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
+            PROCESS_MEMORY_COUNTERS pmc = {};
+            pmc.cb = sizeof(pmc);
+            const bool have_process =
+                (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
+            const uint64_t process_mib = have_process ? (pmc.WorkingSetSize / (1024ULL * 1024ULL)) : 0;
             if (settings::g_mainTabSettings.show_labels.GetValue()) {
-                imgui.Text("RAM: %llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                           static_cast<unsigned long long>(ram_total_mib));
+                if (have_process) {
+                    imgui.Text("RAM: %llu (%llu) / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(process_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+                } else {
+                    imgui.Text("RAM: %llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+                }
             } else {
-                imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
-                           static_cast<unsigned long long>(ram_total_mib));
+                if (have_process) {
+                    imgui.Text("%llu (%llu) / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(process_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+                } else {
+                    imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(ram_used_mib),
+                               static_cast<unsigned long long>(ram_total_mib));
+                }
             }
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("System physical memory in use / total (GlobalMemoryStatusEx).");
+                imgui.SetTooltip("System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "RAM: N/A");

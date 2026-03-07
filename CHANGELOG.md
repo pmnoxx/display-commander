@@ -4,6 +4,9 @@
 
 # unreleased
 
+## v0.12.336
+- **RAM usage: show game (process) memory** - The Main tab and performance overlay now display RAM as **X (Y) / Z** MiB: X = system physical memory in use, Y = current process (game) working set, Z = total system RAM. This makes it easy to see both total system usage and how much the game is using. If process memory cannot be read, the display falls back to X / Z. Details: main_new_tab.cpp — GetProcessMemoryInfo(GetCurrentProcess(), WorkingSetSize) for Y; tooltip explains all three values.
+
 ## v0.12.335
 - **Vulkan: re-enabled native frame pacing** - Native frame pacing (Reflex-style FPS limiting via Vulkan latency markers) is enabled again for Vulkan games. The addon can again use the NvLowLatencyVk and/or Vulkan loader paths to apply the FPS limiter when Reflex mode is selected, improving frame pacing on Vulkan. Details: Vulkan hooks and ChooseFpsLimiter integration for reflex_marker_vk_nvll / reflex_marker_vk_loader.
 

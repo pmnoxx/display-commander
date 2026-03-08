@@ -1609,7 +1609,9 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     // d3d12.dll
     else if (lowerModuleName.find(L"d3d12.dll") != std::wstring::npos) {
         LogInfo("Installing D3D12 device hooks for module: %ws", moduleName.c_str());
-        if (InstallD3D12DeviceHooks(hModule)) {
+        if (HasReframeworkPluginModule()) {
+            LogInfo("Skipping D3D12 hooks installation - ReFramework plugin detected");
+        } else if (InstallD3D12DeviceHooks(hModule)) {
             LogInfo("D3D12 device hooks installed successfully");
         }
     } else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {

@@ -4,7 +4,12 @@
 
 # unreleased
 
+
+## v0.12.346
+- **Skip D3D12 hooks when ReFramework is detected** - When loading d3d12.dll, the addon no longer installs D3D12 device hooks if a ReFramework plugin module is present (any loaded module with "reframework\\plugins" in its path). Avoids conflicts when both Display Commander and ReFramework hook D3D12. Details: loadlibrary_hooks.cpp d3d12.dll branch uses HasReframeworkPluginModule() to skip InstallD3D12DeviceHooks.
+
 ## v0.12.345
+- **Max queued frames for Use Reflex markers as FPS limiter** - Under "Use Reflex Latency Markers as fps limiter" a slider (0–5) was added for max queued frames. Value 5 is shown as "Game default". The setting is persisted as `reflex_fps_limiter_max_queued_frames`. Details: main_tab_settings reflex_fps_limiter_max_queued_frames; main_new_tab.cpp slider with tooltip.
 - **FPS limiter setting for Frame Generation** - Added a new FPS limiter option for Frame Generation (DLSS-G): when enabled, the limiter hooks the Streamline proxy swap chain’s OnPresent so it limits real (native) frames. The checkbox appears in the FPS limiter section when native frame pacing is in sync.
 
 ## v0.12.344
@@ -14,7 +19,7 @@
 - **Fixed PCL stats decoding** - PCLStats ETW events from games (NVIDIA Reflex / Streamline) are now decoded correctly even when the TraceLogging payload no longer includes the event name in a descriptor. Marker and frame ID are read using the documented layout (metadata-first or payload-only), so latency markers are counted and the FPS limiter path works again. Details: pclstats_etw_hooks.cpp — `DecodePclStatsEvent()` handles Layout A and B; `DecodedPclStatsEvent`, `ReadMarkerFromDescriptor`, `ReadFrameIdFromDescriptor`, `ClassifyPclStatsEventName`.
 
 ## v0.12.342
-- **Native frame pacing for FG: disabled by default** - The "Native frame pacing" option (limits native frame rate when Frame Generation / DLSS-G is active) is now off by default. You can still enable it in the FPS limiter section when native frame pacing is in sync if you want to try improved frame pacing with FG. Details: `native_frame_pacing` default changed to false in main_tab_settings.
+- **Native frame pacing for FG: disabled by default** - The "Native frame pacing" option (limits native frame rate when Frame Generation / DLSS-G is active) is now off by default. You can still enable it in the FPS limiter section when native frame pacing is in sync if you want to try improved frame pacing with FG. Details: `use_reflex_markers_as_fps_limiter` default changed to false in main_tab_settings.
 
 ## v0.12.341
 - **Window Control: Focus button** - A "Focus" button was added next to "Minimize Window" in the Main tab Window Control section. It brings the game window to the foreground and restores it if minimized (ShowWindow SW_RESTORE then SetForegroundWindow). Details: main_new_tab.cpp DrawWindowControls.

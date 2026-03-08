@@ -1056,7 +1056,7 @@ bool InstallDxgiFactoryHooks(HMODULE dxgi_module) {
         LogInfo("CreateDXGIFactory2 ReShade hook created successfully");
     }
 
-    LogInfo("DXGI hooks installed successfully");
+    LogInfo("DXGI Factory hooks installed successfully");
 
     // Mark DXGI hooks as installed
 

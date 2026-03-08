@@ -996,6 +996,12 @@ static HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Streamline
                                                     ppSwapChain);
         return E_NOINTERFACE;
     }
+    // Upgrade to HDR10: match hdr_upgrade (format + FLIP_DISCARD + ALLOW_TEARING + BufferCount >= 2)
+    // DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
+    // desc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
+    // if (desc.BufferCount < 2) desc.BufferCount = 2;
+    // desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    // desc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
     HRESULT hr = IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc,
                                                                           pRestrictToOutput, ppSwapChain);
     static int s_err_count = 0;

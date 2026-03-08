@@ -92,7 +92,7 @@ bool RefreshRateMonitor::InitializeWaitForVBlank() {
     // We'll create a DXGI factory and get the output to use WaitForVBlank
     HRESULT hr = display_commanderhooks::CreateDXGIFactory1_Direct(IID_PPV_ARGS(&m_dxgi_factory));
     if (FAILED(hr)) {
-        LogError("Failed to create DXGI factory: 0x%08X", hr);
+        LogError("[RefreshRateMonitor] Failed to create DXGI factory: 0x%08X", hr);
         return false;
     }
 
@@ -100,7 +100,7 @@ bool RefreshRateMonitor::InitializeWaitForVBlank() {
     IDXGIAdapter1* adapter = nullptr;
     hr = m_dxgi_factory->EnumAdapters1(0, &adapter);
     if (FAILED(hr)) {
-        LogError("Failed to enumerate adapters: 0x%08X", hr);
+        LogError("[RefreshRateMonitor] Failed to enumerate adapters: 0x%08X", hr);
         return false;
     }
 
@@ -109,11 +109,11 @@ bool RefreshRateMonitor::InitializeWaitForVBlank() {
     adapter->Release();
 
     if (FAILED(hr)) {
-        LogError("Failed to enumerate outputs: 0x%08X", hr);
+        LogError("[RefreshRateMonitor] Failed to enumerate outputs: 0x%08X", hr);
         return false;
     }
 
-    LogInfo("Successfully initialized DXGI output for WaitForVBlank");
+    LogInfo("[RefreshRateMonitor] Successfully initialized DXGI output for WaitForVBlank");
     return true;
 }
 

@@ -11,6 +11,7 @@
 #include "../utils/timing.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
+#include "utils/timing.hpp"
 
 #include <MinHook.h>
 #include <algorithm>
@@ -170,7 +171,11 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
     bool use_present_end = false;
 
-    bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
+    auto reflex_fps_limiter_max_queued_frames =
+        settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue();
+
+    bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue()
+                                        && reflex_fps_limiter_max_queued_frames == 5;  // game default
 
     if (native_pacing_sim_start_only) {
         bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
@@ -214,6 +219,28 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         if (pSetLatencyMarkerParams != nullptr
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
             return NVAPI_OK;
+        }
+
+        if (reflex_fps_limiter_max_queued_frames < 5) {
+            const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
+            const size_t prevSlot = static_cast<size_t>(
+                (frame_id - 1 + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
+            const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+
+            if (g_latency_marker_buffer[prevSlot].frame_id.load(std::memory_order_relaxed)
+                == frame_id - 1 - reflex_fps_limiter_max_queued_frames) {
+                auto start_ns = utils::get_now_ns();
+                while (
+                    g_latency_marker_buffer[prevSlot].marker_time_ns[NV_LATENCY_MARKER_TYPE::SIMULATION_START].load()
+                    > g_latency_marker_buffer[prevSlot].marker_time_ns[NV_LATENCY_MARKER_TYPE::PRESENT_START].load()) {
+                    // XXX
+                    if (utils::get_now_ns() - start_ns > 100 * utils::NS_TO_MS) {
+                        // safety net
+                        break;
+                    }
+                    YieldProcessor();
+                }
+            }
         }
     }
 

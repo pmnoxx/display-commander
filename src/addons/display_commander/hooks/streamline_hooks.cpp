@@ -538,11 +538,11 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
     //   Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
-    Microsoft::WRL::ComPtr<IDXGIFactory7> dxgi_factory7;
+    Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
     //    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
-    if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory7))) && dxgi_factory7 != nullptr) {
+    if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
         // Hook the Streamline proxy factory vtable so CreateSwapChain* go through our detours (log + HookSwapchain).
-        display_commanderhooks::dxgi::HookStreamlineProxyFactory(dxgi_factory7.Get());
+        display_commanderhooks::dxgi::HookStreamlineProxyFactory(dxgi_factory.Get());
     }
     /* else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
         LogError("[slUpgradeInterface] Found IDXGIFactory interface not hooked TODO");

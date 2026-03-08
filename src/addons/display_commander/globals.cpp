@@ -246,21 +246,21 @@ bool IsFpsLimiterSiteEligible(FpsLimiterCallSite site, uint64_t timestamp_ns) {
 
 const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
     switch (site) {
-        case FpsLimiterCallSite::reflex_marker:              return "reflex_marker";
-        case FpsLimiterCallSite::reflex_marker_vk_nvll:      return "reflex_marker_vk_nvll";
-        case FpsLimiterCallSite::reflex_marker_vk_loader:    return "reflex_marker_vk_loader";
-        case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
-        case FpsLimiterCallSite::dxgi_swapchain1:            return "dxgi_swapchain1";
-        case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
+        case FpsLimiterCallSite::reflex_marker:                    return "reflex_marker";
+        case FpsLimiterCallSite::reflex_marker_vk_nvll:            return "reflex_marker_vk_nvll";
+        case FpsLimiterCallSite::reflex_marker_vk_loader:          return "reflex_marker_vk_loader";
+        case FpsLimiterCallSite::reflex_marker_pclstats_etw:       return "reflex_marker_pclstats_etw";
+        case FpsLimiterCallSite::dxgi_swapchain1:                  return "dxgi_swapchain1";
+        case FpsLimiterCallSite::dxgi_swapchain:                   return "dxgi_swapchain";
         case FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy: return "dxgi_swapchain1_streamline_proxy";
         case FpsLimiterCallSite::dxgi_swapchain_streamline_proxy:  return "dxgi_swapchain_streamline_proxy";
-        case FpsLimiterCallSite::dx9_present:                return "dx9_present";
-        case FpsLimiterCallSite::dx9_presentex:              return "dx9_presentex";
-        case FpsLimiterCallSite::opengl_swapbuffers:         return "opengl_swapbuffers";
-        case FpsLimiterCallSite::ddraw_flip:                 return "ddraw_flip";
-        case FpsLimiterCallSite::reshade_addon_event:        return "reshade_addon_event";
-        case FpsLimiterCallSite::dxgi_factory_wrapper:       return "dxgi_factory_wrapper";
-        default:                                             return "?";
+        case FpsLimiterCallSite::dx9_present:                      return "dx9_present";
+        case FpsLimiterCallSite::dx9_presentex:                    return "dx9_presentex";
+        case FpsLimiterCallSite::opengl_swapbuffers:               return "opengl_swapbuffers";
+        case FpsLimiterCallSite::ddraw_flip:                       return "ddraw_flip";
+        case FpsLimiterCallSite::reshade_addon_event:              return "reshade_addon_event";
+        case FpsLimiterCallSite::dxgi_factory_wrapper:             return "dxgi_factory_wrapper";
+        default:                                                   return "?";
     }
 }
 
@@ -272,10 +272,9 @@ FpsLimiterCallSite GetChosenFrameTimeLocation() {
     const FpsLimiterCallSite site = static_cast<FpsLimiterCallSite>(chosen);
     if (site == FpsLimiterCallSite::dxgi_swapchain1 || site == FpsLimiterCallSite::dxgi_swapchain
         || site == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy
-        || site == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy
-        || site == FpsLimiterCallSite::dx9_present || site == FpsLimiterCallSite::dx9_presentex
-        || site == FpsLimiterCallSite::opengl_swapbuffers || site == FpsLimiterCallSite::ddraw_flip
-        || site == FpsLimiterCallSite::reshade_addon_event) {
+        || site == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy || site == FpsLimiterCallSite::dx9_present
+        || site == FpsLimiterCallSite::dx9_presentex || site == FpsLimiterCallSite::opengl_swapbuffers
+        || site == FpsLimiterCallSite::ddraw_flip || site == FpsLimiterCallSite::reshade_addon_event) {
         return site;
     }
     return FpsLimiterCallSite::reshade_addon_event;
@@ -292,7 +291,7 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
         if ((site == FpsLimiterCallSite::reflex_marker || site == FpsLimiterCallSite::reflex_marker_vk_nvll
              || site == FpsLimiterCallSite::reflex_marker_vk_loader
              || site == FpsLimiterCallSite::reflex_marker_pclstats_etw)
-            && !settings::g_mainTabSettings.native_frame_pacing.GetValue()) {
+            && !settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue()) {
             continue;
         }
         if ((site == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy

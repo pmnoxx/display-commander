@@ -182,6 +182,10 @@ using IDXGIOutput6_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIOutput6* This
 // Original function pointers
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
 extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original;
+
+// Streamline proxy swap chain (sl_proxy_dxgi_swapchain / sl_proxy_dxgi_swapchain1) - only Present/Present1 for FPS limiter
+extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Streamline_Original;
+extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Streamline_Original;
 extern IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original;
 extern IDXGISwapChain_GetDesc1_pfn IDXGISwapChain_GetDesc1_Original;
 extern IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceSupport_Original;
@@ -189,6 +193,12 @@ extern IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original;
 extern IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Original;
 extern IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Original;
 extern IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Original;
+
+// Streamline proxy factory vtable originals (separate from game factory so both can be hooked)
+extern IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Streamline_Original;
+extern IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original;
+extern IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original;
+extern IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original;
 
 // Additional original function pointers
 extern IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original;
@@ -279,8 +289,16 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Detour(IDX
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain* swapchain);
 
+// Hook only Present/Present1 on a Streamline proxy swap chain (sl_proxy_dxgi_swapchain, sl_proxy_dxgi_swapchain1)
+// for FPS limiter integration. Does not hook other methods.
+bool HookStreamlineProxySwapchain(IDXGISwapChain* swapchain);
+
 // Hook a specific factory when it's created
 bool HookFactory(IUnknown* iunknown);
+
+// Hook the Streamline proxy DXGI factory vtable (CreateSwapChain*). Idempotent; call when slUpgradeInterface
+// returns IDXGIFactory7. Uses separate originals so game factory and Streamline proxy can both be hooked.
+bool HookStreamlineProxyFactory(IUnknown* iunknown);
 
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain);

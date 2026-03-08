@@ -55,6 +55,8 @@ class MainTabSettings {
         reflex_disabled_limiter_mode;  // Used when FPS limiter is off (checkbox unchecked) or mode is LatentSync
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting native_frame_pacing;
+    /** When IsNativeFramePacingInSync: use Streamline proxy swap chain Present/Present1 for FPS limiter. */
+    ui::new_ui::BoolSetting use_streamline_proxy_fps_limiter;
     ui::new_ui::BoolSetting native_pacing_sim_start_only;
     ui::new_ui::BoolSetting delay_present_start_after_sim_enabled;
     ui::new_ui::FloatSetting delay_present_start_frames;

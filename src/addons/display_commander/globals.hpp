@@ -633,6 +633,8 @@ enum class FpsLimiterCallSite {
     reflex_marker_pclstats_etw,  // PCLStats ETW (EventWriteTransfer) – first 6 markers only
     dxgi_swapchain1,             // DXGI IDXGISwapChain1::Present1 detour
     dxgi_swapchain,              // DXGI IDXGISwapChain::Present detour
+    dxgi_swapchain1_streamline_proxy,  // Streamline proxy IDXGISwapChain1::Present1 (sl_proxy_dxgi_swapchain1)
+    dxgi_swapchain_streamline_proxy,  // Streamline proxy IDXGISwapChain::Present (sl_proxy_dxgi_swapchain)
     dx9_present,                 // D3D9 IDirect3DDevice9::Present detour
     dx9_presentex,               // D3D9 IDirect3DDevice9Ex::PresentEx detour
     opengl_swapbuffers,          // OpenGL wglSwapBuffers detour

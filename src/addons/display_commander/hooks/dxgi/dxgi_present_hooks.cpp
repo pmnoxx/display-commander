@@ -316,6 +316,11 @@ bool IsVTableEntryValid(void** vtable, int index) {
 // Original function pointers
 IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original = nullptr;
 IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original = nullptr;
+
+// Streamline proxy swap chain (only Present/Present1 hooked for FPS limiter)
+IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Streamline_Original = nullptr;
+IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Streamline_Original = nullptr;
+
 IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original = nullptr;
 IDXGISwapChain_GetDesc1_pfn IDXGISwapChain_GetDesc1_Original = nullptr;
 IDXGISwapChain_CheckColorSpaceSupport_pfn IDXGISwapChain_CheckColorSpaceSupport_Original = nullptr;
@@ -323,6 +328,13 @@ IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Original = nullptr
 IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Original = nullptr;
 IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Original = nullptr;
 IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Original = nullptr;
+
+// Streamline proxy factory vtable originals
+IDXGIFactory_CreateSwapChain_pfn IDXGIFactory_CreateSwapChain_Streamline_Original = nullptr;
+IDXGIFactory1_CreateSwapChainForHwnd_pfn IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original = nullptr;
+IDXGIFactory1_CreateSwapChainForCoreWindow_pfn IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original = nullptr;
+IDXGIFactory2_CreateSwapChainForComposition_pfn IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original =
+    nullptr;
 
 // Additional original function pointers
 IDXGISwapChain_GetBuffer_pfn IDXGISwapChain_GetBuffer_Original = nullptr;
@@ -526,6 +538,96 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     ::QueryDxgiCompositionState(This);
     ::dxgi::fps_limiter::SignalRefreshRateMonitor();
 
+    return res;
+}
+
+// Streamline proxy swap chain: Present detour (FPS limiter only when use_streamline_proxy_fps_limiter is on)
+static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGISwapChain* This, UINT SyncInterval,
+                                                                          UINT PresentFlags) {
+    if (in_present_call.load() > 0) {
+        if (IDXGISwapChain_Present_Streamline_Original != nullptr)
+            return IDXGISwapChain_Present_Streamline_Original(This, SyncInterval, PresentFlags);
+        return This->Present(SyncInterval, PresentFlags);
+    }
+    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
+    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
+    if (override_val >= 1) {
+        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
+    } else if (override_val == 0) {
+        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+    }
+    const LONGLONG now_ns = utils::get_now_ns();
+    display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
+    CALL_GUARD(now_ns);
+    g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
+    bool use_fps_limiter = false;
+    if (settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue()) {
+        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()),
+                         FpsLimiterCallSite::dxgi_swapchain_streamline_proxy);
+        use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain_streamline_proxy);
+        if (use_fps_limiter) {
+            ::OnPresentFlags2(true, true);
+            RecordNativeFrameTime();
+        }
+        if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy) {
+            RecordFrameTime(FrameTimeMode::kPresent);
+        }
+    }
+    if (IDXGISwapChain_Present_Streamline_Original == nullptr) {
+        return This->Present(effective_interval, PresentFlags);
+    }
+    auto res = IDXGISwapChain_Present_Streamline_Original(This, effective_interval, PresentFlags);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain::Present (Streamline)", res, &s_err_count);
+    if (use_fps_limiter) {
+        HandlePresentAfter(true);
+    }
+    ::QueryDxgiCompositionState(This);
+    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    CALL_GUARD(utils::get_now_ns());
+    return res;
+}
+
+// Streamline proxy swap chain: Present1 detour (FPS limiter only when use_streamline_proxy_fps_limiter is on)
+static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(
+    IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
+    CALL_GUARD(utils::get_now_ns());
+    const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
+    const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
+    if (override_val >= 1) {
+        PresentFlags &= ~DXGI_PRESENT_ALLOW_TEARING;
+    } else if (override_val == 0) {
+        PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
+    }
+    g_dxgi_sc1_event_counters[DXGI_SC1_EVENT_PRESENT1].fetch_add(1);
+    bool use_fps_limiter = false;
+    if (settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue()) {
+        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()),
+                         FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy);
+        use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy);
+        if (use_fps_limiter) {
+            ::OnPresentFlags2(true, false);
+            RecordNativeFrameTime();
+        }
+        if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy) {
+            RecordFrameTime(FrameTimeMode::kPresent);
+        }
+    }
+    in_present_call.fetch_add(1);
+    if (IDXGISwapChain_Present1_Streamline_Original == nullptr) {
+        auto res = This->Present1(effective_interval, PresentFlags, pPresentParameters);
+        in_present_call.fetch_sub(1);
+        return res;
+    }
+    auto res = IDXGISwapChain_Present1_Streamline_Original(This, effective_interval, PresentFlags, pPresentParameters);
+    in_present_call.fetch_sub(1);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGISwapChain1::Present1 (Streamline)", res, &s_err_count);
+    if (use_fps_limiter) {
+        HandlePresentAfter(false);
+    }
+    ::QueryDxgiCompositionState(This);
+    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
     return res;
 }
 
@@ -839,17 +941,17 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(IDXG
 
 // IDXGIFactory2::CreateSwapChainForComposition (vtable index 24). Log errors and hook new swapchain on success.
 HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Detour(IDXGIFactory2* This, IUnknown* pDevice,
-                                                                              const DXGI_SWAP_CHAIN_DESC1* pDesc,
-                                                                              IDXGIOutput* pRestrictToOutput,
-                                                                              IDXGISwapChain1** ppSwapChain) {
+                                                                             const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                             IDXGIOutput* pRestrictToOutput,
+                                                                             IDXGISwapChain1** ppSwapChain) {
     CALL_GUARD(utils::get_now_ns());
     g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
 
     if (IDXGIFactory2_CreateSwapChainForComposition_Original == nullptr) {
         return E_NOINTERFACE;
     }
-    HRESULT hr = IDXGIFactory2_CreateSwapChainForComposition_Original(This, pDevice, pDesc, pRestrictToOutput,
-                                                                      ppSwapChain);
+    HRESULT hr =
+        IDXGIFactory2_CreateSwapChainForComposition_Original(This, pDevice, pDesc, pRestrictToOutput, ppSwapChain);
     {
         static int s_err_count = 0;
         LogDxgiErrorUpTo10("IDXGIFactory2::CreateSwapChainForComposition", hr, &s_err_count);
@@ -857,6 +959,100 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Detour(IDX
     if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
         LogInfo("IDXGIFactory2::CreateSwapChainForComposition succeeded, hooking new swapchain: 0x%p", *ppSwapChain);
         HookSwapchain(*ppSwapChain);
+    }
+    return hr;
+}
+
+// Streamline proxy factory detours (same behavior as above but call Streamline originals)
+static HRESULT STDMETHODCALLTYPE IDXGIFactory_CreateSwapChain_Streamline_Detour(IDXGIFactory* This, IUnknown* pDevice,
+                                                                                DXGI_SWAP_CHAIN_DESC* pDesc,
+                                                                                IDXGISwapChain** ppSwapChain) {
+    CALL_GUARD(utils::get_now_ns());
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
+    if (IDXGIFactory_CreateSwapChain_Streamline_Original == nullptr) {
+        return This->CreateSwapChain(pDevice, pDesc, ppSwapChain);
+    }
+    HRESULT hr = IDXGIFactory_CreateSwapChain_Streamline_Original(This, pDevice, pDesc, ppSwapChain);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGIFactory::CreateSwapChain (Streamline)", hr, &s_err_count);
+    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
+        LogInfo("IDXGIFactory::CreateSwapChain (Streamline) succeeded, hooking proxy swapchain Present/Present1: 0x%p",
+                *ppSwapChain);
+        HookStreamlineProxySwapchain(*ppSwapChain);
+    }
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Detour(
+    IDXGIFactory1* This, IUnknown* pDevice, HWND hWnd, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc, IDXGIOutput* pRestrictToOutput,
+    IDXGISwapChain1** ppSwapChain) {
+    CALL_GUARD(utils::get_now_ns());
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
+    if (IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original == nullptr) {
+        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
+        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
+            return factory2->CreateSwapChainForHwnd(pDevice, hWnd, pDesc, pFullscreenDesc, pRestrictToOutput,
+                                                    ppSwapChain);
+        return E_NOINTERFACE;
+    }
+    HRESULT hr = IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc,
+                                                                          pRestrictToOutput, ppSwapChain);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForHwnd (Streamline)", hr, &s_err_count);
+    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
+        LogInfo(
+            "IDXGIFactory1::CreateSwapChainForHwnd (Streamline) succeeded, hooking proxy swapchain Present/Present1: "
+            "0x%p",
+            *ppSwapChain);
+        HookStreamlineProxySwapchain(*ppSwapChain);
+    }
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Detour(
+    IDXGIFactory1* This, IUnknown* pDevice, IUnknown* pWindow, const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
+    CALL_GUARD(utils::get_now_ns());
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
+    if (IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original == nullptr) {
+        Microsoft::WRL::ComPtr<IDXGIFactory2> factory2;
+        if (SUCCEEDED(This->QueryInterface(IID_PPV_ARGS(&factory2))))
+            return factory2->CreateSwapChainForCoreWindow(pDevice, pWindow, pDesc, pRestrictToOutput, ppSwapChain);
+        return E_NOINTERFACE;
+    }
+    HRESULT hr = IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original(This, pDevice, pWindow, pDesc,
+                                                                                pRestrictToOutput, ppSwapChain);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGIFactory1::CreateSwapChainForCoreWindow (Streamline)", hr, &s_err_count);
+    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
+        LogInfo(
+            "IDXGIFactory1::CreateSwapChainForCoreWindow (Streamline) succeeded, hooking proxy swapchain "
+            "Present/Present1: 0x%p",
+            *ppSwapChain);
+        HookStreamlineProxySwapchain(*ppSwapChain);
+    }
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Streamline_Detour(
+    IDXGIFactory2* This, IUnknown* pDevice, const DXGI_SWAP_CHAIN_DESC1* pDesc, IDXGIOutput* pRestrictToOutput,
+    IDXGISwapChain1** ppSwapChain) {
+    CALL_GUARD(utils::get_now_ns());
+    g_dxgi_factory_event_counters[DXGI_FACTORY_EVENT_CREATESWAPCHAIN].fetch_add(1);
+    if (IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original == nullptr) {
+        return E_NOINTERFACE;
+    }
+    HRESULT hr = IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original(This, pDevice, pDesc,
+                                                                                 pRestrictToOutput, ppSwapChain);
+    static int s_err_count = 0;
+    LogDxgiErrorUpTo10("IDXGIFactory2::CreateSwapChainForComposition (Streamline)", hr, &s_err_count);
+    if (SUCCEEDED(hr) && ppSwapChain != nullptr && *ppSwapChain != nullptr) {
+        LogInfo(
+            "IDXGIFactory2::CreateSwapChainForComposition (Streamline) succeeded, hooking proxy swapchain "
+            "Present/Present1: 0x%p",
+            *ppSwapChain);
+        HookStreamlineProxySwapchain(*ppSwapChain);
     }
     return hr;
 }
@@ -944,6 +1140,88 @@ bool HookFactory(IUnknown* iunknown) {
     }
 
     return hooked_dxgifactory;
+}
+
+bool HookStreamlineProxyFactory(IUnknown* iunknown) {
+    if (iunknown == nullptr) {
+        return false;
+    }
+    if (g_dx9_swapchain_detected.load()) {
+        return false;
+    }
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN)) {
+        return false;
+    }
+    Microsoft::WRL::ComPtr<IDXGIFactory> ifactory;
+    HRESULT hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory.GetAddressOf()));
+    if (FAILED(hr) || ifactory == nullptr) {
+        return false;
+    }
+
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("HookStreamlineProxyFactory: MinHook init failed: %d", init_status);
+        return false;
+    }
+
+    static bool streamline_proxy_factory_hooked = false;
+    if (streamline_proxy_factory_hooked) {
+        return true;
+    }
+
+    bool any_hooked = false;
+    {
+        void** vtable = *reinterpret_cast<void***>(ifactory.Get());
+        if (CreateAndEnableHook(vtable[IDXGIFactory_CreateSwapChain], IDXGIFactory_CreateSwapChain_Streamline_Detour,
+                                reinterpret_cast<LPVOID*>(&IDXGIFactory_CreateSwapChain_Streamline_Original),
+                                "IDXGIFactory::CreateSwapChain (Streamline)")) {
+            any_hooked = true;
+            LogInfo("HookStreamlineProxyFactory: IDXGIFactory::CreateSwapChain hooked");
+        }
+    }
+
+    Microsoft::WRL::ComPtr<IDXGIFactory1> ifactory1;
+    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory1.GetAddressOf()));
+    if (SUCCEEDED(hr) && ifactory1 != nullptr) {
+        void** vtable1 = *reinterpret_cast<void***>(ifactory1.Get());
+        if (CreateAndEnableHook(vtable1[IDXGIFactory1_CreateSwapChainForHwnd],
+                                IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Detour,
+                                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original),
+                                "IDXGIFactory1::CreateSwapChainForHwnd (Streamline)")) {
+            any_hooked = true;
+            LogInfo("HookStreamlineProxyFactory: IDXGIFactory1::CreateSwapChainForHwnd hooked");
+        }
+        if (CreateAndEnableHook(
+                vtable1[IDXGIFactory1_CreateSwapChainForCoreWindow],
+                IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Detour,
+                reinterpret_cast<LPVOID*>(&IDXGIFactory1_CreateSwapChainForCoreWindow_Streamline_Original),
+                "IDXGIFactory1::CreateSwapChainForCoreWindow (Streamline)")) {
+            any_hooked = true;
+            LogInfo("HookStreamlineProxyFactory: IDXGIFactory1::CreateSwapChainForCoreWindow hooked");
+        }
+    }
+
+    Microsoft::WRL::ComPtr<IDXGIFactory2> ifactory2;
+    hr = iunknown->QueryInterface(IID_PPV_ARGS(ifactory2.GetAddressOf()));
+    if (SUCCEEDED(hr) && ifactory2 != nullptr) {
+        void** vtable2 = *reinterpret_cast<void***>(ifactory2.Get());
+        if (CreateAndEnableHook(
+                vtable2[IDXGIFactory2_CreateSwapChainForComposition],
+                IDXGIFactory2_CreateSwapChainForComposition_Streamline_Detour,
+                reinterpret_cast<LPVOID*>(&IDXGIFactory2_CreateSwapChainForComposition_Streamline_Original),
+                "IDXGIFactory2::CreateSwapChainForComposition (Streamline)")) {
+            any_hooked = true;
+            LogInfo("HookStreamlineProxyFactory: IDXGIFactory2::CreateSwapChainForComposition hooked");
+        }
+    }
+
+    if (any_hooked) {
+        streamline_proxy_factory_hooked = true;
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+            display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN);
+    }
+    return streamline_proxy_factory_hooked;
 }
 
 // Additional DXGI detour functions
@@ -1774,6 +2052,78 @@ bool HookSwapchain(IDXGISwapChain* swapchain) {
     LogInfo("Successfully hooked IDXGISWAPCHAIN4 for swapchain: %x%p", swapchain);
 
     return true;
+}
+
+// Hook only Present and Present1 on a Streamline proxy swap chain (sl_proxy_dxgi_swapchain, sl_proxy_dxgi_swapchain1)
+// for FPS limiter. Idempotent per vtable (first proxy of each type gets hooked).
+bool HookStreamlineProxySwapchain(IDXGISwapChain* swapchain) {
+    if (swapchain == nullptr) {
+        return false;
+    }
+    if (g_dx9_swapchain_detected.load()) {
+        return false;
+    }
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN)) {
+        return false;
+    }
+
+    Microsoft::WRL::ComPtr<IDXGISwapChain1> swapchain1;
+    Microsoft::WRL::ComPtr<IDXGISwapChain2> swapchain2;
+    Microsoft::WRL::ComPtr<IDXGISwapChain3> swapchain3;
+    Microsoft::WRL::ComPtr<IDXGISwapChain4> swapchain4;
+    void** vtable = nullptr;
+    int vtable_version = 0;
+
+    if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain4)))) {
+        vtable_version = 4;
+        vtable = *reinterpret_cast<void***>(swapchain4.Get());
+    } else if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain3)))) {
+        vtable_version = 3;
+        vtable = *reinterpret_cast<void***>(swapchain3.Get());
+    } else if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain2)))) {
+        vtable_version = 2;
+        vtable = *reinterpret_cast<void***>(swapchain2.Get());
+    } else if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&swapchain1)))) {
+        vtable_version = 1;
+        vtable = *reinterpret_cast<void***>(swapchain1.Get());
+    } else {
+        vtable = *reinterpret_cast<void***>(swapchain);
+    }
+
+    if (vtable == nullptr) {
+        return false;
+    }
+
+    MH_STATUS init_status = SafeInitializeMinHook(display_commanderhooks::HookType::SL_PROXY_DXGI_SWAPCHAIN);
+    if (init_status != MH_OK && init_status != MH_ERROR_ALREADY_INITIALIZED) {
+        LogError("HookStreamlineProxySwapchain: MinHook init failed: %d", init_status);
+        return false;
+    }
+
+    static bool streamline_proxy_present_hooked = false;
+    static bool streamline_proxy_present1_hooked = false;
+    bool any_hooked = false;
+
+    if (!streamline_proxy_present_hooked
+        && CreateAndEnableHook(vtable[8], IDXGISwapChain_Present_Streamline_Detour,
+                               reinterpret_cast<LPVOID*>(&IDXGISwapChain_Present_Streamline_Original),
+                               "IDXGISwapChain::Present (Streamline proxy)")) {
+        streamline_proxy_present_hooked = true;
+        any_hooked = true;
+        LogInfo("HookStreamlineProxySwapchain: Present hooked (sl_proxy_dxgi_swapchain)");
+    }
+
+    if (vtable_version >= 1 && !streamline_proxy_present1_hooked
+        && CreateAndEnableHook(vtable[22], IDXGISwapChain_Present1_Streamline_Detour,
+                               reinterpret_cast<LPVOID*>(&IDXGISwapChain_Present1_Streamline_Original),
+                               "IDXGISwapChain1::Present1 (Streamline proxy)")) {
+        streamline_proxy_present1_hooked = true;
+        any_hooked = true;
+        LogInfo("HookStreamlineProxySwapchain: Present1 hooked (sl_proxy_dxgi_swapchain1)");
+    }
+
+    return any_hooked;
 }
 
 // Record the native swapchain used in OnPresentUpdateBefore

@@ -4,6 +4,15 @@
 
 # unreleased
 
+## v0.12.345
+- **FPS limiter setting for Frame Generation** - Added a new FPS limiter option for Frame Generation (DLSS-G): when enabled, the limiter hooks the Streamline proxy swap chain’s OnPresent so it limits real (native) frames. The checkbox appears in the FPS limiter section when native frame pacing is in sync.
+
+## v0.12.344
+- **Separate SL Proxy DXGI Swapchain hook type** - Streamline proxy swapchain hooks (sl_proxy_dxgi_swapchain / sl_proxy_dxgi_swapchain1) now use their own hook type `SL_PROXY_DXGI_SWAPCHAIN` instead of sharing `DXGI_SWAPCHAIN`. You can suppress only the Streamline proxy Present/Present1 hooks via `SlProxyDxgiSwapchainHooks=1` in `[DisplayCommander.HookSuppression]` without affecting main DXGI swapchain hooks. Details: HookType::SL_PROXY_DXGI_SWAPCHAIN; hook_suppression_settings suppress_sl_proxy_dxgi_swapchain_hooks / sl_proxy_dxgi_swapchain_hooks_installed; HookStreamlineProxyFactory and HookStreamlineProxySwapchain use the new type.
+
+## v0.12.343
+- **Fixed PCL stats decoding** - PCLStats ETW events from games (NVIDIA Reflex / Streamline) are now decoded correctly even when the TraceLogging payload no longer includes the event name in a descriptor. Marker and frame ID are read using the documented layout (metadata-first or payload-only), so latency markers are counted and the FPS limiter path works again. Details: pclstats_etw_hooks.cpp — `DecodePclStatsEvent()` handles Layout A and B; `DecodedPclStatsEvent`, `ReadMarkerFromDescriptor`, `ReadFrameIdFromDescriptor`, `ClassifyPclStatsEventName`.
+
 ## v0.12.342
 - **Native frame pacing for FG: disabled by default** - The "Native frame pacing" option (limits native frame rate when Frame Generation / DLSS-G is active) is now off by default. You can still enable it in the FPS limiter section when native frame pacing is in sync if you want to try improved frame pacing with FG. Details: `native_frame_pacing` default changed to false in main_tab_settings.
 

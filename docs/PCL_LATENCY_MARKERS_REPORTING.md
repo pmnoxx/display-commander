@@ -57,6 +57,56 @@ Fields:
   - FrameID: UInt64   // Frame counter (monotonically increasing)
 ```
 
+#### Format of Written Data (PCLSTATS_MARKER → EventWriteTransfer)
+
+The game or Display Commander emits marker events via the Streamline macro (from `external/Streamline/source/plugins/sl.pcl/pclstats.h`):
+
+```c
+#define PCLSTATS_MARKER(mrk,frid) TraceLoggingWrite(g_hPCLStatsComponentProvider, "PCLStatsEvent", \
+    TraceLoggingUInt32((mrk), "Marker"), TraceLoggingUInt64((frid), "FrameID"))
+```
+
+- **Provider**: `g_hPCLStatsComponentProvider` (GUID `0d216f06-82a6-4d49-bc4f-8f38ae56efab`).
+- **Event name**: string literal `"PCLStatsEvent"`.
+- **Payload**: two fields in order — `Marker` (uint32), `FrameID` (uint64); both little-endian.
+
+`TraceLoggingWrite` expands to a call to **EventWriteTransfer**(RegHandle, EventDescriptor, …, UserDataCount, UserData). The **UserData** array is an array of **EVENT_DATA_DESCRIPTOR**; each descriptor has **Ptr** (address of bytes) and **Size** (length in bytes).
+
+**Logical payload (what the event represents):**
+
+| Field    | Type    | Size | Description                    |
+|----------|---------|------|--------------------------------|
+| Marker   | uint32_t| 4    | PCLStats marker type (0..19)  |
+| FrameID  | uint64_t| 8    | Frame counter                  |
+
+**Descriptor layout (what we see in the hook):**
+
+TraceLogging may lay out the data in one of two ways, depending on SDK/build:
+
+1. **Metadata blob + field values (older/alternate)**  
+   - **Descriptor 0**: Metadata blob (variable size). May contain the literal string `"PCLStatsEvent"` and field names/types; our code uses this to classify V1/V2/V3 and to skip this descriptor when parsing the marker.  
+   - **Descriptor 1**: 4 bytes, little-endian **Marker**.  
+   - **Descriptor 2**: 8 bytes, little-endian **FrameID**.  
+   - So **UserDataCount** = 3.
+
+2. **Field values only (no event name in UserData)**  
+   - **Descriptor 0**: 4 bytes, little-endian **Marker**.  
+   - **Descriptor 1**: 8 bytes, little-endian **FrameID**.  
+   - No descriptor contains `"PCLStatsEvent"`; the event name is encoded elsewhere (e.g. in the EVENT_DESCRIPTOR or in a different metadata path).  
+   - So **UserDataCount** = 2.
+
+**V2 / V3 variants (same provider, different event names):**
+
+- **PCLStatsEventV2**: same two fields plus `Flags` (uint32) → 3 fields; metadata may contain `"PCLStatsEventV2"`.
+- **PCLStatsEventV3**: same two fields plus `Value` (int32) → 3 fields; metadata may contain `"PCLStatsEventV3"`.
+
+**How our hook interprets the format** (`pclstats_etw_hooks.cpp`):
+
+- We only process calls where **RegHandle** equals the PCLStats provider handle (so we know it’s this provider).
+- **Classification**: We scan each descriptor’s bytes for the substring `"PCLStatsEvent"` (and `"V2"`/`"V3"`) to set event_kind 1/2/3. If no descriptor contains that string, classification returns 0.
+- **Marker parsing**: We take the **first** descriptor that (a) has size ≥ 4 and ≤ 0x10000, (b) does **not** look like metadata (no `"PCLStatsEvent"` in it), and (c) has a 4-byte little-endian value in [0, 19] and treat it as the **Marker**. That works for both layouts above: in (1) we skip descriptor 0 (metadata), then read descriptor 1; in (2) we read descriptor 0.
+- **Fallback**: When classification fails (event_kind == 0) we still run marker parsing; if we get a valid marker we count the event as V1 and update per-marker stats and the FPS limiter path.
+
 #### Lifecycle Events
 
 - **`PCLStatsInit`**: Emitted when provider is registered and when ETW consumer enables the provider

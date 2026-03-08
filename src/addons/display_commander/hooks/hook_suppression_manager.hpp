@@ -8,6 +8,7 @@ namespace display_commanderhooks {
 enum class HookType {
     DXGI_FACTORY,
     DXGI_SWAPCHAIN,
+    SL_PROXY_DXGI_SWAPCHAIN,
     D3D11_DEVICE,
     D3D12_DEVICE,
     XINPUT,

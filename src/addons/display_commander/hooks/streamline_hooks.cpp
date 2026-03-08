@@ -7,7 +7,7 @@
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
-#include "dxgi_factory_wrapper.hpp"
+#include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 
 #include <dxgi.h>
@@ -537,43 +537,20 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     if (baseInterface == nullptr) return result;
     auto* unknown = static_cast<IUnknown*>(*baseInterface);
 
-    Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
+    //   Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
     Microsoft::WRL::ComPtr<IDXGIFactory7> dxgi_factory7;
-    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+    //    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
     if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory7))) && dxgi_factory7 != nullptr) {
-        LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
-
-        // auto* factory_wrapper = dxgi_factory7.Get();
-        // new display_commanderhooks::DXGIFactoryWrapper(dxgi_factory7.Get(),
-        // display_commanderhooks::SwapChainHook::Proxy);
-        //..factory_wrapper->SetSLGetNativeInterface(slGetNativeInterface_Original);
-        //..factory_wrapper->SetSLUpgradeInterface(slUpgradeInterface_Original);
-
-        // AddRef the factory so wrapper can take ownership
-        dxgi_factory7->AddRef();
-
-        LogInfo("[slUpgradeInterface] Found IDXGIFactory7 interface");
-        // Create wrapper to ensure it doesn't pass active queue for swapchain creation
-        auto* factory_wrapper2 = new display_commanderhooks::DXGIFactoryWrapper(
-            dxgi_factory7.Get(), display_commanderhooks::SwapChainHook::Native);
-
-        // Release the original factory reference
-        unknown->Release();
-
-        factory_wrapper2->SetSLGetNativeInterface(slGetNativeInterface_Original);
-        factory_wrapper2->SetSLUpgradeInterface(slUpgradeInterface_Original);
-        // TODO(user): Set command queue map when available
-
-        *baseInterface = factory_wrapper2;
-
-        // ComPtr will automatically release when it goes out of scope
-    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
+        // Hook the Streamline proxy factory vtable so CreateSwapChain* go through our detours (log + HookSwapchain).
+        display_commanderhooks::dxgi::HookStreamlineProxyFactory(dxgi_factory7.Get());
+    }
+    /* else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
         LogError("[slUpgradeInterface] Found IDXGIFactory interface not hooked TODO");
     } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) && dxgi_swapchain != nullptr) {
         LogError("[slUpgradeInterface] IDXGISwapChain interface not hooked TODO");
     } else {
         LogError("[slUpgradeInterface] Unknown interface not hooked TODO");
-    }
+    }*/
     return result;
 }
 
@@ -632,14 +609,12 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
         //  return false;
     }
 
-    /*
-    // Hook slUpgradeInterface
+    // Hook slUpgradeInterface to vtable-hook the Streamline proxy DXGI factory (CreateSwapChain*)
     if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slUpgradeInterface"),
                              reinterpret_cast<LPVOID>(slUpgradeInterface_Detour),
                              reinterpret_cast<LPVOID*>(&slUpgradeInterface_Original), "slUpgradeInterface")) {
         LogError("Failed to create and enable slUpgradeInterface hook");
-     //   return false;
-    }*/
+    }
 
     // Hook slIsFeatureSupported
     if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slIsFeatureSupported"),

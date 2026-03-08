@@ -9,6 +9,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     // Only hooks that are typically not needed or can cause issues are blacklisted by default
     : suppress_dxgi_factory_hooks("DxgiFactoryHooks", false, "DisplayCommander.HookSuppression"),
       suppress_dxgi_swapchain_hooks("DxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
+      suppress_sl_proxy_dxgi_swapchain_hooks("SlProxyDxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
       suppress_d3d11_device_hooks("D3D11DeviceHooks", false, "DisplayCommander.HookSuppression"),
       suppress_d3d12_device_hooks("D3D12DeviceHooks", false, "DisplayCommander.HookSuppression"),
       suppress_xinput_hooks("XInputHooks", false, "DisplayCommander.HookSuppression"),
@@ -39,6 +40,7 @@ HookSuppressionSettings::HookSuppressionSettings()
       suppress_dbghelp_hooks("DbghelpHooks", false, "DisplayCommander.HookSuppression"),
       dxgi_factory_hooks_installed("DxgiFactoryHooks", false, "DisplayCommander.HooksInstalled"),
       dxgi_swapchain_hooks_installed("DxgiSwapchainHooks", false, "DisplayCommander.HooksInstalled"),
+      sl_proxy_dxgi_swapchain_hooks_installed("SlProxyDxgiSwapchainHooks", false, "DisplayCommander.HooksInstalled"),
       d3d11_device_hooks_installed("D3D11DeviceHooks", false, "DisplayCommander.HooksInstalled"),
       d3d12_device_hooks_installed("D3D12DeviceHooks", false, "DisplayCommander.HooksInstalled"),
       xinput_hooks_installed("XInputHooks", false, "DisplayCommander.HooksInstalled"),
@@ -67,6 +69,7 @@ HookSuppressionSettings::HookSuppressionSettings()
     all_settings_ = {
         &suppress_dxgi_factory_hooks,
         &suppress_dxgi_swapchain_hooks,
+        &suppress_sl_proxy_dxgi_swapchain_hooks,
         &suppress_d3d11_device_hooks,
         &suppress_d3d12_device_hooks,
         &suppress_xinput_hooks,
@@ -93,6 +96,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_dbghelp_hooks,
         &dxgi_factory_hooks_installed,
         &dxgi_swapchain_hooks_installed,
+        &sl_proxy_dxgi_swapchain_hooks_installed,
         &d3d11_device_hooks_installed,
         &d3d12_device_hooks_installed,
         &xinput_hooks_installed,

@@ -214,8 +214,8 @@ std::atomic<uint64_t> g_fps_limiter_last_timestamp_ns[kFpsLimiterCallSiteCount] 
 std::atomic<uint8_t> g_chosen_fps_limiter_site{kFpsLimiterChosenUnset};
 
 namespace {
-// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain, dx9_present, dx9_presentex,
-// opengl_swapbuffers, ddraw_flip, dxgi_factory_wrapper, reshade_addon_event.
+// Priority order: reflex_marker, Vulkan reflex paths, dxgi_swapchain1, dxgi_swapchain,
+// dxgi_swapchain1_streamline_proxy, dxgi_swapchain_streamline_proxy, dx9_present, ...
 constexpr std::array<FpsLimiterCallSite, kFpsLimiterCallSiteCount> kFpsLimiterPriorityOrder = {
     FpsLimiterCallSite::reflex_marker,
     FpsLimiterCallSite::reflex_marker_vk_nvll,
@@ -223,6 +223,8 @@ constexpr std::array<FpsLimiterCallSite, kFpsLimiterCallSiteCount> kFpsLimiterPr
     FpsLimiterCallSite::reflex_marker_pclstats_etw,
     FpsLimiterCallSite::dxgi_swapchain1,
     FpsLimiterCallSite::dxgi_swapchain,
+    FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy,
+    FpsLimiterCallSite::dxgi_swapchain_streamline_proxy,
     FpsLimiterCallSite::dx9_present,
     FpsLimiterCallSite::dx9_presentex,
     FpsLimiterCallSite::opengl_swapbuffers,
@@ -250,6 +252,8 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::reflex_marker_pclstats_etw: return "reflex_marker_pclstats_etw";
         case FpsLimiterCallSite::dxgi_swapchain1:            return "dxgi_swapchain1";
         case FpsLimiterCallSite::dxgi_swapchain:             return "dxgi_swapchain";
+        case FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy: return "dxgi_swapchain1_streamline_proxy";
+        case FpsLimiterCallSite::dxgi_swapchain_streamline_proxy:  return "dxgi_swapchain_streamline_proxy";
         case FpsLimiterCallSite::dx9_present:                return "dx9_present";
         case FpsLimiterCallSite::dx9_presentex:              return "dx9_presentex";
         case FpsLimiterCallSite::opengl_swapbuffers:         return "opengl_swapbuffers";
@@ -267,6 +271,8 @@ FpsLimiterCallSite GetChosenFrameTimeLocation() {
     }
     const FpsLimiterCallSite site = static_cast<FpsLimiterCallSite>(chosen);
     if (site == FpsLimiterCallSite::dxgi_swapchain1 || site == FpsLimiterCallSite::dxgi_swapchain
+        || site == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy
+        || site == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy
         || site == FpsLimiterCallSite::dx9_present || site == FpsLimiterCallSite::dx9_presentex
         || site == FpsLimiterCallSite::opengl_swapbuffers || site == FpsLimiterCallSite::ddraw_flip
         || site == FpsLimiterCallSite::reshade_addon_event) {
@@ -287,6 +293,11 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
              || site == FpsLimiterCallSite::reflex_marker_vk_loader
              || site == FpsLimiterCallSite::reflex_marker_pclstats_etw)
             && !settings::g_mainTabSettings.native_frame_pacing.GetValue()) {
+            continue;
+        }
+        if ((site == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy
+             || site == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy)
+            && !settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue()) {
             continue;
         }
         if (settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue()

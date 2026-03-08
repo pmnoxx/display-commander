@@ -16,6 +16,8 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
     switch (hookType) {
         case HookType::DXGI_FACTORY:   return &settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks;
         case HookType::DXGI_SWAPCHAIN: return &settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks;
+        case HookType::SL_PROXY_DXGI_SWAPCHAIN:
+            return &settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks;
         case HookType::D3D11_DEVICE:   return &settings::g_hook_suppression_settings.suppress_d3d11_device_hooks;
         case HookType::D3D12_DEVICE:   return &settings::g_hook_suppression_settings.suppress_d3d12_device_hooks;
         case HookType::XINPUT:         return &settings::g_hook_suppression_settings.suppress_xinput_hooks;
@@ -62,6 +64,10 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                     break;
                 case HookType::DXGI_SWAPCHAIN:
                     current_value = settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue();
+                    break;
+                case HookType::SL_PROXY_DXGI_SWAPCHAIN:
+                    current_value =
+                        settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.GetValue();
                     break;
                 case HookType::D3D11_DEVICE:
                     current_value = settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.GetValue();
@@ -152,6 +158,8 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.GetValue();
         case HookType::DXGI_SWAPCHAIN:
             return settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.GetValue();
+        case HookType::SL_PROXY_DXGI_SWAPCHAIN:
+            return settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.GetValue();
         case HookType::D3D11_DEVICE:
             return settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.GetValue();
         case HookType::D3D12_DEVICE:
@@ -205,6 +213,12 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
             if (!settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue()) {
                 settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.SetValue(true);
                 settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(false);
+            }
+            break;
+        case HookType::SL_PROXY_DXGI_SWAPCHAIN:
+            if (!settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.SetValue(false);
             }
             break;
         case HookType::D3D11_DEVICE:
@@ -366,6 +380,7 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
     switch (hookType) {
         case HookType::DXGI_FACTORY:         return "DXGI Factory";
         case HookType::DXGI_SWAPCHAIN:       return "DXGI Swapchain";
+        case HookType::SL_PROXY_DXGI_SWAPCHAIN: return "SL Proxy DXGI Swapchain";
         case HookType::D3D11_DEVICE:         return "D3D11 Device";
         case HookType::D3D12_DEVICE:         return "D3D12 Device";
         case HookType::XINPUT:               return "XInput";

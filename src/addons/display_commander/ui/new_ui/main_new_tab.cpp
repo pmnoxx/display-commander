@@ -3526,12 +3526,10 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
 }
 
 static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGuiWrapper& imgui);
-static void DrawDisplaySettings_FpsLimiterOnPresentSync(
-    display_commander::ui::IImGuiWrapper& imgui,
-    const std::function<void()>& drawPclStatsCheckbox);
-static void DrawDisplaySettings_FpsLimiterReflex(
-    display_commander::ui::IImGuiWrapper& imgui,
-    const std::function<void()>& drawPclStatsCheckbox);
+static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::IImGuiWrapper& imgui,
+                                                        const std::function<void()>& drawPclStatsCheckbox);
+static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWrapper& imgui,
+                                                 const std::function<void()>& drawPclStatsCheckbox);
 static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImGuiWrapper& imgui);
 
 void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui) {
@@ -3694,9 +3692,8 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     imgui.Unindent();
 }
 
-static void DrawDisplaySettings_FpsLimiterOnPresentSync(
-    display_commander::ui::IImGuiWrapper& imgui,
-    const std::function<void()>& drawPclStatsCheckbox) {
+static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::IImGuiWrapper& imgui,
+                                                        const std::function<void()>& drawPclStatsCheckbox) {
     if (!::IsNativeFramePacingInSync()) {
         // Check if we're running on D3D9 and show warning
         const reshade::api::device_api current_api = g_last_reshade_device_api.load();
@@ -3863,6 +3860,16 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(
 
     // Native frame pacing (only visible if OnPresentSync mode is selected and in sync)
     if (::IsNativeFramePacingInSync()) {
+        if (CheckboxSetting(settings::g_mainTabSettings.use_streamline_proxy_fps_limiter,
+                            "Use Streamline proxy for FPS limiter", imgui)) {
+            LogInfo("Use Streamline proxy for FPS limiter %s",
+                    settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled, FPS limiter runs on the Streamline proxy swap chain (Present/Present1).\n"
+                "Use when the game presents through Streamline's proxy (e.g. DLSS-G).");
+        }
         if (CheckboxSetting(settings::g_mainTabSettings.native_frame_pacing,
                             "Use Reflex Latency Markers as fps limiter", imgui)) {
             LogInfo("Native frame pacing %s",
@@ -3873,8 +3880,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(
                 "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
                 "Experimental; may improve frame pacing with FG.");
         }
-        if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
-                            imgui)) {
+        if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing", imgui)) {
             LogInfo("Native pacing sim start only %s",
                     settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
         }
@@ -3887,9 +3893,9 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(
         // pacing)
         if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
                             "Schedule present start N frame times after simulation start", imgui)) {
-            LogInfo("Schedule present start after Sim Start %s",
-                    settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
-                                                                                                 : "disabled");
+            LogInfo(
+                "Schedule present start after Sim Start %s",
+                settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
@@ -3925,14 +3931,12 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(
     }
 }
 
-static void DrawDisplaySettings_FpsLimiterReflex(
-    display_commander::ui::IImGuiWrapper& imgui,
-    const std::function<void()>& drawPclStatsCheckbox) {
+static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWrapper& imgui,
+                                                 const std::function<void()>& drawPclStatsCheckbox) {
     // Check if we're running on D3D9 and show warning
     const reshade::api::device_api current_api = g_last_reshade_device_api.load();
     if (current_api == reshade::api::device_api::d3d9) {
-        imgui.TextColored(ui::colors::TEXT_WARNING,
-                          ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
+        imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
     } else {
         uint64_t now_ns = utils::get_now_ns();
 
@@ -3946,9 +3950,8 @@ static void DrawDisplaySettings_FpsLimiterReflex(
                 }
                 double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
                 double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
-                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                  "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
-                                  native_ns / 1000000.0);
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Native Reflex: %.2f times/sec (%.1f ms interval)",
+                                  calls_per_second, native_ns / 1000000.0);
                 if (imgui.IsItemHovered()) {
                     double raw_ns = static_cast<double>(g_sleep_reflex_native_ns.load());
                     imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
@@ -3960,9 +3963,8 @@ static void DrawDisplaySettings_FpsLimiterReflex(
                                   limit_real ? "ON" : "OFF");
                 double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
                 double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
-                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                  "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
-                                  injected_ns / 1000000.0);
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Injected Reflex: %.2f times/sec (%.1f ms interval)",
+                                  calls_per_second, injected_ns / 1000000.0);
                 if (imgui.IsItemHovered()) {
                     double raw_ns = static_cast<double>(g_sleep_reflex_injected_ns.load());
                     imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
@@ -4010,8 +4012,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(
     if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
         imgui.Spacing();
         if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
-            LogInfo("Inject Reflex %s",
-                    settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
+            LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
@@ -4049,8 +4050,8 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
     // VBlank Sync Divisor (only visible if latent sync mode is selected)
     int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
     int temp_divisor = current_divisor;
-    if (imgui.SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)",
-                        &temp_divisor, 0, 8, "%d")) {
+    if (imgui.SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)", &temp_divisor,
+                        0, 8, "%d")) {
         settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
     }
     if (imgui.IsItemHovered()) {

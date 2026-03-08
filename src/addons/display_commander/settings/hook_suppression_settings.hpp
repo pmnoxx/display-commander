@@ -27,6 +27,7 @@ class HookSuppressionSettings {
     // Hook suppression settings
     BoolSetting suppress_dxgi_factory_hooks;
     BoolSetting suppress_dxgi_swapchain_hooks;
+    BoolSetting suppress_sl_proxy_dxgi_swapchain_hooks;
     BoolSetting suppress_d3d11_device_hooks;
     BoolSetting suppress_d3d12_device_hooks;
     BoolSetting suppress_xinput_hooks;
@@ -55,6 +56,7 @@ class HookSuppressionSettings {
     // Auto-detection settings (set to 1 when hooks are successfully installed)
     BoolSetting dxgi_factory_hooks_installed;
     BoolSetting dxgi_swapchain_hooks_installed;
+    BoolSetting sl_proxy_dxgi_swapchain_hooks_installed;
     BoolSetting d3d11_device_hooks_installed;
     BoolSetting d3d12_device_hooks_installed;
     BoolSetting xinput_hooks_installed;

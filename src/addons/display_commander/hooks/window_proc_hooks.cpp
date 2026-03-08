@@ -102,7 +102,7 @@ static BOOL CALLBACK EnumCountOtherProcessWindows(HWND hwnd, LPARAM lParam) {
 }
 static int CountOtherProcessWindows(HWND exclude_hwnd) {
     CountOtherWindowsData data = {GetCurrentProcessId(), exclude_hwnd,
-                                 g_standalone_ui_hwnd.load(std::memory_order_acquire), 0};
+                                  g_standalone_ui_hwnd.load(std::memory_order_acquire), 0};
     EnumWindows(EnumCountOtherProcessWindows, reinterpret_cast<LPARAM>(&data));
     return data.count;
 }
@@ -110,6 +110,10 @@ static int CountOtherProcessWindows(HWND exclude_hwnd) {
 // Process window message - returns true if message should be suppressed
 // This function contains the logic previously in WindowProc_Detour
 bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    if (hwnd == g_standalone_ui_hwnd.load(std::memory_order_acquire)) {
+        return false;
+    }
+
     // Check if continue rendering is enabled
     // Special-K style: set ping signal when ping message is received, inject marker on next SIMULATION_START
     if (PCLSTATS_IS_PING_MSG_ID(uMsg)) {

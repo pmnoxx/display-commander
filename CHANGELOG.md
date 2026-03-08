@@ -3,7 +3,7 @@
 ---
 
 # unreleased
-
+- **Hooking into more slUpgradeInterface classes** - Streamline proxy factory hooking now covers additional interfaces returned by slUpgradeInterface (e.g. IDXGIFactory, IDXGIFactory1 and related), so CreateSwapChain/CreateSwapChainForHwnd go through the addon’s detours (logging and swapchain tracking) for more games using Streamline. Details: streamline_hooks.cpp slUpgradeInterface_Detour — QueryInterface for IDXGIFactory and hook of proxy factory vtable for D3D11/D3D12 device and swapchain creation.
 
 ## v0.12.346
 - **Skip D3D12 hooks when ReFramework is detected** - When loading d3d12.dll, the addon no longer installs D3D12 device hooks if a ReFramework plugin module is present (any loaded module with "reframework\\plugins" in its path). Avoids conflicts when both Display Commander and ReFramework hook D3D12. Details: loadlibrary_hooks.cpp d3d12.dll branch uses HasReframeworkPluginModule() to skip InstallD3D12DeviceHooks.

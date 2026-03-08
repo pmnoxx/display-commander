@@ -10,6 +10,7 @@
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 
+#include <d3d12.h>
 #include <dxgi.h>
 #include <dxgi1_6.h>
 #include <MinHook.h>
@@ -519,8 +520,10 @@ static int slGetFeatureFunction_Detour(int feature, const char* functionName, vo
     return result;
 }
 
-// Reference:
-// https://github.com/NVIDIA-RTX/Streamline/blob/b998246a3d499c08765c5681b229c9e6b4513348/source/core/sl.api/sl.cpp#L625
+// slUpgradeInterface does NOT only work on factory. Per Streamline sl.api/sl.cpp it supports (in order):
+// - ID3D12Device (replaced with SL proxy), ID3D11Device (no proxy, just registered), IDXGIFactory (proxy),
+//   IDXGISwapChain (proxy). We only vtable-hook the DXGI proxy factory and proxy swapchain.
+// Reference: external/Streamline/source/core/sl.api/sl.cpp slUpgradeInterface()
 int slUpgradeInterface_Detour(void** baseInterface) {
     CALL_GUARD(utils::get_now_ns());
     // Increment counter
@@ -539,18 +542,23 @@ int slUpgradeInterface_Detour(void** baseInterface) {
 
     //   Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
     Microsoft::WRL::ComPtr<IDXGIFactory> dxgi_factory;
-    //    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain;
+    Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+    Microsoft::WRL::ComPtr<ID3D12Device> d3d12_device;
     if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
         // Hook the Streamline proxy factory vtable so CreateSwapChain* go through our detours (log + HookSwapchain).
+        LogInfo("[slUpgradeInterface] IDXGIFactory proxy: hooking factory vtable");
         display_commanderhooks::dxgi::HookStreamlineProxyFactory(dxgi_factory.Get());
-    }
-    /* else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_factory))) && dxgi_factory != nullptr) {
-        LogError("[slUpgradeInterface] Found IDXGIFactory interface not hooked TODO");
     } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain))) && dxgi_swapchain != nullptr) {
-        LogError("[slUpgradeInterface] IDXGISwapChain interface not hooked TODO");
+        bool hooked = display_commanderhooks::dxgi::HookStreamlineProxySwapchain(dxgi_swapchain.Get());
+        LogInfo("[slUpgradeInterface] IDXGISwapChain proxy: Present/Present1 hooked=%d", hooked ? 1 : 0);
+    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&d3d11_device))) && d3d11_device != nullptr) {
+        LogInfo("[slUpgradeInterface] ID3D11Device proxy: not hooked");
+    } else if (SUCCEEDED(unknown->QueryInterface(IID_PPV_ARGS(&d3d12_device))) && d3d12_device != nullptr) {
+        LogInfo("[slUpgradeInterface] ID3D12Device proxy: not hooked");
     } else {
         LogError("[slUpgradeInterface] Unknown interface not hooked TODO");
-    }*/
+    }
     return result;
 }
 

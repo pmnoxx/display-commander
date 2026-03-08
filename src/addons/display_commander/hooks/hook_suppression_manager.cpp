@@ -18,19 +18,17 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::DXGI_SWAPCHAIN: return &settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks;
         case HookType::SL_PROXY_DXGI_SWAPCHAIN:
             return &settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks;
-        case HookType::D3D11_DEVICE:   return &settings::g_hook_suppression_settings.suppress_d3d11_device_hooks;
-        case HookType::D3D12_DEVICE:   return &settings::g_hook_suppression_settings.suppress_d3d12_device_hooks;
-        case HookType::XINPUT:         return &settings::g_hook_suppression_settings.suppress_xinput_hooks;
-        case HookType::DINPUT:         return &settings::g_hook_suppression_settings.suppress_dinput_hooks;
-        case HookType::DINPUT8:        return &settings::g_hook_suppression_settings.suppress_dinput8_hooks;
-        case HookType::STREAMLINE:     return &settings::g_hook_suppression_settings.suppress_streamline_hooks;
-        case HookType::NGX:            return &settings::g_hook_suppression_settings.suppress_ngx_hooks;
+        case HookType::D3D11_DEVICE: return &settings::g_hook_suppression_settings.suppress_d3d11_device_hooks;
+        case HookType::D3D12_DEVICE: return &settings::g_hook_suppression_settings.suppress_d3d12_device_hooks;
+        case HookType::XINPUT:       return &settings::g_hook_suppression_settings.suppress_xinput_hooks;
+        case HookType::DINPUT:       return &settings::g_hook_suppression_settings.suppress_dinput_hooks;
+        case HookType::DINPUT8:      return &settings::g_hook_suppression_settings.suppress_dinput8_hooks;
+        case HookType::STREAMLINE:   return &settings::g_hook_suppression_settings.suppress_streamline_hooks;
+        case HookType::NGX:          return &settings::g_hook_suppression_settings.suppress_ngx_hooks;
         case HookType::WINDOWS_GAMING_INPUT:
             return &settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks;
-        case HookType::HID_KERNEL32:
-            return &settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks;
-        case HookType::HID_HID_DLL:
-            return &settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks;
+        case HookType::HID_KERNEL32:     return &settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks;
+        case HookType::HID_HID_DLL:      return &settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks;
         case HookType::API:              return &settings::g_hook_suppression_settings.suppress_api_hooks;
         case HookType::WINDOW_API:       return &settings::g_hook_suppression_settings.suppress_window_api_hooks;
         case HookType::SLEEP:            return &settings::g_hook_suppression_settings.suppress_sleep_hooks;
@@ -173,11 +171,10 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
             return settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.GetValue();
         case HookType::HID_KERNEL32:
             return settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks.GetValue();
-        case HookType::HID_HID_DLL:
-            return settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks.GetValue();
-        case HookType::API:        return settings::g_hook_suppression_settings.suppress_api_hooks.GetValue();
-        case HookType::WINDOW_API: return settings::g_hook_suppression_settings.suppress_window_api_hooks.GetValue();
-        case HookType::SLEEP:      return settings::g_hook_suppression_settings.suppress_sleep_hooks.GetValue();
+        case HookType::HID_HID_DLL: return settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks.GetValue();
+        case HookType::API:         return settings::g_hook_suppression_settings.suppress_api_hooks.GetValue();
+        case HookType::WINDOW_API:  return settings::g_hook_suppression_settings.suppress_window_api_hooks.GetValue();
+        case HookType::SLEEP:       return settings::g_hook_suppression_settings.suppress_sleep_hooks.GetValue();
         case HookType::TIMESLOWDOWN:
             return settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.GetValue();
         case HookType::DEBUG_OUTPUT:
@@ -194,7 +191,7 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::PROCESS_EXIT:
             return settings::g_hook_suppression_settings.suppress_process_exit_hooks.GetValue();
         case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
-        case HookType::DBGHELP: return settings::g_hook_suppression_settings.suppress_dbghelp_hooks.GetValue();
+        case HookType::DBGHELP:     return settings::g_hook_suppression_settings.suppress_dbghelp_hooks.GetValue();
         default:
             LogError("HookSuppressionManager::ShouldSuppressHook - Invalid hook type: %d", static_cast<int>(hookType));
             return false;
@@ -378,33 +375,33 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
 
 std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
     switch (hookType) {
-        case HookType::DXGI_FACTORY:         return "DXGI Factory";
-        case HookType::DXGI_SWAPCHAIN:       return "DXGI Swapchain";
+        case HookType::DXGI_FACTORY:            return "DXGI Factory";
+        case HookType::DXGI_SWAPCHAIN:          return "DXGI Swapchain";
         case HookType::SL_PROXY_DXGI_SWAPCHAIN: return "SL Proxy DXGI Swapchain";
-        case HookType::D3D11_DEVICE:         return "D3D11 Device";
-        case HookType::D3D12_DEVICE:         return "D3D12 Device";
-        case HookType::XINPUT:               return "XInput";
-        case HookType::DINPUT:               return "DirectInput";
-        case HookType::DINPUT8:              return "DirectInput 8";
-        case HookType::STREAMLINE:           return "Streamline";
-        case HookType::NGX:                  return "NGX";
-        case HookType::WINDOWS_GAMING_INPUT: return "Windows Gaming Input";
-        case HookType::HID_KERNEL32:         return "HID (kernel32)";
-        case HookType::HID_HID_DLL:         return "HID (hid.dll)";
-        case HookType::API:                  return "API";
-        case HookType::WINDOW_API:           return "Window API";
-        case HookType::SLEEP:                return "Sleep";
-        case HookType::TIMESLOWDOWN:         return "Time Slowdown";
-        case HookType::DEBUG_OUTPUT:         return "Debug Output";
-        case HookType::LOADLIBRARY:          return "LoadLibrary";
-        case HookType::DISPLAY_SETTINGS:     return "Display Settings";
-        case HookType::WINDOWS_MESSAGE:      return "Windows Message";
-        case HookType::OPENGL:               return "OpenGL";
-        case HookType::HID_SUPPRESSION:      return "HID Suppression";
-        case HookType::NVAPI:                return "NVAPI";
-        case HookType::PROCESS_EXIT:         return "Process Exit";
-        case HookType::WINDOW_PROC:          return "Window Procedure";
-        case HookType::DBGHELP:              return "DbgHelp";
+        case HookType::D3D11_DEVICE:            return "D3D11 Device";
+        case HookType::D3D12_DEVICE:            return "D3D12 Device";
+        case HookType::XINPUT:                  return "XInput";
+        case HookType::DINPUT:                  return "DirectInput";
+        case HookType::DINPUT8:                 return "DirectInput 8";
+        case HookType::STREAMLINE:              return "Streamline";
+        case HookType::NGX:                     return "NGX";
+        case HookType::WINDOWS_GAMING_INPUT:    return "Windows Gaming Input";
+        case HookType::HID_KERNEL32:            return "HID (kernel32)";
+        case HookType::HID_HID_DLL:             return "HID (hid.dll)";
+        case HookType::API:                     return "API";
+        case HookType::WINDOW_API:              return "Window API";
+        case HookType::SLEEP:                   return "Sleep";
+        case HookType::TIMESLOWDOWN:            return "Time Slowdown";
+        case HookType::DEBUG_OUTPUT:            return "Debug Output";
+        case HookType::LOADLIBRARY:             return "LoadLibrary";
+        case HookType::DISPLAY_SETTINGS:        return "Display Settings";
+        case HookType::WINDOWS_MESSAGE:         return "Windows Message";
+        case HookType::OPENGL:                  return "OpenGL";
+        case HookType::HID_SUPPRESSION:         return "HID Suppression";
+        case HookType::NVAPI:                   return "NVAPI";
+        case HookType::PROCESS_EXIT:            return "Process Exit";
+        case HookType::WINDOW_PROC:             return "Window Procedure";
+        case HookType::DBGHELP:                 return "DbgHelp";
         default:
             LogError("HookSuppressionManager::GetHookTypeName - Invalid hook type: %d", static_cast<int>(hookType));
             return "Unknown";

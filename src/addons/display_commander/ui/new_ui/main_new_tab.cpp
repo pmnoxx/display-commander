@@ -7686,6 +7686,39 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.SameLine();
 
+    // Focus Window Button (restore if minimized, then bring to foreground)
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_OK " Focus")) {
+        HWND focus_hwnd = g_last_swapchain_hwnd.load();
+        std::thread([focus_hwnd]() {
+            LogDebug("Focus button pressed (bg thread)");
+            ShowWindow(focus_hwnd, SW_RESTORE);
+            SetForegroundWindow(focus_hwnd);
+        }).detach();
+    }
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Focus the game window. Restores the window if minimized.");
+    }
+
+    imgui.SameLine();
+
+    // Close Window Button (graceful close via WM_CLOSE)
+    imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
+    if (imgui.Button(ICON_FK_CANCEL " Close")) {
+        HWND close_hwnd = g_last_swapchain_hwnd.load();
+        std::thread([close_hwnd]() {
+            LogDebug("Close button pressed (bg thread)");
+            PostMessageW(close_hwnd, WM_CLOSE, 0, 0);
+        }).detach();
+    }
+    imgui.PopStyleColor();
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Request graceful close of the game window (sends WM_CLOSE).");
+    }
+
+    imgui.SameLine();
+
     // Open Game Folder Button
     imgui.PushStyleColor(ImGuiCol_Text, ui::colors::ICON_ACTION);
     if (imgui.Button(ICON_FK_FOLDER_OPEN " Open Game Folder")) {

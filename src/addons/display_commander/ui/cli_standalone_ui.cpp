@@ -5,6 +5,7 @@
 
 #include "config/display_commander_config.hpp"
 #include "display/display_cache.hpp"
+#include "settings/main_tab_settings.hpp"
 #include "standalone_ui_settings_bridge.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "ui/imgui_wrapper_standalone.hpp"
@@ -69,9 +70,10 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Build default font + merge Japanese glyphs from a Windows system font so the launcher can display Japanese.
-static void BuildStandaloneFontsWithJapanese() {
-    ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontDefault();
+static void BuildStandaloneFontsWithJapanese(display_commander::ui::ImGuiWrapperStandalone& gui) {
+    ImGuiIO* io = gui.GetIOForFontSetup();
+    if (io == nullptr) return;
+    io->Fonts->AddFontDefault();
 
     wchar_t win_dir[MAX_PATH] = {};
     if (GetWindowsDirectoryW(win_dir, (UINT)std::size(win_dir)) == 0) return;
@@ -90,8 +92,8 @@ static void BuildStandaloneFontsWithJapanese() {
 
         ImFontConfig merge_cfg = {};
         merge_cfg.MergeMode = true;
-        merge_cfg.GlyphRanges = io.Fonts->GetGlyphRangesJapanese();
-        if (io.Fonts->AddFontFromFileTTF(path_utf8.c_str(), 18.0f, &merge_cfg, nullptr) != nullptr) break;
+        merge_cfg.GlyphRanges = io->Fonts->GetGlyphRangesJapanese();
+        if (io->Fonts->AddFontFromFileTTF(path_utf8.c_str(), 18.0f, &merge_cfg, nullptr) != nullptr) break;
     }
 }
 
@@ -774,7 +776,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     gui.CreateContext();
     gui.SetConfigFlags(static_cast<uint32_t>(ImGuiConfigFlags_NavEnableKeyboard));
     gui.StyleColorsDark();
-    BuildStandaloneFontsWithJapanese();
+    BuildStandaloneFontsWithJapanese(gui);
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplOpenGL3_Init();
 
@@ -856,7 +858,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
         gui.Render();
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        ImGui_ImplOpenGL3_RenderDrawData(gui.GetDrawData());
         SwapBuffers(g_hDC);
     }
 
@@ -1105,7 +1107,7 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
     gui.CreateContext();
     gui.SetConfigFlags(static_cast<uint32_t>(ImGuiConfigFlags_NavEnableKeyboard));
     gui.StyleColorsDark();
-    BuildStandaloneFontsWithJapanese();
+    BuildStandaloneFontsWithJapanese(gui);
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplOpenGL3_Init();
 
@@ -1163,7 +1165,7 @@ void RunStandaloneGamesOnlyUI(HINSTANCE hInst) {
         gui.Render();
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        ImGui_ImplOpenGL3_RenderDrawData(gui.GetDrawData());
         SwapBuffers(g_hDC);
     }
 
@@ -1278,6 +1280,13 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_SYSCOMMAND:
             if ((wParam & 0xfff0) == SC_KEYMENU) return 0;
             break;
+        case WM_CLOSE: {
+            // When user closes the independent settings window (ReShade), uncheck "Show independent window".
+            if (hWnd == standalone_ui_settings::GetStandaloneUiHwnd()) {
+                settings::g_mainTabSettings.show_independent_window.SetValue(false);
+            }
+            break;
+        }
         case WM_DESTROY: PostQuitMessage(0); return 0;
     }
     return DefWindowProcW(hWnd, msg, wParam, lParam);

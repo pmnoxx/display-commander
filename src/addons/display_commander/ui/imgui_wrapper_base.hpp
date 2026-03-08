@@ -206,6 +206,8 @@ struct IImGuiWrapper {
     virtual void NewFrame() = 0;
     /** Render and submit draw data (call before backend RenderDrawData). */
     virtual void Render() = 0;
+    /** Draw data for backend (e.g. ImGui_ImplOpenGL3_RenderDrawData). Default nullptr (ReShade owns render). */
+    virtual ImDrawData* GetDrawData() { return nullptr; }
 
     /** Context lifecycle (no-op in ReShade wrapper; only standalone uses these). */
     virtual void CreateContext() = 0;
@@ -217,6 +219,8 @@ struct IImGuiWrapper {
     virtual void SetDisplaySize(const ImVec2& size) = 0;
     /** Set IO font global scale. No-op in ReShade. */
     virtual void SetFontGlobalScale(float scale) = 0;
+    /** Mutable IO for font setup (AddFontDefault, etc.). Default nullptr (ReShade / no font setup). */
+    virtual ImGuiIO* GetIOForFontSetup() { return nullptr; }
 
     // Tab bar
     virtual bool BeginTabBar(const char* str_id, int flags = 0) = 0;

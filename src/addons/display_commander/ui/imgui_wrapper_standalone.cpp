@@ -216,18 +216,14 @@ const ImGuiIO& ImGuiWrapperStandalone::GetIO() { return ImGui::GetIO(); }
 unsigned int ImGuiWrapperStandalone::GetFrameCount() { return static_cast<unsigned int>(ImGui::GetFrameCount()); }
 void ImGuiWrapperStandalone::NewFrame() { ImGui::NewFrame(); }
 void ImGuiWrapperStandalone::Render() { ImGui::Render(); }
+ImDrawData* ImGuiWrapperStandalone::GetDrawData() { return ImGui::GetDrawData(); }
 void ImGuiWrapperStandalone::CreateContext() { ImGui::CreateContext(nullptr); }
 void ImGuiWrapperStandalone::DestroyContext() { ImGui::DestroyContext(nullptr); }
 void ImGuiWrapperStandalone::StyleColorsDark() { ImGui::StyleColorsDark(); }
-void ImGuiWrapperStandalone::SetConfigFlags(uint32_t flags) {
-    ImGui::GetIO().ConfigFlags |= flags;
-}
-void ImGuiWrapperStandalone::SetDisplaySize(const ImVec2& size) {
-    ImGui::GetIO().DisplaySize = size;
-}
-void ImGuiWrapperStandalone::SetFontGlobalScale(float scale) {
-    ImGui::GetIO().FontGlobalScale = scale;
-}
+void ImGuiWrapperStandalone::SetConfigFlags(uint32_t flags) { ImGui::GetIO().ConfigFlags |= flags; }
+void ImGuiWrapperStandalone::SetDisplaySize(const ImVec2& size) { ImGui::GetIO().DisplaySize = size; }
+void ImGuiWrapperStandalone::SetFontGlobalScale(float scale) { ImGui::GetIO().FontGlobalScale = scale; }
+ImGuiIO* ImGuiWrapperStandalone::GetIOForFontSetup() { return &ImGui::GetIO(); }
 bool ImGuiWrapperStandalone::BeginTabBar(const char* str_id, int flags) {
     return ImGui::BeginTabBar(str_id, static_cast<ImGuiTabBarFlags>(flags));
 }

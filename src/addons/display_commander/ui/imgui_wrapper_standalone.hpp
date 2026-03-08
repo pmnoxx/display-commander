@@ -119,12 +119,14 @@ struct ImGuiWrapperStandalone : IImGuiWrapper {
     unsigned int GetFrameCount() override;
     void NewFrame() override;
     void Render() override;
+    ImDrawData* GetDrawData() override;
     void CreateContext() override;
     void DestroyContext() override;
     void StyleColorsDark() override;
     void SetConfigFlags(uint32_t flags) override;
     void SetDisplaySize(const ImVec2& size) override;
     void SetFontGlobalScale(float scale) override;
+    ImGuiIO* GetIOForFontSetup() override;
     bool BeginTabBar(const char* str_id, int flags = 0) override;
     bool BeginTabItem(const char* label, bool* p_open = nullptr, int flags = 0) override;
     void EndTabItem() override;

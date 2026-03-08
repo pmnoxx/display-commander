@@ -4,6 +4,9 @@
 
 # unreleased
 
+## v0.12.338
+- **Independent UI: fix closing** - Closing the independent settings window (X or Alt+F4) now correctly unchecks the "Show independent window" checkbox in the ReShade overlay, and the game no longer quits when that window is closed. The window-proc hook ignores the independent UI window so exit logic and other game-window handling are never applied to it. Details: WM_CLOSE in cli_standalone_ui WndProc sets show_independent_window to false when the window is DisplayCommanderSettingsUI and running in ReShade; ProcessWindowMessage in window_proc_hooks returns early for g_standalone_ui_hwnd so WM_CLOSE/WM_QUIT/WM_DESTROY never trigger OnHandleExit for that window.
+
 ## v0.12.337
 - **Independent UI: more usable** - The standalone "Show independent window" is easier to use: (1) the settings window opens at a larger default size (1000×1600) so more content is visible without resizing; (2) the addon no longer injects overlays or game logic into that window—no performance overlay, present tracking, FPS limiter, or effect logic runs there, so it behaves like a separate settings app; (3) the Main tab tooltip for "Show independent window" shows the window HWND and full window stats (rect, size, class, style) when the window is open, using SetTooltipEx for readable wrapping. Details: default size constants `kStandaloneSettingsWindowDefaultWidth`/`Height` in cli_standalone_ui.cpp; no-inject list in `utils/no_inject_windows` (skip overlay + all ReShade HWND callbacks for independent UI); tooltip in main_new_tab.cpp.
 

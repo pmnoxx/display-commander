@@ -80,6 +80,7 @@ EXTERN_C const GUID IID_IDirect3DDevice9 = {
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <functional>
 #include <iomanip>
 #include <sstream>
 #include <thread>
@@ -3525,6 +3526,13 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
 }
 
 static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGuiWrapper& imgui);
+static void DrawDisplaySettings_FpsLimiterOnPresentSync(
+    display_commander::ui::IImGuiWrapper& imgui,
+    const std::function<void()>& drawPclStatsCheckbox);
+static void DrawDisplaySettings_FpsLimiterReflex(
+    display_commander::ui::IImGuiWrapper& imgui,
+    const std::function<void()>& drawPclStatsCheckbox);
+static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImGuiWrapper& imgui);
 
 void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui) {
     (void)imgui;
@@ -3686,46 +3694,10 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     imgui.Unindent();
 }
 
-static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
-    CALL_GUARD(utils::get_now_ns());
-
-    int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
-    if (current_item < 0 || current_item > 2) {
-        current_item = (current_item < 0) ? 0 : 2;
-    }
-    bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
-    bool fps_limit_enabled =
-        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
-
-    auto DrawPclStatsCheckbox = [&imgui]() {
-        if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
-            LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
-                "latency.");
-        }
-        imgui.Spacing();
-        bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
-        if (imgui.Checkbox("PCL stats for injected reflex", &pcl_stats)) {
-            settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
-            HWND game_window = display_commanderhooks::GetGameWindow();
-            if (game_window != nullptr && pcl_stats) {
-                display_commanderhooks::InstallWindowProcHooks(game_window);
-            }
-        }
-        if (imgui.IsItemHovered()) {
-            const uint64_t count = GetPCLStatsMarkerCallCount();
-            const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
-            imgui.SetTooltip(
-                "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
-                "initialized: %s",
-                static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
-        }
-    };
-    if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+static void DrawDisplaySettings_FpsLimiterOnPresentSync(
+    display_commander::ui::IImGuiWrapper& imgui,
+    const std::function<void()>& drawPclStatsCheckbox) {
+    if (!::IsNativeFramePacingInSync()) {
         // Check if we're running on D3D9 and show warning
         const reshade::api::device_api current_api = g_last_reshade_device_api.load();
         if (current_api == reshade::api::device_api::d3d9) {
@@ -3774,8 +3746,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
 
             // Low Latency Ratio Selector (Experimental WIP placeholder)
             imgui.Spacing();
-            // imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Low Latency Ratio:");
-            // imgui.SameLine();
             auto display_input_ratio =
                 !(::IsNativeFramePacingInSync() && settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue());
 
@@ -3886,117 +3856,361 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         }
     }
 
-    if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
-        // Check if we're running on D3D9 and show warning
-        const reshade::api::device_api current_api = g_last_reshade_device_api.load();
-        if (current_api == reshade::api::device_api::d3d9) {
-            imgui.TextColored(ui::colors::TEXT_WARNING,
-                              ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
-        } else {
-            uint64_t now_ns = utils::get_now_ns();
+    if (PCLStatsReportingAllowed()) {
+        imgui.Spacing();
+        drawPclStatsCheckbox();
+    }
 
-            // Show Native Reflex status only when streamline is used
-            if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-                if (IsNativeReflexActive(now_ns)) {
-                    imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
-                    if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("The game has native Reflex support and is actively using it. ");
-                    }
-                    double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
-                    double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
-                    imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
-                                      native_ns / 1000000.0);
-                    if (imgui.IsItemHovered()) {
-                        double raw_ns = static_cast<double>(g_sleep_reflex_native_ns.load());
-                        imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
-                    }
-                    //   if (!DidNativeReflexSleepRecently(now_ns)) {
-                    //     imgui.TextColored(
-                    //         ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                    //      " Warning: Native Reflex is not sleeping recently - may indicate issues! (FIXME)");
-                    // }
-                } else {
-                    bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-                    imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      ICON_FK_OK " Injected Reflex: ACTIVE Limit Real Frames: %s",
-                                      limit_real ? "ON" : "OFF");
-                    double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
-                    double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
-                    imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
-                                      injected_ns / 1000000.0);
-                    if (imgui.IsItemHovered()) {
-                        double raw_ns = static_cast<double>(g_sleep_reflex_injected_ns.load());
-                        imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
-                    }
+    // Native frame pacing (only visible if OnPresentSync mode is selected and in sync)
+    if (::IsNativeFramePacingInSync()) {
+        if (CheckboxSetting(settings::g_mainTabSettings.native_frame_pacing,
+                            "Use Reflex Latency Markers as fps limiter", imgui)) {
+            LogInfo("Native frame pacing %s",
+                    settings::g_mainTabSettings.native_frame_pacing.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
+                "Experimental; may improve frame pacing with FG.");
+        }
+        if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
+                            imgui)) {
+            LogInfo("Native pacing sim start only %s",
+                    settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
+                "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
+        }
+        // Schedule present start N frame times after simulation start (default on, improves native frame
+        // pacing)
+        if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
+                            "Schedule present start N frame times after simulation start", imgui)) {
+            LogInfo("Schedule present start after Sim Start %s",
+                    settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
+                                                                                                 : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
+                "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, "
+                "1 = one frame, 0.5 = half frame, etc.).");
+        }
+        imgui.SameLine();
+        if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)", "%.2f",
+                               imgui)) {
+            // Setting is automatically saved by SliderFloatSetting
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
+        }
+    }
 
-                    // Warn if both native and injected reflex are running simultaneously
-                    if (DidNativeReflexSleepRecently(now_ns)) {
-                        imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
-                                          " Warning: Both native and injected Reflex are active - this may cause "
-                                          "conflicts! (FIXME)");
-                    }
+    // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
+    if (CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {
+        LogInfo("Safe Mode fps limiter %s",
+                settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Uses a safer FPS limiting path with reduced risk of stutter or instability.\n"
+            "Experimental; may have slightly higher latency than the default limiter.");
+    }
+
+    // Limit Real Frames indicator (only visible if OnPresentSync mode is selected)
+    if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+        bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+        imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
+    }
+}
+
+static void DrawDisplaySettings_FpsLimiterReflex(
+    display_commander::ui::IImGuiWrapper& imgui,
+    const std::function<void()>& drawPclStatsCheckbox) {
+    // Check if we're running on D3D9 and show warning
+    const reshade::api::device_api current_api = g_last_reshade_device_api.load();
+    if (current_api == reshade::api::device_api::d3d9) {
+        imgui.TextColored(ui::colors::TEXT_WARNING,
+                          ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
+    } else {
+        uint64_t now_ns = utils::get_now_ns();
+
+        // Show Native Reflex status only when streamline is used
+        if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+            if (IsNativeReflexActive(now_ns)) {
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                  ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("The game has native Reflex support and is actively using it. ");
+                }
+                double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
+                double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                  "Native Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
+                                  native_ns / 1000000.0);
+                if (imgui.IsItemHovered()) {
+                    double raw_ns = static_cast<double>(g_sleep_reflex_native_ns.load());
+                    imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                }
+            } else {
+                bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                  ICON_FK_OK " Injected Reflex: ACTIVE Limit Real Frames: %s",
+                                  limit_real ? "ON" : "OFF");
+                double injected_ns = static_cast<double>(g_sleep_reflex_injected_ns_smooth.load());
+                double calls_per_second = injected_ns <= 0 ? -1 : 1000000000.0 / injected_ns;
+                imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+                                  "Injected Reflex: %.2f times/sec (%.1f ms interval)", calls_per_second,
+                                  injected_ns / 1000000.0);
+                if (imgui.IsItemHovered()) {
+                    double raw_ns = static_cast<double>(g_sleep_reflex_injected_ns.load());
+                    imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                }
+
+                // Warn if both native and injected reflex are running simultaneously
+                if (DidNativeReflexSleepRecently(now_ns)) {
+                    imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), ICON_FK_WARNING
+                                      " Warning: Both native and injected Reflex are active - this may cause "
+                                      "conflicts! (FIXME)");
                 }
             }
+        }
 
-            // Reflex mode selector for Reflex FPS limiter (same options as OnPresent)
-            imgui.Spacing();
-            if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex", imgui)) {
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "NVIDIA Reflex setting when using Reflex FPS limiter.\n\n"
-                    "Low latency: Enables Reflex Low Latency Mode (default).\n"
-                    "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
-                    "Off: Disables both Low Latency and Boost.\n"
-                    "Game Defaults: Do not override; use the game's own Reflex settings.");
-            }
-            if (PCLStatsReportingAllowed()) {
-                imgui.SameLine();
-                DrawPclStatsCheckbox();
-            }
+        // Reflex mode selector for Reflex FPS limiter (same options as OnPresent)
+        imgui.Spacing();
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex", imgui)) {
         }
-        if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "NVIDIA Reflex setting when using Reflex FPS limiter.\n\n"
+                "Low latency: Enables Reflex Low Latency Mode (default).\n"
+                "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
+                "Off: Disables both Low Latency and Boost.\n"
+                "Game Defaults: Do not override; use the game's own Reflex settings.");
+        }
+        if (PCLStatsReportingAllowed()) {
             imgui.SameLine();
-            if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
-                                ICON_FK_WARNING " Suppress Native Reflex", imgui)) {
-                LogInfo("Suppress Native Reflex %s",
-                        settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
-            }
+            drawPclStatsCheckbox();
         }
-        // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via
-        // DrawPclStatsCheckbox
-        if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
-            imgui.Spacing();
-            if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
-                LogInfo("Inject Reflex %s",
-                        settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
+    }
+    if (IsNativeReflexActive() || settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+        imgui.SameLine();
+        if (CheckboxSetting(settings::g_advancedTabSettings.reflex_supress_native,
+                            ICON_FK_WARNING " Suppress Native Reflex", imgui)) {
+            LogInfo("Suppress Native Reflex %s",
+                    settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
+        }
+    }
+    // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via
+    // DrawPclStatsCheckbox
+    if (!IsNativeReflexActive() && !PCLStatsReportingAllowed()) {
+        imgui.Spacing();
+        if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
+            LogInfo("Inject Reflex %s",
+                    settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
+                "latency.");
+        }
+    }
+
+    // Suppress Reflex Sleep checkbox
+    imgui.Spacing();
+    if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", imgui)) {
+        LogInfo("Suppress Reflex Sleep %s",
+                settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
+            "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
+    }
+}
+
+static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImGuiWrapper& imgui) {
+    // Scanline Offset (only visible if scanline mode is selected)
+    int current_offset = settings::g_mainTabSettings.scanline_offset.GetValue();
+    int temp_offset = current_offset;
+    if (imgui.SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
+        settings::g_mainTabSettings.scanline_offset.SetValue(temp_offset);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
+            "threshold where frame pacing is active.");
+    }
+
+    // VBlank Sync Divisor (only visible if latent sync mode is selected)
+    int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
+    int temp_divisor = current_divisor;
+    if (imgui.SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)",
+                        &temp_divisor, 0, 8, "%d")) {
+        settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
+    }
+    if (imgui.IsItemHovered()) {
+        // Calculate effective refresh rate based on monitor info
+        auto window_state = ::g_window_state.load();
+        double refresh_hz = 60.0;  // default fallback
+        if (window_state) {
+            refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
+        }
+
+        std::ostringstream tooltip_oss;
+        tooltip_oss << "VBlank Sync Divisor (0-8). Controls frame pacing similar to VSync divisors:\n\n";
+        tooltip_oss << "  0 -> No additional wait (Off)\n";
+        for (int div = 1; div <= 8; ++div) {
+            int effective_fps = static_cast<int>(std::round(refresh_hz / div));
+            tooltip_oss << "  " << div << " -> " << effective_fps << " FPS";
+            if (div == 1) {
+                tooltip_oss << " (Full Refresh)";
+            } else if (div == 2) {
+                tooltip_oss << " (Half Refresh)";
+            } else {
+                tooltip_oss << " (1/" << div << " Refresh)";
             }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
-                    "latency.");
+            tooltip_oss << "\n";
+        }
+        tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
+        imgui.SetTooltip("%s", tooltip_oss.str().c_str());
+    }
+
+    // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
+    if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
+        if (dxgi::latent_sync::g_latentSyncManager) {
+            auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
+            if (latent.IsVBlankMonitoringActive()) {
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
+                if (imgui.IsItemHovered()) {
+                    std::string status = latent.GetVBlankMonitorStatusString();
+                    imgui.SetTooltip(
+                        "VBlank monitoring thread is running and collecting scanline data for frame pacing.\n\n%s",
+                        status.c_str());
+                }
+
+                imgui.TextColored(ui::colors::STATUS_INACTIVE, "  refresh time: %.3fms",
+                                  1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::STATUS_INACTIVE, "  total_height: %llu",
+                                  dxgi::fps_limiter::g_latent_sync_total_height.load());
+                imgui.SameLine();
+                imgui.TextColored(ui::colors::STATUS_INACTIVE, "  active_height: %llu",
+                                  dxgi::fps_limiter::g_latent_sync_active_height.load());
+            } else {
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::STATUS_STARTING, ICON_FK_WARNING " VBlank Monitor: STARTING...");
+                if (imgui.IsItemHovered()) {
+                    std::string status = latent.GetVBlankMonitorStatusString();
+                    imgui.SetTooltip(
+                        "VBlank monitoring is enabled in settings but the thread is not running yet.\n\n"
+                        "• %s\n\n"
+                        "The thread starts when the FPS limiter runs (i.e. when a frame is presented with "
+                        "VBlank Sync Divisor > 0). After start it may briefly wait for Latent Sync mode, "
+                        "then bind to the display and collect scanline data for frame pacing.",
+                        status.c_str());
+                }
             }
         }
     }
 
-    if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
-        // Suppress Reflex Sleep checkbox
+    // Limit Real Frames (experimental)
+    if (enabled_experimental_features) {
+        if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
+            imgui.Spacing();
+            bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
+            if (imgui.Checkbox("Limit Real Frames", &limit_real)) {
+                settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
+                LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Limit real frames when using DLSS Frame Generation.\n"
+                    "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
+                    "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
+            }
+        }
+    } else {
+        if (settings::g_mainTabSettings.limit_real_frames.GetValue()) {
+            settings::g_mainTabSettings.limit_real_frames.SetValue(false);
+        }
+    }
+
+    // No Render / No Present in Background
+    if ((g_reshade_module != nullptr)) {
         imgui.Spacing();
-        if (CheckboxSetting(settings::g_mainTabSettings.suppress_reflex_sleep, "Suppress Reflex Sleep", imgui)) {
-            LogInfo("Suppress Reflex Sleep %s",
-                    settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
+        bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
+        if (imgui.Checkbox("No Render in Background", &no_render_in_bg)) {
+            settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
-                "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
+                "Skip rendering draw calls when the game window is not in the foreground. This can save "
+                "GPU power and reduce background processing.");
         }
+        imgui.SameLine();
+        bool no_present_in_bg = settings::g_mainTabSettings.no_present_in_background.GetValue();
+        if (imgui.Checkbox("No Present in Background", &no_present_in_bg)) {
+            settings::g_mainTabSettings.no_present_in_background.SetValue(no_present_in_bg);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Skip ReShade's on_present processing when the game window is not in the foreground. "
+                "This can save GPU power and reduce background processing.");
+        }
+    }
+}
+
+static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGuiWrapper& imgui) {
+    (void)imgui;
+    CALL_GUARD(utils::get_now_ns());
+
+    int current_item = settings::g_mainTabSettings.fps_limiter_mode.GetValue();
+    if (current_item < 0 || current_item > 2) {
+        current_item = (current_item < 0) ? 0 : 2;
+    }
+    bool enabled = settings::g_mainTabSettings.fps_limiter_enabled.GetValue();
+    bool fps_limit_enabled =
+        (enabled && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync) || ShouldReflexBeEnabled();
+
+    auto DrawPclStatsCheckbox = [&imgui]() {
+        if (CheckboxSetting(settings::g_mainTabSettings.inject_reflex, "Inject Reflex", imgui)) {
+            LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
+                "latency.");
+        }
+        imgui.Spacing();
+        bool pcl_stats = settings::g_mainTabSettings.pcl_stats_enabled.GetValue();
+        if (imgui.Checkbox("PCL stats for injected reflex", &pcl_stats)) {
+            settings::g_mainTabSettings.pcl_stats_enabled.SetValue(pcl_stats);
+            HWND game_window = display_commanderhooks::GetGameWindow();
+            if (game_window != nullptr && pcl_stats) {
+                display_commanderhooks::InstallWindowProcHooks(game_window);
+            }
+        }
+        if (imgui.IsItemHovered()) {
+            const uint64_t count = GetPCLStatsMarkerCallCount();
+            const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
+            imgui.SetTooltip(
+                "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
+                "initialized: %s",
+                static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
+        }
+    };
+    if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
+        DrawDisplaySettings_FpsLimiterOnPresentSync(imgui, DrawPclStatsCheckbox);
+    }
+
+    if (current_item == static_cast<int>(FpsLimiterMode::kReflex)) {
+        DrawDisplaySettings_FpsLimiterReflex(imgui, DrawPclStatsCheckbox);
     }
 
     // Reflex config when FPS limiter is off (checkbox unchecked) or mode is LatentSync (used when no FPS limiter is
@@ -4012,216 +4226,9 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         }
     }
 
-    if (PCLStatsReportingAllowed() && current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-        imgui.Spacing();
-        DrawPclStatsCheckbox();
-    }
-
-    // Native frame pacing (only visible if OnPresentSync mode is selected and in sync)
-    if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-        if (::IsNativeFramePacingInSync()) {
-            if (CheckboxSetting(settings::g_mainTabSettings.native_frame_pacing,
-                                "Use Reflex Latency Markers as fps limiter", imgui)) {
-                LogInfo(
-                    "Native frame pacing %s",
-                    settings::g_mainTabSettings.native_frame_pacing.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
-                    "Experimental; may improve frame pacing with FG.");
-            }
-            if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
-                                imgui)) {
-                LogInfo("Native pacing sim start only %s",
-                        settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
-                    "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
-            }
-            // Schedule present start N frame times after simulation start (default on, improves native frame
-            // pacing)
-            if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
-                                "Schedule present start N frame times after simulation start", imgui)) {
-                LogInfo("Schedule present start after Sim Start %s",
-                        settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
-                                                                                                     : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
-                    "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, "
-                    "1 = one frame, 0.5 = half frame, etc.).");
-            }
-            imgui.SameLine();
-            if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)", "%.2f",
-                                   imgui)) {
-                // Setting is automatically saved by SliderFloatSetting
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
-            }
-        }
-    }
-
-    // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
-    {
-        if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            if (CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter",
-                                imgui)) {
-                LogInfo(
-                    "Safe Mode fps limiter %s",
-                    settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Uses a safer FPS limiting path with reduced risk of stutter or instability.\n"
-                    "Experimental; may have slightly higher latency than the default limiter.");
-            }
-        }
-    }
-
-    // Limit Real Frames indicator (only visible if OnPresentSync mode is selected)
-    if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-        if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-            bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-            imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Limit Real Frames: %s", limit_real ? "ON" : "OFF");
-        }
-    }
-
     // Latent Sync Mode (only visible if Latent Sync limiter is selected)
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-        // Scanline Offset (only visible if scanline mode is selected)
-        int current_offset = settings::g_mainTabSettings.scanline_offset.GetValue();
-        int temp_offset = current_offset;
-        if (imgui.SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
-            settings::g_mainTabSettings.scanline_offset.SetValue(temp_offset);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
-                "threshold where frame pacing is active.");
-        }
-
-        // VBlank Sync Divisor (only visible if latent sync mode is selected)
-        int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
-        int temp_divisor = current_divisor;
-        if (imgui.SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)",
-                            &temp_divisor, 0, 8, "%d")) {
-            settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
-        }
-        if (imgui.IsItemHovered()) {
-            // Calculate effective refresh rate based on monitor info
-            auto window_state = ::g_window_state.load();
-            double refresh_hz = 60.0;  // default fallback
-            if (window_state) {
-                refresh_hz = window_state->current_monitor_refresh_rate.ToHz();
-            }
-
-            std::ostringstream tooltip_oss;
-            tooltip_oss << "VBlank Sync Divisor (0-8). Controls frame pacing similar to VSync divisors:\n\n";
-            tooltip_oss << "  0 -> No additional wait (Off)\n";
-            for (int div = 1; div <= 8; ++div) {
-                int effective_fps = static_cast<int>(std::round(refresh_hz / div));
-                tooltip_oss << "  " << div << " -> " << effective_fps << " FPS";
-                if (div == 1)
-                    tooltip_oss << " (Full Refresh)";
-                else if (div == 2)
-                    tooltip_oss << " (Half Refresh)";
-                else
-                    tooltip_oss << " (1/" << div << " Refresh)";
-                tooltip_oss << "\n";
-            }
-            tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
-            imgui.SetTooltip("%s", tooltip_oss.str().c_str());
-        }
-
-        // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
-        if (s_fps_limiter_mode.load() == FpsLimiterMode::kLatentSync) {
-            if (dxgi::latent_sync::g_latentSyncManager) {
-                auto& latent = dxgi::latent_sync::g_latentSyncManager->GetLatentLimiter();
-                if (latent.IsVBlankMonitoringActive()) {
-                    imgui.Spacing();
-                    imgui.TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
-                    if (imgui.IsItemHovered()) {
-                        std::string status = latent.GetVBlankMonitorStatusString();
-                        imgui.SetTooltip(
-                            "VBlank monitoring thread is running and collecting scanline data for frame pacing.\n\n%s",
-                            status.c_str());
-                    }
-
-                    imgui.TextColored(ui::colors::STATUS_INACTIVE, "  refresh time: %.3fms",
-                                      1.0 * dxgi::fps_limiter::ns_per_refresh.load() / utils::NS_TO_MS);
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::STATUS_INACTIVE, "  total_height: %llu",
-                                      dxgi::fps_limiter::g_latent_sync_total_height.load());
-                    imgui.SameLine();
-                    imgui.TextColored(ui::colors::STATUS_INACTIVE, "  active_height: %llu",
-                                      dxgi::fps_limiter::g_latent_sync_active_height.load());
-                } else {
-                    imgui.Spacing();
-                    imgui.TextColored(ui::colors::STATUS_STARTING, ICON_FK_WARNING " VBlank Monitor: STARTING...");
-                    if (imgui.IsItemHovered()) {
-                        std::string status = latent.GetVBlankMonitorStatusString();
-                        imgui.SetTooltip(
-                            "VBlank monitoring is enabled in settings but the thread is not running yet.\n\n"
-                            "• %s\n\n"
-                            "The thread starts when the FPS limiter runs (i.e. when a frame is presented with "
-                            "VBlank Sync Divisor > 0). After start it may briefly wait for Latent Sync mode, "
-                            "then bind to the display and collect scanline data for frame pacing.",
-                            status.c_str());
-                    }
-                }
-            }
-        }
-
-        // Limit Real Frames (experimental)
-        if (enabled_experimental_features) {
-            if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
-                imgui.Spacing();
-                bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
-                if (imgui.Checkbox("Limit Real Frames", &limit_real)) {
-                    settings::g_mainTabSettings.limit_real_frames.SetValue(limit_real);
-                    LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
-                }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
-                        "Limit real frames when using DLSS Frame Generation.\n"
-                        "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
-                        "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
-                }
-            }
-        } else {
-            if (settings::g_mainTabSettings.limit_real_frames.GetValue()) {
-                settings::g_mainTabSettings.limit_real_frames.SetValue(false);
-            }
-        }
-
-        // No Render / No Present in Background
-        if ((g_reshade_module != nullptr)) {
-            imgui.Spacing();
-            bool no_render_in_bg = settings::g_mainTabSettings.no_render_in_background.GetValue();
-            if (imgui.Checkbox("No Render in Background", &no_render_in_bg)) {
-                settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Skip rendering draw calls when the game window is not in the foreground. This can save "
-                    "GPU power and reduce background processing.");
-            }
-            imgui.SameLine();
-            bool no_present_in_bg = settings::g_mainTabSettings.no_present_in_background.GetValue();
-            if (imgui.Checkbox("No Present in Background", &no_present_in_bg)) {
-                settings::g_mainTabSettings.no_present_in_background.SetValue(no_present_in_bg);
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Skip ReShade's on_present processing when the game window is not in the foreground. "
-                    "This can save GPU power and reduce background processing.");
-            }
-        }
+        DrawDisplaySettings_FpsLimiterLatentSync(imgui);
     }
 }
 

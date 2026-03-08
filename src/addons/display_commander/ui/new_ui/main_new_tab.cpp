@@ -4017,14 +4017,14 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         DrawPclStatsCheckbox();
     }
 
-    // Experimental FG native fps limiter (only visible if OnPresentSync mode is selected and in sync)
+    // Native frame pacing (only visible if OnPresentSync mode is selected and in sync)
     if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
         if (::IsNativeFramePacingInSync()) {
-            if (CheckboxSetting(settings::g_mainTabSettings.experimental_fg_native_fps_limiter,
+            if (CheckboxSetting(settings::g_mainTabSettings.native_frame_pacing,
                                 "Use Reflex Latency Markers as fps limiter", imgui)) {
                 LogInfo(
-                    "Experimental FG native fps limiter %s",
-                    settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue() ? "enabled" : "disabled");
+                    "Native frame pacing %s",
+                    settings::g_mainTabSettings.native_frame_pacing.GetValue() ? "enabled" : "disabled");
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -4069,11 +4069,11 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
     // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
     {
         if (current_item == static_cast<int>(FpsLimiterMode::kOnPresentSync)) {
-            if (CheckboxSetting(settings::g_mainTabSettings.experimental_safe_mode_fps_limiter, "Safe Mode fps limiter",
+            if (CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter",
                                 imgui)) {
                 LogInfo(
                     "Safe Mode fps limiter %s",
-                    settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
+                    settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(

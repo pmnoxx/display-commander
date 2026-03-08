@@ -286,10 +286,10 @@ void ChooseFpsLimiter(uint64_t timestamp_ns, FpsLimiterCallSite caller_enum) {
         if ((site == FpsLimiterCallSite::reflex_marker || site == FpsLimiterCallSite::reflex_marker_vk_nvll
              || site == FpsLimiterCallSite::reflex_marker_vk_loader
              || site == FpsLimiterCallSite::reflex_marker_pclstats_etw)
-            && !settings::g_mainTabSettings.experimental_fg_native_fps_limiter.GetValue()) {
+            && !settings::g_mainTabSettings.native_frame_pacing.GetValue()) {
             continue;
         }
-        if (settings::g_mainTabSettings.experimental_safe_mode_fps_limiter.GetValue()
+        if (settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue()
             && s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync
             && site != FpsLimiterCallSite::reshade_addon_event) {
             continue;

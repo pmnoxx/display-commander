@@ -4,6 +4,9 @@
 
 # unreleased
 
+## v0.12.342
+- **Native frame pacing for FG: disabled by default** - The "Native frame pacing" option (limits native frame rate when Frame Generation / DLSS-G is active) is now off by default. You can still enable it in the FPS limiter section when native frame pacing is in sync if you want to try improved frame pacing with FG. Details: `native_frame_pacing` default changed to false in main_tab_settings.
+
 ## v0.12.341
 - **Window Control: Focus button** - A "Focus" button was added next to "Minimize Window" in the Main tab Window Control section. It brings the game window to the foreground and restores it if minimized (ShowWindow SW_RESTORE then SetForegroundWindow). Details: main_new_tab.cpp DrawWindowControls.
 - **Window Control: Close button** - A "Close" button was added in the Main tab Window Control section. It requests a graceful close of the game window by posting WM_CLOSE (same behavior as the Games tab Stop button). Details: main_new_tab.cpp DrawWindowControls, PostMessageW(..., WM_CLOSE, 0, 0).

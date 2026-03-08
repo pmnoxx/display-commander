@@ -54,11 +54,11 @@ class MainTabSettings {
     ui::new_ui::ComboSettingEnum<OnPresentReflexMode>
         reflex_disabled_limiter_mode;  // Used when FPS limiter is off (checkbox unchecked) or mode is LatentSync
     ui::new_ui::BoolSetting pcl_stats_enabled;
-    ui::new_ui::BoolSetting experimental_fg_native_fps_limiter;
+    ui::new_ui::BoolSetting native_frame_pacing;
     ui::new_ui::BoolSetting native_pacing_sim_start_only;
     ui::new_ui::BoolSetting delay_present_start_after_sim_enabled;
     ui::new_ui::FloatSetting delay_present_start_frames;
-    ui::new_ui::BoolSetting experimental_safe_mode_fps_limiter;
+    ui::new_ui::BoolSetting safe_mode_fps_limiter;
 
     // VSync & Tearing
     /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied

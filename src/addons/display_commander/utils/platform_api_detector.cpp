@@ -370,4 +370,55 @@ bool TestWhitelist(const std::wstring& executable_path) {
     return false;
 }
 
+namespace {
+
+HMODULE GetSteamAPIModule() {
+#ifdef _WIN64
+    return GetModuleHandleW(L"steam_api64.dll");
+#else
+    return GetModuleHandleW(L"steam_api.dll");
+#endif
+}
+
+}  // namespace
+
+bool GetSteamDLLPath(wchar_t* dest, size_t max_size) {
+    if (dest == nullptr || max_size == 0) {
+        return false;
+    }
+    dest[0] = L'\0';
+    HMODULE steam = GetSteamAPIModule();
+    if (steam == nullptr) {
+        return false;
+    }
+    return GetModuleFileNameW(steam, dest, static_cast<DWORD>(max_size)) != 0;
+}
+
+std::wstring GetSteamDLLPath() {
+    wchar_t buf[MAX_PATH + 2];
+    if (!GetSteamDLLPath(buf, MAX_PATH + 2)) {
+        return std::wstring();
+    }
+    return std::wstring(buf);
+}
+
+bool IsSteamAPIModuleLoaded() {
+    return GetSteamAPIModule() != nullptr;
+}
+
+bool IsSteamAPIInitExportPresent() {
+    return IsSteamAPIExportPresent("SteamAPI_Init");
+}
+
+bool IsSteamAPIExportPresent(const char* export_name) {
+    if (export_name == nullptr || export_name[0] == '\0') {
+        return false;
+    }
+    HMODULE steam = GetSteamAPIModule();
+    if (steam == nullptr) {
+        return false;
+    }
+    return GetProcAddress(steam, export_name) != nullptr;
+}
+
 }  // namespace display_commander::utils

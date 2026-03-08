@@ -35,6 +35,7 @@ class HotkeysTabSettings {
     StringSetting hotkey_autoclick;
     StringSetting hotkey_input_blocking;
     StringSetting hotkey_display_commander_ui;
+    StringSetting hotkey_independent_ui;
     StringSetting hotkey_performance_overlay;
     StringSetting hotkey_stopwatch;
     StringSetting hotkey_volume_up;

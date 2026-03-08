@@ -375,6 +375,19 @@ void InitializeHotkeyDefinitions() {
              oss << "Display Commander UI " << (new_state ? "enabled" : "disabled") << " via hotkey";
              LogInfo(oss.str().c_str());
          }},
+        {"independent_ui", "Independent UI Toggle", "pagedown",
+         "Open or close the standalone independent settings window (ReShade only)",
+         []() {
+             if (g_no_reshade_mode.load(std::memory_order_acquire)) return;
+             bool want_show = !settings::g_mainTabSettings.show_independent_window.GetValue();
+             settings::g_mainTabSettings.show_independent_window.SetValue(want_show);
+             if (want_show) {
+                 RequestShowIndependentWindow();
+             } else {
+                 CloseIndependentWindow();
+             }
+             LogInfo("Independent UI %s via hotkey", want_show ? "opened" : "closed");
+         }},
         {"performance_overlay", "Performance Overlay Toggle", "ctrl shift o", "Toggle the performance overlay",
          []() {
              bool current_state = settings::g_mainTabSettings.show_test_overlay.GetValue();
@@ -671,23 +684,27 @@ void InitializeHotkeyDefinitions() {
         g_hotkey_definitions[6].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_display_commander_ui.GetValue());
         g_hotkey_definitions[7].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_independent_ui.GetValue());
+        g_hotkey_definitions[8].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_performance_overlay.GetValue());
-        g_hotkey_definitions[8].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
-        g_hotkey_definitions[9].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_up.GetValue());
-        g_hotkey_definitions[10].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_down.GetValue());
-        g_hotkey_definitions[11].parsed =
-            DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
+        g_hotkey_definitions[9].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_stopwatch.GetValue());
+        g_hotkey_definitions[10].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_up.GetValue());
+        g_hotkey_definitions[11].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_volume_down.GetValue());
         g_hotkey_definitions[12].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_up.GetValue());
+        g_hotkey_definitions[13].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_system_volume_down.GetValue());
-        g_hotkey_definitions[13].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_auto_hdr.GetValue());
-        g_hotkey_definitions[14].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_brightness_down.GetValue());
-        g_hotkey_definitions[15].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_brightness_up.GetValue());
-        g_hotkey_definitions[16].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_down.GetValue());
-        g_hotkey_definitions[17].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_up.GetValue());
-        g_hotkey_definitions[18].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_left.GetValue());
-        g_hotkey_definitions[19].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_right.GetValue());
-        g_hotkey_definitions[20].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_move_to_primary.GetValue());
+        g_hotkey_definitions[14].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_auto_hdr.GetValue());
+        g_hotkey_definitions[15].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_brightness_down.GetValue());
+        g_hotkey_definitions[16].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_brightness_up.GetValue());
+        g_hotkey_definitions[17].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_down.GetValue());
+        g_hotkey_definitions[18].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_up.GetValue());
+        g_hotkey_definitions[19].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_left.GetValue());
+        g_hotkey_definitions[20].parsed = DeserializeHotkeyFromConfigString(settings.hotkey_win_right.GetValue());
         g_hotkey_definitions[21].parsed =
+            DeserializeHotkeyFromConfigString(settings.hotkey_move_to_primary.GetValue());
+        g_hotkey_definitions[22].parsed =
             DeserializeHotkeyFromConfigString(settings.hotkey_move_to_secondary.GetValue());
     }
 }
@@ -832,21 +849,22 @@ void SyncHotkeySettingsFromParsed() {
     s.hotkey_adhd_toggle.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[3].parsed));
     s.hotkey_input_blocking.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[5].parsed));
     s.hotkey_display_commander_ui.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[6].parsed));
-    s.hotkey_performance_overlay.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[7].parsed));
-    s.hotkey_stopwatch.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[8].parsed));
-    s.hotkey_volume_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[9].parsed));
-    s.hotkey_volume_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[10].parsed));
-    s.hotkey_system_volume_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[11].parsed));
-    s.hotkey_system_volume_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[12].parsed));
-    s.hotkey_auto_hdr.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[13].parsed));
-    s.hotkey_brightness_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[14].parsed));
-    s.hotkey_brightness_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[15].parsed));
-    s.hotkey_win_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[16].parsed));
-    s.hotkey_win_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[17].parsed));
-    s.hotkey_win_left.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[18].parsed));
-    s.hotkey_win_right.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[19].parsed));
-    s.hotkey_move_to_primary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[20].parsed));
-    s.hotkey_move_to_secondary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[21].parsed));
+    s.hotkey_independent_ui.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[7].parsed));
+    s.hotkey_performance_overlay.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[8].parsed));
+    s.hotkey_stopwatch.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[9].parsed));
+    s.hotkey_volume_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[10].parsed));
+    s.hotkey_volume_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[11].parsed));
+    s.hotkey_system_volume_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[12].parsed));
+    s.hotkey_system_volume_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[13].parsed));
+    s.hotkey_auto_hdr.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[14].parsed));
+    s.hotkey_brightness_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[15].parsed));
+    s.hotkey_brightness_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[16].parsed));
+    s.hotkey_win_down.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[17].parsed));
+    s.hotkey_win_up.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[18].parsed));
+    s.hotkey_win_left.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[19].parsed));
+    s.hotkey_win_right.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[20].parsed));
+    s.hotkey_move_to_primary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[21].parsed));
+    s.hotkey_move_to_secondary.SetValue(SerializeHotkeyToConfigString(g_hotkey_definitions[22].parsed));
 }
 
 void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
@@ -894,21 +912,22 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                         break;
                     case 5:  setting_ptr = &settings.hotkey_input_blocking; break;
                     case 6:  setting_ptr = &settings.hotkey_display_commander_ui; break;
-                    case 7:  setting_ptr = &settings.hotkey_performance_overlay; break;
-                    case 8:  setting_ptr = &settings.hotkey_stopwatch; break;
-                    case 9:  setting_ptr = &settings.hotkey_volume_up; break;
-                    case 10: setting_ptr = &settings.hotkey_volume_down; break;
-                    case 11: setting_ptr = &settings.hotkey_system_volume_up; break;
-                    case 12: setting_ptr = &settings.hotkey_system_volume_down; break;
-                    case 13: setting_ptr = &settings.hotkey_auto_hdr; break;
-                    case 14: setting_ptr = &settings.hotkey_brightness_down; break;
-                    case 15: setting_ptr = &settings.hotkey_brightness_up; break;
-                    case 16: setting_ptr = &settings.hotkey_win_down; break;
-                    case 17: setting_ptr = &settings.hotkey_win_up; break;
-                    case 18: setting_ptr = &settings.hotkey_win_left; break;
-                    case 19: setting_ptr = &settings.hotkey_win_right; break;
-                    case 20: setting_ptr = &settings.hotkey_move_to_primary; break;
-                    case 21: setting_ptr = &settings.hotkey_move_to_secondary; break;
+                    case 7:  setting_ptr = &settings.hotkey_independent_ui; break;
+                    case 8:  setting_ptr = &settings.hotkey_performance_overlay; break;
+                    case 9:  setting_ptr = &settings.hotkey_stopwatch; break;
+                    case 10: setting_ptr = &settings.hotkey_volume_up; break;
+                    case 11: setting_ptr = &settings.hotkey_volume_down; break;
+                    case 12: setting_ptr = &settings.hotkey_system_volume_up; break;
+                    case 13: setting_ptr = &settings.hotkey_system_volume_down; break;
+                    case 14: setting_ptr = &settings.hotkey_auto_hdr; break;
+                    case 15: setting_ptr = &settings.hotkey_brightness_down; break;
+                    case 16: setting_ptr = &settings.hotkey_brightness_up; break;
+                    case 17: setting_ptr = &settings.hotkey_win_down; break;
+                    case 18: setting_ptr = &settings.hotkey_win_up; break;
+                    case 19: setting_ptr = &settings.hotkey_win_left; break;
+                    case 20: setting_ptr = &settings.hotkey_win_right; break;
+                    case 21: setting_ptr = &settings.hotkey_move_to_primary; break;
+                    case 22: setting_ptr = &settings.hotkey_move_to_secondary; break;
                     default: setting_ptr = nullptr; break;
                 }
 

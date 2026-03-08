@@ -4,6 +4,9 @@
 
 # unreleased
 
+## v0.12.339
+- **Independent UI: hotkey** - A new hotkey "Independent UI Toggle" (default: PgDown) opens or closes the standalone independent settings window from the Hotkeys tab. Only active when running under ReShade; you can change or clear the shortcut in the Hotkeys tab. Details: hotkeys_tab.cpp new definition independent_ui; hotkeys_tab_settings hotkey_independent_ui (default "pagedown"); action toggles show_independent_window and calls RequestShowIndependentWindow/CloseIndependentWindow.
+
 ## v0.12.338
 - **Independent UI: fix closing** - Closing the independent settings window (X or Alt+F4) now correctly unchecks the "Show independent window" checkbox in the ReShade overlay, and the game no longer quits when that window is closed. The window-proc hook ignores the independent UI window so exit logic and other game-window handling are never applied to it. Details: WM_CLOSE in cli_standalone_ui WndProc sets show_independent_window to false when the window is DisplayCommanderSettingsUI and running in ReShade; ProcessWindowMessage in window_proc_hooks returns early for g_standalone_ui_hwnd so WM_CLOSE/WM_QUIT/WM_DESTROY never trigger OnHandleExit for that window.
 

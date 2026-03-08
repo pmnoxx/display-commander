@@ -1483,7 +1483,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             std::string tip =
                 "Open the standalone settings window (Main, Profile, Advanced) in a separate window.\n"
-                "Same content as when running without ReShade. Uncheck to close the window.";
+                "Same content as when running without ReShade. PgDn: open/focus or minimize (no close). Uncheck to close the window.";
             HWND indep_hwnd = standalone_ui_settings::GetStandaloneUiHwnd();
             if (indep_hwnd != nullptr) {
                 tip += "\n\nIndependent UI window:";

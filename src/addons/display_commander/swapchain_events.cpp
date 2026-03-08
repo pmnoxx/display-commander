@@ -1442,7 +1442,9 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
 
 float GetTargetFps() {
     // Use background flag computed by monitoring thread; avoid
-    // GetForegroundWindow here
+    // GetForegroundWindow here.
+    // When background_fps_enabled is off, use fps_limit in both foreground and background.
+    // When background_fps_enabled is on and in background, use fps_limit_background.
     float target_fps = 0.0f;
     bool is_background = g_app_in_background.load();
     if (is_background && settings::g_mainTabSettings.background_fps_enabled.GetValue()) {

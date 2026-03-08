@@ -48,20 +48,29 @@ static std::atomic<bool> g_opengl_hooks_installed{false};
 
 // Hook detour functions
 BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
+    HWND hwnd = WindowFromDC(hdc);
+    HWND standalone_hwnd = g_standalone_ui_hwnd.load(std::memory_order_acquire);
+    const bool is_standalone_ui = (standalone_hwnd != nullptr && hwnd == standalone_hwnd);
+
     const LONGLONG now_ns = utils::get_now_ns();
-    display_commanderhooks::g_last_opengl_swapbuffers_time_ns.store(static_cast<uint64_t>(now_ns),
-                                                                    std::memory_order_relaxed);
+    if (!is_standalone_ui) {
+        display_commanderhooks::g_last_opengl_swapbuffers_time_ns.store(static_cast<uint64_t>(now_ns),
+                                                                        std::memory_order_relaxed);
+    }
     CALL_GUARD(now_ns);
     g_opengl_hook_counters[OPENGL_HOOK_WGL_SWAPBUFFERS].fetch_add(1);
 
-    ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::opengl_swapbuffers);
-    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::opengl_swapbuffers);
-    if (use_fps_limiter) {
-        OnPresentFlags2(true, false);  // Called from present_detour
-        RecordNativeFrameTime();
-    }
-    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::opengl_swapbuffers) {
-        RecordFrameTime(FrameTimeMode::kPresent);
+    bool use_fps_limiter = false;
+    if (!is_standalone_ui) {
+        ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::opengl_swapbuffers);
+        use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::opengl_swapbuffers);
+        if (use_fps_limiter) {
+            OnPresentFlags2(true, false);  // Called from present_detour
+            RecordNativeFrameTime();
+        }
+        if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::opengl_swapbuffers) {
+            RecordFrameTime(FrameTimeMode::kPresent);
+        }
     }
 
     // Call original function
@@ -70,11 +79,12 @@ BOOL WINAPI wglSwapBuffers_Detour(HDC hdc) {
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::HandlePresentAfter(false);
     }
-    // Handle GPU completion for OpenGL (assumes immediate completion)
-    HandleOpenGLGPUCompletion();
-
-    // Call OnPresentUpdateAfter2 after the present
-    OnPresentUpdateAfter2(false);
+    if (!is_standalone_ui) {
+        // Handle GPU completion for OpenGL (assumes immediate completion)
+        HandleOpenGLGPUCompletion();
+        // Call OnPresentUpdateAfter2 after the present
+        OnPresentUpdateAfter2(false);
+    }
 
     return result;
 }

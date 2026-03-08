@@ -4,7 +4,12 @@
 
 # unreleased
 
+## v0.12.340
+- **Hotkeys in independent UI window** - Hotkeys (and exclusive key groups) now work when the independent settings window is focused, not only when the game is in foreground or the ReShade overlay is open. So you can use shortcuts (e.g. toggle overlay, Independent UI toggle, Win+Down) while the standalone settings window has focus. Details: ProcessHotkeys and ProcessExclusiveKeyGroups in hotkeys_tab.cpp treat "independent UI window is foreground" as an allowed condition (same as game in foreground or show_display_commander_ui); Hotkeys tab debug section shows "Independent UI window: In foreground" when applicable.
+
 ## v0.12.339
+- **Independent UI hotkey: open/focus/minimize (no close)** - The Independent UI hotkey (default PgDn) now has three-way behavior instead of open/close: (1) if the independent window is not open, it opens and gets focus; (2) if the independent window is focused, it minimizes and focus returns to the game; (3) if the game (or another window) is focused, the independent window gets focus. The hotkey no longer closes the window—use the window’s X button or uncheck "Show independent window" in the Main tab to close. Details: hotkeys_tab.cpp independent_ui action uses g_standalone_ui_hwnd, GetForegroundWindow_Direct, g_last_swapchain_hwnd; ShowWindow_Direct(SW_MINIMIZE) and SetForegroundWindow for focus/minimize.
+- **OpenGL FPS limiter: skip independent UI window** - When the FPS limiter uses the OpenGL swap-buffers path, swaps from the standalone independent settings window are no longer limited or counted as game presents. The addon resolves the window from the device context (WindowFromDC) and skips FPS limiter, present tracking, and frame-time recording when the swap belongs to the independent UI, so that window stays responsive. Details: wglSwapBuffers_Detour in opengl_hooks.cpp checks hwnd against g_standalone_ui_hwnd and bypasses ChooseFpsLimiter, g_last_opengl_swapbuffers_time_ns update, HandlePresentAfter, HandleOpenGLGPUCompletion, and OnPresentUpdateAfter2 for that window.
 - **Independent UI: hotkey** - A new hotkey "Independent UI Toggle" (default: PgDown) opens or closes the standalone independent settings window from the Hotkeys tab. Only active when running under ReShade; you can change or clear the shortcut in the Hotkeys tab. Details: hotkeys_tab.cpp new definition independent_ui; hotkeys_tab_settings hotkey_independent_ui (default "pagedown"); action toggles show_independent_window and calls RequestShowIndependentWindow/CloseIndependentWindow.
 
 ## v0.12.338

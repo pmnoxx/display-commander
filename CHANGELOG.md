@@ -4,7 +4,9 @@
 
 # unreleased
 
-## v0.12.340
+## v0.12.341
+- **Standalone Settings window title: show current game** - The independent/standalone settings window title is now "Display Commander - \<game window title\> vX.Y.Z" (e.g. "Display Commander - Hollow Knight v0.12.340") when a game window is known (`g_last_swapchain_hwnd`). When no game window or no title is available it falls back to "Display Commander - Settings (No ReShade) vX.Y.Z". The title is updated each frame so it stays in sync if the game changes its window title. Details: cli_standalone_ui.cpp RunStandaloneSettingsUI — title built from GetWindowTextW(g_last_swapchain_hwnd), SetWindowTextW when title changes.
+- **Standalone Settings (No ReShade): same tabs and order as in-game UI** - The "Display Commander - Settings (No ReShade)" window now shows the same tabs in the same order as the UI inside ReShade: Main, Games, Advanced, Hotkeys, Controller, Performance, Performance Overlay, Vulkan (Experimental), ReShade, NVIDIA Profile, Debug. The Games tab was previously missing; it is now included, and the ReShade (addons/shaders) tab was added. Tab order matches the in-game overlay for consistency. Details: cli_standalone_ui.cpp RunStandaloneSettingsUI tab bar; addons_tab.hpp include and DrawAddonsTab call.
 - **Hotkeys in independent UI window** - Hotkeys (and exclusive key groups) now work when the independent settings window is focused, not only when the game is in foreground or the ReShade overlay is open. So you can use shortcuts (e.g. toggle overlay, Independent UI toggle, Win+Down) while the standalone settings window has focus. Details: ProcessHotkeys and ProcessExclusiveKeyGroups in hotkeys_tab.cpp treat "independent UI window is foreground" as an allowed condition (same as game in foreground or show_display_commander_ui); Hotkeys tab debug section shows "Independent UI window: In foreground" when applicable.
 
 ## v0.12.339

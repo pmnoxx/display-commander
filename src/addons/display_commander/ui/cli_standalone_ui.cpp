@@ -5,10 +5,12 @@
 
 #include "config/display_commander_config.hpp"
 #include "display/display_cache.hpp"
+#include "globals.hpp"
 #include "settings/main_tab_settings.hpp"
 #include "standalone_ui_settings_bridge.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "ui/imgui_wrapper_standalone.hpp"
+#include "ui/new_ui/addons_tab.hpp"
 #include "ui/new_ui/advanced_tab.hpp"
 #include "ui/new_ui/experimental_tab.hpp"
 #include "ui/new_ui/games_tab.hpp"
@@ -743,15 +745,31 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
     wc.lpszClassName = L"DisplayCommanderSettingsUI";
     if (!RegisterClassExW(&wc)) return;
 
-    std::string titleUtf8 = "Display Commander - Settings (No ReShade) v";
-    titleUtf8 += DISPLAY_COMMANDER_VERSION_STRING;
-    int titleLen = MultiByteToWideChar(CP_UTF8, 0, titleUtf8.c_str(), (int)titleUtf8.size() + 1, nullptr, 0);
-    std::wstring titleW(titleLen > 0 ? (size_t)titleLen : 0, 0);
-    if (titleLen > 0)
-        MultiByteToWideChar(CP_UTF8, 0, titleUtf8.c_str(), (int)titleUtf8.size() + 1, &titleW[0], titleLen);
+    // Title: "Display Commander - <game window title> vX.Y.Z" when g_last_swapchain_hwnd has a title; else "Display Commander - Settings (No ReShade) vX.Y.Z"
+    std::wstring titleW = L"Display Commander - ";
+    HWND game_hwnd = g_last_swapchain_hwnd.load(std::memory_order_acquire);
+    if (game_hwnd != nullptr) {
+        wchar_t game_title_buf[256] = {};
+        if (GetWindowTextW(game_hwnd, game_title_buf, 256) > 0 && game_title_buf[0] != L'\0') {
+            titleW += game_title_buf;
+        } else {
+            titleW += L"Settings (No ReShade)";
+        }
+    } else {
+        titleW += L"Settings (No ReShade)";
+    }
+    titleW += L" v";
+    std::string ver(DISPLAY_COMMANDER_VERSION_STRING);
+    int verLen = MultiByteToWideChar(CP_UTF8, 0, ver.c_str(), (int)ver.size() + 1, nullptr, 0);
+    if (verLen > 0) {
+        size_t prev = titleW.size();
+        titleW.resize(prev + (size_t)verLen, 0);
+        MultiByteToWideChar(CP_UTF8, 0, ver.c_str(), (int)ver.size() + 1, &titleW[prev], verLen);
+        if (titleW.back() == L'\0') titleW.pop_back();
+    }
 
     HWND hwnd = standalone_ui_settings::CreateWindowW_Direct(
-        wc.lpszClassName, titleW.empty() ? L"Display Commander - Settings" : titleW.c_str(), WS_OVERLAPPEDWINDOW, 100,
+        wc.lpszClassName, titleW.c_str(), WS_OVERLAPPEDWINDOW, 100,
         100, kStandaloneSettingsWindowDefaultWidth, kStandaloneSettingsWindowDefaultHeight, nullptr, nullptr,
         (HINSTANCE)hInst, nullptr);
     if (!hwnd) {
@@ -784,6 +802,8 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                                               "Sync to Display Refresh Rate (fraction of monitor refresh rate)"};
     static const int fps_limiter_num = 4;
 
+    std::wstring lastWindowTitle;  // cache so we only SetWindowTextW when title changes
+
     bool done = false;
     while (!done) {
         MSG msg;
@@ -793,6 +813,33 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
             if (msg.message == WM_QUIT) done = true;
         }
         if (done) break;
+
+        // Keep window title in sync with current game window title (g_last_swapchain_hwnd)
+        std::wstring currentTitle = L"Display Commander - ";
+        HWND game_hwnd = g_last_swapchain_hwnd.load(std::memory_order_acquire);
+        if (game_hwnd != nullptr) {
+            wchar_t game_title_buf[256] = {};
+            if (GetWindowTextW(game_hwnd, game_title_buf, 256) > 0 && game_title_buf[0] != L'\0') {
+                currentTitle += game_title_buf;
+            } else {
+                currentTitle += L"Settings (No ReShade)";
+            }
+        } else {
+            currentTitle += L"Settings (No ReShade)";
+        }
+        currentTitle += L" v";
+        std::string ver(DISPLAY_COMMANDER_VERSION_STRING);
+        int verLen = MultiByteToWideChar(CP_UTF8, 0, ver.c_str(), (int)ver.size() + 1, nullptr, 0);
+        if (verLen > 0) {
+            size_t prev = currentTitle.size();
+            currentTitle.resize(prev + (size_t)verLen, 0);
+            MultiByteToWideChar(CP_UTF8, 0, ver.c_str(), (int)ver.size() + 1, &currentTitle[prev], verLen);
+            if (currentTitle.back() == L'\0') currentTitle.pop_back();
+        }
+        if (currentTitle != lastWindowTitle) {
+            SetWindowTextW(hwnd, currentTitle.c_str());
+            lastWindowTitle = std::move(currentTitle);
+        }
 
         if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
             glViewport(0, 0, (GLsizei)g_ResizeWidth, (GLsizei)g_ResizeHeight);
@@ -812,10 +859,8 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     ui::new_ui::DrawMainNewTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui);
                     gui.EndTabItem();
                 }
-                if (gui.BeginTabItem("NVIDIA Profile", nullptr, 0)) {
-                    static bool s_noreshadeShowAdvancedProfile = false;
-                    display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui,
-                                                                &s_noreshadeShowAdvancedProfile);
+                if (gui.BeginTabItem("Games", nullptr, 0)) {
+                    ui::new_ui::DrawGamesTab(gui);
                     gui.EndTabItem();
                 }
                 if (gui.BeginTabItem("Advanced", nullptr, 0)) {
@@ -844,6 +889,16 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                 }
                 if (gui.BeginTabItem("Vulkan (Experimental)", nullptr, 0)) {
                     ui::new_ui::DrawVulkanTab(gui);
+                    gui.EndTabItem();
+                }
+                if (gui.BeginTabItem("ReShade", nullptr, 0)) {
+                    ui::new_ui::DrawAddonsTab(gui);
+                    gui.EndTabItem();
+                }
+                if (gui.BeginTabItem("NVIDIA Profile", nullptr, 0)) {
+                    static bool s_noreshadeShowAdvancedProfile = false;
+                    display_commander::ui::DrawNvidiaProfileTab(ui::new_ui::GetGraphicsApiFromLastDeviceApi(), gui,
+                                                                &s_noreshadeShowAdvancedProfile);
                     gui.EndTabItem();
                 }
                 if (gui.BeginTabItem("Debug", nullptr, 0)) {

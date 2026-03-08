@@ -1483,7 +1483,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.IsItemHovered()) {
             std::string tip =
                 "Open the standalone settings window (Main, Profile, Advanced) in a separate window.\n"
-                "Same content as when running without ReShade. PgDn: open/focus or minimize (no close). Uncheck to close the window.";
+                "Same content as when running without ReShade. PgDn: open/focus or minimize (no close). Uncheck to "
+                "close the window.";
             HWND indep_hwnd = standalone_ui_settings::GetStandaloneUiHwnd();
             if (indep_hwnd != nullptr) {
                 tip += "\n\nIndependent UI window:";
@@ -1513,8 +1514,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     }
                     LONG_PTR style = GetWindowLongPtr(indep_hwnd, GWL_STYLE);
                     LONG_PTR ex_style = GetWindowLongPtr(indep_hwnd, GWL_EXSTYLE);
-                    snprintf(buf, sizeof(buf), "\nStyle: 0x%08lX  ExStyle: 0x%08lX",
-                             static_cast<unsigned long>(style), static_cast<unsigned long>(ex_style));
+                    snprintf(buf, sizeof(buf), "\nStyle: 0x%08lX  ExStyle: 0x%08lX", static_cast<unsigned long>(style),
+                             static_cast<unsigned long>(ex_style));
                     tip += buf;
                 } else {
                     char buf[80];
@@ -3379,8 +3380,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
                 PROCESS_MEMORY_COUNTERS pmc = {};
                 pmc.cb = sizeof(pmc);
-                const bool have_process =
-                    (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
+                const bool have_process = (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
                 const uint64_t process_mib = have_process ? (pmc.WorkingSetSize / (1024ULL * 1024ULL)) : 0;
                 imgui.TextColored(ui::colors::TEXT_LABEL, "RAM:");
                 imgui.SameLine();
@@ -3393,7 +3393,9 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                                static_cast<unsigned long long>(ram_total_mib));
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
+                    imgui.SetTooltip(
+                        "System RAM in use (this app working set) / total (GlobalMemoryStatusEx, "
+                        "GetProcessMemoryInfo).");
                 }
             } else {
                 imgui.TextColored(ui::colors::TEXT_LABEL, "RAM:");
@@ -6565,8 +6567,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             const uint64_t ram_total_mib = mem_status.ullTotalPhys / (1024ULL * 1024ULL);
             PROCESS_MEMORY_COUNTERS pmc = {};
             pmc.cb = sizeof(pmc);
-            const bool have_process =
-                (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
+            const bool have_process = (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)) != 0);
             const uint64_t process_mib = have_process ? (pmc.WorkingSetSize / (1024ULL * 1024ULL)) : 0;
             if (settings::g_mainTabSettings.show_labels.GetValue()) {
                 if (have_process) {
@@ -6588,7 +6589,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 }
             }
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
+                imgui.SetTooltip(
+                    "System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "RAM: N/A");

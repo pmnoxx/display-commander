@@ -15,6 +15,8 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
+#include "../../utils/platform_api_detector.hpp"
+#include "../../utils/steam_achievement_cache.hpp"
 #include "../../utils/process_window_enumerator.hpp"
 #include "../../utils/texture_tracker.hpp"
 #include "../../utils/timing.hpp"
@@ -22,8 +24,10 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdio>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <dxgi1_6.h>
 #include <windows.h>
@@ -1652,6 +1656,163 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
     if (imgui.CollapsingHeader("Unsupported/unfinished features", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
+
+        // Steam API subsection: module loaded + key exports (read-only)
+        if (imgui.CollapsingHeader("Steam API", wrapper_flags::TreeNodeFlags_None)) {
+            imgui.Indent();
+            const bool steam_loaded = display_commander::utils::IsSteamAPIModuleLoaded();
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Module: %s",
+                              steam_loaded ? "loaded" : "not loaded");
+            if (imgui.IsItemHovered()) {
+                if (steam_loaded) {
+                    const std::wstring path = display_commander::utils::GetSteamDLLPath();
+                    std::string narrow(path.begin(), path.end());
+                    imgui.SetTooltip("Steam API DLL path: %s", narrow.c_str());
+                } else {
+                    imgui.SetTooltip("steam_api64.dll / steam_api.dll is not loaded in this process.");
+                }
+            }
+            struct SteamExportRow {
+                const char* name;
+                const char* tip;
+            };
+            const SteamExportRow rows[] = {
+                {"SteamAPI_Init", "Initialize Steam API. Required before using other interfaces."},
+                {"SteamUser", "ISteamUser (e.g. GetSteamID for user ID)."},
+                {"SteamUserStats", "ISteamUserStats (achievements, stats)."},
+                {"SteamUtils", "ISteamUtils (e.g. GetAppID for app ID)."},
+                {"SteamClient", "ISteamClient (base client interface)."},
+            };
+            for (const auto& row : rows) {
+                const bool present = display_commander::utils::IsSteamAPIExportPresent(row.name);
+                imgui.TextColored(::ui::colors::TEXT_LABEL, "%s export: %s", row.name, present ? "yes" : "no");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("%s", row.tip);
+                }
+            }
+            {
+                char exports_debug[256];
+                display_commander::utils::GetSteamAchievementExportsDebug(exports_debug, sizeof(exports_debug));
+                imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", exports_debug);
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Exports needed for achievement list/count. Special K uses SteamUserStats.");
+                }
+            }
+            {
+                const display_commander::utils::SteamAchievementCount ac =
+                    display_commander::utils::GetSteamAchievementCountCached();
+                if (ac.available) {
+                    imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: %d / %d unlocked",
+                                      ac.unlocked, ac.total);
+                } else {
+                    imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: —");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "Achievement count via SteamUserStats() or SteamClient()->GetISteamUserStats().\n"
+                        "Shown when the module is loaded and stats are available.");
+                }
+            }
+            {
+                const display_commander::utils::SteamAchievementCount ac_list =
+                    display_commander::utils::GetSteamAchievementCountCached();
+                static std::vector<display_commander::utils::SteamAchievementEntry> s_achievement_list;
+                static int s_achievement_list_total = -1;
+                if (ac_list.available) {
+                    if (s_achievement_list_total != ac_list.total || s_achievement_list.empty()) {
+                        s_achievement_list_total = ac_list.total;
+                        const size_t max_entries = 512;
+                        s_achievement_list.resize(max_entries < static_cast<size_t>(ac_list.total)
+                                                      ? max_entries
+                                                      : static_cast<size_t>(ac_list.total));
+                        const int n = display_commander::utils::GetSteamAchievementList(
+                            s_achievement_list.data(), s_achievement_list.size());
+                        if (n >= 0) {
+                            s_achievement_list.resize(static_cast<size_t>(n));
+                        } else {
+                            s_achievement_list.clear();
+                            s_achievement_list_total = -1;
+                        }
+                    }
+                } else {
+                    s_achievement_list.clear();
+                    s_achievement_list_total = -1;
+                }
+                if (!s_achievement_list.empty()) {
+                    if (imgui.CollapsingHeader("Achievement list", wrapper_flags::TreeNodeFlags_None)) {
+                        if (imgui.BeginChild("steam_achievement_list", ImVec2(0, 220), true)) {
+                            for (const auto& e : s_achievement_list) {
+                                const char* label = e.display_name[0] != '\0' ? e.display_name : e.api_name;
+                                imgui.TextColored(e.unlocked ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)
+                                                            : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                                                  "%s %s", e.unlocked ? "[X]" : "[ ]", label);
+                                if (imgui.IsItemHovered() && e.api_name[0] != '\0') {
+                                    imgui.SetTooltip("API: %s", e.api_name);
+                                }
+                            }
+                        }
+                        imgui.EndChild();
+                    }
+                }
+            }
+            {
+                const display_commander::utils::SteamAchievementCount ac_for_test =
+                    display_commander::utils::GetSteamAchievementCountCached();
+                if (ac_for_test.available) {
+                    char test_label[64];
+                    snprintf(test_label, sizeof(test_label), "Test achievement (last: %d / %d)",
+                             ac_for_test.unlocked, ac_for_test.total);
+                    if (imgui.Button(test_label)) {
+                        display_commander::utils::TriggerSteamAchievementTestBump();
+                    }
+                    if (imgui.IsItemHovered()) {
+                        imgui.SetTooltip("Show the achievement-unlocked notification on the performance overlay for 30 seconds.");
+                    }
+                }
+            }
+            {
+                const display_commander::utils::SteamAchievementCount ac_debug =
+                    display_commander::utils::GetSteamAchievementCountCached();
+                if (ac_debug.available) {
+                    display_commander::utils::SteamLastUnlockedInfo name_debug;
+                    display_commander::utils::GetLastUnlockedAchievementInfo(
+                        ac_debug.unlocked, ac_debug.total, &name_debug);
+                    imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievement name lookup:");
+                    if (name_debug.has_display_name) {
+                        imgui.TextColored(::ui::colors::TEXT_LABEL, "  Display name: %s", name_debug.display_name);
+                    }
+                    if (name_debug.debug[0] != '\0') {
+                        imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", name_debug.debug);
+                        if (imgui.IsItemHovered()) {
+                            imgui.SetTooltip("Debug: which Steam API query failed when resolving last-unlocked achievement name.");
+                        }
+                    }
+                }
+            }
+            if (CheckboxSetting(settings::g_advancedTabSettings.show_steam_achievement_notifications,
+                               "Show Steam achievement notifications (overlay)", imgui)) {
+                LogInfo("Show Steam achievement notifications: %s",
+                        settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue() ? "on"
+                                                                                                        : "off");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "When on, shows Steam achievement count on screen (same style as performance overlay)\n"
+                    "even when the performance overlay is disabled.");
+            }
+            if (CheckboxSetting(settings::g_advancedTabSettings.show_steam_achievement_counter_increased,
+                               "Show when achievement counter increased", imgui)) {
+                LogInfo("Show Steam achievement counter increased: %s",
+                        settings::g_advancedTabSettings.show_steam_achievement_counter_increased.GetValue()
+                            ? "on"
+                            : "off");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("When on, shows a brief notification whenever the unlocked achievement count goes up.");
+            }
+            imgui.Unindent();
+        }
+
         // Enable D3D11 device vtable hooks (HookD3D11DeviceVTable). Required for track loaded texture size.
         if (CheckboxSetting(settings::g_advancedTabSettings.enable_dx11_vtable_hooks,
                             "Enable D3D11 vtable hooks (HookD3D11DeviceVTable)", imgui)) {

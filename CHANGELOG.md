@@ -2,7 +2,11 @@
 
 ---
 
+## v0.12.348
+- **Steam achievements: list and overlay improvements** - The Advanced tab Steam API section now shows a scrollable achievement list sorted by last unlocked (most recent first). The performance overlay always shows "X / Y achievements" when the achievement-unlock notification is active (in addition to the achievement name when available). Export debug in the Steam API tab reports which exports are present for achievements (SteamUserStats, SteamClient, SteamUser; Special K uses SteamUserStats). The overlay no longer shows the "SteamUserStats export not found" line. Details: steam_achievements.hpp/cpp (GetSteamAchievementList, SteamAchievementEntry.unlock_time, sort by unlock time; GetSteamAchievementExportsDebug); advanced_tab achievement list + exports debug; main_entry OnSteamAchievementOverlay X/Y line and filtered debug.
+
 ## v0.12.347
+- **Steam achievement count: background thread, at most once per second** - Steam achievement count is no longer queried on every overlay or UI frame. A dedicated background thread updates the count at most once per second; the overlay and Advanced tab read from this cache. Reduces per-frame Steam API calls and keeps the UI responsive. Details: `utils/steam_achievement_cache.hpp`, `steam_achievement_cache.cpp` with SRWLOCK-protected cache and lazy-started thread; `GetSteamAchievementCountCached()` used from main_entry overlay and advanced_tab.
 - **Hooking into more slUpgradeInterface classes** - Streamline proxy factory hooking now covers additional interfaces returned by slUpgradeInterface (e.g. IDXGIFactory, IDXGIFactory1 and related), so CreateSwapChain/CreateSwapChainForHwnd go through the addon’s detours (logging and swapchain tracking) for more games using Streamline. Details: streamline_hooks.cpp slUpgradeInterface_Detour — QueryInterface for IDXGIFactory and hook of proxy factory vtable for D3D11/D3D12 device and swapchain creation.
 
 ## v0.12.346

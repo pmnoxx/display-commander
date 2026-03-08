@@ -217,6 +217,7 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **file_sha256.cpp**, **.hpp**
 - **game_launcher_registry.cpp**, **.hpp**
 - **mpo_registry.cpp**, **.hpp**
+- **no_inject_windows.cpp**, **.hpp**: Windows to skip for addon overlay/UI injection (e.g. standalone independent UI); used in OnPerformanceOverlay, OnReShadeOverlayOpen, OnInitEffectRuntime
 - **overlay_window_detector.cpp**, **.hpp**
 - **platform_api_detector.cpp**, **.hpp**
 - **process_window_enumerator.cpp**, **.hpp**

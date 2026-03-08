@@ -723,6 +723,11 @@ static void ShowReshadeCoreVersionsForDir(display_commander::ui::IImGuiWrapper& 
     }
 }
 
+namespace {
+constexpr int kStandaloneSettingsWindowDefaultWidth = 950;
+constexpr int kStandaloneSettingsWindowDefaultHeight = 1600;
+}  // namespace
+
 void RunStandaloneSettingsUI(HINSTANCE hInst) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -745,7 +750,8 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
 
     HWND hwnd = standalone_ui_settings::CreateWindowW_Direct(
         wc.lpszClassName, titleW.empty() ? L"Display Commander - Settings" : titleW.c_str(), WS_OVERLAPPEDWINDOW, 100,
-        100, 480, 420, nullptr, nullptr, (HINSTANCE)hInst, nullptr);
+        100, kStandaloneSettingsWindowDefaultWidth, kStandaloneSettingsWindowDefaultHeight, nullptr, nullptr,
+        (HINSTANCE)hInst, nullptr);
     if (!hwnd) {
         UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return;
@@ -831,8 +837,7 @@ void RunStandaloneSettingsUI(HINSTANCE hInst) {
                     gui.EndTabItem();
                 }
                 if (gui.BeginTabItem("Performance Overlay", nullptr, 0)) {
-                    ui::new_ui::DrawPerformanceOverlayContent(gui, ui::new_ui::GetGraphicsApiFromLastDeviceApi(),
-                                                             true);
+                    ui::new_ui::DrawPerformanceOverlayContent(gui, ui::new_ui::GetGraphicsApiFromLastDeviceApi(), true);
                     gui.EndTabItem();
                 }
                 if (gui.BeginTabItem("Vulkan (Experimental)", nullptr, 0)) {

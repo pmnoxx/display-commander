@@ -4,6 +4,9 @@
 
 # unreleased
 
+## v0.12.337
+- **Independent UI: more usable** - The standalone "Show independent window" is easier to use: (1) the settings window opens at a larger default size (1000×1600) so more content is visible without resizing; (2) the addon no longer injects overlays or game logic into that window—no performance overlay, present tracking, FPS limiter, or effect logic runs there, so it behaves like a separate settings app; (3) the Main tab tooltip for "Show independent window" shows the window HWND and full window stats (rect, size, class, style) when the window is open, using SetTooltipEx for readable wrapping. Details: default size constants `kStandaloneSettingsWindowDefaultWidth`/`Height` in cli_standalone_ui.cpp; no-inject list in `utils/no_inject_windows` (skip overlay + all ReShade HWND callbacks for independent UI); tooltip in main_new_tab.cpp.
+
 ## v0.12.336
 - **RAM usage: show game (process) memory** - The Main tab and performance overlay now display RAM as **X (Y) / Z** MiB: X = system physical memory in use, Y = current process (game) working set, Z = total system RAM. This makes it easy to see both total system usage and how much the game is using. If process memory cannot be read, the display falls back to X / Z. Details: main_new_tab.cpp — GetProcessMemoryInfo(GetCurrentProcess(), WorkingSetSize) for Y; tooltip explains all three values.
 

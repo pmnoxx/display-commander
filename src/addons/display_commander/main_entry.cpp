@@ -43,6 +43,7 @@
 #include "utils/general_utils.hpp"
 #include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
+#include "utils/no_inject_windows.hpp"
 #include "utils/platform_api_detector.hpp"
 #include "utils/process_window_enumerator.hpp"
 #include "utils/reshade_load_path.hpp"
@@ -179,6 +180,9 @@ ReShadeDetectionDebugInfo g_reshade_debug_info;
 
 void OnRegisterOverlayDisplayCommander(reshade::api::effect_runtime* runtime) {
     CALL_GUARD(utils::get_now_ns());
+    if (runtime != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
+        return;  // Don't draw DC UI for no-inject windows (e.g. independent standalone UI)
+    }
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     // Avoid displaying UI twice
     if (show_display_commander_ui) {
@@ -253,6 +257,9 @@ void OnFinishPresent(reshade::api::command_queue* queue, reshade::api::swapchain
     CALL_GUARD(utils::get_now_ns());
     // Present completion tracking
     if (queue == nullptr || swapchain == nullptr) {
+        return;
+    }
+    if (should_skip_addon_injection_for_window(static_cast<HWND>(swapchain->get_hwnd()))) {
         return;
     }
     // Add any tracking logic here if needed
@@ -376,6 +383,9 @@ void OnReShadeBeginEffects(reshade::api::effect_runtime* runtime, reshade::api::
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
     }
+    if (should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
+        return;
+    }
     // Brightness is applied from OnReShadePresent to avoid modifying technique state/uniforms
     // during the effect loop (which can cause crashes).
 }
@@ -388,11 +398,17 @@ void OnReShadeFinishEffects(reshade::api::effect_runtime* runtime, reshade::api:
     if (runtime == nullptr || cmd_list == nullptr) {
         return;
     }
+    if (should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
+        return;
+    }
     // Add any tracking logic here if needed
 }
 
 void OnReShadePresent(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
+        return;
+    }
+    if (should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
         return;
     }
     // Apply brightness and AutoHDR for the next frame. Safe to set technique state and uniforms here
@@ -483,9 +499,12 @@ void OnInitEffectRuntime_InitWithHwndOnce(reshade::api::effect_runtime* runtime)
     if (initialized_with_hwnd) {
         return;
     }
-    initialized_with_hwnd = true;
     HWND game_window = static_cast<HWND>(runtime->get_hwnd());
-    if (game_window != nullptr && IsWindow(game_window) != 0) {
+    if (game_window == nullptr || should_skip_addon_injection_for_window(game_window)) {
+        return;  // Skip init for no-inject windows (e.g. independent UI)
+    }
+    initialized_with_hwnd = true;
+    if (IsWindow(game_window) != 0) {
         LogInfo("[OnInitEffectRuntime] Game window detected - HWND: 0x%p", game_window);
         LogInfo("[OnInitEffectRuntime] calling DoInitializationWithHwnd...");
         DoInitializationWithHwnd(game_window);
@@ -526,6 +545,10 @@ void OnInitEffectRuntime(reshade::api::effect_runtime* runtime) {
 // ReShade overlay event handler for input blocking
 bool OnReShadeOverlayOpen(reshade::api::effect_runtime* runtime, bool open, reshade::api::input_source source) {
     CALL_GUARD(utils::get_now_ns());
+
+    if (runtime != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(runtime->get_hwnd()))) {
+        return false;  // Don't run addon logic for this window (e.g. independent UI)
+    }
 
     if (open) {
         LogInfo("ReShade overlay opened - Input blocking active");
@@ -663,6 +686,12 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
 
 void OnPerformanceOverlay(reshade::api::effect_runtime* runtime) {
     CALL_GUARD(utils::get_now_ns());
+    if (runtime != nullptr) {
+        HWND window = static_cast<HWND>(runtime->get_hwnd());
+        if (should_skip_addon_injection_for_window(window)) {
+            return;
+        }
+    }
     const bool show_display_commander_ui = settings::g_mainTabSettings.show_display_commander_ui.GetValue();
     const bool show_tooltips = show_display_commander_ui;
 

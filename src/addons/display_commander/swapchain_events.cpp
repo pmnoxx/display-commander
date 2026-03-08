@@ -44,6 +44,7 @@
 #include "utils/game_launcher_registry.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
+#include "utils/no_inject_windows.hpp"
 #include "utils/perf_measurement.hpp"
 #include "utils/timing.hpp"
 #include "widgets/dualsense_widget/dualsense_widget.hpp"
@@ -185,6 +186,9 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     CALL_GUARD(utils::get_now_ns());
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
+        return;
+    }
+    if (should_skip_addon_injection_for_window(hwnd)) {
         return;
     }
     static std::set<reshade::api::swapchain*> hooked_swapchains;
@@ -537,6 +541,9 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
     g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].fetch_add(1);
 
     if (hwnd == nullptr) return false;
+    if (should_skip_addon_injection_for_window(static_cast<HWND>(hwnd))) {
+        return false;  // No modifications for no-inject windows
+    }
 
     // Initialize if not already done
     DoInitializationWithHwnd(static_cast<HWND>(hwnd));
@@ -1022,6 +1029,10 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
 bool OnCreateSwapchainCapture(reshade::api::device_api api, reshade::api::swapchain_desc& desc, void* hwnd) {
     CALL_GUARD(utils::get_now_ns());
 
+    if (hwnd != nullptr && should_skip_addon_injection_for_window(static_cast<HWND>(hwnd))) {
+        return true;  // Leave desc unchanged; do not run capture or store desc for no-inject windows
+    }
+
     if (api == reshade::api::device_api::d3d9) {
         g_dx9_swapchain_detected.store(true);
     }
@@ -1049,9 +1060,12 @@ void OnDestroySwapchain(reshade::api::swapchain* swapchain, bool resize) {
     if (swapchain == nullptr) {
         return;
     }
+    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+    if (hwnd != nullptr && should_skip_addon_injection_for_window(hwnd)) {
+        return;
+    }
     display_commander::hdr_upgrade::OnDestroySwapchain(swapchain, resize);
     if (s_we_auto_enabled_hdr.load() && s_hdr_auto_enabled_monitor != nullptr) {
-        HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
         if (hwnd) {
             HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
             if (monitor == s_hdr_auto_enabled_monitor) {
@@ -1113,6 +1127,10 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         LogDebug("OnInitSwapchain: swapchain is null");
         return;
     }
+    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+    if (hwnd == nullptr || should_skip_addon_injection_for_window(hwnd)) {
+        return;
+    }
     {
         static int log_count = 0;
         if (log_count < 3) {
@@ -1144,12 +1162,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         }
     } catch (...) {
         // If getting back buffer fails, silently continue
-    }
-
-    // backbuffer desc
-    HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
-    if (!hwnd) {
-        return;
     }
     reshade::api::effect_runtime* first_runtime = GetFirstReShadeRuntime();
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
@@ -1220,6 +1232,12 @@ LONGLONG TimerPresentPacingDelayEnd(LONGLONG start_ns) {
 
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain) {
     CALL_GUARD(utils::get_now_ns());
+    if (swapchain != nullptr) {
+        HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
+        if (should_skip_addon_injection_for_window(hwnd)) {
+            return;
+        }
+    }
     ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reshade_addon_event);
     bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reshade_addon_event);
 
@@ -1821,6 +1839,9 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     HWND hwnd = static_cast<HWND>(swapchain->get_hwnd());
     if (hwnd == g_proxy_hwnd) {
+        return;
+    }
+    if (should_skip_addon_injection_for_window(hwnd)) {
         return;
     }
 

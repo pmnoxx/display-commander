@@ -40,6 +40,7 @@
 #include "../../settings/streamline_tab_settings.hpp"
 #include "../../settings/swapchain_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
+#include "../../ui/standalone_ui_settings_bridge.hpp"
 #include "../../utils.hpp"
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/dc_load_path.hpp"
@@ -1480,9 +1481,50 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
     if (!g_no_reshade_mode.load(std::memory_order_acquire)) {
         CheckboxSetting(settings::g_mainTabSettings.show_independent_window, "Show independent window", imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            std::string tip =
                 "Open the standalone settings window (Main, Profile, Advanced) in a separate window.\n"
-                "Same content as when running without ReShade. Uncheck to close the window.");
+                "Same content as when running without ReShade. Uncheck to close the window.";
+            HWND indep_hwnd = standalone_ui_settings::GetStandaloneUiHwnd();
+            if (indep_hwnd != nullptr) {
+                tip += "\n\nIndependent UI window:";
+                RECT wr = {};
+                RECT cr = {};
+                if (GetWindowRect(indep_hwnd, &wr) && GetClientRect(indep_hwnd, &cr)) {
+                    char buf[384];
+                    snprintf(buf, sizeof(buf),
+                             "\nHWND: %p\n"
+                             "Window Rect: (%ld,%ld) to (%ld,%ld)\n"
+                             "Window Size: %ld x %ld\n"
+                             "Client Size: %ld x %ld",
+                             static_cast<void*>(indep_hwnd), static_cast<long>(wr.left), static_cast<long>(wr.top),
+                             static_cast<long>(wr.right), static_cast<long>(wr.bottom),
+                             static_cast<long>(wr.right - wr.left), static_cast<long>(wr.bottom - wr.top),
+                             static_cast<long>(cr.right - cr.left), static_cast<long>(cr.bottom - cr.top));
+                    tip += buf;
+                    wchar_t class_buf[256];
+                    if (GetClassNameW(indep_hwnd, class_buf, static_cast<int>(std::size(class_buf))) > 0) {
+                        char class_narrow[256];
+                        if (WideCharToMultiByte(CP_UTF8, 0, class_buf, -1, class_narrow,
+                                                static_cast<int>(std::size(class_narrow)), nullptr, nullptr)
+                            > 0) {
+                            tip += "\nClass: ";
+                            tip += class_narrow;
+                        }
+                    }
+                    LONG_PTR style = GetWindowLongPtr(indep_hwnd, GWL_STYLE);
+                    LONG_PTR ex_style = GetWindowLongPtr(indep_hwnd, GWL_EXSTYLE);
+                    snprintf(buf, sizeof(buf), "\nStyle: 0x%08lX  ExStyle: 0x%08lX",
+                             static_cast<unsigned long>(style), static_cast<unsigned long>(ex_style));
+                    tip += buf;
+                } else {
+                    char buf[80];
+                    snprintf(buf, sizeof(buf), "\nHWND: %p (rect unavailable)", static_cast<void*>(indep_hwnd));
+                    tip += buf;
+                }
+            } else {
+                tip += "\n\n(Window not open — no HWND)";
+            }
+            imgui.SetTooltipEx("%s", tip.c_str());
         }
     }
 

@@ -76,9 +76,11 @@ class AdvancedTabSettings {
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 
+    /** Master switch for WGI suppression (Controller tab). When false, WGI is never suppressed. Default false. */
+    BoolSetting suppress_wgi_enabled;
     /** Only visible when UnityPlayer.dll is loaded. When true, suppress WGI for Unity games. Default false. */
     BoolSetting suppress_wgi_for_unity;
-    /** Only visible when UnityPlayer.dll is not loaded. When true, suppress WGI for non-Unity games. Default true. */
+    /** Only visible when UnityPlayer.dll is not loaded. When true, suppress WGI for non-Unity games. Default false. */
     BoolSetting suppress_wgi_for_non_unity_games;
 
     // Debug Layer setting

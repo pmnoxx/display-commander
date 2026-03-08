@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.349
+- **Windows Gaming Input suppression: Controller tab checkbox, off by default** - A single "Suppress Windows Gaming Input" checkbox was added in the Controller tab. WGI suppression is now disabled by default; enable it and the game-type option (Unity or non-Unity) so games fall back to XInput when needed. The previous per-game-type options (Unity / non-Unity) remain and only take effect when the master switch is on. Details: `suppress_wgi_enabled` in advanced_tab_settings; hook logic in windows_gaming_input_hooks; checkbox and tooltip in xinput_widget (Controller tab). Defaults for `suppress_wgi_for_unity` and `suppress_wgi_for_non_unity_games` set to false.
+
 ## v0.12.348
 - **Steam achievements: list and overlay improvements** - The Advanced tab Steam API section now shows a scrollable achievement list sorted by last unlocked (most recent first). The performance overlay always shows "X / Y achievements" when the achievement-unlock notification is active (in addition to the achievement name when available). Export debug in the Steam API tab reports which exports are present for achievements (SteamUserStats, SteamClient, SteamUser; Special K uses SteamUserStats). The overlay no longer shows the "SteamUserStats export not found" line. Details: steam_achievements.hpp/cpp (GetSteamAchievementList, SteamAchievementEntry.unlock_time, sort by unlock time; GetSteamAchievementExportsDebug); advanced_tab achievement list + exports debug; main_entry OnSteamAchievementOverlay X/Y line and filtered debug.
 

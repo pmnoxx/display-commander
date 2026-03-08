@@ -51,7 +51,8 @@ AdvancedTabSettings::AdvancedTabSettings()
       dlls_to_load_before("DllsToLoadBefore", "", "DisplayCommander"),
       fake_nvapi_enabled("FakeNvapiEnabled", false, "DisplayCommander"),
       suppress_minhook("SuppressMinhook", false, "DisplayCommander.Safemode"),
-      suppress_wgi_for_unity("SuppressWgiForUnity", true, "DisplayCommander"),
+      suppress_wgi_enabled("SuppressWgiEnabled", false, "DisplayCommander"),
+      suppress_wgi_for_unity("SuppressWgiForUnity", false, "DisplayCommander"),
       suppress_wgi_for_non_unity_games("SuppressWgiForNonUnityGames", false, "DisplayCommander"),
       debug_layer_enabled("DebugLayerEnabled", false, "DisplayCommander"),
       debug_break_on_severity("DebugBreakOnSeverity", false, "DisplayCommander"),
@@ -92,6 +93,7 @@ void AdvancedTabSettings::SaveAll() {
     safemode.Save();
     fake_nvapi_enabled.Save();
     suppress_minhook.Save();
+    suppress_wgi_enabled.Save();
     suppress_wgi_for_unity.Save();
     suppress_wgi_for_non_unity_games.Save();
     debug_layer_enabled.Save();
@@ -128,7 +130,8 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
         &enable_timeslowdown_shortcut, &enable_adhd_toggle_shortcut, &enable_autoclick_shortcut,
         &enable_input_blocking_shortcut, &enable_display_commander_ui_shortcut, &enable_performance_overlay_shortcut,
         &safemode, &dll_loading_delay_ms, &dlls_to_load_before, &fake_nvapi_enabled, &suppress_minhook,
-        &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games, &debug_layer_enabled, &debug_break_on_severity,
+        &suppress_wgi_enabled, &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games, &debug_layer_enabled,
+        &debug_break_on_severity,
         &auto_hide_discord_overlay, &suppress_window_changes, &win_up_grace_seconds, &enable_presentmon_tracing,
         &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm, &presentmon_provider_d3d9,
         &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled, &d3d11_texture_caching_enabled,

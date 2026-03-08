@@ -152,9 +152,11 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     const bool is_unity_player = (GetModuleHandleA("UnityPlayer.dll") != nullptr);
-    const bool wgi_suppressed = is_unity_player
-                                    ? settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue()
-                                    : settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue();
+    const bool wgi_master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
+    const bool wgi_suppressed =
+        wgi_master
+        && (is_unity_player ? settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue()
+                            : settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue());
     if (enable_hooks && !wgi_suppressed) {
         imgui.TextColored(
             ::ui::colors::ICON_WARNING,
@@ -162,13 +164,27 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             "WGI may not call XInput; enable the WGI suppression option below for XInput features to work.");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Enable \"Suppress WGI for Unity games\" or \"Suppress WGI for non-Unity games\" so the game falls "
+                "Enable \"Suppress Windows Gaming Input\" and the game-type option below so the game falls "
                 "back to XInput instead of WGI.");
         }
     }
 
-    // Per-game-type WGI suppression (only one visible depending on UnityPlayer)
+    // Windows Gaming Input suppression: master switch (default off)
     static bool restart_needed_to_apply_settings = false;
+    bool suppress_wgi_master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
+    if (imgui.Checkbox("Suppress Windows Gaming Input", &suppress_wgi_master)) {
+        settings::g_advancedTabSettings.suppress_wgi_enabled.SetValue(suppress_wgi_master);
+        settings::g_advancedTabSettings.suppress_wgi_enabled.Save();
+        LogInfo("Suppress Windows Gaming Input: %s", suppress_wgi_master ? "enabled" : "disabled");
+        restart_needed_to_apply_settings = true;
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, block Windows.Gaming.Input so the game can use XInput. Off by default. Enable and choose "
+            "Unity or non-Unity below. Restart game to apply.");
+    }
+
+    // Per-game-type WGI suppression (only one visible depending on UnityPlayer)
     if (is_unity_player) {
         bool suppress_wgi_unity = settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue();
         if (imgui.Checkbox("Suppress WGI for Unity games", &suppress_wgi_unity)) {

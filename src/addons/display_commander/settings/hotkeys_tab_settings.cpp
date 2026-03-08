@@ -14,6 +14,7 @@ HotkeysTabSettings::HotkeysTabSettings()
       hotkey_autoclick("HotkeyAutoclick", "", "DisplayCommander"),
       hotkey_input_blocking("HotkeyInputBlocking", "", "DisplayCommander"),
       hotkey_display_commander_ui("HotkeyDisplayCommanderUi", "end", "DisplayCommander"),
+      hotkey_independent_ui("HotkeyIndependentUi", "pagedown", "DisplayCommander"),
       hotkey_performance_overlay("HotkeyPerformanceOverlay", "ctrl shift o", "DisplayCommander"),
       hotkey_stopwatch("HotkeyStopwatch", "ctrl shift s", "DisplayCommander"),
       hotkey_volume_up("HotkeyVolumeUp", "ctrl shift up", "DisplayCommander"),
@@ -58,6 +59,7 @@ void HotkeysTabSettings::SaveAll() {
     hotkey_autoclick.Save();
     hotkey_input_blocking.Save();
     hotkey_display_commander_ui.Save();
+    hotkey_independent_ui.Save();
     hotkey_performance_overlay.Save();
     hotkey_stopwatch.Save();
     hotkey_volume_up.Save();
@@ -83,7 +85,8 @@ void HotkeysTabSettings::SaveAll() {
 std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {
     return {&enable_hotkeys, &hotkey_mute_unmute, &hotkey_background_toggle, &hotkey_timeslowdown,
             &hotkey_adhd_toggle, &hotkey_autoclick, &hotkey_input_blocking, &hotkey_display_commander_ui,
-            &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up, &hotkey_volume_down,
+            &hotkey_independent_ui, &hotkey_performance_overlay, &hotkey_stopwatch, &hotkey_volume_up,
+            &hotkey_volume_down,
             &hotkey_system_volume_up, &hotkey_system_volume_down, &hotkey_auto_hdr, &hotkey_brightness_up,
             &hotkey_brightness_down, &hotkey_win_down, &hotkey_win_up, &hotkey_win_left, &hotkey_win_right,
             &hotkey_move_to_primary,

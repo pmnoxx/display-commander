@@ -331,9 +331,11 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
     if (var_extra_gamma22 != 0) {
         runtime->set_uniform_value_int(var_extra_gamma22, 0);
     }
-    // Enable technique when any display tweak is non-neutral
+    // Enable technique when any display tweak is non-neutral, or when decode/encode is not Auto (effect must run
+    // so that decode -> process -> encode is applied even at brightness 100%).
+    const bool need_decode_encode_pass = (decode_colorspace != 0 || encode_colorspace != 0);
     runtime->set_technique_state(tech, multiplier != 1.0f || gamma_val != 1.0f || contrast_val != 1.0f
-                                           || saturation_val != 1.0f || hue_val != 0.0f);
+                                           || saturation_val != 1.0f || hue_val != 0.0f || need_decode_encode_pass);
 }
 
 // Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same

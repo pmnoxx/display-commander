@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.357 (unreleased)
+- **Brightness shader when brightness 100% and decode/encode not Auto** - The Display Commander brightness effect (DisplayCommander_Control.fx) is now enabled when decode or encode method is not Auto, even if brightness is 100%. This ensures the shader's decode → process → encode pass runs so manual color space settings are applied correctly. Details: ApplyDisplayCommanderBrightness in main_entry.cpp sets technique state using need_decode_encode_pass when swapchain_colorspace or brightness_colorspace is non-zero.
+
 ## v0.12.356
 - **Advanced/Hotkeys SaveAll use setting lists** - SaveAll for the Advanced and Hotkeys tabs now iterates over setting lists instead of manually calling Save on each setting. Advanced tab uses a dedicated `GetSettingsToSave()` list (only settings that should be persisted); Hotkeys tab uses `GetAllSettings()`. Adding or removing a saved setting is done in one place. Details: advanced_tab_settings GetSettingsToSave(), SaveAll() loops; hotkeys_tab_settings SaveAll() uses GetAllSettings() after SyncHotkeySettingsFromParsed().
 - **.NO_EXIT: block game exit for debugging** - Place a `.NO_EXIT` or `.NOEXIT` file (or any filename with that segment, e.g. `.NO_EXIT.off`) in the game executable directory to prevent the game from exiting. Useful when the game has crashed and you want to inspect state or attach a debugger. Exit attempts via ExitProcess, TerminateProcess (current process), or WM_CLOSE/WM_QUIT/WM_DESTROY on the last window are blocked and the independent settings UI is opened automatically if not already open. Details: `g_no_exit_mode`; ProcessAttach_CheckNoReShadeMode; process_exit_hooks (ExitProcess_Detour, TerminateProcess_Detour); window_proc_hooks (WM_CLOSE, WM_QUIT, WM_DESTROY suppressed when .NO_EXIT active).

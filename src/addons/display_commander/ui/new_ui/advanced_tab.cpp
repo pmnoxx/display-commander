@@ -225,6 +225,13 @@ void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
             "When enabled (default), enqueues GPU completion measurement from the last present-update state (DX11/DX12).\n"
             "Used for latency and GPU timing. Disable only if you observe issues or want to reduce overhead.");
     }
+    if (::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed)) {
+        imgui.SameLine();
+        imgui.TextColored(::ui::colors::TEXT_WARNING, "(Disabled due to Smooth Motion)");
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
+        }
+    }
 
     imgui.Unindent();
 }

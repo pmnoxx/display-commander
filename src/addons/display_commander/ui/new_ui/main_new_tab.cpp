@@ -8206,6 +8206,10 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             }
         }
 
+        const bool smooth_motion_latency = g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        if (smooth_motion_latency) {
+            imgui.BeginDisabled();
+        }
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
         if (imgui.Checkbox("Show latency", &gpu_measurement)) {
             settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
@@ -8215,6 +8219,14 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Measures time from Present call to GPU completion using fences.\n"
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
+        }
+        if (smooth_motion_latency) {
+            imgui.EndDisabled();
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_WARNING, "(Disabled due to Smooth Motion)");
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
+            }
         }
         imgui.NextColumn();
 

@@ -359,13 +359,10 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongPtrA].increment_total();
 
-    // Check if fullscreen prevention is enabled
-    // if (settings::g_advancedTabSettings.prevent_fullscreen.GetValue()) {
-    // Prevent window style changes that enable fullscreen
+    // Prevent window style changes that enable fullscreen (when targeting swapchain window)
     if (hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
-    // }
 
     g_hook_stats[HOOK_SetWindowLongPtrA].increment_unsuppressed();
     return SetWindowLongPtrA_Original ? SetWindowLongPtrA_Original(hWnd, nIndex, dwNewLong)
@@ -380,19 +377,6 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
     if (hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
         && hWndInsertAfter != HWND_NOTOPMOST) {
         hWndInsertAfter = HWND_NOTOPMOST;
-        // uFlags |= SWP_FRAMECHANGED; perhaphs not needed
-        /*
-
-        // Check if we're trying to set the window to be always on top
-        if (hWndInsertAfter != HWND_TOPMOST) {
-            // Replace HWND_TOPMOST with HWND_NOTOPMOST to prevent always-on-top behavior
-            LogInfo("SetWindowPos: Preventing always-on-top for window 0x%p - Replacing HWND_TOPMOST with
-        HWND_NOTOPMOST", hWnd);
-
-            // Call original function with HWND_NOTOPMOST instead of HWND_TOPMOST
-            return SetWindowPos_Original ? SetWindowPos_Original(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags)
-                                         : SetWindowPos(hWnd, HWND_NOTOPMOST, X, Y, cx, cy, uFlags);
-        }*/
     }
 
     g_hook_stats[HOOK_SetWindowPos].increment_unsuppressed();
@@ -431,12 +415,6 @@ HCURSOR WINAPI SetCursor_Direct(HCURSOR hCursor) {
 // Hooked SetCursor function
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor) {
     CALL_GUARD(utils::get_now_ns());
-    // if (ShouldBlockMouseInput()) {
-    //     hCursor = LoadCursor(nullptr, IDC_ARROW);
-    //  }
-    // hCursor = LoadCursor(nullptr, IDC_ARROW);
-
-    // Call original function
     return SetCursor_Direct(hCursor);
 }
 
@@ -1318,7 +1296,6 @@ bool InstallWindowsApiHooks() {
 bool InstallApiHooks() {
     CALL_GUARD(utils::get_now_ns());
     if (g_api_hooks_installed.load()) {
-        // LogInfo("API hooks already installed");
         return true;
     }
 #if 1

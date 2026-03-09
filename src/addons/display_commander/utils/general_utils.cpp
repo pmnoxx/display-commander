@@ -66,8 +66,8 @@ bool LoadVersionDLL() {
 }
 }  // anonymous namespace
 
-// Constant definitions
-const AspectRatio ASPECT_OPTIONS[] = {
+// Constant definitions (used only by GetAspectByIndex in this file)
+static const AspectRatio ASPECT_OPTIONS[] = {
     {3, 2},     // 1.5:1
     {4, 3},     // 1.333:1
     {16, 10},   // 1.6:1

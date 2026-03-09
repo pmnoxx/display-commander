@@ -416,17 +416,11 @@ class StringSetting : public SettingBase {
 
 bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* format,
                         display_commander::ui::IImGuiWrapper& imgui);
-bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const char* format,
-                           display_commander::ui::IImGuiWrapper& imgui);
 bool SliderIntSetting(IntSetting& setting, const char* label, const char* format,
                       display_commander::ui::IImGuiWrapper& imgui);
-bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format,
-                      display_commander::ui::IImGuiWrapper& imgui);
 bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui);
-bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui);
 bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui,
                          float combo_width = 0.f);
-bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui);
 template <typename EnumType>
 bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* label,
                              display_commander::ui::IImGuiWrapper& imgui, float combo_width = 0.f);

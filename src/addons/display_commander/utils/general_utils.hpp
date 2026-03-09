@@ -26,9 +26,6 @@ struct AspectRatio {
     int h;
 };
 
-// Constants
-extern const AspectRatio ASPECT_OPTIONS[];
-
 // Forward declarations for utility functions
 RECT RectFromWH(int width, int height);
 // Window state detection
@@ -51,7 +48,6 @@ SHORT FloatToShort(float value);
 // DLL version information
 std::string GetDLLVersionString(const std::wstring& dllPath);
 
-// Try to create a hard link at new_path pointing to existing_file (no admin required on same NTFS volume).
 // DLSS preset support functions
 bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,
                int maxPatch);

@@ -57,8 +57,6 @@ std::atomic<uint64_t> g_texture_cache_skip_key_zero{0};
 std::atomic<uint64_t> g_texture_cache_skip_size_zero{0};
 SRWLOCK g_simulator_lock = SRWLOCK_INIT;
 
-static void RecordMiss() { /* was total_misses; no readers, kept as hook for future stats */ }
-
 }  // namespace
 
 void TextureTrackerAdd(void* texture_ptr, size_t size_bytes) {
@@ -93,7 +91,6 @@ size_t TextureTrackerRemove(void* texture_ptr) {
         utils::SRWLockExclusive lock(g_texture_tracker_lock);
         auto it = g_texture_map.find(texture_ptr);
         if (it == g_texture_map.end()) {
-            RecordMiss();
             return 0;
         }
         size_bytes = it->second;

@@ -75,15 +75,6 @@ void XInputWidget::Initialize() {
     LogInfo("XInputWidget::Initialize() - XInput widget initialization complete");
 }
 
-void XInputWidget::Cleanup() {
-    if (!is_initialized_) return;
-
-    // Save settings
-    SaveSettings();
-
-    is_initialized_ = false;
-}
-
 void XInputWidget::OnDraw(display_commander::ui::IImGuiWrapper& imgui) {
     if (!is_initialized_) {
         Initialize();
@@ -1640,13 +1631,6 @@ void InitializeXInputWidget() {
         if (shared_state) {
             shared_state->ui_overlay_open.store(false);
         }
-    }
-}
-
-void CleanupXInputWidget() {
-    if (g_xinput_widget) {
-        g_xinput_widget->Cleanup();
-        g_xinput_widget.reset();
     }
 }
 

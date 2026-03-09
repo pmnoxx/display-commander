@@ -305,12 +305,7 @@ bool IsVTableEntryValid(void** vtable, int index) {
 
     // Basic bounds check - most swapchains should have at least 18 entries (IDXGISwapChain1)
     // but we'll be conservative and check for null
-    //  __try {
     return vtable[index] != nullptr;
-    //  }
-    //   __except(EXCEPTION_EXECUTE_HANDLER) {
-    //        return false;
-    //   }
 }
 
 // Original function pointers
@@ -452,7 +447,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     if (use_fps_limiter) {
         ::OnPresentFlags2(true, false);  // Called from present_detour
         RecordNativeFrameTime();
-        // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
     if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain) {
         RecordFrameTime(FrameTimeMode::kPresent);
@@ -510,7 +504,6 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
         // Handle common before logic (with D3D10 check enabled)
         ::OnPresentFlags2(true, false);  // Called from present_detour
         RecordNativeFrameTime();
-        // display_commanderhooks::dxgi::HandlePresentBefore2();
     }
     if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::dxgi_swapchain1) {
         RecordFrameTime(FrameTimeMode::kPresent);
@@ -992,12 +985,7 @@ static HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForHwnd_Streamline
                                                     ppSwapChain);
         return E_NOINTERFACE;
     }
-    // Upgrade to HDR10: match hdr_upgrade (format + FLIP_DISCARD + ALLOW_TEARING + BufferCount >= 2)
-    // DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
-    // desc.Format = DXGI_FORMAT_R10G10B10A2_UNORM;
-    // if (desc.BufferCount < 2) desc.BufferCount = 2;
-    // desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-    // desc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+    // Upgrade to HDR10: match hdr_upgrade (format + FLIP_DISCARD + ALLOW_TEARING + BufferCount >= 2) when needed
     HRESULT hr = IDXGIFactory1_CreateSwapChainForHwnd_Streamline_Original(This, pDevice, hWnd, pDesc, pFullscreenDesc,
                                                                           pRestrictToOutput, ppSwapChain);
     static int s_err_count = 0;

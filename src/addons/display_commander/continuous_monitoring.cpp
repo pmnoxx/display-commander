@@ -172,8 +172,7 @@ void check_is_background() {
             if (settings::g_mainTabSettings.clip_cursor_enabled.GetValue()) {
                 if (app_in_background) {
                     LogInfo("Continuous monitoring: App moved to BACKGROUND");
-                    // ReleaseCapture();
-                    //  Release cursor clipping when going to background
+                    // Release cursor clipping when going to background
                     display_commanderhooks::ClipCursor_Direct(nullptr);
 
                     // Set cursor to default arrow when moving to background
@@ -190,9 +189,7 @@ void check_is_background() {
                     display_commanderhooks::ClipCursorToGameWindow();
 
                     display_commanderhooks::RestoreClipCursor();
-                }  // else {
-                //
-                //   }
+                }
             } else {
                 if (app_in_background) {
                     display_commanderhooks::ClipCursor_Direct(nullptr);
@@ -731,8 +728,9 @@ void ContinuousMonitoringThread() {
         // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground
         TrySetGameWindowFromForeground();
 
-        // PresentMon: start worker immediately when enabled and not running
-        if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
+        // PresentMon: start worker immediately when enabled and not running (requires EXPERIMENTAL_FEATURES)
+        if (presentmon::kPresentMonEnabled
+            && settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
             && !presentmon::g_presentMonManager.IsRunning()) {
             presentmon::CreateAndStartPresentMon();
         }

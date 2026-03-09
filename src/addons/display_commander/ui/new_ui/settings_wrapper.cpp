@@ -536,45 +536,6 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
     return changed;
 }
 
-bool SliderFloatSettingRef(FloatSettingRef& setting, const char* label, const char* format,
-                           display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.BeginGroup();
-    float value = setting.GetValue();
-    bool changed = imgui.SliderFloat(label, &value, setting.GetMin(), setting.GetMax(), format);
-    if (changed) {
-        const ImGuiIO& io = imgui.GetIO();
-        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];
-        if (is_mouse_input) {
-            setting.ClearDirtyValue();
-            setting.SetValue(value);
-        } else {
-            setting.SetDirtyValue(value);
-        }
-    }
-    if (imgui.IsItemDeactivatedAfterEdit() && setting.HasDirtyValue()) {
-        setting.SetValue(setting.GetDirtyValue());
-        setting.ClearDirtyValue();
-    }
-    float current = setting.GetValue();
-    float def = setting.GetDefaultValue();
-    if (fabsf(current - def) > 1e-6f) {
-        imgui.SameLine();
-        imgui.BeginGroup();
-        imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
-            setting.SetValue(def);
-            changed = true;
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%.3f)", def);
-        }
-        imgui.PopID();
-        imgui.EndGroup();
-    }
-    imgui.EndGroup();
-    return changed;
-}
-
 bool SliderIntSetting(IntSetting& setting, const char* label, const char* format,
                       display_commander::ui::IImGuiWrapper& imgui) {
     imgui.BeginGroup();
@@ -588,44 +549,6 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
     if (current != def) {
         imgui.SameLine();
         imgui.BeginGroup();
-        imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
-            setting.SetValue(def);
-            changed = true;
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%d)", def);
-        }
-        imgui.PopID();
-        imgui.EndGroup();
-    }
-    imgui.EndGroup();
-    return changed;
-}
-
-bool SliderIntSetting(IntSettingRef& setting, const char* label, const char* format,
-                      display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.BeginGroup();
-    int value = setting.GetValue();
-    bool changed = imgui.SliderInt(label, &value, setting.GetMin(), setting.GetMax(), format);
-    if (changed) {
-        const ImGuiIO& io = imgui.GetIO();
-        bool is_mouse_input = io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2];
-        if (is_mouse_input) {
-            setting.ClearDirtyValue();
-            setting.SetValue(value);
-        } else {
-            setting.SetDirtyValue(value);
-        }
-    }
-    if (imgui.IsItemDeactivatedAfterEdit() && setting.HasDirtyValue()) {
-        setting.SetValue(setting.GetDirtyValue());
-        setting.ClearDirtyValue();
-    }
-    int current = setting.GetValue();
-    int def = setting.GetDefaultValue();
-    if (current != def) {
-        imgui.SameLine();
         imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
         if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
             setting.SetValue(def);
@@ -666,65 +589,12 @@ bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander:
     return changed;
 }
 
-bool CheckboxSetting(BoolSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.BeginGroup();
-    bool value = setting.GetValue();
-    bool changed = imgui.Checkbox(label, &value);
-    if (changed) {
-        setting.SetValue(value);
-    }
-    bool current = setting.GetValue();
-    bool def = setting.GetDefaultValue();
-    if (current != def) {
-        imgui.SameLine();
-        imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
-            setting.SetValue(def);
-            changed = true;
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%s)", def ? "On" : "Off");
-        }
-        imgui.PopID();
-    }
-    imgui.EndGroup();
-    return changed;
-}
-
 bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui,
                          float combo_width) {
     imgui.BeginGroup();
     if (combo_width > 0.f) {
         imgui.SetNextItemWidth(combo_width);
     }
-    int value = setting.GetValue();
-    const auto& labels = setting.GetLabels();
-    int count = static_cast<int>(labels.size());
-    bool changed = imgui.Combo(label, &value, labels.data(), count);
-    if (changed) {
-        setting.SetValue(value);
-    }
-    int current = setting.GetValue();
-    int def = setting.GetDefaultValue();
-    if (current != def) {
-        const char* def_label = (def >= 0 && def < count) ? labels[static_cast<size_t>(def)] : "Default";
-        imgui.SameLine();
-        imgui.PushID(static_cast<int>(reinterpret_cast<uintptr_t>(&setting)));
-        if (imgui.SmallButton(reinterpret_cast<const char*>(ICON_FK_UNDO))) {
-            setting.SetValue(def);
-            changed = true;
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%s)", def_label);
-        }
-        imgui.PopID();
-    }
-    imgui.EndGroup();
-    return changed;
-}
-
-bool ComboSettingRefWrapper(ComboSettingRef& setting, const char* label, display_commander::ui::IImGuiWrapper& imgui) {
-    imgui.BeginGroup();
     int value = setting.GetValue();
     const auto& labels = setting.GetLabels();
     int count = static_cast<int>(labels.size());

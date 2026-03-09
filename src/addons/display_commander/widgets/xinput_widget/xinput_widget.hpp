@@ -224,9 +224,6 @@ class XInputWidget {
     // Initialize the widget (call once at startup)
     void Initialize();
 
-    // Cleanup the widget (call at shutdown)
-    void Cleanup();
-
     // Get the shared state (thread-safe)
     static std::shared_ptr<XInputSharedState> GetSharedState();
 
@@ -285,7 +282,6 @@ extern std::unique_ptr<XInputWidget> g_xinput_widget;
 
 // Global functions for integration
 void InitializeXInputWidget();
-void CleanupXInputWidget();
 void DrawXInputWidget(display_commander::ui::IImGuiWrapper& imgui);
 /** Draw "Active input APIs (last 10s)" section for Controller tab (Special K-style). */
 void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui);

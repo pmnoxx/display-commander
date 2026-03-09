@@ -670,7 +670,6 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
     if (!CreateAndEnableHook(GetProcAddress(sl_interposer, "slInit"), reinterpret_cast<LPVOID>(slInit_Detour),
                              reinterpret_cast<LPVOID*>(&slInit_Original), "slInit")) {
         LogError("Failed to create and enable slInit hook");
-        //  return false;
     }
 
     // Hook slUpgradeInterface to vtable-hook the Streamline proxy DXGI factory (CreateSwapChain*)
@@ -685,7 +684,6 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
                              reinterpret_cast<LPVOID>(slIsFeatureSupported_Detour),
                              reinterpret_cast<LPVOID*>(&slIsFeatureSupported_Original), "slIsFeatureSupported")) {
         LogError("Failed to create and enable slIsFeatureSupported hook");
-        //     return false;
     }
 
     // Hook slGetNativeInterface

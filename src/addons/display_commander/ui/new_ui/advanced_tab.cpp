@@ -80,8 +80,9 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
 
     imgui.Spacing();
 
-    // PresentMon ETW Tracing Section
-    if (imgui.CollapsingHeader("PresentMon ETW Tracing", wrapper_flags::TreeNodeFlags_None)) {
+    // PresentMon ETW Tracing Section (requires EXPERIMENTAL_FEATURES)
+    if (presentmon::kPresentMonEnabled
+        && imgui.CollapsingHeader("PresentMon ETW Tracing", wrapper_flags::TreeNodeFlags_None)) {
         DrawPresentMonSection(imgui);
     }
 

@@ -355,8 +355,7 @@ void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
         return;  // Effect not loaded
     }
     if (auto_hdr) {
-        const int32_t colorspace =
-            static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
+        const int32_t colorspace = static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
         const reshade::api::effect_uniform_variable var_decode =
             runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "DECODE_METHOD");
         if (var_decode != 0) {
@@ -1758,7 +1757,6 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
 void DoInitializationWithoutHwndSafe_Late() {
     if (!IsDisplayCommanderHookingInstance()) return;
     // Log all ETW sessions once at addon init for diagnostics (e.g. why DC_ list may be empty in Advanced tab)
-    presentmon::PresentMonManager::LogAllEtwSessions();
 
     display_commanderhooks::InstallXInputHooks(nullptr);
     display_cache::g_displayCache.Initialize();
@@ -1915,7 +1913,8 @@ void ProcessAttach_CheckNoReShadeMode() {
     if (DirectoryHasFileWithSegment(dc_config_dir, {L"UI"})) {
         g_start_with_independent_ui.store(true);
         OutputDebugStringA(
-            "[DisplayCommander] .UI (or .UI.*) found - independent settings window will open at start (ReShade path).\n");
+            "[DisplayCommander] .UI (or .UI.*) found - independent settings window will open at start (ReShade "
+            "path).\n");
     }
     if (DirectoryHasFileWithSegment(dc_config_dir, {L"NO_EXIT", L"NOEXIT"})) {
         g_no_exit_mode.store(true);
@@ -2703,7 +2702,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up PresentMon (must stop ETW session to prevent system-wide resource leaks)
             // ETW sessions are system-wide and persist until explicitly stopped
             // If not stopped, they can interfere with future processes
-            presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdownUnload);
 
             // Try to remove post-ReShade addon temp dir (may fail while loaded DLLs still hold files)
             CleanupPostReShadeAddonTempDir();

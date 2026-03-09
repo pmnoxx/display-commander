@@ -75,7 +75,9 @@ void OnHandleExit(ExitSource source, const std::string& message) {
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();
 
-    presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdownExitHandler);
+    if (presentmon::kPresentMonEnabled) {
+        presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::AddonShutdownExitHandler);
+    }
     // Flush all logs before exit to ensure all messages are written to disk
 }
 

@@ -1116,10 +1116,6 @@ void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui,
     float max_scale = settings::g_mainTabSettings.overlay_graph_max_scale.GetValue();
     float scale_max = avg_frame_time * max_scale;  // User-configurable max scale multiplier
 
-    // Create overlay text with current refresh rate frame time
-    //.. std::string overlay_text = "Refresh Frame Time: " + std::to_string(frame_times.back()).substr(0, 4) + " ms";
-    // overlay_text += " | Avg: " + std::to_string(avg_frame_time).substr(0, 4) + " ms";
-
     // Draw chart background with transparency
     float chart_alpha = settings::g_mainTabSettings.overlay_chart_alpha.GetValue();
     ImVec4 bg_color = imgui.GetStyle().Colors[ImGuiCol_FrameBg];
@@ -2172,7 +2168,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     g_rendering_ui_section.store("ui:tab:main_new:version_build", std::memory_order_release);
     // Version and build information at the top
-    // if (imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_DefaultOpen))
     {
         imgui.TextColored(ui::colors::TEXT_DEFAULT, "Version: %s | Build: %s %s", DISPLAY_COMMANDER_VERSION_STRING,
                           DISPLAY_COMMANDER_BUILD_DATE, DISPLAY_COMMANDER_BUILD_TIME);
@@ -2763,10 +2758,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         // Second line: Selectors
         if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
                                                 imgui)) {
-            // Restore cursor clipping when input blocking is disabled
+            // Restore cursor clipping when input blocking is disabled (intentionally not called here to avoid focus stealing when continue_rendering is disabled)
             if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
-                // display_commanderhooks::RestoreClipCursor();
+                // No-op: RestoreClipCursor() not called to avoid focus stealing.
             }
         }
         if (imgui.IsItemHovered()) {
@@ -2776,10 +2771,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.NextColumn();
 
         if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse", imgui)) {
-            // Restore cursor clipping when input blocking is disabled
+            // Restore cursor clipping when input blocking is disabled (intentionally not called here to avoid focus stealing when continue_rendering is disabled)
             if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
-                // display_commanderhooks::RestoreClipCursor();
+                // No-op: RestoreClipCursor() not called to avoid focus stealing.
             }
         }
         if (imgui.IsItemHovered()) {
@@ -4257,12 +4252,6 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
     }
 }
 
-void DrawDisplaySettings_FpsAndBackground(display_commander::ui::IImGuiWrapper& imgui) {
-    (void)imgui;
-    CALL_GUARD(utils::get_now_ns());
-    // Content moved to DrawDisplaySettings_FpsLimiter / DrawDisplaySettings_FpsLimiterAdvanced.
-}
-
 // Context for VSync & Tearing swapchain debug tooltip (filled by PresentModeLine, consumed by SwapchainTooltip).
 // desc_holder keeps the swapchain desc alive for the tooltip duration to avoid use-after-free if
 // g_last_swapchain_desc_post is updated (e.g. swapchain recreated) while the tooltip is open.
@@ -4271,47 +4260,6 @@ struct VSyncTearingTooltipContext {
     const reshade::api::swapchain_desc* desc = nullptr;
     std::string present_mode_name;
 };
-
-static void DrawDisplaySettings_VSyncAndTearing_FpsSliders(display_commander::ui::IImGuiWrapper& imgui) {
-    CALL_GUARD(utils::get_now_ns());
-    bool fps_limit_enabled = (s_fps_limiter_enabled.load() && s_fps_limiter_mode.load() != FpsLimiterMode::kLatentSync)
-                             || ShouldReflexBeEnabled();
-    imgui.Spacing();
-    {
-        if (!fps_limit_enabled) {
-            imgui.BeginDisabled();
-        }
-        // use imgui.Checkbox instead of CheckboxSetting
-        bool background_fps_enabled = settings::g_mainTabSettings.background_fps_enabled.GetValue();
-        if (imgui.Checkbox("##Background FPS", &background_fps_enabled)) {
-            settings::g_mainTabSettings.background_fps_enabled.SetValue(background_fps_enabled);
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "When enabled, cap FPS when the game window is in the background. Slider sets the limit (default 60).");
-        }
-        imgui.SameLine();
-        if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
-            imgui.BeginDisabled();
-        }
-        float current_bg = settings::g_mainTabSettings.fps_limit_background.GetValue();
-        const char* fmt_bg = (current_bg > 0.0f) ? "%.0f FPS" : "No Limit";
-        if (SliderFloatSetting(settings::g_mainTabSettings.fps_limit_background, "BackGround Fps Limit", fmt_bg,
-                               imgui)) {
-        }
-        if (fps_limit_enabled && !settings::g_mainTabSettings.background_fps_enabled.GetValue()) {
-            imgui.EndDisabled();
-        }
-        if (!fps_limit_enabled) {
-            imgui.EndDisabled();
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the "
-                "Custom FPS Limiter.");
-        }
-    }
-}
 
 /// Returns present mode display name for non-DXGI APIs (Vulkan, OpenGL).
 /// ReShade: present_mode is VkPresentModeKHR for Vulkan, WGL_SWAP_METHOD_ARB for OpenGL.
@@ -4947,11 +4895,13 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
 
     imgui.Separator();
     imgui.Spacing();
-    g_rendering_ui_section.store("ui:tab:main_new:presentmon", std::memory_order_release);
-    if (imgui.CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
-        imgui.Indent();
-        DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(imgui);
-        imgui.Unindent();
+    if (presentmon::kPresentMonEnabled) {
+        g_rendering_ui_section.store("ui:tab:main_new:presentmon", std::memory_order_release);
+        if (imgui.CollapsingHeader("PresentMon ETW Flip State & Debug Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+            imgui.Indent();
+            DrawDisplaySettings_VSyncAndTearing_PresentMonETWSubsection(imgui);
+            imgui.Unindent();
+        }
     }
 
     // ReShade: present_flags is DXGI_SWAP_CHAIN_FLAG (DXGI), VkSwapchainCreateFlagsKHR (Vulkan), or PFD_* (OpenGL).
@@ -4988,6 +4938,9 @@ static void DrawDisplaySettings_VSyncAndTearing_SwapchainTooltip(display_command
 /// "Flip: (click to enable)" with the parenthetical clickable to enable PresentMon.
 static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_commander::ui::IImGuiWrapper& imgui) {
     CALL_GUARD(utils::get_now_ns());
+    if (!presentmon::kPresentMonEnabled) {
+        return;
+    }
     const bool pm_enabled = settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue();
     const bool pm_running = presentmon::g_presentMonManager.IsRunning();
 
@@ -6923,20 +6876,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     if (show_cpu_usage) {
-        // Calculate CPU usage: (sim_duration / frame_time) * 100%
-        // Get most recent frame time from performance ring buffer
-        //   const uint32_t head = ::g_perf_ring_head.load(std::memory_order_acquire);
-        // //  if (head > 0) {
-        //     const uint32_t last_idx = (head - 1) & (::kPerfRingCapacity - 1);
-        //    const ::PerfSample& last_sample = ::g_perf_ring[last_idx];
-
-        //     if (last_sample.dt > 0.0f) {
-        // Get simulation duration in nanoseconds
-        //     LONGLONG sim_duration_ns = ::g_simulation_duration_ns.load();
-        //    LONGLONG reshade_overhead_duration_ns = ::g_reshade_overhead_duration_ns.load();
-
-        // missing time spend in onpresent
-        // missing native reflex time
+        // Calculate CPU usage: (cpu_time / frame_time) * 100%. Note: missing time in onpresent, native reflex.
         LONGLONG cpu_time_ns =
             ::g_frame_time_ns.load() - fps_sleep_after_on_present_ns.load() - fps_sleep_before_on_present_ns.load();
 
@@ -6989,8 +6929,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.Text("%.1f%% (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
             }
         }
-        //      }
-        //    }
     }
 
     // Show Cpu FPS: current FPS / (cpu busy %)
@@ -7224,21 +7162,6 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Auto-Click: Enabled");
             }
         }
-
-        // Add more features here as needed
-        // Example:
-        // if (some_other_feature_enabled) {
-        //     if (first_feature) {
-        //         snprintf(feature_text, sizeof(feature_text), "FEATURE");
-        //         snprintf(tooltip_text, sizeof(tooltip_text), "Feature: Description");
-        //         first_feature = false;
-        //     } else {
-        //         size_t len = strlen(feature_text);
-        //         snprintf(feature_text + len, sizeof(feature_text) - len, ", FEATURE");
-        //         len = strlen(tooltip_text);
-        //         snprintf(tooltip_text + len, sizeof(tooltip_text) - len, " | Feature: Description");
-        //     }
-        // }
 
         if (feature_text[0] != '\0') {
             imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", feature_text);

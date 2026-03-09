@@ -894,12 +894,6 @@ BOOL WINAPI ClipCursor_Detour(const RECT* lpRect) {
     // Store the clip rectangle for reference
     s_last_clip_cursor = (lpRect != nullptr) ? *lpRect : RECT{};
 
-    // If input blocking is enabled, disable cursor clipping
-    // if (ShouldBlockMouseInput()) {
-    //    // Disable cursor clipping when input is blocked
-    //    lpRect = nullptr;
-    //}
-
     // Test setting: Block ClipCursor
     if (settings::g_experimentalTabSettings.test_block_mouse_clipcursor.GetValue()) {
         return TRUE;  // Block cursor clipping
@@ -1846,11 +1840,6 @@ HWND WINAPI SetCapture_Detour(HWND hWnd) {
         // Block capture by returning NULL
         return nullptr;
     }
-
-    // if (hWnd != nullptr && ShouldBlockMouseInput()) {
-    //     ReleaseCapture();
-    //     return hWnd;
-    // }
 
     // Log the capture attempt (throttled to avoid log spam)
     LogDebugThrottled(5, "SetCapture_Detour: hWnd=0x%p", hWnd);

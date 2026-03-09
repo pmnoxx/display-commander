@@ -195,13 +195,6 @@ ULONG WINAPI EventRegister_Detour(LPCGUID ProviderId, PENABLECALLBACK EnableCall
             }
         }
         g_pclstats_provider_handle.store(*RegHandle, std::memory_order_relaxed);
-
-        /*
-            REGHANDLE prev = g_pclstats_provider_handle.exchange(*RegHandle, std::memory_order_relaxed);
-        if (prev != REGHANDLE(0) && prev != *RegHandle) {
-            // Second registration (e.g. game and we both register) - keep first so we count both
-            g_pclstats_provider_handle.store(prev, std::memory_order_relaxed);
-        }*/
     }
     return ret;
 }

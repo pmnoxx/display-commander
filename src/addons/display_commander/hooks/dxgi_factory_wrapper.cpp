@@ -97,17 +97,6 @@ IDXGISwapChain4* CreateSwapChainWrapper(IDXGISwapChain4* swapchain4, SwapChainHo
         return nullptr;
     }
 
-    // Check if swapchain is already wrapped
-    // DXGISwapChain4Wrapper* existingWrapper = QuerySwapChainWrapper(swapchain4);
-    // if (existingWrapper != nullptr) {
-    //    const char* hookTypeName = (hookType == SwapChainHook::Proxy) ? "Proxy" : (hookType ==
-    //    SwapChainHook::NativeRaw) ? "NativeRaw" : "Native"; LogError("CreateSwapChainWrapper: Swapchain 0x%p is
-    //    already wrapped, returning existing wrapper (requested hookType: %s)", swapchain4, hookTypeName);
-    // AddRef since we're returning it (caller expects to own the reference)
-    // existingWrapper->AddRef();
-    // return existingWrapper;
-    //}
-
     const char* hookTypeName = (hookType == SwapChainHook::Proxy)       ? "Proxy"
                                : (hookType == SwapChainHook::NativeRaw) ? "NativeRaw"
                                                                         : "Native";

@@ -21,9 +21,6 @@ class MainTabSettings {
     // Load all settings from DisplayCommander config
     void LoadSettings();
 
-    // Get all settings for loading
-    std::vector<ui::new_ui::SettingBase*> GetAllSettings();
-
     // Display Settings
     ui::new_ui::ComboSettingEnum<WindowMode> window_mode;
     ui::new_ui::ComboSetting aspect_index;

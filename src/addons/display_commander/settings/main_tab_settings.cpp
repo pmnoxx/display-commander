@@ -328,8 +328,6 @@ void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() completed");
 }
 
-std::vector<ui::new_ui::SettingBase*> MainTabSettings::GetAllSettings() { return all_settings_; }
-
 // Helper function to convert wstring to string
 std::string WStringToString(const std::wstring& wstr) {
     if (wstr.empty()) return std::string();

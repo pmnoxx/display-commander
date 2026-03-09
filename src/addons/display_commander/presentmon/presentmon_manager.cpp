@@ -20,6 +20,9 @@ PresentMonManager g_presentMonManager;
 
 void CreateAndStartPresentMon() {
     CALL_GUARD(utils::get_now_ns());
+    if (!kPresentMonEnabled) {
+        return;
+    }
     if (g_presentMonManager.IsRunning()) {
         return;
     }

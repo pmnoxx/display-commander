@@ -100,8 +100,7 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     if (api_version == static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex)) {
         LogInfo("D3D9Ex already detected, no upgrade needed");
         s_d3d9e_upgrade_successful.store(true);
-        // return false; // correct behavior, but reshade's bug, where it doesnt' report d3d9ex version
-        return true;  // true to fix reshade's bug, where it doesnt' report d3d9ex version
+        return true;  // Return true to work around ReShade not reporting D3D9Ex; correct API behavior would be return false
     }
 
     // Upgrade D3D9 to D3D9Ex
@@ -190,10 +189,6 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     hooked_swapchains.insert(swapchain);
     last_swapchain = swapchain;
 
-    //..static bool initialized = false;
-    // if (initialized || swapchain == nullptr || swapchain->get_hwnd() == nullptr) {
-    //    return;
-    //
     LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
 
     // Store the current swapchain for UI access
@@ -224,11 +219,6 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
         || api == reshade::api::device_api::d3d12) {
         auto* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-
-        // display_commanderhooks::DXGISwapChain4Wrapper* wrapper =
-        // display_commanderhooks::QuerySwapChainWrapper(iunknown); if (wrapper != nullptr) {
-        //     LogError("TODO: Handle DXGISwapChain4Wrapper already wrapped swapchain: 0x%p", wrapper);
-        // }
 
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
@@ -1949,8 +1939,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     perf_timer.resume();
 
-    // Extract DXGI output device name from swapchain (only once, shared via atomic)
-    // if (!g_got_device_name.load())
+    // Extract DXGI output device name from swapchain (shared via atomic; g_got_device_name tracks first success)
     {
         auto api = swapchain->get_device()->get_api();
         if (api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12

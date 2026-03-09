@@ -338,9 +338,9 @@ void ApplyDisplayCommanderBrightness(reshade::api::effect_runtime* runtime) {
                                            || saturation_val != 1.0f || hue_val != 0.0f || need_decode_encode_pass);
 }
 
-// Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses same
-// DECODE_METHOD = swapchain_colorspace, ENCODE_METHOD = brightness_colorspace. Requires Generic RenoDX to upgrade
-// SDR->HDR.
+// Apply AutoHDR: when enabled, run DisplayCommander_PerceptualBoost.fx (SpecialK_PerceptualBoost). Uses
+// Color Space (brightness_colorspace) for both DECODE_METHOD and ENCODE_METHOD. Requires Generic RenoDX to
+// upgrade SDR->HDR.
 void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
     if (runtime == nullptr) {
         return;
@@ -355,19 +355,17 @@ void ApplyDisplayCommanderAutoHdr(reshade::api::effect_runtime* runtime) {
         return;  // Effect not loaded
     }
     if (auto_hdr) {
-        const int32_t decode_colorspace =
-            static_cast<int32_t>(settings::g_mainTabSettings.swapchain_colorspace.GetValue());
-        const int32_t encode_colorspace =
+        const int32_t colorspace =
             static_cast<int32_t>(settings::g_mainTabSettings.brightness_colorspace.GetValue());
         const reshade::api::effect_uniform_variable var_decode =
             runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "DECODE_METHOD");
         if (var_decode != 0) {
-            runtime->set_uniform_value_int(var_decode, decode_colorspace);
+            runtime->set_uniform_value_int(var_decode, colorspace);
         }
         const reshade::api::effect_uniform_variable var_encode =
             runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "ENCODE_METHOD");
         if (var_encode != 0) {
-            runtime->set_uniform_value_int(var_encode, encode_colorspace);
+            runtime->set_uniform_value_int(var_encode, colorspace);
         }
         const reshade::api::effect_uniform_variable var_strength =
             runtime->find_uniform_variable("DisplayCommander_PerceptualBoost.fx", "EffectStrength_P3");

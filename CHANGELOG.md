@@ -3,6 +3,7 @@
 ---
 
 ## Unreleased
+- **Fix AutoHDR shader** - PerceptualBoost (DisplayCommander_PerceptualBoost.fx) now uses Main tab "Color Space" for both decode and encode; "Decode" only affects DisplayCommander_Control.fx. Details: ApplyDisplayCommanderAutoHdr in main_entry.cpp.
 
 ## v0.12.357 (unreleased)
 - **Brightness shader when brightness 100% and decode/encode not Auto** - The Display Commander brightness effect (DisplayCommander_Control.fx) is now enabled when decode or encode method is not Auto, even if brightness is 100%. This ensures the shader's decode → process → encode pass runs so manual color space settings are applied correctly. Details: ApplyDisplayCommanderBrightness in main_entry.cpp sets technique state using need_decode_encode_pass when swapchain_colorspace or brightness_colorspace is non-zero.

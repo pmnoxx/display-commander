@@ -54,6 +54,25 @@ using slSetDataInternal_pfn = int (*)(const sl::BaseStructure* inputs, sl::Comma
 static slSetDataInternal_pfn slSetData_Original = nullptr;
 static std::atomic<bool> g_slSetData_hook_installed{false};
 
+// DLSS-fix: slSetD3DDevice, slSetTag, slSetTagForFrame, slEvaluateFeature (from sl.interposer)
+using slSetD3DDevice_pfn = int (*)(void* d3dDevice);
+using slSetTag_pfn = int (*)(const sl::ViewportHandle& viewport, const sl::ResourceTag* tags, uint32_t numTags,
+                             sl::CommandBuffer* cmdBuffer);
+using slSetTagForFrame_pfn = int (*)(const sl::FrameToken& frame, const sl::ViewportHandle& viewport,
+                                    const sl::ResourceTag* resources, uint32_t numResources,
+                                    sl::CommandBuffer* cmdBuffer);
+using slEvaluateFeature_pfn = int (*)(sl::Feature feature, const sl::FrameToken& frame,
+                                      const sl::BaseStructure** inputs, uint32_t numInputs,
+                                      sl::CommandBuffer* cmdBuffer);
+static slSetD3DDevice_pfn slSetD3DDevice_Original = nullptr;
+static slSetTag_pfn slSetTag_Original = nullptr;
+static slSetTagForFrame_pfn slSetTagForFrame_Original = nullptr;
+static slEvaluateFeature_pfn slEvaluateFeature_Original = nullptr;
+static std::atomic<uint32_t> g_slSetD3DDevice_count{0};
+static std::atomic<uint32_t> g_slSetTag_count{0};
+static std::atomic<uint32_t> g_slSetTagForFrame_count{0};
+static std::atomic<uint32_t> g_slEvaluateFeature_count{0};
+
 // Track SDK version from slInit calls
 static std::atomic<uint64_t> g_last_sdk_version{0};
 
@@ -562,6 +581,51 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     return result;
 }
 
+// DLSS-fix: slSetD3DDevice detour
+static int slSetD3DDevice_Detour(void* d3dDevice) {
+    CALL_GUARD(utils::get_now_ns());
+    g_slSetD3DDevice_count.fetch_add(1);
+    if (slSetD3DDevice_Original != nullptr) {
+        return slSetD3DDevice_Original(d3dDevice);
+    }
+    return static_cast<int>(sl::Result::eErrorInvalidParameter);
+}
+
+// DLSS-fix: slSetTag detour
+static int slSetTag_Detour(const sl::ViewportHandle& viewport, const sl::ResourceTag* tags, uint32_t numTags,
+                           sl::CommandBuffer* cmdBuffer) {
+    CALL_GUARD(utils::get_now_ns());
+    g_slSetTag_count.fetch_add(1);
+    if (slSetTag_Original != nullptr) {
+        return slSetTag_Original(viewport, tags, numTags, cmdBuffer);
+    }
+    return static_cast<int>(sl::Result::eErrorInvalidParameter);
+}
+
+// DLSS-fix: slSetTagForFrame detour
+static int slSetTagForFrame_Detour(const sl::FrameToken& frame, const sl::ViewportHandle& viewport,
+                                   const sl::ResourceTag* resources, uint32_t numResources,
+                                   sl::CommandBuffer* cmdBuffer) {
+    CALL_GUARD(utils::get_now_ns());
+    g_slSetTagForFrame_count.fetch_add(1);
+    if (slSetTagForFrame_Original != nullptr) {
+        return slSetTagForFrame_Original(frame, viewport, resources, numResources, cmdBuffer);
+    }
+    return static_cast<int>(sl::Result::eErrorInvalidParameter);
+}
+
+// DLSS-fix: slEvaluateFeature detour
+static int slEvaluateFeature_Detour(sl::Feature feature, const sl::FrameToken& frame,
+                                    const sl::BaseStructure** inputs, uint32_t numInputs,
+                                    sl::CommandBuffer* cmdBuffer) {
+    CALL_GUARD(utils::get_now_ns());
+    g_slEvaluateFeature_count.fetch_add(1);
+    if (slEvaluateFeature_Original != nullptr) {
+        return slEvaluateFeature_Original(feature, frame, inputs, numInputs, cmdBuffer);
+    }
+    return static_cast<int>(sl::Result::eErrorInvalidParameter);
+}
+
 // Initialize config-driven prevent_slupgrade_interface flag
 void InitializePreventSLUpgradeInterface() {
     bool prevent_slupgrade_interface = false;
@@ -646,6 +710,19 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
         LogError("Failed to create and enable slGetFeatureFunction hook");
     }
 
+    // DLSS-fix: hook slSetD3DDevice, slSetTag, slSetTagForFrame, slEvaluateFeature
+    CreateAndEnableHook(GetProcAddress(sl_interposer, "slSetD3DDevice"),
+                       reinterpret_cast<LPVOID>(slSetD3DDevice_Detour),
+                       reinterpret_cast<LPVOID*>(&slSetD3DDevice_Original), "slSetD3DDevice");
+    CreateAndEnableHook(GetProcAddress(sl_interposer, "slSetTag"), reinterpret_cast<LPVOID>(slSetTag_Detour),
+                        reinterpret_cast<LPVOID*>(&slSetTag_Original), "slSetTag");
+    CreateAndEnableHook(GetProcAddress(sl_interposer, "slSetTagForFrame"),
+                        reinterpret_cast<LPVOID>(slSetTagForFrame_Detour),
+                        reinterpret_cast<LPVOID*>(&slSetTagForFrame_Original), "slSetTagForFrame");
+    CreateAndEnableHook(GetProcAddress(sl_interposer, "slEvaluateFeature"),
+                        reinterpret_cast<LPVOID>(slEvaluateFeature_Detour),
+                        reinterpret_cast<LPVOID*>(&slEvaluateFeature_Original), "slEvaluateFeature");
+
     LogInfo("Streamline hooks installed successfully");
 
     // Mark Streamline hooks as installed
@@ -657,3 +734,16 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
 
 // Get last SDK version from slInit calls
 uint64_t GetLastStreamlineSDKVersion() { return g_last_sdk_version.load(); }
+
+// DLSS-fix: 6 Streamline APIs that need proxy→native conversion (same order as dlss_fix_affected_apis_list)
+void display_commander::GetDLSSFixStreamlineAPIEntries(std::vector<display_commander::DLSSFixAPIEntry>& out) {
+    out.clear();
+    out.push_back({"slSetD3DDevice", slSetD3DDevice_Original != nullptr, g_slSetD3DDevice_count.load()});
+    out.push_back({"slUpgradeInterface", slUpgradeInterface_Original != nullptr,
+                   g_streamline_event_counters[STREAMLINE_EVENT_SL_UPGRADE_INTERFACE].load()});
+    out.push_back({"slGetNativeInterface", slGetNativeInterface_Original != nullptr,
+                   g_streamline_event_counters[STREAMLINE_EVENT_SL_GET_NATIVE_INTERFACE].load()});
+    out.push_back({"slSetTag", slSetTag_Original != nullptr, g_slSetTag_count.load()});
+    out.push_back({"slSetTagForFrame", slSetTagForFrame_Original != nullptr, g_slSetTagForFrame_count.load()});
+    out.push_back({"slEvaluateFeature", slEvaluateFeature_Original != nullptr, g_slEvaluateFeature_count.load()});
+}

@@ -245,6 +245,19 @@ using NVSDK_NGX_D3D11_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11
                                                                           const NVSDK_NGX_Parameter* InParameters,
                                                                           PFN_NVSDK_NGX_ProgressCallback InCallback);
 
+// ProgressCallback_C: OutShouldCancel is pointer (C ABI)
+typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback_C)(float InCurrentProgress, bool* OutShouldCancel);
+using NVSDK_NGX_D3D11_Shutdown1_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11Device* InDevice);
+using NVSDK_NGX_D3D12_Shutdown1_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12Device* InDevice);
+using NVSDK_NGX_D3D11_EvaluateFeature_C_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
+                                                                            const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                            const NVSDK_NGX_Parameter* InParameters,
+                                                                            PFN_NVSDK_NGX_ProgressCallback_C InCallback);
+using NVSDK_NGX_D3D12_EvaluateFeature_C_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
+                                                                             const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                             const NVSDK_NGX_Parameter* InParameters,
+                                                                             PFN_NVSDK_NGX_ProgressCallback_C InCallback);
+
 // UpdateFeature function pointer type
 using NVSDK_NGX_UpdateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(const NVSDK_NGX_Application_Identifier* ApplicationId,
                                                                   const NVSDK_NGX_Feature FeatureID);
@@ -304,6 +317,8 @@ NVSDK_NGX_D3D12_AllocateParameters_pfn NVSDK_NGX_D3D12_AllocateParameters_Origin
 NVSDK_NGX_D3D12_CreateFeature_pfn NVSDK_NGX_D3D12_CreateFeature_Original = nullptr;
 NVSDK_NGX_D3D12_ReleaseFeature_pfn NVSDK_NGX_D3D12_ReleaseFeature_Original = nullptr;
 NVSDK_NGX_D3D12_EvaluateFeature_pfn NVSDK_NGX_D3D12_EvaluateFeature_Original = nullptr;
+NVSDK_NGX_D3D12_Shutdown1_pfn NVSDK_NGX_D3D12_Shutdown1_Original = nullptr;
+NVSDK_NGX_D3D12_EvaluateFeature_C_pfn NVSDK_NGX_D3D12_EvaluateFeature_C_Original = nullptr;
 
 NVSDK_NGX_D3D11_Init_pfn NVSDK_NGX_D3D11_Init_Original = nullptr;
 NVSDK_NGX_D3D11_Init_Ext_pfn NVSDK_NGX_D3D11_Init_Ext_Original = nullptr;
@@ -314,6 +329,8 @@ NVSDK_NGX_D3D11_AllocateParameters_pfn NVSDK_NGX_D3D11_AllocateParameters_Origin
 NVSDK_NGX_D3D11_CreateFeature_pfn NVSDK_NGX_D3D11_CreateFeature_Original = nullptr;
 NVSDK_NGX_D3D11_ReleaseFeature_pfn NVSDK_NGX_D3D11_ReleaseFeature_Original = nullptr;
 NVSDK_NGX_D3D11_EvaluateFeature_pfn NVSDK_NGX_D3D11_EvaluateFeature_Original = nullptr;
+NVSDK_NGX_D3D11_Shutdown1_pfn NVSDK_NGX_D3D11_Shutdown1_Original = nullptr;
+NVSDK_NGX_D3D11_EvaluateFeature_C_pfn NVSDK_NGX_D3D11_EvaluateFeature_C_Original = nullptr;
 
 // UpdateFeature original function pointer
 NVSDK_NGX_UpdateFeature_pfn NVSDK_NGX_UpdateFeature_Original = nullptr;
@@ -1269,6 +1286,62 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_Detour(ID3D12Graphic
     return NVSDK_NGX_Result_Fail;
 }
 
+// D3D12 Shutdown1 detour
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Shutdown1_Detour(ID3D12Device* InDevice) {
+    CALL_GUARD(utils::get_now_ns());
+    g_ngx_counters.d3d12_shutdown1_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    if (NVSDK_NGX_D3D12_Shutdown1_Original != nullptr) {
+        return NVSDK_NGX_D3D12_Shutdown1_Original(InDevice);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+// D3D11 Shutdown1 detour
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Shutdown1_Detour(ID3D11Device* InDevice) {
+    CALL_GUARD(utils::get_now_ns());
+    g_ngx_counters.d3d11_shutdown1_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    if (NVSDK_NGX_D3D11_Shutdown1_Original != nullptr) {
+        return NVSDK_NGX_D3D11_Shutdown1_Original(InDevice);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+// D3D12 EvaluateFeature_C detour
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_C_Detour(ID3D12GraphicsCommandList* InCmdList,
+                                                                      const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                      const NVSDK_NGX_Parameter* InParameters,
+                                                                      PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
+    CALL_GUARD(utils::get_now_ns());
+    g_ngx_counters.d3d12_evaluatefeature_c_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    if (InParameters != nullptr) {
+        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D12_EvaluateFeature_C");
+    }
+    if (NVSDK_NGX_D3D12_EvaluateFeature_C_Original != nullptr) {
+        return NVSDK_NGX_D3D12_EvaluateFeature_C_Original(InCmdList, InFeatureHandle, InParameters, InCallback);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
+// D3D11 EvaluateFeature_C detour
+NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11DeviceContext* InDevCtx,
+                                                                     const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                     const NVSDK_NGX_Parameter* InParameters,
+                                                                     PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
+    CALL_GUARD(utils::get_now_ns());
+    g_ngx_counters.d3d11_evaluatefeature_c_count.fetch_add(1);
+    g_ngx_counters.total_count.fetch_add(1);
+    if (InParameters != nullptr) {
+        HookNGXParameterVTable((NVSDK_NGX_Parameter*)InParameters, "D3D11_EvaluateFeature_C");
+    }
+    if (NVSDK_NGX_D3D11_EvaluateFeature_C_Original != nullptr) {
+        return NVSDK_NGX_D3D11_EvaluateFeature_C_Original(InDevCtx, InFeatureHandle, InParameters, InCallback);
+    }
+    return NVSDK_NGX_Result_Fail;
+}
+
 // D3D11 Init detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
@@ -1868,7 +1941,6 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
 
     LogInfo("Installing NGX initialization hooks...");
 
-    /*
     // Hook NGX initialization functions
     // D3D12 Init hooks
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init"),
@@ -1883,7 +1955,11 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_ProjectID_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_ProjectID_Original),
                         "NVSDK_NGX_D3D12_Init_ProjectID");
-*/
+
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Shutdown1"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Shutdown1_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Shutdown1_Original), "NVSDK_NGX_D3D12_Shutdown1");
+
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_CreateFeature"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_CreateFeature_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_CreateFeature_Original),
@@ -1898,21 +1974,30 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_EvaluateFeature_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_EvaluateFeature_Original),
                         "NVSDK_NGX_D3D12_EvaluateFeature");
-    /*
-        // D3D11 Init hooks
-        CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init"),
-                            reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Detour),
-                            reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original), "NVSDK_NGX_D3D11_Init");
 
-        CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_Ext"),
-                            reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Ext_Detour),
-                            reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original), "NVSDK_NGX_D3D11_Init_Ext");
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_EvaluateFeature_C"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_EvaluateFeature_C_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_EvaluateFeature_C_Original),
+                        "NVSDK_NGX_D3D12_EvaluateFeature_C");
 
-        CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_ProjectID"),
-                            reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_ProjectID_Detour),
-                            reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_ProjectID_Original),
-                            "NVSDK_NGX_D3D11_Init_ProjectID");
-    */
+    // D3D11 Init hooks
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original), "NVSDK_NGX_D3D11_Init");
+
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_Ext"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Ext_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original), "NVSDK_NGX_D3D11_Init_Ext");
+
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_ProjectID"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_ProjectID_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_ProjectID_Original),
+                        "NVSDK_NGX_D3D11_Init_ProjectID");
+
+    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Shutdown1"),
+                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Shutdown1_Detour),
+                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Shutdown1_Original), "NVSDK_NGX_D3D11_Shutdown1");
+
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_CreateFeature"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_CreateFeature_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_CreateFeature_Original),
@@ -2090,4 +2175,40 @@ bool ApplyNGXParameterOverride(const char* param_name, const char* param_type) {
     }
 
     return false;
+}
+
+// DLSS-fix: 14 NGX APIs that need proxy→native conversion (same order as dlss_fix_affected_apis_list)
+void display_commander::GetDLSSFixNGXAPIEntries(std::vector<display_commander::DLSSFixAPIEntry>& out) {
+    out.clear();
+    const auto add = [&out](const char* name, bool hooked, uint32_t count) {
+        out.push_back({name, hooked, count});
+    };
+    add("NVSDK_NGX_D3D11_Init", NVSDK_NGX_D3D11_Init_Original != nullptr,
+        g_ngx_counters.d3d11_init_count.load());
+    add("NVSDK_NGX_D3D11_Init_Ext", NVSDK_NGX_D3D11_Init_Ext_Original != nullptr,
+        g_ngx_counters.d3d11_init_ext_count.load());
+    add("NVSDK_NGX_D3D11_Init_with_ProjectID", NVSDK_NGX_D3D11_Init_ProjectID_Original != nullptr,
+        g_ngx_counters.d3d11_init_projectid_count.load());
+    add("NVSDK_NGX_D3D11_Shutdown1", NVSDK_NGX_D3D11_Shutdown1_Original != nullptr,
+        g_ngx_counters.d3d11_shutdown1_count.load());
+    add("NVSDK_NGX_D3D11_CreateFeature", NVSDK_NGX_D3D11_CreateFeature_Original != nullptr,
+        g_ngx_counters.d3d11_createfeature_count.load());
+    add("NVSDK_NGX_D3D11_EvaluateFeature", NVSDK_NGX_D3D11_EvaluateFeature_Original != nullptr,
+        g_ngx_counters.d3d11_evaluatefeature_count.load());
+    add("NVSDK_NGX_D3D11_EvaluateFeature_C", NVSDK_NGX_D3D11_EvaluateFeature_C_Original != nullptr,
+        g_ngx_counters.d3d11_evaluatefeature_c_count.load());
+    add("NVSDK_NGX_D3D12_Init", NVSDK_NGX_D3D12_Init_Original != nullptr,
+        g_ngx_counters.d3d12_init_count.load());
+    add("NVSDK_NGX_D3D12_Init_Ext", NVSDK_NGX_D3D12_Init_Ext_Original != nullptr,
+        g_ngx_counters.d3d12_init_ext_count.load());
+    add("NVSDK_NGX_D3D12_Init_with_ProjectID", NVSDK_NGX_D3D12_Init_ProjectID_Original != nullptr,
+        g_ngx_counters.d3d12_init_projectid_count.load());
+    add("NVSDK_NGX_D3D12_Shutdown1", NVSDK_NGX_D3D12_Shutdown1_Original != nullptr,
+        g_ngx_counters.d3d12_shutdown1_count.load());
+    add("NVSDK_NGX_D3D12_CreateFeature", NVSDK_NGX_D3D12_CreateFeature_Original != nullptr,
+        g_ngx_counters.d3d12_createfeature_count.load());
+    add("NVSDK_NGX_D3D12_EvaluateFeature", NVSDK_NGX_D3D12_EvaluateFeature_Original != nullptr,
+        g_ngx_counters.d3d12_evaluatefeature_count.load());
+    add("NVSDK_NGX_D3D12_EvaluateFeature_C", NVSDK_NGX_D3D12_EvaluateFeature_C_Original != nullptr,
+        g_ngx_counters.d3d12_evaluatefeature_c_count.load());
 }

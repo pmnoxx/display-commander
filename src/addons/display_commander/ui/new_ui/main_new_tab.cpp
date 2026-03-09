@@ -3139,11 +3139,12 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     imgui.Spacing();
 
     g_rendering_ui_section.store("ui:tab:main_new:important_info", std::memory_order_release);
-    if (imgui.CollapsingHeader("Important Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (imgui.CollapsingHeader("Important Info", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
         DrawImportantInfo(imgui);
         imgui.Unindent();
     }
+    imgui.Spacing();
     g_rendering_ui_section.store("ui:tab:main_new:advanced_settings", std::memory_order_release);
     if (imgui.CollapsingHeader("Advanced Settings", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
@@ -3924,6 +3925,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                     "1 = one frame, 0.5 = half frame, etc.).");
             }
             imgui.SameLine();
+            imgui.SetNextItemWidth(400.f);
             if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)", "%.2f",
                                    imgui)) {
                 // Setting is automatically saved by SliderFloatSetting
@@ -5222,7 +5224,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
     CALL_GUARD(utils::get_now_ns());
 
     g_rendering_ui_section.store("ui:tab:main_new:vsync_tearing", std::memory_order_release);
-    if (imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (imgui.CollapsingHeader("VSync & Tearing", ImGuiTreeNodeFlags_None)) {
         if ((g_reshade_module != nullptr)) {
             DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(imgui);
         } else {
@@ -5307,7 +5309,6 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     DrawDisplaySettings_DisplayAndTarget(imgui);
     DrawDisplaySettings_WindowModeAndApply(imgui);
     DrawDisplaySettings_FpsLimiter(imgui);
-    DrawDisplaySettings_VSyncAndTearing(imgui);
 
     const bool is_dxgi = api == display_commander::ui::GraphicsApi::D3D10
                          || api == display_commander::ui::GraphicsApi::D3D11
@@ -5338,6 +5339,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
             }
         }
     }
+    DrawDisplaySettings_VSyncAndTearing(imgui);
     {
         const DLSSGSummary dlss_summary = GetDLSSGSummary();
         // Show DLSS Information section if any DLSS feature was active at least once or any DLSS DLL is loaded

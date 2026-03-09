@@ -1,6 +1,8 @@
 #include "advanced_tab.hpp"
 #include "../../display/dpi_management.hpp"
 #include "../../globals.hpp"
+#include "../../hooks/ngx_hooks.hpp"
+#include "../../hooks/streamline_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
@@ -1840,6 +1842,28 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Unindent();
         }
 
+        // DLSS-fix subsection: state of NGX/Streamline APIs that need proxy→native conversion
+        if (imgui.CollapsingHeader("DLSS-fix", wrapper_flags::TreeNodeFlags_None)) {
+            imgui.Indent();
+            imgui.TextColored(::ui::colors::TEXT_LABEL,
+                              "APIs affected by DLSS-fix (proxy to native). HOOKED: true/false, then call count.");
+            std::vector<display_commander::DLSSFixAPIEntry> ngx_entries;
+            std::vector<display_commander::DLSSFixAPIEntry> sl_entries;
+            display_commander::GetDLSSFixNGXAPIEntries(ngx_entries);
+            display_commander::GetDLSSFixStreamlineAPIEntries(sl_entries);
+            for (const auto& e : ngx_entries) {
+                imgui.Text("%s HOOKED: %s: %u", e.api_name.c_str(), e.hooked ? "true" : "false", e.call_count);
+            }
+            for (const auto& e : sl_entries) {
+                imgui.Text("%s HOOKED: %s: %u", e.api_name.c_str(), e.hooked ? "true" : "false", e.call_count);
+            }
+            imgui.Unindent();
+        }
+
+        // Textures subsection: D3D11 vtable hooks, texture tracking, cache, dump, stats
+        if (imgui.CollapsingHeader("Textures", wrapper_flags::TreeNodeFlags_None)) {
+            imgui.Indent();
+
         // Enable D3D11 device vtable hooks (HookD3D11DeviceVTable). Required for track loaded texture size.
         if (CheckboxSetting(settings::g_advancedTabSettings.enable_dx11_vtable_hooks,
                             "Enable D3D11 vtable hooks (HookD3D11DeviceVTable)", imgui)) {
@@ -1996,6 +2020,8 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip("Set peak to current value.");
             }
+            imgui.Unindent();
+        }
             imgui.Unindent();
         }
         imgui.Unindent();

@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+## v0.12.355
+- **PresentMon GetEtwSessionsWithPrefix: validation and SEH** - Enumeration of ETW sessions by prefix now validates `LoggerNameOffset` and caps session name length so corrupt or malicious ETW data cannot cause out-of-bounds reads. Per-session name reads are wrapped in SEH so one bad entry does not crash the addon. Details: presentmon_manager.cpp `GetEtwSessionsWithPrefix` — bounds check on offset, `wcsnlen_s` with max chars, __try/__except around name read and prefix compare.
+
+## v0.12.354
+- **PresentMon: SEH guard for worker ETW loop** - The PresentMon worker thread now runs the ETW main loop (PresentMonMain) under SEH. If an access violation or other SEH exception occurs inside StartTraceW, ProcessTrace, OpenTraceW, or other ETW/Windows APIs, the addon no longer crashes; the worker marks status as "Crashed", logs the exception code, and exits. OnEtwEventImpl also has a defensive null check for the event record. Details: `RunPresentMonMainSEHProtected()` in presentmon_manager.cpp/.hpp; `OnEtwEventImpl` null check.
+
 ## v0.12.353
 - **Achievement sound not on startup** - The achievement notification sound no longer plays when the overlay first runs; it only plays when the unlocked count actually increases from a previously known value. Fixes a startup chime when "Play sound on new achievement" was on. Details: steam_achievement_cache.cpp SetSteamAchievementBumpFromUnlock only calls PlayAchievementSoundImpl when prev >= 0.
 - **Steam API UI caching** - The Advanced tab Steam API section is more responsive: achievement count is fetched once per frame and reused, export presence and exports debug string are cached for 1 second, and last-unlocked achievement name lookup is cached until the achievement count changes. Reduces repeated Steam API and cache calls while the section is open. Details: advanced_tab.cpp Steam API block uses single GetSteamAchievementCountCached() result, 1 s TTL for GetSteamAchievementExportsDebug/IsSteamAPIExportPresent, and cached GetLastUnlockedAchievementInfo by (unlocked, total).

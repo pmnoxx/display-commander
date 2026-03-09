@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.363
+- **ReShade path: check only DLL for current bitness** - A folder is now treated as a valid ReShade location if it contains the DLL that will actually be loaded: 64-bit builds require only Reshade64.dll, 32-bit only Reshade32.dll. Previously both DLLs were required, which could hide valid locations when only one architecture was installed. Details: `DirectoryHasReshadeDll` in utils/reshade_load_path.cpp.
+
 ## v0.12.362
 - **ADHD: no init when both options off** - When both "ADHD on game display" and "ADHD Multi-Monitor Mode" are disabled, the ADHD manager no longer initializes: the background window class is not registered and the message-pump thread is not started. Initialization happens only when the user enables at least one option. Details: adhd_multi_monitor.cpp SetEnabled().
 

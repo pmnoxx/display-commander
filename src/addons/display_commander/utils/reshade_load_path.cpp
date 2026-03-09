@@ -35,16 +35,21 @@ static std::vector<std::string> s_reshade_versions_combined;
 static std::vector<const char*> s_reshade_version_ptrs;
 static std::atomic<bool> s_version_list_built{false};
 
-static bool DirectoryHasReshadeDlls(const std::filesystem::path& dir) {
+// True if dir contains the ReShade DLL for current process bitness (Reshade64.dll / Reshade32.dll).
+static bool DirectoryHasReshadeDll(const std::filesystem::path& dir) {
     if (dir.empty()) {
         return false;
     }
     std::error_code ec;
-    return std::filesystem::exists(dir / L"Reshade64.dll", ec) && std::filesystem::exists(dir / L"Reshade32.dll", ec);
+#ifdef _WIN64
+    return std::filesystem::exists(dir / L"Reshade64.dll", ec);
+#else
+    return std::filesystem::exists(dir / L"Reshade32.dll", ec);
+#endif
 }
 
 // Returns the version string (subdir name) of the highest available ReShade under base_dll (e.g. base/Dll),
-// or empty if none found. "Available" = subdir has both Reshade64.dll and Reshade32.dll.
+// or empty if none found. "Available" = subdir has the ReShade DLL for current bitness.
 static std::string GetHighestAvailableVersionInDllDir(const std::filesystem::path& base_dll) {
     std::vector<std::string> available;
     std::error_code ec;
@@ -62,7 +67,7 @@ static std::string GetHighestAvailableVersionInDllDir(const std::filesystem::pat
         if (name.empty() || name == "." || name == "..") {
             continue;
         }
-        if (DirectoryHasReshadeDlls(entry.path())) {
+        if (DirectoryHasReshadeDll(entry.path())) {
             available.push_back(name);
         }
     }
@@ -147,7 +152,7 @@ std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& ga
     if (base.empty()) return out;
 
     // Local: game folder
-    if (!game_directory.empty() && DirectoryHasReshadeDlls(game_directory)) {
+    if (!game_directory.empty() && DirectoryHasReshadeDll(game_directory)) {
         ReshadeLocation loc;
         loc.type = ReshadeLocationType::Local;
         loc.version = GetReshadeVersionInDirectoryNormalized(game_directory);
@@ -156,7 +161,7 @@ std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& ga
     }
 
     // Global: base folder
-    if (DirectoryHasReshadeDlls(base)) {
+    if (DirectoryHasReshadeDll(base)) {
         ReshadeLocation loc;
         loc.type = ReshadeLocationType::Global;
         loc.version = GetReshadeVersionInDirectoryNormalized(base);
@@ -173,7 +178,7 @@ std::vector<ReshadeLocation> GetReshadeLocations(const std::filesystem::path& ga
             if (!entry.is_directory(ec)) continue;
             std::string name = entry.path().filename().string();
             if (name.empty() || name == "." || name == "..") continue;
-            if (DirectoryHasReshadeDlls(entry.path())) {
+            if (DirectoryHasReshadeDll(entry.path())) {
                 ReshadeLocation loc;
                 loc.type = ReshadeLocationType::SpecificVersion;
                 loc.version = vc::NormalizeVersionToXyz(name);
@@ -297,6 +302,9 @@ std::filesystem::path GetReshadeDirectoryForLoading(const std::filesystem::path&
         LogError("[reshade] game_directory is empty");
     }
     std::vector<ReshadeLocation> locations = GetReshadeLocations(game_directory);
+    if (locations.empty()) {
+        LogInfo("[reshade] no ReShade locations found (global base has no DLLs, no local, no Dll\\X.Y.Z)");
+    }
     for (size_t i = 0; i < locations.size(); ++i) {
         const ReshadeLocation& loc = locations[i];
         std::string dir_log = loc.directory.empty()

@@ -1583,6 +1583,15 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         }
     }
 
+    // NVIDIA Smooth Motion (nvpresent64.dll / nvpresent32.dll)
+    {
+        std::wstring filename = std::filesystem::path(moduleName).filename().wstring();
+        std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+        if (filename == L"nvpresent64.dll" || filename == L"nvpresent32.dll") {
+            g_smooth_motion_dll_loaded.store(true, std::memory_order_relaxed);
+        }
+    }
+
     // dxgi.dll
     if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
         // Check if any module has "reframework\plugins" in its path

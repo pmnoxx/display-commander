@@ -5278,7 +5278,12 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     "Excludes loads where the caller was Display Commander or ReShade.");
             }
         }
-        const std::string traffic_apis = display_commanderhooks::GetPresentTrafficApisString();
+        std::string traffic_apis = display_commanderhooks::GetPresentTrafficApisString();
+        const bool smooth_motion_loaded = g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
+        if (smooth_motion_loaded) {
+            if (!traffic_apis.empty()) traffic_apis += ", ";
+            traffic_apis += "Smooth Motion";
+        }
         if (!traffic_apis.empty()) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Active APIs: %s", traffic_apis.c_str());
             if (imgui.IsItemHovered()) {
@@ -5286,7 +5291,8 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     "Graphics APIs where we observed present/swap traffic in the last 1 second (our hooks were "
                     "called).\n"
                     "DXGI = IDXGISwapChain::Present, D3D9 = IDirect3DDevice9::Present, OpenGL32 = wglSwapBuffers, "
-                    "DDraw = IDirectDrawSurface::Flip.");
+                    "DDraw = IDirectDrawSurface::Flip.\n"
+                    "Smooth Motion = nvpresent64.dll or nvpresent32.dll is loaded (NVIDIA driver frame generation).");
             }
         }
     }
@@ -8201,12 +8207,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
 
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
-        if (!enabled_experimental_features) {
-            if (gpu_measurement) {
-                settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(false);
-            }
-            imgui.BeginDisabled();
-        }
         if (imgui.Checkbox("Show latency", &gpu_measurement)) {
             settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
         }
@@ -8215,9 +8215,6 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Measures time from Present call to GPU completion using fences.\n"
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
-        }
-        if (!enabled_experimental_features) {
-            imgui.EndDisabled();
         }
         imgui.NextColumn();
 

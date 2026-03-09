@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.371
+- **Active APIs: show Smooth Motion when nvpresent DLL is loaded** - The Main tab "Active APIs" line now includes "Smooth Motion" when nvpresent64.dll or nvpresent32.dll is loaded in the process (NVIDIA driver frame generation). Tooltip explains that Smooth Motion is shown when the nvpresent DLL is present. Details: ui/new_ui/main_new_tab.cpp DrawDisplaySettings.
+
+## v0.12.370
+- **Performance overlay: Show latency checkbox restored** - The "Show latency" toggle is back in the Main tab overlay controls (with FPS Counter, FG Mode, VRAM, etc.). It is always available; no longer gated by experimental compile features. Controls GPU completion measurement (Present to GPU done) shown as "GPU Duration" in timing metrics. Details: ui/new_ui/main_new_tab.cpp DrawImportantInfo_OverlayControls.
+
 ## v0.12.369
 - **DX11/DX12: improved latency by flushing command queue before FPS limiter sleep** - When a command queue is available from the last present-update, the DXGI Present and Present1 detours now flush that queue before running the FPS limiter. This ensures GPU work is submitted before any sleep, reducing input-to-display latency when the limiter is active. Details: hooks/dxgi/dxgi_present_hooks.cpp (flush_immediate_command_list in both detours using GetLastPresentUpdateModeData).
 - **Advanced tab: flush before sleep and enqueue GPU completion are now optional (default on)** - Two new checkboxes under "Features enabled by default": "Flush command queue before FPS limiter sleep" and "Enqueue GPU completion (from present-update)". Both are on by default; users can disable either to avoid issues or reduce overhead. Details: settings/advanced_tab_settings (flush_command_queue_before_sleep, enqueue_gpu_completion); hooks/dxgi/dxgi_present_hooks.cpp (flush gated by setting); swapchain_events.cpp (enqueue gated by setting); ui/new_ui/advanced_tab.cpp DrawFeaturesEnabledByDefault.

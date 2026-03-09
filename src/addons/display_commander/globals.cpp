@@ -532,6 +532,9 @@ LatencyMarkerFrameRecord g_latency_marker_buffer[kFrameDataBufferSize] = {};
 
 // NVIDIA Reflex minimal controls (disabled by default)
 
+// Smooth Motion (nvpresent64/nvpresent32.dll) - set from OnModuleLoaded
+std::atomic<bool> g_smooth_motion_dll_loaded{false};
+
 // DLSS-G (DLSS Frame Generation) status
 std::atomic<bool> g_dlss_g_loaded{false};
 std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version{std::make_shared<const std::string>("Unknown")};

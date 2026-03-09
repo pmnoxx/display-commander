@@ -1179,6 +1179,9 @@ extern std::atomic<LONGLONG> g_gpu_late_time_ns;  // GPU late time (0 if GPU fin
 
 // NVIDIA Reflex minimal controls
 
+// Set from OnModuleLoaded when nvpresent64.dll or nvpresent32.dll is loaded (NVIDIA Smooth Motion).
+extern std::atomic<bool> g_smooth_motion_dll_loaded;
+
 // DLSS-G (DLSS Frame Generation) status
 extern std::atomic<bool> g_dlss_g_loaded;                                 // DLSS-G loaded status
 extern std::atomic<std::shared_ptr<const std::string>> g_dlss_g_version;  // DLSS-G version string

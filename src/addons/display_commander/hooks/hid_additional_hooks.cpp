@@ -1,6 +1,5 @@
 #include "hid_additional_hooks.hpp"
 #include <MinHook.h>
-#include <atomic>
 #include "../utils/logging.hpp"
 #include "hid_hooks_install.hpp"
 #include "hook_suppression_manager.hpp"
@@ -22,9 +21,6 @@ HidD_GetNumInputBuffers_pfn HidD_GetNumInputBuffers_Original = nullptr;
 HidD_SetNumInputBuffers_pfn HidD_SetNumInputBuffers_Original = nullptr;
 HidD_GetFeature_pfn HidD_GetFeature_Original = nullptr;
 HidD_SetFeature_pfn HidD_SetFeature_Original = nullptr;
-
-// Hook installation status
-static std::atomic<bool> g_additional_hid_hooks_installed{false};
 
 // Hooked WriteFile function
 BOOL WINAPI WriteFile_Detour(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite,
@@ -183,6 +179,6 @@ BOOLEAN __stdcall HidD_SetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuf
     return result;
 }
 
-void MarkAdditionalHIDHooksInstalled(bool installed) { g_additional_hid_hooks_installed.store(installed); }
+void MarkAdditionalHIDHooksInstalled(bool /*installed*/) { /* was write-only, no readers */ }
 
 }  // namespace display_commanderhooks

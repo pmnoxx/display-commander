@@ -1230,10 +1230,7 @@ struct NGXCounters {
     std::atomic<uint32_t> d3d12_createfeature_count;
     std::atomic<uint32_t> d3d12_releasefeature_count;
     std::atomic<uint32_t> d3d12_evaluatefeature_count;
-    std::atomic<uint32_t> d3d12_evaluatefeature_c_count;
-    std::atomic<uint32_t> d3d12_shutdown1_count;
     std::atomic<uint32_t> d3d12_getparameters_count;
-    std::atomic<uint32_t> d3d12_getcapabilityparameters_count;
     std::atomic<uint32_t> d3d12_allocateparameters_count;
 
     // D3D11 Feature management functions
@@ -1243,10 +1240,7 @@ struct NGXCounters {
     std::atomic<uint32_t> d3d11_createfeature_count;
     std::atomic<uint32_t> d3d11_releasefeature_count;
     std::atomic<uint32_t> d3d11_evaluatefeature_count;
-    std::atomic<uint32_t> d3d11_evaluatefeature_c_count;
-    std::atomic<uint32_t> d3d11_shutdown1_count;
     std::atomic<uint32_t> d3d11_getparameters_count;
-    std::atomic<uint32_t> d3d11_getcapabilityparameters_count;
     std::atomic<uint32_t> d3d11_allocateparameters_count;
 
     // Frame Generation (DLSS-G) create attempt count
@@ -1272,10 +1266,7 @@ struct NGXCounters {
           d3d12_createfeature_count(0),
           d3d12_releasefeature_count(0),
           d3d12_evaluatefeature_count(0),
-          d3d12_evaluatefeature_c_count(0),
-          d3d12_shutdown1_count(0),
           d3d12_getparameters_count(0),
-          d3d12_getcapabilityparameters_count(0),
           d3d12_allocateparameters_count(0),
           d3d11_init_count(0),
           d3d11_init_ext_count(0),
@@ -1283,10 +1274,7 @@ struct NGXCounters {
           d3d11_createfeature_count(0),
           d3d11_releasefeature_count(0),
           d3d11_evaluatefeature_count(0),
-          d3d11_evaluatefeature_c_count(0),
-          d3d11_shutdown1_count(0),
           d3d11_getparameters_count(0),
-          d3d11_getcapabilityparameters_count(0),
           d3d11_allocateparameters_count(0),
           framegen_create_attempt_count(0),
           total_count(0) {}
@@ -1308,10 +1296,7 @@ struct NGXCounters {
         d3d12_createfeature_count.store(0);
         d3d12_releasefeature_count.store(0);
         d3d12_evaluatefeature_count.store(0);
-        d3d12_evaluatefeature_c_count.store(0);
-        d3d12_shutdown1_count.store(0);
         d3d12_getparameters_count.store(0);
-        d3d12_getcapabilityparameters_count.store(0);
         d3d12_allocateparameters_count.store(0);
         d3d11_init_count.store(0);
         d3d11_init_ext_count.store(0);
@@ -1319,10 +1304,7 @@ struct NGXCounters {
         d3d11_createfeature_count.store(0);
         d3d11_releasefeature_count.store(0);
         d3d11_evaluatefeature_count.store(0);
-        d3d11_evaluatefeature_c_count.store(0);
-        d3d11_shutdown1_count.store(0);
         d3d11_getparameters_count.store(0);
-        d3d11_getcapabilityparameters_count.store(0);
         d3d11_allocateparameters_count.store(0);
         framegen_create_attempt_count.store(0);
         total_count.store(0);

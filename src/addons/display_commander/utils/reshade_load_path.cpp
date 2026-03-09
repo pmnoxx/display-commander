@@ -19,7 +19,6 @@ namespace display_commander::utils {
 namespace {
 constexpr const char* RESHADE_SECTION = "DisplayCommander.ReShade";
 constexpr const char* KEY_LOAD_SOURCE = "ReshadeLoadSource";  // legacy, for migration only
-constexpr const char* KEY_SHARED_PATH = "ReshadeSharedPath";  // legacy, unused
 constexpr const char* KEY_SELECTED_VERSION = "ReshadeSelectedVersion";
 constexpr const char* DEFAULT_VERSION = "6.7.3";
 

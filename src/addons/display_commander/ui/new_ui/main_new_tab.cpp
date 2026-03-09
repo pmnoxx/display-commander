@@ -3648,7 +3648,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
     imgui.TextDisabled("(src: %s)", GetChosenFpsLimiterSiteName());
     if (imgui.IsItemHovered()) {
         imgui.BeginTooltip();
-        imgui.TextUnformatted("Which path is currently applying the FPS limiter (per-path status, ~1s window):");
+        imgui.TextUnformatted("Which path is currently applying the FPS limiter:");
         imgui.Spacing();
         const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
         const uint8_t chosen = g_chosen_fps_limiter_site.load(std::memory_order_relaxed);
@@ -8201,6 +8201,12 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
+#if 1
+        if (gpu_measurement) {
+            settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(false);
+        }
+
+#else
         if (imgui.Checkbox("Show latency", &gpu_measurement)) {
             settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
         }
@@ -8210,6 +8216,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
         }
+#endif
         imgui.NextColumn();
 
         // --- Misc ---

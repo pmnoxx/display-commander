@@ -27,6 +27,7 @@
 #include "utils/overlay_window_detector.hpp"
 #include "utils/process_window_enumerator.hpp"
 #include "utils/srwlock_registry.hpp"
+#include "utils/steam_achievement_cache.hpp"
 #include "utils/taskbar_helper.hpp"
 #include "utils/timing.hpp"
 #include "widgets/resolution_widget/resolution_settings.hpp"
@@ -880,6 +881,13 @@ void ContinuousMonitoringThread() {
                 CALL_GUARD(utils::get_now_ns());
                 g_continuous_monitoring_section.store("running_games_cache_1s", std::memory_order_release);
                 display_commander::utils::RefreshRunningGamesCache();
+            }
+
+            // Steam achievement count cache: only place that calls GetSteamAchievementCount() so overlay/UI never block
+            if (settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue()) {
+                CALL_GUARD(utils::get_now_ns());
+                g_continuous_monitoring_section.store("steam_achievement_cache", std::memory_order_release);
+                display_commander::utils::RefreshSteamAchievementCacheFromBackground();
             }
 
             // Re-enumerate loaded modules 6 times, every 10s (at 10s, 20s, 30s, 40s, 50s, 60s). Catches modules

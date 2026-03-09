@@ -685,7 +685,8 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
 }
 
 void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
-    display_commander::utils::SteamAchievementCount ac = display_commander::utils::GetSteamAchievementCountCached();
+    display_commander::utils::SteamAchievementCount ac =
+        display_commander::utils::GetSteamAchievementCountCachedSafe();
     const int64_t now_ns = utils::get_now_ns();
     const bool show_counter_increased =
         settings::g_advancedTabSettings.show_steam_achievement_counter_increased.GetValue();

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## v0.12.353
+- **Achievement sound not on startup** - The achievement notification sound no longer plays when the overlay first runs; it only plays when the unlocked count actually increases from a previously known value. Fixes a startup chime when "Play sound on new achievement" was on. Details: steam_achievement_cache.cpp SetSteamAchievementBumpFromUnlock only calls PlayAchievementSoundImpl when prev >= 0.
+- **Steam API UI caching** - The Advanced tab Steam API section is more responsive: achievement count is fetched once per frame and reused, export presence and exports debug string are cached for 1 second, and last-unlocked achievement name lookup is cached until the achievement count changes. Reduces repeated Steam API and cache calls while the section is open. Details: advanced_tab.cpp Steam API block uses single GetSteamAchievementCountCached() result, 1 s TTL for GetSteamAchievementExportsDebug/IsSteamAPIExportPresent, and cached GetLastUnlockedAchievementInfo by (unlocked, total).
+
 ## v0.12.352
 - **Play sound on new Steam achievement** - When a new Steam achievement is detected (counter increased), Display Commander can play a short system sound. Advanced tab → Steam API: new checkbox "Play sound on new achievement" (off by default) and "Test sound" button to preview the sound. Sound is played via winmm.dll PlaySoundW (SystemAsterisk), loaded dynamically so no static link to winmm. Details: advanced_tab_settings play_sound_on_achievement; steam_achievement_cache PlayAchievementSound/PlayAchievementSoundImpl, called from SetSteamAchievementBumpFromUnlock and TriggerSteamAchievementTestBump when the setting is on.
 

@@ -112,7 +112,8 @@ void SetSteamAchievementBumpFromUnlock(int64_t now_ns, int unlocked, int total) 
     if (!g_last_unlocked.compare_exchange_strong(prev, unlocked, std::memory_order_relaxed)) {
         return;
     }
-    if (settings::g_advancedTabSettings.play_sound_on_achievement.GetValue()) {
+    // Only play sound when we had a real previous count (prev >= 0), not on first run when establishing baseline
+    if (prev >= 0 && settings::g_advancedTabSettings.play_sound_on_achievement.GetValue()) {
         PlayAchievementSoundImpl();
     }
     g_bump_show_until_ns.store(now_ns + kSteamAchievementBumpDurationSec * ::utils::SEC_TO_NS,

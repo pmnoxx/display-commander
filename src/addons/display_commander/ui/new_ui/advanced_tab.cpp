@@ -1700,6 +1700,21 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     imgui.SetTooltip("steam_api64.dll / steam_api.dll is not loaded in this process.");
                 }
             }
+            // Refresh exports/debug cache at most once per second to keep UI responsive
+            constexpr int64_t kSteamUiCacheIntervalNs = 1 * ::utils::SEC_TO_NS;
+            static int64_t s_steam_ui_cache_ns = 0;
+            static char s_exports_debug[256] = {};
+            static bool s_export_present[5] = {};
+            const int64_t now_ns = ::utils::get_now_ns();
+            if (now_ns - s_steam_ui_cache_ns >= kSteamUiCacheIntervalNs) {
+                s_steam_ui_cache_ns = now_ns;
+                display_commander::utils::GetSteamAchievementExportsDebug(s_exports_debug, sizeof(s_exports_debug));
+                const char* export_names[] = {"SteamAPI_Init", "SteamUser", "SteamUserStats", "SteamUtils",
+                                             "SteamClient"};
+                for (int i = 0; i < 5; ++i) {
+                    s_export_present[i] = display_commander::utils::IsSteamAPIExportPresent(export_names[i]);
+                }
+            }
             struct SteamExportRow {
                 const char* name;
                 const char* tip;
@@ -1711,24 +1726,23 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 {"SteamUtils", "ISteamUtils (e.g. GetAppID for app ID)."},
                 {"SteamClient", "ISteamClient (base client interface)."},
             };
-            for (const auto& row : rows) {
-                const bool present = display_commander::utils::IsSteamAPIExportPresent(row.name);
-                imgui.TextColored(::ui::colors::TEXT_LABEL, "%s export: %s", row.name, present ? "yes" : "no");
+            for (size_t i = 0; i < sizeof(rows) / sizeof(rows[0]); ++i) {
+                imgui.TextColored(::ui::colors::TEXT_LABEL, "%s export: %s", rows[i].name,
+                                 s_export_present[i] ? "yes" : "no");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("%s", row.tip);
+                    imgui.SetTooltip("%s", rows[i].tip);
                 }
             }
             {
-                char exports_debug[256];
-                display_commander::utils::GetSteamAchievementExportsDebug(exports_debug, sizeof(exports_debug));
-                imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", exports_debug);
+                imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", s_exports_debug);
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip("Exports needed for achievement list/count. Special K uses SteamUserStats.");
                 }
             }
+            // Single achievement count fetch per frame for entire Steam API section
+            const display_commander::utils::SteamAchievementCount ac =
+                display_commander::utils::GetSteamAchievementCountCached();
             {
-                const display_commander::utils::SteamAchievementCount ac =
-                    display_commander::utils::GetSteamAchievementCountCached();
                 if (ac.available) {
                     imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: %d / %d unlocked", ac.unlocked,
                                       ac.total);
@@ -1742,17 +1756,15 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 }
             }
             {
-                const display_commander::utils::SteamAchievementCount ac_list =
-                    display_commander::utils::GetSteamAchievementCountCached();
                 static std::vector<display_commander::utils::SteamAchievementEntry> s_achievement_list;
                 static int s_achievement_list_total = -1;
-                if (ac_list.available) {
-                    if (s_achievement_list_total != ac_list.total || s_achievement_list.empty()) {
-                        s_achievement_list_total = ac_list.total;
+                if (ac.available) {
+                    if (s_achievement_list_total != ac.total || s_achievement_list.empty()) {
+                        s_achievement_list_total = ac.total;
                         const size_t max_entries = 512;
-                        s_achievement_list.resize(max_entries < static_cast<size_t>(ac_list.total)
+                        s_achievement_list.resize(max_entries < static_cast<size_t>(ac.total)
                                                       ? max_entries
-                                                      : static_cast<size_t>(ac_list.total));
+                                                      : static_cast<size_t>(ac.total));
                         const int n = display_commander::utils::GetSteamAchievementList(s_achievement_list.data(),
                                                                                         s_achievement_list.size());
                         if (n >= 0) {
@@ -1784,12 +1796,10 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 }
             }
             {
-                const display_commander::utils::SteamAchievementCount ac_for_test =
-                    display_commander::utils::GetSteamAchievementCountCached();
-                if (ac_for_test.available) {
+                if (ac.available) {
                     char test_label[64];
-                    snprintf(test_label, sizeof(test_label), "Test achievement (last: %d / %d)", ac_for_test.unlocked,
-                             ac_for_test.total);
+                    snprintf(test_label, sizeof(test_label), "Test achievement (last: %d / %d)", ac.unlocked,
+                             ac.total);
                     if (imgui.Button(test_label)) {
                         display_commander::utils::TriggerSteamAchievementTestBump();
                     }
@@ -1800,18 +1810,23 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 }
             }
             {
-                const display_commander::utils::SteamAchievementCount ac_debug =
-                    display_commander::utils::GetSteamAchievementCountCached();
-                if (ac_debug.available) {
-                    display_commander::utils::SteamLastUnlockedInfo name_debug;
-                    display_commander::utils::GetLastUnlockedAchievementInfo(ac_debug.unlocked, ac_debug.total,
-                                                                             &name_debug);
-                    imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievement name lookup:");
-                    if (name_debug.has_display_name) {
-                        imgui.TextColored(::ui::colors::TEXT_LABEL, "  Display name: %s", name_debug.display_name);
+                static display_commander::utils::SteamLastUnlockedInfo s_last_unlocked_info;
+                static int s_last_unlocked = -1;
+                static int s_last_total = -1;
+                if (ac.available) {
+                    if (ac.unlocked != s_last_unlocked || ac.total != s_last_total) {
+                        display_commander::utils::GetLastUnlockedAchievementInfo(ac.unlocked, ac.total,
+                                                                                 &s_last_unlocked_info);
+                        s_last_unlocked = ac.unlocked;
+                        s_last_total = ac.total;
                     }
-                    if (name_debug.debug[0] != '\0') {
-                        imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", name_debug.debug);
+                    imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievement name lookup:");
+                    if (s_last_unlocked_info.has_display_name) {
+                        imgui.TextColored(::ui::colors::TEXT_LABEL, "  Display name: %s",
+                                         s_last_unlocked_info.display_name);
+                    }
+                    if (s_last_unlocked_info.debug[0] != '\0') {
+                        imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", s_last_unlocked_info.debug);
                         if (imgui.IsItemHovered()) {
                             imgui.SetTooltip(
                                 "Debug: which Steam API query failed when resolving last-unlocked achievement name.");

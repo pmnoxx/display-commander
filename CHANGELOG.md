@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.350
+- **Controller tab: WGI warning and Enable suppression button** - When Windows Gaming Input is not suppressed, the Controller tab now shows a warning that controller remapping for XInput may not work, with an "Enable suppression" button on the same line. Clicking the button enables the master switch and the appropriate game-type option (Unity or non-Unity) and reminds that a restart is needed. Details: xinput_widget.cpp warning text, SameLine, button handler.
+- **Global settings subsection in Advanced tab** - A new "Global settings" collapsing header was added at the top of the Advanced tab. It contains a checkbox "Enable Windows Gaming Input suppression globally" that applies WGI suppression to all games. The value is stored in the Display Commander folder in `global_settings.toml` (same location as `hotkeys.toml`), so it is shared across games. When enabled, WGI is suppressed for every game without needing the per-game checkbox in the Controller tab. Details: config/global_settings_file.hpp and global_settings_file.cpp; display_commander_config routes `SuppressWgiGlobally` to the global file; advanced_tab_settings suppress_wgi_globally; DrawGlobalSettingsSection in advanced_tab.cpp; windows_gaming_input_hooks uses global_on in should_suppress logic.
+
 ## v0.12.349
 - **Windows Gaming Input suppression: Controller tab checkbox, off by default** - A single "Suppress Windows Gaming Input" checkbox was added in the Controller tab. WGI suppression is now disabled by default; enable it and the game-type option (Unity or non-Unity) so games fall back to XInput when needed. The previous per-game-type options (Unity / non-Unity) remain and only take effect when the master switch is on. Details: `suppress_wgi_enabled` in advanced_tab_settings; hook logic in windows_gaming_input_hooks; checkbox and tooltip in xinput_widget (Controller tab). Defaults for `suppress_wgi_for_unity` and `suppress_wgi_for_non_unity_games` set to false.
 

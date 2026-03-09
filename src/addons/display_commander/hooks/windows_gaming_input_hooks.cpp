@@ -113,11 +113,13 @@ HRESULT WINAPI RoGetActivationFactory_Detour(HSTRING activatableClassId, REFIID 
     }
 
     static bool is_unity_player = GetModuleHandleA("UnityPlayer.dll") != nullptr;
+    const bool global_on = settings::g_advancedTabSettings.suppress_wgi_globally.GetValue();
     const bool master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
     const bool suppress_for_unity = settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue();
     const bool suppress_for_non_unity = settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue();
-    const bool should_suppress =
-        master && ((is_unity_player && suppress_for_unity) || (!is_unity_player && suppress_for_non_unity));
+    const bool per_game_ok =
+        (is_unity_player && (suppress_for_unity || global_on)) || (!is_unity_player && (suppress_for_non_unity || global_on));
+    const bool should_suppress = (master || global_on) && per_game_ok;
 
     if (should_suppress) {
         g_wgi_state.wgi_suppressed_ever.store(true);

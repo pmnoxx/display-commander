@@ -13,6 +13,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "chords_file.hpp"
+#include "global_settings_file.hpp"
 #include "hotkeys_file.hpp"
 
 namespace display_commander::config {
@@ -307,6 +308,10 @@ bool DisplayCommanderConfigManager::GetConfigValue(const char* section, const ch
     if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
         return GetHotkeyValue(key, value);
     }
+    // Global settings (e.g. WGI suppression) stored in global_settings.toml for sharing across games
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsGlobalConfigKey(key)) {
+        return GetGlobalSettingValue(key, value);
+    }
     // Chords / gamepad remap settings are stored in chords.toml for sharing across games
     if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
         return GetChordValue(section, key, value);
@@ -456,6 +461,10 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
         SetHotkeyValue(key, value);
         return;
     }
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsGlobalConfigKey(key)) {
+        SetGlobalSettingValue(key, value);
+        return;
+    }
     if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {
         SetChordValue(section, key, value);
         return;
@@ -470,6 +479,10 @@ void DisplayCommanderConfigManager::SetConfigValue(const char* section, const ch
 void DisplayCommanderConfigManager::SetConfigValue(const char* section, const char* key, const char* value) {
     if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsHotkeyConfigKey(key)) {
         SetHotkeyValue(key, value != nullptr ? value : "");
+        return;
+    }
+    if (section != nullptr && strcmp(section, "DisplayCommander") == 0 && key != nullptr && IsGlobalConfigKey(key)) {
+        SetGlobalSettingValue(key, value != nullptr ? value : "");
         return;
     }
     if (section != nullptr && key != nullptr && IsChordConfigKey(section, key)) {

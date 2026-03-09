@@ -16,8 +16,8 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/mpo_registry.hpp"
 #include "../../utils/platform_api_detector.hpp"
-#include "../../utils/steam_achievement_cache.hpp"
 #include "../../utils/process_window_enumerator.hpp"
+#include "../../utils/steam_achievement_cache.hpp"
 #include "../../utils/texture_tracker.hpp"
 #include "../../utils/timing.hpp"
 #include "settings_wrapper.hpp"
@@ -39,6 +39,7 @@ using namespace display_commander::ui;
 
 void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui);
 void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
+void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
@@ -61,6 +62,13 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
         DrawFeaturesEnabledByDefault(imgui);
     }
+    imgui.Spacing();
+
+    // Global settings (stored in Display Commander folder, shared across all games)
+    if (imgui.CollapsingHeader("Global settings", wrapper_flags::TreeNodeFlags_None)) {
+        DrawGlobalSettingsSection(imgui);
+    }
+
     imgui.Spacing();
 
     // Advanced Settings Section
@@ -934,6 +942,25 @@ void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Unindent();
 }
 
+void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Indent();
+
+    // Windows Gaming Input suppression globally (stored in global_settings.toml, same folder as hotkeys.toml)
+    if (CheckboxSetting(settings::g_advancedTabSettings.suppress_wgi_globally,
+                        "Enable Windows Gaming Input suppression globally", imgui)) {
+        LogInfo("Suppress WGI globally changed to: %s",
+                settings::g_advancedTabSettings.suppress_wgi_globally.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, Windows Gaming Input is suppressed for all games (same effect as the per-game checkbox "
+            "in the Controller tab, but applied everywhere). Stored in the Display Commander folder "
+            "(global_settings.toml, same location as hotkeys.toml). Restart each game to apply.");
+    }
+
+    imgui.Unindent();
+}
+
 void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
@@ -1661,8 +1688,7 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (imgui.CollapsingHeader("Steam API", wrapper_flags::TreeNodeFlags_None)) {
             imgui.Indent();
             const bool steam_loaded = display_commander::utils::IsSteamAPIModuleLoaded();
-            imgui.TextColored(::ui::colors::TEXT_LABEL, "Module: %s",
-                              steam_loaded ? "loaded" : "not loaded");
+            imgui.TextColored(::ui::colors::TEXT_LABEL, "Module: %s", steam_loaded ? "loaded" : "not loaded");
             if (imgui.IsItemHovered()) {
                 if (steam_loaded) {
                     const std::wstring path = display_commander::utils::GetSteamDLLPath();
@@ -1702,8 +1728,8 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 const display_commander::utils::SteamAchievementCount ac =
                     display_commander::utils::GetSteamAchievementCountCached();
                 if (ac.available) {
-                    imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: %d / %d unlocked",
-                                      ac.unlocked, ac.total);
+                    imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: %d / %d unlocked", ac.unlocked,
+                                      ac.total);
                 } else {
                     imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: —");
                 }
@@ -1725,8 +1751,8 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                         s_achievement_list.resize(max_entries < static_cast<size_t>(ac_list.total)
                                                       ? max_entries
                                                       : static_cast<size_t>(ac_list.total));
-                        const int n = display_commander::utils::GetSteamAchievementList(
-                            s_achievement_list.data(), s_achievement_list.size());
+                        const int n = display_commander::utils::GetSteamAchievementList(s_achievement_list.data(),
+                                                                                        s_achievement_list.size());
                         if (n >= 0) {
                             s_achievement_list.resize(static_cast<size_t>(n));
                         } else {
@@ -1743,9 +1769,9 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                         if (imgui.BeginChild("steam_achievement_list", ImVec2(0, 220), true)) {
                             for (const auto& e : s_achievement_list) {
                                 const char* label = e.display_name[0] != '\0' ? e.display_name : e.api_name;
-                                imgui.TextColored(e.unlocked ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)
-                                                            : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
-                                                  "%s %s", e.unlocked ? "[X]" : "[ ]", label);
+                                imgui.TextColored(
+                                    e.unlocked ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
+                                    "%s %s", e.unlocked ? "[X]" : "[ ]", label);
                                 if (imgui.IsItemHovered() && e.api_name[0] != '\0') {
                                     imgui.SetTooltip("API: %s", e.api_name);
                                 }
@@ -1760,13 +1786,14 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     display_commander::utils::GetSteamAchievementCountCached();
                 if (ac_for_test.available) {
                     char test_label[64];
-                    snprintf(test_label, sizeof(test_label), "Test achievement (last: %d / %d)",
-                             ac_for_test.unlocked, ac_for_test.total);
+                    snprintf(test_label, sizeof(test_label), "Test achievement (last: %d / %d)", ac_for_test.unlocked,
+                             ac_for_test.total);
                     if (imgui.Button(test_label)) {
                         display_commander::utils::TriggerSteamAchievementTestBump();
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("Show the achievement-unlocked notification on the performance overlay for 30 seconds.");
+                        imgui.SetTooltip(
+                            "Show the achievement-unlocked notification on the performance overlay for 30 seconds.");
                     }
                 }
             }
@@ -1775,8 +1802,8 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     display_commander::utils::GetSteamAchievementCountCached();
                 if (ac_debug.available) {
                     display_commander::utils::SteamLastUnlockedInfo name_debug;
-                    display_commander::utils::GetLastUnlockedAchievementInfo(
-                        ac_debug.unlocked, ac_debug.total, &name_debug);
+                    display_commander::utils::GetLastUnlockedAchievementInfo(ac_debug.unlocked, ac_debug.total,
+                                                                             &name_debug);
                     imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievement name lookup:");
                     if (name_debug.has_display_name) {
                         imgui.TextColored(::ui::colors::TEXT_LABEL, "  Display name: %s", name_debug.display_name);
@@ -1784,16 +1811,16 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     if (name_debug.debug[0] != '\0') {
                         imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", name_debug.debug);
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("Debug: which Steam API query failed when resolving last-unlocked achievement name.");
+                            imgui.SetTooltip(
+                                "Debug: which Steam API query failed when resolving last-unlocked achievement name.");
                         }
                     }
                 }
             }
             if (CheckboxSetting(settings::g_advancedTabSettings.show_steam_achievement_notifications,
-                               "Show Steam achievement notifications (overlay)", imgui)) {
+                                "Show Steam achievement notifications (overlay)", imgui)) {
                 LogInfo("Show Steam achievement notifications: %s",
-                        settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue() ? "on"
-                                                                                                        : "off");
+                        settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue() ? "on" : "off");
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -1801,14 +1828,14 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     "even when the performance overlay is disabled.");
             }
             if (CheckboxSetting(settings::g_advancedTabSettings.show_steam_achievement_counter_increased,
-                               "Show when achievement counter increased", imgui)) {
-                LogInfo("Show Steam achievement counter increased: %s",
-                        settings::g_advancedTabSettings.show_steam_achievement_counter_increased.GetValue()
-                            ? "on"
-                            : "off");
+                                "Show when achievement counter increased", imgui)) {
+                LogInfo(
+                    "Show Steam achievement counter increased: %s",
+                    settings::g_advancedTabSettings.show_steam_achievement_counter_increased.GetValue() ? "on" : "off");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("When on, shows a brief notification whenever the unlocked achievement count goes up.");
+                imgui.SetTooltip(
+                    "When on, shows a brief notification whenever the unlocked achievement count goes up.");
             }
             imgui.Unindent();
         }

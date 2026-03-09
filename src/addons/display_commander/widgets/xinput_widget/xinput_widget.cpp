@@ -152,25 +152,46 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     const bool is_unity_player = (GetModuleHandleA("UnityPlayer.dll") != nullptr);
+    const bool wgi_global = settings::g_advancedTabSettings.suppress_wgi_globally.GetValue();
     const bool wgi_master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
-    const bool wgi_suppressed =
-        wgi_master
-        && (is_unity_player ? settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue()
-                            : settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue());
-    if (enable_hooks && !wgi_suppressed) {
+    const bool per_game_ok =
+        (is_unity_player
+             ? (settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue() || wgi_global)
+             : (settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue() || wgi_global));
+    const bool wgi_suppressed = (wgi_master || wgi_global) && per_game_ok;
+
+    static bool restart_needed_to_apply_settings = false;
+
+    // Warning when WGI isn't suppressed: controller remapping may not work, with button to enable
+    if (!wgi_suppressed) {
         imgui.TextColored(
             ::ui::colors::ICON_WARNING,
-            "Warning: XInput is enabled but Windows.Gaming.Input is not suppressed. Games that use "
-            "WGI may not call XInput; enable the WGI suppression option below for XInput features to work.");
+            "Windows Gaming Input is not suppressed. Controller remapping for XInput may not work.");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "Enable \"Suppress Windows Gaming Input\" and the game-type option below so the game falls "
-                "back to XInput instead of WGI.");
+                "Games using Windows.Gaming.Input may not call XInput; enable suppression so the game falls "
+                "back to XInput and remapping works.");
+        }
+        imgui.SameLine();
+        if (imgui.Button("Enable suppression")) {
+            settings::g_advancedTabSettings.suppress_wgi_enabled.SetValue(true);
+            settings::g_advancedTabSettings.suppress_wgi_enabled.Save();
+            if (is_unity_player) {
+                settings::g_advancedTabSettings.suppress_wgi_for_unity.SetValue(true);
+                settings::g_advancedTabSettings.suppress_wgi_for_unity.Save();
+            } else {
+                settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.SetValue(true);
+                settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.Save();
+            }
+            LogInfo("WGI suppression enabled via Controller tab button");
+            restart_needed_to_apply_settings = true;
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Enable Windows Gaming Input suppression (restart game to apply).");
         }
     }
 
     // Windows Gaming Input suppression: master switch (default off)
-    static bool restart_needed_to_apply_settings = false;
     bool suppress_wgi_master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
     if (imgui.Checkbox("Suppress Windows Gaming Input", &suppress_wgi_master)) {
         settings::g_advancedTabSettings.suppress_wgi_enabled.SetValue(suppress_wgi_master);

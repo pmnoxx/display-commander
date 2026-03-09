@@ -76,6 +76,8 @@ class AdvancedTabSettings {
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 
+    /** Global WGI suppression (global_settings.toml). When true, WGI suppression is on for all games. Default false. */
+    BoolSetting suppress_wgi_globally;
     /** Master switch for WGI suppression (Controller tab). When false, WGI is never suppressed. Default false. */
     BoolSetting suppress_wgi_enabled;
     /** Only visible when UnityPlayer.dll is loaded. When true, suppress WGI for Unity games. Default false. */

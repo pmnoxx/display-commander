@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.372
+- **Smooth Motion: global atomic and skip enqueue GPU completion** - Smooth Motion (nvpresent64/nvpresent32.dll) is now tracked via global `g_smooth_motion_dll_loaded`, set once in `OnModuleLoaded` when the DLL is loaded; the Main tab "Active APIs" line reads this atomic instead of calling GetModuleHandleW each frame. When Smooth Motion is loaded, enqueue GPU completion (from present-update) is skipped so frame-generation timing does not produce misleading latency metrics; a one-time log message "Enqueue GPU completion suppressed due to Smooth Motion (nvpresent DLL loaded)." is printed when suppression occurs. Details: globals.hpp/cpp (g_smooth_motion_dll_loaded); hooks/loadlibrary_hooks.cpp OnModuleLoaded; ui/new_ui/main_new_tab.cpp; swapchain_events.cpp.
+
 ## v0.12.371
 - **Active APIs: show Smooth Motion when nvpresent DLL is loaded** - The Main tab "Active APIs" line now includes "Smooth Motion" when nvpresent64.dll or nvpresent32.dll is loaded in the process (NVIDIA driver frame generation). Tooltip explains that Smooth Motion is shown when the nvpresent DLL is present. Details: ui/new_ui/main_new_tab.cpp DrawDisplaySettings.
 

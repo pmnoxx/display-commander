@@ -249,14 +249,12 @@ using NVSDK_NGX_D3D11_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11
 typedef void(NVSDK_CONV* PFN_NVSDK_NGX_ProgressCallback_C)(float InCurrentProgress, bool* OutShouldCancel);
 using NVSDK_NGX_D3D11_Shutdown1_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11Device* InDevice);
 using NVSDK_NGX_D3D12_Shutdown1_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12Device* InDevice);
-using NVSDK_NGX_D3D11_EvaluateFeature_C_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
-                                                                            const NVSDK_NGX_Handle* InFeatureHandle,
-                                                                            const NVSDK_NGX_Parameter* InParameters,
-                                                                            PFN_NVSDK_NGX_ProgressCallback_C InCallback);
-using NVSDK_NGX_D3D12_EvaluateFeature_C_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
-                                                                             const NVSDK_NGX_Handle* InFeatureHandle,
-                                                                             const NVSDK_NGX_Parameter* InParameters,
-                                                                             PFN_NVSDK_NGX_ProgressCallback_C InCallback);
+using NVSDK_NGX_D3D11_EvaluateFeature_C_pfn =
+    NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx, const NVSDK_NGX_Handle* InFeatureHandle,
+                                  const NVSDK_NGX_Parameter* InParameters, PFN_NVSDK_NGX_ProgressCallback_C InCallback);
+using NVSDK_NGX_D3D12_EvaluateFeature_C_pfn =
+    NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList, const NVSDK_NGX_Handle* InFeatureHandle,
+                                  const NVSDK_NGX_Parameter* InParameters, PFN_NVSDK_NGX_ProgressCallback_C InCallback);
 
 // UpdateFeature function pointer type
 using NVSDK_NGX_UpdateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(const NVSDK_NGX_Application_Identifier* ApplicationId,
@@ -1310,9 +1308,9 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Shutdown1_Detour(ID3D11Device* InDev
 
 // D3D12 EvaluateFeature_C detour
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_EvaluateFeature_C_Detour(ID3D12GraphicsCommandList* InCmdList,
-                                                                      const NVSDK_NGX_Handle* InFeatureHandle,
-                                                                      const NVSDK_NGX_Parameter* InParameters,
-                                                                      PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
+                                                                     const NVSDK_NGX_Handle* InFeatureHandle,
+                                                                     const NVSDK_NGX_Parameter* InParameters,
+                                                                     PFN_NVSDK_NGX_ProgressCallback_C InCallback) {
     CALL_GUARD(utils::get_now_ns());
     g_ngx_counters.d3d12_evaluatefeature_c_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
@@ -1917,8 +1915,19 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
     return ret;
 }
 
+const bool disable_ngx_hooks = true;
+
 // Install NGX hooks
 bool InstallNGXHooks(HMODULE ngx_dll) {
+    if (disable_ngx_hooks) {
+        /*
+        crashes in some games
+        01:49:57:515 [24844] | INFO  | [00] _nvngx!NVSDK_NGX_D3D11_GetFeatureRequirements [0x7FFD1C845F29] [no pdb]
+        01:49:57:515 [24844] | INFO  | [01] _nvngx!NVSDK_NGX_D3D12_Init_ProjectID [0x7FFD1C8464B9] [no pdb]
+        */
+        LogInfo("InstallNGXHooks: skipping NGX hooks installation");
+        return true;
+    }
     if (ngx_dll == nullptr) {
         LogInfo("NGX hooks: _nvngx.dll not loaded");
         return false;
@@ -2180,11 +2189,8 @@ bool ApplyNGXParameterOverride(const char* param_name, const char* param_type) {
 // DLSS-fix: 14 NGX APIs that need proxy→native conversion (same order as dlss_fix_affected_apis_list)
 void display_commander::GetDLSSFixNGXAPIEntries(std::vector<display_commander::DLSSFixAPIEntry>& out) {
     out.clear();
-    const auto add = [&out](const char* name, bool hooked, uint32_t count) {
-        out.push_back({name, hooked, count});
-    };
-    add("NVSDK_NGX_D3D11_Init", NVSDK_NGX_D3D11_Init_Original != nullptr,
-        g_ngx_counters.d3d11_init_count.load());
+    const auto add = [&out](const char* name, bool hooked, uint32_t count) { out.push_back({name, hooked, count}); };
+    add("NVSDK_NGX_D3D11_Init", NVSDK_NGX_D3D11_Init_Original != nullptr, g_ngx_counters.d3d11_init_count.load());
     add("NVSDK_NGX_D3D11_Init_Ext", NVSDK_NGX_D3D11_Init_Ext_Original != nullptr,
         g_ngx_counters.d3d11_init_ext_count.load());
     add("NVSDK_NGX_D3D11_Init_with_ProjectID", NVSDK_NGX_D3D11_Init_ProjectID_Original != nullptr,
@@ -2197,8 +2203,7 @@ void display_commander::GetDLSSFixNGXAPIEntries(std::vector<display_commander::D
         g_ngx_counters.d3d11_evaluatefeature_count.load());
     add("NVSDK_NGX_D3D11_EvaluateFeature_C", NVSDK_NGX_D3D11_EvaluateFeature_C_Original != nullptr,
         g_ngx_counters.d3d11_evaluatefeature_c_count.load());
-    add("NVSDK_NGX_D3D12_Init", NVSDK_NGX_D3D12_Init_Original != nullptr,
-        g_ngx_counters.d3d12_init_count.load());
+    add("NVSDK_NGX_D3D12_Init", NVSDK_NGX_D3D12_Init_Original != nullptr, g_ngx_counters.d3d12_init_count.load());
     add("NVSDK_NGX_D3D12_Init_Ext", NVSDK_NGX_D3D12_Init_Ext_Original != nullptr,
         g_ngx_counters.d3d12_init_ext_count.load());
     add("NVSDK_NGX_D3D12_Init_with_ProjectID", NVSDK_NGX_D3D12_Init_ProjectID_Original != nullptr,

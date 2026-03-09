@@ -2,7 +2,9 @@
 
 ---
 
-## Unreleased
+## v0.12.358 (unreleased)
+- **NGX hooks disabled** - The addon no longer installs NGX (DLSS/NGX SDK) hooks. This avoids instability or conflicts when the game or other layers use NGX; DLSS and related features are unchanged for the game. Details: ngx_hooks installation skipped or not called from api_hooks/main_entry.
+- **Crash handlers: ignore CLR unhandled .NET exception (0xE0434F4D)** - The vectored and unhandled exception handlers no longer log a full "CRASH DETECTED" report when the process raises the standard CLR code for unhandled .NET exceptions. Such exceptions originate from managed code (game or components), not from Display Commander. Both VectoredExceptionHandler and UnhandledExceptionHandler now use the same ignore list (CLR, C++ throw, SetThreadName, breakpoint, etc.). Details: process_exit_hooks.cpp.
 - **Fix AutoHDR shader** - PerceptualBoost (DisplayCommander_PerceptualBoost.fx) now uses Main tab "Color Space" for both decode and encode; "Decode" only affects DisplayCommander_Control.fx. Details: ApplyDisplayCommanderAutoHdr in main_entry.cpp.
 
 ## v0.12.357 (unreleased)

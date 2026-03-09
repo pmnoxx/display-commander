@@ -325,6 +325,18 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
         return EXCEPTION_EXECUTE_HANDLER;
     }
 
+    // Same ignore list as VectoredExceptionHandler: do not log language/debug exceptions
+    if (exception_info && exception_info->ExceptionRecord) {
+        const DWORD code = exception_info->ExceptionRecord->ExceptionCode;
+        if (code == CONTROL_C_EXIT || code == 0x406D1388 /* SetThreadName */ || code == DBG_PRINTEXCEPTION_C
+            || code == DBG_PRINTEXCEPTION_WIDE_C || code == STATUS_BREAKPOINT
+            || code == 0xE0434352 /* CLR exception */ || code == 0xE0434F4D /* CLR unhandled .NET exception */
+            || code == 0xE06D7363 /* Visual C++ exception */
+            || ((code ^ 0xE24C4A00) <= 0xFF) /* LuaJIT exception */) {
+            return EXCEPTION_CONTINUE_SEARCH;
+        }
+    }
+
     // Check if we've seen this exception address before
     uintptr_t exception_address = 0;
     if (exception_info && exception_info->ExceptionRecord) {
@@ -360,7 +372,8 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
     const DWORD code = ex->ExceptionRecord->ExceptionCode;
     if (code == CONTROL_C_EXIT || code == 0x406D1388 /* SetThreadName */ || code == DBG_PRINTEXCEPTION_C
         || code == DBG_PRINTEXCEPTION_WIDE_C || code == STATUS_BREAKPOINT
-        || code == 0xE0434352 /* CLR exception */ || code == 0xE06D7363 /* Visual C++ exception */
+        || code == 0xE0434352 /* CLR exception */ || code == 0xE0434F4D /* CLR unhandled .NET exception */
+        || code == 0xE06D7363 /* Visual C++ exception */
         || ((code ^ 0xE24C4A00) <= 0xFF) /* LuaJIT exception */) {
         return EXCEPTION_CONTINUE_SEARCH;
     }

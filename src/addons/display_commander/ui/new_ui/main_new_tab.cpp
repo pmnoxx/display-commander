@@ -53,11 +53,12 @@
 #include "../../utils/texture_tracker.hpp"
 #include "../../utils/version_check.hpp"
 #include "../../widgets/resolution_widget/resolution_widget.hpp"
-#include "imgui.h"
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "version.hpp"
+
+#include "imgui.h"
 
 #include <d3d9.h>
 #include <d3d9types.h>
@@ -8198,15 +8199,14 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                     "Requires Advanced -> Track loaded texture size.");
             }
         }
-        imgui.NextColumn();
 
         bool gpu_measurement = settings::g_mainTabSettings.gpu_measurement_enabled.GetValue() != 0;
-#if 1
-        if (gpu_measurement) {
-            settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(false);
+        if (!enabled_experimental_features) {
+            if (gpu_measurement) {
+                settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(false);
+            }
+            imgui.BeginDisabled();
         }
-
-#else
         if (imgui.Checkbox("Show latency", &gpu_measurement)) {
             settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
         }
@@ -8216,7 +8216,9 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
         }
-#endif
+        if (!enabled_experimental_features) {
+            imgui.EndDisabled();
+        }
         imgui.NextColumn();
 
         // --- Misc ---

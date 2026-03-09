@@ -21,7 +21,6 @@
 #include "nvapi/nvapi_init.hpp"
 #include "nvapi/nvidia_profile_search.hpp"
 #include "nvapi/run_nvapi_setdword_as_admin.hpp"
-#include "presentmon/presentmon_manager.hpp"
 #include "process_exit_hooks.hpp"
 #include "proxy_dll/dxgi_proxy_init.hpp"
 #include "settings/advanced_tab_settings.hpp"
@@ -685,8 +684,7 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
 }
 
 void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
-    display_commander::utils::SteamAchievementCount ac =
-        display_commander::utils::GetSteamAchievementCountCachedSafe();
+    display_commander::utils::SteamAchievementCount ac = display_commander::utils::GetSteamAchievementCountCachedSafe();
     const int64_t now_ns = utils::get_now_ns();
     const bool show_counter_increased =
         settings::g_advancedTabSettings.show_steam_achievement_counter_increased.GetValue();

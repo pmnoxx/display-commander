@@ -2,6 +2,7 @@
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
 #include "../../performance_types.hpp"
+#include "../../utils/logging.hpp"
 #include "../imgui_wrapper_base.hpp"
 
 #include <reshade_imgui.hpp>
@@ -9,7 +10,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include "../../utils/logging.hpp"
 
 // Windows defines min/max as macros, so we need to undefine them
 #ifdef min
@@ -334,7 +334,7 @@ void ComboSettingRef::SetValue(int value) {
 // ComboSettingEnum implementation
 template <typename EnumType>
 ComboSettingEnum<EnumType>::ComboSettingEnum(const std::string& key, int default_value,
-                                            const std::vector<const char*>& labels, const std::string& section)
+                                             const std::vector<const char*>& labels, const std::string& section)
     : SettingBase(key, section), value_(default_value), default_value_(default_value), labels_(labels) {}
 
 template <typename EnumType>
@@ -373,8 +373,7 @@ std::string ComboSettingEnum<EnumType>::GetValueAsString() const {
 template <typename EnumType>
 int ComboSettingEnum<EnumType>::GetDefaultValue() const {
     int effective;
-    display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_,
-                                                           &effective);
+    display_commander::config::get_config_value_or_default(section_.c_str(), key_.c_str(), default_value_, &effective);
     const int max_index = static_cast<int>(labels_.size()) - 1;
     return std::max(0, std::min(max_index, effective));
 }
@@ -623,7 +622,7 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
 
 template <typename EnumType>
 bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* label,
-                            display_commander::ui::IImGuiWrapper& imgui, float combo_width) {
+                             display_commander::ui::IImGuiWrapper& imgui, float combo_width) {
     imgui.BeginGroup();
     if (combo_width > 0.f) {
         imgui.SetNextItemWidth(combo_width);
@@ -657,7 +656,7 @@ bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* la
 // Explicit template instantiations for ComboSettingEnum and ComboSettingEnumWrapper
 template class ComboSettingEnum<ScreensaverMode>;
 template bool ComboSettingEnumWrapper<ScreensaverMode>(ComboSettingEnum<ScreensaverMode>&, const char*,
-                                                      display_commander::ui::IImGuiWrapper&, float);
+                                                       display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnum<OnPresentReflexMode>;
 template bool ComboSettingEnumWrapper<OnPresentReflexMode>(ComboSettingEnum<OnPresentReflexMode>&, const char*,
                                                            display_commander::ui::IImGuiWrapper&, float);
@@ -666,13 +665,13 @@ template bool ComboSettingEnumWrapper<FrameTimeMode>(ComboSettingEnum<FrameTimeM
                                                      display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnum<WindowMode>;
 template bool ComboSettingEnumWrapper<WindowMode>(ComboSettingEnum<WindowMode>&, const char*,
-                                                 display_commander::ui::IImGuiWrapper&, float);
+                                                  display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnum<InputBlockingMode>;
 template bool ComboSettingEnumWrapper<InputBlockingMode>(ComboSettingEnum<InputBlockingMode>&, const char*,
-                                                        display_commander::ui::IImGuiWrapper&, float);
+                                                         display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnum<LogLevel>;
 template bool ComboSettingEnumWrapper<LogLevel>(ComboSettingEnum<LogLevel>&, const char*,
-                                               display_commander::ui::IImGuiWrapper&, float);
+                                                display_commander::ui::IImGuiWrapper&, float);
 template class ComboSettingEnum<TaskbarHideMode>;
 template bool ComboSettingEnumWrapper<TaskbarHideMode>(ComboSettingEnum<TaskbarHideMode>&, const char*,
                                                        display_commander::ui::IImGuiWrapper&, float);

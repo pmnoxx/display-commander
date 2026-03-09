@@ -382,6 +382,30 @@ std::atomic<bool> g_factory_create_swapchain_for_composition_hooked{false};
 
 // Track the last native swapchain used in OnPresentUpdateBefore
 std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
+// Cookie incremented each time we record a swapchain; stored in swapchain private data so we can
+// recognize the same logical swapchain when Present is called with a different interface pointer.
+std::atomic<uint32_t> g_last_present_update_cookie{0};
+
+// GUID for "DC present-update swapchain" private data (SetPrivateData/GetPrivateData). Do not conflict with ReShade SKID.
+constexpr GUID kDcPresentUpdateSwapchain = {
+    0xdc7b2f81, 0xc4d5, 0x4e0f, {0x9b, 0x3e, 0x2d, 0x5f, 0x6c, 0x7e, 0x8f, 0x9a}};
+
+void SetPresentUpdateSwapchainPrivateData(IDXGISwapChain* swapchain, uint32_t cookie) {
+    if (swapchain == nullptr) return;
+    swapchain->SetPrivateData(kDcPresentUpdateSwapchain, sizeof(cookie), &cookie);
+}
+
+// Returns true if the swapchain has our private data with the current expected cookie (same logical swapchain).
+bool IsRecordedPresentUpdateSwapchain(IDXGISwapChain* sc) {
+    if (sc == nullptr) return false;
+    const uint32_t expected = g_last_present_update_cookie.load(std::memory_order_relaxed);
+    if (expected == 0) return false;
+    UINT size = sizeof(uint32_t);
+    uint32_t value = 0;
+    HRESULT hr = sc->GetPrivateData(kDcPresentUpdateSwapchain, &size, &value);
+    return SUCCEEDED(hr) && size == sizeof(uint32_t) && value == expected;
+}
+
 }  // namespace
 
 // Helper function for common Present/Present1 logic after calling original
@@ -424,9 +448,9 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     const LONGLONG now_ns = utils::get_now_ns();
     display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
     CALL_GUARD(now_ns);
-    // Early return if swapchain doesn't match
+    // Early return if swapchain doesn't match (pointer or private-data cookie)
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
-    if (expected_swapchain != nullptr && This != expected_swapchain) {
+    if (expected_swapchain != nullptr && This != expected_swapchain && !IsRecordedPresentUpdateSwapchain(This)) {
         {
             static int s_err_count = 0;
             if (s_err_count < 10) {
@@ -488,10 +512,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     } else if (override_val == 0) {
         PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
     }
-    // Early return if swapchain doesn't match
-
+    // Early return if swapchain doesn't match (pointer or private-data cookie)
     IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
-    if (expected_swapchain != nullptr && baseSwapChain != expected_swapchain) {
+    if (expected_swapchain != nullptr && baseSwapChain != expected_swapchain
+        && !IsRecordedPresentUpdateSwapchain(baseSwapChain)) {
         return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
     }
 
@@ -2128,6 +2152,8 @@ bool HookStreamlineProxySwapchain(IDXGISwapChain* swapchain) {
 // Record the native swapchain used in OnPresentUpdateBefore
 void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain) {
     LogInfo("[RecordPresentUpdateSwapchain] recording swapchain: 0x%p", swapchain);
+    const uint32_t cookie = g_last_present_update_cookie.fetch_add(1, std::memory_order_relaxed) + 1;
+    SetPresentUpdateSwapchainPrivateData(swapchain, cookie);
     g_last_present_update_swapchain.store(swapchain);
 }
 

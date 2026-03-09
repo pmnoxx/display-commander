@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.368
+- **DXGI swapchain mode: fix for games using proxy swapchains (e.g. Hollow Knight)** - When the game or runtime uses a different pointer to the same swapchain (e.g. ReShade proxy vs native, or IDXGISwapChain1* vs IDXGISwapChain*), the present hooks no longer skip our logic. We now set private data on the swapchain in RecordPresentUpdateSwapchain and, when the stored pointer does not match the Present caller, we check that private data; if it matches the current recorded swapchain we still run FPS limiter and present handling. Details: hooks/dxgi/dxgi_present_hooks.cpp (kDcPresentUpdateSwapchain, IsRecordedPresentUpdateSwapchain, RecordPresentUpdateSwapchain).
+
 ## v0.12.367
 - **Performance overlay: removed show latency option** - The "show latency" toggle has been removed from the performance overlay controls; latency is no longer configurable from the overlay. Details: main tab overlay controls (e.g. ui/new_ui/main_new_tab.cpp).
 

@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.361
+- **Brightness/AutoHDR and ReShade paths default off** - The "Enable Brightness, AutoHDR and ReShade paths" setting now defaults to off. New installs will not add Display Commander's Shaders/Textures folder to ReShade's EffectSearchPaths/TextureSearchPaths until the user enables it. Details: config key `brightness_autohdr_section_enabled_doff`, default false in settings/main_tab_settings.cpp.
+
 ## v0.12.360
 - **PresentMon disabled by default** - PresentMon ETW tracing is disabled and hidden from the UI due to crash reports.
 

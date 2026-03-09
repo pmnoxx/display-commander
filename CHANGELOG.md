@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.352
+- **Play sound on new Steam achievement** - When a new Steam achievement is detected (counter increased), Display Commander can play a short system sound. Advanced tab → Steam API: new checkbox "Play sound on new achievement" (off by default) and "Test sound" button to preview the sound. Sound is played via winmm.dll PlaySoundW (SystemAsterisk), loaded dynamically so no static link to winmm. Details: advanced_tab_settings play_sound_on_achievement; steam_achievement_cache PlayAchievementSound/PlayAchievementSoundImpl, called from SetSteamAchievementBumpFromUnlock and TriggerSteamAchievementTestBump when the setting is on.
+
 ## v0.12.351
 - **Textures subsection in Advanced tab** - Under "Unsupported/unfinished features", texture-related options (D3D11 vtable hooks, track loaded texture size, texture caching 2D/1D/3D, content hash cap, dump textures, and texture stats) are now grouped under a "Textures" collapsing sub-header, matching the structure of the Steam API subsection.
 - **DLSS-fix: hook all affected NGX and Streamline APIs** - All 14 NGX and 6 Streamline APIs that need proxy→native conversion for DLSS-fix compatibility are now hooked. NGX: the six Init variants (D3D11/D3D12 Init, Init_Ext, Init_with_ProjectID) are enabled again; Shutdown1 and EvaluateFeature_C for D3D11/D3D12 were added with detours and call counters. Streamline: slSetD3DDevice, slSetTag, slSetTagForFrame, and slEvaluateFeature were added with detours and call counters. Details: globals.hpp NGXCounters (d3d11/d3d12_shutdown1_count, evaluatefeature_c_count); ngx_hooks.cpp types, Originals, Detours, InstallNGXHooks uncommented Init + new hooks; streamline_hooks.cpp slSetD3DDevice/slSetTag/slSetTagForFrame/slEvaluateFeature hooks and counters.

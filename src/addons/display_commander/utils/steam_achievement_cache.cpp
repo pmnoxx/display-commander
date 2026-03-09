@@ -41,6 +41,25 @@ bool IsSteamAchievementNotificationsEnabled() {
     return settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue();
 }
 
+// PlaySoundW from winmm.dll (dynamic load to avoid static link). Flags: SND_ALIAS=0x10000, SND_ASYNC=1, SND_NODEFAULT=2.
+void PlayAchievementSoundImpl() {
+    using PlaySoundW_t = BOOL(WINAPI*)(LPCWSTR pszSound, HMODULE hmod, DWORD fdwSound);
+    static PlaySoundW_t s_play = nullptr;
+    static std::atomic<bool> s_tried_load{false};
+    if (!s_tried_load.exchange(true)) {
+        HMODULE winmm = LoadLibraryW(L"winmm.dll");
+        if (winmm != nullptr) {
+            s_play = reinterpret_cast<PlaySoundW_t>(GetProcAddress(winmm, "PlaySoundW"));
+        }
+    }
+    if (s_play != nullptr) {
+        constexpr DWORD kSndAlias = 0x00010000;
+        constexpr DWORD kSndAsync = 0x0001;
+        constexpr DWORD kSndNoDefault = 0x0002;
+        s_play(L"SystemAsterisk", nullptr, kSndAlias | kSndAsync | kSndNoDefault);
+    }
+}
+
 void SteamAchievementCacheThread() {
     while (!g_shutdown.load(std::memory_order_relaxed)) {
         if (!IsSteamAchievementNotificationsEnabled()) {
@@ -93,6 +112,9 @@ void SetSteamAchievementBumpFromUnlock(int64_t now_ns, int unlocked, int total) 
     if (!g_last_unlocked.compare_exchange_strong(prev, unlocked, std::memory_order_relaxed)) {
         return;
     }
+    if (settings::g_advancedTabSettings.play_sound_on_achievement.GetValue()) {
+        PlayAchievementSoundImpl();
+    }
     g_bump_show_until_ns.store(now_ns + kSteamAchievementBumpDurationSec * ::utils::SEC_TO_NS,
                                std::memory_order_relaxed);
     g_bump_unlocked.store(unlocked, std::memory_order_relaxed);
@@ -111,6 +133,9 @@ void ClearSteamAchievementLastUnlocked() {
 }
 
 void TriggerSteamAchievementTestBump() {
+    if (settings::g_advancedTabSettings.play_sound_on_achievement.GetValue()) {
+        PlayAchievementSoundImpl();
+    }
     SteamAchievementCount ac = GetSteamAchievementCountCached();
     const int64_t now_ns = ::utils::get_now_ns();
     g_bump_show_until_ns.store(now_ns + kSteamAchievementBumpDurationSec * ::utils::SEC_TO_NS,
@@ -149,6 +174,10 @@ void GetSteamAchievementBumpText(char* out_display_name, size_t display_name_siz
     if (out_debug != nullptr && debug_size > 0) {
         snprintf(out_debug, debug_size, "%s", g_bump_debug);
     }
+}
+
+void PlayAchievementSound() {
+    PlayAchievementSoundImpl();
 }
 
 }  // namespace display_commander::utils

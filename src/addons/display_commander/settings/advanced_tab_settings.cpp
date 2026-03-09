@@ -74,7 +74,8 @@ AdvancedTabSettings::AdvancedTabSettings()
       texture_cache_content_hash_cap_kb("TextureCacheContentHashCapKb", 64, 1, 1048576, "DisplayCommander"),
       dump_textures_enabled("DumpTexturesEnabled", false, "DisplayCommander"),
       show_steam_achievement_notifications("ShowSteamAchievementNotifications", false, "DisplayCommander"),
-      show_steam_achievement_counter_increased("ShowSteamAchievementCounterIncreased", false, "DisplayCommander") {}
+      show_steam_achievement_counter_increased("ShowSteamAchievementCounterIncreased", false, "DisplayCommander"),
+      play_sound_on_achievement("PlaySoundOnAchievement", false, "DisplayCommander") {}
 
 void AdvancedTabSettings::LoadAll() {
     // Get all settings for smart logging
@@ -117,6 +118,7 @@ void AdvancedTabSettings::SaveAll() {
     dump_textures_enabled.Save();
     show_steam_achievement_notifications.Save();
     show_steam_achievement_counter_increased.Save();
+    play_sound_on_achievement.Save();
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
@@ -139,7 +141,7 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
         &presentmon_provider_d3d9, &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled,
         &d3d11_texture_caching_enabled, &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled,
         &texture_cache_content_hash_cap_kb, &dump_textures_enabled, &show_steam_achievement_notifications,
-        &show_steam_achievement_counter_increased};
+        &show_steam_achievement_counter_increased, &play_sound_on_achievement};
 }
 
 }  // namespace settings

@@ -28,4 +28,8 @@ void GetSteamAchievementBumpDisplay(int* out_unlocked, int* out_total);
 void GetSteamAchievementBumpText(char* out_display_name, size_t display_name_size,
                                  char* out_debug, size_t debug_size);
 
+// Play the achievement notification sound (system sound). Safe to call from any thread. Used on new achievement
+// when play_sound_on_achievement is on, and for the "Test sound" button. No-op if winmm is unavailable.
+void PlayAchievementSound();
+
 }  // namespace display_commander::utils

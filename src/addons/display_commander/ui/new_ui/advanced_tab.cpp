@@ -1839,6 +1839,22 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.SetTooltip(
                     "When on, shows a brief notification whenever the unlocked achievement count goes up.");
             }
+            if (CheckboxSetting(settings::g_advancedTabSettings.play_sound_on_achievement,
+                                "Play sound on new achievement", imgui)) {
+                LogInfo("Play sound on new achievement: %s",
+                        settings::g_advancedTabSettings.play_sound_on_achievement.GetValue() ? "on" : "off");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "When on, plays a system sound when a new Steam achievement is unlocked.");
+            }
+            imgui.SameLine();
+            if (imgui.Button("Test sound")) {
+                display_commander::utils::PlayAchievementSound();
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Play the achievement notification sound once (same as on new achievement).");
+            }
             imgui.Unindent();
         }
 

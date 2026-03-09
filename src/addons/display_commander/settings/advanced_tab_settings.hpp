@@ -129,6 +129,8 @@ class AdvancedTabSettings {
     BoolSetting show_steam_achievement_notifications;
     // When enabled, show a message whenever the achievement unlocked count increases. Off by default.
     BoolSetting show_steam_achievement_counter_increased;
+    // When enabled, play a system sound when a new Steam achievement is unlocked. Off by default.
+    BoolSetting play_sound_on_achievement;
 
     // Get all settings for bulk operations
     std::vector<SettingBase*> GetAllSettings();

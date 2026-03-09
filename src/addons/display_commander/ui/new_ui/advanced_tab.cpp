@@ -210,6 +210,22 @@ void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltip("Prevents the game window from being minimized (e.g. via taskbar or system menu).");
     }
 
+    CheckboxSetting(settings::g_advancedTabSettings.flush_command_queue_before_sleep,
+                    "Flush command queue before FPS limiter sleep", imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled (default), DX11/DX12 present path flushes the command queue before any FPS limiter sleep.\n"
+            "Reduces input-to-display latency when the limiter is active. Disable only if you observe issues.");
+    }
+
+    CheckboxSetting(settings::g_advancedTabSettings.enqueue_gpu_completion, "Enqueue GPU completion (from present-update)",
+                    imgui);
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled (default), enqueues GPU completion measurement from the last present-update state (DX11/DX12).\n"
+            "Used for latency and GPU timing. Disable only if you observe issues or want to reduce overhead.");
+    }
+
     imgui.Unindent();
 }
 

@@ -88,6 +88,8 @@ bool IsProcessRunning(DWORD pid) {
 }
 
 bool ProviderGuidByName(const wchar_t* provider_name, GUID& out_guid) {
+    if (provider_name == nullptr) return false;
+
     ULONG size = 0;
     if (TdhEnumerateProviders(nullptr, &size) != ERROR_INSUFFICIENT_BUFFER) {
         return false;
@@ -100,11 +102,19 @@ bool ProviderGuidByName(const wchar_t* provider_name, GUID& out_guid) {
     ULONG status = TdhEnumerateProviders(providers, &size);
     if (status != ERROR_SUCCESS) return false;
 
-    for (ULONG i = 0; i < providers->NumberOfProviders; ++i) {
+    // Cap iteration so corrupt NumberOfProviders cannot cause OOB read or runaway loop.
+    const ULONG n = providers->NumberOfProviders;
+    const ULONG max_providers = (size > sizeof(PROVIDER_ENUMERATION_INFO))
+                                   ? (size - sizeof(PROVIDER_ENUMERATION_INFO)) / sizeof(TRACE_PROVIDER_INSTANCE_INFO)
+                                   : 0;
+    const ULONG limit = (n <= max_providers && n <= 32768u) ? n : max_providers;
+
+    for (ULONG i = 0; i < limit; ++i) {
         auto& p = providers->TraceProviderInfoArray[i];
+        if (p.ProviderNameOffset >= size) continue;
         const wchar_t* name =
             reinterpret_cast<const wchar_t*>(reinterpret_cast<const uint8_t*>(providers) + p.ProviderNameOffset);
-        if (name != nullptr && _wcsicmp(name, provider_name) == 0) {
+        if (_wcsicmp(name, provider_name) == 0) {
             out_guid = p.ProviderGuid;
             return true;
         }
@@ -152,6 +162,7 @@ PresentMonFlipMode MapPresentModeStringToFlip(const std::string& s) {
 
 // Extract property value as UTF-8 string using TDH, if present.
 bool TryGetEventPropertyString(PEVENT_RECORD event_record, const wchar_t* prop_name, std::string& out) {
+    if (event_record == nullptr) return false;
     PROPERTY_DATA_DESCRIPTOR desc = {};
     desc.PropertyName = reinterpret_cast<ULONGLONG>(prop_name);
     desc.ArrayIndex = ULONG_MAX;
@@ -207,6 +218,7 @@ static std::wstring GetTraceEventInfoString(const TRACE_EVENT_INFO* info, ULONG 
 }
 
 static bool TryGetEventPropertyU64(PEVENT_RECORD event_record, const wchar_t* prop_name, uint64_t& out) {
+    if (event_record == nullptr) return false;
     PROPERTY_DATA_DESCRIPTOR desc = {};
     desc.PropertyName = reinterpret_cast<ULONGLONG>(prop_name);
     desc.ArrayIndex = ULONG_MAX;
@@ -718,8 +730,25 @@ void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const 
     m_etw_session_active.store(!etw_status.empty() && etw_status != "Not initialized" && etw_status != "Failed");
 }
 
+// Return value for SEH in PresentMonMain (so WorkerThread does not overwrite "Crashed" with "Exited").
+static constexpr int k_presentmon_result_seh = -2;
+
+int PresentMonManager::RunPresentMonMainSEHProtected() {
+    int result = -1;
+    __try {
+        result = PresentMonMain();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        const DWORD code = GetExceptionCode();
+        LogWarn("[PresentMon] SEH 0x%08lX in PresentMonMain, marking Crashed", static_cast<unsigned long>(code));
+        UpdateDebugInfo("Crashed", "Stopped", "SEH in ETW loop", m_events_processed.load(), m_events_lost.load());
+        return k_presentmon_result_seh;
+    }
+    return result;
+}
+
 void PresentMonManager::WorkerThread(PresentMonManager* manager) {
     CALL_GUARD(utils::get_now_ns());
+    if (manager == nullptr) return;
     int result = -1;
     try {
         LogInfo("[PresentMon] Worker thread started");
@@ -743,14 +772,17 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
             set_thread_description_func(GetCurrentThread(), L"[DisplayCommander] PresentMon Worker");
         }
 
-        // Run ETW collection loop
+        // Run ETW collection loop (SEH-protected so ETW/ProcessTrace AVs don't crash the process)
         t_active_manager = manager;
-        result = manager->PresentMonMain();
+        result = manager->RunPresentMonMainSEHProtected();
         t_active_manager = nullptr;
 
         auto err_ptr = manager->m_last_error.load();
         const char* err_str = (err_ptr && !err_ptr->empty()) ? err_ptr->c_str() : nullptr;
-        if (err_str != nullptr) {
+        if (result == k_presentmon_result_seh) {
+            // SEH already logged and status set to "Crashed" in PresentMonMainSEHProtected
+            (void)err_str;
+        } else if (err_str != nullptr) {
             LogWarn("[PresentMon] Worker thread exiting with code %d, last_error: %s", result, err_str);
         } else {
             LogInfo(
@@ -759,9 +791,11 @@ void PresentMonManager::WorkerThread(PresentMonManager* manager) {
                 result);
         }
 
-        // Update thread status
-        manager->UpdateDebugInfo("Exited", "Stopped", "", manager->m_events_processed.load(),
-                                 manager->m_events_lost.load());
+        // Update thread status (skip when SEH already set "Crashed")
+        if (result != k_presentmon_result_seh) {
+            manager->UpdateDebugInfo("Exited", "Stopped", "", manager->m_events_processed.load(),
+                                     manager->m_events_lost.load());
+        }
     } catch (const std::exception& e) {
         LogWarn("[PresentMon] Worker thread exception: %s", e.what());
         manager->UpdateDebugInfo("Crashed", "Stopped", std::string("Exception: ") + e.what(),
@@ -895,18 +929,41 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
         session_count = max_sessions;
     }
 
-    // Filter sessions by prefix (prefix_len 0 = include all)
+    // Filter sessions by prefix (prefix_len 0 = include all).
+    // Validate LoggerNameOffset and cap name length so corrupt ETW data cannot cause out-of-bounds read or AV.
     for (ULONG i = 0; i < session_count && i < max_sessions; ++i) {
         auto* props = prop_ptrs[i];
         if (props == nullptr) continue;
 
-        // Extract session name from properties
+        const ULONG offset = props->LoggerNameOffset;
+        // Logger name must start within the buffer; leave room for at least one WCHAR.
+        if (offset + sizeof(wchar_t) > props_size || offset >= props_size) {
+            continue;
+        }
         const wchar_t* session_name =
-            reinterpret_cast<const wchar_t*>(reinterpret_cast<const uint8_t*>(props) + props->LoggerNameOffset);
+            reinterpret_cast<const wchar_t*>(reinterpret_cast<const uint8_t*>(props) + offset);
+        const size_t max_name_chars = (props_size - offset) / sizeof(wchar_t);
+        if (max_name_chars == 0) continue;
 
-        if (session_name != nullptr && _wcsnicmp(session_name, prefix, prefix_len) == 0) {
-            // Session name starts with prefix, add it to output
-            out_session_names.push_back(Narrow(std::wstring(session_name)));
+        // Only potentially-faulting reads inside __try (no C++ objects with destructors for C2712).
+        size_t name_len = 0;
+        bool include_session = false;
+        __try {
+            name_len = wcsnlen_s(session_name, max_name_chars);
+            if (name_len == 0 || name_len >= max_name_chars) {
+                /* skip */
+            } else if (prefix_len != 0 &&
+                       (name_len < prefix_len || _wcsnicmp(session_name, prefix, prefix_len) != 0)) {
+                /* skip */
+            } else {
+                include_session = true;
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            (void)GetExceptionCode();
+            continue;
+        }
+        if (include_session) {
+            out_session_names.push_back(Narrow(std::wstring(session_name, name_len)));
         }
     }
 }
@@ -1057,6 +1114,7 @@ void PresentMonManager::StopOtherDcEtwSessions(const wchar_t* our_session_name) 
 
 void PresentMonManager::CleanupThread(PresentMonManager* manager) {
     CALL_GUARD(utils::get_now_ns());
+    if (manager == nullptr) return;
     constexpr int64_t k_no_events_interval_ns = 15LL * 1000000000LL;  // 15 seconds
 
     while (!manager->m_should_stop.load()) {
@@ -1142,6 +1200,7 @@ void PresentMonManager::OnEtwEvent(PEVENT_RECORD event_record) {
 
 void PresentMonManager::OnEtwEventImpl(PEVENT_RECORD event_record) {
     CALL_GUARD(utils::get_now_ns());
+    if (event_record == nullptr) return;
     // Count all events (some relevant present/flip signals can come from DWM/system/kernel context)
     m_events_processed.fetch_add(1);
     m_last_event_time.store(utils::get_now_ns());

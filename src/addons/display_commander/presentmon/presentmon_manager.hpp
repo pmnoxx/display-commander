@@ -219,6 +219,10 @@ class PresentMonManager {
     // PresentMon ETW main loop (our own implementation; no Special-K code)
     int PresentMonMain();
 
+    // Runs PresentMonMain under SEH so access violations in ETW/ProcessTrace do not crash the process.
+    // Returns same as PresentMonMain, or a sentinel when SEH occurred (see .cpp).
+    int RunPresentMonMainSEHProtected();
+
     // Stop ETW session if running
     void RequestStopEtw();
 

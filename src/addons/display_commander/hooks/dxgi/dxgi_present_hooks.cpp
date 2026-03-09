@@ -12,10 +12,12 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
 #include "../dxgi_factory_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
 #include "../present_traffic_tracking.hpp"
+#include "dxgi_gpu_completion.hpp"
 #include "utils/logging.hpp"
 
 #include <dwmapi.h>
@@ -268,7 +270,7 @@ void CleanupGPUMeasurementState() {
 
 // Public API wrapper that works with ReShade swapchain
 void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain,
-                          reshade::api::command_queue* command_queue = nullptr) {
+                          reshade::api::command_queue* command_queue) {
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::EnqueueGPUCompletion)) {
         return;
@@ -289,6 +291,24 @@ void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dx
 
     // Call the internal enqueue function
     ::EnqueueGPUCompletionInternal(dxgi_swapchain, d3d12_command_queue);
+}
+
+void EnqueueGPUCompletionFromRecordedState() {
+    if (perf_measurement::IsSuppressionEnabled()
+        && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::EnqueueGPUCompletion)) {
+        return;
+    }
+    perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::EnqueueGPUCompletion);
+    const display_commanderhooks::dxgi::PresentUpdateModeData data =
+        display_commanderhooks::dxgi::GetLastPresentUpdateModeData();
+    if (data.dxgi_swapchain == nullptr) {
+        return;
+    }
+    ID3D12CommandQueue* d3d12_queue = nullptr;
+    if (data.device_api == reshade::api::device_api::d3d12 && data.command_queue != nullptr) {
+        d3d12_queue = reinterpret_cast<ID3D12CommandQueue*>(data.command_queue->get_native());
+    }
+    ::EnqueueGPUCompletionInternal(data.dxgi_swapchain, d3d12_queue);
 }
 
 namespace display_commanderhooks::dxgi {
@@ -385,8 +405,12 @@ std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
 // Cookie incremented each time we record a swapchain; stored in swapchain private data so we can
 // recognize the same logical swapchain when Present is called with a different interface pointer.
 std::atomic<uint32_t> g_last_present_update_cookie{0};
+// Mode data (api, command_queue) for the last recorded swapchain; protected by SRWLOCK.
+SRWLOCK g_last_present_update_mode_lock = SRWLOCK_INIT;
+display_commanderhooks::dxgi::PresentUpdateModeData g_last_present_update_mode_data{};
 
-// GUID for "DC present-update swapchain" private data (SetPrivateData/GetPrivateData). Do not conflict with ReShade SKID.
+// GUID for "DC present-update swapchain" private data (SetPrivateData/GetPrivateData). Do not conflict with ReShade
+// SKID.
 constexpr GUID kDcPresentUpdateSwapchain = {
     0xdc7b2f81, 0xc4d5, 0x4e0f, {0x9b, 0x3e, 0x2d, 0x5f, 0x6c, 0x7e, 0x8f, 0x9a}};
 
@@ -463,6 +487,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
     }
 
+    // Flush command queue before present when we have it from recorded present-update state (optional, default on)
+    if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
+        const display_commanderhooks::dxgi::PresentUpdateModeData mode_data =
+            display_commanderhooks::dxgi::GetLastPresentUpdateModeData();
+        if (mode_data.command_queue != nullptr) {
+            mode_data.command_queue->flush_immediate_command_list();
+        }
+    }
+
     // Increment DXGI Present counter
     g_dxgi_core_event_counters[DXGI_CORE_EVENT_PRESENT].fetch_add(1);
 
@@ -517,6 +550,15 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     if (expected_swapchain != nullptr && baseSwapChain != expected_swapchain
         && !IsRecordedPresentUpdateSwapchain(baseSwapChain)) {
         return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
+    }
+
+    // Flush command queue before present when we have it from recorded present-update state (optional, default on)
+    if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
+        const display_commanderhooks::dxgi::PresentUpdateModeData mode_data =
+            display_commanderhooks::dxgi::GetLastPresentUpdateModeData();
+        if (mode_data.command_queue != nullptr) {
+            mode_data.command_queue->flush_immediate_command_list();
+        }
     }
 
     // Increment DXGI Present1 counter
@@ -2150,11 +2192,25 @@ bool HookStreamlineProxySwapchain(IDXGISwapChain* swapchain) {
 }
 
 // Record the native swapchain used in OnPresentUpdateBefore
-void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain) {
-    LogInfo("[RecordPresentUpdateSwapchain] recording swapchain: 0x%p", swapchain);
+void RecordPresentUpdateSwapchain(IDXGISwapChain* dxgi_swapchain, reshade::api::swapchain* swapchain,
+                                  reshade::api::device_api device_api, reshade::api::command_queue* command_queue) {
+    LogInfo("[RecordPresentUpdateSwapchain] recording dxgi_swapchain: 0x%p, swapchain: 0x%p, api=%d, command_queue=0x%p",
+            dxgi_swapchain, static_cast<void*>(swapchain), static_cast<int>(device_api), static_cast<void*>(command_queue));
     const uint32_t cookie = g_last_present_update_cookie.fetch_add(1, std::memory_order_relaxed) + 1;
-    SetPresentUpdateSwapchainPrivateData(swapchain, cookie);
-    g_last_present_update_swapchain.store(swapchain);
+    SetPresentUpdateSwapchainPrivateData(dxgi_swapchain, cookie);
+    g_last_present_update_swapchain.store(dxgi_swapchain);
+    {
+        utils::SRWLockExclusive lock(g_last_present_update_mode_lock);
+        g_last_present_update_mode_data.dxgi_swapchain = dxgi_swapchain;
+        g_last_present_update_mode_data.swapchain = swapchain;
+        g_last_present_update_mode_data.command_queue = command_queue;
+        g_last_present_update_mode_data.device_api = device_api;
+    }
+}
+
+PresentUpdateModeData GetLastPresentUpdateModeData() {
+    utils::SRWLockShared lock(g_last_present_update_mode_lock);
+    return g_last_present_update_mode_data;
 }
 
 // Cleanup GPU measurement fences when device is destroyed

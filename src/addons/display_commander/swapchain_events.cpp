@@ -1794,7 +1794,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
+            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get(), swapchain, api, command_queue);
 
             AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
         }
@@ -1802,7 +1802,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         IUnknown* swapchain_native = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (swapchain_native != nullptr && SUCCEEDED(swapchain_native->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
+            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get(), swapchain, api, command_queue);
 
             // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
@@ -1818,7 +1818,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get());
+            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get(), swapchain, api, command_queue);
         }
     }
 
@@ -1856,26 +1856,14 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     // Always flush command queue before present to reduce latency
     g_flush_before_present_time_ns.store(utils::get_now_ns());
 
-    /*
-        // Enqueue GPU completion measurement BEFORE flush for accurate timing
-        // This captures the full GPU workload including the flush operation
-        if (api == reshade::api::device_api::d3d11) {
-            IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-            if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                perf_timer.pause();
-                EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
-                perf_timer.resume();
-            }
-        } else if (api == reshade::api::device_api::d3d12) {
-            IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-            Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-            if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-                perf_timer.pause();
-                EnqueueGPUCompletion(swapchain, dxgi_swapchain.Get(), command_queue);
-                perf_timer.resume();
-            }
-        }*/
+    // Enqueue GPU completion measurement using the recorded present-update state (swapchain + command_queue from
+    // RecordPresentUpdateSwapchain / GetLastPresentUpdateModeData). No fallback - command queue comes from structure
+    // only. Optional (default on) via Advanced tab.
+    if ((idx_dx12 || dx_dx11) && settings::g_advancedTabSettings.enqueue_gpu_completion.GetValue()) {
+        perf_timer.pause();
+        EnqueueGPUCompletionFromRecordedState();
+        perf_timer.resume();
+    }
 
     // Increment event counter
     g_reshade_event_counters[RESHADE_EVENT_PRESENT_UPDATE_BEFORE].fetch_add(1);

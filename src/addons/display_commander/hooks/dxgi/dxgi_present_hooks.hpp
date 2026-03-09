@@ -1,6 +1,12 @@
 #pragma once
 
-#include <windows.h>
+#include "../../globals.hpp"
+
+#include <reshade.hpp>
+
+#include <vector>
+
+#include <Windows.h>
 
 #include <dxgi.h>
 #include <dxgi1_2.h>
@@ -8,9 +14,6 @@
 #include <dxgi1_5.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
-
-#include <vector>
-#include "../../globals.hpp"
 
 /*
  * IDXGISwapChain VTable Layout Reference
@@ -300,8 +303,20 @@ bool HookFactory(IUnknown* iunknown);
 // returns IDXGIFactory7. Uses separate originals so game factory and Streamline proxy can both be hooked.
 bool HookStreamlineProxyFactory(IUnknown* iunknown);
 
-// Record the native swapchain used in OnPresentUpdateBefore
-void RecordPresentUpdateSwapchain(IDXGISwapChain* swapchain);
+// Mode data stored when we record the present-update swapchain (from OnPresentUpdateBefore).
+struct PresentUpdateModeData {
+    IDXGISwapChain* dxgi_swapchain{nullptr};
+    reshade::api::swapchain* swapchain{nullptr};
+    reshade::api::command_queue* command_queue{nullptr};
+    reshade::api::device_api device_api{};
+};
+
+// Record the native swapchain and ReShade state used in OnPresentUpdateBefore.
+void RecordPresentUpdateSwapchain(IDXGISwapChain* dxgi_swapchain, reshade::api::swapchain* swapchain,
+                                  reshade::api::device_api device_api, reshade::api::command_queue* command_queue);
+
+// Thread-safe read of the last recorded mode data (copy).
+PresentUpdateModeData GetLastPresentUpdateModeData();
 
 // Hooked IDXGIOutput functions
 HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, const DXGI_GAMMA_CONTROL* pArray);

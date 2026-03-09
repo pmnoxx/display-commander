@@ -29,6 +29,11 @@ class AdvancedTabSettings {
     BoolSetting prevent_always_on_top;
     BoolSetting prevent_minimize;
 
+    /** When true (default), DXGI Present detours flush the command queue before FPS limiter sleep (DX11/DX12). Reduces input-to-display latency when limiter is active. */
+    BoolSetting flush_command_queue_before_sleep;
+    /** When true (default), enqueue GPU completion measurement from recorded present-update state (DX11/DX12). Used for latency/GPU timing. */
+    BoolSetting enqueue_gpu_completion;
+
     // HDR and Colorspace Settings
     BoolSetting hide_hdr_capabilities;
     BoolSetting enable_flip_chain;

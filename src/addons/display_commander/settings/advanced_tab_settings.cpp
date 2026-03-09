@@ -18,9 +18,11 @@ namespace settings {
 
 // Constructor - initialize all settings with proper keys and default values
 AdvancedTabSettings::AdvancedTabSettings()
-    : continue_rendering("ContinueRendering", false, "DisplayCommander"),
+    :       continue_rendering("ContinueRendering", false, "DisplayCommander"),
       prevent_always_on_top("PreventAlwaysOnTop", true, "DisplayCommander"),
       prevent_minimize("PreventMinimize", true, "DisplayCommander"),
+      flush_command_queue_before_sleep("FlushCommandQueueBeforeSleep", true, "DisplayCommander"),
+      enqueue_gpu_completion("EnqueueGpuCompletion", true, "DisplayCommander"),
       hide_hdr_capabilities("HideHDRCapabilities", false, "DisplayCommander"),
       enable_flip_chain("EnableFlipChain", false, "DisplayCommander"),
       auto_colorspace("AutoColorspace2", true, "DisplayCommander"),
@@ -93,7 +95,8 @@ void AdvancedTabSettings::SaveAll() {
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
     return {
-        &continue_rendering, &prevent_always_on_top, &prevent_minimize, &hide_hdr_capabilities, &enable_flip_chain,
+        &continue_rendering, &prevent_always_on_top, &prevent_minimize, &flush_command_queue_before_sleep,
+        &enqueue_gpu_completion, &hide_hdr_capabilities, &enable_flip_chain,
         &auto_colorspace,
         //&enable_d3d9e_upgrade,
 
@@ -116,7 +119,9 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
     return {
-        &continue_rendering, &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace, &enable_hotkeys,
+        &continue_rendering, &flush_command_queue_before_sleep, &enqueue_gpu_completion, &hide_hdr_capabilities,
+        &enable_flip_chain,
+        &auto_colorspace, &enable_hotkeys,
         &safemode, &fake_nvapi_enabled, &suppress_minhook, &suppress_wgi_globally, &suppress_wgi_enabled,
         &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games, &debug_layer_enabled, &debug_break_on_severity,
         &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing, &presentmon_provider_dxgkrnl,

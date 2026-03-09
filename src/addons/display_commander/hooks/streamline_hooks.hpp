@@ -3,7 +3,6 @@
 // Source Code <Display Commander>
 
 #include <cstdint>
-#include <vector>
 
 #include <windows.h>
 

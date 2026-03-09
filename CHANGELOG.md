@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.369
+- **DX11/DX12: improved latency by flushing command queue before FPS limiter sleep** - When a command queue is available from the last present-update, the DXGI Present and Present1 detours now flush that queue before running the FPS limiter. This ensures GPU work is submitted before any sleep, reducing input-to-display latency when the limiter is active. Details: hooks/dxgi/dxgi_present_hooks.cpp (flush_immediate_command_list in both detours using GetLastPresentUpdateModeData).
+- **Advanced tab: flush before sleep and enqueue GPU completion are now optional (default on)** - Two new checkboxes under "Features enabled by default": "Flush command queue before FPS limiter sleep" and "Enqueue GPU completion (from present-update)". Both are on by default; users can disable either to avoid issues or reduce overhead. Details: settings/advanced_tab_settings (flush_command_queue_before_sleep, enqueue_gpu_completion); hooks/dxgi/dxgi_present_hooks.cpp (flush gated by setting); swapchain_events.cpp (enqueue gated by setting); ui/new_ui/advanced_tab.cpp DrawFeaturesEnabledByDefault.
+
 ## v0.12.368
 - **DXGI swapchain mode: fix for games using proxy swapchains (e.g. Hollow Knight)** - When the game or runtime uses a different pointer to the same swapchain (e.g. ReShade proxy vs native, or IDXGISwapChain1* vs IDXGISwapChain*), the present hooks no longer skip our logic. We now set private data on the swapchain in RecordPresentUpdateSwapchain and, when the stored pointer does not match the Present caller, we check that private data; if it matches the current recorded swapchain we still run FPS limiter and present handling. Details: hooks/dxgi/dxgi_present_hooks.cpp (kDcPresentUpdateSwapchain, IsRecordedPresentUpdateSwapchain, RecordPresentUpdateSwapchain).
 

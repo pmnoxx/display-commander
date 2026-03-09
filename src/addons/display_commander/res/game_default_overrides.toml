@@ -2,9 +2,30 @@
 # Keys must match Display Commander config (section DisplayCommander).
 # Format: [exe_name.DisplayCommander] then key = value. Exe name is case-insensitive.
 
+[re2.exe.DisplayCommander]
+window_mode = '1'
+
+[re3.exe.DisplayCommander]
+window_mode = '1'
+
+[re7.exe.DisplayCommander]
+window_mode = '1'
+
+[re8.exe.DisplayCommander]
+window_mode = '1'
+
+[sekiro.exe.DisplayCommander]
+window_mode = '1'
+
+[eldenring.exe.DisplayCommander]
+window_mode = '1'
+
+[armoredcore6.exe.DisplayCommander]
+window_mode = '1'
+
 [hitman3.exe.DisplayCommander]
 ContinueRendering = '1'
 window_mode = '1'
 
-[sekiro.exe.DisplayCommander]
+[devilmaycry5.exe.DisplayCommander]
 window_mode = '1'

@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.364
+- **Game default overrides: window_mode = 1 for more games** - Per-game defaults now set "Prevent exclusive fullscreen / no resize" (window_mode = 1) for Re2.exe, Re3.exe, Re7.exe, Re8.exe, Sekiro.exe, eldenring.exe, armoredcore6.exe, hitman3.exe, and devilmaycry5.exe when the user has not yet saved a config. New players of these games get the recommended window mode by default. Details: res/game_default_overrides.toml.
+
 ## v0.12.363
 - **ReShade path: check only DLL for current bitness** - A folder is now treated as a valid ReShade location if it contains the DLL that will actually be loaded: 64-bit builds require only Reshade64.dll, 32-bit only Reshade32.dll. Previously both DLLs were required, which could hide valid locations when only one architecture was installed. Details: `DirectoryHasReshadeDll` in utils/reshade_load_path.cpp.
 

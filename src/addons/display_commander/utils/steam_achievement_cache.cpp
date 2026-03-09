@@ -11,7 +11,6 @@
 // Libraries <standard C++>
 #include <atomic>
 #include <cstdio>
-#include <thread>
 
 // Libraries <Windows.h>
 #include <Windows.h>
@@ -20,11 +19,8 @@ namespace display_commander::utils {
 
 namespace {
 
-constexpr unsigned int kPollIntervalMs = 1000;
-
 SRWLOCK g_cache_lock = SRWLOCK_INIT;
 SteamAchievementCount g_cached{};
-std::atomic<bool> g_thread_started{false};
 
 std::atomic<int64_t> g_bump_show_until_ns{0};
 std::atomic<int> g_bump_unlocked{0};
@@ -60,41 +56,11 @@ void PlayAchievementSoundImpl() {
     }
 }
 
-void SteamAchievementCacheThread() {
-    while (!g_shutdown.load(std::memory_order_relaxed)) {
-        if (!IsSteamAchievementNotificationsEnabled()) {
-            g_thread_started.store(false);
-            return;
-        }
-        Sleep(kPollIntervalMs);
-        if (g_shutdown.load(std::memory_order_relaxed)) {
-            break;
-        }
-        if (!IsSteamAchievementNotificationsEnabled()) {
-            g_thread_started.store(false);
-            return;
-        }
-        SteamAchievementCount fresh = GetSteamAchievementCount();
-        {
-            ::utils::SRWLockExclusive lock(g_cache_lock);
-            g_cached = fresh;
-        }
-    }
-}
-
 }  // namespace
 
-SteamAchievementCount GetSteamAchievementCountCached() {
+SteamAchievementCount GetSteamAchievementCountCachedSafe() {
     if (!IsSteamAchievementNotificationsEnabled()) {
         return SteamAchievementCount{};
-    }
-    if (!g_thread_started.exchange(true)) {
-        SteamAchievementCount initial = GetSteamAchievementCount();
-        {
-            ::utils::SRWLockExclusive lock(g_cache_lock);
-            g_cached = initial;
-        }
-        std::thread(SteamAchievementCacheThread).detach();
     }
     SteamAchievementCount copy;
     {
@@ -102,6 +68,21 @@ SteamAchievementCount GetSteamAchievementCountCached() {
         copy = g_cached;
     }
     return copy;
+}
+
+SteamAchievementCount GetSteamAchievementCountCached() {
+    return GetSteamAchievementCountCachedSafe();
+}
+
+void RefreshSteamAchievementCacheFromBackground() {
+    if (!IsSteamAchievementNotificationsEnabled()) {
+        return;
+    }
+    SteamAchievementCount fresh = GetSteamAchievementCount();
+    {
+        ::utils::SRWLockExclusive lock(g_cache_lock);
+        g_cached = fresh;
+    }
 }
 
 void SetSteamAchievementBumpFromUnlock(int64_t now_ns, int unlocked, int total) {
@@ -137,7 +118,7 @@ void TriggerSteamAchievementTestBump() {
     if (settings::g_advancedTabSettings.play_sound_on_achievement.GetValue()) {
         PlayAchievementSoundImpl();
     }
-    SteamAchievementCount ac = GetSteamAchievementCountCached();
+    SteamAchievementCount ac = GetSteamAchievementCountCachedSafe();
     const int64_t now_ns = ::utils::get_now_ns();
     g_bump_show_until_ns.store(now_ns + kSteamAchievementBumpDurationSec * ::utils::SEC_TO_NS,
                                std::memory_order_relaxed);

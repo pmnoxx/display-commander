@@ -1740,9 +1740,9 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     imgui.SetTooltip("Exports needed for achievement list/count. Special K uses SteamUserStats.");
                 }
             }
-            // Single achievement count fetch per frame for entire Steam API section
+            // Single achievement count fetch per frame for entire Steam API section (cache only; no blocking)
             const display_commander::utils::SteamAchievementCount ac =
-                display_commander::utils::GetSteamAchievementCountCached();
+                display_commander::utils::GetSteamAchievementCountCachedSafe();
             {
                 if (ac.available) {
                     imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: %d / %d unlocked", ac.unlocked,

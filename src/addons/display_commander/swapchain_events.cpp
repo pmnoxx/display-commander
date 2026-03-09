@@ -100,7 +100,8 @@ bool OnCreateDevice(reshade::api::device_api api, uint32_t& api_version) {
     if (api_version == static_cast<uint32_t>(display_commander::D3D9ApiVersion::D3D9Ex)) {
         LogInfo("D3D9Ex already detected, no upgrade needed");
         s_d3d9e_upgrade_successful.store(true);
-        return true;  // Return true to work around ReShade not reporting D3D9Ex; correct API behavior would be return false
+        return true;  // Return true to work around ReShade not reporting D3D9Ex; correct API behavior would be return
+                      // false
     }
 
     // Upgrade D3D9 to D3D9Ex
@@ -189,7 +190,7 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     hooked_swapchains.insert(swapchain);
     last_swapchain = swapchain;
 
-    LogInfo("onInitSwapChain: swapchain: 0x%p", swapchain);
+    LogInfo("[hookToSwapChain] swapchain: 0x%p", swapchain);
 
     // Store the current swapchain for UI access
     g_last_reshade_device_api.store(swapchain->get_device()->get_api());
@@ -197,7 +198,7 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
     uint32_t api_version = 0;
     if (swapchain->get_device()->get_property(reshade::api::device_properties::api_version, &api_version)) {
         g_last_api_version.store(api_version);
-        LogInfo("Device API version/feature level: 0x%x", api_version);
+        LogInfo("[hookToSwapChain] Device API version/feature level: 0x%x", api_version);
     }
 
     // Schedule auto-apply even on resizes (generation counter ensures only latest
@@ -214,7 +215,6 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
 
     // Hook DXGI Present calls for this swapchain
     // Get the underlying DXGI swapchain from the ReShade swapchain
-    LogInfo("OnInitSwapchain: api: %d", api);
 
     if (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
         || api == reshade::api::device_api::d3d12) {
@@ -223,10 +223,10 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
             if (display_commanderhooks::dxgi::HookSwapchain(dxgi_swapchain.Get())) {
-                LogInfo("Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
+                LogInfo("[hookToSwapChain] Successfully hooked DXGI Present calls for swapchain: 0x%p", iunknown);
             }
         } else {
-            LogError("Failed to query interface for swapchain: 0x%p", iunknown);
+            LogError("[hookToSwapChain] Failed to query interface for swapchain: 0x%p", iunknown);
         }
         return;
     }
@@ -239,7 +239,7 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
             if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
                 display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
                 if (display_commanderhooks::d3d9::HookD3D9Present(d3d9_device.Get())) {
-                    LogInfo("D3D9 Present hooks installed for device 0x%p", d3d9_device.Get());
+                    LogInfo("[hookToSwapChain] D3D9 Present hooks installed for device 0x%p", d3d9_device.Get());
                     // Only install device vtable logging when we have Device9Ex and Present hooks;
                     // on base IDirect3DDevice9 the device from get_native() can be a ReShade proxy
                     // whose vtable layout may not match, causing crashes (e.g. ACCESS_VIOLATION in game).
@@ -248,113 +248,98 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
             }
         }
     } else if (api == reshade::api::device_api::vulkan) {
-        LogInfo("Vulkan API detected, not supported yet");
+        LogInfo("[hookToSwapChain] Vulkan API detected, not supported yet");
     } else {
-        LogError("Unsupported API: %d", api);
+        LogError("[hookToSwapChain] Unsupported API: %d", api);
     }
 }
 
 // Centralized initialization method
 void DoInitializationWithHwnd(HWND hwnd) {
-    LogInfo("[DoInit] entry HWND: 0x%p", hwnd);
+    LogInfo("[DoInitializationWithHwnd] entry HWND: 0x%p", hwnd);
     bool expected = false;
     if (!g_initialized_with_hwnd.compare_exchange_strong(expected, true)) {
         LogInfo("[DoInit] already initialized, returning");
         return;  // Already initialized
     }
-    LogInfo("DoInitialization: Starting initialization with HWND: 0x%p", hwnd);
 
     // Initialize display cache
-    LogInfo("[DoInit] before display_cache::Initialize");
+    LogInfo("[DoInitializationWithHwnd] before display_cache::Initialize");
     display_cache::g_displayCache.Initialize();
-    LogInfo("[DoInit] after display_cache::Initialize");
 
     // Capture initial display state for restoration
-    LogInfo("[DoInit] before CaptureInitialState");
+    LogInfo("[DoInitializationWithHwnd] before CaptureInitialState");
     display_initial_state::g_initialDisplayState.CaptureInitialState();
-    LogInfo("[DoInit] after CaptureInitialState");
 
     // Initialize input remapping system
-    LogInfo("[DoInit] before initialize_input_remapping");
+    LogInfo("[DoInitializationWithHwnd] before initialize_input_remapping");
     display_commander::input_remapping::initialize_input_remapping();
-    LogInfo("[DoInit] after initialize_input_remapping");
 
     // Initialize UI system
-    LogInfo("[DoInit] before InitializeNewUISystem");
+    LogInfo("[DoInitializationWithHwnd] before InitializeNewUISystem");
     ui::new_ui::InitializeNewUISystem();
-    LogInfo("[DoInit] after InitializeNewUISystem");
-    LogInfo("[DoInit] before StartContinuousMonitoring");
+    LogInfo("[DoInitializationWithHwnd] before StartContinuousMonitoring");
     StartContinuousMonitoring();
-    LogInfo("[DoInit] after StartContinuousMonitoring");
-    LogInfo("[DoInit] before StartGPUCompletionMonitoring");
+    LogInfo("[DoInitializationWithHwnd] before StartGPUCompletionMonitoring");
     StartGPUCompletionMonitoring();
-    LogInfo("[DoInit] after StartGPUCompletionMonitoring");
+    LogInfo("[DoInitializationWithHwnd] after StartGPUCompletionMonitoring");
 
     // Initialize refresh rate monitoring
-    LogInfo("[DoInit] before StartRefreshRateMonitoring");
+    LogInfo("[DoInitializationWithHwnd] before StartRefreshRateMonitoring");
     dxgi::fps_limiter::StartRefreshRateMonitoring();
-    LogInfo("[DoInit] after StartRefreshRateMonitoring");
 
     // Initialize experimental tab
-    LogInfo("[DoInit] before RunBackgroundAudioMonitor detach");
+    LogInfo("[DoInitializationWithHwnd] before RunBackgroundAudioMonitor detach");
     std::thread(RunBackgroundAudioMonitor).detach();
-    LogInfo("[DoInit] after RunBackgroundAudioMonitor detach");
 
-    LogInfo("[DoInit] before InitExperimentalTab");
+    LogInfo("[DoInitializationWithHwnd] before InitExperimentalTab");
     ui::new_ui::InitExperimentalTab();
-    LogInfo("[DoInit] after InitExperimentalTab");
 
     // Initialize DualSense support
-    LogInfo("[DoInit] before InitializeDualSenseWidget");
+    LogInfo("[DoInitializationWithHwnd] before InitializeDualSenseWidget");
     display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
-    LogInfo("[DoInit] after InitializeDualSenseWidget");
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {
-        LogInfo("[DoInit]: Setting up window hooks for HWND: 0x%p", hwnd);
-        LogInfo("[DoInit] before InstallWindowProcHooks");
+        LogInfo("[DoInitializationWithHwnd] before InstallWindowProcHooks");
 
         // Install window procedure hooks (this also sets the game window)
         if (display_commanderhooks::InstallWindowProcHooks(hwnd)) {
-            LogInfo("[DoInit]: Window procedure hooks installed successfully");
+            LogInfo("[DoInitializationWithHwnd]: Window procedure hooks installed successfully");
         } else {
-            LogError("[DoInit]: Failed to install window procedure hooks");
+            LogError("[DoInitializationWithHwnd]: Failed to install window procedure hooks");
         }
-        LogInfo("[DoInit] after InstallWindowProcHooks");
 
         // Save the display device ID for the game window
-        LogInfo("[DoInit] before SaveGameWindowDisplayDeviceId");
+        LogInfo("[DoInitializationWithHwnd] before SaveGameWindowDisplayDeviceId");
         settings::SaveGameWindowDisplayDeviceId(hwnd);
-        LogInfo("[DoInit] after SaveGameWindowDisplayDeviceId");
     }
 
-    LogInfo("[DoInit]: Initialization completed");
+    LogInfo("[DoInitializationWithHwnd]: Initialization completed");
 
-    // Install Streamline hooks
-    LogInfo("[DoInit] before InstallStreamlineHooks");
     if (InstallStreamlineHooks(nullptr)) {
-        LogInfo("[DoInit]: Streamline hooks installed successfully");
+        LogInfo("[DoInitializationWithHwnd]: Streamline hooks installed successfully");
     } else {
-        LogInfo("[DoInit]: Streamline hooks not installed (Streamline not detected)");
+        LogInfo("[DoInitializationWithHwnd]: Streamline hooks not installed (Streamline not detected)");
     }
-    LogInfo("[DoInit] after InstallStreamlineHooks");
+    LogInfo("[DoInitializationWithHwnd] after InstallStreamlineHooks");
 
-    // Retry XInput hooks for any XInput DLL already loaded (e.g. before first present)
-    LogInfo("[DoInit] before InstallXInputHooks (retry)");
+    // Retry XInput hooks for any XInput DL L already loaded (e.g. before first present)
+    LogInfo("[DoInitializationWithHwnd] before InstallXInputHooks (retry)");
     if (display_commanderhooks::InstallXInputHooks(nullptr)) {
-        LogInfo("[DoInit]: XInput hooks installed successfully");
+        LogInfo("[DoInitializationWithHwnd]: XInput hooks installed successfully");
     } else {
-        LogInfo("[DoInit]: XInput hooks not installed (no XInput DLL loaded yet or suppressed)");
+        LogInfo("[DoInitializationWithHwnd]: XInput hooks not installed (no XInput DLL loaded yet or suppressed)");
     }
-    LogInfo("[DoInit] after InstallXInputHooks");
+    LogInfo("[DoInitializationWithHwnd  ] after InstallXInputHooks");
 
     // Initialize keyboard tracking system
-    LogInfo("[DoInit] before keyboard_tracker::Initialize");
+    LogInfo("[DoInitializationWithHwnd] before keyboard_tracker::Initialize");
     display_commanderhooks::keyboard_tracker::Initialize();
-    LogInfo("[DoInit]: Keyboard tracking system initialized");
-    LogInfo("[DoInit] after keyboard_tracker::Initialize");
+    LogInfo("[DoInitializationWithHwnd]: Keyboard tracking system initialized");
+    LogInfo("[DoInitializationWithHwnd] after keyboard_tracker::Initialize");
 
-    LogInfo("[DoInit] exit");
+    LogInfo("[DoInitializationWithHwnd] exit");
 }
 
 std::atomic<LONGLONG> g_present_start_time_ns{0};

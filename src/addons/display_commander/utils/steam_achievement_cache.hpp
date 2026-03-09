@@ -11,6 +11,15 @@ namespace display_commander::utils {
 // Use this instead of GetSteamAchievementCount() from overlay or UI to avoid per-frame Steam API calls.
 SteamAchievementCount GetSteamAchievementCountCached();
 
+// Same as GetSteamAchievementCountCached() but never calls GetSteamAchievementCount() (non-blocking).
+// Use from overlay, PerformanceOverlay, or UI. Only the cache is read; the ContinuousMonitoring thread
+// is responsible for refreshing the cache via RefreshSteamAchievementCacheFromBackground().
+SteamAchievementCount GetSteamAchievementCountCachedSafe();
+
+// Call only from the ContinuousMonitoring thread. May block on Steam API. Updates the cache used by
+// GetSteamAchievementCountCachedSafe(). Call periodically (e.g. every 1s) when Steam achievement notifications are on.
+void RefreshSteamAchievementCacheFromBackground();
+
 // Bump state: overlay shows "Achievement unlocked! X / Y" for 30s after a real unlock or test trigger.
 constexpr int64_t kSteamAchievementBumpDurationSec = 30;
 

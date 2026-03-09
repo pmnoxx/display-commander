@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.367
+- **Performance overlay: removed show latency option** - The "show latency" toggle has been removed from the performance overlay controls; latency is no longer configurable from the overlay. Details: main tab overlay controls (e.g. ui/new_ui/main_new_tab.cpp).
+
+## v0.12.366
+- **Steam achievement count: non-blocking overlay, refresh only in ContinuousMonitoring** - The performance overlay and Advanced tab no longer call the Steam API for achievement count; they use a cache-only API so the main thread never blocks. A new `GetSteamAchievementCountCachedSafe()` returns only the cached value. Only the ContinuousMonitoring thread refreshes the cache (every 1s when Steam achievement notifications are on) via `RefreshSteamAchievementCacheFromBackground()`, which is the single call site for `GetSteamAchievementCount()`. The dedicated Steam achievement cache thread was removed. Details: utils/steam_achievement_cache.hpp, steam_achievement_cache.cpp; continuous_monitoring.cpp; main_entry.cpp OnSteamAchievementOverlay; advanced_tab.cpp.
+
 ## v0.12.365
 - **Display Settings: show host graphics APIs before DXGI section** - In the Display tab, the "graphics/API libraries loaded by the host" section now appears first, followed by the DXGI display/swap chain settings and then VSync/tearing. Makes it clearer which APIs the game loaded before showing swap chain details. Details: DrawDisplaySettings order in ui/new_ui/main_new_tab.cpp.
 

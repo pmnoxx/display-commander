@@ -24,9 +24,6 @@ class AdhdMultiMonitorManager {
     bool IsEnabledForGameDisplay() const { return enabled_for_game_display_.load(); }
     bool IsEnabledForOtherDisplays() const { return enabled_for_other_displays_.load(); }
 
-    // Focus disengagement is always enabled (no UI control needed)
-    bool IsFocusDisengage() const { return true; }
-
     // Check if multiple monitors are available
     bool HasMultipleMonitors() const;
 

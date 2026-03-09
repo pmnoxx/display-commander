@@ -250,15 +250,6 @@ static bool detect_exe_impl(const char* exe_path, cli_detect_exe::DetectResult& 
     return true;
 }
 
-bool DetectExeForPath(const wchar_t* exe_path_wide, DetectResult* out) {
-    if (!out || !exe_path_wide || !exe_path_wide[0]) return false;
-    int len = WideCharToMultiByte(CP_UTF8, 0, exe_path_wide, -1, nullptr, 0, nullptr, nullptr);
-    if (len <= 0) return false;
-    std::string exe_utf8(static_cast<size_t>(len), 0);
-    WideCharToMultiByte(CP_UTF8, 0, exe_path_wide, -1, &exe_utf8[0], len, nullptr, nullptr);
-    return detect_exe_impl(exe_utf8.c_str(), *out);
-}
-
 const char* ReShadeDllFromDetect(const DetectResult& r) { return reshade_dll_from_detect_impl(r); }
 }  // namespace cli_detect_exe
 
@@ -433,6 +424,10 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
         return true;  // .NODC: proxy-only, do not register or run Display Commander
     }
     CALL_GUARD(utils::get_now_ns());
+    if (g_display_commander_state.load(std::memory_order_acquire) != DC_STATE_HOOKED) {
+        LogInfo("AddonInit: Display Commander state is not HOOKED, refusing to load");
+        return false;
+    }
     g_module.store(addon_module, std::memory_order_release);
     // Store ReShade module handle for unload detection (don't override if already set)
     HMODULE expected = nullptr;

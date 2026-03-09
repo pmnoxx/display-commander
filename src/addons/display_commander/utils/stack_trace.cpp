@@ -1,8 +1,6 @@
 #include "stack_trace.hpp"
 #include <dbghelp.h>
-#include <tlhelp32.h>
 #include <windows.h>
-#include <cstring>
 #include <iomanip>
 #include <sstream>
 #include "utils/dbghelp_loader.hpp"
@@ -67,33 +65,6 @@ BOOL CALLBACK ReadProcessMemoryRoutine64(HANDLE h_process, DWORD64 lp_base_addre
     return FALSE;
 }
 }  // namespace
-
-bool IsNvngxUpdateRunning() {
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE) {
-        return false;
-    }
-
-    PROCESSENTRY32W process_entry = {};
-    process_entry.dwSize = sizeof(PROCESSENTRY32W);
-
-    bool found = false;
-    if (Process32FirstW(snapshot, &process_entry)) {
-        do {
-            // Convert wide string to narrow string for comparison
-            std::wstring process_name(process_entry.szExeFile);
-            std::string process_name_narrow(process_name.begin(), process_name.end());
-
-            if (_stricmp(process_name_narrow.c_str(), "nvngx_update.exe") == 0) {
-                found = true;
-                break;
-            }
-        } while (Process32NextW(snapshot, &process_entry));
-    }
-
-    CloseHandle(snapshot);
-    return found;
-}
 
 namespace {
 // Internal helper function that does the actual stack trace generation
@@ -243,36 +214,5 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
 std::vector<std::string> GenerateStackTrace() { return GenerateStackTraceInternal(nullptr); }
 
 std::vector<std::string> GenerateStackTrace(CONTEXT* context) { return GenerateStackTraceInternal(context); }
-
-std::string GetStackTraceString() { return GetStackTraceString(nullptr); }
-
-std::string GetStackTraceString(CONTEXT* context) {
-    try {
-        auto stack_trace = GenerateStackTraceInternal(context);
-
-        std::ostringstream result;
-        result << "=== STACK TRACE ===\n";
-
-        for (const auto& frame : stack_trace) {
-            result << frame << "\n";
-        }
-
-        result << "=== END STACK TRACE ===\n";
-
-        // Check and add nvngx_update.exe status
-        if (IsNvngxUpdateRunning()) {
-            result << "=== NVNGX UPDATE STATUS ===\n";
-            result << "nvngx_update.exe is currently running\n";
-            result << "TODO: add logic to stop nvngx_update.exe if it is running\n";
-            result << "TODO: add display popup to inform user about the issue\n";
-            result << "=== END NVNGX UPDATE STATUS ===\n";
-        }
-
-        return result.str();
-
-    } catch (...) {
-        return "=== STACK TRACE ERROR ===\nException occurred while generating stack trace\n=== END STACK TRACE ===\n";
-    }
-}
 
 }  // namespace stack_trace

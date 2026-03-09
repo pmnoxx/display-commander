@@ -114,7 +114,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **dxgi/dxgi_present_hooks.cpp**, **.hpp**, **dxgi_gpu_completion.hpp**
 - **ddraw/ddraw_present_hooks.cpp**, **.hpp**
 - **vulkan/nvlowlatencyvk_hooks.cpp**, **.hpp**, **vulkan_loader_hooks.cpp**, **.hpp**
-- **wgi/corewindow_proxy.cpp**, **.hpp**: CoreWindow proxy for WGI
 
 ## addons/display_commander/input_remapping
 
@@ -127,7 +126,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 
 ## addons/display_commander/latent_sync
 
-- **vblank_monitor_integration.cpp**: VBlank monitoring integration
 - **vblank_monitor.cpp**, **vblank_monitor.hpp**: VBlank timing monitor
 - **refresh_rate_monitor.cpp**, **refresh_rate_monitor.hpp**: Refresh rate monitor
 - **refresh_rate_monitor_integration.cpp**, **.hpp**: Refresh rate integration
@@ -215,7 +213,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **detour_call_tracker.cpp**, **.hpp**
 - **texture_tracker.cpp**, **.hpp**: Thread-safe tracking of loaded D3D11 texture size and count; used by optional Advanced tab texture tracking feature and IUnknown::Release hooks
 - **file_sha256.cpp**, **.hpp**
-- **game_launcher_registry.cpp**, **.hpp**
 - **mpo_registry.cpp**, **.hpp**
 - **no_inject_windows.cpp**, **.hpp**: Windows to skip for addon overlay/UI injection (e.g. standalone independent UI); used in OnPerformanceOverlay, OnReShadeOverlayOpen, OnInitEffectRuntime
 - **overlay_window_detector.cpp**, **.hpp**

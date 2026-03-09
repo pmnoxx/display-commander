@@ -1,6 +1,5 @@
 #include "display_commander_logger.hpp"
 #include "srwlock_wrapper.hpp"
-#include "timing.hpp"
 #include "../globals.hpp"
 #include <cstdarg>
 #include <exception>
@@ -56,7 +55,6 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
         return;
     }
 
-    baseline_ns_ = utils::get_now_ns();
     shutdown_writer_.store(false);
     writer_thread_ = std::thread(&DisplayCommanderLogger::WriterLoop, this);
 
@@ -80,9 +78,6 @@ void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {
             return;
         }
         queue_.push_back(std::move(formatted_message));
-        if (force_auto_flush_count_.load(std::memory_order_relaxed) > 0) {
-            queue_.push_back(kFlushSentinel);
-        }
         WakeConditionVariable(&queue_cv_);
     }
 }
@@ -245,43 +240,6 @@ std::string DisplayCommanderLogger::GetLogLevelString(LogLevel level) {
     }
 }
 
-std::string DisplayCommanderLogger::FormatMessageDirectRelativeTime(const std::string& message, LONGLONG now_ns) {
-    const LONGLONG delta_ns = now_ns - baseline_ns_;
-    const double delta_s = (delta_ns >= 0) ? (static_cast<double>(delta_ns) / 1e9) : 0.0;
-    std::ostringstream log_line;
-    log_line << std::fixed << std::setprecision(3) << "t+" << delta_s << "s"
-             << " [" << std::setw(5) << GetCurrentThreadId() << "] | INFO  | " << message;
-    std::string line_string = log_line.str();
-    for (size_t offset = 0; (offset = line_string.find('\n', offset)) != std::string::npos;) {
-        if (offset == 0 || line_string[offset - 1] != '\r') {
-            line_string.replace(offset, 1, "\r\n", 2);
-            offset += 2;
-        } else {
-            offset += 1;
-        }
-    }
-    if (line_string.empty() || (line_string.size() < 2 || line_string.substr(line_string.size() - 2) != "\r\n")) {
-        while (!line_string.empty() && (line_string.back() == '\n' || line_string.back() == '\r')) {
-            line_string.pop_back();
-        }
-        line_string += "\r\n";
-    }
-    return line_string;
-}
-
-void DisplayCommanderLogger::LogInfoDirectSynchronized(const std::string& message) {
-    if (!initialized_.load() || !log_file_.is_open()) {
-        return;
-    }
-    const LONGLONG now_ns = utils::get_now_ns();
-    std::string formatted = FormatMessageDirectRelativeTime(message, now_ns);
-    utils::SRWLockExclusive lock(queue_lock_);
-    if (log_file_.is_open()) {
-        log_file_ << formatted;
-        log_file_.flush();
-    }
-}
-
 bool DisplayCommanderLogger::ShouldRotateLog() {
     // Check if log file exists
     if (!std::filesystem::exists(log_path_)) {
@@ -372,16 +330,6 @@ void LogInfo(const char* msg, ...) {
     vsnprintf(buffer, sizeof(buffer), msg, args);
     va_end(args);
     DisplayCommanderLogger::GetInstance().LogInfo(buffer);
-}
-
-void LogInfoDirectSynchronized(const char* fmt, ...) {
-    if (!ShouldLogLevel(LogLevel::Info)) return;
-    va_list args;
-    va_start(args, fmt);
-    char buffer[1024];
-    vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-    DisplayCommanderLogger::GetInstance().LogInfoDirectSynchronized(buffer);
 }
 
 void LogWarning(const char* msg, ...) {

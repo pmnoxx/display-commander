@@ -362,18 +362,4 @@ bool InstallDX9Hooks(HMODULE hModule) {
     return true;
 }
 
-void UninstallDX9Hooks() {
-    if (!g_dx9_hooks_installed.load(std::memory_order_relaxed)) {
-        return;
-    }
-    g_dx9_hooks_installed.store(false, std::memory_order_relaxed);
-    g_d3d9_factory_create_device_hooked.store(false, std::memory_order_relaxed);
-    g_d3d9_factory_create_device_ex_hooked.store(false, std::memory_order_relaxed);
-    Direct3DCreate9_Original = nullptr;
-    Direct3DCreate9Ex_Original = nullptr;
-    CreateDevice_Original = nullptr;
-    CreateDeviceEx_Original = nullptr;
-    LogInfo("UninstallDX9Hooks: D3D9 hook state cleared");
-}
-
 }  // namespace display_commanderhooks::d3d9

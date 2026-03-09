@@ -183,19 +183,4 @@ bool InstallDDrawHooks(HMODULE hModule) {
     return true;
 }
 
-void UninstallDDrawHooks() {
-    if (!g_ddraw_present_hooks_installed.load()) {
-        return;
-    }
-    // MinHook: disable/remove in reverse order; we don't track each hook target here, so just clear state
-    g_ddraw_present_hooks_installed.store(false);
-    g_ddraw_create_surface_hooked.store(false);
-    g_ddraw_flip_hooked.store(false);
-    DirectDrawCreate_Original = nullptr;
-    DirectDrawCreateEx_Original = nullptr;
-    IDirectDraw_CreateSurface_Original = nullptr;
-    IDirectDrawSurface_Flip_Original = nullptr;
-    LogInfo("UninstallDDrawHooks: DDraw hook state cleared");
-}
-
 }  // namespace display_commanderhooks::ddraw

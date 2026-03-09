@@ -8,7 +8,6 @@
 #include "../utils.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/timing.hpp"
 #include "api_hooks.hpp"  // GetGameWindow
 #include "hook_suppression_manager.hpp"
 #include "window_proc_hooks.hpp"  // WindowHasBorder
@@ -174,47 +173,6 @@ bool InstallDisplaySettingsHooks() {
         display_commanderhooks::HookType::DISPLAY_SETTINGS);
 
     return true;
-}
-
-// Hook uninstallation function
-void UninstallDisplaySettingsHooks() {
-    if (!g_display_settings_hooks_installed.load()) {
-        return;
-    }
-
-    LogInfo("Uninstalling display settings hooks...");
-
-    // Disable hooks
-    if (ChangeDisplaySettingsA_Original) {
-        MH_DisableHook(ChangeDisplaySettingsA);
-        ChangeDisplaySettingsA_Original = nullptr;
-    }
-
-    if (ChangeDisplaySettingsW_Original) {
-        MH_DisableHook(ChangeDisplaySettingsW);
-        ChangeDisplaySettingsW_Original = nullptr;
-    }
-
-    if (ChangeDisplaySettingsExA_Original) {
-        MH_DisableHook(ChangeDisplaySettingsExA);
-        ChangeDisplaySettingsExA_Original = nullptr;
-    }
-
-    if (ChangeDisplaySettingsExW_Original) {
-        MH_DisableHook(ChangeDisplaySettingsExW);
-        ChangeDisplaySettingsExW_Original = nullptr;
-    }
-
-    // Disable window management hooks
-    // SetWindowPos hook cleanup moved to api_hooks.cpp
-
-    if (ShowWindow_Original) {
-        MH_DisableHook(ShowWindow);
-        ShowWindow_Original = nullptr;
-    }
-
-    g_display_settings_hooks_installed.store(false);
-    LogInfo("Display settings hooks uninstalled");
 }
 
 // Direct function that bypasses hooks - use this when we want to change resolution ourselves

@@ -27,14 +27,11 @@ void RunBackgroundAudioMonitor();
 
 // Function declarations
 void ApplyWindowChange(HWND hwnd, const char* reason = "unknown", bool force_apply = false);
-bool ShouldApplyWindowedForBackbuffer(int desired_w, int desired_h);
 
 // Continuous monitoring functions
 void StartContinuousMonitoring();
 void StopContinuousMonitoring();
 void ContinuousMonitoringThread();
-bool NeedsWindowAdjustment(HWND hwnd, int& out_width, int& out_height, int& out_pos_x, int& out_pos_y,
-                           WindowStyleMode& out_style_mode);
 
 // CONTINUOUS RENDERING FUNCTIONS REMOVED - Focus spoofing is now handled by Win32 hooks
 

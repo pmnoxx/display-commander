@@ -13,9 +13,6 @@
 // API TYPE ENUM
 // ============================================================================
 
-// Forward declaration for OnPresentUpdateAfter2
-void OnPresentUpdateAfter2(bool from_wrapper);
-
 /** True when user enabled "Inject Reflex" and addon should run Reflex (sleep + markers) in place of native. */
 bool IsInjectedReflexEnabled();
 
@@ -50,12 +47,6 @@ void OnPresentUpdateBefore(reshade::api::command_queue* queue, reshade::api::swa
 void OnPresentUpdateAfter(reshade::api::command_queue* queue, reshade::api::swapchain* swapchain);
 void OnPresentUpdateAfter2(bool from_wrapper = false);
 void OnPresentFlags2(bool from_present_detour = true, bool from_wrapper = false);
-
-// HDR/scRGB color fix: set DXGI + ReShade color space from back buffer (10-bit → HDR10, 16-bit FP → scRGB); no-op for 8-bit.
-void AutoSetColorSpace(reshade::api::swapchain* swapchain);
-
-// Last applied color space support (for UI). out_dxgi = last DXGI we tried; out_supported = -1 unknown, 0 no, 1 yes.
-void GetLastColorSpaceSupportForUI(int* out_dxgi, int* out_supported);
 
 // Buffer resolution upgrade event handlers
 bool OnCreateResource(reshade::api::device* device, reshade::api::resource_desc& desc,
@@ -131,9 +122,6 @@ bool ShouldReflexBoostBeEnabled();
 /** True only when FPS limiter mode is Reflex: use Reflex minimumIntervalUs for FPS limiting. */
 bool ShouldUseReflexAsFpsLimiter();
 
-// Query DXGI composition state - should only be called from DXGI present hooks
-void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain);
-
 // ============================================================================
 // PERFORMANCE MONITORING FUNCTIONS
 // ============================================================================
@@ -159,10 +147,3 @@ extern std::atomic<LONGLONG> g_sim_start_ns;
 
 // Global initialization state
 extern std::atomic<bool> g_initialized_with_hwnd;
-
-// ============================================================================
-// FORWARD DECLARATIONS
-// ============================================================================
-
-// OnSetFullscreenState function removed - fullscreen prevention now handled directly in
-// IDXGISwapChain_SetFullscreenState_Detour

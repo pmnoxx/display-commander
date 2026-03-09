@@ -6,11 +6,9 @@
 #include <string>
 #include <utility>
 #include "../settings/advanced_tab_settings.hpp"
-#include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
-#include "globals.hpp"
 #include "hook_suppression_manager.hpp"
 #include "input_activity_stats.hpp"
 

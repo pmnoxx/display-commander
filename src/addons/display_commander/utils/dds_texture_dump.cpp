@@ -31,8 +31,6 @@ constexpr uint32_t DDSD_LINEARSIZE = 0x80000;
 constexpr uint32_t DDSD_DEPTH = 0x800000;
 constexpr uint32_t DDPF_FOURCC = 0x4;
 constexpr uint32_t DDSCAPS_TEXTURE = 0x1000;
-constexpr uint32_t DDSCAPS2_VOLUME = 0x200000;
-
 #pragma pack(push, 4)
 struct DDS_PIXELFORMAT {
     uint32_t dwSize;
@@ -150,82 +148,6 @@ bool DumpTexture2DToDDS(const D3D11_TEXTURE2D_DESC* pDesc, const D3D11_SUBRESOUR
     h10.resourceDimension = D3D10_RESOURCE_DIMENSION_TEXTURE2D;
     h10.miscFlag = 0;
     h10.arraySize = (pDesc->ArraySize != 0) ? pDesc->ArraySize : 1;
-    h10.miscFlags2 = 0;
-
-    return WriteDDSFile(pInitialData->pSysMem, dataSize, h, &h10, path);
-}
-
-bool DumpTexture1DToDDS(const D3D11_TEXTURE1D_DESC* pDesc, const D3D11_SUBRESOURCE_DATA* pInitialData,
-                        const std::filesystem::path& path) {
-    if (pDesc == nullptr || pInitialData == nullptr || pInitialData->pSysMem == nullptr) {
-        return false;
-    }
-    const UINT width = pDesc->Width;
-    if (width == 0) return false;
-    const size_t dataSize = static_cast<size_t>(pInitialData->SysMemPitch);
-
-    DDS_HEADER h = {};
-    h.dwSize = DDS_HEADER_SIZE;
-    h.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_PITCH | DDSD_MIPMAPCOUNT;
-    h.dwHeight = 1;
-    h.dwWidth = width;
-    h.dwPitchOrLinearSize = static_cast<uint32_t>(dataSize);
-    h.dwDepth = 0;
-    h.dwMipMapCount = (pDesc->MipLevels != 0) ? pDesc->MipLevels : 1;
-    h.ddspf.dwSize = sizeof(DDS_PIXELFORMAT);
-    h.ddspf.dwFlags = DDPF_FOURCC;
-    h.ddspf.dwFourCC = DX10_FOURCC;
-    h.ddspf.dwRGBBitCount = 0;
-    h.ddspf.dwRBitMask = h.ddspf.dwGBitMask = h.ddspf.dwBBitMask = h.ddspf.dwABitMask = 0;
-    h.dwCaps = DDSCAPS_TEXTURE;
-    h.dwCaps2 = 0;
-    h.dwCaps3 = h.dwCaps4 = h.dwReserved2 = 0;
-
-    DDS_HEADER_DXT10 h10 = {};
-    h10.dxgiFormat = static_cast<uint32_t>(pDesc->Format);
-    h10.resourceDimension = D3D10_RESOURCE_DIMENSION_TEXTURE1D;
-    h10.miscFlag = 0;
-    h10.arraySize = (pDesc->ArraySize != 0) ? pDesc->ArraySize : 1;
-    h10.miscFlags2 = 0;
-
-    return WriteDDSFile(pInitialData->pSysMem, dataSize, h, &h10, path);
-}
-
-bool DumpTexture3DToDDS(const D3D11_TEXTURE3D_DESC* pDesc, const D3D11_SUBRESOURCE_DATA* pInitialData,
-                        const std::filesystem::path& path) {
-    if (pDesc == nullptr || pInitialData == nullptr || pInitialData->pSysMem == nullptr) {
-        return false;
-    }
-    const UINT width = pDesc->Width;
-    const UINT height = pDesc->Height;
-    const UINT depth = pDesc->Depth;
-    if (width == 0 || height == 0 || depth == 0) return false;
-    const UINT slicePitch = pInitialData->SysMemSlicePitch;
-    const size_t dataSize = static_cast<size_t>(slicePitch) * static_cast<size_t>(depth);
-
-    DDS_HEADER h = {};
-    h.dwSize = DDS_HEADER_SIZE;
-    h.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_DEPTH | DDSD_MIPMAPCOUNT
-                | DDSD_LINEARSIZE;
-    h.dwHeight = height;
-    h.dwWidth = width;
-    h.dwPitchOrLinearSize = static_cast<uint32_t>(dataSize);
-    h.dwDepth = depth;
-    h.dwMipMapCount = (pDesc->MipLevels != 0) ? pDesc->MipLevels : 1;
-    h.ddspf.dwSize = sizeof(DDS_PIXELFORMAT);
-    h.ddspf.dwFlags = DDPF_FOURCC;
-    h.ddspf.dwFourCC = DX10_FOURCC;
-    h.ddspf.dwRGBBitCount = 0;
-    h.ddspf.dwRBitMask = h.ddspf.dwGBitMask = h.ddspf.dwBBitMask = h.ddspf.dwABitMask = 0;
-    h.dwCaps = DDSCAPS_TEXTURE;
-    h.dwCaps2 = DDSCAPS2_VOLUME;
-    h.dwCaps3 = h.dwCaps4 = h.dwReserved2 = 0;
-
-    DDS_HEADER_DXT10 h10 = {};
-    h10.dxgiFormat = static_cast<uint32_t>(pDesc->Format);
-    h10.resourceDimension = D3D10_RESOURCE_DIMENSION_TEXTURE3D;
-    h10.miscFlag = 0;
-    h10.arraySize = 1;
     h10.miscFlags2 = 0;
 
     return WriteDDSFile(pInitialData->pSysMem, dataSize, h, &h10, path);

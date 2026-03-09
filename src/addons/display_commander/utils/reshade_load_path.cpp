@@ -28,9 +28,7 @@ static const size_t RESHADE_VERSIONS_FALLBACK_COUNT =
     sizeof(RESHADE_VERSIONS_FALLBACK) / sizeof(RESHADE_VERSIONS_FALLBACK[0]);
 
 // When SpecificVersion is selected but that version is not installed, we load the highest available
-// version instead. These are set so the UI can show a warning (loaded != selected).
-static std::string s_fallback_selected_version;
-static std::string s_fallback_loaded_version;
+// version instead (see ChooseReshadeVersionResult.fallback_selected / fallback_loaded).
 
 // Combined list: hardcoded "6.6.2", "6.7.3" plus GitHub tags (>= 6.6.2), sorted descending. Built once per app start.
 static std::vector<std::string> s_reshade_versions_combined;
@@ -304,14 +302,10 @@ std::filesystem::path GetReshadeDirectoryForLoading(const std::filesystem::path&
     ChooseReshadeVersionResult choose = ChooseReshadeVersion(locations, selected);
     LogInfo("[reshade] chosen dir=%s fallback_selected=%s fallback_loaded=%s", choose.directory.string().c_str(),
             choose.fallback_selected.c_str(), choose.fallback_loaded.c_str());
-    s_fallback_selected_version = choose.fallback_selected;
-    s_fallback_loaded_version = choose.fallback_loaded;
     return choose.directory;
 }
 
 std::filesystem::path GetReshadeDirectoryForLoading() { return GetReshadeDirectoryForLoading(std::filesystem::path()); }
-
-bool IsReshadeLoadDisabledByConfig() { return GetReshadeSelectedVersionEffective() == "no"; }
 
 std::string GetReshadeSelectedVersionFromConfig() { return GetReshadeSelectedVersionEffective(); }
 
@@ -324,48 +318,6 @@ const char* const* GetReshadeVersionList(size_t* out_count) {
     EnsureReShadeVersionListFetched();
     *out_count = s_reshade_version_ptrs.size();
     return s_reshade_version_ptrs.data();
-}
-
-const char* const* GetReshadeInstalledVersionList(size_t* out_count) {
-    static std::vector<std::string> s_installed;
-    static std::vector<const char*> s_installed_ptrs;
-    s_installed.clear();
-    s_installed_ptrs.clear();
-    std::filesystem::path dll_base = GetGlobalReshadeDirectory() / L"Dll";
-    std::error_code ec;
-    if (std::filesystem::exists(dll_base, ec) && std::filesystem::is_directory(dll_base, ec)) {
-        for (const auto& entry : std::filesystem::directory_iterator(dll_base, ec)) {
-            if (ec) continue;
-            if (!entry.is_directory(ec)) continue;
-            std::string name = entry.path().filename().string();
-            if (name.empty() || name == "." || name == "..") continue;
-            if (DirectoryHasReshadeDlls(entry.path())) {
-                s_installed.push_back(name);
-            }
-        }
-    }
-    namespace vc = display_commander::utils::version_check;
-    std::sort(s_installed.begin(), s_installed.end(),
-              [](const std::string& a, const std::string& b) { return vc::CompareVersions(a, b) > 0; });
-    s_installed_ptrs.reserve(s_installed.size());
-    for (const auto& s : s_installed) {
-        s_installed_ptrs.push_back(s.c_str());
-    }
-    *out_count = s_installed_ptrs.size();
-    return s_installed_ptrs.empty() ? nullptr : s_installed_ptrs.data();
-}
-
-bool GetReshadeLoadFallbackVersionInfo(std::string* out_selected_version, std::string* out_loaded_version) {
-    if (s_fallback_selected_version.empty()) {
-        return false;
-    }
-    if (out_selected_version != nullptr) {
-        *out_selected_version = s_fallback_selected_version;
-    }
-    if (out_loaded_version != nullptr) {
-        *out_loaded_version = s_fallback_loaded_version;
-    }
-    return true;
 }
 
 std::filesystem::path GetGlobalReshadeDirectory() {
@@ -388,66 +340,6 @@ std::string GetReshadeVersionInDirectory(const std::filesystem::path& dir) {
 }
 
 std::string GetGlobalReshadeVersion() { return GetReshadeVersionInDirectory(GetGlobalReshadeDirectory()); }
-
-// Copy currently loaded ReShade to Reshade\Dll\X.Y.Z if not already there. Version from Reshade64.dll in source dir.
-bool CopyCurrentReshadeToDll(const std::filesystem::path& loaded_reshade_directory, std::string* out_error) {
-    if (loaded_reshade_directory.empty()) {
-        if (out_error) *out_error = "Empty path";
-        return false;
-    }
-    std::filesystem::path dll64 = loaded_reshade_directory / L"Reshade64.dll";
-    std::error_code ec;
-    if (!std::filesystem::exists(dll64, ec)) {
-        if (out_error) *out_error = "Reshade64.dll not found in source directory";
-        return false;
-    }
-    std::string version = ::GetDLLVersionString(dll64.wstring());
-    if (version.empty()) {
-        if (out_error) *out_error = "Could not read version from Reshade64.dll";
-        return false;
-    }
-    std::filesystem::path base = GetGlobalReshadeDirectory();
-    std::filesystem::path dll_base = base / L"Dll";
-    std::filesystem::path target_dir = dll_base / std::filesystem::path(version);
-    std::filesystem::path source_canon = std::filesystem::canonical(loaded_reshade_directory, ec);
-    if (!ec && std::filesystem::exists(dll_base, ec)) {
-        std::filesystem::path dll_canon = std::filesystem::canonical(dll_base, ec);
-        if (!ec) {
-            auto s_it = source_canon.begin();
-            auto d_it = dll_canon.begin();
-            while (d_it != dll_canon.end() && s_it != source_canon.end() && *d_it == *s_it) {
-                ++d_it;
-                ++s_it;
-            }
-            if (d_it == dll_canon.end()) {
-                return true;
-            }
-        }
-    }
-    if (DirectoryHasReshadeDlls(target_dir)) {
-        return true;
-    }
-    if (!std::filesystem::exists(target_dir, ec)) {
-        std::filesystem::create_directories(target_dir, ec);
-        if (ec) {
-            if (out_error) *out_error = "Failed to create directory: " + ec.message();
-            return false;
-        }
-    }
-    auto copy_one = [&](const wchar_t* name) -> bool {
-        std::filesystem::path src = loaded_reshade_directory / name;
-        std::filesystem::path dst = target_dir / name;
-        if (!std::filesystem::exists(src, ec)) return true;
-        if (!TryHardLinkOrCopyFile(src, dst)) {
-            if (out_error) *out_error = "Failed to hard link or copy DLL";
-            return false;
-        }
-        return true;
-    };
-    if (!copy_one(L"Reshade64.dll")) return false;
-    if (!copy_one(L"Reshade32.dll")) return false;
-    return true;
-}
 
 bool DeleteLocalReshadeFromDirectory(const std::filesystem::path& dir, std::string* out_error) {
     if (dir.empty()) {

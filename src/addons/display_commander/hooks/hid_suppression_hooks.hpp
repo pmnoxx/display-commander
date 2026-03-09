@@ -68,6 +68,5 @@ bool IsDualSenseDevicePath(const std::wstring& path);
 bool IsDualSenseDevicePath(const std::string& path);
 bool ShouldSuppressHIDInput();
 void SetHIDSuppressionEnabled(bool enabled);
-bool IsHIDSuppressionEnabled();
 
 }  // namespace renodx::hooks

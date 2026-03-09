@@ -31,8 +31,6 @@ bool GetSteamDLLPath(wchar_t* dest, size_t max_size);
 std::wstring GetSteamDLLPath();
 // True if steam_api64.dll (64-bit) or steam_api.dll (32-bit) is loaded in this process.
 bool IsSteamAPIModuleLoaded();
-// True if the loaded Steam API module exports SteamAPI_Init (undefined if module not loaded).
-bool IsSteamAPIInitExportPresent();
 // True if the loaded Steam API module exports the given symbol (e.g. "SteamUser", "SteamUserStats").
 bool IsSteamAPIExportPresent(const char* export_name);
 

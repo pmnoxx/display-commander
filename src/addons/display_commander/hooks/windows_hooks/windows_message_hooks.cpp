@@ -12,9 +12,7 @@
 #include "../../ui/new_ui/window_info_tab.hpp"  // For message history tracking
 #include "../../utils.hpp"
 #include "../../utils/detour_call_tracker.hpp"
-#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
-#include "../../utils/timing.hpp"
 #include "../api_hooks.hpp"  // For GetGameWindow and other functions
 #include "../hook_suppression_manager.hpp"
 #include "../input_activity_stats.hpp"

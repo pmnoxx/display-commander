@@ -10,7 +10,6 @@
 #include "../utils.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/timing.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
 #include "present_traffic_tracking.hpp"

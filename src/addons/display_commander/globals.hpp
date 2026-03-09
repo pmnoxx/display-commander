@@ -475,9 +475,6 @@ struct PerfSample {
     float dt;
 };
 
-// Monitor info structure
-struct MonitorInfo;
-
 // External variable declarations - centralized here to avoid duplication
 
 // Desktop Resolution Override
@@ -571,8 +568,6 @@ void EnumerateReShadeRuntimes(EnumerateReShadeRuntimesCallback callback, void* u
 // Continuous monitoring and rendering
 
 // Atomic variables
-extern std::atomic<void*>
-    g_last_swapchain_ptr_unsafe;  // Using void* to avoid reshade dependency // TODO: unsafe remove later
 extern std::atomic<reshade::api::device_api> g_last_reshade_device_api;
 extern std::atomic<uint32_t> g_last_api_version;  // Store API version/feature level (e.g., D3D_FEATURE_LEVEL_11_1)
 /** Swapchain desc before OnCreateSwapchainCapture2 modifications (game-requested). */
@@ -775,9 +770,6 @@ struct ActionNotification {
 };
 
 extern std::atomic<ActionNotification> g_action_notification;
-
-// Vector variables
-extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;
 
 // Colorspace variables - removed, now queried directly in UI
 extern std::atomic<std::shared_ptr<const std::string>> g_hdr10_override_status;

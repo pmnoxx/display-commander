@@ -7,7 +7,6 @@
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/timing.hpp"
 #include "../utils/srwlock_wrapper.hpp"
-#include "../utils/timing.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include <MinHook.h>
 #include <vector>

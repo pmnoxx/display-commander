@@ -44,7 +44,6 @@
 #include "../../utils.hpp"
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/dc_load_path.hpp"
-#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../utils/perf_measurement.hpp"
@@ -58,7 +57,6 @@
 #include "new_ui_tabs.hpp"
 #include "settings_wrapper.hpp"
 #include "utils/detour_call_tracker.hpp"
-#include "utils/timing.hpp"
 #include "version.hpp"
 
 #include <d3d9.h>

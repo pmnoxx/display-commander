@@ -852,11 +852,6 @@ static std::string ParseVersionFromReleaseBody(const std::string& json) {
     return json.substr(start, pos - start);
 }
 
-bool FetchLatestDebugRelease(std::string* out_error) {
-    std::string url_64, url_32;
-    return FetchReleaseByTag("latest_debug", &url_64, &url_32, out_error);
-}
-
 // Fetch latest_debug release and return the version string from the release body (e.g. "0.12.200.2316").
 bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_error) {
     if (out_version) out_version->clear();
@@ -876,86 +871,6 @@ bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_e
         return false;
     }
     if (out_version) *out_version = ver;
-    return true;
-}
-
-// Download latest_debug release: download to staging, read version from DLLs, move to stable\X.Y.Z.
-bool DownloadDcLatestDebugToDll(std::string* out_error) {
-    std::string url_64, url_32;
-    if (!FetchReleaseByTag("latest_debug", &url_64, &url_32, out_error)) {
-        return false;
-    }
-    std::filesystem::path base = GetDownloadDirectory() / L"stable";
-    const std::string staging_name = "_staging_latest_debug";
-    std::filesystem::path staging = base / std::filesystem::path(staging_name);
-    std::error_code ec;
-    std::filesystem::create_directories(staging, ec);
-    if (ec) {
-        if (out_error) *out_error = "Could not create staging folder";
-        return false;
-    }
-    auto filenameFromUrl = [](const std::string& u) {
-        size_t last = u.rfind('/');
-        if (last != std::string::npos && last + 1 < u.size()) return u.substr(last + 1);
-        return u;
-    };
-    std::string name64 = filenameFromUrl(url_64);
-    std::string name32 = filenameFromUrl(url_32);
-    std::filesystem::path path64 = staging / name64;
-    std::filesystem::path path32 = staging / name32;
-    if (!DownloadBinaryFromUrl(url_64, path64)) {
-        std::filesystem::remove_all(staging, ec);
-        if (out_error) *out_error = "Failed to download 64-bit addon";
-        return false;
-    }
-    if (!DownloadBinaryFromUrl(url_32, path32)) {
-        std::filesystem::remove_all(staging, ec);
-        if (out_error) *out_error = "Failed to download 32-bit addon";
-        return false;
-    }
-    std::string version_from_dll = GetDLLVersionString(path64.wstring());
-    if (version_from_dll.empty() || version_from_dll == "Unknown") {
-        std::filesystem::remove_all(staging, ec);
-        if (out_error) *out_error = "Could not read version from downloaded addon";
-        return false;
-    }
-    std::string folder_xyz = VersionStringToXyzFolder(version_from_dll);
-    if (folder_xyz.empty()) {
-        std::filesystem::remove_all(staging, ec);
-        if (out_error) *out_error = "Invalid version from addon";
-        return false;
-    }
-    std::filesystem::path target_dir = base / std::filesystem::path(folder_xyz);
-    std::filesystem::create_directories(target_dir, ec);
-    if (ec) {
-        std::filesystem::remove_all(staging, ec);
-        if (out_error) *out_error = "Could not create stable version folder";
-        return false;
-    }
-    std::filesystem::path dest64 = target_dir / name64;
-    std::filesystem::path dest32 = target_dir / name32;
-    std::filesystem::rename(path64, dest64, ec);
-    if (ec) {
-        std::filesystem::copy(path64, dest64, std::filesystem::copy_options::overwrite_existing, ec);
-        if (ec) {
-            std::filesystem::remove_all(staging, ec);
-            if (out_error) *out_error = "Could not move 64-bit addon to version folder";
-            return false;
-        }
-        std::filesystem::remove(path64, ec);
-    }
-    std::filesystem::rename(path32, dest32, ec);
-    if (ec) {
-        std::filesystem::copy(path32, dest32, std::filesystem::copy_options::overwrite_existing, ec);
-        if (ec) {
-            std::filesystem::remove(dest64, ec);
-            std::filesystem::remove_all(staging, ec);
-            if (out_error) *out_error = "Could not move 32-bit addon to version folder";
-            return false;
-        }
-        std::filesystem::remove(path32, ec);
-    }
-    std::filesystem::remove_all(staging, ec);
     return true;
 }
 
@@ -1037,66 +952,6 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
         std::filesystem::remove(path32, ec);
     }
     std::filesystem::remove_all(staging, ec);
-    return true;
-}
-
-bool CopyCurrentVersionToDll(const std::filesystem::path& current_addon_path, std::string* out_error) {
-    std::error_code ec;
-    if (!std::filesystem::exists(current_addon_path, ec) || !std::filesystem::is_regular_file(current_addon_path, ec)) {
-        if (out_error) *out_error = "Current addon path does not exist or is not a file";
-        return false;
-    }
-    std::string version_from_dll = GetDLLVersionString(current_addon_path.wstring());
-    if (version_from_dll.empty() || version_from_dll == "Unknown") {
-        if (out_error) *out_error = "Could not read version from current addon";
-        return false;
-    }
-    std::string folder_xyz = VersionStringToXyzFolder(version_from_dll);
-    if (folder_xyz.empty()) {
-        if (out_error) *out_error = "Invalid version from addon";
-        return false;
-    }
-    std::filesystem::path base = GetDownloadDirectory() / L"stable";
-    std::filesystem::path target_dir = base / std::filesystem::path(folder_xyz);
-    // Use canonical addon filename so the version is recognized (current path may be proxy e.g. winmm.dll).
-#ifdef _WIN64
-    const std::wstring dest_name = L"zzz_display_commander.addon64";
-#else
-    const std::wstring dest_name = L"zzz_display_commander.addon32";
-#endif
-    std::filesystem::path dest = target_dir / dest_name;
-    if (std::filesystem::exists(dest, ec)) {
-        return true;
-    }
-    std::filesystem::create_directories(target_dir, ec);
-    if (ec) {
-        if (out_error) *out_error = "Could not create stable version folder";
-        return false;
-    }
-    if (!TryHardLinkOrCopyFile(current_addon_path, dest)) {
-        if (out_error) *out_error = "Could not hard link or copy addon to version folder";
-        return false;
-    }
-    return true;
-}
-
-bool CopyCurrentVersionToGlobal(const std::filesystem::path& current_addon_path, std::string* out_error) {
-    std::error_code ec;
-    if (!std::filesystem::exists(current_addon_path, ec) || !std::filesystem::is_regular_file(current_addon_path, ec)) {
-        if (out_error) *out_error = "Current addon path does not exist or is not a file";
-        return false;
-    }
-    std::filesystem::path base = GetDownloadDirectory();
-    std::filesystem::path dest = base / current_addon_path.filename();
-    std::filesystem::create_directories(base, ec);
-    if (ec) {
-        if (out_error) *out_error = "Could not create base folder";
-        return false;
-    }
-    if (!TryHardLinkOrCopyFile(current_addon_path, dest)) {
-        if (out_error) *out_error = "Could not hard link or copy addon to global folder";
-        return false;
-    }
     return true;
 }
 

@@ -5,13 +5,11 @@
 #include <string>
 #include "../globals.hpp"
 #include "../settings/experimental_tab_settings.hpp"
-#include "../utils.hpp"
 #include "../utils/logging.hpp"
+#include "../utils/srwlock_registry.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
-#include "hid_hooks_install.hpp"
 #include "hid_statistics.hpp"
-#include "hook_suppression_manager.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 
 namespace renodx::hooks {
@@ -45,8 +43,6 @@ void SetHIDSuppressionEnabled(bool enabled) {
     settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(enabled);
     LogInfo("HID suppression %s", enabled ? "enabled" : "disabled");
 }
-
-bool IsHIDSuppressionEnabled() { return settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue(); }
 
 BOOL WINAPI ReadFile_Direct(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead,
                             LPOVERLAPPED lpOverlapped) {

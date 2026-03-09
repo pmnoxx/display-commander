@@ -53,8 +53,4 @@ BOOLEAN __stdcall HidD_SetNumInputBuffers_Detour(HANDLE HidDeviceObject, ULONG N
 BOOLEAN __stdcall HidD_GetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
 BOOLEAN __stdcall HidD_SetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuffer, ULONG ReportBufferLength);
 
-// Hook management
-bool InstallAdditionalHIDHooks();
-void MarkAdditionalHIDHooksInstalled(bool installed);
-
 }  // namespace display_commanderhooks

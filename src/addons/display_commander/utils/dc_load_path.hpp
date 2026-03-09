@@ -24,15 +24,9 @@ std::filesystem::path GetLocalDcDirectory();
 // Process (game) directory only if it contains zzz_display_commander.addon64/.addon32; otherwise empty. For UI "Local
 // DC version".
 std::filesystem::path GetLocalDcAddonDirectory();
-// Directory of the first loaded DC proxy module (e.g. dxgi.dll, winmm.dll), or empty.
-std::filesystem::path GetDcProxyDirectory();
 // Full path of the first loaded DC proxy module (e.g. dxgi.dll, winmm.dll), or empty. Version from this DLL is used for
 // "Local Proxy DC version".
 std::filesystem::path GetDcProxyModulePath();
-
-// Version string from addon DLL in the given directory, or empty if not found.
-std::string GetDcVersionInDirectory(const std::filesystem::path& dir);
-std::string GetLocalDcVersion();
 
 // Config get/set (section DisplayCommander.DC).
 // dc_selector_mode: "local" | "global" | "debug" | "stable". Default "local".
@@ -44,15 +38,9 @@ void SetDcVersionForDebugInConfig(const std::string& version);
 std::string GetDcVersionForStableFromConfig();
 void SetDcVersionForStableInConfig(const std::string& version);
 
-// Legacy: for migration only. Prefer GetDcSelectorModeFromConfig / GetDcVersionForStableFromConfig.
-std::string GetDcSelectedVersionFromConfig();
-void SetDcSelectedVersionInConfig(const std::string& version);
-
 // Installed DC versions: stable = subdirs of .../Display_Commander/stable/; debug = subdirs of .../Debug/.
 const char* const* GetDcInstalledVersionListStable(size_t* out_count);
 const char* const* GetDcInstalledVersionListDebug(size_t* out_count);
-// Legacy alias: same as GetDcInstalledVersionListStable.
-const char* const* GetDcInstalledVersionList(size_t* out_count);
 
 // Path to zzz_display_commander.addon64 (64-bit) or zzz_display_commander.addon32 (32-bit) in the given directory, or
 // empty if not found.

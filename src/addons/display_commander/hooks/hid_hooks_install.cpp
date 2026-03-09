@@ -108,7 +108,6 @@ bool InstallHIDKernel32Hooks(HMODULE hModule) {
         }
         if (!suppress_hid && (WriteFile_Original != nullptr || WriteFileEx_Original != nullptr || DeviceIoControl_Original != nullptr)) {
             HookSuppressionManager::GetInstance().MarkHookInstalled(HookType::HID_KERNEL32);
-            MarkAdditionalHIDHooksInstalled(true);
         }
         LogInfo("HID kernel32 hooks installed: %d hooks", installed);
         return true;
@@ -205,7 +204,6 @@ bool InstallHIDDHooks(HMODULE hModule) {
         }
         if (!suppress_hid) {
             HookSuppressionManager::GetInstance().MarkHookInstalled(HookType::HID_HID_DLL);
-            MarkAdditionalHIDHooksInstalled(true);
         }
         LogInfo("HID (hid.dll) hooks installed: %d hooks", installed);
         return true;

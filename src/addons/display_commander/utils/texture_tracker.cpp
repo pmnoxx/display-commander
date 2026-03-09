@@ -1,7 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "texture_tracker.hpp"
 #include "srwlock_wrapper.hpp"
-#include "timing.hpp"
 
 // Libraries <ReShade> / <imgui>
 // (none)
@@ -27,10 +26,6 @@ SRWLOCK g_texture_tracker_lock = SRWLOCK_INIT;
 std::atomic<uint64_t> g_current_count{0};
 std::atomic<uint64_t> g_current_bytes{0};
 std::atomic<uint64_t> g_peak_bytes{0};
-
-std::atomic<uint64_t> g_total_misses{0};
-std::atomic<uint64_t> g_last_miss_time_ns{0};
-std::atomic<double> g_misses_per_sec_ema{0.0};
 
 // Texture cache simulator: set of (desc + initial data) cache keys ever seen. Size = min cache misses possible.
 std::unordered_set<uint64_t> g_simulator_keys;
@@ -62,23 +57,7 @@ std::atomic<uint64_t> g_texture_cache_skip_key_zero{0};
 std::atomic<uint64_t> g_texture_cache_skip_size_zero{0};
 SRWLOCK g_simulator_lock = SRWLOCK_INIT;
 
-constexpr double kMissRateDecay = 0.9;  // geometric decay: 90% old, 10% new sample
-
-static void RecordMiss() {
-    g_total_misses.fetch_add(1, std::memory_order_relaxed);
-    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-    const uint64_t last_ns = g_last_miss_time_ns.exchange(now_ns, std::memory_order_relaxed);
-    if (last_ns != 0) {
-        double dt_sec = static_cast<double>(now_ns - last_ns) / static_cast<double>(utils::SEC_TO_NS);
-        if (dt_sec < 1e-9) {
-            dt_sec = 1e-9;
-        }
-        const double instantaneous = 1.0 / dt_sec;
-        const double cur = g_misses_per_sec_ema.load(std::memory_order_relaxed);
-        g_misses_per_sec_ema.store(cur * kMissRateDecay + instantaneous * (1.0 - kMissRateDecay),
-                                   std::memory_order_relaxed);
-    }
-}
+static void RecordMiss() { /* was total_misses; no readers, kept as hook for future stats */ }
 
 }  // namespace
 
@@ -141,9 +120,6 @@ void TextureCacheHitRecord() {
 void TextureCacheHitRecord1D() {
     g_texture_cache_1d_hits.fetch_add(1, std::memory_order_relaxed);
 }
-void TextureCacheHitRecord2D() {
-    g_texture_cache_hits.fetch_add(1, std::memory_order_relaxed);
-}
 void TextureCacheHitRecord3D() {
     g_texture_cache_3d_hits.fetch_add(1, std::memory_order_relaxed);
 }
@@ -153,9 +129,6 @@ void TextureCacheLookupRecord() {
 }
 void TextureCacheLookupRecord1D() {
     g_texture_cache_1d_lookups.fetch_add(1, std::memory_order_relaxed);
-}
-void TextureCacheLookupRecord2D() {
-    g_texture_cache_lookups.fetch_add(1, std::memory_order_relaxed);
 }
 void TextureCacheLookupRecord3D() {
     g_texture_cache_3d_lookups.fetch_add(1, std::memory_order_relaxed);
@@ -167,9 +140,6 @@ void TextureCacheLookupMissRecord() {
 void TextureCacheLookupMissRecord1D() {
     g_texture_cache_1d_lookup_misses.fetch_add(1, std::memory_order_relaxed);
 }
-void TextureCacheLookupMissRecord2D() {
-    g_texture_cache_lookup_misses.fetch_add(1, std::memory_order_relaxed);
-}
 void TextureCacheLookupMissRecord3D() {
     g_texture_cache_3d_lookup_misses.fetch_add(1, std::memory_order_relaxed);
 }
@@ -179,9 +149,6 @@ void TextureCacheInsertRecord() {
 }
 void TextureCacheInsertRecord1D() {
     g_texture_cache_1d_inserts.fetch_add(1, std::memory_order_relaxed);
-}
-void TextureCacheInsertRecord2D() {
-    g_texture_cache_inserts.fetch_add(1, std::memory_order_relaxed);
 }
 void TextureCacheInsertRecord3D() {
     g_texture_cache_3d_inserts.fetch_add(1, std::memory_order_relaxed);
@@ -195,11 +162,6 @@ void TextureCacheAddBytes(size_t size_bytes) {
 void TextureCacheAddBytes1D(size_t size_bytes) {
     if (size_bytes > 0) {
         g_texture_cache_1d_total_bytes.fetch_add(static_cast<uint64_t>(size_bytes), std::memory_order_relaxed);
-    }
-}
-void TextureCacheAddBytes2D(size_t size_bytes) {
-    if (size_bytes > 0) {
-        g_texture_cache_total_bytes.fetch_add(static_cast<uint64_t>(size_bytes), std::memory_order_relaxed);
     }
 }
 void TextureCacheAddBytes3D(size_t size_bytes) {
@@ -232,8 +194,6 @@ TextureTrackerStats TextureTrackerGetStats() {
     s.current_count = g_current_count.load(std::memory_order_relaxed);
     s.current_bytes = g_current_bytes.load(std::memory_order_relaxed);
     s.peak_bytes = g_peak_bytes.load(std::memory_order_relaxed);
-    s.total_misses = g_total_misses.load(std::memory_order_relaxed);
-    s.misses_per_sec_ema = g_misses_per_sec_ema.load(std::memory_order_relaxed);
     s.min_cache_misses_possible = g_min_cache_misses_possible.load(std::memory_order_relaxed);
     s.texture_cache_1d.lookups = g_texture_cache_1d_lookups.load(std::memory_order_relaxed);
     s.texture_cache_1d.hits = g_texture_cache_1d_hits.load(std::memory_order_relaxed);
@@ -250,11 +210,6 @@ TextureTrackerStats TextureTrackerGetStats() {
     s.texture_cache_3d.lookup_misses = g_texture_cache_3d_lookup_misses.load(std::memory_order_relaxed);
     s.texture_cache_3d.inserts = g_texture_cache_3d_inserts.load(std::memory_order_relaxed);
     s.texture_cache_3d.total_bytes = g_texture_cache_3d_total_bytes.load(std::memory_order_relaxed);
-    s.texture_cache_hits = s.texture_cache_2d.hits;
-    s.texture_cache_lookups = s.texture_cache_2d.lookups;
-    s.texture_cache_lookup_misses = s.texture_cache_2d.lookup_misses;
-    s.texture_cache_inserts = s.texture_cache_2d.inserts;
-    s.texture_cache_total_bytes = s.texture_cache_2d.total_bytes;
     s.texture_cache_skip_no_initial_data = g_texture_cache_skip_no_initial_data.load(std::memory_order_relaxed);
     s.texture_cache_skip_tracking_off = g_texture_cache_skip_tracking_off.load(std::memory_order_relaxed);
     s.texture_cache_skip_caching_off = g_texture_cache_skip_caching_off.load(std::memory_order_relaxed);

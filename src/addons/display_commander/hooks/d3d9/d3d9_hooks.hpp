@@ -9,7 +9,6 @@ namespace display_commanderhooks::d3d9 {
 // Similar to InstallOpenGLHooks for opengl32.dll. Sets up state; device vtable hooks
 // are installed when we receive a device from ReShade (init_swapchain / init_device).
 bool InstallDX9Hooks(HMODULE hModule);
-void UninstallDX9Hooks();
 
 extern std::atomic<bool> g_dx9_hooks_installed;
 

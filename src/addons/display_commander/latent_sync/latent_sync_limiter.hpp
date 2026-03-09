@@ -17,9 +17,6 @@ class LatentSyncLimiter {
 
     void LimitFrameRate();
 
-    void OnFrameBegin() {}
-    void OnFrameEnd() {}
-
     // Present timing hooks (called around Present)
     void OnPresentEnd();
 

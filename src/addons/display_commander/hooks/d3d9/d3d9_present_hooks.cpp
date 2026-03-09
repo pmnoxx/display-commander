@@ -28,8 +28,6 @@ IDirect3DDevice9_PresentEx_pfn IDirect3DDevice9_PresentEx_Original = nullptr;
 
 // Hook state and device tracking
 namespace {
-std::atomic<bool> g_d3d9_present_hooks_installed_internal{false};
-
 // Track the last D3D9 device used in OnPresentUpdateBefore
 std::atomic<IDirect3DDevice9*> g_last_present_update_device{nullptr};
 }  // namespace
@@ -223,22 +221,6 @@ bool HookD3D9Present(IDirect3DDevice9* device) {
     g_d3d9_present_hooks_installed.store(true);
     LogInfo("HookD3D9Present: hooks installed successfully for device: 0x%p", device);
     return true;
-}
-
-void UnhookD3D9Present() {
-    if (!g_d3d9_present_hooks_installed.load()) {
-        return;
-    }
-
-    if (IDirect3DDevice9_Present_Original != nullptr) {
-        MH_DisableHook(MH_ALL_HOOKS);
-        MH_RemoveHook(MH_ALL_HOOKS);
-        IDirect3DDevice9_Present_Original = nullptr;
-        IDirect3DDevice9_PresentEx_Original = nullptr;
-    }
-
-    g_d3d9_present_hooks_installed.store(false);
-    LogInfo("UnhookD3D9Present: hooks removed");
 }
 
 // Record the D3D9 device used in OnPresentUpdateBefore

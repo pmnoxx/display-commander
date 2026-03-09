@@ -16,7 +16,6 @@ HRESULT STDMETHODCALLTYPE IDirectDrawSurface_Flip_Detour(LPDIRECTDRAWSURFACE Thi
 // Install hooks when ddraw.dll is loaded (DirectDrawCreate/CreateEx -> CreateSurface -> Flip).
 // Skips if hModule is our own (proxy mode).
 bool InstallDDrawHooks(HMODULE hModule);
-void UninstallDDrawHooks();
 
 extern std::atomic<bool> g_ddraw_present_hooks_installed;
 

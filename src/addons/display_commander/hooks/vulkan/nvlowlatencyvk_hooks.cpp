@@ -277,33 +277,6 @@ bool InstallNvLowLatencyVkHooks(HMODULE nvll_module) {
     return true;
 }
 
-void UninstallNvLowLatencyVkHooks() {
-    if (!g_nvll_hooks_installed.exchange(false)) {
-        return;
-    }
-    if (NvLL_VK_InitLowLatencyDevice_Original) {
-        MH_DisableHook(NvLL_VK_InitLowLatencyDevice_Original);
-        MH_RemoveHook(NvLL_VK_InitLowLatencyDevice_Original);
-        NvLL_VK_InitLowLatencyDevice_Original = nullptr;
-    }
-    if (NvLL_VK_SetLatencyMarker_Original) {
-        MH_DisableHook(NvLL_VK_SetLatencyMarker_Original);
-        MH_RemoveHook(NvLL_VK_SetLatencyMarker_Original);
-        NvLL_VK_SetLatencyMarker_Original = nullptr;
-    }
-    if (NvLL_VK_SetSleepMode_Original) {
-        MH_DisableHook(NvLL_VK_SetSleepMode_Original);
-        MH_RemoveHook(NvLL_VK_SetSleepMode_Original);
-        NvLL_VK_SetSleepMode_Original = nullptr;
-    }
-    if (NvLL_VK_Sleep_Original) {
-        MH_DisableHook(NvLL_VK_Sleep_Original);
-        MH_RemoveHook(NvLL_VK_Sleep_Original);
-        NvLL_VK_Sleep_Original = nullptr;
-    }
-    LogInfo("NvLowLatencyVk: hooks uninstalled");
-}
-
 bool AreNvLowLatencyVkHooksInstalled() { return g_nvll_hooks_installed.load(); }
 
 void GetNvLowLatencyVkDebugState(uint64_t* out_marker_count, int* out_last_marker_type, uint64_t* out_last_frame_id) {

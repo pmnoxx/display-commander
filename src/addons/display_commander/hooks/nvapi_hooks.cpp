@@ -11,7 +11,6 @@
 #include "../utils/timing.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
-#include "utils/timing.hpp"
 
 #include <MinHook.h>
 #include <algorithm>

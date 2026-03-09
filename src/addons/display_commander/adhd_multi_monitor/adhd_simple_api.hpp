@@ -28,9 +28,6 @@ bool IsEnabledForOtherDisplays();
 
 // Focus disengagement is always enabled (no API needed)
 
-// Check if focus disengagement is enabled
-bool IsFocusDisengage();
-
 // Check if multiple monitors are available
 bool HasMultipleMonitors();
 

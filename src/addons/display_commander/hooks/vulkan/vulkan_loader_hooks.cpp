@@ -367,34 +367,6 @@ bool InstallVulkanLoaderHooks(void* vulkan1_module) {
     return true;
 }
 
-void UninstallVulkanLoaderHooks() {
-    if (!g_loader_hooks_installed.exchange(false)) {
-        return;
-    }
-    if (vkGetInstanceProcAddr_Original != nullptr) {
-        MH_DisableHook(vkGetInstanceProcAddr_Original);
-        MH_RemoveHook(vkGetInstanceProcAddr_Original);
-        vkGetInstanceProcAddr_Original = nullptr;
-    }
-    if (vkGetDeviceProcAddr_Original != nullptr) {
-        MH_DisableHook(vkGetDeviceProcAddr_Original);
-        MH_RemoveHook(vkGetDeviceProcAddr_Original);
-        vkGetDeviceProcAddr_Original = nullptr;
-    }
-    if (g_hooked_vkSetLatencyMarkerNV_target != nullptr) {
-        MH_DisableHook(g_hooked_vkSetLatencyMarkerNV_target);
-        MH_RemoveHook(g_hooked_vkSetLatencyMarkerNV_target);
-        g_hooked_vkSetLatencyMarkerNV_target = nullptr;
-    }
-    g_real_vkCreateDevice = nullptr;
-    g_real_vkSetLatencyMarkerNV = nullptr;
-    {
-        utils::SRWLockExclusive lock(utils::g_vulkan_extensions_lock);
-        g_vulkan_enabled_extensions.clear();
-    }
-    LogInfo("VulkanLoader: hooks uninstalled");
-}
-
 bool AreVulkanLoaderHooksInstalled() { return g_loader_hooks_installed.load(); }
 
 void GetVulkanLoaderDebugState(uint64_t* out_marker_count, int* out_last_marker_type, uint64_t* out_last_present_id,

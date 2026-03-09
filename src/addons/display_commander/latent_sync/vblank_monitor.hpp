@@ -82,8 +82,6 @@ class VBlankMonitor {
     // Manual display binding (if needed)
     bool BindToDisplay(HWND hwnd);
 
-    // Thread phase for UI tooltips (0=not started, 1=waiting for mode, 2=binding/init, 3=main loop)
-    int GetThreadPhase() const { return m_thread_phase.load(std::memory_order_relaxed); }
     std::string GetStatusStringForTooltip() const;
 
   private:

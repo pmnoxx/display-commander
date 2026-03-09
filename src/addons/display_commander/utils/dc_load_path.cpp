@@ -276,12 +276,6 @@ static std::filesystem::path GetDcProxyModulePathImpl(std::filesystem::path* out
     return fallback_path;
 }
 
-std::filesystem::path GetDcProxyDirectory() {
-    std::filesystem::path dir;
-    GetDcProxyModulePathImpl(&dir);
-    return dir;
-}
-
 std::filesystem::path GetDcProxyModulePath() { return GetDcProxyModulePathImpl(nullptr); }
 
 bool IsLoadedWithDLLExtension(void* h_module) {
@@ -294,18 +288,6 @@ bool IsLoadedWithDLLExtension(void* h_module) {
     if (len < 4) return false;
     return _wcsicmp(filename + len - 4, L".dll") == 0;
 }
-
-std::string GetDcVersionInDirectory(const std::filesystem::path& dir) {
-    if (dir.empty()) return "";
-    std::error_code ec;
-    std::filesystem::path path64 = dir / std::filesystem::path(DC_ADDON_64);
-    std::filesystem::path path32 = dir / std::filesystem::path(DC_ADDON_32);
-    if (std::filesystem::exists(path64, ec)) return GetDLLVersionString(path64.wstring());
-    if (std::filesystem::exists(path32, ec)) return GetDLLVersionString(path32.wstring());
-    return "";
-}
-
-std::string GetLocalDcVersion() { return GetDcVersionInDirectory(GetLocalDcDirectory()); }
 
 std::string GetDcSelectorModeFromConfig() {
     EnsureDcConfigMigrated();
@@ -349,18 +331,6 @@ void SetDcVersionForStableInConfig(const std::string& version) {
     DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_VERSION_STABLE, version);
 }
 
-std::string GetDcSelectedVersionFromConfig() {
-    using namespace display_commander::config;
-    std::string value;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(DC_SECTION, KEY_SELECTED_VERSION, value);
-    return value;
-}
-
-void SetDcSelectedVersionInConfig(const std::string& version) {
-    using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_SELECTED_VERSION, version);
-}
-
 std::filesystem::path GetDcAddonPathInDirectory(const std::filesystem::path& dir) {
     if (dir.empty()) return {};
     std::error_code ec;
@@ -380,8 +350,6 @@ const char* const* GetDcInstalledVersionListStable(size_t* out_count) {
 const char* const* GetDcInstalledVersionListDebug(size_t* out_count) {
     return GetDcInstalledVersionListIn(GetLocalDcDirectory(), L"Debug", out_count);
 }
-
-const char* const* GetDcInstalledVersionList(size_t* out_count) { return GetDcInstalledVersionListStable(out_count); }
 
 bool DeleteLocalDcAddonFromDirectory(const std::filesystem::path& dir, std::string* out_error) {
     if (dir.empty()) {

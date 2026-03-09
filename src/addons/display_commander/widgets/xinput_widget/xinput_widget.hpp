@@ -276,14 +276,6 @@ class XInputWidget {
     void RemoveAutofireTrigger(XInputSharedState::TriggerType trigger_type);
     bool IsAutofireTrigger(XInputSharedState::TriggerType trigger_type) const;
 
-    // Recenter calibration functions
-    void DrawRecenterSettings(display_commander::ui::IImGuiWrapper& imgui);
-    void ClearRecenterData();
-    void StartRecenterRecording();
-    void StopRecenterRecording();
-    void ProcessRecenterData(SHORT left_x, SHORT left_y, SHORT right_x, SHORT right_y);
-    void ApplyRecenterCalibration(SHORT &left_x, SHORT &left_y, SHORT &right_x, SHORT &right_y);
-
     // Global shared state
     static std::shared_ptr<XInputSharedState> g_shared_state;
 };
@@ -308,8 +300,5 @@ void UpdateBatteryStatus(DWORD user_index);
 void IncrementEventCounter(const std::string &event_type);
 void CheckAndHandleScreenshot();
 void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState);
-
-// Recenter calibration functions for hooks
-void ProcessRecenterData(SHORT left_x, SHORT left_y, SHORT right_x, SHORT right_y);
 
 } // namespace display_commander::widgets::xinput_widget

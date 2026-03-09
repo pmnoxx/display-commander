@@ -67,8 +67,6 @@ bool LoadVersionDLL() {
 }  // anonymous namespace
 
 // Constant definitions
-const int WIDTH_OPTIONS[] = {0, 1280, 1366, 1600, 1920, 2560, 3440, 3840};  // 0 = current monitor width
-const int HEIGHT_OPTIONS[] = {0, 720, 900, 1080, 1200, 1440, 1600, 2160};   // 0 = current monitor height
 const AspectRatio ASPECT_OPTIONS[] = {
     {3, 2},     // 1.5:1
     {4, 3},     // 1.333:1
@@ -150,24 +148,6 @@ void ComputeDesiredSize(int display_width, int display_height, int& out_w, int& 
     out_h = want_w * ar.h / ar.w;
 
     // LogInfo("ComputeDesiredSize: out_w=%d, out_h=%d (width_index=%d)", out_w, out_h, s_aspect_width.load());
-}
-
-// Monitor enumeration callback
-BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam) {
-    MONITORINFOEXW info;
-    info.cbSize = sizeof(MONITORINFOEXW);
-
-    if (GetMonitorInfoW(hmon, &info)) {
-        MonitorInfo monitor_info;
-        monitor_info.handle = hmon;
-        monitor_info.info = info;
-        auto* monitors = reinterpret_cast<std::vector<MonitorInfo>*>(lparam);
-        if (monitors) {
-            monitors->push_back(monitor_info);
-        }
-    }
-
-    return TRUE;
 }
 
 // XInput processing functions
@@ -274,25 +254,6 @@ std::string GetDLLVersionString(const std::wstring& dllPath) {
     snprintf(versionStr, sizeof(versionStr), "%lu.%lu.%lu.%lu", major, minor, build, revision);
 
     return std::string(versionStr);
-}
-
-bool TryHardLinkOrCopyFile(const std::filesystem::path& existing_file, const std::filesystem::path& new_path) {
-    std::error_code ec;
-    if (!std::filesystem::exists(existing_file, ec) || !std::filesystem::is_regular_file(existing_file, ec)) {
-        return false;
-    }
-    if (std::filesystem::exists(new_path, ec)) {
-        std::filesystem::remove(new_path, ec);
-        if (ec) return false;
-    }
-    std::wstring new_w = new_path.wstring();
-    std::wstring existing_w = existing_file.wstring();
-    if (CreateHardLinkW(new_w.c_str(), existing_w.c_str(), nullptr)) {
-        return true;
-    }
-    ec.clear();
-    std::filesystem::copy_file(existing_file, new_path, std::filesystem::copy_options::overwrite_existing, ec);
-    return !ec;
 }
 
 // Convert device API enum to readable string
@@ -450,25 +411,6 @@ MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
     LogInfo("MinHook initialized successfully for %s hooks",
             display_commanderhooks::HookSuppressionManager::GetInstance().GetHookTypeName(hookType).c_str());
     return init_status;
-}
-
-// Get the directory where the addon is located
-std::filesystem::path GetAddonDirectory() {
-    char module_path[MAX_PATH];
-
-    // Try to get the module handle using a static variable address
-    static int dummy = 0;
-    HMODULE hModule = nullptr;
-    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                           reinterpret_cast<LPCSTR>(&dummy), &hModule)
-        != 0) {
-        GetModuleFileNameA(hModule, module_path, MAX_PATH);
-    } else {
-        // Fallback to current directory
-        GetCurrentDirectoryA(MAX_PATH, module_path);
-    }
-
-    return std::filesystem::path(module_path).parent_path();
 }
 
 // Display Commander folder in Local App Data: %LocalAppData%\Programs\Display_Commander (shared across games)

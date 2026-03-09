@@ -38,11 +38,6 @@ class DisplayCommanderLogger {
     // Request flush: enqueues a flush sentinel so writer flushes without blocking the caller
     void FlushLogs();
 
-    // Write INFO line directly to log file from calling thread (synchronized with queue_lock_).
-    // Uses relative time only (t+XX.Xs from baseline at init); no FileTime/SystemTime system calls.
-    // For use from same thread as CheckStuckMethodsAndLogUndestroyedGuards to avoid queue/writer dependency.
-    void LogInfoDirectSynchronized(const std::string& message);
-
     // Diagnostic: returns true if queue_lock_ is currently held (for stuck-detection reporting)
     bool IsWriteLockHeld();
 
@@ -61,14 +56,12 @@ class DisplayCommanderLogger {
     void CloseLogFile();
     void WriteToFile(const std::string& formatted_message);
     std::string FormatMessage(LogLevel level, const std::string& message);
-    std::string FormatMessageDirectRelativeTime(const std::string& message, LONGLONG now_ns);
     std::string GetLogLevelString(LogLevel level);
     bool ShouldRotateLog();
     void RotateLog();
 
     std::string log_path_;
     std::ofstream log_file_;
-    LONGLONG baseline_ns_ = 0;  // get_now_ns() at Initialize; used for relative "t+XX.Xs" in direct log
 
     // Queue and writer thread (async I/O)
     std::deque<std::string> queue_;
@@ -78,7 +71,6 @@ class DisplayCommanderLogger {
     std::thread writer_thread_;
 
     std::atomic<bool> initialized_ = false;
-    std::atomic<int> force_auto_flush_count_{0};
 };
 
 // Global convenience functions
@@ -93,8 +85,5 @@ void FlushLogs();
 
 // Diagnostic: returns true if logger write lock is currently held
 bool IsWriteLockHeld();
-
-// Write INFO directly to log file from calling thread (relative time only; no system time calls).
-void LogInfoDirectSynchronized(const char* fmt, ...);
 
 }  // namespace display_commander::logger

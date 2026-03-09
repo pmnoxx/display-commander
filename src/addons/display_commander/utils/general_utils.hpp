@@ -26,14 +26,7 @@ struct AspectRatio {
     int h;
 };
 
-struct MonitorInfo {
-    HMONITOR handle;
-    MONITORINFOEXW info;
-};
-
 // Constants
-extern const int WIDTH_OPTIONS[];
-extern const int HEIGHT_OPTIONS[];
 extern const AspectRatio ASPECT_OPTIONS[];
 
 // Forward declarations for utility functions
@@ -41,9 +34,6 @@ RECT RectFromWH(int width, int height);
 // Window state detection
 AspectRatio GetAspectByIndex(int index);
 int GetAspectWidthValue(int display_width);
-
-// Monitor enumeration callback
-BOOL CALLBACK MonitorEnumProc(HMONITOR hmon, HDC hdc, LPRECT rect, LPARAM lparam);
 
 // XInput processing functions
 // Map one signed axis: input [min_input, max_input] -> output [min_output, max_output] (0-1 ranges)
@@ -53,7 +43,6 @@ void ProcessStickInputRadial(float& x, float& y, float min_input, float max_inpu
 // Square: separate mapping per axis
 void ProcessStickInputSquare(float& x, float& y, float min_in_x, float max_in_x, float min_out_x, float max_out_x,
                              float min_in_y, float max_in_y, float min_out_y, float max_out_y);
-float ProcessStickInput(float value, float deadzone, float max_input, float min_output);
 
 // XInput thumbstick scaling helpers (handles asymmetric SHORT range: -32768 to 32767)
 float ShortToFloat(SHORT value);
@@ -63,10 +52,6 @@ SHORT FloatToShort(float value);
 std::string GetDLLVersionString(const std::wstring& dllPath);
 
 // Try to create a hard link at new_path pointing to existing_file (no admin required on same NTFS volume).
-// If hard link fails (e.g. different volume, non-NTFS), copy the file. Returns true on success.
-// Use this for any "copy then load" path (e.g. local ReShade/DC into temp or versioned folder) so we prefer hard link over copy when possible.
-bool TryHardLinkOrCopyFile(const std::filesystem::path& existing_file, const std::filesystem::path& new_path);
-
 // DLSS preset support functions
 bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,
                int maxPatch);
@@ -81,9 +66,6 @@ int GetDLSSPresetValue(const std::string& presetString);
 NVSDK_NGX_PerfQuality_Value GetDLSSQualityPresetValue(const std::string& presetString);
 std::string ConvertRenderPresetToLetter(
     int preset_value);  // Convert render preset number to letter (0=Default, 1=A, 2=B, etc.)
-
-// Addon directory utilities
-std::filesystem::path GetAddonDirectory();
 
 // Display Commander folder in Local App Data: %LocalAppData%\Programs\Display_Commander (shared across games)
 std::filesystem::path GetDisplayCommanderAppDataFolder();
@@ -185,6 +167,3 @@ inline bool Is64BitBuild() {
 // Default parameter uses _ReturnAddress() to get the caller's return address
 #pragma intrinsic(_ReturnAddress)
 HMODULE GetCallingDLL(LPCVOID pReturn = _ReturnAddress());
-
-// External declarations needed by utility functions
-extern std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors;

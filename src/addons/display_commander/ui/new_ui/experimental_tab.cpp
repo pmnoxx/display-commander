@@ -22,7 +22,6 @@
 #include "../../ui/nvidia_profile_tab_shared.hpp"
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/logging.hpp"
-#include "../../utils/stack_trace.hpp"
 #include "../../utils/timing.hpp"
 #include "../../widgets/dualsense_widget/dualsense_widget.hpp"
 #include "../imgui_wrapper_reshade.hpp"

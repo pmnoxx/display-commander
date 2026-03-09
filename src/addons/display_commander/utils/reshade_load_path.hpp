@@ -58,23 +58,8 @@ std::string GetGlobalReshadeVersion();
 std::string GetReshadeSelectedVersionFromConfig();
 void SetReshadeSelectedVersionInConfig(const std::string& version);
 
-// True when selected version is "no" (do not load ReShade).
-bool IsReshadeLoadDisabledByConfig();
-
 // Supported ReShade versions for dropdown (all known: fallback + GitHub).
 const char* const* GetReshadeVersionList(size_t* out_count);
-
-// Installed ReShade versions only (subdirs of .../Reshade/Dll/ that contain both DLLs).
-const char* const* GetReshadeInstalledVersionList(size_t* out_count);
-
-// When selected is "X.Y.Z" but that version was not installed, we load the highest available and set fallback info.
-// Returns true in that case and fills the two version strings. out_selected/out_loaded may be null.
-bool GetReshadeLoadFallbackVersionInfo(std::string* out_selected_version, std::string* out_loaded_version);
-
-// Copy currently loaded ReShade from loaded_reshade_directory to Reshade\Dll\X.Y.Z (version from DLL) if that
-// folder does not already contain the DLLs. Skips if loaded_reshade_directory is already under Reshade\Dll\.
-// Returns true on success or skip, false on error (out_error set).
-bool CopyCurrentReshadeToDll(const std::filesystem::path& loaded_reshade_directory, std::string* out_error);
 
 // Delete local ReShade DLLs (Reshade64.dll, Reshade32.dll) from the given directory (e.g. game exe folder).
 // Safe because we never load the game-folder copy directly; we copy to temp then load. Returns true on success.

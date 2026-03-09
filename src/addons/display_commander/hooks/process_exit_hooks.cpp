@@ -4,7 +4,6 @@
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
 #include "../nvapi/nvapi_init.hpp"
-#include "../utils.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/stack_trace.hpp"

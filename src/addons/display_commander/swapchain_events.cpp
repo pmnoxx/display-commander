@@ -12,7 +12,6 @@
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
 #include "hooks/dxgi_factory_wrapper.hpp"
-#include "hooks/hid_additional_hooks.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/ngx_hooks.hpp"
 #include "hooks/streamline_hooks.hpp"
@@ -41,7 +40,6 @@
 #include "utils/d3d9_api_version.hpp"
 #include "utils/detour_call_tracker.hpp"
 #include "utils/dxgi_color_space.hpp"
-#include "utils/game_launcher_registry.hpp"
 #include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/no_inject_windows.hpp"
@@ -140,17 +138,6 @@ void OnDestroyDevice(reshade::api::device* device) {
     // Clean up GPU measurement fences
     display_commanderhooks::dxgi::CleanupGPUMeasurementFences();
 
-    /*
-    if (g_last_swapchain_ptr_unsafe.load() != nullptr) {
-        reshade::api::swapchain *swapchain = reinterpret_cast<reshade::api::swapchain
-    *>(g_last_swapchain_ptr_unsafe.load()); if (swapchain != nullptr && swapchain->get_device() == device) {
-
-                LogInfo("Clearing global swapchain reference swapchain: %p", swapchain);
-                g_last_swapchain_ptr_unsafe.store(nullptr);
-            }
-        }
-    }*/
-
     // Clean up device-specific resources
     // Note: Most cleanup is handled in DLL_PROCESS_DETACH, but this provides
     // device-specific cleanup when a device is destroyed during runtime
@@ -211,8 +198,6 @@ void hookToSwapChain(reshade::api::swapchain* swapchain) {
 
     // Store the current swapchain for UI access
     g_last_reshade_device_api.store(swapchain->get_device()->get_api());
-    // g_last_swapchain_ptr_unsafe.store removed - unsafe to use, VRR status now updated from OnPresentUpdateBefore
-
     // Query and store API version/feature level
     uint32_t api_version = 0;
     if (swapchain->get_device()->get_property(reshade::api::device_properties::api_version, &api_version)) {
@@ -471,9 +456,6 @@ void HandleOnPresentEnd() {
     }
 }
 
-// Query DXGI composition state - no-op; independent flip state is no longer queried or shown in UI
-void QueryDxgiCompositionState(IDXGISwapChain* dxgi_swapchain) { (void)dxgi_swapchain; }
-
 void RecordFrameTime(FrameTimeMode reason) {
     // Filter calls based on the selected frame time mode
     FrameTimeMode frame_time_mode = static_cast<FrameTimeMode>(settings::g_mainTabSettings.frame_time_mode.GetValue());
@@ -504,21 +486,6 @@ void RecordNativeFrameTime() {
         PerfSample sample{.dt = static_cast<float>(dt)};
         g_native_frame_time_ring.Record(sample);
         previous_ns = now_ns;
-    }
-}
-
-// Get the sync interval coefficient for FPS calculation
-float GetSyncIntervalCoefficient(float sync_interval_value) {
-    // Map sync interval values to their corresponding coefficients
-    // 3 = V-Sync (1x), 4 = V-Sync 2x, 5 = V-Sync 3x, 6 = V-Sync 4x
-    switch (static_cast<int>(sync_interval_value)) {
-        case 0:  return 0.0f;  // App Controlled
-        case 1:  return 0.0f;  // No-VSync
-        case 2:  return 1.0f;  // V-Sync
-        case 3:  return 2.0f;  // V-Sync 2x
-        case 4:  return 3.0f;  // V-Sync 3x
-        case 5:  return 4.0f;  // V-Sync 4x
-        default: return 1.0f;  // Fallback
     }
 }
 
@@ -1173,8 +1140,6 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
         }
         return;
     }
-    // how to check
-    // hookToSwapChain(swapchain);
 
     // Capture the render thread ID when swapchain is created
     // This is called on the thread that creates the swapchain, which is typically the render thread
@@ -1353,8 +1318,7 @@ void OnPresentUpdateAfter2(bool from_wrapper) {
     // instead of ReShade's block_input_next_frame() for better compatibility
 
     // DXGI composition state computation and periodic device/colorspace refresh
-    // (moved from continuous monitoring thread to avoid accessing
-    // g_last_swapchain_ptr_unsafe from background thread)
+    // (moved from continuous monitoring thread to present path)
     // NVIDIA Reflex: SIMULATION_END marker (minimal) and Sleep
     // Optionally delay enabling Reflex for the first N frames
     const bool delay_first_500_frames = settings::g_advancedTabSettings.reflex_delay_first_500_frames.GetValue();
@@ -1680,19 +1644,6 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     }
 }
 
-// Last manual color space we tried and whether it was supported (for UI). -1 = not yet set / unknown.
-static std::atomic<int> g_last_color_space_support_dxgi{-1};    // DXGI_COLOR_SPACE_TYPE as int
-static std::atomic<int> g_last_color_space_support_result{-1};  // -1 unknown, 0 not supported, 1 supported
-
-void GetLastColorSpaceSupportForUI(int* out_dxgi, int* out_supported) {
-    if (out_dxgi) {
-        *out_dxgi = g_last_color_space_support_dxgi.load(std::memory_order_relaxed);
-    }
-    if (out_supported) {
-        *out_supported = g_last_color_space_support_result.load(std::memory_order_relaxed);
-    }
-}
-
 // GUID for Display Commander "last set DXGI color space" on swap chain (SetPrivateData/GetPrivateData).
 // Used to skip SetColorSpace1 when current already matches desired. Do not conflict with ReShade's SKID.
 static constexpr GUID kDcSwapChainColorSpace = {
@@ -1718,8 +1669,6 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
     UINT color_space_support = 0;
     swapchain3->CheckColorSpaceSupport(color_space, &color_space_support);
     const int supported = (color_space_support != 0) ? 1 : 0;
-    g_last_color_space_support_dxgi.store(static_cast<int>(color_space), std::memory_order_relaxed);
-    g_last_color_space_support_result.store(supported, std::memory_order_relaxed);
 
     hr = swapchain3->SetColorSpace1(color_space);
     if (FAILED(hr)) {
@@ -2029,8 +1978,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         }
     }
 
-    // Note: DXGI composition state query moved to QueryDxgiCompositionState()
-    // and is now called only from DXGI present hooks
+    // DXGI composition / independent flip state is no longer queried or shown in UI.
 }
 
 bool OnBindPipeline(reshade::api::command_list* cmd_list, reshade::api::pipeline_stage stages,
@@ -2445,6 +2393,3 @@ void OnSetScissorRects(reshade::api::command_list* cmd_list, uint32_t first, uin
     // Set the scaled scissor rectangles
     cmd_list->bind_scissor_rects(first, count, scaled_rects.data());
 }
-
-// OnSetFullscreenState function removed - fullscreen prevention now handled directly in
-// IDXGISwapChain_SetFullscreenState_Detour

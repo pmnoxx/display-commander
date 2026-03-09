@@ -1,8 +1,4 @@
 #include "hid_additional_hooks.hpp"
-#include <MinHook.h>
-#include "../utils/logging.hpp"
-#include "hid_hooks_install.hpp"
-#include "hook_suppression_manager.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 
 namespace display_commanderhooks {
@@ -178,7 +174,5 @@ BOOLEAN __stdcall HidD_SetFeature_Detour(HANDLE HidDeviceObject, PVOID ReportBuf
     g_hook_stats[HOOK_HIDD_SetFeature].increment_unsuppressed();
     return result;
 }
-
-void MarkAdditionalHIDHooksInstalled(bool /*installed*/) { /* was write-only, no readers */ }
 
 }  // namespace display_commanderhooks

@@ -16,7 +16,6 @@
 #include "settings/streamline_tab_settings.hpp"
 #include "settings/swapchain_tab_settings.hpp"
 #include "utils.hpp"
-#include "utils/general_utils.hpp"
 #include "utils/logging.hpp"
 #include "utils/srwlock_wrapper.hpp"
 
@@ -157,7 +156,6 @@ std::atomic<bool> s_auto_apply_refresh_rate_change{false};  // Disabled by defau
 std::atomic<bool> s_resolution_applied_at_least_once{false};  // Disabled by default
 
 // Atomic variables
-std::atomic<void*> g_last_swapchain_ptr_unsafe{nullptr};  // TODO: unsafe remove later
 std::atomic<reshade::api::device_api> g_last_reshade_device_api{static_cast<reshade::api::device_api>(0)};
 std::atomic<uint32_t> g_last_api_version{0};
 std::atomic<std::shared_ptr<reshade::api::swapchain_desc>> g_last_swapchain_desc_pre{nullptr};
@@ -420,9 +418,6 @@ utils::LockFreeRingBuffer<PerfSample, kPerfRingCapacity> g_native_frame_time_rin
 // Action notification system for overlay display
 std::atomic<ActionNotification> g_action_notification{
     ActionNotification{ActionNotificationType::None, 0, 0.0f, false, {0}}};
-
-// Vector variables
-std::atomic<std::shared_ptr<const std::vector<MonitorInfo>>> g_monitors{std::make_shared<std::vector<MonitorInfo>>()};
 
 // Colorspace variables - removed, now queried directly in UI
 

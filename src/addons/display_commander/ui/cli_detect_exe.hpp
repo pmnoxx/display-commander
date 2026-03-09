@@ -14,9 +14,6 @@ struct DetectResult {
     bool has_opengl32 = false, has_vulkan = false;
 };
 
-// Run detection on exe at path (wide). Returns true and fills result on success.
-bool DetectExeForPath(const wchar_t* exe_path_wide, DetectResult* out);
-
 // Suggested ReShade DLL name: "d3d12", "dxgi", "d3d9", "opengl32", "vulkan", or "unknown".
 const char* ReShadeDllFromDetect(const DetectResult& r);
 }  // namespace cli_detect_exe

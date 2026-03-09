@@ -30,9 +30,6 @@ extern ShowWindow_pfn ShowWindow_Original;
 // Hook installation function
 bool InstallDisplaySettingsHooks();
 
-// Hook uninstallation function
-void UninstallDisplaySettingsHooks();
-
 // Direct function that bypasses hooks - use this when we want to change resolution ourselves
 LONG ChangeDisplaySettingsExW_Direct(LPCWSTR lpszDeviceName, DEVMODEW* lpDevMode, HWND hWnd, DWORD dwFlags,
                                      LPVOID lParam);

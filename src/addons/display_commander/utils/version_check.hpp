@@ -73,27 +73,12 @@ bool FetchLatestStableReleaseVersion(std::string* out_version, std::string* out_
 // Download a specific DC version to %localappdata%\Programs\Display_Commander\stable\<version>\. Returns true on success.
 bool DownloadDcVersionToDll(const std::string& version, std::string* out_error = nullptr);
 
-// Fetch the latest_debug release (https://github.com/pmnoxx/display-commander/releases/tag/latest_debug).
-// Returns true if the release exists and has addon64/addon32 assets.
-bool FetchLatestDebugRelease(std::string* out_error = nullptr);
-
 // Fetch latest_debug release and return the version from the release body (e.g. "0.12.200.2316").
 // Use for display; no need to call FetchLatestDebugRelease first.
 bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_error = nullptr);
 
-// Download latest_debug release to stable\X.Y.Z (version read from downloaded binaries). Call after
-// FetchLatestDebugRelease (or any time).
-bool DownloadDcLatestDebugToDll(std::string* out_error = nullptr);
-
 // Download latest_debug release to Debug\X.Y.Z (version read from downloaded binaries). Use for DC selector
 // debug mode; keeps debug builds separate from stable\.
 bool DownloadDcLatestDebugToDebugFolder(std::string* out_error = nullptr);
-
-// Copy the given DC addon file to stable\X.Y.Z (version read from the file) if that folder does not already exist.
-// current_addon_path is typically the path to the running addon (e.g. from GetModuleFileNameW(g_hmodule)).
-bool CopyCurrentVersionToDll(const std::filesystem::path& current_addon_path, std::string* out_error = nullptr);
-
-// Copy the given DC addon file to the global base folder so "global" selector mode uses this version.
-bool CopyCurrentVersionToGlobal(const std::filesystem::path& current_addon_path, std::string* out_error = nullptr);
 
 }  // namespace display_commander::utils::version_check

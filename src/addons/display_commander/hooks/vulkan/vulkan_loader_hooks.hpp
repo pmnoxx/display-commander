@@ -10,9 +10,6 @@
  */
 bool InstallVulkanLoaderHooks(void* vulkan1_module);
 
-/** Uninstall vulkan-1 loader hooks. */
-void UninstallVulkanLoaderHooks();
-
 /** Returns true if vulkan-1 vkGetDeviceProcAddr hook is installed (VK_NV_low_latency2 wrapper active when game requests it). */
 bool AreVulkanLoaderHooksInstalled();
 

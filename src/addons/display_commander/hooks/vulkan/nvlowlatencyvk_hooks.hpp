@@ -16,9 +16,6 @@ struct NvLLVkSleepModeParamsView {
  *  Returns true if hooks were installed (or already installed). */
 bool InstallNvLowLatencyVkHooks(HMODULE nvll_module);
 
-/** Uninstall NvLowLatencyVk hooks. */
-void UninstallNvLowLatencyVkHooks();
-
 /** Returns true if NvLowLatencyVk hooks are currently installed. */
 bool AreNvLowLatencyVkHooksInstalled();
 

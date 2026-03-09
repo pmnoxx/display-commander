@@ -15,8 +15,6 @@ bool IsEnabledForGameDisplay() { return g_adhdManager.IsEnabledForGameDisplay();
 
 bool IsEnabledForOtherDisplays() { return g_adhdManager.IsEnabledForOtherDisplays(); }
 
-bool IsFocusDisengage() { return g_adhdManager.IsFocusDisengage(); }
-
 bool HasMultipleMonitors() { return g_adhdManager.HasMultipleMonitors(); }
 
 void GetBackgroundWindowDebugInfo(BackgroundWindowDebugInfo* out) {

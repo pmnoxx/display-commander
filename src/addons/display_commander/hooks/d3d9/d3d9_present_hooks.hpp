@@ -43,7 +43,6 @@ HRESULT STDMETHODCALLTYPE IDirect3DDevice9_PresentEx_Detour(
 
 // Hook management
 bool HookD3D9Present(IDirect3DDevice9 *device);
-void UnhookD3D9Present();
 
 // Record the D3D9 device used in OnPresentUpdateBefore
 void RecordPresentUpdateDevice(IDirect3DDevice9 *device);

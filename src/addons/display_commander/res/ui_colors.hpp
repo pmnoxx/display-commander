@@ -27,18 +27,14 @@ namespace ui::colors {
 constexpr ImVec4 ICON_SUCCESS = ImVec4(0.2f, 0.8f, 0.2f, 1.0f);      // Bright green for success/OK
 constexpr ImVec4 ICON_POSITIVE = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);     // Light green for positive states
 
-// Warning/Caution (Yellow/Orange tones)
+// Warning (Yellow/Orange tones)
 constexpr ImVec4 ICON_WARNING = ImVec4(1.0f, 0.7f, 0.0f, 1.0f);      // Orange for warnings
-constexpr ImVec4 ICON_CAUTION = ImVec4(1.0f, 0.9f, 0.2f, 1.0f);      // Yellow for caution
 
-// Error/Danger (Red tones)
+// Error/Critical (Red tones)
 constexpr ImVec4 ICON_ERROR = ImVec4(1.0f, 0.2f, 0.2f, 1.0f);        // Bright red for errors
-constexpr ImVec4 ICON_DANGER = ImVec4(0.9f, 0.3f, 0.3f, 1.0f);       // Softer red for danger
 constexpr ImVec4 ICON_CRITICAL = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);     // Pure red for critical errors
 
-// Info/Neutral (Blue/Cyan tones)
-constexpr ImVec4 ICON_INFO = ImVec4(0.4f, 0.7f, 1.0f, 1.0f);         // Light blue for info
-constexpr ImVec4 ICON_NEUTRAL = ImVec4(0.6f, 0.8f, 1.0f, 1.0f);      // Soft cyan for neutral
+// Analysis (Cyan)
 constexpr ImVec4 ICON_ANALYSIS = ImVec4(0.3f, 0.8f, 0.9f, 1.0f);     // Cyan for analysis/search
 
 // Actions (Purple/Magenta tones)
@@ -47,7 +43,6 @@ constexpr ImVec4 ICON_SPECIAL = ImVec4(1.0f, 0.4f, 0.8f, 1.0f);      // Magenta 
 
 // Utility (Gray tones)
 constexpr ImVec4 ICON_DISABLED = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);     // Gray for disabled
-constexpr ImVec4 ICON_MUTED = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);        // Light gray for muted
 constexpr ImVec4 ICON_DARK_GRAY = ImVec4(0.3f, 0.3f, 0.3f, 1.0f);    // Dark gray for unpressed buttons
 constexpr ImVec4 ICON_ORANGE = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);       // Orange for low battery/warnings
 constexpr ImVec4 ICON_DARK_ORANGE = ImVec4(0.5f, 0.4f, 0.0f, 1.0f);  // Dark orange for home button
@@ -58,7 +53,6 @@ constexpr ImVec4 ICON_DARK_ORANGE = ImVec4(0.5f, 0.4f, 0.0f, 1.0f);  // Dark ora
 
 // Standard text colors
 constexpr ImVec4 TEXT_DEFAULT = ImVec4(0.9f, 0.9f, 0.9f, 1.0f);      // Default text
-constexpr ImVec4 TEXT_BRIGHT = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);       // Bright white
 constexpr ImVec4 TEXT_DIMMED = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);       // Dimmed text
 constexpr ImVec4 TEXT_SUBTLE = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);       // Subtle text
 

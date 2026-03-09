@@ -22,22 +22,12 @@ struct TextureTrackerStats {
     uint64_t current_count{0};
     uint64_t current_bytes{0};
     uint64_t peak_bytes{0};
-    /** Total Release calls where the texture was not in the map (e.g. created before tracking). */
-    uint64_t total_misses{0};
-    /** Exponential moving average of misses per second (geometric decay). */
-    double misses_per_sec_ema{0.0};
     /** Texture cache simulator: number of unique (desc + initial data) keys seen so far. Lower bound for cache misses. */
     uint64_t min_cache_misses_possible{0};
     /** Per-dimension cache stats (1D, 2D, 3D). */
     TextureCacheDimStats texture_cache_1d;
     TextureCacheDimStats texture_cache_2d;
     TextureCacheDimStats texture_cache_3d;
-    /** @deprecated Use texture_cache_2d.* */
-    uint64_t texture_cache_hits{0};
-    uint64_t texture_cache_lookups{0};
-    uint64_t texture_cache_lookup_misses{0};
-    uint64_t texture_cache_inserts{0};
-    uint64_t texture_cache_total_bytes{0};
     /** CreateTexture2D skipped cache: no initial data (pInitialData null or pSysMem null). */
     uint64_t texture_cache_skip_no_initial_data{0};
     /** CreateTexture2D skipped cache: texture tracking disabled. */
@@ -54,31 +44,26 @@ struct TextureTrackerStats {
 
 // Record that a cache lookup was attempted (before TextureCacheGet). Dimension-specific:
 void TextureCacheLookupRecord1D();
-void TextureCacheLookupRecord2D();
 void TextureCacheLookupRecord3D();
 void TextureCacheLookupRecord();  // same as 2D (backward compat)
 
 // Record that a lookup did not find a cached texture (TextureCacheGet returned nullptr).
 void TextureCacheLookupMissRecord1D();
-void TextureCacheLookupMissRecord2D();
 void TextureCacheLookupMissRecord3D();
 void TextureCacheLookupMissRecord();  // same as 2D
 
 // Record that a new texture was inserted into the cache (TextureCachePut actually stored).
 void TextureCacheInsertRecord1D();
-void TextureCacheInsertRecord2D();
 void TextureCacheInsertRecord3D();
 void TextureCacheInsertRecord();  // same as 2D
 
 // Add size_bytes to the total bytes of all cached textures for this dimension.
 void TextureCacheAddBytes1D(size_t size_bytes);
-void TextureCacheAddBytes2D(size_t size_bytes);
 void TextureCacheAddBytes3D(size_t size_bytes);
 void TextureCacheAddBytes(size_t size_bytes);  // same as 2D
 
 // Record a texture cache hit (returned cached texture instead of creating).
 void TextureCacheHitRecord1D();
-void TextureCacheHitRecord2D();
 void TextureCacheHitRecord3D();
 void TextureCacheHitRecord();  // same as 2D
 

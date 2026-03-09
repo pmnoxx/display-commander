@@ -406,10 +406,6 @@ bool IsSteamAPIModuleLoaded() {
     return GetSteamAPIModule() != nullptr;
 }
 
-bool IsSteamAPIInitExportPresent() {
-    return IsSteamAPIExportPresent("SteamAPI_Init");
-}
-
 bool IsSteamAPIExportPresent(const char* export_name) {
     if (export_name == nullptr || export_name[0] == '\0') {
         return false;

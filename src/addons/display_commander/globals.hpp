@@ -275,6 +275,10 @@ extern std::atomic<bool> g_dll_initialization_complete;
 extern std::atomic<bool> g_no_reshade_mode;
 // No-DC mode: .NODC file present in game exe dir; ReShade is loaded (proxy only), addon does not register or run
 extern std::atomic<bool> g_no_dc_mode;
+// .UI file present in game exe dir: start game with independent UI window open (ReShade path only)
+extern std::atomic<bool> g_start_with_independent_ui;
+// .NO_EXIT file present: block process/window exit (ExitProcess, WM_CLOSE, etc.); open independent UI when blocked (debug)
+extern std::atomic<bool> g_no_exit_mode;
 // When true, TryStartStandaloneUIFromSafeContext() will start the standalone settings UI (e.g. from LoadLibrary detour)
 extern std::atomic<bool> g_standalone_ui_pending;
 void TryStartStandaloneUIFromSafeContext();
@@ -333,11 +337,7 @@ enum class ScreensaverMode : std::uint8_t {
 };
 
 /** Windows taskbar visibility: 0 = no change, 1 = hide when game in foreground, 2 = always hide. */
-enum class TaskbarHideMode : std::uint8_t {
-    kNoChanges = 0,
-    kInForeground = 1,
-    kAlways = 2
-};
+enum class TaskbarHideMode : std::uint8_t { kNoChanges = 0, kInForeground = 1, kAlways = 2 };
 
 // Reflex mode when FPS limiter is OnPresent Sync (main tab combo)
 enum class OnPresentReflexMode : std::uint8_t {
@@ -627,21 +627,21 @@ extern std::atomic<uint64_t> g_last_set_sleep_mode_direct_frame_id;
 /** Entry points where use_fps_limiter is computed; last frame_id per site is tracked to know which paths are available.
  */
 enum class FpsLimiterCallSite {
-    reflex_marker,               // NVAPI SetLatencyMarker path (D3D)
-    reflex_marker_vk_nvll,       // NvLowLatencyVk.dll SetLatencyMarker path (Vulkan)
-    reflex_marker_vk_loader,     // vulkan-1 / VK_NV_low_latency2 vkSetLatencyMarkerNV wrapper
-    reflex_marker_pclstats_etw,  // PCLStats ETW (EventWriteTransfer) – first 6 markers only
-    dxgi_swapchain1,             // DXGI IDXGISwapChain1::Present1 detour
-    dxgi_swapchain,              // DXGI IDXGISwapChain::Present detour
+    reflex_marker,                     // NVAPI SetLatencyMarker path (D3D)
+    reflex_marker_vk_nvll,             // NvLowLatencyVk.dll SetLatencyMarker path (Vulkan)
+    reflex_marker_vk_loader,           // vulkan-1 / VK_NV_low_latency2 vkSetLatencyMarkerNV wrapper
+    reflex_marker_pclstats_etw,        // PCLStats ETW (EventWriteTransfer) – first 6 markers only
+    dxgi_swapchain1,                   // DXGI IDXGISwapChain1::Present1 detour
+    dxgi_swapchain,                    // DXGI IDXGISwapChain::Present detour
     dxgi_swapchain1_streamline_proxy,  // Streamline proxy IDXGISwapChain1::Present1 (sl_proxy_dxgi_swapchain1)
-    dxgi_swapchain_streamline_proxy,  // Streamline proxy IDXGISwapChain::Present (sl_proxy_dxgi_swapchain)
-    dx9_present,                 // D3D9 IDirect3DDevice9::Present detour
-    dx9_presentex,               // D3D9 IDirect3DDevice9Ex::PresentEx detour
-    opengl_swapbuffers,          // OpenGL wglSwapBuffers detour
-    ddraw_flip,                  // DirectDraw IDirectDrawSurface::Flip detour
-    reshade_addon_event,         // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
-    dxgi_factory_wrapper,        // Currently unused in practice
-    kFpsLimiterCallSiteCount     // count of call sites above (use for array size / iteration)
+    dxgi_swapchain_streamline_proxy,   // Streamline proxy IDXGISwapChain::Present (sl_proxy_dxgi_swapchain)
+    dx9_present,                       // D3D9 IDirect3DDevice9::Present detour
+    dx9_presentex,                     // D3D9 IDirect3DDevice9Ex::PresentEx detour
+    opengl_swapbuffers,                // OpenGL wglSwapBuffers detour
+    ddraw_flip,                        // DirectDraw IDirectDrawSurface::Flip detour
+    reshade_addon_event,               // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
+    dxgi_factory_wrapper,              // Currently unused in practice
+    kFpsLimiterCallSiteCount           // count of call sites above (use for array size / iteration)
 };
 
 constexpr size_t kFpsLimiterCallSiteCount = static_cast<size_t>(FpsLimiterCallSite::kFpsLimiterCallSiteCount);

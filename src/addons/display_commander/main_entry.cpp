@@ -727,8 +727,7 @@ void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
         } else {
             overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Achievement unlocked!");
         }
-        overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%d / %d achievements", bump_unlocked,
-                                    bump_total);
+        overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%d / %d achievements", bump_unlocked, bump_total);
         if (bump_debug[0] != '\0') {
             std::string overlay_debug;
             overlay_debug.reserve(static_cast<size_t>(std::strlen(bump_debug)));
@@ -1037,6 +1036,10 @@ std::atomic<bool> g_no_reshade_mode(false);
 std::atomic<bool> g_standalone_ui_pending(false);
 // No-DC mode: .NODC present - load ReShade only, do not register as addon (proxy-only)
 std::atomic<bool> g_no_dc_mode(false);
+// .UI file: open independent UI at start (cleared after first use in continuous_monitoring)
+std::atomic<bool> g_start_with_independent_ui(false);
+// .NO_EXIT: block exit and open independent UI when game tries to exit (debugging)
+std::atomic<bool> g_no_exit_mode(false);
 
 void TryStartStandaloneUIFromSafeContext() {
     if (!g_no_reshade_mode.load() || !g_standalone_ui_pending.load()) {
@@ -1908,6 +1911,17 @@ void ProcessAttach_CheckNoReShadeMode() {
         OutputDebugStringA(
             "[DisplayCommander] .NODC (or .NODC.*) found - ReShade will be loaded; Display Commander will not "
             "register as addon (proxy-only).\n");
+    }
+    if (DirectoryHasFileWithSegment(dc_config_dir, {L"UI"})) {
+        g_start_with_independent_ui.store(true);
+        OutputDebugStringA(
+            "[DisplayCommander] .UI (or .UI.*) found - independent settings window will open at start (ReShade path).\n");
+    }
+    if (DirectoryHasFileWithSegment(dc_config_dir, {L"NO_EXIT", L"NOEXIT"})) {
+        g_no_exit_mode.store(true);
+        OutputDebugStringA(
+            "[DisplayCommander] .NO_EXIT/.NOEXIT (or .* variant) found - game exit will be blocked; independent UI "
+            "opens when exit is attempted (debugging).\n");
     }
 }
 

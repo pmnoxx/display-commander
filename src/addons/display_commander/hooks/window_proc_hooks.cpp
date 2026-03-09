@@ -290,6 +290,12 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
         case WM_QUIT:
             // Only trigger exit when no other game windows exist (e.g. multi-window games closing one window)
             if (CountOtherProcessWindows(hwnd) == 0) {
+                if (g_no_exit_mode.load(std::memory_order_acquire)) {
+                    LogInfo("WM_QUIT: .NO_EXIT active - blocking quit HWND: 0x%p; opening independent UI.", hwnd);
+                    RequestShowIndependentWindow();
+                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
+                    return true;  // Suppress message so window does not close
+                }
                 LogInfo("WM_QUIT: Window quit message received - HWND: 0x%p (last window)", hwnd);
                 exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_QUIT, "WM_QUIT message received");
             } else {
@@ -300,6 +306,12 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         case WM_CLOSE:
             if (CountOtherProcessWindows(hwnd) == 0) {
+                if (g_no_exit_mode.load(std::memory_order_acquire)) {
+                    LogInfo("WM_CLOSE: .NO_EXIT active - blocking close HWND: 0x%p; opening independent UI.", hwnd);
+                    RequestShowIndependentWindow();
+                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
+                    return true;  // Suppress message so window does not close
+                }
                 LogInfo("WM_CLOSE: Window close message received - HWND: 0x%p (last window)", hwnd);
                 exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_CLOSE, "WM_CLOSE message received");
             } else {
@@ -309,6 +321,12 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
         case WM_DESTROY:
             if (CountOtherProcessWindows(hwnd) == 0) {
+                if (g_no_exit_mode.load(std::memory_order_acquire)) {
+                    LogInfo("WM_DESTROY: .NO_EXIT active - blocking destroy HWND: 0x%p; opening independent UI.", hwnd);
+                    RequestShowIndependentWindow();
+                    ui::new_ui::AddMessageToHistoryIfKnown(uMsg, wParam, lParam, true);
+                    return true;  // Suppress message so window does not close
+                }
                 LogInfo("WM_DESTROY: Window destroy message received - HWND: 0x%p (last window)", hwnd);
                 exit_handler::OnHandleExit(exit_handler::ExitSource::WINDOW_DESTROY, "WM_DESTROY message received");
             } else {

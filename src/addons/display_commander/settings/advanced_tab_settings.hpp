@@ -132,8 +132,11 @@ class AdvancedTabSettings {
     // When enabled, play a system sound when a new Steam achievement is unlocked. Off by default.
     BoolSetting play_sound_on_achievement;
 
-    // Get all settings for bulk operations
+    // All settings (for load, UI, etc.)
     std::vector<SettingBase*> GetAllSettings();
+
+    // Subset of settings that are persisted on SaveAll (excludes e.g. reflex, shortcut toggles, some dev options)
+    std::vector<SettingBase*> GetSettingsToSave();
 };
 
 // Global instance

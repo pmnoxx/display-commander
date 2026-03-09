@@ -48,38 +48,10 @@ void HotkeysTabSettings::LoadAll() {
 }
 
 void HotkeysTabSettings::SaveAll() {
-    // Push in-memory parsed hotkeys (numeric) to string settings so file reflects current state
     ui::new_ui::SyncHotkeySettingsFromParsed();
-    // Save all settings
-    enable_hotkeys.Save();
-    hotkey_mute_unmute.Save();
-    hotkey_background_toggle.Save();
-    hotkey_timeslowdown.Save();
-    hotkey_adhd_toggle.Save();
-    hotkey_autoclick.Save();
-    hotkey_input_blocking.Save();
-    hotkey_display_commander_ui.Save();
-    hotkey_independent_ui.Save();
-    hotkey_performance_overlay.Save();
-    hotkey_stopwatch.Save();
-    hotkey_volume_up.Save();
-    hotkey_volume_down.Save();
-    hotkey_system_volume_up.Save();
-    hotkey_system_volume_down.Save();
-    hotkey_auto_hdr.Save();
-    hotkey_brightness_up.Save();
-    hotkey_brightness_down.Save();
-    hotkey_win_down.Save();
-    hotkey_win_up.Save();
-    hotkey_win_left.Save();
-    hotkey_win_right.Save();
-    hotkey_move_to_primary.Save();
-    hotkey_move_to_secondary.Save();
-    exclusive_keys_ad_enabled.Save();
-    exclusive_keys_ws_enabled.Save();
-    exclusive_keys_awsd_enabled.Save();
-    exclusive_keys_custom_groups.Save();
-    brightness_hotkey_step_percent.Save();
+    for (SettingBase* s : GetAllSettings()) {
+        s->Save();
+    }
 }
 
 std::vector<ui::new_ui::SettingBase*> HotkeysTabSettings::GetAllSettings() {

@@ -86,39 +86,9 @@ void AdvancedTabSettings::LoadAll() {
 }
 
 void AdvancedTabSettings::SaveAll() {
-    // Save all settings that don't auto-save
-    continue_rendering.Save();
-    hide_hdr_capabilities.Save();
-    enable_flip_chain.Save();
-    auto_colorspace.Save();
-    enable_hotkeys.Save();
-    safemode.Save();
-    fake_nvapi_enabled.Save();
-    suppress_minhook.Save();
-    suppress_wgi_globally.Save();
-    suppress_wgi_enabled.Save();
-    suppress_wgi_for_unity.Save();
-    suppress_wgi_for_non_unity_games.Save();
-    debug_layer_enabled.Save();
-    debug_break_on_severity.Save();
-    auto_hide_discord_overlay.Save();
-    suppress_window_changes.Save();
-    enable_presentmon_tracing.Save();
-    presentmon_provider_dxgkrnl.Save();
-    presentmon_provider_dxgi.Save();
-    presentmon_provider_dwm.Save();
-    presentmon_provider_d3d9.Save();
-    disable_dpi_scaling.Save();
-    enable_dx11_vtable_hooks.Save();
-    texture_tracking_enabled.Save();
-    d3d11_texture_caching_enabled.Save();
-    d3d11_texture_caching_1d_enabled.Save();
-    d3d11_texture_caching_3d_enabled.Save();
-    texture_cache_content_hash_cap_kb.Save();
-    dump_textures_enabled.Save();
-    show_steam_achievement_notifications.Save();
-    show_steam_achievement_counter_increased.Save();
-    play_sound_on_achievement.Save();
+    for (SettingBase* s : GetSettingsToSave()) {
+        s->Save();
+    }
 }
 
 std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
@@ -140,8 +110,21 @@ std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetAllSettings() {
         &enable_presentmon_tracing, &presentmon_provider_dxgkrnl, &presentmon_provider_dxgi, &presentmon_provider_dwm,
         &presentmon_provider_d3d9, &disable_dpi_scaling, &enable_dx11_vtable_hooks, &texture_tracking_enabled,
         &d3d11_texture_caching_enabled, &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled,
-        &texture_cache_content_hash_cap_kb, &dump_textures_enabled, &show_steam_achievement_notifications,
+        &texture_cache_content_hash_cap_kb, &dump_textures_enabled,         &show_steam_achievement_notifications,
         &show_steam_achievement_counter_increased, &play_sound_on_achievement};
+}
+
+std::vector<ui::new_ui::SettingBase*> AdvancedTabSettings::GetSettingsToSave() {
+    return {
+        &continue_rendering, &hide_hdr_capabilities, &enable_flip_chain, &auto_colorspace, &enable_hotkeys,
+        &safemode, &fake_nvapi_enabled, &suppress_minhook, &suppress_wgi_globally, &suppress_wgi_enabled,
+        &suppress_wgi_for_unity, &suppress_wgi_for_non_unity_games, &debug_layer_enabled, &debug_break_on_severity,
+        &auto_hide_discord_overlay, &suppress_window_changes, &enable_presentmon_tracing, &presentmon_provider_dxgkrnl,
+        &presentmon_provider_dxgi, &presentmon_provider_dwm, &presentmon_provider_d3d9, &disable_dpi_scaling,
+        &enable_dx11_vtable_hooks, &texture_tracking_enabled, &d3d11_texture_caching_enabled,
+        &d3d11_texture_caching_1d_enabled, &d3d11_texture_caching_3d_enabled, &texture_cache_content_hash_cap_kb,
+        &dump_textures_enabled, &show_steam_achievement_notifications, &show_steam_achievement_counter_increased,
+        &play_sound_on_achievement};
 }
 
 }  // namespace settings

@@ -105,7 +105,7 @@ bool ProviderGuidByName(const wchar_t* provider_name, GUID& out_guid) {
     // Cap iteration so corrupt NumberOfProviders cannot cause OOB read or runaway loop.
     const ULONG n = providers->NumberOfProviders;
     const ULONG max_providers = (size > sizeof(PROVIDER_ENUMERATION_INFO))
-                                   ? (size - sizeof(PROVIDER_ENUMERATION_INFO)) / sizeof(TRACE_PROVIDER_INSTANCE_INFO)
+                                   ? (size - sizeof(PROVIDER_ENUMERATION_INFO)) / sizeof(TRACE_PROVIDER_INFO)
                                    : 0;
     const ULONG limit = (n <= max_providers && n <= 32768u) ? n : max_providers;
 

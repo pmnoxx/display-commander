@@ -11,7 +11,6 @@
 #include "../utils/timing.hpp"
 #include "hook_suppression_manager.hpp"
 
-
 namespace display_commanderhooks {
 
 // Function pointer types for process exit functions
@@ -46,8 +45,8 @@ static void LogExitCallerAndStackTrace(const char* exit_api_name, HMODULE caller
         double ago_s = static_cast<double>(utils::get_real_time_ns() - last_updated_ns) / 1e9;
         last_updated_str = std::to_string(ago_s) + "s ago";
     }
-    LogInfo("%s g_global_frame_id=%llu last_updated=%s",
-            exit_api_name, static_cast<unsigned long long>(frame_id), last_updated_str.c_str());
+    LogInfo("%s g_global_frame_id=%llu last_updated=%s", exit_api_name, static_cast<unsigned long long>(frame_id),
+            last_updated_str.c_str());
     LogInfo("%s g_continuous_monitoring_section: %s", exit_api_name,
             monitoring_section != nullptr ? monitoring_section : "(null)");
     LogInfo("%s g_rendering_ui_section: %s", exit_api_name, ui_section != nullptr ? ui_section : "(null)");
@@ -92,6 +91,13 @@ static void GetProcessImagePathForLog(HANDLE hProcess, DWORD pid, wchar_t* out_b
 void WINAPI ExitProcess_Detour(UINT uExitCode) {
     HMODULE caller_mod = GetCallingDLL();  // capture as early as possible (before any other calls)
     LogExitCallerAndStackTrace("ExitProcess", caller_mod);
+
+    if (g_no_exit_mode.load(std::memory_order_acquire)) {
+        LogInfo("ExitProcess: .NO_EXIT active - blocking exit (exit code %u); opening independent UI.", uExitCode);
+        RequestShowIndependentWindow();
+        return;  // Block exit
+    }
+
     exit_handler::OnHandleExit(exit_handler::ExitSource::PROCESS_EXIT_HOOK,
                                "ExitProcess called with exit code: " + std::to_string(uExitCode));
 
@@ -110,6 +116,15 @@ BOOL WINAPI TerminateProcess_Detour(HANDLE hProcess, UINT uExitCode) {
     wchar_t image_path[MAX_PATH] = {};
 
     if (current_pid != 0 && target_pid != 0 && current_pid == target_pid) {
+        if (g_no_exit_mode.load(std::memory_order_acquire)) {
+            GetProcessImagePathForLog(GetCurrentProcess(), current_pid, image_path, MAX_PATH);
+            LogInfo(
+                "TerminateProcess: .NO_EXIT active - blocking terminate (target current process, exit code %u); "
+                "opening independent UI. image: %ls",
+                uExitCode, image_path[0] ? image_path : L"(unknown)");
+            RequestShowIndependentWindow();
+            return FALSE;  // Block termination
+        }
         HMODULE caller_mod = GetCallingDLL();  // capture as early as possible (before any other calls)
         GetProcessImagePathForLog(GetCurrentProcess(), current_pid, image_path, MAX_PATH);
         LogInfo(

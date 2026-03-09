@@ -923,6 +923,10 @@ void ContinuousMonitoringThread() {
 
             // Independent window: open/close based on main-tab setting (ReShade only)
             if (!g_no_reshade_mode.load(std::memory_order_acquire)) {
+                // .UI file: open independent UI at start (once per run)
+                if (g_start_with_independent_ui.exchange(false, std::memory_order_acq_rel)) {
+                    settings::g_mainTabSettings.show_independent_window.SetValue(true);
+                }
                 bool want_show = settings::g_mainTabSettings.show_independent_window.GetValue();
                 HWND standalone = g_standalone_ui_hwnd.load(std::memory_order_acquire);
                 if (want_show && standalone == nullptr) {

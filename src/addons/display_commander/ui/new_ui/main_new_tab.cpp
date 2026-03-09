@@ -2758,7 +2758,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         // Second line: Selectors
         if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.keyboard_input_blocking, "##Keyboard",
                                                 imgui)) {
-            // Restore cursor clipping when input blocking is disabled (intentionally not called here to avoid focus stealing when continue_rendering is disabled)
+            // Restore cursor clipping when input blocking is disabled (intentionally not called here to avoid focus
+            // stealing when continue_rendering is disabled)
             if (settings::g_mainTabSettings.keyboard_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
                 // No-op: RestoreClipCursor() not called to avoid focus stealing.
@@ -2771,7 +2772,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.NextColumn();
 
         if (ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.mouse_input_blocking, "##Mouse", imgui)) {
-            // Restore cursor clipping when input blocking is disabled (intentionally not called here to avoid focus stealing when continue_rendering is disabled)
+            // Restore cursor clipping when input blocking is disabled (intentionally not called here to avoid focus
+            // stealing when continue_rendering is disabled)
             if (settings::g_mainTabSettings.mouse_input_blocking.GetValue()
                 == static_cast<int>(InputBlockingMode::kDisabled)) {
                 // No-op: RestoreClipCursor() not called to avoid focus stealing.
@@ -5264,9 +5266,6 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
     const bool is_dxgi = api == display_commander::ui::GraphicsApi::D3D10
                          || api == display_commander::ui::GraphicsApi::D3D11
                          || api == display_commander::ui::GraphicsApi::D3D12;
-    if (is_dxgi) {
-        DrawDisplaySettings_DXGI(imgui);
-    }
     // Show graphics/API libraries loaded by the host (game), not by Display Commander or ReShade
     {
         const std::string host_apis = display_commanderhooks::GetHostLoadedGraphicsApisString();
@@ -5289,6 +5288,9 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     "DDraw = IDirectDrawSurface::Flip.");
             }
         }
+    }
+    if (is_dxgi) {
+        DrawDisplaySettings_DXGI(imgui);
     }
     DrawDisplaySettings_VSyncAndTearing(imgui);
     {

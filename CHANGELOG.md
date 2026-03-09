@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.365
+- **Display Settings: show host graphics APIs before DXGI section** - In the Display tab, the "graphics/API libraries loaded by the host" section now appears first, followed by the DXGI display/swap chain settings and then VSync/tearing. Makes it clearer which APIs the game loaded before showing swap chain details. Details: DrawDisplaySettings order in ui/new_ui/main_new_tab.cpp.
+
 ## v0.12.364
 - **Game default overrides: window_mode = 1 for more games** - Per-game defaults now set "Prevent exclusive fullscreen / no resize" (window_mode = 1) for Re2.exe, Re3.exe, Re7.exe, Re8.exe, Sekiro.exe, eldenring.exe, armoredcore6.exe, hitman3.exe, and devilmaycry5.exe when the user has not yet saved a config. New players of these games get the recommended window mode by default. Details: res/game_default_overrides.toml.
 

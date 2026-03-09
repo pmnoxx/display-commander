@@ -1909,19 +1909,8 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
     return ret;
 }
 
-const bool disable_ngx_hooks = true;
-
 // Install NGX hooks
 bool InstallNGXHooks(HMODULE ngx_dll) {
-    if (disable_ngx_hooks) {
-        /*
-        crashes in some games
-        01:49:57:515 [24844] | INFO  | [00] _nvngx!NVSDK_NGX_D3D11_GetFeatureRequirements [0x7FFD1C845F29] [no pdb]
-        01:49:57:515 [24844] | INFO  | [01] _nvngx!NVSDK_NGX_D3D12_Init_ProjectID [0x7FFD1C8464B9] [no pdb]
-        */
-        LogInfo("InstallNGXHooks: skipping NGX hooks installation");
-        return true;
-    }
     if (ngx_dll == nullptr) {
         LogInfo("NGX hooks: _nvngx.dll not loaded");
         return false;
@@ -1944,6 +1933,7 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
 
     LogInfo("Installing NGX initialization hooks...");
 
+    /*
     // Hook NGX initialization functions
     // D3D12 Init hooks
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init"),
@@ -2000,6 +1990,7 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Shutdown1"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Shutdown1_Detour),
                         reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Shutdown1_Original), "NVSDK_NGX_D3D11_Shutdown1");
+*/
 
     CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_CreateFeature"),
                         reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_CreateFeature_Detour),

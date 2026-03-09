@@ -70,7 +70,8 @@ void AdhdMultiMonitorManager::Shutdown() {
 
 void AdhdMultiMonitorManager::SetEnabled(bool enabled_for_game_display, bool enabled_for_other_displays) {
     if (!initialized_) {
-        Initialize();
+        if (!enabled_for_game_display && !enabled_for_other_displays) return;
+        if (!Initialize()) return;
     }
     HWND game_hwnd = g_last_swapchain_hwnd.load();
     if (!game_hwnd) return;

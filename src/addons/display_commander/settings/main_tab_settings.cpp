@@ -162,7 +162,7 @@ MainTabSettings::MainTabSettings()
       upgrade_compare_min_mag_linear_mip_point("upgrade_compare_min_mag_linear_mip_point", false, "DisplayCommander"),
       max_anisotropy("max_anisotropy", 0, 0, 16, "DisplayCommander"),
       force_mipmap_lod_bias("force_mipmap_lod_bias", 0.0f, -5.0f, 5.0f, "DisplayCommander"),
-      brightness_autohdr_section_enabled("brightness_autohdr_section_enabled_doff", false, "DisplayCommander"),
+      brightness_autohdr_section_enabled("brightness_autohdr_section_enabled_don", true, "DisplayCommander"),
       brightness_percent("brightness_percent", 100.0f, 0.0f, 500.0f, "DisplayCommander"),
       swapchain_colorspace("swapchain_colorspace", 0, {"Auto", "scRGB(default)", "HDR10", "sRGB", "Gamma 2.2", "None"},
                            "DisplayCommander"),

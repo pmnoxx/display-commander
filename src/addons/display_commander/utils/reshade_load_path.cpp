@@ -293,14 +293,23 @@ std::filesystem::path GetReshadeDirectoryForLoading(const std::filesystem::path&
     if (selected == "no") {
         return std::filesystem::path();
     }
+    if (game_directory.empty()) {
+        LogError("[reshade] game_directory is empty");
+    }
     std::vector<ReshadeLocation> locations = GetReshadeLocations(game_directory);
     for (size_t i = 0; i < locations.size(); ++i) {
         const ReshadeLocation& loc = locations[i];
+        std::string dir_log = loc.directory.empty()
+                                  ? "(empty)"
+                                  : std::filesystem::absolute(loc.directory).string();
         LogInfo("[reshade] location[%zu] type=%s version=%s dir=%s", i, ReshadeLocationTypeToString(loc.type),
-                loc.version.c_str(), loc.directory.string().c_str());
+                loc.version.c_str(), dir_log.c_str());
     }
     ChooseReshadeVersionResult choose = ChooseReshadeVersion(locations, selected);
-    LogInfo("[reshade] chosen dir=%s fallback_selected=%s fallback_loaded=%s", choose.directory.string().c_str(),
+    std::string chosen_dir_log = choose.directory.empty()
+                                     ? "(empty)"
+                                     : std::filesystem::absolute(choose.directory).string();
+    LogInfo("[reshade] chosen dir=%s fallback_selected=%s fallback_loaded=%s", chosen_dir_log.c_str(),
             choose.fallback_selected.c_str(), choose.fallback_loaded.c_str());
     return choose.directory;
 }

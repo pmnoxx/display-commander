@@ -13,12 +13,7 @@
 
 namespace presentmon {
 
-// PresentMon is only built and visible when EXPERIMENTAL_FEATURES is enabled at compile time.
-#ifdef EXPERIMENTAL_FEATURES
 constexpr bool kPresentMonEnabled = true;
-#else
-constexpr bool kPresentMonEnabled = false;
-#endif
 
 // ETW event-type summary (cached schema for exploration/debug)
 struct PresentMonEventTypeSummary {

@@ -54,21 +54,6 @@ using slSetDataInternal_pfn = int (*)(const sl::BaseStructure* inputs, sl::Comma
 static slSetDataInternal_pfn slSetData_Original = nullptr;
 static std::atomic<bool> g_slSetData_hook_installed{false};
 
-// slSetD3DDevice, slSetTag, slSetTagForFrame, slEvaluateFeature (proxy→native for ReShade compatibility)
-using slSetD3DDevice_pfn = int (*)(void* d3dDevice);
-using slSetTag_pfn = int (*)(const sl::ViewportHandle& viewport, const sl::ResourceTag* tags, uint32_t numTags,
-                             sl::CommandBuffer* cmdBuffer);
-using slSetTagForFrame_pfn = int (*)(const sl::FrameToken& frame, const sl::ViewportHandle& viewport,
-                                    const sl::ResourceTag* resources, uint32_t numResources,
-                                    sl::CommandBuffer* cmdBuffer);
-using slEvaluateFeature_pfn = int (*)(sl::Feature feature, const sl::FrameToken& frame,
-                                      const sl::BaseStructure** inputs, uint32_t numInputs,
-                                      sl::CommandBuffer* cmdBuffer);
-static slSetD3DDevice_pfn slSetD3DDevice_Original = nullptr;
-static slSetTag_pfn slSetTag_Original = nullptr;
-static slSetTagForFrame_pfn slSetTagForFrame_Original = nullptr;
-static slEvaluateFeature_pfn slEvaluateFeature_Original = nullptr;
-
 // Track SDK version from slInit calls
 static std::atomic<uint64_t> g_last_sdk_version{0};
 
@@ -577,47 +562,6 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     return result;
 }
 
-// slSetD3DDevice detour (proxy→native conversion for ReShade compatibility)
-static int slSetD3DDevice_Detour(void* d3dDevice) {
-    CALL_GUARD(utils::get_now_ns());
-    if (slSetD3DDevice_Original != nullptr) {
-        return slSetD3DDevice_Original(d3dDevice);
-    }
-    return static_cast<int>(sl::Result::eErrorInvalidParameter);
-}
-
-// slSetTag detour (proxy→native conversion for ReShade compatibility)
-static int slSetTag_Detour(const sl::ViewportHandle& viewport, const sl::ResourceTag* tags, uint32_t numTags,
-                           sl::CommandBuffer* cmdBuffer) {
-    CALL_GUARD(utils::get_now_ns());
-    if (slSetTag_Original != nullptr) {
-        return slSetTag_Original(viewport, tags, numTags, cmdBuffer);
-    }
-    return static_cast<int>(sl::Result::eErrorInvalidParameter);
-}
-
-// slSetTagForFrame detour (proxy→native conversion for ReShade compatibility)
-static int slSetTagForFrame_Detour(const sl::FrameToken& frame, const sl::ViewportHandle& viewport,
-                                   const sl::ResourceTag* resources, uint32_t numResources,
-                                   sl::CommandBuffer* cmdBuffer) {
-    CALL_GUARD(utils::get_now_ns());
-    if (slSetTagForFrame_Original != nullptr) {
-        return slSetTagForFrame_Original(frame, viewport, resources, numResources, cmdBuffer);
-    }
-    return static_cast<int>(sl::Result::eErrorInvalidParameter);
-}
-
-// slEvaluateFeature detour (proxy→native conversion for ReShade compatibility)
-static int slEvaluateFeature_Detour(sl::Feature feature, const sl::FrameToken& frame,
-                                    const sl::BaseStructure** inputs, uint32_t numInputs,
-                                    sl::CommandBuffer* cmdBuffer) {
-    CALL_GUARD(utils::get_now_ns());
-    if (slEvaluateFeature_Original != nullptr) {
-        return slEvaluateFeature_Original(feature, frame, inputs, numInputs, cmdBuffer);
-    }
-    return static_cast<int>(sl::Result::eErrorInvalidParameter);
-}
-
 // Initialize config-driven prevent_slupgrade_interface flag
 void InitializePreventSLUpgradeInterface() {
     bool prevent_slupgrade_interface = false;
@@ -699,19 +643,6 @@ bool InstallStreamlineHooks(HMODULE streamline_module) {
                              reinterpret_cast<LPVOID*>(&slGetFeatureFunction_Original), "slGetFeatureFunction")) {
         LogError("Failed to create and enable slGetFeatureFunction hook");
     }
-
-    // Hook slSetD3DDevice, slSetTag, slSetTagForFrame, slEvaluateFeature (proxy→native)
-    CreateAndEnableHook(GetProcAddress(sl_interposer, "slSetD3DDevice"),
-                       reinterpret_cast<LPVOID>(slSetD3DDevice_Detour),
-                       reinterpret_cast<LPVOID*>(&slSetD3DDevice_Original), "slSetD3DDevice");
-    CreateAndEnableHook(GetProcAddress(sl_interposer, "slSetTag"), reinterpret_cast<LPVOID>(slSetTag_Detour),
-                        reinterpret_cast<LPVOID*>(&slSetTag_Original), "slSetTag");
-    CreateAndEnableHook(GetProcAddress(sl_interposer, "slSetTagForFrame"),
-                        reinterpret_cast<LPVOID>(slSetTagForFrame_Detour),
-                        reinterpret_cast<LPVOID*>(&slSetTagForFrame_Original), "slSetTagForFrame");
-    CreateAndEnableHook(GetProcAddress(sl_interposer, "slEvaluateFeature"),
-                        reinterpret_cast<LPVOID>(slEvaluateFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&slEvaluateFeature_Original), "slEvaluateFeature");
 
     LogInfo("Streamline hooks installed successfully");
 

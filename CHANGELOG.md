@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.362
+- **ADHD: no init when both options off** - When both "ADHD on game display" and "ADHD Multi-Monitor Mode" are disabled, the ADHD manager no longer initializes: the background window class is not registered and the message-pump thread is not started. Initialization happens only when the user enables at least one option. Details: adhd_multi_monitor.cpp SetEnabled().
+
 ## v0.12.361
 - **Brightness/AutoHDR and ReShade paths default off** - The "Enable Brightness, AutoHDR and ReShade paths" setting now defaults to off. New installs will not add Display Commander's Shaders/Textures folder to ReShade's EffectSearchPaths/TextureSearchPaths until the user enables it. Details: config key `brightness_autohdr_section_enabled_doff`, default false in settings/main_tab_settings.cpp.
 

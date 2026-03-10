@@ -81,9 +81,6 @@ if(MSVC)
     $<$<CONFIG:Release>:/DEBUG>
   )
 endif()
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(display_commander_common_options INTERFACE -msse4.1 -msse4.2 -mavx -mavx2 -mmwaitx -Wno-microsoft-cast -Wno-microsoft-string-literal-from-predefined)
-endif()
 
 # Object library: all sources except main_entry.cpp (and main_exe.cpp). Compiled once and linked into both DLL and exe.
 add_library(display_commander_objs OBJECT ${DISPLAY_COMMANDER_COMMON_SOURCES})
@@ -120,7 +117,6 @@ endif()
 # DXGI library is needed for DXGI interface IIDs
 # ETW libraries (tdh/advapi32) are needed for PresentMon-style tracing
 # WinInet library is needed for HTTP downloads (shader packages list)
-# Note: Some toolchains (e.g. clang-cl without full Windows SDK lib path) may not have evntrace.lib on the link path.
 # bcrypt for SHA256 (ReShade installer signature verification)
 # opengl32 not linked: when used as opengl32.dll proxy we export gl*/wgl*; linking opengl32.lib would conflict.
 # Standalone UI and imgui_impl_opengl3 use runtime loader (see opengl_loader and imgui embedded loader).
@@ -146,11 +142,6 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook")
 
   # MinHook include directories
   target_include_directories(minhook PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../../external/minhook/include)
-
-  # When using clang-cl, undefine _MSC_VER for MinHook C sources to force memcpy path instead of __movsb
-  if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
-    set_source_files_properties(${MINHOOK_SOURCES} PROPERTIES COMPILE_OPTIONS "-U_MSC_VER")
-  endif()
 
   # Use static runtime linking for MinHook as well
   if(MSVC)
@@ -236,13 +227,6 @@ if(EXISTS "${DC_CONTROL_FX}")
   if(NOT EXISTS "${DC_PERCEPTUALBOOST_FX}")
     message(WARNING "DisplayCommander_PerceptualBoost.fx not found at ${DC_PERCEPTUALBOOST_FX} - resource 303 will be missing")
   endif()
-endif()
-
-# opengl32_proxy.cpp defines wgl* that wingdi.h declares as dllimport; suppress inconsistent-dllimport
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/opengl32_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
-  set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/winmm_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
-  set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/proxy_dll/dbghelp_proxy.cpp PROPERTIES COMPILE_OPTIONS "-Wno-inconsistent-dllimport")
 endif()
 
 # Standalone UIs (RunStandaloneSettingsUI, RunStandaloneGamesOnlyUI) use a second ImGui in namespace

@@ -35,11 +35,11 @@ static std::atomic<bool> g_wndproc_lock_initialized{false};
 
 // Message rate detection: log when messages/sec exceed static thresholds (logarithmic steps).
 static constexpr uint64_t kMessageRateWindowNs = 1'000'000'000;  // 1 second
-static constexpr uint32_t kMessageRateThresholds[] = {
-    128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304};
-static constexpr size_t kMessageRateThresholdCount =
-    sizeof(kMessageRateThresholds) / sizeof(kMessageRateThresholds[0]);
-static constexpr uint32_t kMessageRatePrintNextCountInitial = 128;  // upon reaching limit, print this many; doubled each time reached
+static constexpr uint32_t kMessageRateThresholds[] = {128,   256,   512,    1024,   2048,   4096,    8192,    16384,
+                                                      32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304};
+static constexpr size_t kMessageRateThresholdCount = sizeof(kMessageRateThresholds) / sizeof(kMessageRateThresholds[0]);
+static constexpr uint32_t kMessageRatePrintNextCountInitial =
+    128;  // upon reaching limit, print this many; doubled each time reached
 static constexpr uint32_t kMessageRatePrintNextCountMax = 65536u;
 static std::atomic<uint64_t> g_message_rate_period_start_ns{0};
 static std::atomic<uint32_t> g_message_rate_count{0};
@@ -50,50 +50,50 @@ static std::atomic<uint32_t> g_message_rate_next_print_count{kMessageRatePrintNe
 // Returns literal name for known WM_* (no allocation); nullptr for unknown.
 static const char* GetWindowMessageNameForLog(UINT uMsg) {
     switch (uMsg) {
-        case WM_NULL: return "WM_NULL";
-        case WM_CREATE: return "WM_CREATE";
-        case WM_DESTROY: return "WM_DESTROY";
-        case WM_MOVE: return "WM_MOVE";
-        case WM_SIZE: return "WM_SIZE";
-        case WM_ACTIVATE: return "WM_ACTIVATE";
-        case WM_SETFOCUS: return "WM_SETFOCUS";
-        case WM_KILLFOCUS: return "WM_KILLFOCUS";
-        case WM_PAINT: return "WM_PAINT";
-        case WM_CLOSE: return "WM_CLOSE";
-        case WM_QUIT: return "WM_QUIT";
-        case WM_ERASEBKGND: return "WM_ERASEBKGND";
-        case WM_SHOWWINDOW: return "WM_SHOWWINDOW";
-        case WM_ACTIVATEAPP: return "WM_ACTIVATEAPP";
-        case WM_NCACTIVATE: return "WM_NCACTIVATE";
-        case WM_GETTEXT: return "WM_GETTEXT";
-        case WM_GETTEXTLENGTH: return "WM_GETTEXTLENGTH";
-        case WM_TIMER: return "WM_TIMER";
-        case WM_HSCROLL: return "WM_HSCROLL";
-        case WM_VSCROLL: return "WM_VSCROLL";
-        case WM_INITMENU: return "WM_INITMENU";
-        case WM_COMMAND: return "WM_COMMAND";
-        case WM_SYSCOMMAND: return "WM_SYSCOMMAND";
+        case WM_NULL:              return "WM_NULL";
+        case WM_CREATE:            return "WM_CREATE";
+        case WM_DESTROY:           return "WM_DESTROY";
+        case WM_MOVE:              return "WM_MOVE";
+        case WM_SIZE:              return "WM_SIZE";
+        case WM_ACTIVATE:          return "WM_ACTIVATE";
+        case WM_SETFOCUS:          return "WM_SETFOCUS";
+        case WM_KILLFOCUS:         return "WM_KILLFOCUS";
+        case WM_PAINT:             return "WM_PAINT";
+        case WM_CLOSE:             return "WM_CLOSE";
+        case WM_QUIT:              return "WM_QUIT";
+        case WM_ERASEBKGND:        return "WM_ERASEBKGND";
+        case WM_SHOWWINDOW:        return "WM_SHOWWINDOW";
+        case WM_ACTIVATEAPP:       return "WM_ACTIVATEAPP";
+        case WM_NCACTIVATE:        return "WM_NCACTIVATE";
+        case WM_GETTEXT:           return "WM_GETTEXT";
+        case WM_GETTEXTLENGTH:     return "WM_GETTEXTLENGTH";
+        case WM_TIMER:             return "WM_TIMER";
+        case WM_HSCROLL:           return "WM_HSCROLL";
+        case WM_VSCROLL:           return "WM_VSCROLL";
+        case WM_INITMENU:          return "WM_INITMENU";
+        case WM_COMMAND:           return "WM_COMMAND";
+        case WM_SYSCOMMAND:        return "WM_SYSCOMMAND";
         case WM_WINDOWPOSCHANGING: return "WM_WINDOWPOSCHANGING";
-        case WM_WINDOWPOSCHANGED: return "WM_WINDOWPOSCHANGED";
-        case WM_ENTERSIZEMOVE: return "WM_ENTERSIZEMOVE";
-        case WM_EXITSIZEMOVE: return "WM_EXITSIZEMOVE";
-        case WM_MOUSEACTIVATE: return "WM_MOUSEACTIVATE";
-        case WM_GETMINMAXINFO: return "WM_GETMINMAXINFO";
-        case WM_NCCREATE: return "WM_NCCREATE";
-        case WM_NCDESTROY: return "WM_NCDESTROY";
-        case WM_NCHITTEST: return "WM_NCHITTEST";
-        case WM_NCPAINT: return "WM_NCPAINT";
-        case WM_KEYDOWN: return "WM_KEYDOWN";
-        case WM_KEYUP: return "WM_KEYUP";
-        case WM_CHAR: return "WM_CHAR";
-        case WM_LBUTTONDOWN: return "WM_LBUTTONDOWN";
-        case WM_LBUTTONUP: return "WM_LBUTTONUP";
-        case WM_RBUTTONDOWN: return "WM_RBUTTONDOWN";
-        case WM_RBUTTONUP: return "WM_RBUTTONUP";
-        case WM_MOUSEMOVE: return "WM_MOUSEMOVE";
-        case WM_MOUSEWHEEL: return "WM_MOUSEWHEEL";
-        case WM_APP: return "WM_APP";
-        default: return nullptr;
+        case WM_WINDOWPOSCHANGED:  return "WM_WINDOWPOSCHANGED";
+        case WM_ENTERSIZEMOVE:     return "WM_ENTERSIZEMOVE";
+        case WM_EXITSIZEMOVE:      return "WM_EXITSIZEMOVE";
+        case WM_MOUSEACTIVATE:     return "WM_MOUSEACTIVATE";
+        case WM_GETMINMAXINFO:     return "WM_GETMINMAXINFO";
+        case WM_NCCREATE:          return "WM_NCCREATE";
+        case WM_NCDESTROY:         return "WM_NCDESTROY";
+        case WM_NCHITTEST:         return "WM_NCHITTEST";
+        case WM_NCPAINT:           return "WM_NCPAINT";
+        case WM_KEYDOWN:           return "WM_KEYDOWN";
+        case WM_KEYUP:             return "WM_KEYUP";
+        case WM_CHAR:              return "WM_CHAR";
+        case WM_LBUTTONDOWN:       return "WM_LBUTTONDOWN";
+        case WM_LBUTTONUP:         return "WM_LBUTTONUP";
+        case WM_RBUTTONDOWN:       return "WM_RBUTTONDOWN";
+        case WM_RBUTTONUP:         return "WM_RBUTTONUP";
+        case WM_MOUSEMOVE:         return "WM_MOUSEMOVE";
+        case WM_MOUSEWHEEL:        return "WM_MOUSEWHEEL";
+        case WM_APP:               return "WM_APP";
+        default:                   return nullptr;
     }
 }
 
@@ -108,8 +108,8 @@ static void CheckMessageRateAndLogIfHigh(HWND hwnd, UINT uMsg, WPARAM wParam, LP
                      static_cast<unsigned long long>(wParam), static_cast<unsigned long long>(lParam));
         } else {
             LogError("Window message [rate dump]: hwnd=0x%p uMsg=0x%u wParam=0x%llx lParam=0x%llx",
-                     static_cast<void*>(hwnd), static_cast<unsigned>(uMsg),
-                     static_cast<unsigned long long>(wParam), static_cast<unsigned long long>(lParam));
+                     static_cast<void*>(hwnd), static_cast<unsigned>(uMsg), static_cast<unsigned long long>(wParam),
+                     static_cast<unsigned long long>(lParam));
         }
         g_message_rate_print_remaining.store(remaining - 1, std::memory_order_release);
     }
@@ -124,6 +124,7 @@ static void CheckMessageRateAndLogIfHigh(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         period_start = now;
     }
     const uint32_t c = g_message_rate_count.fetch_add(1, std::memory_order_relaxed) + 1;
+    static size_t max_threshold_reached = -1;
     for (size_t i = 0; i < kMessageRateThresholdCount; ++i) {
         const uint32_t threshold = kMessageRateThresholds[i];
         if (c < threshold) {
@@ -131,8 +132,8 @@ static void CheckMessageRateAndLogIfHigh(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         }
         uint32_t last = g_message_rate_last_logged_threshold.load(std::memory_order_acquire);
         if (last < threshold) {
-            if (g_message_rate_last_logged_threshold.compare_exchange_strong(
-                    last, threshold, std::memory_order_release, std::memory_order_acquire)) {
+            if (g_message_rate_last_logged_threshold.compare_exchange_strong(last, threshold, std::memory_order_release,
+                                                                             std::memory_order_acquire)) {
                 LogError("Window message rate very high: %u messages in the last second (threshold %u)", c, threshold);
                 if (threshold == kMessageRateThresholds[0]) {
                     uint32_t to_print = g_message_rate_next_print_count.load(std::memory_order_acquire);
@@ -519,13 +520,23 @@ void SendFakeActivationMessages(HWND hwnd) {
     if (hwnd == nullptr || !IsWindow(hwnd)) {
         return;
     }
+    static uint64_t last_called_ns = 0;
+    const uint64_t now = utils::get_real_time_ns();
+    if (last_called_ns != 0 && (now - last_called_ns) < 100 * utils::NS_TO_MS) {
+        return;
+    }
+    last_called_ns = now;
 
     // Send fake activation messages to keep the game thinking it's active
     // Based on Special-K's patterns for better compatibility
-    PostMessage(hwnd, WM_ACTIVATE, WA_ACTIVE, 0);
-    PostMessage(hwnd, WM_SETFOCUS, 0, 0);
-    PostMessage(hwnd, WM_ACTIVATEAPP, TRUE, 0);
-    PostMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
+    std::thread([hwnd]() {
+        if (IsWindow(hwnd)) {
+            SendMessage(hwnd, WM_ACTIVATE, WA_ACTIVE, 0);
+            SendMessage(hwnd, WM_SETFOCUS, 0, 0);
+            SendMessage(hwnd, WM_ACTIVATEAPP, TRUE, 0);
+            SendMessage(hwnd, WM_NCACTIVATE, TRUE, 0);
+        }
+    }).detach();
 
     LogInfo("Sent fake activation messages to window - HWND: 0x%p", hwnd);
 }
@@ -541,12 +552,12 @@ void DetourWindowMessageNonBlocking(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
         return;
     }
 
+    static uint64_t last_called_ns = 0;
     const uint64_t now = utils::get_real_time_ns();
-    const uint64_t last = g_last_detour_dispatch_ns.load(std::memory_order_acquire);
-    if (last != 0 && (now - last) < kDetourThrottleNs) {
-        return;  // Skip: called within 100ms of previous dispatch
+    if (last_called_ns != 0 && (now - last_called_ns) < 100 * utils::NS_TO_MS) {
+        return;
     }
-    g_last_detour_dispatch_ns.store(now, std::memory_order_release);
+    last_called_ns = now;
 
     std::thread([hwnd, uMsg, wParam, lParam]() {
         if (IsWindow(hwnd)) {

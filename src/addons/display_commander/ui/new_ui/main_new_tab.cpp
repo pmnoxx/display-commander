@@ -4291,7 +4291,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     if (g_reshade_event_counters[RESHADE_EVENT_CREATE_SWAPCHAIN_CAPTURE].load() > 0) {
         auto desc_ptr_cb = g_last_swapchain_desc_post.load();
         if (is_dxgi_pt) {
-            if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 200.f)) {
+            if (ComboSettingWrapper(settings::g_mainTabSettings.vsync_override, "VSync", imgui, 300.f)) {
                 LogInfo("VSync override changed to index %d", settings::g_mainTabSettings.vsync_override.GetValue());
             }
             if (imgui.IsItemHovered()) {
@@ -4299,6 +4299,17 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
                     "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every "
                     "frame; 1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no "
                     "restart).");
+            }
+            if (ComboSettingWrapper(settings::g_mainTabSettings.max_frame_latency_override, "Max frame latency", imgui,
+                                    300.f)) {
+                LogInfo("Max frame latency override changed to %d",
+                        settings::g_mainTabSettings.max_frame_latency_override.GetValue());
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx(
+                    "Override IDXGISwapChain2::SetMaximumFrameLatency. No override = "
+                    "game default. 1 = lowest input latency (single frame queue); 2-16 = more CPU-GPU parallelism. "
+                    "Applied per swapchain at runtime.");
             }
         } else {
             bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
@@ -4355,26 +4366,18 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
     }
 
     auto desc_ptr = g_last_swapchain_desc_post.load();
-    if (desc_ptr
-        && (desc_ptr->back_buffer_count < 3 || settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue())) {
-        imgui.SameLine();
-        bool increase_backbuffer = settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue();
-        if (imgui.Checkbox("Increase Backbuffer Count to 3", &increase_backbuffer)) {
-            settings::g_mainTabSettings.increase_backbuffer_count_to_3.SetValue(increase_backbuffer);
+    if (desc_ptr) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui,
+                                300.f)) {
             s_restart_needed_vsync_tearing.store(true);
-            LogInfo(increase_backbuffer ? "Increase Backbuffer Count to 3 enabled"
-                                        : "Increase Backbuffer Count to 3 disabled");
+            LogInfo("Backbuffer count override changed to %d",
+                    settings::g_mainTabSettings.backbuffer_count_override.GetValue());
         }
         if (imgui.IsItemHovered()) {
             std::ostringstream tooltip;
-            if (desc_ptr) {
-                tooltip << "Increases backbuffer count from " << desc_ptr->back_buffer_count
-                        << " to 3 (requires restart).\n"
-                        << "Current backbuffer count: " << desc_ptr->back_buffer_count;
-            } else {
-                tooltip << "Increases backbuffer count to 3 (requires restart).\n"
-                        << "Current backbuffer count: unknown (no swapchain yet).";
-            }
+            tooltip
+                << "Override swapchain backbuffer count at creation (requires restart). No override = game default.\n"
+                << "Current: " << desc_ptr->back_buffer_count << ". DXGI flip requires at least 2.";
             imgui.SetTooltip("%s", tooltip.str().c_str());
         }
     }
@@ -4448,6 +4451,16 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
                 "Override DXGI Present SyncInterval. No override = use game setting. Force ON = VSync every frame; "
                 "1/2-1/4 = every 2nd-4th vblank (not VRR); FORCED OFF = no VSync. Applied at runtime (no restart).");
         }
+        if (ComboSettingWrapper(settings::g_mainTabSettings.max_frame_latency_override, "Max frame latency", imgui,
+                                100.f)) {
+            LogInfo("Max frame latency override changed to %d",
+                    settings::g_mainTabSettings.max_frame_latency_override.GetValue());
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Override SetMaximumFrameLatency. No override = game default. 1 = "
+                "lowest latency; 2-16 = more parallelism. Applied per swapchain at runtime.");
+        }
     } else {
         bool vs_on = settings::g_mainTabSettings.force_vsync_on.GetValue();
         if (imgui.Checkbox("Force VSync ON", &vs_on)) {
@@ -4490,17 +4503,15 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
     }
 
     imgui.SameLine();
-    bool increase_backbuffer = settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue();
-    if (imgui.Checkbox("Increase Backbuffer Count to 3", &increase_backbuffer)) {
-        settings::g_mainTabSettings.increase_backbuffer_count_to_3.SetValue(increase_backbuffer);
+    if (ComboSettingWrapper(settings::g_mainTabSettings.backbuffer_count_override, "Backbuffer count", imgui, 100.f)) {
         s_restart_needed_vsync_tearing.store(true);
-        LogInfo(increase_backbuffer ? "Increase Backbuffer Count to 3 enabled"
-                                    : "Increase Backbuffer Count to 3 disabled");
+        LogInfo("Backbuffer count override changed to %d",
+                settings::g_mainTabSettings.backbuffer_count_override.GetValue());
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
-            "Increases backbuffer count to 3 (requires restart).\n"
-            "Applies when game creates swapchain. No-ReShade mode: no live swapchain info.");
+            "Override swapchain backbuffer count at creation (requires restart). No override = game default. "
+            "Applies when game creates swapchain.");
     }
 
     if (has_dxgi) {
@@ -8225,7 +8236,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_WARNING, "(Disabled due to Smooth Motion)");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
+                imgui.SetTooltip(
+                    "nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
             }
         }
         imgui.NextColumn();

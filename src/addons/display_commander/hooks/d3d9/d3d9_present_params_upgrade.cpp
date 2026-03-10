@@ -29,10 +29,12 @@ bool ApplyD3D9PresentParameterUpgrades(D3DPRESENT_PARAMETERS* pp, bool is_create
         modified = true;
     }
 
-    // Increase back buffer count to 3 if enabled
-    if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && pp->BackBufferCount < 3) {
-        LogInfo("D3D9 (no-ReShade): Increasing back buffer count from %u to 3", pp->BackBufferCount);
-        pp->BackBufferCount = 3;
+    // Override back buffer count if user selected 1–4
+    const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+    if (backbuffer_override >= 1 && backbuffer_override <= 4
+        && pp->BackBufferCount != static_cast<UINT>(backbuffer_override)) {
+        LogInfo("D3D9 (no-ReShade): Overriding back buffer count from %u to %d", pp->BackBufferCount, backbuffer_override);
+        pp->BackBufferCount = static_cast<UINT>(backbuffer_override);
         modified = true;
     }
 

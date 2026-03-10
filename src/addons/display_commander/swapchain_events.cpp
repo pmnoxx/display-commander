@@ -539,10 +539,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Increase backbuffer count to 3 if enabled and current count < 3
-        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
-            LogInfo("D3D9: Increasing back buffer count from %u to 3", desc.back_buffer_count);
-            desc.back_buffer_count = 3;
+        // Override backbuffer count if user selected 1–4
+        const int backbuffer_override = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+        if (backbuffer_override >= 1 && backbuffer_override <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override)) {
+            LogInfo("D3D9: Overriding back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override);
+            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override);
             modified = true;
         }
 
@@ -637,10 +639,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Increase backbuffer count to 3 if enabled and current count < 3
-        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
-            LogInfo("Increasing back buffer count from %u to 3", desc.back_buffer_count);
-            desc.back_buffer_count = 3;
+        // Override backbuffer count if user selected 1–4
+        const int backbuffer_override_dxgi = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+        if (backbuffer_override_dxgi >= 1 && backbuffer_override_dxgi <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_dxgi)) {
+            LogInfo("Increasing back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override_dxgi);
+            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_dxgi);
             modified = true;
         }
 
@@ -846,10 +850,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Increase backbuffer count to 3 if enabled and current count < 3
-        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
-            LogInfo("OpenGL: Increasing back buffer count from %u to 3", desc.back_buffer_count);
-            desc.back_buffer_count = 3;
+        // Override backbuffer count if user selected 1–4
+        const int backbuffer_override_gl = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+        if (backbuffer_override_gl >= 1 && backbuffer_override_gl <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_gl)) {
+            LogInfo("OpenGL: Overriding back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override_gl);
+            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_gl);
             modified = true;
         }
 
@@ -924,10 +930,12 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
             modified = true;
         }
 
-        // Increase backbuffer count to 3 if enabled and current count < 3
-        if (settings::g_mainTabSettings.increase_backbuffer_count_to_3.GetValue() && desc.back_buffer_count < 3) {
-            LogInfo("Vulkan: Increasing back buffer count from %u to 3", desc.back_buffer_count);
-            desc.back_buffer_count = 3;
+        // Override backbuffer count if user selected 1–4
+        const int backbuffer_override_vk = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
+        if (backbuffer_override_vk >= 1 && backbuffer_override_vk <= 4
+            && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_vk)) {
+            LogInfo("Vulkan: Overriding back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override_vk);
+            desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_vk);
             modified = true;
         }
 
@@ -1784,26 +1792,26 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     hookToSwapChain(swapchain);
 
+    // Per-swapchain private data: load at start, update when we have DXGI swapchain, save at end if changed
+    display_commanderhooks::dxgi::DCDxgiSwapchainData private_data{};
+    bool changed = false;
+    IDXGISwapChain* dxgi_swapchain_for_save = nullptr;
+
     // Auto set color space if enabled
     bool idx_dx12 = api == reshade::api::device_api::d3d12;
     bool dx_dx11 = api == reshade::api::device_api::d3d11;
     bool dx_dx10 = api == reshade::api::device_api::d3d10;
     bool dx_d3d9 = api == reshade::api::device_api::d3d9;
     bool is_dxgi = idx_dx12 || dx_dx11 || dx_dx10;
+    Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
     if (idx_dx12) {
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get(), swapchain, api, command_queue);
-
             AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
         }
     } else if (dx_dx11) {
         IUnknown* swapchain_native = reinterpret_cast<IUnknown*>(swapchain->get_native());
-        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (swapchain_native != nullptr && SUCCEEDED(swapchain_native->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get(), swapchain, api, command_queue);
-
             // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
             Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
             if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))
@@ -1818,10 +1826,45 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
         Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            display_commanderhooks::dxgi::RecordPresentUpdateSwapchain(dxgi_swapchain.Get(), swapchain, api, command_queue);
+            AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
         }
     }
 
+    if (dxgi_swapchain.Get() != nullptr) {
+        dxgi_swapchain_for_save = dxgi_swapchain.Get();
+        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(dxgi_swapchain_for_save, &private_data);
+
+        if (private_data.dxgi_swapchain == nullptr) {
+            private_data.dxgi_swapchain = dxgi_swapchain_for_save;
+            private_data.swapchain = swapchain;
+            private_data.command_queue = command_queue;
+            private_data.device_api = api;
+            changed = true;
+        }
+
+        // Apply SetMaximumFrameLatency override (Main tab). Track applied value in private_data so we only set when
+        // the user's choice differs from what we last applied (per swapchain).
+        const int desired_latency = settings::g_mainTabSettings.max_frame_latency_override.GetValue();
+        if (desired_latency >= 1 && desired_latency <= 16) {
+            if (private_data.applied_max_frame_latency != static_cast<uint32_t>(desired_latency)) {
+                Microsoft::WRL::ComPtr<IDXGISwapChain2> sc2;
+                if (SUCCEEDED(dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&sc2)))) {
+                    const UINT clamped = static_cast<UINT>(desired_latency);
+                    HRESULT hr = sc2->SetMaximumFrameLatency(clamped);
+                    if (SUCCEEDED(hr)) {
+                        private_data.applied_max_frame_latency = clamped;
+                        changed = true;
+                    }
+                }
+            }
+        } else {
+            // No override (0): clear applied so we can re-apply when user selects a value again
+            if (private_data.applied_max_frame_latency != 0) {
+                private_data.applied_max_frame_latency = 0;
+                changed = true;
+            }
+        }
+    }
     // Record the native D3D9 device for Present detour filtering
     if (dx_d3d9) {
         // query don't assume
@@ -1856,15 +1899,14 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     // Always flush command queue before present to reduce latency
     g_flush_before_present_time_ns.store(utils::get_now_ns());
 
-    // Enqueue GPU completion measurement using the recorded present-update state (swapchain + command_queue from
-    // RecordPresentUpdateSwapchain / GetLastPresentUpdateModeData). No fallback - command queue comes from structure
-    // only. Optional (default on) via Advanced tab. Skip when Smooth Motion (nvpresent) is loaded - frame generation
-    // makes GPU completion timing misleading.
+    // Enqueue GPU completion measurement using this swapchain's private data (command_queue from
+    // DCDxgiSwapchainData). Optional (default on) via Advanced tab. Skip when Smooth Motion (nvpresent) is loaded -
+    // frame generation makes GPU completion timing misleading.
     const bool smooth_motion_loaded = ::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
     if ((idx_dx12 || dx_dx11) && settings::g_advancedTabSettings.enqueue_gpu_completion.GetValue()
         && !smooth_motion_loaded) {
         perf_timer.pause();
-        EnqueueGPUCompletionFromRecordedState();
+        EnqueueGPUCompletionFromRecordedState(dxgi_swapchain_for_save, &private_data);
         perf_timer.resume();
     } else if ((idx_dx12 || dx_dx11) && settings::g_advancedTabSettings.enqueue_gpu_completion.GetValue()
                && smooth_motion_loaded) {
@@ -1947,6 +1989,10 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
                 }
             }
         }
+    }
+
+    if (is_dxgi && dxgi_swapchain_for_save != nullptr && changed) {
+        display_commanderhooks::dxgi::SaveDCDxgiSwapchainData(dxgi_swapchain_for_save, &private_data);
     }
 
     // DXGI composition / independent flip state is no longer queried or shown in UI.

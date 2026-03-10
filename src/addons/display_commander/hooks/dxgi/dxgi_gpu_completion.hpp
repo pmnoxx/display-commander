@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dxgi_present_hooks.hpp"
+
 #include <reshade.hpp>
 #include <d3d11_4.h>
 #include <d3d12.h>
@@ -10,7 +12,8 @@
 // command_queue is optional but recommended for D3D12 to signal the fence correctly
 void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain, reshade::api::command_queue* command_queue = nullptr);
 
-// Enqueue GPU completion using the last recorded present-update state (swapchain, api, command_queue from
-// GetLastPresentUpdateModeData). Use this when the command queue should come from the stored structure only (no fallback).
-void EnqueueGPUCompletionFromRecordedState();
+// Enqueue GPU completion using the given DXGI swapchain and its DCDxgiSwapchainData (swapchain, api, command_queue).
+// Call from OnPresentUpdateBefore with the current frame's dxgi_swapchain and local DCDxgiSwapchainData.
+void EnqueueGPUCompletionFromRecordedState(IDXGISwapChain* dxgi_swapchain,
+                                           const display_commanderhooks::dxgi::DCDxgiSwapchainData* data);
 

@@ -65,11 +65,15 @@ class MainTabSettings {
     /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied
      * at Present. */
     ui::new_ui::ComboSetting vsync_override;
+    /** DXGI only: 0=No override, 1–16=SetMaximumFrameLatency value. Applied per
+     * swapchain in OnPresentUpdateBefore. */
+    ui::new_ui::ComboSetting max_frame_latency_override;
     ui::new_ui::BoolSetting force_vsync_on;
     ui::new_ui::BoolSetting force_vsync_off;
     ui::new_ui::BoolSetting prevent_tearing;
     ui::new_ui::BoolSetting limit_real_frames;
-    ui::new_ui::BoolSetting increase_backbuffer_count_to_3;
+    /** 0 = No override (game default), 1–4 = force backbuffer count at swapchain creation. Requires restart. */
+    ui::new_ui::ComboSetting backbuffer_count_override;
     /** DXGI only: when game uses FLIP_SEQUENTIAL, upgrade to FLIP_DISCARD in OnCreateSwapchainCapture2. */
     ui::new_ui::BoolSetting force_flip_discard_upgrade;
 

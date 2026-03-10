@@ -2750,25 +2750,14 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         // Max Anisotropy Override
         // Only affects existing anisotropic filters
-        int max_aniso = settings::g_mainTabSettings.max_anisotropy.GetValue();
-        if (imgui.SliderInt("Anisotropic Level", &max_aniso, 0, 16, max_aniso == 0 ? "Game Default" : "%dx")) {
-            settings::g_mainTabSettings.max_anisotropy.SetValue(max_aniso);
-            LogInfo("Max anisotropy set to %d", max_aniso);
+        if (SliderIntSetting(settings::g_mainTabSettings.max_anisotropy, "Anisotropic Level", "%d", imgui)) {
+            LogInfo("Max anisotropy set to %d", settings::g_mainTabSettings.max_anisotropy.GetValue());
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
                 "Set to 0 (Game default) to preserve the game's original AF settings.\n"
                 "Only affects samplers that already use anisotropic filtering.");
-        }
-
-        // Reset button for Anisotropic Level
-        if (max_aniso != 0) {
-            imgui.SameLine();
-            if (imgui.Button("Game Default##Anisotropic Level")) {
-                settings::g_mainTabSettings.max_anisotropy.SetValue(0);
-                LogInfo("Max anisotropy reset to game default");
-            }
         }
 
         imgui.Spacing();
@@ -3957,23 +3946,16 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
         {
             imgui.Indent();
-            int max_queued = settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue();
             imgui.SetNextItemWidth(400.f);
-            if (imgui.SliderInt("Max queued frames", &max_queued, 0, 5, max_queued == 5 ? "Game default" : "%d")) {
-                settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(max_queued);
+            if (SliderIntSetting(settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames, "Max queued frames",
+                                 "%d", imgui)) {
+                LogInfo("Max queued frames changed");
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Max frames to queue when using Reflex markers as FPS limiter (0–5). 5 = game default.");
+                    "Max frames to queue when using Reflex markers as FPS limiter. 0 = game default; 1–6 = limit.");
             }
-            if (max_queued != 0) {
-                imgui.SameLine();
-                if (imgui.Button("Revert to default##Max queued frames")) {
-                    settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
-                    LogInfo("Max queued frames reset to default (0)");
-                }
-            }
-            if (max_queued < 5) imgui.BeginDisabled();
+            if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.BeginDisabled();
             if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
                                 imgui)) {
                 LogInfo("Native pacing sim start only %s",
@@ -4008,7 +3990,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
             }
-            if (max_queued < 5) imgui.EndDisabled();
+            if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.EndDisabled();
             imgui.Unindent();
             imgui.Unindent();
         }
@@ -4029,8 +4011,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     {
         const size_t runtime_count = GetReShadeRuntimeCount();
         if (runtime_count > 0) {
-            settings::g_mainTabSettings.selected_reshade_runtime_index.SetMax(
-                static_cast<int>(runtime_count) - 1);
+            settings::g_mainTabSettings.selected_reshade_runtime_index.SetMax(static_cast<int>(runtime_count) - 1);
             int current_index = settings::g_mainTabSettings.selected_reshade_runtime_index.GetValue();
             if (current_index < 0 || static_cast<size_t>(current_index) >= runtime_count) {
                 current_index = 0;
@@ -4051,7 +4032,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                             case reshade::api::device_api::d3d12:  api_str = "D3D12"; break;
                             case reshade::api::device_api::opengl: api_str = "OpenGL"; break;
                             case reshade::api::device_api::vulkan: api_str = "Vulkan"; break;
-                            default: break;
+                            default:                               break;
                         }
                     }
                     HWND hwnd = rt ? static_cast<HWND>(rt->get_hwnd()) : nullptr;
@@ -4074,8 +4055,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 for (size_t i = 0; i < runtime_labels.size(); ++i) {
                     const bool selected = (static_cast<int>(i) == current_index);
                     if (imgui.Selectable(runtime_labels[i].c_str(), selected)) {
-                        settings::g_mainTabSettings.selected_reshade_runtime_index.SetValue(
-                            static_cast<int>(i));
+                        settings::g_mainTabSettings.selected_reshade_runtime_index.SetValue(static_cast<int>(i));
                         settings::g_mainTabSettings.selected_reshade_runtime_index.Save();
                     }
                     if (selected) {
@@ -4204,10 +4184,8 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
 
 static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImGuiWrapper& imgui) {
     // Scanline Offset (only visible if scanline mode is selected)
-    int current_offset = settings::g_mainTabSettings.scanline_offset.GetValue();
-    int temp_offset = current_offset;
-    if (imgui.SliderInt("Scanline Offset", &temp_offset, -1000, 1000, "%d")) {
-        settings::g_mainTabSettings.scanline_offset.SetValue(temp_offset);
+    if (SliderIntSetting(settings::g_mainTabSettings.scanline_offset, "Scanline Offset", "%d", imgui)) {
+        // Setting is automatically saved by SliderIntSetting
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
@@ -4216,11 +4194,9 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
     }
 
     // VBlank Sync Divisor (only visible if latent sync mode is selected)
-    int current_divisor = settings::g_mainTabSettings.vblank_sync_divisor.GetValue();
-    int temp_divisor = current_divisor;
-    if (imgui.SliderInt("VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)", &temp_divisor,
-                        0, 8, "%d")) {
-        settings::g_mainTabSettings.vblank_sync_divisor.SetValue(temp_divisor);
+    if (SliderIntSetting(settings::g_mainTabSettings.vblank_sync_divisor,
+                         "VBlank Sync Divisor (controls FPS limit as fraction of monitor refresh rate)", "%d", imgui)) {
+        // Setting is automatically saved by SliderIntSetting
     }
     if (imgui.IsItemHovered()) {
         // Calculate effective refresh rate based on monitor info

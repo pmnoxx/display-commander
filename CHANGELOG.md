@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.382
+- **Main tab: SliderIntSetting for integer sliders** - Max queued frames, Scanline Offset, VBlank Sync Divisor, and Anisotropic Level now use `SliderIntSetting` instead of raw ImGui SliderInt. Values are persisted via IntSetting and a reset-to-default button appears when the value differs from the setting default. Details: main_new_tab.cpp.
+- **Max queued frames: 0 = game default, range 0–6** - The Reflex FPS limiter "Max queued frames" setting now uses 0 for game default (no override). Slider range is 0–6; default is 0. When 0, the addon does not apply the queued-frames wait; 1–6 limits max queued frames. "Native frame pacing" and "Delay (frames)" are only editable when the value is 0. Details: main_tab_settings (default 0, min 0, max 6); nvapi_hooks.cpp (game default when == 0, limiter when > 0); main_new_tab.cpp.
+
 ## v0.12.381
 - **Steam achievement list and notification: show description** - The Steam achievement list in the Advanced tab now shows each achievement’s localized description in the hover tooltip (API name + description). The achievement-unlocked overlay notification also shows the description of the last-unlocked achievement when available (below the achievement name). The “Achievement name lookup” section in the Advanced tab displays the description for the last-unlocked achievement. Descriptions come from Steam’s GetAchievementDisplayAttribute(..., "desc"). Details: steam_achievements.hpp/cpp (SteamAchievementEntry.description, SteamLastUnlockedInfo.description); steam_achievement_cache (bump description buffer and GetSteamAchievementBumpTextNonBlocking out_description); advanced_tab.cpp tooltip and name lookup; main_entry.cpp overlay.
 

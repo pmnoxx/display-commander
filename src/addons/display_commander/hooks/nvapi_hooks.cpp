@@ -174,7 +174,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue();
 
     bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue()
-                                        && reflex_fps_limiter_max_queued_frames == 5;  // game default
+                                        && reflex_fps_limiter_max_queued_frames == 0;  // game default
 
     if (native_pacing_sim_start_only) {
         bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
@@ -220,14 +220,14 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
             return NVAPI_OK;
         }
 
-        if (reflex_fps_limiter_max_queued_frames < 5) {
+        if (reflex_fps_limiter_max_queued_frames > 0) {
             const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
             const size_t prevSlot = static_cast<size_t>(
-                (frame_id - 1 + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
+                (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
             const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
 
             if (g_latency_marker_buffer[prevSlot].frame_id.load(std::memory_order_relaxed)
-                == frame_id - 1 - reflex_fps_limiter_max_queued_frames) {
+                == frame_id - reflex_fps_limiter_max_queued_frames) {
                 auto start_ns = utils::get_now_ns();
                 while (
                     g_latency_marker_buffer[prevSlot].marker_time_ns[NV_LATENCY_MARKER_TYPE::SIMULATION_START].load()

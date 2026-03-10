@@ -413,42 +413,76 @@ MH_STATUS SafeInitializeMinHook(display_commanderhooks::HookType hookType) {
     return init_status;
 }
 
-// Display Commander folder in Local App Data: %LocalAppData%\Programs\Display_Commander (shared across games)
+// Display Commander folder in Local App Data: %LocalAppData%\Programs\Display_Commander (shared across games).
+// Creates the directory if it does not exist; returns empty path if creation fails.
 std::filesystem::path GetDisplayCommanderAppDataFolder() {
     wchar_t localappdata_path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, localappdata_path))) {
         return std::filesystem::path();
     }
     std::filesystem::path base(localappdata_path);
-    return base / L"Programs" / L"Display_Commander";
+    std::filesystem::path dc_folder = base / L"Programs" / L"Display_Commander";
+    std::error_code ec;
+    if (!std::filesystem::exists(dc_folder, ec)) {
+        if (!std::filesystem::create_directories(dc_folder, ec)) {
+            return std::filesystem::path();
+        }
+    }
+    return dc_folder;
 }
 
-// Display Commander ReShade root: contains Shaders and Textures subfolders used for EffectSearchPaths/TextureSearchPaths
+// Display Commander ReShade root: contains Shaders and Textures subfolders used for EffectSearchPaths/TextureSearchPaths.
+// Creates the directory if it does not exist; returns empty path if creation fails.
 std::filesystem::path GetDisplayCommanderReshadeRootFolder() {
     std::filesystem::path base = GetDisplayCommanderAppDataFolder();
     if (base.empty()) {
         return base;
     }
-    return base / L"Reshade";
+    std::filesystem::path reshade_folder = base / L"Reshade";
+    std::error_code ec;
+    if (!std::filesystem::exists(reshade_folder, ec)) {
+        if (!std::filesystem::create_directories(reshade_folder, ec)) {
+            return std::filesystem::path();
+        }
+    }
+    return reshade_folder;
 }
 
 // Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized, shared across
-// games)
+// games). Creates the directory if it does not exist; returns empty path if creation fails.
 std::filesystem::path GetDefaultDlssOverrideFolder() {
     std::filesystem::path base = GetDisplayCommanderAppDataFolder();
     if (base.empty()) {
         return base;
     }
-    return base / L"dlss_override";
+    std::filesystem::path dlss_folder = base / L"dlss_override";
+    std::error_code ec;
+    if (!std::filesystem::exists(dlss_folder, ec)) {
+        if (!std::filesystem::create_directories(dlss_folder, ec)) {
+            return std::filesystem::path();
+        }
+    }
+    return dlss_folder;
 }
 
-// Effective default path: base or base/subfolder (subfolder empty = base only)
+// Effective default path: base or base/subfolder (subfolder empty = base only).
+// Creates the directory if it does not exist; returns empty path if creation fails.
 std::filesystem::path GetEffectiveDefaultDlssOverrideFolder(const std::string& subfolder) {
     std::filesystem::path base = GetDefaultDlssOverrideFolder();
+    if (base.empty()) {
+        return base;
+    }
     if (subfolder.empty()) {
         return base;
     }
-    return base / subfolder;
+    std::filesystem::path full = base / subfolder;
+    std::error_code ec;
+    if (!std::filesystem::exists(full, ec)) {
+        if (!std::filesystem::create_directories(full, ec)) {
+            return std::filesystem::path();
+        }
+    }
+    return full;
 }
 
 // Subfolder names under the default DLSS override folder (for UI dropdown)

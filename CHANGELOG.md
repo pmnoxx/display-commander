@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.383
+- **Max queued frames: combo with "Game default"** - The Reflex FPS limiter "Max queued frames" setting is now a combo (like VSync) instead of a slider. The first option shows "Game default" instead of "0"; options 1–6 remain. Stored value is unchanged (0 = game default, 1–6 = limit). Details: main_tab_settings (ComboSetting with labels "Game default", "1" … "6"); main_new_tab.cpp ComboSettingWrapper.
+
 ## v0.12.382
 - **Main tab: SliderIntSetting for integer sliders** - Max queued frames, Scanline Offset, VBlank Sync Divisor, and Anisotropic Level now use `SliderIntSetting` instead of raw ImGui SliderInt. Values are persisted via IntSetting and a reset-to-default button appears when the value differs from the setting default. Details: main_new_tab.cpp.
 - **Max queued frames: 0 = game default, range 0–6** - The Reflex FPS limiter "Max queued frames" setting now uses 0 for game default (no override). Slider range is 0–6; default is 0. When 0, the addon does not apply the queued-frames wait; 1–6 limits max queued frames. "Native frame pacing" and "Delay (frames)" are only editable when the value is 0. Details: main_tab_settings (default 0, min 0, max 6); nvapi_hooks.cpp (game default when == 0, limiter when > 0); main_new_tab.cpp.

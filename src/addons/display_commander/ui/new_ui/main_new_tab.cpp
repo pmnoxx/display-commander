@@ -3946,14 +3946,13 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
         {
             imgui.Indent();
-            imgui.SetNextItemWidth(400.f);
-            if (SliderIntSetting(settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames, "Max queued frames",
-                                 "%d", imgui)) {
+            if (ComboSettingWrapper(settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames, "Max queued frames",
+                                    imgui, 400.f)) {
                 LogInfo("Max queued frames changed");
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Max frames to queue when using Reflex markers as FPS limiter. 0 = game default; 1–6 = limit.");
+                    "Max frames to queue when using Reflex markers as FPS limiter. Game default = no limit; 1–6 = limit.");
             }
             if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.BeginDisabled();
             if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",

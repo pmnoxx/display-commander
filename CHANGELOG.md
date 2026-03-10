@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.375
+- **Auto color space: run at most once per swapchain** - Auto color space (HDR/scRGB from back buffer format) is now applied at most once per swapchain. A new flag in per-swapchain private data (`DCDxgiSwapchainData::auto_colorspace_applied`) records when it has been run, so we no longer re-apply or re-check every present. This removes redundant SetColorSpace1 calls and simplifies the code.
+- **Removed kDcSwapChainColorSpace** - The separate DXGI private-data GUID used to store "last set color space" on the swap chain has been removed. Tracking is now done only via `DCDxgiSwapchainData` (one blob per swapchain). D3D10 auto color space path fixed: the outer DXGI swapchain reference is now set so the once-per-swapchain logic and private data save/load apply to D3D10 as well. Details: hooks/dxgi/dxgi_present_hooks.hpp (auto_colorspace_applied); swapchain_events.cpp (AutoSetColorSpace, OnPresentUpdateBefore).
+
 ## v0.12.374
 - **Main tab: Backbuffer count selector** - Replaced "Increase Backbuffer Count to 3" checkbox with a "Backbuffer count" combo: No override (game default), 1, 2, 3, 4. Applied at swapchain creation for D3D9, DXGI, OpenGL, and Vulkan, and for D3D9 no-ReShade (CreateDevice present params). Requires restart. Config key: backbuffer_count_override (was increase_backbuffer_count_to_3); users who had the checkbox on should select "3".
 - **Main tab: Max frame latency override** - New combo "Max frame latency" in the Main tab (VSync section, DXGI only): No override or 1–16. Overrides IDXGISwapChain2::SetMaximumFrameLatency per swapchain at runtime. 1 = lowest input latency; 2–16 = more CPU–GPU parallelism. Last applied value stored in DCDxgiSwapchainData (applied_max_frame_latency). Details: main_tab_settings (max_frame_latency_override); swapchain_events.cpp OnPresentUpdateBefore; main_new_tab.cpp.

@@ -314,6 +314,8 @@ struct DCDxgiSwapchainData {
     reshade::api::device_api device_api{};
     /** Last value we applied via SetMaximumFrameLatency (0 = not applied by us, 1–16 = value applied). */
     uint32_t applied_max_frame_latency{0};
+    /** True after AutoSetColorSpace has been run once for this swapchain (run at most once per swapchain). */
+    bool auto_colorspace_applied{false};
 };
 
 // Load DCDxgiSwapchainData from swapchain private data. On failure *out is zeroed. Returns true if loaded.

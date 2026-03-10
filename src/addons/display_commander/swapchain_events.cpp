@@ -854,7 +854,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         const int backbuffer_override_gl = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
         if (backbuffer_override_gl >= 1 && backbuffer_override_gl <= 4
             && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_gl)) {
-            LogInfo("OpenGL: Overriding back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override_gl);
+            LogInfo("OpenGL: Overriding back buffer count from %u to %d", desc.back_buffer_count,
+                    backbuffer_override_gl);
             desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_gl);
             modified = true;
         }
@@ -934,7 +935,8 @@ bool OnCreateSwapchainCapture2(reshade::api::device_api api, reshade::api::swapc
         const int backbuffer_override_vk = settings::g_mainTabSettings.backbuffer_count_override.GetValue();
         if (backbuffer_override_vk >= 1 && backbuffer_override_vk <= 4
             && desc.back_buffer_count != static_cast<uint32_t>(backbuffer_override_vk)) {
-            LogInfo("Vulkan: Overriding back buffer count from %u to %d", desc.back_buffer_count, backbuffer_override_vk);
+            LogInfo("Vulkan: Overriding back buffer count from %u to %d", desc.back_buffer_count,
+                    backbuffer_override_vk);
             desc.back_buffer_count = static_cast<uint32_t>(backbuffer_override_vk);
             modified = true;
         }
@@ -1627,15 +1629,8 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
     }
 }
 
-// GUID for Display Commander "last set DXGI color space" on swap chain (SetPrivateData/GetPrivateData).
-// Used to skip SetColorSpace1 when current already matches desired. Do not conflict with ReShade's SKID.
-static constexpr GUID kDcSwapChainColorSpace = {
-    0xdc5a1e70, 0xb3c4, 0x4d9e, {0x8a, 0x2f, 0x1c, 0x4e, 0x5b, 0x6d, 0x7e, 0x8f}};
-
 // Helper to set swap chain and ReShade runtime color space (DXGI path). Tries the requested color space
 // anyway; only falls back to sRGB if SetColorSpace1 fails. Caches support result for UI.
-// On success, stores color_space on the swap chain via SetPrivateData(kDcSwapChainColorSpace) so callers
-// can skip apply when GetPrivateData shows it already matches.
 static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLOR_SPACE_TYPE color_space,
                                    reshade::api::color_space reshade_color_space) {
     auto* unknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
@@ -1659,7 +1654,6 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
                  utils::GetDXGIColorSpaceString(color_space), static_cast<int>(color_space), static_cast<unsigned>(hr));
         return;
     }
-    swapchain3->SetPrivateData(kDcSwapChainColorSpace, sizeof(color_space), &color_space);
     // Log only when values change to avoid repeated identical log lines.
     static std::atomic<int> s_last_color_space{-1};
     static std::atomic<int> s_last_reshade_cs{-1};
@@ -1683,14 +1677,9 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
 
 // Helper: when HDR/scRGB color fix is enabled, set DXGI + ReShade color space from back buffer format:
 // 10-bit (R10G10B10A2) → HDR10 (ST2084), 16-bit FP (R16G16B16A16) → scRGB. No-op for 8-bit.
-// Reads format from the DXGI swap chain (GetDesc / GetDesc1). Only applies if current color space
-// (from GetPrivateData(kDcSwapChainColorSpace), which we set after each successful SetColorSpace1)
-// does not already match desired; avoids redundant SetColorSpace1 calls.
+// Reads format from the DXGI swap chain (GetDesc / GetDesc1). Call at most once per swapchain
+// (caller tracks via DCDxgiSwapchainData::auto_colorspace_applied).
 void AutoSetColorSpace(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_swapchain) {
-    if (g_last_reshade_device_api.load() != reshade::api::device_api::d3d12
-        && g_last_reshade_device_api.load() != reshade::api::device_api::d3d11) {
-        return;
-    }
     if (!settings::g_advancedTabSettings.auto_colorspace.GetValue()) {
         return;
     }
@@ -1730,27 +1719,8 @@ void AutoSetColorSpace(reshade::api::swapchain* swapchain, IDXGISwapChain* dxgi_
         return;
     }
 
-    DXGI_COLOR_SPACE_TYPE current = static_cast<DXGI_COLOR_SPACE_TYPE>(0);
-    UINT size = sizeof(current);
-    HRESULT hr_get = dxgi_swapchain->GetPrivateData(kDcSwapChainColorSpace, &size, &current);
-    const bool have_stored = SUCCEEDED(hr_get) && size == sizeof(current);
-    if (have_stored && current == color_space) {
-        return;
-    }
-
-    const char* reason = nullptr;
-    if (!SUCCEEDED(hr_get)) {
-        reason = "no stored color space (GetPrivateData failed)";
-    } else if (size != sizeof(current)) {
-        reason = "stored data size mismatch";
-    } else {
-        reason = "stored color space does not match desired";
-    }
-    LogInfo("AutoSetColorSpace: applying %s (%d), reason: %s (stored=%s (%d))",
-            utils::GetDXGIColorSpaceString(color_space), static_cast<int>(color_space), reason,
-            have_stored ? utils::GetDXGIColorSpaceString(current) : "n/a",
-            have_stored ? static_cast<int>(current) : -1);
-
+    LogInfo("AutoSetColorSpace: applying %s (%d)", utils::GetDXGIColorSpaceString(color_space),
+            static_cast<int>(color_space));
     SetSwapChainColorSpace(swapchain, color_space, reshade_color_space);
 }
 // Update composition state after presents (required for valid stats)
@@ -1781,12 +1751,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     reshade::api::effect_runtime* first_runtime = GetFirstReShadeRuntime();
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
-        static int log_count = 0;
-        if (log_count < 100) {
-            LogInfo("Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p",
-                    first_runtime, hwnd);
-            log_count++;
-        }
+        LogInfoThrottled(1, "Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p",
+                         first_runtime, hwnd);
         return;
     }
 
@@ -1804,69 +1770,64 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     bool dx_d3d9 = api == reshade::api::device_api::d3d9;
     bool is_dxgi = idx_dx12 || dx_dx11 || dx_dx10;
     Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-    if (idx_dx12) {
-        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
-        }
-    } else if (dx_dx11) {
+
+    if (is_dxgi) {
         IUnknown* swapchain_native = reinterpret_cast<IUnknown*>(swapchain->get_native());
-        if (swapchain_native != nullptr && SUCCEEDED(swapchain_native->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
-            Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
-            if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))
-                && settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
-                display_commanderhooks::d3d11::HookD3D11DeviceVTable(d3d11_device.Get());
-                AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
-            }
-        }
-        // Fallback: hook using ReShade device when DXGI GetDevice path was not used
-        // hookToD3D11Device(swapchain);
-    } else if (dx_dx10) {
-        IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_native());
-        Microsoft::WRL::ComPtr<IDXGISwapChain> dxgi_swapchain{};
-        if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain)))) {
-            AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
-        }
-    }
-
-    if (dxgi_swapchain.Get() != nullptr) {
-        dxgi_swapchain_for_save = dxgi_swapchain.Get();
-        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(dxgi_swapchain_for_save, &private_data);
-
-        if (private_data.dxgi_swapchain == nullptr) {
-            private_data.dxgi_swapchain = dxgi_swapchain_for_save;
-            private_data.swapchain = swapchain;
-            private_data.command_queue = command_queue;
-            private_data.device_api = api;
-            changed = true;
-        }
-
-        // Apply SetMaximumFrameLatency override (Main tab). Track applied value in private_data so we only set when
-        // the user's choice differs from what we last applied (per swapchain).
-        const int desired_latency = settings::g_mainTabSettings.max_frame_latency_override.GetValue();
-        if (desired_latency >= 1 && desired_latency <= 16) {
-            if (private_data.applied_max_frame_latency != static_cast<uint32_t>(desired_latency)) {
-                Microsoft::WRL::ComPtr<IDXGISwapChain2> sc2;
-                if (SUCCEEDED(dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&sc2)))) {
-                    const UINT clamped = static_cast<UINT>(desired_latency);
-                    HRESULT hr = sc2->SetMaximumFrameLatency(clamped);
-                    if (SUCCEEDED(hr)) {
-                        private_data.applied_max_frame_latency = clamped;
-                        changed = true;
-                    }
+        swapchain_native->QueryInterface(IID_PPV_ARGS(&dxgi_swapchain));
+        if (dx_dx11) {
+            if (dxgi_swapchain.Get() != nullptr) {
+                // Hook D3D11 device vtable (same pattern as hookToSwapChain): get device from DXGI swapchain
+                Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device{};
+                if (SUCCEEDED(dxgi_swapchain->GetDevice(IID_PPV_ARGS(&d3d11_device)))
+                    && settings::g_advancedTabSettings.enable_dx11_vtable_hooks.GetValue()) {
+                    display_commanderhooks::d3d11::HookD3D11DeviceVTable(d3d11_device.Get());
                 }
+                // dxgi_swapchain set; AutoSetColorSpace called below when private_data loaded
             }
-        } else {
-            // No override (0): clear applied so we can re-apply when user selects a value again
-            if (private_data.applied_max_frame_latency != 0) {
-                private_data.applied_max_frame_latency = 0;
+        }
+        if (dxgi_swapchain.Get() != nullptr) {
+            dxgi_swapchain_for_save = dxgi_swapchain.Get();
+            display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(dxgi_swapchain_for_save, &private_data);
+
+            if (private_data.dxgi_swapchain == nullptr) {
+                private_data.dxgi_swapchain = dxgi_swapchain_for_save;
+                private_data.swapchain = swapchain;
+                private_data.command_queue = command_queue;
+                private_data.device_api = api;
                 changed = true;
             }
+
+            // Auto set color space at most once per swapchain (tracked in private_data).
+            if (!private_data.auto_colorspace_applied) {
+                AutoSetColorSpace(swapchain, dxgi_swapchain.Get());
+                private_data.auto_colorspace_applied = true;
+                changed = true;
+            }
+
+            // Apply SetMaximumFrameLatency override (Main tab). Track applied value in private_data so we only set
+            // when the user's choice differs from what we last applied (per swapchain).
+            const int desired_latency = settings::g_mainTabSettings.max_frame_latency_override.GetValue();
+            if (desired_latency >= 1 && desired_latency <= 16) {
+                if (private_data.applied_max_frame_latency != static_cast<uint32_t>(desired_latency)) {
+                    Microsoft::WRL::ComPtr<IDXGISwapChain2> sc2;
+                    if (SUCCEEDED(dxgi_swapchain->QueryInterface(IID_PPV_ARGS(&sc2)))) {
+                        const UINT clamped = static_cast<UINT>(desired_latency);
+                        HRESULT hr = sc2->SetMaximumFrameLatency(clamped);
+                        if (SUCCEEDED(hr)) {
+                            private_data.applied_max_frame_latency = clamped;
+                            changed = true;
+                        }
+                    }
+                }
+            } else {
+                // No override (0): clear applied so we can re-apply when user selects a value again
+                if (private_data.applied_max_frame_latency != 0) {
+                    private_data.applied_max_frame_latency = 0;
+                    changed = true;
+                }
+            }
         }
-    }
-    // Record the native D3D9 device for Present detour filtering
-    if (dx_d3d9) {
+    } else if (dx_d3d9) {
         // query don't assume
         IUnknown* iunknown = reinterpret_cast<IUnknown*>(swapchain->get_device()->get_native());
 
@@ -1900,8 +1861,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
     g_flush_before_present_time_ns.store(utils::get_now_ns());
 
     // Enqueue GPU completion measurement using this swapchain's private data (command_queue from
-    // DCDxgiSwapchainData). Optional (default on) via Advanced tab. Skip when Smooth Motion (nvpresent) is loaded -
-    // frame generation makes GPU completion timing misleading.
+    // DCDxgiSwapchainData). Optional (default on) via Advanced tab. Skip when Smooth Motion (nvpresent) is
+    // loaded - frame generation makes GPU completion timing misleading.
     const bool smooth_motion_loaded = ::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed);
     if ((idx_dx12 || dx_dx11) && settings::g_advancedTabSettings.enqueue_gpu_completion.GetValue()
         && !smooth_motion_loaded) {
@@ -1963,7 +1924,8 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     perf_timer.resume();
 
-    // Extract DXGI output device name from swapchain (shared via atomic; g_got_device_name tracks first success)
+    // Extract DXGI output device name from swapchain (shared via atomic; g_got_device_name tracks first
+    // success)
     {
         auto api = swapchain->get_device()->get_api();
         if (api == reshade::api::device_api::d3d11 || api == reshade::api::device_api::d3d12

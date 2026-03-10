@@ -2,6 +2,13 @@
 
 ---
 
+## v0.12.374
+- **Main tab: Backbuffer count selector** - Replaced "Increase Backbuffer Count to 3" checkbox with a "Backbuffer count" combo: No override (game default), 1, 2, 3, 4. Applied at swapchain creation for D3D9, DXGI, OpenGL, and Vulkan, and for D3D9 no-ReShade (CreateDevice present params). Requires restart. Config key: backbuffer_count_override (was increase_backbuffer_count_to_3); users who had the checkbox on should select "3".
+- **Main tab: Max frame latency override** - New combo "Max frame latency" in the Main tab (VSync section, DXGI only): No override or 1–16. Overrides IDXGISwapChain2::SetMaximumFrameLatency per swapchain at runtime. 1 = lowest input latency; 2–16 = more CPU–GPU parallelism. Last applied value stored in DCDxgiSwapchainData (applied_max_frame_latency). Details: main_tab_settings (max_frame_latency_override); swapchain_events.cpp OnPresentUpdateBefore; main_new_tab.cpp.
+
+## v0.12.373
+- **DXGI swapchain: per-swapchain private data (potentially breaking)** - We migrated to storing present-update state per swapchain via IDXGISwapChain::SetPrivateData/GetPrivateData instead of a single global. This avoids crashes when multiple swapchains exist (e.g. with Smooth Motion / NVIDIA frame generation). Code rewrite: load private data at the start of Present/Present1/OnPresentUpdateBefore, use a local DCDxgiSwapchainData, save at the end only when changed. If you see new issues with FPS limiter, flush-before-sleep, or GPU completion on multi-swapchain setups, report them. Details: DCDxgiSwapchainData, LoadDCDxgiSwapchainData, SaveDCDxgiSwapchainData; hooks/dxgi/dxgi_present_hooks; swapchain_events.cpp OnPresentUpdateBefore; EnqueueGPUCompletionFromRecordedState(dxgi_swapchain, &data).
+
 ## v0.12.372
 - **Smooth Motion: global atomic and skip enqueue GPU completion** - Smooth Motion (nvpresent64/nvpresent32.dll) is now tracked via global `g_smooth_motion_dll_loaded`, set once in `OnModuleLoaded` when the DLL is loaded; the Main tab "Active APIs" line reads this atomic instead of calling GetModuleHandleW each frame. When Smooth Motion is loaded, enqueue GPU completion (from present-update) is skipped so frame-generation timing does not produce misleading latency metrics; a one-time log message "Enqueue GPU completion suppressed due to Smooth Motion (nvpresent DLL loaded)." is printed when suppression occurs. Details: globals.hpp/cpp (g_smooth_motion_dll_loaded); hooks/loadlibrary_hooks.cpp OnModuleLoaded; ui/new_ui/main_new_tab.cpp; swapchain_events.cpp.
 

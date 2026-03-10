@@ -12,7 +12,6 @@
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
-#include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
 #include "../dxgi_factory_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
@@ -293,22 +292,21 @@ void EnqueueGPUCompletion(reshade::api::swapchain* swapchain, IDXGISwapChain* dx
     ::EnqueueGPUCompletionInternal(dxgi_swapchain, d3d12_command_queue);
 }
 
-void EnqueueGPUCompletionFromRecordedState() {
+void EnqueueGPUCompletionFromRecordedState(IDXGISwapChain* dxgi_swapchain,
+                                           const display_commanderhooks::dxgi::DCDxgiSwapchainData* data) {
     if (perf_measurement::IsSuppressionEnabled()
         && perf_measurement::IsMetricSuppressed(perf_measurement::Metric::EnqueueGPUCompletion)) {
         return;
     }
     perf_measurement::ScopedTimer perf_timer(perf_measurement::Metric::EnqueueGPUCompletion);
-    const display_commanderhooks::dxgi::PresentUpdateModeData data =
-        display_commanderhooks::dxgi::GetLastPresentUpdateModeData();
-    if (data.dxgi_swapchain == nullptr) {
+    if (dxgi_swapchain == nullptr || data == nullptr || data->dxgi_swapchain == nullptr) {
         return;
     }
     ID3D12CommandQueue* d3d12_queue = nullptr;
-    if (data.device_api == reshade::api::device_api::d3d12 && data.command_queue != nullptr) {
-        d3d12_queue = reinterpret_cast<ID3D12CommandQueue*>(data.command_queue->get_native());
+    if (data->device_api == reshade::api::device_api::d3d12 && data->command_queue != nullptr) {
+        d3d12_queue = reinterpret_cast<ID3D12CommandQueue*>(data->command_queue->get_native());
     }
-    ::EnqueueGPUCompletionInternal(data.dxgi_swapchain, d3d12_queue);
+    ::EnqueueGPUCompletionInternal(data->dxgi_swapchain, d3d12_queue);
 }
 
 namespace display_commanderhooks::dxgi {
@@ -400,36 +398,6 @@ std::atomic<bool> g_factory_create_swapchain_for_hwnd_hooked{false};
 std::atomic<bool> g_factory_create_swapchain_for_core_window_hooked{false};
 std::atomic<bool> g_factory_create_swapchain_for_composition_hooked{false};
 
-// Track the last native swapchain used in OnPresentUpdateBefore
-std::atomic<IDXGISwapChain*> g_last_present_update_swapchain{nullptr};
-// Cookie incremented each time we record a swapchain; stored in swapchain private data so we can
-// recognize the same logical swapchain when Present is called with a different interface pointer.
-std::atomic<uint32_t> g_last_present_update_cookie{0};
-// Mode data (api, command_queue) for the last recorded swapchain; protected by SRWLOCK.
-SRWLOCK g_last_present_update_mode_lock = SRWLOCK_INIT;
-display_commanderhooks::dxgi::PresentUpdateModeData g_last_present_update_mode_data{};
-
-// GUID for "DC present-update swapchain" private data (SetPrivateData/GetPrivateData). Do not conflict with ReShade
-// SKID.
-constexpr GUID kDcPresentUpdateSwapchain = {
-    0xdc7b2f81, 0xc4d5, 0x4e0f, {0x9b, 0x3e, 0x2d, 0x5f, 0x6c, 0x7e, 0x8f, 0x9a}};
-
-void SetPresentUpdateSwapchainPrivateData(IDXGISwapChain* swapchain, uint32_t cookie) {
-    if (swapchain == nullptr) return;
-    swapchain->SetPrivateData(kDcPresentUpdateSwapchain, sizeof(cookie), &cookie);
-}
-
-// Returns true if the swapchain has our private data with the current expected cookie (same logical swapchain).
-bool IsRecordedPresentUpdateSwapchain(IDXGISwapChain* sc) {
-    if (sc == nullptr) return false;
-    const uint32_t expected = g_last_present_update_cookie.load(std::memory_order_relaxed);
-    if (expected == 0) return false;
-    UINT size = sizeof(uint32_t);
-    uint32_t value = 0;
-    HRESULT hr = sc->GetPrivateData(kDcPresentUpdateSwapchain, &size, &value);
-    return SUCCEEDED(hr) && size == sizeof(uint32_t) && value == expected;
-}
-
 }  // namespace
 
 // Helper function for common Present/Present1 logic after calling original
@@ -458,6 +426,11 @@ static int VsyncOverrideComboIndexToApiValue(int combo_index) {
 
 // Hooked IDXGISwapChain::Present function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UINT SyncInterval, UINT PresentFlags) {
+    display_commanderhooks::dxgi::DCDxgiSwapchainData data{};
+    if (This != nullptr) {
+        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(This, &data);
+    }
+
     if (in_present_call.load() > 0) {
         return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
     }
@@ -472,27 +445,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
     const LONGLONG now_ns = utils::get_now_ns();
     display_commanderhooks::g_last_dxgi_present_time_ns.store(static_cast<uint64_t>(now_ns), std::memory_order_relaxed);
     CALL_GUARD(now_ns);
-    // Early return if swapchain doesn't match (pointer or private-data cookie)
-    IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
-    if (expected_swapchain != nullptr && This != expected_swapchain && !IsRecordedPresentUpdateSwapchain(This)) {
-        {
-            static int s_err_count = 0;
-            if (s_err_count < 10) {
-                LogWarn(
-                    "[IDXGISwapChain_Present_Detour] swapchain mismatch, returning original This: 0x%p, expected: 0x%p",
-                    This, expected_swapchain);
-                s_err_count++;
-            }
-        }
-        return IDXGISwapChain_Present_Original(This, SyncInterval, PresentFlags);
-    }
 
-    // Flush command queue before present when we have it from recorded present-update state (optional, default on)
+    // Flush command queue before present when we have it from this swapchain's private data (optional, default on)
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
-        const display_commanderhooks::dxgi::PresentUpdateModeData mode_data =
-            display_commanderhooks::dxgi::GetLastPresentUpdateModeData();
-        if (mode_data.command_queue != nullptr) {
-            mode_data.command_queue->flush_immediate_command_list();
+        if (data.command_queue != nullptr) {
+            data.command_queue->flush_immediate_command_list();
         }
     }
 
@@ -533,8 +490,13 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
 // Hooked IDXGISwapChain1::Present1 function
 HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags,
                                                          const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
-    CALL_GUARD(utils::get_now_ns());
     IDXGISwapChain* baseSwapChain = reinterpret_cast<IDXGISwapChain*>(This);
+    display_commanderhooks::dxgi::DCDxgiSwapchainData data{};
+    if (baseSwapChain != nullptr) {
+        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(baseSwapChain, &data);
+    }
+
+    CALL_GUARD(utils::get_now_ns());
 
     // Apply VSync override (Main tab): -1 = no override, 0-4 = force SyncInterval
     const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
@@ -545,19 +507,11 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
     } else if (override_val == 0) {
         PresentFlags |= DXGI_PRESENT_ALLOW_TEARING;
     }
-    // Early return if swapchain doesn't match (pointer or private-data cookie)
-    IDXGISwapChain* expected_swapchain = g_last_present_update_swapchain.load();
-    if (expected_swapchain != nullptr && baseSwapChain != expected_swapchain
-        && !IsRecordedPresentUpdateSwapchain(baseSwapChain)) {
-        return IDXGISwapChain_Present1_Original(This, SyncInterval, PresentFlags, pPresentParameters);
-    }
 
-    // Flush command queue before present when we have it from recorded present-update state (optional, default on)
+    // Flush command queue before present when we have it from this swapchain's private data (optional, default on)
     if (settings::g_advancedTabSettings.flush_command_queue_before_sleep.GetValue()) {
-        const display_commanderhooks::dxgi::PresentUpdateModeData mode_data =
-            display_commanderhooks::dxgi::GetLastPresentUpdateModeData();
-        if (mode_data.command_queue != nullptr) {
-            mode_data.command_queue->flush_immediate_command_list();
+        if (data.command_queue != nullptr) {
+            data.command_queue->flush_immediate_command_list();
         }
     }
 
@@ -2191,26 +2145,21 @@ bool HookStreamlineProxySwapchain(IDXGISwapChain* swapchain) {
     return any_hooked;
 }
 
-// Record the native swapchain used in OnPresentUpdateBefore
-void RecordPresentUpdateSwapchain(IDXGISwapChain* dxgi_swapchain, reshade::api::swapchain* swapchain,
-                                  reshade::api::device_api device_api, reshade::api::command_queue* command_queue) {
-    LogInfo("[RecordPresentUpdateSwapchain] recording dxgi_swapchain: 0x%p, swapchain: 0x%p, api=%d, command_queue=0x%p",
-            dxgi_swapchain, static_cast<void*>(swapchain), static_cast<int>(device_api), static_cast<void*>(command_queue));
-    const uint32_t cookie = g_last_present_update_cookie.fetch_add(1, std::memory_order_relaxed) + 1;
-    SetPresentUpdateSwapchainPrivateData(dxgi_swapchain, cookie);
-    g_last_present_update_swapchain.store(dxgi_swapchain);
-    {
-        utils::SRWLockExclusive lock(g_last_present_update_mode_lock);
-        g_last_present_update_mode_data.dxgi_swapchain = dxgi_swapchain;
-        g_last_present_update_mode_data.swapchain = swapchain;
-        g_last_present_update_mode_data.command_queue = command_queue;
-        g_last_present_update_mode_data.device_api = device_api;
-    }
+// GUID for Display Commander per-swapchain data (DCDxgiSwapchainData blob). Do not conflict with ReShade SKID.
+constexpr GUID kDcDxgiSwapchainData = {
+    0xdc7b2f81, 0xc4d5, 0x4e0f, {0x9b, 0x3e, 0x2d, 0x5f, 0x6c, 0x7e, 0x8f, 0x9a}};
+
+bool LoadDCDxgiSwapchainData(IDXGISwapChain* swapchain, DCDxgiSwapchainData* out) {
+    if (swapchain == nullptr || out == nullptr) return false;
+    *out = DCDxgiSwapchainData{};
+    UINT size = sizeof(DCDxgiSwapchainData);
+    HRESULT hr = swapchain->GetPrivateData(kDcDxgiSwapchainData, &size, out);
+    return SUCCEEDED(hr) && size == sizeof(DCDxgiSwapchainData);
 }
 
-PresentUpdateModeData GetLastPresentUpdateModeData() {
-    utils::SRWLockShared lock(g_last_present_update_mode_lock);
-    return g_last_present_update_mode_data;
+void SaveDCDxgiSwapchainData(IDXGISwapChain* swapchain, const DCDxgiSwapchainData* data) {
+    if (swapchain == nullptr || data == nullptr) return;
+    swapchain->SetPrivateData(kDcDxgiSwapchainData, sizeof(DCDxgiSwapchainData), data);
 }
 
 // Cleanup GPU measurement fences when device is destroyed

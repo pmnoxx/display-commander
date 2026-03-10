@@ -107,9 +107,11 @@ using IDXGIFactory1_CreateSwapChainForCoreWindow_pfn = HRESULT(STDMETHODCALLTYPE
                                                                                    IDXGIOutput* pRestrictToOutput,
                                                                                    IDXGISwapChain1** ppSwapChain);
 
-using IDXGIFactory2_CreateSwapChainForComposition_pfn =
-    HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2* This, IUnknown* pDevice, const DXGI_SWAP_CHAIN_DESC1* pDesc,
-                                IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain);
+using IDXGIFactory2_CreateSwapChainForComposition_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2* This,
+                                                                                    IUnknown* pDevice,
+                                                                                    const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                                    IDXGIOutput* pRestrictToOutput,
+                                                                                    IDXGISwapChain1** ppSwapChain);
 
 // Additional function pointer types for DXGI methods
 using IDXGISwapChain_GetBuffer_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain* This, UINT Buffer, REFIID riid,
@@ -186,7 +188,8 @@ using IDXGIOutput6_GetDesc1_pfn = HRESULT(STDMETHODCALLTYPE*)(IDXGIOutput6* This
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Original;
 extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Original;
 
-// Streamline proxy swap chain (sl_proxy_dxgi_swapchain / sl_proxy_dxgi_swapchain1) - only Present/Present1 for FPS limiter
+// Streamline proxy swap chain (sl_proxy_dxgi_swapchain / sl_proxy_dxgi_swapchain1) - only Present/Present1 for FPS
+// limiter
 extern IDXGISwapChain_Present_pfn IDXGISwapChain_Present_Streamline_Original;
 extern IDXGISwapChain_Present1_pfn IDXGISwapChain_Present1_Streamline_Original;
 extern IDXGISwapChain_GetDesc_pfn IDXGISwapChain_GetDesc_Original;
@@ -285,9 +288,9 @@ HRESULT STDMETHODCALLTYPE IDXGIFactory1_CreateSwapChainForCoreWindow_Detour(IDXG
                                                                             IDXGIOutput* pRestrictToOutput,
                                                                             IDXGISwapChain1** ppSwapChain);
 HRESULT STDMETHODCALLTYPE IDXGIFactory2_CreateSwapChainForComposition_Detour(IDXGIFactory2* This, IUnknown* pDevice,
-                                                                              const DXGI_SWAP_CHAIN_DESC1* pDesc,
-                                                                              IDXGIOutput* pRestrictToOutput,
-                                                                              IDXGISwapChain1** ppSwapChain);
+                                                                             const DXGI_SWAP_CHAIN_DESC1* pDesc,
+                                                                             IDXGIOutput* pRestrictToOutput,
+                                                                             IDXGISwapChain1** ppSwapChain);
 
 // Hook a specific swapchain when it's created
 bool HookSwapchain(IDXGISwapChain* swapchain);
@@ -303,20 +306,21 @@ bool HookFactory(IUnknown* iunknown);
 // returns IDXGIFactory7. Uses separate originals so game factory and Streamline proxy can both be hooked.
 bool HookStreamlineProxyFactory(IUnknown* iunknown);
 
-// Mode data stored when we record the present-update swapchain (from OnPresentUpdateBefore).
-struct PresentUpdateModeData {
+// Per-swapchain data stored via IDXGISwapChain::SetPrivateData/GetPrivateData (DCDxgiSwapchainData GUID).
+struct DCDxgiSwapchainData {
     IDXGISwapChain* dxgi_swapchain{nullptr};
     reshade::api::swapchain* swapchain{nullptr};
     reshade::api::command_queue* command_queue{nullptr};
     reshade::api::device_api device_api{};
+    /** Last value we applied via SetMaximumFrameLatency (0 = not applied by us, 1–16 = value applied). */
+    uint32_t applied_max_frame_latency{0};
 };
 
-// Record the native swapchain and ReShade state used in OnPresentUpdateBefore.
-void RecordPresentUpdateSwapchain(IDXGISwapChain* dxgi_swapchain, reshade::api::swapchain* swapchain,
-                                  reshade::api::device_api device_api, reshade::api::command_queue* command_queue);
+// Load DCDxgiSwapchainData from swapchain private data. On failure *out is zeroed. Returns true if loaded.
+bool LoadDCDxgiSwapchainData(IDXGISwapChain* swapchain, DCDxgiSwapchainData* out);
 
-// Thread-safe read of the last recorded mode data (copy).
-PresentUpdateModeData GetLastPresentUpdateModeData();
+// Save DCDxgiSwapchainData to swapchain private data.
+void SaveDCDxgiSwapchainData(IDXGISwapChain* swapchain, const DCDxgiSwapchainData* data);
 
 // Hooked IDXGIOutput functions
 HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, const DXGI_GAMMA_CONTROL* pArray);

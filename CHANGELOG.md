@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.394 (unreleased)
+- **Main tab: Updates section only when hooked before ReShade** - The "Updates" section (ReShade, Display Commander, Addons) on the Main tab is now shown only when Display Commander was hooked before ReShade loaded. When DC loads after ReShade, the section is hidden. Details: main_new_tab.cpp (g_hooked_before_reshade guard).
+
 ## v0.12.393 (unreleased)
 - **DualSense/HID no longer integrated in Display Commander** - HID.dll and DualSense are no longer integrated: no HID hooks, no DualSense init, and related UI is hidden.
 

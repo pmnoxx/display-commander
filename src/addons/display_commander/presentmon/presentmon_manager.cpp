@@ -736,15 +736,25 @@ void PresentMonManager::UpdateDebugInfo(const std::string& thread_status, const 
 // Return value for SEH in PresentMonMain (so WorkerThread does not overwrite "Crashed" with "Exited").
 static constexpr int k_presentmon_result_seh = -2;
 
-int PresentMonManager::RunPresentMonMainSEHProtected() {
-    int result = -1;
+// SEH exception code from last CallPresentMonMainSEH (C2712: __try cannot coexist with C++ object unwinding).
+static thread_local DWORD g_presentmon_seh_code = 0;
+
+// POD-only helper: no C++ objects with destructors so __try/__except is allowed.
+static int CallPresentMonMainSEH(PresentMonManager* manager) {
     __try {
-        result = PresentMonMain();
+        return manager->PresentMonMain();
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        const DWORD code = GetExceptionCode();
+        g_presentmon_seh_code = GetExceptionCode();
+        return k_presentmon_result_seh;
+    }
+}
+
+int PresentMonManager::RunPresentMonMainSEHProtected() {
+    int result = CallPresentMonMainSEH(this);
+    if (result == k_presentmon_result_seh) {
+        const DWORD code = g_presentmon_seh_code;
         LogWarn("[PresentMon] SEH 0x%08lX in PresentMonMain, marking Crashed", static_cast<unsigned long>(code));
         UpdateDebugInfo("Crashed", "Stopped", "SEH in ETW loop", m_events_processed.load(), m_events_lost.load());
-        return k_presentmon_result_seh;
     }
     return result;
 }
@@ -882,6 +892,32 @@ void PresentMonManager::StopEtwSessionByName(const wchar_t* session_name) {
     (void)status;
 }
 
+// POD-only SEH helper for reading ETW session name (C2712: no C++ objects with destructors).
+// Returns true if no SEH; on SEH returns false and does not set outputs.
+static bool GetSessionNameInfoSafe(const wchar_t* session_name, size_t max_name_chars, const wchar_t* prefix,
+                                   size_t prefix_len, size_t* out_name_len, int* out_include) {
+    __try {
+        size_t name_len = wcsnlen_s(session_name, max_name_chars);
+        if (name_len == 0 || name_len >= max_name_chars) {
+            *out_include = 0;
+            *out_name_len = 0;
+            return true;
+        }
+        if (prefix_len != 0 &&
+            (name_len < prefix_len || _wcsnicmp(session_name, prefix, prefix_len) != 0)) {
+            *out_include = 0;
+            *out_name_len = name_len;
+            return true;
+        }
+        *out_include = 1;
+        *out_name_len = name_len;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        (void)GetExceptionCode();
+        return false;
+    }
+}
+
 void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vector<std::string>& out_session_names,
                                                  std::string* out_error) {
     CALL_GUARD(utils::get_now_ns());
@@ -948,24 +984,13 @@ void PresentMonManager::GetEtwSessionsWithPrefix(const wchar_t* prefix, std::vec
         const size_t max_name_chars = (props_size - offset) / sizeof(wchar_t);
         if (max_name_chars == 0) continue;
 
-        // Only potentially-faulting reads inside __try (no C++ objects with destructors for C2712).
+        // POD-only SEH helper (C2712: __try cannot coexist with C++ object unwinding in this function).
         size_t name_len = 0;
-        bool include_session = false;
-        __try {
-            name_len = wcsnlen_s(session_name, max_name_chars);
-            if (name_len == 0 || name_len >= max_name_chars) {
-                /* skip */
-            } else if (prefix_len != 0 &&
-                       (name_len < prefix_len || _wcsnicmp(session_name, prefix, prefix_len) != 0)) {
-                /* skip */
-            } else {
-                include_session = true;
-            }
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            (void)GetExceptionCode();
+        int include_session = 0;
+        if (!GetSessionNameInfoSafe(session_name, max_name_chars, prefix, prefix_len, &name_len, &include_session)) {
             continue;
         }
-        if (include_session) {
+        if (include_session != 0) {
             out_session_names.push_back(Narrow(std::wstring(session_name, name_len)));
         }
     }

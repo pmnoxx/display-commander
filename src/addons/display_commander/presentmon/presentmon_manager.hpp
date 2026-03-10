@@ -225,6 +225,9 @@ class PresentMonManager {
     // Returns same as PresentMonMain, or a sentinel when SEH occurred (see .cpp).
     int RunPresentMonMainSEHProtected();
 
+    // POD-only SEH wrapper (no C++ unwinding); friend so it can call private PresentMonMain().
+    friend int CallPresentMonMainSEH(PresentMonManager* manager);
+
     // Stop ETW session if running
     void RequestStopEtw();
 

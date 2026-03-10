@@ -3,6 +3,7 @@
 ---
 
 ## v0.12.378
+- **PresentMon: fix MSVC C2712 (SEH and object unwinding)** - On MSVC, `__try/__except` cannot be used in functions that have C++ object unwinding (destructors or temporaries). PresentMon’s SEH-protected paths were moved into POD-only helpers: `CallPresentMonMainSEH` (calls `PresentMonMain` under SEH; friend of `PresentMonManager`) and `GetSessionNameInfoSafe` (reads ETW session name under SEH). This fixes build failures with MSVC (error C2712). Details: presentmon_manager.cpp, presentmon_manager.hpp (friend declaration).
 - **Main tab: ReShade runtime list when multiple runtimes exist** - When more than one ReShade runtime (swapchain) is present, a "ReShade runtime" combo appears below the Safe Mode fps limiter checkbox. You can select which runtime (0 = first, 1 = second, …) Display Commander uses for input blocking, Reflex, and other features. When a non-zero runtime is selected, that runtime is used instead of the first. Details: GetSelectedReShadeRuntime(), GetReShadeRuntimeByIndex(); main tab setting selected_reshade_runtime_index; all previous GetFirstReShadeRuntime() call sites now use GetSelectedReShadeRuntime().
 
 ## v0.12.377

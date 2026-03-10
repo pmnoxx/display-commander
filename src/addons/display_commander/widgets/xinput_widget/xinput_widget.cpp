@@ -146,18 +146,16 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     const bool wgi_global = settings::g_advancedTabSettings.suppress_wgi_globally.GetValue();
     const bool wgi_master = settings::g_advancedTabSettings.suppress_wgi_enabled.GetValue();
     const bool per_game_ok =
-        (is_unity_player
-             ? (settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue() || wgi_global)
-             : (settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue() || wgi_global));
+        (is_unity_player ? (settings::g_advancedTabSettings.suppress_wgi_for_unity.GetValue() || wgi_global)
+                         : (settings::g_advancedTabSettings.suppress_wgi_for_non_unity_games.GetValue() || wgi_global));
     const bool wgi_suppressed = (wgi_master || wgi_global) && per_game_ok;
 
     static bool restart_needed_to_apply_settings = false;
 
     // Warning when WGI isn't suppressed: controller remapping may not work, with button to enable
     if (!wgi_suppressed) {
-        imgui.TextColored(
-            ::ui::colors::ICON_WARNING,
-            "Windows Gaming Input is not suppressed. Controller remapping for XInput may not work.");
+        imgui.TextColored(::ui::colors::ICON_WARNING,
+                          "Windows Gaming Input is not suppressed. Controller remapping for XInput may not work.");
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
                 "Games using Windows.Gaming.Input may not call XInput; enable suppression so the game falls "
@@ -238,14 +236,16 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.SetTooltip("Swap the A and B button mappings");
     }
 
-    // DualSense to XInput conversion
-    bool dualsense_xinput = g_shared_state->enable_dualsense_xinput.load();
-    if (imgui.Checkbox("DualSense to XInput", &dualsense_xinput)) {
-        g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
-        SaveSettings();
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Convert DualSense controller input to XInput format");
+    // DualSense to XInput conversion (only when experimental features enabled)
+    if (enabled_experimental_features) {
+        bool dualsense_xinput = g_shared_state->enable_dualsense_xinput.load();
+        if (imgui.Checkbox("DualSense to XInput", &dualsense_xinput)) {
+            g_shared_state->enable_dualsense_xinput.store(dualsense_xinput);
+            SaveSettings();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Convert DualSense controller input to XInput format");
+        }
     }
 
     // Test gamepad suppression (zero XInputGetState output to game)
@@ -260,29 +260,30 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             "XInputGetState/XInputGetStateEx. Use to test that suppression works; the game will see no input.");
     }
 
-    // HID suppression enable
-    bool hid_suppression = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
-    if (imgui.Checkbox("Enable HID Suppression", &hid_suppression)) {
-        settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(hid_suppression);
-        LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
-    }
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for "
-            "preventing games from interfering with controller input handling.");
-    }
+    // HID suppression and HID CreateFile counters (only when experimental features enabled)
+    if (enabled_experimental_features) {
+        bool hid_suppression = settings::g_experimentalTabSettings.hid_suppression_enabled.GetValue();
+        if (imgui.Checkbox("Enable HID Suppression", &hid_suppression)) {
+            settings::g_experimentalTabSettings.hid_suppression_enabled.SetValue(hid_suppression);
+            LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for "
+                "preventing games from interfering with controller input handling.");
+        }
 
-    // HID CreateFile counters
-    imgui.Spacing();
-    imgui.TextColored(::ui::colors::TEXT_DEFAULT, "HID CreateFile Detection:");
-    uint64_t hid_total = g_shared_state->hid_createfile_total.load();
-    uint64_t hid_dualsense = g_shared_state->hid_createfile_dualsense.load();
-    imgui.Text("HID CreateFile Total: %llu", hid_total);
-    imgui.Text("HID CreateFile DualSense: %llu", hid_dualsense);
-    if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
-            "Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows "
-            "specifically DualSense controller access attempts.");
+        imgui.Spacing();
+        imgui.TextColored(::ui::colors::TEXT_DEFAULT, "HID CreateFile Detection:");
+        uint64_t hid_total = g_shared_state->hid_createfile_total.load();
+        uint64_t hid_dualsense = g_shared_state->hid_createfile_dualsense.load();
+        imgui.Text("HID CreateFile Total: %llu", hid_total);
+        imgui.Text("HID CreateFile DualSense: %llu", hid_dualsense);
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows "
+                "specifically DualSense controller access attempts.");
+        }
     }
 
     imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stick mapping: input range [min%%, max%%] -> output [min%%, max%%]");
@@ -753,8 +754,8 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
         imgui.Unindent();
     }
 
-    // Draw DualSense report if dualsense_to_xinput is enabled
-    if (g_shared_state->enable_dualsense_xinput.load()) {
+    // Draw DualSense report if experimental features and dualsense_to_xinput are enabled
+    if (enabled_experimental_features && g_shared_state->enable_dualsense_xinput.load()) {
         imgui.Spacing();
         if (imgui.CollapsingHeader("DualSense Input Report", 0)) {
             imgui.Indent();

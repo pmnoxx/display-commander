@@ -1765,7 +1765,9 @@ void DoInitializationWithoutHwndSafe_Late() {
     dxgi::fps_limiter::StartRefreshRateMonitoring();
     std::thread(RunBackgroundAudioMonitor).detach();
     ui::new_ui::InitExperimentalTab();
-    display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
+    if (enabled_experimental_features) {
+        display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
+    }
     display_commanderhooks::keyboard_tracker::Initialize();
     LogInfo("Keyboard tracking system initialized");
 }
@@ -2685,8 +2687,10 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Clean up experimental tab threads
             ui::new_ui::CleanupExperimentalTab();
 
-            // Clean up DualSense support
-            display_commander::widgets::dualsense_widget::CleanupDualSenseWidget();
+            // Clean up DualSense support (only when experimental features were enabled)
+            if (enabled_experimental_features) {
+                display_commander::widgets::dualsense_widget::CleanupDualSenseWidget();
+            }
 
             // Clean up HID suppression hooks
             renodx::hooks::UninstallHIDSuppressionHooks();

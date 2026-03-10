@@ -277,7 +277,8 @@ extern std::atomic<bool> g_no_reshade_mode;
 extern std::atomic<bool> g_no_dc_mode;
 // .UI file present in game exe dir: start game with independent UI window open (ReShade path only)
 extern std::atomic<bool> g_start_with_independent_ui;
-// .NO_EXIT file present: block process/window exit (ExitProcess, WM_CLOSE, etc.); open independent UI when blocked (debug)
+// .NO_EXIT file present: block process/window exit (ExitProcess, WM_CLOSE, etc.); open independent UI when blocked
+// (debug)
 extern std::atomic<bool> g_no_exit_mode;
 // When true, TryStartStandaloneUIFromSafeContext() will start the standalone settings UI (e.g. from LoadLibrary detour)
 extern std::atomic<bool> g_standalone_ui_pending;

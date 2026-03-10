@@ -3,6 +3,7 @@
 #include <chrono>
 #include <thread>
 #include "../dualsense/dualsense_hid_wrapper.hpp"
+#include "../globals.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
 #include "../widgets/xinput_widget/xinput_widget.hpp"
@@ -134,6 +135,9 @@ void DualSensePollingThread() {
 }
 
 bool InitializeDualSenseSupport() {
+    if (!enabled_experimental_features) {
+        return false;
+    }
     if (g_dualsense_initialized.load()) {
         return g_dualsense_available.load();
     }

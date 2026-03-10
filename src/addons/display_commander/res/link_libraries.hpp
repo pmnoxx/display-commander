@@ -8,8 +8,8 @@
 namespace display_commander::res {
 
 struct LinkLibraryEntry {
-    const char* name;       // e.g. "setupapi"
-    const char* note;       // optional short note, or nullptr
+    const char* name;  // e.g. "setupapi"
+    const char* note;  // optional short note, or nullptr
 };
 
 // Libraries linked to zzz_display_commander (addon DLL). Order matches CMake.

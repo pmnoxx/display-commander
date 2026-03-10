@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.393 (unreleased)
+- **DualSense/HID no longer integrated in Display Commander** - HID.dll and DualSense are no longer integrated: no HID hooks, no DualSense init, and related UI is hidden.
+
 ## v0.12.392 (unreleased)
 - **Open Display Commander global folder: fix button not working** - The "Open folder" button for the Display Commander global folder (Updates section) now creates the folder if it does not exist, then opens it in Explorer using ShellExecuteW with the "open" verb. Previously it used ShellExecuteA "explore" on a path that might not exist, which could fail. Details: main_new_tab.cpp.
 

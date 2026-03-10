@@ -694,8 +694,10 @@ void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
     int bump_total = 0;
     display_commander::utils::GetSteamAchievementBumpDisplayNonBlocking(&bump_unlocked, &bump_total);
     char bump_display_name[256] = {};
+    char bump_description[512] = {};
     char bump_debug[1024] = {};
     display_commander::utils::GetSteamAchievementBumpTextNonBlocking(bump_display_name, sizeof(bump_display_name),
+                                                                     bump_description, sizeof(bump_description),
                                                                      bump_debug, sizeof(bump_debug));
     float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
     float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
@@ -717,6 +719,9 @@ void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
             overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Achievement unlocked: %s", bump_display_name);
         } else {
             overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Achievement unlocked!");
+        }
+        if (bump_description[0] != '\0') {
+            overlay_wrapper.TextColored(ImVec4(0.7f, 0.9f, 0.7f, 1.0f), "%s", bump_description);
         }
         overlay_wrapper.TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%d / %d achievements", bump_unlocked, bump_total);
         if (bump_debug[0] != '\0') {

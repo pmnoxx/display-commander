@@ -123,6 +123,7 @@ int FillAchievementListFromUserStats(void* p_user_stats, SteamAchievementEntry* 
         SteamAchievementEntry& e = entries[i];
         e.api_name[0] = '\0';
         e.display_name[0] = '\0';
+        e.description[0] = '\0';
         e.unlocked = false;
         e.unlock_time = 0;
         const char* api_name = get_name(p_user_stats, static_cast<unsigned int>(i));
@@ -142,6 +143,10 @@ int FillAchievementListFromUserStats(void* p_user_stats, SteamAchievementEntry* 
                     snprintf(e.display_name, SteamAchievementEntry::kMaxDisplayName, "%s", display);
                 } else {
                     snprintf(e.display_name, SteamAchievementEntry::kMaxDisplayName, "%s", api_name);
+                }
+                const char* desc = get_display_attr(p_user_stats, api_name, "desc");
+                if (desc != nullptr && desc[0] != '\0') {
+                    snprintf(e.description, SteamAchievementEntry::kMaxDescription, "%s", desc);
                 }
             } else {
                 snprintf(e.display_name, SteamAchievementEntry::kMaxDisplayName, "%s", api_name);
@@ -319,6 +324,12 @@ bool GetLastUnlockedFromUserStats(void* p_user_stats, int /*unlocked_count*/, in
     }
     out_info->has_display_name = true;
     snprintf(out_info->display_name, SteamLastUnlockedInfo::kMaxDisplayName, "%s", display);
+    if (get_display_attr != nullptr) {
+        const char* desc = get_display_attr(p_user_stats, best_api_name, "desc");
+        if (desc != nullptr && desc[0] != '\0') {
+            snprintf(out_info->description, SteamLastUnlockedInfo::kMaxDescription, "%s", desc);
+        }
+    }
     return true;
 }
 
@@ -331,6 +342,7 @@ void GetLastUnlockedAchievementInfoBlocking(int unlocked_count, int total, Steam
     out_info->debug[0] = '\0';
     out_info->has_display_name = false;
     out_info->display_name[0] = '\0';
+    out_info->description[0] = '\0';
     HMODULE steam = GetSteamModule();
     if (steam == nullptr) {
         AppendDebugLine(out_info, "Steam module not loaded (steam_api64.dll / steam_api.dll)");
@@ -347,6 +359,7 @@ void GetLastUnlockedAchievementInfoBlocking(int unlocked_count, int total, Steam
             out_info->debug[0] = '\0';
             out_info->has_display_name = false;
             out_info->display_name[0] = '\0';
+            out_info->description[0] = '\0';
             AppendDebugLine(out_info, "SteamUserStats() pointer gave sanity fail, trying SteamClient path...");
         } else {
             AppendDebugLine(out_info, "SteamUserStats() returned null");
@@ -394,6 +407,7 @@ void GetLastUnlockedAchievementInfoBlocking(int unlocked_count, int total, Steam
             out_info->debug[0] = '\0';
             out_info->has_display_name = false;
             out_info->display_name[0] = '\0';
+            out_info->description[0] = '\0';
         }
     }
     AppendDebugLine(out_info, "GetISteamUserStats: all versions (013, 012, 011) gave sanity fail or null");

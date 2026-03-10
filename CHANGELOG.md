@@ -2,7 +2,10 @@
 
 ---
 
-## v0.12.386 (unreleased)
+## v0.12.387 (unreleased)
+- **Fixed continue rendering in background crashing in Sekiro** - Switched fake activation and related window messages from PostMessage back to SendMessage so the game processes them synchronously. This fixes crashes when "Continue rendering when unfocused" is enabled in Sekiro (and may help other games). Details: DetourWindowMessageNonBlocking (SendMessage again; deadlock avoided by sending from another thread or by throttle), Window Info tab Quick Send buttons, and any other paths that had been changed to PostMessage for continue-rendering.
+
+## v0.12.386
 - **Window message rate detection and debug logs** - When the hooked window receives too many messages per second, the addon now logs errors at logarithmic thresholds (128, 256, 512, 1024, … messages/sec). After the first threshold is reached, the next N messages are dumped to the log (N starts at 128 and doubles each time the limit is hit, capped at 65536). Dump lines show message type by name where possible (e.g. WM_PAINT, WM_SETFOCUS) plus hwnd, uMsg, wParam, and lParam to help diagnose message floods. Details: window_proc_hooks (CheckMessageRateAndLogIfHigh, GetWindowMessageNameForLog, static thresholds and print-next count).
 
 ## v0.12.385

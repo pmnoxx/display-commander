@@ -1923,7 +1923,11 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
                                     e.unlocked ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f) : ImVec4(0.6f, 0.6f, 0.6f, 1.0f),
                                     "%s %s", e.unlocked ? "[X]" : "[ ]", label);
                                 if (imgui.IsItemHovered() && e.api_name[0] != '\0') {
-                                    imgui.SetTooltip("API: %s", e.api_name);
+                                    if (e.description[0] != '\0') {
+                                        imgui.SetTooltip("API: %s\n\n%s", e.api_name, e.description);
+                                    } else {
+                                        imgui.SetTooltip("API: %s", e.api_name);
+                                    }
                                 }
                             }
                         }
@@ -1959,6 +1963,10 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
                     if (s_last_unlocked_info.has_display_name) {
                         imgui.TextColored(::ui::colors::TEXT_LABEL, "  Display name: %s",
                                           s_last_unlocked_info.display_name);
+                    }
+                    if (s_last_unlocked_info.description[0] != '\0') {
+                        imgui.TextColored(::ui::colors::TEXT_LABEL, "  Description: %s",
+                                          s_last_unlocked_info.description);
                     }
                     if (s_last_unlocked_info.debug[0] != '\0') {
                         imgui.TextColored(ImVec4(0.55f, 0.55f, 0.55f, 1.0f), "%s", s_last_unlocked_info.debug);

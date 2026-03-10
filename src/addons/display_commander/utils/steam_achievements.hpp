@@ -13,12 +13,14 @@ struct SteamAchievementCount {
     int total = 0;
 };
 
-// Single achievement entry for list display (API name, localized display name, unlocked, unlock time for sorting).
+// Single achievement entry for list display (API name, localized display name, description, unlocked, unlock time).
 struct SteamAchievementEntry {
     static constexpr size_t kMaxApiName = 128;
     static constexpr size_t kMaxDisplayName = 256;
+    static constexpr size_t kMaxDescription = 512;
     char api_name[kMaxApiName] = {};
     char display_name[kMaxDisplayName] = {};
+    char description[kMaxDescription] = {};  // Localized description from GetAchievementDisplayAttribute(..., "desc").
     bool unlocked = false;
     uint32_t unlock_time = 0;  // Unix time when unlocked; 0 if locked (used to sort by last unlocked).
 };
@@ -37,9 +39,11 @@ void GetSteamAchievementExportsDebugBlocking(char* buf, size_t buf_size);
 // vtable").
 struct SteamLastUnlockedInfo {
     static constexpr size_t kMaxDisplayName = 256;
+    static constexpr size_t kMaxDescription = 512;
     static constexpr size_t kMaxDebug = 1024;
     bool has_display_name = false;
     char display_name[kMaxDisplayName] = {};
+    char description[kMaxDescription] = {};  // Localized description from GetAchievementDisplayAttribute(..., "desc").
     char debug[kMaxDebug] = {};
 };
 

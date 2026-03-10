@@ -38,6 +38,7 @@ bool IsSteamAchievementBumpActiveNonBlocking(int64_t now_ns);
 void GetSteamAchievementBumpDisplayNonBlocking(int* out_unlocked, int* out_total);
 // Non-blocking: copies precomputed bump text under shared lock. Buffers may be null; sizes ignored then.
 void GetSteamAchievementBumpTextNonBlocking(char* out_display_name, size_t display_name_size,
+                                            char* out_description, size_t description_size,
                                             char* out_debug, size_t debug_size);
 
 // Play the achievement notification sound (system sound). Safe to call from any thread. Used on new achievement

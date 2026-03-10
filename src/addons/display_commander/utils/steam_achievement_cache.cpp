@@ -28,9 +28,11 @@ std::atomic<int> g_bump_total{0};
 std::atomic<int> g_last_unlocked{-1};
 
 constexpr size_t kBumpDisplayNameSize = 256;
+constexpr size_t kBumpDescriptionSize = 512;
 constexpr size_t kBumpDebugSize = 1024;
 SRWLOCK g_bump_text_lock = SRWLOCK_INIT;
 char g_bump_display_name[kBumpDisplayNameSize] = {};
+char g_bump_description[kBumpDescriptionSize] = {};
 char g_bump_debug[kBumpDebugSize] = {};
 
 bool IsSteamAchievementNotificationsEnabled() {
@@ -113,6 +115,7 @@ void SetSteamAchievementBumpFromUnlock(int64_t now_ns, int unlocked, int total) 
     {
         ::utils::SRWLockExclusive lock(g_bump_text_lock);
         snprintf(g_bump_display_name, kBumpDisplayNameSize, "%s", info.display_name);
+        snprintf(g_bump_description, kBumpDescriptionSize, "%s", info.description);
         snprintf(g_bump_debug, kBumpDebugSize, "%s", info.debug);
     }
 }
@@ -136,6 +139,7 @@ void TriggerSteamAchievementTestBump() {
     {
         ::utils::SRWLockExclusive lock(g_bump_text_lock);
         snprintf(g_bump_display_name, kBumpDisplayNameSize, "%s", info.display_name);
+        snprintf(g_bump_description, kBumpDescriptionSize, "%s", info.description);
         snprintf(g_bump_debug, kBumpDebugSize, "%s", info.debug);
     }
 }
@@ -155,10 +159,14 @@ void GetSteamAchievementBumpDisplayNonBlocking(int* out_unlocked, int* out_total
 }
 
 void GetSteamAchievementBumpTextNonBlocking(char* out_display_name, size_t display_name_size,
+                                            char* out_description, size_t description_size,
                                             char* out_debug, size_t debug_size) {
     ::utils::SRWLockShared lock(g_bump_text_lock);
     if (out_display_name != nullptr && display_name_size > 0) {
         snprintf(out_display_name, display_name_size, "%s", g_bump_display_name);
+    }
+    if (out_description != nullptr && description_size > 0) {
+        snprintf(out_description, description_size, "%s", g_bump_description);
     }
     if (out_debug != nullptr && debug_size > 0) {
         snprintf(out_debug, debug_size, "%s", g_bump_debug);

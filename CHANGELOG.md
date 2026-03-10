@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.381
+- **Steam achievement list and notification: show description** - The Steam achievement list in the Advanced tab now shows each achievement’s localized description in the hover tooltip (API name + description). The achievement-unlocked overlay notification also shows the description of the last-unlocked achievement when available (below the achievement name). The “Achievement name lookup” section in the Advanced tab displays the description for the last-unlocked achievement. Descriptions come from Steam’s GetAchievementDisplayAttribute(..., "desc"). Details: steam_achievements.hpp/cpp (SteamAchievementEntry.description, SteamLastUnlockedInfo.description); steam_achievement_cache (bump description buffer and GetSteamAchievementBumpTextNonBlocking out_description); advanced_tab.cpp tooltip and name lookup; main_entry.cpp overlay.
+
 ## v0.12.380
 - **Max queued frames: default 0, revert button, slider width** - The "Max queued frames" setting (default FPS limiter when Reflex is available) now defaults to 0 instead of 5 (game default). The slider has fixed width 400 (like other sliders) and a "Revert to default" button when the value is not 0. Users can still set the slider to 5 for game default. Details: main_tab_settings reflex_fps_limiter_max_queued_frames; main_new_tab.cpp slider + SameLine revert button.
 

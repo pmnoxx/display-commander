@@ -105,16 +105,8 @@ void RefreshRateMonitor::SignalPresent(IDXGISwapChain* swap_chain) {
 }
 
 void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
+    // Caller must fill stats via GetCurrentVBlankTime(stats) before calling (e.g. in MonitoringThread).
     static uint64_t m_last_present_refresh_count = 0;
-
-    // Get current frame statistics (should now be accurate after DWM flush)
-    // DXGI_FRAME_STATISTICS stats = {};
-    if (!GetCurrentVBlankTime(stats)) {
-        //      // If we can't get frame statistics, skip this sample
-        //       LogError("Failed to get frame statistics - skipping sample");
-        //  std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        return;
-    }
 
     // Extract time from frame statistics
     LONGLONG current_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;

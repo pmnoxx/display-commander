@@ -1528,7 +1528,7 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     CALL_GUARD(utils::get_now_ns());
-    LogInfo("Module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
+    LogInfo("[OnModuleLoaded] %ws (0x%p)", moduleName.c_str(), hModule);
 
     if (IsRenoDxAddonPath(moduleName)) {
         OnRenoDxAddonLoaded();
@@ -1546,13 +1546,16 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
         if (filename == L"nvngx_dlss.dll") {
             SetDlssTracked(DlssTrackedKind::DLSS, hModule);
-            LogInfo("DLSS tracked: nvngx_dlss.dll (0x%p) %s", hModule, GetModulePathUtf8(hModule).c_str());
+            LogInfo("[OnModuleLoaded] DLSS tracked: nvngx_dlss.dll (0x%p) %s", hModule,
+                    GetModulePathUtf8(hModule).c_str());
         } else if (filename == L"nvngx_dlssg.dll") {
             SetDlssTracked(DlssTrackedKind::DLSSG, hModule);
-            LogInfo("DLSS tracked: nvngx_dlssg.dll (0x%p) %s", hModule, GetModulePathUtf8(hModule).c_str());
+            LogInfo("[OnModuleLoaded]   DLSS tracked: nvngx_dlssg.dll (0x%p) %s", hModule,
+                    GetModulePathUtf8(hModule).c_str());
         } else if (filename == L"nvngx_dlssd.dll") {
             SetDlssTracked(DlssTrackedKind::DLSSD, hModule, false);
-            LogInfo("DLSS tracked: nvngx_dlssd.dll (0x%p) %s", hModule, GetModulePathUtf8(hModule).c_str());
+            LogInfo("[OnModuleLoaded] DLSS tracked: nvngx_dlssd.dll (0x%p) %s", hModule,
+                    GetModulePathUtf8(hModule).c_str());
         } else if (filename.size() >= 4 && filename.compare(filename.size() - 4, 4, L".bin") == 0) {
             // NVIDIA App override: identify .bin as DLSS/DLSS-G/DLSS-D by scanning for NGX DLL name strings
             std::optional<DlssTrackedKind> kind = IdentifyDlssBinKind(hModule);
@@ -1562,7 +1565,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
                 const char* name = (*kind == DlssTrackedKind::DLSS)    ? "nvngx_dlss"
                                    : (*kind == DlssTrackedKind::DLSSG) ? "nvngx_dlssg"
                                                                        : "nvngx_dlssd";
-                LogInfo("DLSS tracked: .bin identified as %s (0x%p) %s", name, hModule,
+                LogInfo("[OnModuleLoaded] DLSS tracked: .bin identified as %s (0x%p) %s", name, hModule,
                         GetModulePathUtf8(hModule).c_str());
             }
         }
@@ -1579,7 +1582,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         if (is_reshade_dll) {
             HMODULE expected = nullptr;
             if (g_reshade_module.compare_exchange_strong(expected, hModule))
-                LogInfo("ReShade module set from LoadLibrary: %ws (0x%p)", moduleName.c_str(), hModule);
+                LogInfo("[OnModuleLoaded] ReShade module set from LoadLibrary: %ws (0x%p)", moduleName.c_str(),
+                        hModule);
         }
     }
 
@@ -1596,76 +1600,67 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     if (lowerModuleName.find(L"dxgi.dll") != std::wstring::npos) {
         // Check if any module has "reframework\plugins" in its path
         if (HasReframeworkPluginModule()) {
-            LogInfo("Skipping DXGI hooks installation - ReFramework plugin detected");
+            LogInfo("[OnModuleLoaded] Skipping DXGI hooks installation - ReFramework plugin detected");
         } else if (IsReshadeFromProgramData()) {
-            LogInfo("Skipping DXGI hooks installation - ReShade loaded from ProgramData");
+            LogInfo("[OnModuleLoaded] Skipping DXGI hooks installation - ReShade loaded from ProgramData");
         } else if (GetModuleHandleW(L"vulkan-1.dll") != nullptr) {
-            LogInfo("Skipping DXGI hooks installation - vulkan-1.dll loaded");
+            LogInfo("[OnModuleLoaded] Skipping DXGI hooks installation - vulkan-1.dll loaded");
         } else {
-            LogInfo("Installing DXGI hooks for module: %ws", moduleName.c_str());
+            LogInfo("[OnModuleLoaded] Installing DXGI hooks for module: %ws", moduleName.c_str());
             if (InstallDxgiFactoryHooks(hModule)) {
-                LogInfo("DXGI hooks installed successfully");
+                LogInfo("[OnModuleLoaded] DXGI hooks installed successfully");
             }
         }
     }
     // d3d11.dll
     else if (lowerModuleName.find(L"d3d11.dll") != std::wstring::npos) {
-        LogInfo("Installing D3D11 device hooks for module: %ws", moduleName.c_str());
         if (InstallD3D11DeviceHooks(hModule)) {
-            LogInfo("D3D11 device hooks installed successfully");
+            LogInfo("[OnModuleLoaded] D3D11 device hooks installed successfully");
         }
     }
     // d3d12.dll
     else if (lowerModuleName.find(L"d3d12.dll") != std::wstring::npos) {
-        LogInfo("Installing D3D12 device hooks for module: %ws", moduleName.c_str());
         if (HasReframeworkPluginModule()) {
-            LogInfo("Skipping D3D12 hooks installation - ReFramework plugin detected");
+            LogInfo("[OnModuleLoaded] Skipping D3D12 hooks installation - ReFramework plugin detected");
         } else if (InstallD3D12DeviceHooks(hModule)) {
-            LogInfo("D3D12 device hooks installed successfully");
+            LogInfo("[OnModuleLoaded] D3D12 device hooks installed successfully");
         }
     } else if (lowerModuleName.find(L"sl.interposer.dll") != std::wstring::npos) {
-        // Check if Streamline loading is enabled
-        LogInfo("Installing Streamline hooks for module: %ws", moduleName.c_str());
         if (InstallStreamlineHooks(hModule)) {
-            LogInfo("Streamline hooks installed successfully");
+            LogInfo("[OnModuleLoaded] Streamline hooks installed successfully");
         } else {
-            LogError("Failed to install Streamline hooks");
+            LogError("[OnModuleLoaded] Failed to install Streamline hooks");
         }
     }
 
     // XInput hooks
     else if (lowerModuleName.find(L"xinput") != std::wstring::npos) {
-        LogInfo("Installing XInput hooks for module: %ws", moduleName.c_str());
         if (InstallXInputHooks(hModule)) {
-            LogInfo("XInput hooks installed successfully");
+            LogInfo("[OnModuleLoaded] XInput hooks installed successfully");
         } else {
-            LogError("Failed to install XInput hooks");
+            LogError("[OnModuleLoaded] Failed to install XInput hooks");
         }
     }
 
     // GameInput (IGameInput) hooks – GameInput.dll exports GameInputCreate
     else if (lowerModuleName.find(L"gameinput.dll") != std::wstring::npos) {
-        LogInfo("Installing GameInput hooks for module: %ws", moduleName.c_str());
         if (InstallGameInputHooks(hModule)) {
-            LogInfo("GameInput hooks installed successfully");
+            LogInfo("[OnModuleLoaded] GameInput hooks installed successfully");
         } else {
-            LogInfo("GameInput hooks not installed (export not found or already installed)");
+            LogInfo("[OnModuleLoaded] GameInput hooks not installed (export not found or already installed)");
         }
     }
     // Windows.Gaming.Input (WinRT) hooks – RoGetActivationFactory from combase
     else if (lowerModuleName.find(L"windows.gaming.input.dll") != std::wstring::npos) {
-        LogInfo("Installing Windows.Gaming.Input hooks for module: %ws", moduleName.c_str());
         if (InstallWindowsGamingInputHooks(hModule)) {
-            LogInfo("Windows.Gaming.Input hooks installed successfully");
+            LogInfo("[OnModuleLoaded] Windows.Gaming.Input hooks installed successfully");
         } else {
-            LogError("Failed to install Windows.Gaming.Input hooks");
+            LogError("[OnModuleLoaded] Failed to install Windows.Gaming.Input hooks");
         }
     }
 
     // NVAPI hooks
     else if (lowerModuleName.find(L"nvapi64.dll") != std::wstring::npos) {
-        // Check if nvapi64 loading is enabled
-        LogInfo("Installing NVAPI hooks for module: %ws", moduleName.c_str());
         if (InstallNVAPIHooks(hModule)) {
             LogInfo("NVAPI hooks installed successfully");
         } else {
@@ -1674,116 +1669,108 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     // NvLowLatencyVk (Vulkan Reflex) hooks
     else if (lowerModuleName.find(L"nvlowlatencyvk.dll") != std::wstring::npos) {
-        LogInfo("Installing nvlowlatencyvk.dll hooks for module: %ws", moduleName.c_str());
         if (InstallNvLowLatencyVkHooks(hModule)) {
-            LogInfo("NvLowLatencyVk hooks installed successfully");
+            LogInfo("[OnModuleLoaded] NvLowLatencyVk hooks installed successfully");
         } else {
-            LogInfo("NvLowLatencyVk hooks not installed (disabled by setting or already installed)");
+            LogInfo("[OnModuleLoaded] NvLowLatencyVk hooks not installed (disabled by setting or already installed)");
         }
     }
     // vulkan-1.dll (Vulkan loader) – VK_NV_low_latency2: hook vkGetDeviceProcAddr to wrap vkSetLatencyMarkerNV
     else if (lowerModuleName.find(L"vulkan-1.dll") != std::wstring::npos) {
-        LogInfo("Installing vulkan-1.dll loader hooks for module: %ws", moduleName.c_str());
         if (InstallVulkanLoaderHooks(hModule)) {
-            LogInfo("Vulkan loader (VK_NV_low_latency2) hooks installed successfully");
+            LogInfo("[OnModuleLoaded] Vulkan loader (VK_NV_low_latency2) hooks installed successfully");
         } else {
-            LogInfo("Vulkan loader hooks not installed (disabled by setting or already installed)");
+            LogInfo("[OnModuleLoaded] Vulkan loader hooks not installed (disabled by setting or already installed)");
         }
     }
     // NGX hooks
     else if (lowerModuleName.find(L"_nvngx.dll") != std::wstring::npos) {
-        // Check if _nvngx loading is enabled
-        LogInfo("Installing NGX hooks for module: %ws", moduleName.c_str());
         if (InstallNGXHooks(hModule)) {
-            LogInfo("NGX hooks installed successfully");
+            LogInfo("[OnModuleLoaded] NGX hooks installed successfully");
         } else {
-            LogError("Failed to install NGX hooks");
+            LogError("[OnModuleLoaded] Failed to install NGX hooks");
         }
     }
     // dbghelp.dll – log stack trace queries from any thread
     else if (lowerModuleName.find(L"dbghelp.dll") != std::wstring::npos) {
-        LogInfo("Installing DbgHelp hooks for module: %ws", moduleName.c_str());
+        LogInfo("[OnModuleLoaded] dbghelp.dll: %ws", moduleName.c_str());
         if (InstallDbgHelpHooks(hModule)) {
-            LogInfo("DbgHelp hooks installed successfully");
+            LogInfo("[OnModuleLoaded] DbgHelp hooks installed successfully");
         } else {
-            LogInfo("DbgHelp hooks not installed (e.g. already installed or symbol not found)");
+            LogInfo("[OnModuleLoaded] DbgHelp hooks not installed (e.g. already installed or symbol not found)");
         }
     }
     // advapi32.dll – PCLStats ETW (EventRegister + EventWriteTransfer) for Reflex/PCLStats event counting
     else if (lowerModuleName.find(L"advapi32.dll") != std::wstring::npos) {
         if (InstallPCLStatsEtwHooks(hModule)) {
-            LogInfo("PCLStats ETW hooks installed (advapi32.dll)");
+            LogInfo("[OnModuleLoaded] PCLStats ETW hooks installed (advapi32.dll)");
         } else {
-            LogInfo("PCLStats ETW hooks not installed (e.g. already installed or advapi32 not ready)");
+            LogInfo("[OnModuleLoaded] PCLStats ETW hooks not installed (e.g. already installed or advapi32 not ready)");
         }
     }
     // d3d9.dll – D3D9 hook state (device vtable hooks installed when ReShade gives us a device)
     else if (lowerModuleName.find(L"d3d9.dll") != std::wstring::npos) {
-        LogInfo("Installing D3D9 hooks for module: %ws", moduleName.c_str());
+        LogInfo("[OnModuleLoaded] d3d9.dll: %ws", moduleName.c_str());
         if (display_commanderhooks::d3d9::InstallDX9Hooks(hModule)) {
-            LogInfo("D3D9 hooks state installed successfully");
+            LogInfo("[OnModuleLoaded] D3D9 hooks state installed successfully");
         } else {
-            LogInfo("D3D9 hooks not installed (e.g. already installed or shutdown in progress)");
+            LogInfo("[OnModuleLoaded] D3D9 hooks not installed (e.g. already installed or shutdown in progress)");
         }
     }
     // opengl32.dll – WGL / OpenGL present and context hooks
     else if (lowerModuleName.find(L"opengl32.dll") != std::wstring::npos) {
-        LogInfo("Installing OpenGL hooks for module: %ws", moduleName.c_str());
         if (InstallOpenGLHooks(hModule)) {
-            LogInfo("OpenGL hooks installed successfully");
+            LogInfo("[OnModuleLoaded] opengl32.dll: %ws", moduleName.c_str());
         } else {
-            LogInfo("OpenGL hooks not installed (e.g. suppressed, already installed, or opengl32 not ready)");
+            LogInfo(
+                "[OnModuleLoaded] OpenGL hooks not installed (e.g. suppressed, already installed, or opengl32 not "
+                "ready)");
         }
     }
     // ddraw.dll – DirectDraw present (Flip) and FPS limiter
     else if (lowerModuleName.find(L"ddraw.dll") != std::wstring::npos) {
-        LogInfo("Installing DDraw hooks for module: %ws", moduleName.c_str());
         if (display_commanderhooks::ddraw::InstallDDrawHooks(hModule)) {
-            LogInfo("DDraw hooks installed successfully");
+            LogInfo("[OnModuleLoaded] DDraw hooks installed successfully");
         } else {
-            LogInfo("DDraw hooks not installed (e.g. already installed, shutdown, or proxy mode)");
+            LogInfo("[OnModuleLoaded] DDraw hooks not installed (e.g. already installed, shutdown, or proxy mode)");
         }
     }
     // dinput8.dll – DirectInput 8 create hook
     else if (lowerModuleName.find(L"dinput8.dll") != std::wstring::npos) {
-        LogInfo("Installing DirectInput 8 hooks for module: %ws", moduleName.c_str());
         if (InstallDirectInput8Hooks(hModule)) {
-            LogInfo("DirectInput 8 hooks installed");
+            LogInfo("[OnModuleLoaded] DirectInput 8 hooks installed");
         } else {
-            LogInfo("DirectInput 8 hooks not installed (e.g. suppressed or already installed)");
+            LogInfo("[OnModuleLoaded] DirectInput 8 hooks not installed (e.g. suppressed or already installed)");
         }
     }
     // dinput.dll – legacy DirectInput create hooks (DirectInputCreateA/W)
     else if (lowerModuleName.find(L"dinput.dll") != std::wstring::npos) {
-        LogInfo("Installing DirectInput hooks for module: %ws", moduleName.c_str());
         if (InstallDirectInputHooks(hModule)) {
-            LogInfo("DirectInput hooks installed");
+            LogInfo("[OnModuleLoaded] DirectInput hooks installed");
         } else {
-            LogInfo("DirectInput hooks not installed (e.g. suppressed or already installed)");
+            LogInfo("[OnModuleLoaded] DirectInput hooks not installed (e.g. suppressed or already installed)");
         }
     }
     // kernel32.dll – HID-related hooks (ReadFile, CreateFileA/W, WriteFile, DeviceIoControl)
     else if (lowerModuleName.find(L"kernel32.dll") != std::wstring::npos) {
-        LogInfo("Installing HID kernel32 hooks for module: %ws", moduleName.c_str());
         if (InstallHIDKernel32Hooks(hModule)) {
-            LogInfo("HID kernel32 hooks installed successfully");
+            LogInfo("[OnModuleLoaded] HID kernel32 hooks installed successfully");
         } else {
-            LogInfo("HID kernel32 hooks not installed (suppressed or already installed)");
+            LogInfo("[OnModuleLoaded] HID kernel32 hooks not installed (suppressed or already installed)");
         }
     }
     // hid.dll – HID API hooks (HidD_*, HidP_*)
     else if (lowerModuleName.find(L"hid.dll") != std::wstring::npos) {
-        LogInfo("Installing HID (hid.dll) hooks for module: %ws", moduleName.c_str());
         if (InstallHIDDHooks(hModule)) {
-            LogInfo("HID (hid.dll) hooks installed successfully");
+            LogInfo("[OnModuleLoaded] HID (hid.dll) hooks installed successfully");
         } else {
-            LogInfo("HID (hid.dll) hooks not installed (suppressed or already installed)");
+            LogInfo("[OnModuleLoaded] HID (hid.dll) hooks not installed (suppressed or already installed)");
         }
     }
 
     // Generic logging for other modules
     else {
-        LogInfo("Other module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
+        LogInfo("[OnModuleLoaded] Other module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
     }
 }
 

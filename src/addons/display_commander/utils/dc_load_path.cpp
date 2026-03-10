@@ -146,6 +146,11 @@ static bool IsKnownDcProxyModulePath(const std::filesystem::path& module_path) {
     return false;
 }
 
+// True if the module exports GetDisplayCommanderState (only DC proxy DLLs do; system version.dll etc. do not).
+static bool ModuleHasGetDisplayCommanderState(HMODULE mod) {
+    return mod != nullptr && GetProcAddress(mod, "GetDisplayCommanderState") != nullptr;
+}
+
 extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
 }  // namespace
 
@@ -256,7 +261,8 @@ static std::filesystem::path GetDcProxyModulePathImpl(std::filesystem::path* out
         if (ec) mod_canon = mod_path;
         if (mod_canon == exe_path) continue;
         if (IsDcAddonModulePath(mod_path)) continue;
-        if (!IsKnownDcProxyModulePath(mod_path)) continue;  // Only DC proxy DLLs (dxgi, winmm, etc.).
+        if (!IsKnownDcProxyModulePath(mod_path)) continue;  // Only known proxy names (dxgi, winmm, etc.).
+        if (!ModuleHasGetDisplayCommanderState(modules[i])) continue;  // Must be actual DC proxy, not system DLL.
         if (!process_dir.empty()) {
             std::filesystem::path dir = mod_path.has_filename() ? mod_path.parent_path() : mod_path;
             std::filesystem::path dir_canon = std::filesystem::canonical(dir, ec);

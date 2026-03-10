@@ -3924,8 +3924,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
         imgui.Spacing();
         imgui.SetNextItemWidth(500.f);
-        if (ComboSettingWrapper(settings::g_mainTabSettings.native_reflex_fps_preset,
-                                "Native Reflex FPS preset", imgui, 500.f)) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "Native Reflex FPS preset", imgui,
+                                500.f)) {
             int new_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
             if (new_preset >= 0 && new_preset < 6) {
                 settings::ApplyNativeReflexPreset(new_preset);
@@ -3945,9 +3945,9 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             {
                 if (CheckboxSetting(settings::g_mainTabSettings.use_streamline_proxy_fps_limiter,
                                     "Use Streamline proxy for FPS limiter", imgui)) {
-                    LogInfo(
-                        "Use Streamline proxy for FPS limiter %s",
-                        settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue() ? "enabled" : "disabled");
+                    LogInfo("Use Streamline proxy for FPS limiter %s",
+                            settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue() ? "enabled"
+                                                                                                    : "disabled");
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
@@ -3958,8 +3958,9 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             if (use_reflex_markers_as_fps_limiter) imgui.EndDisabled();
             if (CheckboxSetting(settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter,
                                 "Use Reflex Latency Markers as fps limiter", imgui)) {
-                LogInfo("Use Reflex markers as FPS limiter %s",
-                        settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue() ? "enabled" : "disabled");
+                LogInfo(
+                    "Use Reflex markers as FPS limiter %s",
+                    settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue() ? "enabled" : "disabled");
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
@@ -3974,13 +3975,16 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
-                        "Max frames to queue when using Reflex markers as FPS limiter. Game default = no limit; 1–6 = limit.");
+                        "Max frames to queue when using Reflex markers as FPS limiter. Game default = no limit; 1–6 = "
+                        "limit.");
                 }
-                if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.BeginDisabled();
+                if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0)
+                    imgui.BeginDisabled();
                 if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
                                     imgui)) {
-                    LogInfo("Native pacing sim start only %s",
-                            settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
+                    LogInfo(
+                        "Native pacing sim start only %s",
+                        settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
                 }
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip(
@@ -4008,7 +4012,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
                 }
-                if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.EndDisabled();
+                if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0)
+                    imgui.EndDisabled();
                 imgui.Unindent();
                 imgui.Unindent();
             }
@@ -4019,7 +4024,8 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     // Shown when Custom preset, or when outside native reflex block (safe mode is not preset-controlled)
     const int native_reflex_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
     const bool show_safe_mode = !::IsNativeFramePacingInSync() || native_reflex_preset == 6;
-    if (show_safe_mode && CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {
+    if (show_safe_mode
+        && CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {
         LogInfo("Safe Mode fps limiter %s",
                 settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
     }

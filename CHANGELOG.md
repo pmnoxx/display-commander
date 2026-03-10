@@ -2,11 +2,14 @@
 
 ---
 
-## v0.12.389 (unreleased)
+## v0.12.390
+- **Local Proxy DC version: only treat DLLs with GetDisplayCommanderState as DC proxy** - "Local Proxy DC version" was sometimes showing 10.0.x (e.g. 10.0.26100.1150) because we considered any loaded module whose filename matched a known proxy name (e.g. version.dll, dxgi.dll). The system version.dll from Windows has that file version and no DC export, so it was incorrectly reported. We now require the module to export `GetDisplayCommanderState` before treating it as a DC proxy; only actual Display Commander proxy DLLs have that export. Details: utils/dc_load_path.cpp (ModuleHasGetDisplayCommanderState, GetDcProxyModulePathImpl).
+
+## v0.12.389
 - **App Data folders: ensure they exist before use** - `GetDisplayCommanderAppDataFolder`, `GetDisplayCommanderReshadeRootFolder`, `GetDefaultDlssOverrideFolder`, and `GetEffectiveDefaultDlssOverrideFolder` now create their directories if missing, then return the path. Callers no longer need to create the base folders; on creation failure an empty path is returned. Details: utils/general_utils.cpp.
-- **Game default overrides: ContinueRendering enabled for supported games** - Per-game defaults now set "Continue rendering when unfocused" (ContinueRendering = 1) for RE2, RE3, RE7, RE8, Sekiro, Elden Ring, Armored Core 6, Hitman 3, and Devil May Cry 5 when the user has not yet saved a config. Details: res/game_default_overrides.toml.
 
 ## v0.12.388
+- **Game default overrides: ContinueRendering enabled for supported games** - Per-game defaults now set "Continue rendering when unfocused" (ContinueRendering = 1) for RE2, RE3, RE7, RE8, Sekiro, Elden Ring, Armored Core 6, Hitman 3, and Devil May Cry 5 when the user has not yet saved a config. Details: res/game_default_overrides.toml.
 
 ## v0.12.387
 - **Fixed continue rendering in background crashing in Sekiro** - Switched fake activation and related window messages from PostMessage back to SendMessage so the game processes them synchronously. This fixes crashes when "Continue rendering when unfocused" is enabled in Sekiro (and may help other games). Details: DetourWindowMessageNonBlocking (SendMessage again; deadlock avoided by sending from another thread or by throttle), Window Info tab Quick Send buttons, and any other paths that had been changed to PostMessage for continue-rendering.

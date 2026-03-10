@@ -24,8 +24,9 @@ std::filesystem::path GetLocalDcDirectory();
 // Process (game) directory only if it contains zzz_display_commander.addon64/.addon32; otherwise empty. For UI "Local
 // DC version".
 std::filesystem::path GetLocalDcAddonDirectory();
-// Full path of the first loaded DC proxy module (e.g. dxgi.dll, winmm.dll), or empty. Version from this DLL is used for
-// "Local Proxy DC version".
+// Full path of the first loaded DC proxy module (e.g. dxgi.dll, winmm.dll), or empty. Only modules that export
+// GetDisplayCommanderState are considered (avoids treating system version.dll etc. as DC). Version from this DLL is
+// used for "Local Proxy DC version".
 std::filesystem::path GetDcProxyModulePath();
 
 // Config get/set (section DisplayCommander.DC).

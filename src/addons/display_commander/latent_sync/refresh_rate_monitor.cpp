@@ -1,6 +1,5 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "refresh_rate_monitor.hpp"
-#include "../hooks/api_hooks.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/timing.hpp"
 
@@ -43,7 +42,7 @@ RefreshRateMonitor::RefreshRateMonitor() {
 
 RefreshRateMonitor::~RefreshRateMonitor() {
     StopMonitoring();
-    CleanupWaitForVBlank();
+    CleanupDxgiResources();
     if (m_present_event != nullptr) {
         CloseHandle(m_present_event);
         m_present_event = nullptr;
@@ -55,13 +54,9 @@ void RefreshRateMonitor::StartMonitoring() {
         return;
     }
 
-    // Initialize WaitForVBlank function
-    if (!InitializeWaitForVBlank()) {
-        m_initialization_failed = true;
-        m_error_message = "Failed to initialize WaitForVBlank function";
-        LogMessage("Failed to start monitoring: " + m_error_message);
-        return;
-    }
+    // Use swap chain from Present (SignalPresent); no CreateDXGIFactory1_Direct / WaitForVBlank init
+    m_initialization_failed = false;
+    m_error_message.clear();
 
     m_should_stop = false;
     m_monitor_thread = std::thread(&RefreshRateMonitor::MonitoringThread, this);
@@ -87,50 +82,23 @@ void RefreshRateMonitor::StopMonitoring() {
     LogInfo("Refresh rate monitoring thread: StopMonitoring() completed - thread joined and stopped");
 }
 
-bool RefreshRateMonitor::InitializeWaitForVBlank() {
-    // WaitForVBlank is a method on IDXGIOutput interface, not a standalone function
-    // We'll create a DXGI factory and get the output to use WaitForVBlank
-    HRESULT hr = display_commanderhooks::CreateDXGIFactory1_Direct(IID_PPV_ARGS(&m_dxgi_factory));
-    if (FAILED(hr)) {
-        LogError("[RefreshRateMonitor] Failed to create DXGI factory: 0x%08X", hr);
-        return false;
+void RefreshRateMonitor::CleanupDxgiResources() {
+    // Release stored swap chain (render thread may have set it via SignalPresent)
+    IDXGISwapChain* prev = m_dxgi_swapchain.exchange(nullptr, std::memory_order_acq_rel);
+    if (prev != nullptr) {
+        prev->Release();
     }
-
-    // Get the first adapter
-    IDXGIAdapter1* adapter = nullptr;
-    hr = m_dxgi_factory->EnumAdapters1(0, &adapter);
-    if (FAILED(hr)) {
-        LogError("[RefreshRateMonitor] Failed to enumerate adapters: 0x%08X", hr);
-        return false;
-    }
-
-    // Get the first output
-    hr = adapter->EnumOutputs(0, &m_dxgi_output);
-    adapter->Release();
-
-    if (FAILED(hr)) {
-        LogError("[RefreshRateMonitor] Failed to enumerate outputs: 0x%08X", hr);
-        return false;
-    }
-
-    LogInfo("[RefreshRateMonitor] Successfully initialized DXGI output for WaitForVBlank");
-    return true;
 }
 
-void RefreshRateMonitor::CleanupWaitForVBlank() {
-    if (m_dxgi_output != nullptr) {
-        m_dxgi_output->Release();
-        m_dxgi_output = nullptr;
+void RefreshRateMonitor::SignalPresent(IDXGISwapChain* swap_chain) {
+    // Store swap chain for GetCurrentVBlankTime (AddRef so we can use it on monitor thread)
+    if (swap_chain != nullptr) {
+        swap_chain->AddRef();
     }
-    if (m_dxgi_factory != nullptr) {
-        m_dxgi_factory->Release();
-        m_dxgi_factory = nullptr;
+    IDXGISwapChain* prev = m_dxgi_swapchain.exchange(swap_chain, std::memory_order_acq_rel);
+    if (prev != nullptr) {
+        prev->Release();
     }
-    // Note: m_dxgi_swapchain is not owned by us, so we don't release it
-    m_dxgi_swapchain = nullptr;
-}
-
-void RefreshRateMonitor::SignalPresent() {
     if (m_present_event != nullptr && m_monitoring.load()) {
         SetEvent(m_present_event);
     }
@@ -156,6 +124,7 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
     uint64_t present_refresh_count_diff = current_present_refresh_count - m_last_present_refresh_count;
 
     if (present_refresh_count_diff <= 0) {
+        m_process_skipped_no_diff.fetch_add(1, std::memory_order_relaxed);
         return;
     }
     // m_last_vblank_time = stats.SyncQPCTime.QuadPart * utils::QPC_TO_NS;
@@ -230,6 +199,7 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
 
             // Increment sample count
             m_sample_count++;
+            m_last_stats_time_ns.store(current_time, std::memory_order_release);
         }
     } else {
         // First sample - just record the time
@@ -244,8 +214,27 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
 }
 
 bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
-    (void)stats;
-    // No swapchain source wired (global_dxgi_swapchain was removed; cached frame stats path was never enabled).
+    IDXGISwapChain* sc = m_dxgi_swapchain.load(std::memory_order_acquire);
+    if (sc == nullptr) {
+        return false;
+    }
+    m_get_frame_stats_tried.fetch_add(1, std::memory_order_relaxed);
+    sc->AddRef();
+    HRESULT hr = sc->GetFrameStatistics(&stats);
+    sc->Release();
+    if (SUCCEEDED(hr)) {
+        m_get_frame_stats_ok.fetch_add(1, std::memory_order_relaxed);
+        return true;
+    }
+    m_last_get_frame_stats_hr.store(hr, std::memory_order_release);
+    // Log first failure and every 100th to avoid spam (e.g. DXGI_ERROR_FRAME_STATISTICS_DISJOINT)
+    const uint64_t tried = m_get_frame_stats_tried.load(std::memory_order_relaxed);
+    const uint64_t ok = m_get_frame_stats_ok.load(std::memory_order_relaxed);
+    const uint64_t failures = (tried > ok) ? (tried - ok) : 0;
+    if (failures == 1 || (failures > 0 && (failures % 100 == 0))) {
+        LogWarn("[RefreshRateMonitor] GetFrameStatistics failed: 0x%08X (failures so far: %llu)",
+                static_cast<unsigned>(hr), static_cast<unsigned long long>(failures));
+    }
     return false;
 }
 
@@ -432,7 +421,7 @@ uint32_t RefreshRateMonitor::CountSamplesBelowThreshold(double fixed_refresh_hz)
 
 void RefreshRateMonitor::MonitoringThread() {
     LogInfo("Refresh rate monitoring thread: entering main loop");
-    LogInfo("Refresh rate monitoring thread: STARTED - measuring actual refresh rate via WaitForVBlank");
+    LogInfo("Refresh rate monitoring thread: STARTED - using global DXGI swap chain frame statistics");
 
     // Wait a bit for the system to stabilize
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -444,6 +433,11 @@ void RefreshRateMonitor::MonitoringThread() {
     m_max_refresh_rate = 0.0;
     m_sample_count = 0;
     m_first_sample = true;
+    m_loop_count.store(0, std::memory_order_release);
+    m_get_frame_stats_tried.store(0, std::memory_order_release);
+    m_get_frame_stats_ok.store(0, std::memory_order_release);
+    m_process_skipped_no_diff.store(0, std::memory_order_release);
+    m_last_get_frame_stats_hr.store(0, std::memory_order_release);
 
     // Clear recent samples
     {
@@ -452,15 +446,10 @@ void RefreshRateMonitor::MonitoringThread() {
         m_recent_samples.fill({});
     }
 
-    // uint64_t m_last_present_refresh_count = 0;
-    //  Main monitoring loop
+    // Main monitoring loop: wait for Present signal, then get frame statistics from stored swap chain
     while (!m_should_stop.load()) {
+        m_loop_count.fetch_add(1, std::memory_order_relaxed);
         try {
-            if (m_dxgi_output == nullptr) {
-                LogError("DXGI output is null");
-                break;
-            }
-
             // Wait for signal from render thread (after Present is called)
             // This ensures DWM has been flushed before we check frame statistics
             if (m_present_event != nullptr) {
@@ -482,7 +471,9 @@ void RefreshRateMonitor::MonitoringThread() {
             DwmFlush();
 
             DXGI_FRAME_STATISTICS stats = {};
-            ProcessFrameStatistics(stats);
+            if (GetCurrentVBlankTime(stats)) {
+                ProcessFrameStatistics(stats);
+            }
 
         } catch (const std::exception& e) {
             LogError("Exception in refresh rate monitoring thread: %s", e.what());

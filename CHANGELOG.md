@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.376
+- **DXGI VRR / refresh rate detection (non-NVIDIA, default off)** - Optional DXGI-based refresh rate and Variable Refresh Rate (VRR) detection using the game's swap chain frame statistics. Works on any DXGI game (NVIDIA, AMD, Intel); no NVAPI or vendor-specific APIs required. Off by default: enable "DXGI refresh rate / VRR detection" in Advanced tab to start the monitor. When enabled, Present hooks signal a background thread that measures current/min/max Hz from the native swap chain (using private_data so ReShade proxy swap chains are unwrapped). Main tab shows current DXGI VRR status and refresh rate in the overlay section and optionally in the performance overlay. Details: latent_sync/refresh_rate_monitor*, refresh_rate_monitor_integration; Advanced tab enable checkbox and debug stats; Present hooks pass data.dxgi_swapchain to SignalRefreshRateMonitor.
+- **Warning: unstable** - The DXGI refresh rate / VRR detection feature is experimental and may be unstable in some games; disable it if you see issues.
+
 ## v0.12.375
 - **Auto color space: run at most once per swapchain** - Auto color space (HDR/scRGB from back buffer format) is now applied at most once per swapchain. A new flag in per-swapchain private data (`DCDxgiSwapchainData::auto_colorspace_applied`) records when it has been run, so we no longer re-apply or re-check every present. This removes redundant SetColorSpace1 calls and simplifies the code.
 - **Removed kDcSwapChainColorSpace** - The separate DXGI private-data GUID used to store "last set color space" on the swap chain has been removed. Tracking is now done only via `DCDxgiSwapchainData` (one blob per swapchain). D3D10 auto color space path fixed: the outer DXGI swapchain reference is now set so the once-per-swapchain logic and private data save/load apply to D3D10 as well. Details: hooks/dxgi/dxgi_present_hooks.hpp (auto_colorspace_applied); swapchain_events.cpp (AutoSetColorSpace, OnPresentUpdateBefore).

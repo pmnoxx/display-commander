@@ -103,6 +103,75 @@ bool DidNativeReflexSleepRecently(uint64_t now_ns) {
     return last_injected_call > 0 && (now_ns - last_injected_call) < utils::SEC_TO_NS;  // 1s in nanoseconds
 }
 
+// Draw DXGI overlay subsection (show DXGI VRR status, show DXGI refresh rate). Uses RefreshRateMonitor when
+// enable_dxgi_refresh_rate_vrr_detection is on in Advanced tab. Checkboxes are disabled when that setting is off.
+void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Columns(1);
+    imgui.Separator();
+    imgui.TextUnformatted("DXGI");
+    imgui.Columns(4, "overlay_checkboxes", false);
+
+    const bool dxgi_detection_enabled =
+        settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue();
+    if (!dxgi_detection_enabled) {
+        imgui.BeginDisabled();
+    }
+
+    bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
+    if (imgui.Checkbox("Show DXGI VRR status", &show_dxgi_vrr_status)) {
+        settings::g_mainTabSettings.show_dxgi_vrr_status.SetValue(show_dxgi_vrr_status);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows DXGI-based VRR status in the performance overlay (RefreshRateMonitor heuristic: rate spread / "
+            "samples below threshold). Enable \"DXGI refresh rate / VRR detection\" in Advanced tab for data.");
+    }
+    imgui.NextColumn();
+
+    bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
+    if (imgui.Checkbox("Show DXGI refresh rate", &show_dxgi_refresh_rate)) {
+        settings::g_mainTabSettings.show_dxgi_refresh_rate.SetValue(show_dxgi_refresh_rate);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Shows DXGI refresh rate (Hz) in the performance overlay from swap chain GetFrameStatistics. "
+            "Enable \"DXGI refresh rate / VRR detection\" in Advanced tab for data.");
+    }
+    imgui.NextColumn();
+
+    if (!dxgi_detection_enabled) {
+        imgui.EndDisabled();
+    }
+
+    imgui.Columns(1);
+
+    // Show current DXGI VRR status and refresh rate on the main tab when detection is enabled
+    if (dxgi_detection_enabled) {
+        dxgi::fps_limiter::RefreshRateStats dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
+        double dxgi_hz = dxgi::fps_limiter::GetSmoothedRefreshRate();
+        if (dxgi_stats.is_valid || dxgi_hz > 0.0) {
+            imgui.Spacing();
+            if (dxgi_stats.is_valid) {
+                if (dxgi_stats.all_last_20_within_1s && dxgi_stats.samples_below_threshold_last_10s >= 2) {
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, "DXGI VRR: On");
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: Off");
+                }
+                imgui.SameLine(0.0f, imgui.GetStyle().ItemInnerSpacing.x * 2.0f);
+            }
+            if (dxgi_hz > 0.0) {
+                imgui.Text("Refresh rate: %.1f Hz (min %.1f / max %.1f)", dxgi_hz, dxgi_stats.min_rate,
+                          dxgi_stats.max_rate);
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "Refresh rate: -- Hz");
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Current DXGI refresh rate from swap chain. Enable \"Show DXGI VRR status\" / \"Show DXGI refresh rate\" above to show in overlay.");
+            }
+        }
+    }
+}
+
 // Draw NVAPI stats subsection (5 checkboxes + warning + refresh poll slider). Whole subsection is disabled when NVAPI
 // is not initialized.
 void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
@@ -6322,6 +6391,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
     bool show_overlay_texture_stats = settings::g_mainTabSettings.show_overlay_texture_stats.GetValue();
+    bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
+    bool show_dxgi_refresh_rate = settings::g_mainTabSettings.show_dxgi_refresh_rate.GetValue();
     bool show_enabledfeatures = display_commanderhooks::IsTimeslowdownEnabled() || ::g_auto_click_enabled.load();
 
     if (settings::g_mainTabSettings.show_clock.GetValue()) {
@@ -6535,6 +6606,38 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                         imgui.TextColored(ui::colors::TEXT_DIMMED, "  -> VRR enabled (fallback)");
                     }
                 }
+            }
+        }
+    }
+
+    // DXGI overlay: VRR status and refresh rate from RefreshRateMonitor (requires enable_dxgi_refresh_rate_vrr_detection)
+    if (show_dxgi_vrr_status || show_dxgi_refresh_rate) {
+        dxgi::fps_limiter::RefreshRateStats dxgi_stats = dxgi::fps_limiter::GetRefreshRateStats();
+        if (show_dxgi_vrr_status) {
+            if (dxgi_stats.is_valid && dxgi_stats.all_last_20_within_1s && dxgi_stats.samples_below_threshold_last_10s >= 2) {
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "DXGI VRR: On");
+            } else if (dxgi_stats.is_valid) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: Off");
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: --");
+            }
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("DXGI-based VRR heuristic (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection in Advanced tab.");
+            }
+        }
+        if (show_dxgi_refresh_rate) {
+            double dxgi_hz = dxgi::fps_limiter::GetSmoothedRefreshRate();
+            if (dxgi_hz > 0.0) {
+                if (settings::g_mainTabSettings.show_labels.GetValue()) {
+                    imgui.Text("DXGI refresh rate: %.1f Hz", dxgi_hz);
+                } else {
+                    imgui.Text("%.1f Hz", dxgi_hz);
+                }
+            } else {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI refresh rate: -- Hz");
+            }
+            if (imgui.IsItemHovered() && show_tooltips) {
+                imgui.SetTooltip("From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection in Advanced tab.");
             }
         }
     }
@@ -8285,6 +8388,8 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         imgui.NextColumn();
 
         DrawNvapiStatsOverlaySubsection(imgui);
+
+        DrawDxgiOverlaySubsection(imgui);
 
         imgui.Spacing();
         // Overlay background transparency slider

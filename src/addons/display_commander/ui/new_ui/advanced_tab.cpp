@@ -3,6 +3,7 @@
 #include "../../globals.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../latency/reflex_provider.hpp"
+#include "../../latent_sync/refresh_rate_monitor_integration.hpp"
 #include "../../presentmon/presentmon_manager.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
@@ -38,14 +39,16 @@ namespace ui::new_ui {
 using namespace display_commander::ui;
 
 void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui);
-void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
+void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
+                                    display_commander::ui::IImGuiWrapper& imgui);
 void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui);
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui);
-void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui);
+void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui);
 void DrawNewExperimentalFeatures(display_commander::ui::IImGuiWrapper& imgui);
+void DrawDxgiRefreshRateSection(display_commander::ui::IImGuiWrapper& imgui);
 
 void InitAdvancedTab() {
     // Ensure settings are loaded
@@ -73,7 +76,14 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
 
     // Advanced Settings Section
     if (imgui.CollapsingHeader("Advanced Settings", wrapper_flags::TreeNodeFlags_None)) {
-        DrawAdvancedTabSettingsSection(imgui);
+        DrawAdvancedTabSettingsSection(api, imgui);
+    }
+
+    imgui.Spacing();
+
+    // DXGI refresh rate subsection (enable + debug stats)
+    if (imgui.CollapsingHeader("DXGI refresh rate", wrapper_flags::TreeNodeFlags_None)) {
+        DrawDxgiRefreshRateSection(imgui);
     }
 
     imgui.Spacing();
@@ -93,13 +103,6 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
 
     imgui.Spacing();
 
-    // HDR and Display Settings Section
-    if (imgui.CollapsingHeader("HDR and Display Settings", wrapper_flags::TreeNodeFlags_None)) {
-        DrawHdrDisplaySettings(api, imgui);
-    }
-
-    imgui.Spacing();
-
     if (enabled_experimental_features) {
         // Disable MPO (fix black screen on multimonitor) Section
         if (imgui.CollapsingHeader("Disable MPO (fix black screen issues on multimonitor setup)",
@@ -111,7 +114,7 @@ void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::
     }
 
     // NVAPI Settings Section - only show if game is in NVAPI game list
-    DrawNvapiSettings(imgui);
+    DrawNvapiSettings(api, imgui);
 
     imgui.Spacing();
 
@@ -218,18 +221,20 @@ void DrawFeaturesEnabledByDefault(display_commander::ui::IImGuiWrapper& imgui) {
             "Reduces input-to-display latency when the limiter is active. Disable only if you observe issues.");
     }
 
-    CheckboxSetting(settings::g_advancedTabSettings.enqueue_gpu_completion, "Enqueue GPU completion (from present-update)",
-                    imgui);
+    CheckboxSetting(settings::g_advancedTabSettings.enqueue_gpu_completion,
+                    "Enqueue GPU completion (from present-update)", imgui);
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
-            "When enabled (default), enqueues GPU completion measurement from the last present-update state (DX11/DX12).\n"
+            "When enabled (default), enqueues GPU completion measurement from the last present-update state "
+            "(DX11/DX12).\n"
             "Used for latency and GPU timing. Disable only if you observe issues or want to reduce overhead.");
     }
     if (::g_smooth_motion_dll_loaded.load(std::memory_order_relaxed)) {
         imgui.SameLine();
         imgui.TextColored(::ui::colors::TEXT_WARNING, "(Disabled due to Smooth Motion)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
+            imgui.SetTooltip(
+                "nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
         }
     }
 
@@ -985,7 +990,8 @@ void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Unindent();
 }
 
-void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
+void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
+                                    display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
     // Safemode setting
@@ -1175,6 +1181,110 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::IImGuiWrapper& imgui)
     imgui.Unindent();
 }
 
+void DrawDxgiRefreshRateSection(display_commander::ui::IImGuiWrapper& imgui) {
+    imgui.Indent();
+
+    if (CheckboxSetting(settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection,
+                        "DXGI refresh rate / VRR detection", imgui)) {
+        LogInfo(
+            "DXGI refresh rate / VRR detection setting changed to: %s",
+            settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "When enabled, DXGI Present detours signal the refresh rate monitor after each Present.\n"
+            "This allows DXGI-based refresh rate and VRR detection (RefreshRateMonitor thread).\n"
+            "When disabled, SignalRefreshRateMonitor is not called, reducing per-frame work.\n\n"
+            "Default: disabled.");
+    }
+
+    imgui.Spacing();
+    imgui.TextUnformatted("Debug stats:");
+    imgui.Indent();
+
+    const bool thread_running = dxgi::fps_limiter::IsRefreshRateMonitorThreadRunning();
+    imgui.Text("Monitor thread: %s", thread_running ? "Running" : "Stopped");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("RefreshRateMonitor monitoring thread (started with StartRefreshRateMonitoring).");
+    }
+
+    const uint64_t signal_count = dxgi::fps_limiter::GetRefreshRateMonitorSignalCount();
+    imgui.Text("Signals: %llu", static_cast<unsigned long long>(signal_count));
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Number of times SignalRefreshRateMonitor was called from DXGI Present detours. "
+            "Increments each frame when DXGI refresh rate / VRR detection is enabled. If this stays 0, Present hooks "
+            "are not calling the signal.");
+    }
+
+    const uint64_t loop_count = dxgi::fps_limiter::GetRefreshRateMonitorLoopCount();
+    imgui.Text("Loops: %llu", static_cast<unsigned long long>(loop_count));
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Number of times the monitor thread loop ran (each wait + process iteration). "
+            "Includes timeouts. Resets when monitoring is (re)started. If Loops stays 0, thread may not be running.");
+    }
+
+    const bool has_swap = dxgi::fps_limiter::RefreshRateMonitorHasSwapChain();
+    imgui.Text("Swap chain: %s", has_swap ? "set" : "not set");
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Whether a swap chain was stored via SignalPresent (from Present detours). If not set, GetFrameStatistics "
+            "is never called.");
+    }
+
+    const uint64_t frame_stats_tried = dxgi::fps_limiter::GetRefreshRateMonitorFrameStatsTried();
+    const uint64_t frame_stats_ok = dxgi::fps_limiter::GetRefreshRateMonitorFrameStatsOk();
+    imgui.Text("GetFrameStatistics: tried %llu, OK %llu", static_cast<unsigned long long>(frame_stats_tried),
+               static_cast<unsigned long long>(frame_stats_ok));
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Times IDXGISwapChain::GetFrameStatistics was called (tried) and returned success (OK). "
+            "If tried=0, swap chain was never set when the loop ran. If tried>0 but OK=0, GetFrameStatistics is "
+            "failing (e.g. DXGI_ERROR_FRAME_STATISTICS_DISJOINT).");
+    }
+
+    const HRESULT last_hr = dxgi::fps_limiter::GetRefreshRateMonitorLastFrameStatisticsHr();
+    if (last_hr != 0) {
+        imgui.TextColored(::ui::colors::TEXT_ERROR, "Last GetFrameStatistics HRESULT: 0x%08X",
+                          static_cast<unsigned>(last_hr));
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Last failure code from IDXGISwapChain::GetFrameStatistics. "
+                "Common: 0x887A0007 = DXGI_ERROR_FRAME_STATISTICS_DISJOINT (reset/transition). Also logged to file "
+                "(first + every 100th failure).");
+        }
+    }
+
+    const uint64_t skipped_no_diff = dxgi::fps_limiter::GetRefreshRateMonitorProcessSkippedNoDiff();
+    imgui.Text("Skipped (no diff): %llu", static_cast<unsigned long long>(skipped_no_diff));
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip(
+            "Times ProcessFrameStatistics got stats but skipped because SyncRefreshCount difference was <= 0 (no new "
+            "present since last check).");
+    }
+
+    const long long last_ns = dxgi::fps_limiter::GetRefreshRateMonitorLastStatsTimeNs();
+    if (last_ns == 0) {
+        imgui.Text("Last stats: never");
+    } else {
+        const LONGLONG now_ns = utils::get_now_ns();
+        const double ago_sec = static_cast<double>(now_ns - last_ns) / static_cast<double>(utils::SEC_TO_NS);
+        imgui.Text("Last stats: %.2f s ago", ago_sec);
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltip("Last time GetFrameStatistics was successfully processed (ProcessFrameStatistics).");
+    }
+
+    dxgi::fps_limiter::RefreshRateStats stats = dxgi::fps_limiter::GetRefreshRateStats();
+    imgui.Text("Status: %s", stats.status.c_str());
+    imgui.Text("Samples: %u", stats.sample_count);
+    imgui.Text("Current: %.2f Hz | Min: %.2f Hz | Max: %.2f Hz", stats.current_rate, stats.min_rate, stats.max_rate);
+
+    imgui.Unindent();
+    imgui.Unindent();
+}
+
 void DrawHdrDisplaySettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
 
@@ -1287,7 +1397,7 @@ void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Unindent();
 }
 
-void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
+void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     uint64_t now_ns = utils::get_now_ns();
 
     // Minimal NVIDIA Reflex Controls (device runtime dependent)
@@ -1707,6 +1817,11 @@ void DrawNvapiSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
     if (imgui.CollapsingHeader("Unsupported/unfinished features", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
+
+        // HDR and Display Settings (under unsupported)
+        if (imgui.CollapsingHeader("HDR and Display Settings", wrapper_flags::TreeNodeFlags_None)) {
+            DrawHdrDisplaySettings(api, imgui);
+        }
 
         // Steam API subsection: module loaded + key exports (read-only)
         if (imgui.CollapsingHeader("Steam API", wrapper_flags::TreeNodeFlags_None)) {

@@ -99,6 +99,9 @@ class AdvancedTabSettings {
     // Window management compatibility setting
     BoolSetting suppress_window_changes;
 
+    /** When true, DXGI Present detours signal the refresh rate monitor (SignalRefreshRateMonitor) for DXGI-based refresh rate / VRR detection. Default false. */
+    BoolSetting enable_dxgi_refresh_rate_vrr_detection;
+
     // Win+Up grace: seconds after leaving foreground when Win+Up (restore) still works. 0=disabled, 1-60=seconds,
     // 61=forever.
     IntSetting win_up_grace_seconds;

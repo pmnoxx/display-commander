@@ -481,7 +481,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Detour(IDXGISwapChain* This, UI
         // Handle common after logic
         HandlePresentAfter(false);
     }
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
+        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : This;
+        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
+    }
     CALL_GUARD(utils::get_now_ns());
 
     return res;
@@ -548,7 +551,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
         // Handle common after logic
         HandlePresentAfter(false);
     }
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
+        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : baseSwapChain;
+        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
+    }
 
     return res;
 }
@@ -556,6 +562,10 @@ HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Detour(IDXGISwapChain1* This, 
 // Streamline proxy swap chain: Present detour (FPS limiter only when use_streamline_proxy_fps_limiter is on)
 static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGISwapChain* This, UINT SyncInterval,
                                                                           UINT PresentFlags) {
+    display_commanderhooks::dxgi::DCDxgiSwapchainData data{};
+    if (This != nullptr) {
+        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(This, &data);
+    }
     if (in_present_call.load() > 0) {
         if (IDXGISwapChain_Present_Streamline_Original != nullptr)
             return IDXGISwapChain_Present_Streamline_Original(This, SyncInterval, PresentFlags);
@@ -594,7 +604,10 @@ static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGIS
     if (use_fps_limiter) {
         HandlePresentAfter(true);
     }
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
+        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : This;
+        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
+    }
     CALL_GUARD(utils::get_now_ns());
     return res;
 }
@@ -602,6 +615,11 @@ static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present_Streamline_Detour(IDXGIS
 // Streamline proxy swap chain: Present1 detour (FPS limiter only when use_streamline_proxy_fps_limiter is on)
 static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(
     IDXGISwapChain1* This, UINT SyncInterval, UINT PresentFlags, const DXGI_PRESENT_PARAMETERS* pPresentParameters) {
+    IDXGISwapChain* baseSwapChain = reinterpret_cast<IDXGISwapChain*>(This);
+    display_commanderhooks::dxgi::DCDxgiSwapchainData data{};
+    if (baseSwapChain != nullptr) {
+        display_commanderhooks::dxgi::LoadDCDxgiSwapchainData(baseSwapChain, &data);
+    }
     CALL_GUARD(utils::get_now_ns());
     const int override_val = VsyncOverrideComboIndexToApiValue(settings::g_mainTabSettings.vsync_override.GetValue());
     const UINT effective_interval = (override_val >= 0) ? static_cast<UINT>(override_val) : SyncInterval;
@@ -637,7 +655,10 @@ static HRESULT STDMETHODCALLTYPE IDXGISwapChain_Present1_Streamline_Detour(
     if (use_fps_limiter) {
         HandlePresentAfter(false);
     }
-    ::dxgi::fps_limiter::SignalRefreshRateMonitor();
+    if (settings::g_advancedTabSettings.enable_dxgi_refresh_rate_vrr_detection.GetValue()) {
+        IDXGISwapChain* sc_for_monitor = (data.dxgi_swapchain != nullptr) ? data.dxgi_swapchain : baseSwapChain;
+        ::dxgi::fps_limiter::SignalRefreshRateMonitor(sc_for_monitor);
+    }
     return res;
 }
 
@@ -2146,8 +2167,7 @@ bool HookStreamlineProxySwapchain(IDXGISwapChain* swapchain) {
 }
 
 // GUID for Display Commander per-swapchain data (DCDxgiSwapchainData blob). Do not conflict with ReShade SKID.
-constexpr GUID kDcDxgiSwapchainData = {
-    0xdc7b2f81, 0xc4d5, 0x4e0f, {0x9b, 0x3e, 0x2d, 0x5f, 0x6c, 0x7e, 0x8f, 0x9a}};
+constexpr GUID kDcDxgiSwapchainData = {0xdc7b2f81, 0xc4d5, 0x4e0f, {0x9b, 0x3e, 0x2d, 0x5f, 0x6c, 0x7e, 0x8f, 0x9a}};
 
 bool LoadDCDxgiSwapchainData(IDXGISwapChain* swapchain, DCDxgiSwapchainData* out) {
     if (swapchain == nullptr || out == nullptr) return false;

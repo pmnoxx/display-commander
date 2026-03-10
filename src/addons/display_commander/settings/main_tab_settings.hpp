@@ -124,6 +124,10 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_refresh_rate_frame_times;
     ui::new_ui::IntSetting refresh_rate_monitor_poll_ms;  // Only used when show_refresh_rate_frame_times is true
     ui::new_ui::BoolSetting show_refresh_rate_frame_time_stats;
+    /** Show DXGI-based VRR status in performance overlay (RefreshRateMonitor heuristic). Requires DXGI refresh rate / VRR detection enabled in Advanced tab. */
+    ui::new_ui::BoolSetting show_dxgi_vrr_status;
+    /** Show DXGI refresh rate (Hz) in performance overlay (from RefreshRateMonitor / GetFrameStatistics). Requires DXGI refresh rate / VRR detection enabled in Advanced tab. */
+    ui::new_ui::BoolSetting show_dxgi_refresh_rate;
     ui::new_ui::BoolSetting show_cpu_usage;
     ui::new_ui::BoolSetting show_cpu_fps;
     ui::new_ui::BoolSetting show_fg_mode;

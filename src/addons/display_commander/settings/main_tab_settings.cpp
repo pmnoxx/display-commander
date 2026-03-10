@@ -47,7 +47,7 @@ MainTabSettings::MainTabSettings()
                                    {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
       pcl_stats_enabled("pcl_stats_enabled.disabled2", false, "DisplayCommander"),
       use_reflex_markers_as_fps_limiter("use_reflex_markers_as_fps_limiter", true, "DisplayCommander"),
-      reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 5, 0, 5, "DisplayCommander"),
+      reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 0, 0, 5, "DisplayCommander"),
       use_streamline_proxy_fps_limiter("use_streamline_proxy_fps_limiter", false, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only_doff", false, "DisplayCommander"),
       delay_present_start_after_sim_enabled("delay_present_start_after_sim_enabled_doff", false, "DisplayCommander"),

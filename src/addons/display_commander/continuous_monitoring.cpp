@@ -883,7 +883,7 @@ void ContinuousMonitoringThread() {
                 display_commander::utils::RefreshRunningGamesCache();
             }
 
-            // Steam achievement count cache: only place that calls GetSteamAchievementCount() so overlay/UI never block
+            // Steam achievement count cache: only place that calls GetSteamAchievementCountBlocking() so overlay/UI never block
             if (settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue()) {
                 CALL_GUARD(utils::get_now_ns());
                 g_continuous_monitoring_section.store("steam_achievement_cache", std::memory_order_release);

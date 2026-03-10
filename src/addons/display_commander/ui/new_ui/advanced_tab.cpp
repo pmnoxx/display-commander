@@ -1845,7 +1845,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
             const int64_t now_ns = ::utils::get_now_ns();
             if (now_ns - s_steam_ui_cache_ns >= kSteamUiCacheIntervalNs) {
                 s_steam_ui_cache_ns = now_ns;
-                display_commander::utils::GetSteamAchievementExportsDebug(s_exports_debug, sizeof(s_exports_debug));
+                display_commander::utils::GetSteamAchievementExportsDebugBlocking(s_exports_debug, sizeof(s_exports_debug));
                 const char* export_names[] = {"SteamAPI_Init", "SteamUser", "SteamUserStats", "SteamUtils",
                                               "SteamClient"};
                 for (int i = 0; i < 5; ++i) {
@@ -1878,7 +1878,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
             }
             // Single achievement count fetch per frame for entire Steam API section (cache only; no blocking)
             const display_commander::utils::SteamAchievementCount ac =
-                display_commander::utils::GetSteamAchievementCountCachedSafe();
+                display_commander::utils::GetSteamAchievementCountCachedNonBlocking();
             {
                 if (ac.available) {
                     imgui.TextColored(::ui::colors::TEXT_LABEL, "Achievements: %d / %d unlocked", ac.unlocked,
@@ -1901,7 +1901,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
                         const size_t max_entries = 512;
                         s_achievement_list.resize(
                             max_entries < static_cast<size_t>(ac.total) ? max_entries : static_cast<size_t>(ac.total));
-                        const int n = display_commander::utils::GetSteamAchievementList(s_achievement_list.data(),
+                        const int n = display_commander::utils::GetSteamAchievementListBlocking(s_achievement_list.data(),
                                                                                         s_achievement_list.size());
                         if (n >= 0) {
                             s_achievement_list.resize(static_cast<size_t>(n));
@@ -1950,7 +1950,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
                 static int s_last_total = -1;
                 if (ac.available) {
                     if (ac.unlocked != s_last_unlocked || ac.total != s_last_total) {
-                        display_commander::utils::GetLastUnlockedAchievementInfo(ac.unlocked, ac.total,
+                        display_commander::utils::GetLastUnlockedAchievementInfoBlocking(ac.unlocked, ac.total,
                                                                                  &s_last_unlocked_info);
                         s_last_unlocked = ac.unlocked;
                         s_last_total = ac.total;

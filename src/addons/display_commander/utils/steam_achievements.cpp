@@ -277,7 +277,7 @@ bool GetLastUnlockedFromUserStats(void* p_user_stats, int /*unlocked_count*/, in
     if (num > 65536) {
         AppendDebugLine(out_info,
                        "GetNumAchievements (vtable index %u) returned %u (sanity fail) — wrong interface version. "
-                       "The 18/63 count comes from GetSteamAchievementCount (same API).",
+                       "The 18/63 count comes from GetSteamAchievementCountBlocking (same API).",
                        k_get_num_achievements_index, num);
         return false;  // Caller may try another UserStats version
     }
@@ -324,7 +324,7 @@ bool GetLastUnlockedFromUserStats(void* p_user_stats, int /*unlocked_count*/, in
 
 }  // namespace
 
-void GetLastUnlockedAchievementInfo(int unlocked_count, int total, SteamLastUnlockedInfo* out_info) {
+void GetLastUnlockedAchievementInfoBlocking(int unlocked_count, int total, SteamLastUnlockedInfo* out_info) {
     if (out_info == nullptr) {
         return;
     }
@@ -399,7 +399,7 @@ void GetLastUnlockedAchievementInfo(int unlocked_count, int total, SteamLastUnlo
     AppendDebugLine(out_info, "GetISteamUserStats: all versions (013, 012, 011) gave sanity fail or null");
 }
 
-SteamAchievementCount GetSteamAchievementCount() {
+SteamAchievementCount GetSteamAchievementCountBlocking() {
     SteamAchievementCount result{};
     HMODULE steam = GetSteamModule();
     if (steam == nullptr) {
@@ -450,7 +450,7 @@ SteamAchievementCount GetSteamAchievementCount() {
     return result;
 }
 
-int GetSteamAchievementList(SteamAchievementEntry* entries, size_t max_entries) {
+int GetSteamAchievementListBlocking(SteamAchievementEntry* entries, size_t max_entries) {
     if (entries == nullptr || max_entries == 0) {
         return -1;
     }
@@ -472,7 +472,7 @@ int GetSteamAchievementList(SteamAchievementEntry* entries, size_t max_entries) 
     return n;
 }
 
-void GetSteamAchievementExportsDebug(char* buf, size_t buf_size) {
+void GetSteamAchievementExportsDebugBlocking(char* buf, size_t buf_size) {
     if (buf == nullptr || buf_size == 0) {
         return;
     }

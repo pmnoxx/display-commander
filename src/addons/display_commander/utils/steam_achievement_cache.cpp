@@ -58,7 +58,7 @@ void PlayAchievementSoundImpl() {
 
 }  // namespace
 
-SteamAchievementCount GetSteamAchievementCountCachedSafe() {
+SteamAchievementCount GetSteamAchievementCountCachedNonBlocking() {
     if (!IsSteamAchievementNotificationsEnabled()) {
         return SteamAchievementCount{};
     }
@@ -71,17 +71,24 @@ SteamAchievementCount GetSteamAchievementCountCachedSafe() {
 }
 
 SteamAchievementCount GetSteamAchievementCountCached() {
-    return GetSteamAchievementCountCachedSafe();
+    return GetSteamAchievementCountCachedNonBlocking();
 }
 
 void RefreshSteamAchievementCacheFromBackground() {
     if (!IsSteamAchievementNotificationsEnabled()) {
         return;
     }
-    SteamAchievementCount fresh = GetSteamAchievementCount();
+    SteamAchievementCount fresh = GetSteamAchievementCountBlocking();
     {
         ::utils::SRWLockExclusive lock(g_cache_lock);
         g_cached = fresh;
+    }
+    // Update bump state only from this background thread (never from overlay/main thread).
+    if (!fresh.available) {
+        ClearSteamAchievementLastUnlocked();
+    } else if (settings::g_advancedTabSettings.show_steam_achievement_counter_increased.GetValue()) {
+        const int64_t now_ns = ::utils::get_now_ns();
+        SetSteamAchievementBumpFromUnlock(now_ns, fresh.unlocked, fresh.total);
     }
 }
 
@@ -102,7 +109,7 @@ void SetSteamAchievementBumpFromUnlock(int64_t now_ns, int unlocked, int total) 
     g_bump_unlocked.store(unlocked, std::memory_order_relaxed);
     g_bump_total.store(total, std::memory_order_relaxed);
     SteamLastUnlockedInfo info;
-    GetLastUnlockedAchievementInfo(unlocked, total, &info);
+    GetLastUnlockedAchievementInfoBlocking(unlocked, total, &info);
     {
         ::utils::SRWLockExclusive lock(g_bump_text_lock);
         snprintf(g_bump_display_name, kBumpDisplayNameSize, "%s", info.display_name);
@@ -118,14 +125,14 @@ void TriggerSteamAchievementTestBump() {
     if (settings::g_advancedTabSettings.play_sound_on_achievement.GetValue()) {
         PlayAchievementSoundImpl();
     }
-    SteamAchievementCount ac = GetSteamAchievementCountCachedSafe();
+    SteamAchievementCount ac = GetSteamAchievementCountCachedNonBlocking();
     const int64_t now_ns = ::utils::get_now_ns();
     g_bump_show_until_ns.store(now_ns + kSteamAchievementBumpDurationSec * ::utils::SEC_TO_NS,
                                std::memory_order_relaxed);
     g_bump_unlocked.store(ac.unlocked, std::memory_order_relaxed);
     g_bump_total.store(ac.total, std::memory_order_relaxed);
     SteamLastUnlockedInfo info;
-    GetLastUnlockedAchievementInfo(ac.unlocked, ac.total, &info);
+    GetLastUnlockedAchievementInfoBlocking(ac.unlocked, ac.total, &info);
     {
         ::utils::SRWLockExclusive lock(g_bump_text_lock);
         snprintf(g_bump_display_name, kBumpDisplayNameSize, "%s", info.display_name);

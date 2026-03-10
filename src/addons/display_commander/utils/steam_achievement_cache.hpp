@@ -8,22 +8,24 @@
 namespace display_commander::utils {
 
 // Returns Steam achievement count from a cache updated by a background thread at most once per second.
-// Use this instead of GetSteamAchievementCount() from overlay or UI to avoid per-frame Steam API calls.
+// Use this instead of GetSteamAchievementCountBlocking() from overlay or UI to avoid per-frame Steam API calls.
 SteamAchievementCount GetSteamAchievementCountCached();
 
-// Same as GetSteamAchievementCountCached() but never calls GetSteamAchievementCount() (non-blocking).
+// Same as GetSteamAchievementCountCached() but never calls GetSteamAchievementCountBlocking() (non-blocking).
 // Use from overlay, PerformanceOverlay, or UI. Only the cache is read; the ContinuousMonitoring thread
 // is responsible for refreshing the cache via RefreshSteamAchievementCacheFromBackground().
-SteamAchievementCount GetSteamAchievementCountCachedSafe();
+SteamAchievementCount GetSteamAchievementCountCachedNonBlocking();
 
 // Call only from the ContinuousMonitoring thread. May block on Steam API. Updates the cache used by
-// GetSteamAchievementCountCachedSafe(). Call periodically (e.g. every 1s) when Steam achievement notifications are on.
+// GetSteamAchievementCountCachedNonBlocking(). Call periodically (e.g. every 1s) when Steam achievement notifications are on.
 void RefreshSteamAchievementCacheFromBackground();
 
 // Bump state: overlay shows "Achievement unlocked! X / Y" for 30s after a real unlock or test trigger.
 constexpr int64_t kSteamAchievementBumpDurationSec = 30;
 
-// Call when overlay detects unlocked count increased (only if show_steam_achievement_counter_increased is on).
+// Call when unlocked count increased (only if show_steam_achievement_counter_increased is on).
+// Must be called only from the ContinuousMonitoring thread (via RefreshSteamAchievementCacheFromBackground),
+// or from TriggerSteamAchievementTestBump (Advanced tab test button). Do not call from the overlay/main thread.
 void SetSteamAchievementBumpFromUnlock(int64_t now_ns, int unlocked, int total);
 // Call when Steam achievements are unavailable (e.g. module not loaded) to reset last-unlocked tracking.
 void ClearSteamAchievementLastUnlocked();

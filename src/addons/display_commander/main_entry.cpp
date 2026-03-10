@@ -684,16 +684,9 @@ void OnPerformanceOverlay_TestWindow(reshade::api::effect_runtime* runtime, bool
 }
 
 void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
-    display_commander::utils::SteamAchievementCount ac = display_commander::utils::GetSteamAchievementCountCachedSafe();
+    // Bump state is updated only by the continuous-monitoring thread (RefreshSteamAchievementCacheFromBackground).
+    // Main thread only reads cached state and draws the overlay; no Steam API or blocking work here.
     const int64_t now_ns = utils::get_now_ns();
-    const bool show_counter_increased =
-        settings::g_advancedTabSettings.show_steam_achievement_counter_increased.GetValue();
-    if (ac.available && show_counter_increased) {
-        display_commander::utils::SetSteamAchievementBumpFromUnlock(now_ns, ac.unlocked, ac.total);
-    }
-    if (!ac.available) {
-        display_commander::utils::ClearSteamAchievementLastUnlocked();
-    }
     if (!display_commander::utils::IsSteamAchievementBumpActive(now_ns)) {
         return;
     }

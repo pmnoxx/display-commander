@@ -2134,8 +2134,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 std::error_code ec;
                 std::filesystem::create_directories(folder_path, ec);
                 std::wstring folder_w = folder_path.wstring();
-                HINSTANCE result =
-                    ShellExecuteW(nullptr, L"open", folder_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                HINSTANCE result = ShellExecuteW(nullptr, L"open", folder_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                 if (reinterpret_cast<intptr_t>(result) <= 32) {
                     LogError("Failed to open Display Commander folder: %s (Error: %ld)", folder_path.string().c_str(),
                              static_cast<long>(reinterpret_cast<intptr_t>(result)));
@@ -2414,12 +2413,15 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             imgui.SetTooltip("Support Display Commander development with a coffee!");
         }
     }
-    // Updates (ReShade, Display Commander, Addons)
-    g_rendering_ui_section.store("ui:tab:main_new:updates", std::memory_order_release);
-    if (imgui.CollapsingHeader("Updates", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-        DrawUpdatesSectionContent(imgui);
-        imgui.Unindent();
+    // loaded_reshade only
+    if (display_commanderhooks::g_hooked_before_reshade.load()) {
+        // Updates (ReShade, Display Commander, Addons)
+        g_rendering_ui_section.store("ui:tab:main_new:updates", std::memory_order_release);
+        if (imgui.CollapsingHeader("Updates", ImGuiTreeNodeFlags_None)) {
+            imgui.Indent();
+            DrawUpdatesSectionContent(imgui);
+            imgui.Unindent();
+        }
     }
 
     // Display Settings Section

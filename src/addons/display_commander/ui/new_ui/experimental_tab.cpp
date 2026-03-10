@@ -34,7 +34,6 @@
 #include "updates_tab.hpp"
 #include "window_info_tab.hpp"
 
-
 #include <psapi.h>
 #include <windows.h>
 
@@ -240,16 +239,18 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
             imgui.Spacing();
         }
 
-        if (imgui.CollapsingHeader("HID Suppression", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-            DrawHIDSuppression(imgui);
-        }
-        imgui.Spacing();
+        if (enabled_experimental_features) {
+            if (imgui.CollapsingHeader("HID Suppression", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                DrawHIDSuppression(imgui);
+            }
+            imgui.Spacing();
 
-        if (imgui.CollapsingHeader("DualSense Controller Monitor",
-                                   display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
-            display_commander::widgets::dualsense_widget::DrawDualSenseWidget(imgui);
+            if (imgui.CollapsingHeader("DualSense Controller Monitor",
+                                       display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
+                display_commander::widgets::dualsense_widget::DrawDualSenseWidget(imgui);
+            }
+            imgui.Spacing();
         }
-        imgui.Spacing();
 
         if (imgui.CollapsingHeader("Developer Tools", display_commander::ui::wrapper_flags::TreeNodeFlags_None)) {
             DrawDeveloperTools(imgui);
@@ -1359,8 +1360,8 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Spacing();
 
     // With ReShade: OnCreateDevice / OnCreateSwapchain path
-    if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_flipex_enabled,
-                        "Enable D3D9 FLIPEX (with ReShade)", imgui)) {
+    if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_flipex_enabled, "Enable D3D9 FLIPEX (with ReShade)",
+                        imgui)) {
         LogInfo("D3D9 FLIPEX (ReShade) %s",
                 settings::g_experimentalTabSettings.d3d9_flipex_enabled.GetValue() ? "enabled" : "disabled");
     }
@@ -1384,9 +1385,9 @@ void DrawD3D9FlipExControls(display_commander::ui::IImGuiWrapper& imgui) {
 
     if (CheckboxSetting(settings::g_experimentalTabSettings.d3d9_fix_create_texture_dimensions,
                         "Fix CreateTexture dimensions (DXT/BC)", imgui)) {
-        LogInfo("D3D9 Fix CreateTexture dimensions %s",
-                settings::g_experimentalTabSettings.d3d9_fix_create_texture_dimensions.GetValue() ? "enabled"
-                                                                                                  : "disabled");
+        LogInfo(
+            "D3D9 Fix CreateTexture dimensions %s",
+            settings::g_experimentalTabSettings.d3d9_fix_create_texture_dimensions.GetValue() ? "enabled" : "disabled");
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltip(
@@ -1599,7 +1600,8 @@ void DrawDeveloperTools(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TreePop();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("System import libs load DLLs at runtime (e.g. setupapi.dll). MinHook is static (code merged into addon).");
+        imgui.SetTooltip(
+            "System import libs load DLLs at runtime (e.g. setupapi.dll). MinHook is static (code merged into addon).");
     }
 
     imgui.Spacing();

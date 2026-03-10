@@ -331,8 +331,9 @@ static DWORD ProcessXInputGetState(DWORD dwUserIndex, XINPUT_STATE* pState, Hook
     // Check if override state is set - if so, spoof controller connection for controller 0
     bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
 
-    // Check if DualSense to XInput conversion is enabled
-    bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
+    // Check if DualSense to XInput conversion is enabled (requires experimental features)
+    bool dualsense_enabled =
+        enabled_experimental_features && shared_state && shared_state->enable_dualsense_xinput.load();
 
     DWORD result = ERROR_DEVICE_NOT_CONNECTED;
 
@@ -637,8 +638,9 @@ static DWORD WINAPI XInputSetState_Detour_Impl(size_t module_index, DWORD dwUser
     }
 
     // When DualSense-as-XInput is enabled, slot 0 is our HID DualSense: send rumble via HID output report.
-    if (shared_state && shared_state->enable_dualsense_xinput.load() && display_commander::hooks::IsDualSenseAvailable()
-        && dwUserIndex == 0 && display_commander::dualsense::g_dualsense_hid_wrapper) {
+    if (enabled_experimental_features && shared_state && shared_state->enable_dualsense_xinput.load()
+        && display_commander::hooks::IsDualSenseAvailable() && dwUserIndex == 0
+        && display_commander::dualsense::g_dualsense_hid_wrapper) {
         if (display_commander::dualsense::g_dualsense_hid_wrapper->SetRumble(0, vibration.wLeftMotorSpeed,
                                                                              vibration.wRightMotorSpeed)) {
             g_hook_stats[HOOK_XInputSetState].increment_unsuppressed();
@@ -698,8 +700,9 @@ static DWORD WINAPI XInputGetCapabilities_Detour_Impl(size_t module_index, DWORD
     // Check if override state is set - if so, spoof controller connection for controller 0
     bool should_spoof_connection = g_auto_click_enabled.load() && dwUserIndex == 0;
 
-    // Check if DualSense to XInput conversion is enabled
-    bool dualsense_enabled = shared_state && shared_state->enable_dualsense_xinput.load();
+    // Check if DualSense to XInput conversion is enabled (requires experimental features)
+    bool dualsense_enabled =
+        enabled_experimental_features && shared_state && shared_state->enable_dualsense_xinput.load();
 
     // If DS to XInput is enabled and DualSense is available, or spoofing is enabled, fake connected state
     bool should_fake_connection = false;
@@ -764,11 +767,10 @@ bool InstallXInputHooks(HMODULE xinput_module) {
         return true;
     }*/
 
-    // Initialize DualSense support if needed
+    // Initialize DualSense support if needed (only when experimental features enabled)
     auto shared_state = display_commander::widgets::xinput_widget::XInputWidget::GetSharedState();
-    LogInfo("[DUALSENSE] Initializing1 DualSense support");
-    if (shared_state && shared_state->enable_dualsense_xinput.load()) {
-        LogInfo("[DUALSENSE] Initializing2 DualSense support");
+    if (enabled_experimental_features && shared_state && shared_state->enable_dualsense_xinput.load()) {
+        LogInfo("[DUALSENSE] Initializing DualSense support");
         display_commander::hooks::InitializeDualSenseSupport();
     }
 

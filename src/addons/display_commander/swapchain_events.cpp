@@ -295,9 +295,11 @@ void DoInitializationWithHwnd(HWND hwnd) {
     LogInfo("[DoInitializationWithHwnd] before InitExperimentalTab");
     ui::new_ui::InitExperimentalTab();
 
-    // Initialize DualSense support
-    LogInfo("[DoInitializationWithHwnd] before InitializeDualSenseWidget");
-    display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
+    // Initialize DualSense support (only when experimental features enabled)
+    if (enabled_experimental_features) {
+        LogInfo("[DoInitializationWithHwnd] before InitializeDualSenseWidget");
+        display_commander::widgets::dualsense_widget::InitializeDualSenseWidget();
+    }
 
     // Set up window hooks if we have a valid HWND
     if (hwnd != nullptr && IsWindow(hwnd)) {

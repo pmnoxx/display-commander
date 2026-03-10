@@ -1529,8 +1529,7 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     CALL_GUARD(utils::get_now_ns());
     const bool has_dc_export = (GetProcAddress(hModule, "GetDisplayCommanderState") != nullptr);
-    LogInfo("[OnModuleLoaded] %ws (0x%p)%s", moduleName.c_str(), hModule,
-            has_dc_export ? " (DC proxy)" : "");
+    LogInfo("[OnModuleLoaded] %ws (0x%p)%s", moduleName.c_str(), hModule, has_dc_export ? " (DC proxy)" : "");
 
     if (IsRenoDxAddonPath(moduleName)) {
         OnRenoDxAddonLoaded();
@@ -1755,17 +1754,17 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     // kernel32.dll – HID-related hooks (ReadFile, CreateFileA/W, WriteFile, DeviceIoControl)
     else if (lowerModuleName.find(L"kernel32.dll") != std::wstring::npos) {
-        if (InstallHIDKernel32Hooks(hModule)) {
+        if (enabled_experimental_features && InstallHIDKernel32Hooks(hModule)) {
             LogInfo("[OnModuleLoaded] HID kernel32 hooks installed successfully");
-        } else {
+        } else if (enabled_experimental_features) {
             LogInfo("[OnModuleLoaded] HID kernel32 hooks not installed (suppressed or already installed)");
         }
     }
     // hid.dll – HID API hooks (HidD_*, HidP_*)
     else if (lowerModuleName.find(L"hid.dll") != std::wstring::npos) {
-        if (InstallHIDDHooks(hModule)) {
+        if (enabled_experimental_features && InstallHIDDHooks(hModule)) {
             LogInfo("[OnModuleLoaded] HID (hid.dll) hooks installed successfully");
-        } else {
+        } else if (enabled_experimental_features) {
             LogInfo("[OnModuleLoaded] HID (hid.dll) hooks not installed (suppressed or already installed)");
         }
     }

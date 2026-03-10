@@ -1,13 +1,13 @@
 #pragma once
 
+#include <imgui.h>
+#include <windows.h>
+#include <xinput.h>
 #include <array>
 #include <atomic>
-#include <imgui.h>
 #include <memory>
 #include <string>
 #include <vector>
-#include <windows.h>
-#include <xinput.h>
 #include "../../dualsense/dualsense_hid_wrapper.hpp"
 
 namespace display_commander {
@@ -15,7 +15,6 @@ namespace ui {
 struct IImGuiWrapper;
 }
 }  // namespace display_commander
-
 
 // Guide button constant (not defined in standard XInput headers)
 #ifndef XINPUT_GAMEPAD_GUIDE
@@ -52,10 +51,10 @@ struct XInputSharedState {
     std::atomic<bool> ui_overlay_open{false};
 
     // Settings
-    std::atomic<bool> enable_xinput_hooks{true}; // Enable XInput hooks (off by default)
+    std::atomic<bool> enable_xinput_hooks{true};  // Enable XInput hooks (off by default)
     std::atomic<bool> swap_a_b_buttons{false};
-    std::atomic<bool> enable_dualsense_xinput{false}; // Enable DualSense to XInput conversion
-    std::atomic<bool> test_gamepad_suppression{false}; // When true, zero XInputGetState output to game (for testing)
+    std::atomic<bool> enable_dualsense_xinput{false};   // Enable DualSense to XInput conversion
+    std::atomic<bool> test_gamepad_suppression{false};  // When true, zero XInputGetState output to game (for testing)
     // Stick input->output mapping per axis: input [min_input, max_input] -> output [min_output, max_output] (0-1)
     // Left stick X axis
     std::atomic<float> left_stick_x_min_input{0.0f};
@@ -80,14 +79,16 @@ struct XInputSharedState {
     // When true, use X axis values for both X and Y of that stick (4 sliders instead of 8)
     std::atomic<bool> left_stick_same_axes{true};
     std::atomic<bool> right_stick_same_axes{true};
-    std::atomic<bool> left_stick_circular{true};  // Left stick processing mode: true = circular (radial), false = square (separate axes)
-    std::atomic<bool> right_stick_circular{true}; // Right stick processing mode: true = circular (radial), false = square (separate axes)
+    std::atomic<bool> left_stick_circular{
+        true};  // Left stick processing mode: true = circular (radial), false = square (separate axes)
+    std::atomic<bool> right_stick_circular{
+        true};  // Right stick processing mode: true = circular (radial), false = square (separate axes)
 
     // Stick center calibration
-    std::atomic<float> left_stick_center_x{0.0f};  // Left stick X center offset
-    std::atomic<float> left_stick_center_y{0.0f};  // Left stick Y center offset
-    std::atomic<float> right_stick_center_x{0.0f}; // Right stick X center offset
-    std::atomic<float> right_stick_center_y{0.0f}; // Right stick Y center offset
+    std::atomic<float> left_stick_center_x{0.0f};   // Left stick X center offset
+    std::atomic<float> left_stick_center_y{0.0f};   // Left stick Y center offset
+    std::atomic<float> right_stick_center_x{0.0f};  // Right stick X center offset
+    std::atomic<float> right_stick_center_y{0.0f};  // Right stick Y center offset
 
     // Gamepad input override state
     // Values of INFINITY mean "not overridden" - use original input
@@ -96,15 +97,16 @@ struct XInputSharedState {
     struct OverrideState {
         std::atomic<float> left_stick_x{INFINITY};   // INF when not overridden
         std::atomic<float> left_stick_y{INFINITY};   // INF when not overridden
-        std::atomic<float> right_stick_x{INFINITY};   // INF when not overridden
-        std::atomic<float> right_stick_y{INFINITY};   // INF when not overridden
-        std::atomic<WORD> buttons_pressed_mask{0};    // Mask 0 = do nothing
+        std::atomic<float> right_stick_x{INFINITY};  // INF when not overridden
+        std::atomic<float> right_stick_y{INFINITY};  // INF when not overridden
+        std::atomic<WORD> buttons_pressed_mask{0};   // Mask 0 = do nothing
     };
 
     OverrideState override_state;
 
     // Vibration amplification
-    std::atomic<float> vibration_amplification{1.0f}; // Vibration amplification multiplier (1.0 = normal, 2.0 = double)
+    std::atomic<float> vibration_amplification{
+        1.0f};  // Vibration amplification multiplier (1.0 = normal, 2.0 = double)
 
     // Last update time for each controller
     std::array<std::atomic<uint64_t>, XUSER_MAX_COUNT> last_update_times;
@@ -150,8 +152,8 @@ struct XInputSharedState {
     // Autofire settings
     struct AutofireButton {
         WORD button_mask;
-        std::atomic<uint64_t> phase_start_frame_id; // Frame when current phase (hold down/up) started
-        std::atomic<bool> is_holding_down;          // true = holding down phase, false = holding up phase
+        std::atomic<uint64_t> phase_start_frame_id;  // Frame when current phase (hold down/up) started
+        std::atomic<bool> is_holding_down;           // true = holding down phase, false = holding up phase
 
         AutofireButton() : button_mask(0), phase_start_frame_id(0), is_holding_down(true) {}
         AutofireButton(WORD mask) : button_mask(mask), phase_start_frame_id(0), is_holding_down(true) {}
@@ -181,8 +183,8 @@ struct XInputSharedState {
 
     struct AutofireTrigger {
         TriggerType trigger_type;
-        std::atomic<uint64_t> phase_start_frame_id; // Frame when current phase (hold down/up) started
-        std::atomic<bool> is_holding_down;          // true = holding down phase, false = holding up phase
+        std::atomic<uint64_t> phase_start_frame_id;  // Frame when current phase (hold down/up) started
+        std::atomic<bool> is_holding_down;           // true = holding down phase, false = holding up phase
 
         AutofireTrigger() : trigger_type(TriggerType::LeftTrigger), phase_start_frame_id(0), is_holding_down(true) {}
         AutofireTrigger(TriggerType type) : trigger_type(type), phase_start_frame_id(0), is_holding_down(true) {}
@@ -204,17 +206,18 @@ struct XInputSharedState {
         }
     };
 
-    std::atomic<bool> autofire_enabled{false};              // Master enable/disable for autofire
-    std::atomic<uint32_t> autofire_hold_down_frames{1};    // Frames to hold button down
-    std::atomic<uint32_t> autofire_hold_up_frames{1};      // Frames to hold button up
-    std::vector<AutofireButton> autofire_buttons;            // List of buttons with autofire enabled
-    std::vector<AutofireTrigger> autofire_triggers;          // List of triggers with autofire enabled
-    mutable SRWLOCK autofire_lock = SRWLOCK_INIT;           // Thread safety for autofire_buttons and autofire_triggers vector access
+    std::atomic<bool> autofire_enabled{false};           // Master enable/disable for autofire
+    std::atomic<uint32_t> autofire_hold_down_frames{1};  // Frames to hold button down
+    std::atomic<uint32_t> autofire_hold_up_frames{1};    // Frames to hold button up
+    std::vector<AutofireButton> autofire_buttons;        // List of buttons with autofire enabled
+    std::vector<AutofireTrigger> autofire_triggers;      // List of triggers with autofire enabled
+    mutable SRWLOCK autofire_lock =
+        SRWLOCK_INIT;  // Thread safety for autofire_buttons and autofire_triggers vector access
 };
 
 // XInput widget class
 class XInputWidget {
-  public:
+   public:
     XInputWidget();
     ~XInputWidget() = default;
 
@@ -227,7 +230,7 @@ class XInputWidget {
     // Get the shared state (thread-safe)
     static std::shared_ptr<XInputSharedState> GetSharedState();
 
-  private:
+   private:
     // UI state
     bool is_initialized_ = false;
     int selected_controller_ = 0;
@@ -291,10 +294,10 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
 void DrawControllerTab(display_commander::ui::IImGuiWrapper& imgui);
 
 // Global functions for hooks to use
-void UpdateXInputState(DWORD user_index, const XINPUT_STATE *state);
+void UpdateXInputState(DWORD user_index, const XINPUT_STATE* state);
 void UpdateBatteryStatus(DWORD user_index);
-void IncrementEventCounter(const std::string &event_type);
+void IncrementEventCounter(const std::string& event_type);
 void CheckAndHandleScreenshot();
-void ProcessAutofire(DWORD user_index, XINPUT_STATE *pState);
+void ProcessAutofire(DWORD user_index, XINPUT_STATE* pState);
 
-} // namespace display_commander::widgets::xinput_widget
+}  // namespace display_commander::widgets::xinput_widget

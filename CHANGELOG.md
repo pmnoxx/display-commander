@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.384 (unreleased)
+- **Native Reflex FPS presets** - When the game has native Reflex (FPS limiter markers in sync), a new preset selector offers seven options: Pace real frames Balanced (Reflex markers, max queued=2, default), Pace real frames Stability (max queued=3), Pace real frames Low-latency (Reflex markers, max queued=1), Pace real frames Low-latency (native frame pacing), Pace generated frames (FPS limiter on generated frames), Pace generated (safe) - Use Reshade APIs as fallback, and Custom (manual configuration). Selecting a preset applies the corresponding settings; Custom shows all options. Preset is applied on config load so stored values always match the selected preset. Details: main_tab_settings (ApplyNativeReflexPreset, LoadSettings); main_new_tab.cpp; reflex_fps_limiter_max_queued_frames default changed to 2 to match Balanced preset.
+
 ## v0.12.383
 - **Max queued frames: combo with "Game default"** - The Reflex FPS limiter "Max queued frames" setting is now a combo (like VSync) instead of a slider. The first option shows "Game default" instead of "0"; options 1–6 remain. Stored value is unchanged (0 = game default, 1–6 = limit). Details: main_tab_settings (ComboSetting with labels "Game default", "1" … "6"); main_new_tab.cpp ComboSettingWrapper.
 

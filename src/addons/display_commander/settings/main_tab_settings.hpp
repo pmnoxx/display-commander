@@ -54,6 +54,9 @@ class MainTabSettings {
     ui::new_ui::BoolSetting use_reflex_markers_as_fps_limiter;
     /** Max queued frames when using Reflex markers as FPS limiter. 0 = game default; 1–6 = limit. */
     ui::new_ui::ComboSetting reflex_fps_limiter_max_queued_frames;
+    /** Native Reflex FPS preset when game has native Reflex. 0=Balanced, 1=Stability, 2=Low-latency (max queued=1),
+     * 3=Low-latency (native frame pacing), 4=Pace generated frames, 5=Pace generated (safe, Reshade APIs fallback), 6=Custom. */
+    ui::new_ui::ComboSetting native_reflex_fps_preset;
     /** When IsNativeFramePacingInSync: use Streamline proxy swap chain Present/Present1 for FPS limiter. */
     ui::new_ui::BoolSetting use_streamline_proxy_fps_limiter;
     ui::new_ui::BoolSetting native_pacing_sim_start_only;
@@ -241,6 +244,8 @@ class MainTabSettings {
 extern MainTabSettings g_mainTabSettings;
 
 // Utility functions
+/** Applies Native Reflex FPS preset values (0-5). Preset 6 = Custom, no apply. */
+void ApplyNativeReflexPreset(int preset);
 /** Returns the extended display device ID for the monitor containing the window. */
 std::string GetExtendedDisplayDeviceIdFromWindow(HWND hwnd);
 void SaveGameWindowDisplayDeviceId(HWND hwnd);

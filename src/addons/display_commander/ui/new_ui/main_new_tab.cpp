@@ -3915,88 +3915,111 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         drawPclStatsCheckbox();
     }
 
-    // Native frame pacing (only visible if OnPresentSync mode is selected and in sync)
+    // Native Reflex FPS presets (only visible if OnPresentSync mode is selected and in sync)
     if (::IsNativeFramePacingInSync()) {
-        auto use_reflex_markers_as_fps_limiter =
-            settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue();
-        if (use_reflex_markers_as_fps_limiter) imgui.BeginDisabled();
-        {
-            if (CheckboxSetting(settings::g_mainTabSettings.use_streamline_proxy_fps_limiter,
-                                "Use Streamline proxy for FPS limiter", imgui)) {
-                LogInfo(
-                    "Use Streamline proxy for FPS limiter %s",
-                    settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue() ? "enabled" : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When enabled, FPS limiter runs on the Streamline proxy swap chain (Present/Present1).\n"
-                    "Use when the game presents through Streamline's proxy (e.g. DLSS-G).");
-            }
+        int preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
+        if (preset < 0 || preset > 6) {
+            preset = 0;
+            settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(0);
         }
-        if (use_reflex_markers_as_fps_limiter) imgui.EndDisabled();
-        if (CheckboxSetting(settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter,
-                            "Use Reflex Latency Markers as fps limiter", imgui)) {
-            LogInfo("Use Reflex markers as FPS limiter %s",
-                    settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue() ? "enabled" : "disabled");
+        imgui.Spacing();
+        imgui.SetNextItemWidth(500.f);
+        if (ComboSettingWrapper(settings::g_mainTabSettings.native_reflex_fps_preset,
+                                "Native Reflex FPS preset", imgui, 500.f)) {
+            int new_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
+            if (new_preset >= 0 && new_preset < 6) {
+                settings::ApplyNativeReflexPreset(new_preset);
+            }
+            LogInfo("Native Reflex FPS preset changed to %d", new_preset);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
-                "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
-                "Experimental; may improve frame pacing with FG.");
+                "Quick presets for FPS limiter when the game has native Reflex. Custom allows manual configuration.");
         }
-        {
-            imgui.Indent();
-            if (ComboSettingWrapper(settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames, "Max queued frames",
-                                    imgui, 400.f)) {
-                LogInfo("Max queued frames changed");
+
+        const bool show_custom_options = (preset == 6);
+        if (show_custom_options) {
+            auto use_reflex_markers_as_fps_limiter =
+                settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue();
+            if (use_reflex_markers_as_fps_limiter) imgui.BeginDisabled();
+            {
+                if (CheckboxSetting(settings::g_mainTabSettings.use_streamline_proxy_fps_limiter,
+                                    "Use Streamline proxy for FPS limiter", imgui)) {
+                    LogInfo(
+                        "Use Streamline proxy for FPS limiter %s",
+                        settings::g_mainTabSettings.use_streamline_proxy_fps_limiter.GetValue() ? "enabled" : "disabled");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "When enabled, FPS limiter runs on the Streamline proxy swap chain (Present/Present1).\n"
+                        "Use when the game presents through Streamline's proxy (e.g. DLSS-G).");
+                }
+            }
+            if (use_reflex_markers_as_fps_limiter) imgui.EndDisabled();
+            if (CheckboxSetting(settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter,
+                                "Use Reflex Latency Markers as fps limiter", imgui)) {
+                LogInfo("Use Reflex markers as FPS limiter %s",
+                        settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue() ? "enabled" : "disabled");
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Max frames to queue when using Reflex markers as FPS limiter. Game default = no limit; 1–6 = limit.");
+                    "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
+                    "Experimental; may improve frame pacing with FG.");
             }
-            if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.BeginDisabled();
-            if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
-                                imgui)) {
-                LogInfo("Native pacing sim start only %s",
-                        settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
+            {
+                imgui.Indent();
+                if (ComboSettingWrapper(settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames,
+                                        "Max queued frames", imgui, 400.f)) {
+                    LogInfo("Max queued frames changed");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "Max frames to queue when using Reflex markers as FPS limiter. Game default = no limit; 1–6 = limit.");
+                }
+                if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.BeginDisabled();
+                if (CheckboxSetting(settings::g_mainTabSettings.native_pacing_sim_start_only, "Native frame pacing",
+                                    imgui)) {
+                    LogInfo("Native pacing sim start only %s",
+                            settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
+                        "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
+                }
+                imgui.Indent();
+                if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
+                                    "Schedule present start N frame times after simulation start", imgui)) {
+                    LogInfo("Schedule present start after Sim Start %s",
+                            settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
+                                                                                                         : "disabled");
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip(
+                        "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
+                        "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, "
+                        "1 = one frame, 0.5 = half frame, etc.).");
+                }
+                imgui.SameLine();
+                imgui.SetNextItemWidth(400.f);
+                if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)", "%.2f",
+                                       imgui)) {
+                }
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
+                }
+                if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.EndDisabled();
+                imgui.Unindent();
+                imgui.Unindent();
             }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
-                    "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
-            }
-            // Schedule present start N frame times after simulation start (default on, improves native frame
-            // pacing)
-            imgui.Indent();
-            if (CheckboxSetting(settings::g_mainTabSettings.delay_present_start_after_sim_enabled,
-                                "Schedule present start N frame times after simulation start", imgui)) {
-                LogInfo("Schedule present start after Sim Start %s",
-                        settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue() ? "enabled"
-                                                                                                     : "disabled");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
-                    "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, "
-                    "1 = one frame, 0.5 = half frame, etc.).");
-            }
-            imgui.SameLine();
-            imgui.SetNextItemWidth(400.f);
-            if (SliderFloatSetting(settings::g_mainTabSettings.delay_present_start_frames, "Delay (frames)", "%.2f",
-                                   imgui)) {
-                // Setting is automatically saved by SliderFloatSetting
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
-            }
-            if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0) imgui.EndDisabled();
-            imgui.Unindent();
-            imgui.Unindent();
         }
     }
 
     // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
-    if (CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {
+    // Shown when Custom preset, or when outside native reflex block (safe mode is not preset-controlled)
+    const int native_reflex_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
+    const bool show_safe_mode = !::IsNativeFramePacingInSync() || native_reflex_preset == 6;
+    if (show_safe_mode && CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {
         LogInfo("Safe Mode fps limiter %s",
                 settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
     }

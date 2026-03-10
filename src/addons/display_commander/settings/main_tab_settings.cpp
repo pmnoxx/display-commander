@@ -47,8 +47,18 @@ MainTabSettings::MainTabSettings()
                                    {"Low latency", "Low Latency + boost", "Off", "Game Defaults"}, "DisplayCommander"),
       pcl_stats_enabled("pcl_stats_enabled.disabled2", false, "DisplayCommander"),
       use_reflex_markers_as_fps_limiter("use_reflex_markers_as_fps_limiter", true, "DisplayCommander"),
-      reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 1,
+      reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 2,
                                            {"Game default", "1", "2", "3", "4", "5", "6"}, "DisplayCommander"),
+      native_reflex_fps_preset(
+          "native_reflex_fps_preset", 0,
+          {"Pace real frames Balanced (Use Reflex Latency Markers, max queued=2)",
+           "Pace real frames Stability (Use Reflex Latency Markers, max queued=3)",
+           "Pace real frames Low-latency (Use Reflex Latency Markers, max queued=1)",
+           "Pace real frames Low-latency (Use native frame pacing)",
+           "Pace generated frames (FPS limiter on generated frames)",
+           "Pace generated (safe) - Use Reshade APIs as fallback",
+           "Custom (configure manually)"},
+          "DisplayCommander"),
       use_streamline_proxy_fps_limiter("use_streamline_proxy_fps_limiter", false, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only_doff", false, "DisplayCommander"),
       delay_present_start_after_sim_enabled("delay_present_start_after_sim_enabled_doff", false, "DisplayCommander"),
@@ -209,6 +219,7 @@ MainTabSettings::MainTabSettings()
         &pcl_stats_enabled,
         &use_reflex_markers_as_fps_limiter,
         &reflex_fps_limiter_max_queued_frames,
+        &native_reflex_fps_preset,
         &use_streamline_proxy_fps_limiter,
         &native_pacing_sim_start_only,
         &delay_present_start_after_sim_enabled,
@@ -327,10 +338,77 @@ MainTabSettings::MainTabSettings()
     };
 }
 
+void ApplyNativeReflexPreset(int preset) {
+    switch (preset) {
+        case 0:  // Pace real frames Balanced
+            g_mainTabSettings.limit_real_frames.SetValue(true);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(2);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            break;
+        case 1:  // Pace real frames Stability
+            g_mainTabSettings.limit_real_frames.SetValue(true);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(3);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            break;
+        case 2:  // Pace real frames Low-latency (Reflex markers, max queued=1)
+            g_mainTabSettings.limit_real_frames.SetValue(true);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(1);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            break;
+        case 3:  // Pace real frames Low-latency (Use native frame pacing)
+            g_mainTabSettings.limit_real_frames.SetValue(true);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(true);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            break;
+        case 4:  // Pace generated frames
+            g_mainTabSettings.limit_real_frames.SetValue(false);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            break;
+        case 5:  // Pace generated (safe) - Use Reshade APIs as fallback
+            g_mainTabSettings.limit_real_frames.SetValue(false);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(true);
+            break;
+        default:  // Custom (6) - no auto-apply
+            break;
+    }
+}
+
 // TODO add initialization of other settings
 void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
+
+    // Apply Native Reflex preset when not Custom (preset 6)
+    int preset = native_reflex_fps_preset.GetValue();
+    if (preset >= 0 && preset < 6) {
+        ApplyNativeReflexPreset(preset);
+    }
 
     // Update CPU cores maximum based on system CPU count
     UpdateCpuCoresMaximum();

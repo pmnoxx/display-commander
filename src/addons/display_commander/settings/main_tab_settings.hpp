@@ -52,7 +52,7 @@ class MainTabSettings {
         reflex_disabled_limiter_mode;  // Used when FPS limiter is off (checkbox unchecked) or mode is LatentSync
     ui::new_ui::BoolSetting pcl_stats_enabled;
     ui::new_ui::BoolSetting use_reflex_markers_as_fps_limiter;
-    /** Max queued frames when using Reflex markers as FPS limiter (0–5). 5 = game default. */
+    /** Max queued frames when using Reflex markers as FPS limiter. 0 = game default; 1–6 = limit. */
     ui::new_ui::IntSetting reflex_fps_limiter_max_queued_frames;
     /** When IsNativeFramePacingInSync: use Streamline proxy swap chain Present/Present1 for FPS limiter. */
     ui::new_ui::BoolSetting use_streamline_proxy_fps_limiter;

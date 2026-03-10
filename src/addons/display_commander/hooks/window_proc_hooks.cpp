@@ -9,6 +9,7 @@
 
 #include "window_proc_hooks.hpp"
 #include <atomic>
+#include <thread>
 #include <unordered_map>
 #include "../exit_handler.hpp"
 #include "../globals.hpp"
@@ -179,7 +180,7 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     // Application is being activated - ensure proper state
                     LogInfo("WM_ACTIVATEAPP: Application activated - ensuring continued rendering - HWND: 0x%p", hwnd);
                     // Send fake focus message to maintain active state
-                    DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
+                    DetourWindowMessageNonBlocking(hwnd, WM_SETFOCUS, 0, 0);
                 }
             }
             break;
@@ -189,9 +190,10 @@ bool ProcessWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             if (continue_rendering_enabled) {
                 if (wParam != FALSE) {
                     // Non-client area is being activated - ensure window stays active
-                    LogInfo("WM_NCACTIVATE: Window activated - ensuring continued rendering - HWND: 0x%p", hwnd);
+                    LogInfoThrottled(10, "WM_NCACTIVATE: Window activated - ensuring continued rendering - HWND: 0x%p",
+                                     hwnd);
                     // Send fake focus message to maintain active state
-                    DetourWindowMessage(hwnd, WM_SETFOCUS, 0, 0);
+                    DetourWindowMessageNonBlocking(hwnd, WM_SETFOCUS, 0, 0);
                     return true;  // Suppress the message
                 } else {
                     // Non-client area is being deactivated - suppress and fake activation
@@ -415,14 +417,29 @@ void SendFakeActivationMessages(HWND hwnd) {
     LogInfo("Sent fake activation messages to window - HWND: 0x%p", hwnd);
 }
 
-// Message detouring function (similar to Special-K's SK_DetourWindowProc)
-LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+// Last time we dispatched a non-blocking detour (ns). Used to skip calls within 100ms.
+static std::atomic<uint64_t> g_last_detour_dispatch_ns{0};
+
+static constexpr uint64_t kDetourThrottleMs = 100;
+static constexpr uint64_t kDetourThrottleNs = kDetourThrottleMs * 1000 * 1000;
+
+void DetourWindowMessageNonBlocking(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (hwnd == nullptr || !IsWindow(hwnd)) {
-        return 0;
+        return;
     }
 
-    // Send the message directly to the window procedure
-    return SendMessage(hwnd, uMsg, wParam, lParam);
+    const uint64_t now = utils::get_real_time_ns();
+    const uint64_t last = g_last_detour_dispatch_ns.load(std::memory_order_acquire);
+    if (last != 0 && (now - last) < kDetourThrottleNs) {
+        return;  // Skip: called within 100ms of previous dispatch
+    }
+    g_last_detour_dispatch_ns.store(now, std::memory_order_release);
+
+    std::thread([hwnd, uMsg, wParam, lParam]() {
+        if (IsWindow(hwnd)) {
+            SendMessage(hwnd, uMsg, wParam, lParam);
+        }
+    }).detach();
 }
 
 }  // namespace display_commanderhooks

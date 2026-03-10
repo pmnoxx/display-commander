@@ -2,7 +2,10 @@
 
 ---
 
-## v0.12.384 (unreleased)
+## v0.12.385 (unreleased)
+- **Continue rendering: WM_SETFOCUS from another thread** - When "Continue rendering when unfocused" is on, fake WM_SETFOCUS is now sent from a separate thread instead of from inside the window procedure. This avoids deadlocks that can occur when SendMessage is called from the same thread as the window proc. Calls are throttled: if one was already sent in the last 100 ms, the new one is skipped. Details: `DetourWindowMessageNonBlocking` (renamed from `DetourWindowMessage`), window_proc_hooks.
+
+## v0.12.384
 - **Native Reflex FPS presets** - When the game has native Reflex (FPS limiter markers in sync), a new preset selector offers seven options: Pace real frames Balanced (Reflex markers, max queued=2, default), Pace real frames Stability (max queued=3), Pace real frames Low-latency (Reflex markers, max queued=1), Pace real frames Low-latency (native frame pacing), Pace generated frames (FPS limiter on generated frames), Pace generated (safe) - Use Reshade APIs as fallback, and Custom (manual configuration). Selecting a preset applies the corresponding settings; Custom shows all options. Preset is applied on config load so stored values always match the selected preset. Details: main_tab_settings (ApplyNativeReflexPreset, LoadSettings); main_new_tab.cpp; reflex_fps_limiter_max_queued_frames default changed to 2 to match Balanced preset.
 
 ## v0.12.383

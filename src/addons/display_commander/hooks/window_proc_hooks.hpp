@@ -22,8 +22,8 @@ bool IsContinueRenderingEnabled();
 // Fake activation functions
 void SendFakeActivationMessages(HWND hwnd);
 
-// Message detouring function (similar to Special-K's SK_DetourWindowProc)
-LRESULT DetourWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+// Non-blocking message detour: posts SendMessage on another thread to avoid deadlock. Skips if called within 100ms.
+void DetourWindowMessageNonBlocking(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 // Process window message - returns true if message should be suppressed
 // Called from message retrieval hooks (GetMessage/PeekMessage) when hwnd belongs to current process

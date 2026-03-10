@@ -33,8 +33,121 @@ static std::atomic<bool> g_sent_activate{false};
 static std::unordered_map<HWND, WNDPROC> g_original_wndproc;
 static std::atomic<bool> g_wndproc_lock_initialized{false};
 
+// Message rate detection: log when messages/sec exceed static thresholds (logarithmic steps).
+static constexpr uint64_t kMessageRateWindowNs = 1'000'000'000;  // 1 second
+static constexpr uint32_t kMessageRateThresholds[] = {
+    128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304};
+static constexpr size_t kMessageRateThresholdCount =
+    sizeof(kMessageRateThresholds) / sizeof(kMessageRateThresholds[0]);
+static constexpr uint32_t kMessageRatePrintNextCountInitial = 128;  // upon reaching limit, print this many; doubled each time reached
+static constexpr uint32_t kMessageRatePrintNextCountMax = 65536u;
+static std::atomic<uint64_t> g_message_rate_period_start_ns{0};
+static std::atomic<uint32_t> g_message_rate_count{0};
+static std::atomic<uint32_t> g_message_rate_last_logged_threshold{0};
+static std::atomic<uint32_t> g_message_rate_print_remaining{0};
+static std::atomic<uint32_t> g_message_rate_next_print_count{kMessageRatePrintNextCountInitial};
+
+// Returns literal name for known WM_* (no allocation); nullptr for unknown.
+static const char* GetWindowMessageNameForLog(UINT uMsg) {
+    switch (uMsg) {
+        case WM_NULL: return "WM_NULL";
+        case WM_CREATE: return "WM_CREATE";
+        case WM_DESTROY: return "WM_DESTROY";
+        case WM_MOVE: return "WM_MOVE";
+        case WM_SIZE: return "WM_SIZE";
+        case WM_ACTIVATE: return "WM_ACTIVATE";
+        case WM_SETFOCUS: return "WM_SETFOCUS";
+        case WM_KILLFOCUS: return "WM_KILLFOCUS";
+        case WM_PAINT: return "WM_PAINT";
+        case WM_CLOSE: return "WM_CLOSE";
+        case WM_QUIT: return "WM_QUIT";
+        case WM_ERASEBKGND: return "WM_ERASEBKGND";
+        case WM_SHOWWINDOW: return "WM_SHOWWINDOW";
+        case WM_ACTIVATEAPP: return "WM_ACTIVATEAPP";
+        case WM_NCACTIVATE: return "WM_NCACTIVATE";
+        case WM_GETTEXT: return "WM_GETTEXT";
+        case WM_GETTEXTLENGTH: return "WM_GETTEXTLENGTH";
+        case WM_TIMER: return "WM_TIMER";
+        case WM_HSCROLL: return "WM_HSCROLL";
+        case WM_VSCROLL: return "WM_VSCROLL";
+        case WM_INITMENU: return "WM_INITMENU";
+        case WM_COMMAND: return "WM_COMMAND";
+        case WM_SYSCOMMAND: return "WM_SYSCOMMAND";
+        case WM_WINDOWPOSCHANGING: return "WM_WINDOWPOSCHANGING";
+        case WM_WINDOWPOSCHANGED: return "WM_WINDOWPOSCHANGED";
+        case WM_ENTERSIZEMOVE: return "WM_ENTERSIZEMOVE";
+        case WM_EXITSIZEMOVE: return "WM_EXITSIZEMOVE";
+        case WM_MOUSEACTIVATE: return "WM_MOUSEACTIVATE";
+        case WM_GETMINMAXINFO: return "WM_GETMINMAXINFO";
+        case WM_NCCREATE: return "WM_NCCREATE";
+        case WM_NCDESTROY: return "WM_NCDESTROY";
+        case WM_NCHITTEST: return "WM_NCHITTEST";
+        case WM_NCPAINT: return "WM_NCPAINT";
+        case WM_KEYDOWN: return "WM_KEYDOWN";
+        case WM_KEYUP: return "WM_KEYUP";
+        case WM_CHAR: return "WM_CHAR";
+        case WM_LBUTTONDOWN: return "WM_LBUTTONDOWN";
+        case WM_LBUTTONUP: return "WM_LBUTTONUP";
+        case WM_RBUTTONDOWN: return "WM_RBUTTONDOWN";
+        case WM_RBUTTONUP: return "WM_RBUTTONUP";
+        case WM_MOUSEMOVE: return "WM_MOUSEMOVE";
+        case WM_MOUSEWHEEL: return "WM_MOUSEWHEEL";
+        case WM_APP: return "WM_APP";
+        default: return nullptr;
+    }
+}
+
+static void CheckMessageRateAndLogIfHigh(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    // If we're in "print next N messages" mode, log this message and decrement.
+    uint32_t remaining = g_message_rate_print_remaining.load(std::memory_order_acquire);
+    if (remaining > 0) {
+        const char* msg_name = GetWindowMessageNameForLog(uMsg);
+        if (msg_name != nullptr) {
+            LogError("Window message [rate dump]: hwnd=0x%p uMsg=%s(0x%u) wParam=0x%llx lParam=0x%llx",
+                     static_cast<void*>(hwnd), msg_name, static_cast<unsigned>(uMsg),
+                     static_cast<unsigned long long>(wParam), static_cast<unsigned long long>(lParam));
+        } else {
+            LogError("Window message [rate dump]: hwnd=0x%p uMsg=0x%u wParam=0x%llx lParam=0x%llx",
+                     static_cast<void*>(hwnd), static_cast<unsigned>(uMsg),
+                     static_cast<unsigned long long>(wParam), static_cast<unsigned long long>(lParam));
+        }
+        g_message_rate_print_remaining.store(remaining - 1, std::memory_order_release);
+    }
+
+    const uint64_t now = utils::get_real_time_ns();
+    uint64_t period_start = g_message_rate_period_start_ns.load(std::memory_order_acquire);
+    if (now - period_start >= kMessageRateWindowNs) {
+        g_message_rate_period_start_ns.store(now, std::memory_order_release);
+        g_message_rate_count.store(0, std::memory_order_release);
+        g_message_rate_last_logged_threshold.store(0, std::memory_order_release);
+        g_message_rate_print_remaining.store(0, std::memory_order_release);
+        period_start = now;
+    }
+    const uint32_t c = g_message_rate_count.fetch_add(1, std::memory_order_relaxed) + 1;
+    for (size_t i = 0; i < kMessageRateThresholdCount; ++i) {
+        const uint32_t threshold = kMessageRateThresholds[i];
+        if (c < threshold) {
+            break;
+        }
+        uint32_t last = g_message_rate_last_logged_threshold.load(std::memory_order_acquire);
+        if (last < threshold) {
+            if (g_message_rate_last_logged_threshold.compare_exchange_strong(
+                    last, threshold, std::memory_order_release, std::memory_order_acquire)) {
+                LogError("Window message rate very high: %u messages in the last second (threshold %u)", c, threshold);
+                if (threshold == kMessageRateThresholds[0]) {
+                    uint32_t to_print = g_message_rate_next_print_count.load(std::memory_order_acquire);
+                    g_message_rate_print_remaining.store(to_print, std::memory_order_release);
+                    uint32_t next = (to_print >= kMessageRatePrintNextCountMax) ? to_print : to_print * 2;
+                    g_message_rate_next_print_count.store(next, std::memory_order_release);
+                }
+            }
+        }
+    }
+}
+
 // Trampoline (SK-style): 1) ProcessWindowMessage; 2) if not skipped, call original WNDPROC.
 static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    CheckMessageRateAndLogIfHigh(hwnd, uMsg, wParam, lParam);
     g_last_window_message_processed_ns.store(utils::get_real_time_ns(), std::memory_order_release);
     if (ProcessWindowMessage(hwnd, uMsg, wParam, lParam)) {
         return 0;  // Message suppressed (skipped)

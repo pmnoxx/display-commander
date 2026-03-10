@@ -2,7 +2,10 @@
 
 ---
 
-## v0.12.385 (unreleased)
+## v0.12.386 (unreleased)
+- **Window message rate detection and debug logs** - When the hooked window receives too many messages per second, the addon now logs errors at logarithmic thresholds (128, 256, 512, 1024, … messages/sec). After the first threshold is reached, the next N messages are dumped to the log (N starts at 128 and doubles each time the limit is hit, capped at 65536). Dump lines show message type by name where possible (e.g. WM_PAINT, WM_SETFOCUS) plus hwnd, uMsg, wParam, and lParam to help diagnose message floods. Details: window_proc_hooks (CheckMessageRateAndLogIfHigh, GetWindowMessageNameForLog, static thresholds and print-next count).
+
+## v0.12.385
 - **Continue rendering: WM_SETFOCUS from another thread** - When "Continue rendering when unfocused" is on, fake WM_SETFOCUS is now sent from a separate thread instead of from inside the window procedure. This avoids deadlocks that can occur when SendMessage is called from the same thread as the window proc. Calls are throttled: if one was already sent in the last 100 ms, the new one is skipped. Details: `DetourWindowMessageNonBlocking` (renamed from `DetourWindowMessage`), window_proc_hooks.
 
 ## v0.12.384

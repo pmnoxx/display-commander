@@ -4,10 +4,9 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include "display/display_cache.hpp"
 #include "../utils/logging.hpp"
+#include "display/display_cache.hpp"
 #include "refresh_rate_monitor.hpp"
-
 
 // Example of how to integrate RefreshRateMonitor with existing code
 namespace dxgi::fps_limiter {
@@ -144,9 +143,7 @@ long long GetRefreshRateMonitorLastStatsTimeNs() {
     return static_cast<long long>(g_refresh_rate_monitor->GetLastStatsTimeNs());
 }
 
-uint64_t GetRefreshRateMonitorSignalCount() {
-    return g_signal_count.load(std::memory_order_acquire);
-}
+uint64_t GetRefreshRateMonitorSignalCount() { return g_signal_count.load(std::memory_order_acquire); }
 
 uint64_t GetRefreshRateMonitorLoopCount() {
     if (!g_refresh_rate_monitor) {
@@ -155,9 +152,7 @@ uint64_t GetRefreshRateMonitorLoopCount() {
     return g_refresh_rate_monitor->GetLoopCount();
 }
 
-bool RefreshRateMonitorHasSwapChain() {
-    return g_refresh_rate_monitor && g_refresh_rate_monitor->HasSwapChain();
-}
+bool RefreshRateMonitorHasSwapChain() { return g_refresh_rate_monitor && g_refresh_rate_monitor->HasSwapChain(); }
 
 uint64_t GetRefreshRateMonitorFrameStatsTried() {
     return g_refresh_rate_monitor ? g_refresh_rate_monitor->GetFrameStatsTried() : 0;

@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.377
+- **DXGI refresh rate monitor: fixed race condition** - GetCurrentVBlankTime now takes the stored swap chain with exchange(nullptr) instead of loading it. The next SignalPresent sets it again, avoiding a race between the monitor thread using the swap chain and the render thread overwriting it. Refcount: we release the ref taken from the atomic after GetFrameStatistics. Details: refresh_rate_monitor.cpp GetCurrentVBlankTime.
+
 ## v0.12.376
 - **DXGI VRR / refresh rate detection (non-NVIDIA, default off)** - Optional DXGI-based refresh rate and Variable Refresh Rate (VRR) detection using the game's swap chain frame statistics. Works on any DXGI game (NVIDIA, AMD, Intel); no NVAPI or vendor-specific APIs required. Off by default: enable "DXGI refresh rate / VRR detection" in Advanced tab to start the monitor. When enabled, Present hooks signal a background thread that measures current/min/max Hz from the native swap chain (using private_data so ReShade proxy swap chains are unwrapped). Main tab shows current DXGI VRR status and refresh rate in the overlay section and optionally in the performance overlay. Details: latent_sync/refresh_rate_monitor*, refresh_rate_monitor_integration; Advanced tab enable checkbox and debug stats; Present hooks pass data.dxgi_swapchain to SignalRefreshRateMonitor.
 - **Warning: unstable** - The DXGI refresh rate / VRR detection feature is experimental and may be unstable in some games; disable it if you see issues.

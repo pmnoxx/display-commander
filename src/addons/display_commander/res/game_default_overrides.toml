@@ -3,29 +3,38 @@
 # Format: [exe_name.DisplayCommander] then key = value. Exe name is case-insensitive.
 
 [re2.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'
 
 [re3.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'
 
 [re7.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'
 
 [re8.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'
 
 [sekiro.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'
 
 [eldenring.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'
 
 [armoredcore6.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'
 
 [hitman3.exe.DisplayCommander]
+AutoColorspace2 = '1'
 ContinueRendering = '1'
 window_mode = '1'
 
 [devilmaycry5.exe.DisplayCommander]
+AutoColorspace2 = '1'
 window_mode = '1'

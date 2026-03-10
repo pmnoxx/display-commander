@@ -2,7 +2,10 @@
 
 ---
 
-## v0.12.387 (unreleased)
+## v0.12.388 (unreleased)
+- **Game default overrides: ContinueRendering enabled for supported games** - Per-game defaults now set "Continue rendering when unfocused" (ContinueRendering = 1) for RE2, RE3, RE7, RE8, Sekiro, Elden Ring, Armored Core 6, Hitman 3, and Devil May Cry 5 when the user has not yet saved a config. Details: res/game_default_overrides.toml.
+
+## v0.12.387
 - **Fixed continue rendering in background crashing in Sekiro** - Switched fake activation and related window messages from PostMessage back to SendMessage so the game processes them synchronously. This fixes crashes when "Continue rendering when unfocused" is enabled in Sekiro (and may help other games). Details: DetourWindowMessageNonBlocking (SendMessage again; deadlock avoided by sending from another thread or by throttle), Window Info tab Quick Send buttons, and any other paths that had been changed to PostMessage for continue-rendering.
 
 ## v0.12.386

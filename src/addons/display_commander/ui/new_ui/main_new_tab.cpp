@@ -1807,12 +1807,18 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             local_proxy_dc_ver = GetDLLVersionString(local_proxy_path.wstring());
         }
         std::string global_dc_ver;
+        std::string global_dc_status;  // Version or reason why "(none)"
         std::filesystem::path dc_base = GetDisplayCommanderAppDataFolder();
         std::filesystem::path global_addon_path;
-        if (std::filesystem::exists(dc_base)) {
+        if (!std::filesystem::exists(dc_base)) {
+            global_dc_status = "Global folder missing";
+        } else {
             global_addon_path = GetDcAddonPathInDirectory(dc_base);
-            if (!global_addon_path.empty()) {
+            if (global_addon_path.empty()) {
+                global_dc_status = "No addon in global folder";
+            } else {
                 global_dc_ver = GetDLLVersionString(global_addon_path.wstring());
+                global_dc_status = global_dc_ver.empty() ? "Version unknown" : global_dc_ver;
             }
         }
         imgui.TextDisabled("Local DC version: %s", local_dc_ver.empty() ? "None" : local_dc_ver.c_str());
@@ -1836,13 +1842,19 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
                 "folder.\nPath: %s",
                 local_proxy_path.empty() ? "(none)" : local_proxy_path.string().c_str());
         }
-        imgui.TextDisabled("Global DC version: %s", global_dc_ver.empty() ? "(none)" : global_dc_ver.c_str());
+        imgui.TextDisabled("Global DC version: %s", global_dc_status.c_str());
         if (imgui.IsItemHovered()) {
+            std::string path_for_tooltip("(none)");
+            if (!global_addon_path.empty()) {
+                path_for_tooltip = global_addon_path.string();
+            } else if (!dc_base.empty()) {
+                path_for_tooltip = dc_base.string();
+            }
             imgui.SetTooltip(
                 "Preference order: local zzz_display_commander.addon64/.addon32 > global > proxy .dll "
                 "(dxgi/winmm/etc.). "
                 "This checkbox switches to global > local.\nPath: %s",
-                global_addon_path.empty() ? "(none)" : global_addon_path.string().c_str());
+                path_for_tooltip.c_str());
         }
 
         // Delete local DC addon (game folder): removes zzz_display_commander.addon64/.addon32. Next run can use global

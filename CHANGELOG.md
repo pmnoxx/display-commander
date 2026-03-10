@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.391 (unreleased)
+- **Global DC version: detailed status instead of (none)** - The Main tab "Global DC version" line now shows a specific message when no version is available: "Global folder missing" when the Display Commander app data folder does not exist, "No addon in global folder" when the folder exists but has no zzz_display_commander.addon64/.addon32, or "Version unknown" when the addon file exists but has no version resource. The tooltip path shows the global folder or addon path as appropriate. Details: main_new_tab.cpp.
+- **OnModuleLoaded log: mark DC proxy modules** - When a loaded module exports GetDisplayCommanderState, the LoadLibrary hook now appends " (DC proxy)" to the [OnModuleLoaded] log line so logs clearly identify Display Commander proxy DLLs (e.g. dxgi.dll, version.dll) versus system or other DLLs. Details: loadlibrary_hooks.cpp.
+
 ## v0.12.390
 - **Local Proxy DC version: only treat DLLs with GetDisplayCommanderState as DC proxy** - "Local Proxy DC version" was sometimes showing 10.0.x (e.g. 10.0.26100.1150) because we considered any loaded module whose filename matched a known proxy name (e.g. version.dll, dxgi.dll). The system version.dll from Windows has that file version and no DC export, so it was incorrectly reported. We now require the module to export `GetDisplayCommanderState` before treating it as a DC proxy; only actual Display Commander proxy DLLs have that export. Details: utils/dc_load_path.cpp (ModuleHasGetDisplayCommanderState, GetDcProxyModulePathImpl).
 

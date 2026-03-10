@@ -1528,7 +1528,9 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     CALL_GUARD(utils::get_now_ns());
-    LogInfo("[OnModuleLoaded] %ws (0x%p)", moduleName.c_str(), hModule);
+    const bool has_dc_export = (GetProcAddress(hModule, "GetDisplayCommanderState") != nullptr);
+    LogInfo("[OnModuleLoaded] %ws (0x%p)%s", moduleName.c_str(), hModule,
+            has_dc_export ? " (DC proxy)" : "");
 
     if (IsRenoDxAddonPath(moduleName)) {
         OnRenoDxAddonLoaded();

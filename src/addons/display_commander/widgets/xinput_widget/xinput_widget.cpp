@@ -1867,7 +1867,7 @@ void CheckAndHandleScreenshot() {
             shared_state->trigger_screenshot.store(false);
 
             // Get the ReShade runtime instance
-            reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+            reshade::api::effect_runtime* runtime = GetSelectedReShadeRuntime();
 
             if (runtime != nullptr) {
                 // Use PrintScreen key simulation to trigger ReShade's built-in screenshot system

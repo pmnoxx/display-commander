@@ -140,7 +140,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize, bool use_h
         return;
     }
 
-    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+    reshade::api::effect_runtime* runtime = GetSelectedReShadeRuntime();
     if (runtime != nullptr) {
         runtime->set_color_space(use_hdr10 ? reshade::api::color_space::hdr10_st2084
                                            : reshade::api::color_space::extended_srgb_linear);

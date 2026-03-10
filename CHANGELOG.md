@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.378
+- **Main tab: ReShade runtime list when multiple runtimes exist** - When more than one ReShade runtime (swapchain) is present, a "ReShade runtime" combo appears below the Safe Mode fps limiter checkbox. You can select which runtime (0 = first, 1 = second, …) Display Commander uses for input blocking, Reflex, and other features. When a non-zero runtime is selected, that runtime is used instead of the first. Details: GetSelectedReShadeRuntime(), GetReShadeRuntimeByIndex(); main tab setting selected_reshade_runtime_index; all previous GetFirstReShadeRuntime() call sites now use GetSelectedReShadeRuntime().
+
 ## v0.12.377
 - **DXGI refresh rate monitor: fixed race condition** - GetCurrentVBlankTime now takes the stored swap chain with exchange(nullptr) instead of loading it. The next SignalPresent sets it again, avoiding a race between the monitor thread using the swap chain and the render thread overwriting it. Refcount: we release the ref taken from the atomic after GetFrameStatistics. Details: refresh_rate_monitor.cpp GetCurrentVBlankTime.
 

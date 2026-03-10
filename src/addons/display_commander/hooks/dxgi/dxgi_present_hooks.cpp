@@ -26,6 +26,7 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 #include <cmath>
+#include <memory>
 #include <string>
 
 // Forward declaration for g_sim_start_ns from swapchain_events.cpp
@@ -2180,6 +2181,14 @@ bool LoadDCDxgiSwapchainData(IDXGISwapChain* swapchain, DCDxgiSwapchainData* out
 void SaveDCDxgiSwapchainData(IDXGISwapChain* swapchain, const DCDxgiSwapchainData* data) {
     if (swapchain == nullptr || data == nullptr) return;
     swapchain->SetPrivateData(kDcDxgiSwapchainData, sizeof(DCDxgiSwapchainData), data);
+}
+
+std::atomic<std::shared_ptr<DCDxgiSwapchainData>> g_last_d3d9_dc_swapchain_data{nullptr};
+
+void SaveDCDxgiSwapchainDataForD3D9(const DCDxgiSwapchainData* data) {
+    if (data == nullptr) return;
+    g_last_d3d9_dc_swapchain_data.store(std::make_shared<DCDxgiSwapchainData>(*data),
+                                        std::memory_order_release);
 }
 
 // Cleanup GPU measurement fences when device is destroyed

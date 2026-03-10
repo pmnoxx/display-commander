@@ -1115,7 +1115,7 @@ void OnInitSwapchain(reshade::api::swapchain* swapchain, bool resize) {
     } catch (...) {
         // If getting back buffer fails, silently continue
     }
-    reshade::api::effect_runtime* first_runtime = GetFirstReShadeRuntime();
+    reshade::api::effect_runtime* first_runtime = GetSelectedReShadeRuntime();
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
         static int log_count = 0;
         if (log_count < 100) {
@@ -1669,7 +1669,7 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
         LogInfo("SetSwapChainColorSpace: color_space=%d, reshade_color_space=%d, supported=%d", color_space,
                 reshade_color_space, supported);
     }
-    reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+    reshade::api::effect_runtime* runtime = GetSelectedReShadeRuntime();
     if (runtime != nullptr) {
         runtime->set_color_space(reshade_color_space);
     }
@@ -1749,7 +1749,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         return;
     }
 
-    reshade::api::effect_runtime* first_runtime = GetFirstReShadeRuntime();
+    reshade::api::effect_runtime* first_runtime = GetSelectedReShadeRuntime();
     if (first_runtime != nullptr && first_runtime->get_hwnd() != hwnd) {
         LogInfoThrottled(1, "Invalid Runtime HWND OnPresentUpdateBefore - First ReShade runtime: 0x%p, hwnd: 0x%p",
                          first_runtime, hwnd);
@@ -1835,6 +1835,15 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
         if (iunknown != nullptr && SUCCEEDED(iunknown->QueryInterface(IID_PPV_ARGS(&d3d9_device)))) {
             display_commanderhooks::d3d9::RecordPresentUpdateDevice(d3d9_device.Get());
         }
+        // Save DCDxgiSwapchainData for D3D9 to global (no IDXGISwapChain) so selected runtime can be compared.
+        if (private_data.d3d9_device == nullptr) {
+            private_data.dxgi_swapchain = nullptr;
+            private_data.swapchain = swapchain;
+            private_data.command_queue = command_queue;
+            private_data.device_api = api;
+            private_data.d3d9_device = d3d9_device.Get();
+            changed = true;
+        }
     }
 
     HandleRenderStartAndEndTimes();
@@ -1888,7 +1897,7 @@ void OnPresentUpdateBefore(reshade::api::command_queue* command_queue, reshade::
 
     // Check if app is in background and block input for next frame if so
     if (should_block_mouse_and_keyboard_input) {
-        reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+        reshade::api::effect_runtime* runtime = GetSelectedReShadeRuntime();
         if (runtime != nullptr) {
             runtime->block_input_next_frame();
         }

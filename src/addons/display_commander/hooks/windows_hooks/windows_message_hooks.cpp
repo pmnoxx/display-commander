@@ -2422,7 +2422,7 @@ void Update() {
     if (g_last_swapchain_hwnd.load() == nullptr) {
         return;
     }
-    auto first_reshade_runtime = GetFirstReShadeRuntime();
+    auto first_reshade_runtime = GetSelectedReShadeRuntime();
     // Update keyboard state using GetAsyncKeyState
     for (int vKey = 0; vKey < 256; ++vKey) {
         if (!was_ever_checked[vKey]) {

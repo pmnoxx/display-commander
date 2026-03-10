@@ -312,6 +312,8 @@ struct DCDxgiSwapchainData {
     reshade::api::swapchain* swapchain{nullptr};
     reshade::api::command_queue* command_queue{nullptr};
     reshade::api::device_api device_api{};
+    /** Set when device_api == d3d9. Not refcounted. Cast to IDirect3DDevice9* when device_api == d3d9. */
+    void* d3d9_device{nullptr};
     /** Last value we applied via SetMaximumFrameLatency (0 = not applied by us, 1–16 = value applied). */
     uint32_t applied_max_frame_latency{0};
     /** True after AutoSetColorSpace has been run once for this swapchain (run at most once per swapchain). */
@@ -323,6 +325,13 @@ bool LoadDCDxgiSwapchainData(IDXGISwapChain* swapchain, DCDxgiSwapchainData* out
 
 // Save DCDxgiSwapchainData to swapchain private data.
 void SaveDCDxgiSwapchainData(IDXGISwapChain* swapchain, const DCDxgiSwapchainData* data);
+
+// Last DCDxgiSwapchainData for D3D9 (no IDXGISwapChain to attach to). Updated on each D3D9 present so
+// code can compare if the selected runtime is D3D9. Readers must load with memory_order_acquire.
+extern std::atomic<std::shared_ptr<DCDxgiSwapchainData>> g_last_d3d9_dc_swapchain_data;
+
+// Save DCDxgiSwapchainData for D3D9 to g_last_d3d9_dc_swapchain_data (for comparison when selected runtime is D3D9).
+void SaveDCDxgiSwapchainDataForD3D9(const DCDxgiSwapchainData* data);
 
 // Hooked IDXGIOutput functions
 HRESULT STDMETHODCALLTYPE IDXGIOutput_SetGammaControl_Detour(IDXGIOutput* This, const DXGI_GAMMA_CONTROL* pArray);

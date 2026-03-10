@@ -555,6 +555,10 @@ void AddReShadeRuntime(reshade::api::effect_runtime* runtime);
 void RemoveReShadeRuntime(reshade::api::effect_runtime* runtime);
 void OnReshadeUnload();
 reshade::api::effect_runtime* GetFirstReShadeRuntime();
+/** Returns runtime at index, or nullptr if index >= count. */
+reshade::api::effect_runtime* GetReShadeRuntimeByIndex(size_t index);
+/** Returns selected runtime (from main tab setting), or first if selection is 0 or invalid. */
+reshade::api::effect_runtime* GetSelectedReShadeRuntime();
 size_t GetReShadeRuntimeCount();
 
 /// Enumerate all ReShade runtimes while holding the runtimes lock. Callback receives (index, runtime, user_data).

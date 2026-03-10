@@ -140,12 +140,12 @@ void TriggerSteamAchievementTestBump() {
     }
 }
 
-bool IsSteamAchievementBumpActive(int64_t now_ns) {
+bool IsSteamAchievementBumpActiveNonBlocking(int64_t now_ns) {
     return now_ns < g_bump_show_until_ns.load(std::memory_order_relaxed)
            && g_bump_total.load(std::memory_order_relaxed) > 0;
 }
 
-void GetSteamAchievementBumpDisplay(int* out_unlocked, int* out_total) {
+void GetSteamAchievementBumpDisplayNonBlocking(int* out_unlocked, int* out_total) {
     if (out_unlocked != nullptr) {
         *out_unlocked = g_bump_unlocked.load(std::memory_order_relaxed);
     }
@@ -154,8 +154,8 @@ void GetSteamAchievementBumpDisplay(int* out_unlocked, int* out_total) {
     }
 }
 
-void GetSteamAchievementBumpText(char* out_display_name, size_t display_name_size,
-                                 char* out_debug, size_t debug_size) {
+void GetSteamAchievementBumpTextNonBlocking(char* out_display_name, size_t display_name_size,
+                                            char* out_debug, size_t debug_size) {
     ::utils::SRWLockShared lock(g_bump_text_lock);
     if (out_display_name != nullptr && display_name_size > 0) {
         snprintf(out_display_name, display_name_size, "%s", g_bump_display_name);

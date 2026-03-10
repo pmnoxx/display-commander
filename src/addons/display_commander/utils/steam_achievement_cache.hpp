@@ -32,12 +32,13 @@ void ClearSteamAchievementLastUnlocked();
 // Call from Advanced tab "Test achievement" button to show the 30s notification with current count.
 void TriggerSteamAchievementTestBump();
 
-// For overlay: only draw Steam achievement overlay when this returns true.
-bool IsSteamAchievementBumpActive(int64_t now_ns);
-void GetSteamAchievementBumpDisplay(int* out_unlocked, int* out_total);
-// Optional: copy last-unlocked display name and debug lines (newline-separated). Buffers may be null; sizes ignored then.
-void GetSteamAchievementBumpText(char* out_display_name, size_t display_name_size,
-                                 char* out_debug, size_t debug_size);
+// For overlay: only draw Steam achievement overlay when this returns true. Non-blocking (atomics only).
+bool IsSteamAchievementBumpActiveNonBlocking(int64_t now_ns);
+// Non-blocking: reads cached bump counts from atomics.
+void GetSteamAchievementBumpDisplayNonBlocking(int* out_unlocked, int* out_total);
+// Non-blocking: copies precomputed bump text under shared lock. Buffers may be null; sizes ignored then.
+void GetSteamAchievementBumpTextNonBlocking(char* out_display_name, size_t display_name_size,
+                                            char* out_debug, size_t debug_size);
 
 // Play the achievement notification sound (system sound). Safe to call from any thread. Used on new achievement
 // when play_sound_on_achievement is on, and for the "Test sound" button. No-op if winmm is unavailable.

@@ -687,16 +687,16 @@ void OnSteamAchievementOverlay(reshade::api::effect_runtime* /*runtime*/) {
     // Bump state is updated only by the continuous-monitoring thread (RefreshSteamAchievementCacheFromBackground).
     // Main thread only reads cached state and draws the overlay; no Steam API or blocking work here.
     const int64_t now_ns = utils::get_now_ns();
-    if (!display_commander::utils::IsSteamAchievementBumpActive(now_ns)) {
+    if (!display_commander::utils::IsSteamAchievementBumpActiveNonBlocking(now_ns)) {
         return;
     }
     int bump_unlocked = 0;
     int bump_total = 0;
-    display_commander::utils::GetSteamAchievementBumpDisplay(&bump_unlocked, &bump_total);
+    display_commander::utils::GetSteamAchievementBumpDisplayNonBlocking(&bump_unlocked, &bump_total);
     char bump_display_name[256] = {};
     char bump_debug[1024] = {};
-    display_commander::utils::GetSteamAchievementBumpText(bump_display_name, sizeof(bump_display_name), bump_debug,
-                                                          sizeof(bump_debug));
+    display_commander::utils::GetSteamAchievementBumpTextNonBlocking(bump_display_name, sizeof(bump_display_name),
+                                                                     bump_debug, sizeof(bump_debug));
     float vertical_spacing = settings::g_mainTabSettings.overlay_vertical_spacing.GetValue();
     float horizontal_spacing = settings::g_mainTabSettings.overlay_horizontal_spacing.GetValue();
     const bool performance_overlay_shown = settings::g_mainTabSettings.show_test_overlay.GetValue();

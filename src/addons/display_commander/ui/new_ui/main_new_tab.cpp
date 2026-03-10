@@ -2129,11 +2129,15 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         // Open folder (global Display Commander folder)
         std::filesystem::path dc_global = GetDisplayCommanderAppDataFolder();
         if (!dc_global.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
-            std::string folder_str = dc_global.string();
-            std::thread([folder_str]() {
-                HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+            std::filesystem::path folder_path = dc_global;
+            std::thread([folder_path]() {
+                std::error_code ec;
+                std::filesystem::create_directories(folder_path, ec);
+                std::wstring folder_w = folder_path.wstring();
+                HINSTANCE result =
+                    ShellExecuteW(nullptr, L"open", folder_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
                 if (reinterpret_cast<intptr_t>(result) <= 32) {
-                    LogError("Failed to open Display Commander folder: %s (Error: %ld)", folder_str.c_str(),
+                    LogError("Failed to open Display Commander folder: %s (Error: %ld)", folder_path.string().c_str(),
                              static_cast<long>(reinterpret_cast<intptr_t>(result)));
                 }
             }).detach();

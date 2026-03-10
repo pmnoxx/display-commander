@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.392 (unreleased)
+- **Open Display Commander global folder: fix button not working** - The "Open folder" button for the Display Commander global folder (Updates section) now creates the folder if it does not exist, then opens it in Explorer using ShellExecuteW with the "open" verb. Previously it used ShellExecuteA "explore" on a path that might not exist, which could fail. Details: main_new_tab.cpp.
+
 ## v0.12.391 (unreleased)
 - **Global DC version: detailed status instead of (none)** - The Main tab "Global DC version" line now shows a specific message when no version is available: "Global folder missing" when the Display Commander app data folder does not exist, "No addon in global folder" when the folder exists but has no zzz_display_commander.addon64/.addon32, or "Version unknown" when the addon file exists but has no version resource. The tooltip path shows the global folder or addon path as appropriate. Details: main_new_tab.cpp.
 - **OnModuleLoaded log: mark DC proxy modules** - When a loaded module exports GetDisplayCommanderState, the LoadLibrary hook now appends " (DC proxy)" to the [OnModuleLoaded] log line so logs clearly identify Display Commander proxy DLLs (e.g. dxgi.dll, version.dll) versus system or other DLLs. Details: loadlibrary_hooks.cpp.

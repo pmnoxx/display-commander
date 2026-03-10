@@ -214,14 +214,14 @@ void RefreshRateMonitor::ProcessFrameStatistics(DXGI_FRAME_STATISTICS& stats) {
 }
 
 bool RefreshRateMonitor::GetCurrentVBlankTime(DXGI_FRAME_STATISTICS& stats) {
-    IDXGISwapChain* sc = m_dxgi_swapchain.load(std::memory_order_acquire);
+    // Take the stored swap chain so next SignalPresent will set it again
+    IDXGISwapChain* sc = m_dxgi_swapchain.exchange(nullptr, std::memory_order_acq_rel);
     if (sc == nullptr) {
         return false;
     }
     m_get_frame_stats_tried.fetch_add(1, std::memory_order_relaxed);
-    sc->AddRef();
     HRESULT hr = sc->GetFrameStatistics(&stats);
-    sc->Release();
+    sc->Release();  // release ref taken from atomic (SignalPresent had AddRef'd before store)
     if (SUCCEEDED(hr)) {
         m_get_frame_stats_ok.fetch_add(1, std::memory_order_relaxed);
         return true;

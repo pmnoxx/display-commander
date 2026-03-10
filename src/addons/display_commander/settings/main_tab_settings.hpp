@@ -60,6 +60,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting delay_present_start_after_sim_enabled;
     ui::new_ui::FloatSetting delay_present_start_frames;
     ui::new_ui::BoolSetting safe_mode_fps_limiter;
+    /** Selected ReShade runtime index (0 = first). When multiple runtimes exist, non-zero selects that runtime. */
+    ui::new_ui::IntSetting selected_reshade_runtime_index;
 
     // VSync & Tearing
     /** DXGI only: 0=No override, 1=Force ON, 2=FORCED 1/2, 3=FORCED 1/3, 4=FORCED 1/4 (NO VRR), 5=FORCED OFF. Applied

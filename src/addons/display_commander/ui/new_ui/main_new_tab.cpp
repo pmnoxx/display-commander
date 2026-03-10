@@ -4017,6 +4017,73 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             "Experimental; may have slightly higher latency than the default limiter.");
     }
 
+    // ReShade runtime list (when multiple runtimes exist): select which runtime to use for DC features
+    {
+        const size_t runtime_count = GetReShadeRuntimeCount();
+        if (runtime_count > 0) {
+            settings::g_mainTabSettings.selected_reshade_runtime_index.SetMax(
+                static_cast<int>(runtime_count) - 1);
+            int current_index = settings::g_mainTabSettings.selected_reshade_runtime_index.GetValue();
+            if (current_index < 0 || static_cast<size_t>(current_index) >= runtime_count) {
+                current_index = 0;
+                settings::g_mainTabSettings.selected_reshade_runtime_index.SetValue(0);
+            }
+
+            std::vector<std::string> runtime_labels;
+            runtime_labels.reserve(runtime_count);
+            EnumerateReShadeRuntimes(
+                [](size_t index, reshade::api::effect_runtime* rt, void* user_data) {
+                    auto* labels = static_cast<std::vector<std::string>*>(user_data);
+                    const char* api_str = "?";
+                    if (rt && rt->get_device()) {
+                        switch (rt->get_device()->get_api()) {
+                            case reshade::api::device_api::d3d9:   api_str = "D3D9"; break;
+                            case reshade::api::device_api::d3d10:  api_str = "D3D10"; break;
+                            case reshade::api::device_api::d3d11:  api_str = "D3D11"; break;
+                            case reshade::api::device_api::d3d12:  api_str = "D3D12"; break;
+                            case reshade::api::device_api::opengl: api_str = "OpenGL"; break;
+                            case reshade::api::device_api::vulkan: api_str = "Vulkan"; break;
+                            default: break;
+                        }
+                    }
+                    HWND hwnd = rt ? static_cast<HWND>(rt->get_hwnd()) : nullptr;
+                    char buf[128];
+                    if (index == 0) {
+                        snprintf(buf, sizeof(buf), "Runtime %zu (first) | HWND 0x%p | %s", index, hwnd, api_str);
+                    } else {
+                        snprintf(buf, sizeof(buf), "Runtime %zu | HWND 0x%p | %s", index, hwnd, api_str);
+                    }
+                    labels->emplace_back(buf);
+                    return false;  // continue
+                },
+                &runtime_labels);
+
+            const char* current_label =
+                (current_index >= 0 && static_cast<size_t>(current_index) < runtime_labels.size())
+                    ? runtime_labels[current_index].c_str()
+                    : "Runtime 0 (first)";
+            if (imgui.BeginCombo("ReShade runtime", current_label)) {
+                for (size_t i = 0; i < runtime_labels.size(); ++i) {
+                    const bool selected = (static_cast<int>(i) == current_index);
+                    if (imgui.Selectable(runtime_labels[i].c_str(), selected)) {
+                        settings::g_mainTabSettings.selected_reshade_runtime_index.SetValue(
+                            static_cast<int>(i));
+                        settings::g_mainTabSettings.selected_reshade_runtime_index.Save();
+                    }
+                    if (selected) {
+                        imgui.SetItemDefaultFocus();
+                    }
+                }
+                imgui.EndCombo();
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "When multiple ReShade runtimes (swapchains) exist, select which one Display Commander uses for "
+                    "input blocking, Reflex, and other features. 0 = first runtime.");
+            }
+        }
+    }
+
     // Limit Real Frames indicator (only visible if OnPresentSync mode is selected)
     if (g_swapchain_wrapper_present_called.load(std::memory_order_acquire)) {
         bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();

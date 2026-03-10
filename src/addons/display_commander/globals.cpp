@@ -1117,6 +1117,28 @@ reshade::api::effect_runtime* GetFirstReShadeRuntime() {
     return g_reshade_runtimes.front();
 }
 
+reshade::api::effect_runtime* GetReShadeRuntimeByIndex(size_t index) {
+    utils::SRWLockShared lock(utils::g_reshade_runtimes_lock);
+    if (index >= g_reshade_runtimes.size()) {
+        return nullptr;
+    }
+    return g_reshade_runtimes[index];
+}
+
+reshade::api::effect_runtime* GetSelectedReShadeRuntime() {
+    const size_t count = GetReShadeRuntimeCount();
+    if (count == 0) {
+        return nullptr;
+    }
+    const int selected = settings::g_mainTabSettings.selected_reshade_runtime_index.GetValue();
+    if (selected <= 0) {
+        return GetFirstReShadeRuntime();
+    }
+    const size_t index = static_cast<size_t>(selected);
+    reshade::api::effect_runtime* rt = GetReShadeRuntimeByIndex(index);
+    return rt != nullptr ? rt : GetFirstReShadeRuntime();
+}
+
 void EnumerateReShadeRuntimes(EnumerateReShadeRuntimesCallback callback, void* user_data) {
     if (callback == nullptr) return;
     utils::SRWLockShared lock(utils::g_reshade_runtimes_lock);

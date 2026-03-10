@@ -983,7 +983,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
 
     if (action_name == "screenshot") {
         // Use ReShade 6.6.2+ runtime screenshot API
-        reshade::api::effect_runtime* runtime = GetFirstReShadeRuntime();
+        reshade::api::effect_runtime* runtime = GetSelectedReShadeRuntime();
         if (runtime != nullptr) {
             runtime->save_screenshot();
             trigger_action_notification("Screenshot");

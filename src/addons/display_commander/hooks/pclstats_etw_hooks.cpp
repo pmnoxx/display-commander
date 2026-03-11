@@ -340,8 +340,7 @@ bool PCLStatsReportingAllowed() {
     constexpr uint64_t kRecentNs = 1'000'000'000ULL;  // 1 second
     const uint64_t now_ns = utils::get_now_ns();
     const uint64_t last_game_ns = g_last_game_set_latency_marker_ns.load(std::memory_order_acquire);
-    const bool no_recent_game_reflex =
-        (last_game_ns == 0) || (now_ns - last_game_ns >= kRecentNs);
+    const bool no_recent_game_reflex = (last_game_ns == 0) || (now_ns - last_game_ns >= kRecentNs);
 
     return is_dxgi && no_game_pclstats && past_warmup && no_recent_game_reflex;
 }

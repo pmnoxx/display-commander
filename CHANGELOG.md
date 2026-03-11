@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.411 (unreleased)
+- **NVAPI SetLatencyMarker refactor** - Reflex marker handling is centralized in `ProcessReflexMarkerFpsLimiter`; the detour now delegates to it with a callback. The callback type was changed from a function pointer to `std::function<NvAPI_Status()>` so a capturing lambda can be passed. Details: nvapi_hooks.cpp (ProcessReflexMarkerFpsLimiter, NvAPI_D3D_SetLatencyMarker_Detour).
+
 ## v0.12.410 (unreleased)
 - **Reflex FPS limiter: max queued frames only when limiter active** - The `reflex_fps_limiter_max_queued_frames` wait (throttling until the previous frame's SIMULATION_START is after PRESENT_START) now runs only when the Reflex-marker FPS limiter is the active limiter. Previously it could run for every marker even when another FPS limiter was in use, which was incorrect. Details: nvapi_hooks.cpp — block moved inside `use_fps_limiter` and PRESENT_END branch.
 

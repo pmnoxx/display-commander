@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.403 (unreleased)
+- **OnModuleLoaded log: ProductName and Version** - The [OnModuleLoaded] log line now includes the module’s version resource ProductName and Version (e.g. " - Display Commander 0.12.403.0" or " - NVIDIA DLSS 3.7.0.0") when available, making it easier to identify loaded DLLs from the log. Details: GetDLLProductNameUtf8 in general_utils; loadlibrary_hooks.cpp OnModuleLoaded uses GetModuleFileNameW then GetDLLProductNameUtf8 and GetDLLVersionString.
+
+## v0.12.402 (unreleased)
+- **DirectInput hooks disabled by default** - DirectInput and DirectInput8 hooks are now off by default. New installs and users who have not changed the setting will no longer have these hooks active, reducing risk of input or compatibility issues. You can enable them in Experimental (Suppress DirectInput Hooks — uncheck to enable) or in Hook Stats if you need DirectInput device tracking or debugging. Details: suppress_dinput_hooks / suppress_dinput8_hooks default true in experimental_tab_settings, hook_suppression_settings, and s_suppress_dinput_hooks in globals.
+
 ## v0.12.401
 - **Version bump** - Bump to 0.12.401 after revert of 0.12.399 / 0.12.400.
 

@@ -65,7 +65,7 @@ ExperimentalTabSettings::ExperimentalTabSettings()
       d3d9_flipex_enabled_no_reshade("D3D9FlipExEnabledNoReShade", false, "DisplayCommander.Experimental"),
       d3d9_fix_create_texture_dimensions("D3D9FixCreateTextureDimensions", true, "DisplayCommander.Experimental"),
       enable_flip_chain_enabled("EnableFlipChainEnabled", false, "DisplayCommander.Experimental"),
-      suppress_dinput_hooks("SuppressDInputHooks", false, "DisplayCommander.Experimental"),
+      suppress_dinput_hooks("SuppressDInputHooks", true, "DisplayCommander.Experimental"),
       hid_suppression_enabled("HIDSuppressionEnabled", false, "DisplayCommander.Experimental"),
       hid_suppression_dualsense_only("HIDSuppressionDualSenseOnly", true, "DisplayCommander.Experimental"),
       hid_suppression_block_readfile("HIDSuppressionBlockReadFile", true, "DisplayCommander.Experimental"),

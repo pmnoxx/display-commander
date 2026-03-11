@@ -256,6 +256,39 @@ std::string GetDLLVersionString(const std::wstring& dllPath) {
     return std::string(versionStr);
 }
 
+std::string GetDLLProductNameUtf8(const std::wstring& dllPath) {
+    if (!LoadVersionDLL()) return {};
+    const DWORD size = s_GetFileVersionInfoSizeW(dllPath.c_str(), nullptr);
+    if (size == 0) return {};
+    std::vector<BYTE> buf(size);
+    if (!s_GetFileVersionInfoW(dllPath.c_str(), 0, size, buf.data())) return {};
+    struct LANGANDCODEPAGE {
+        WORD wLanguage;
+        WORD wCodePage;
+    };
+    LANGANDCODEPAGE* p_trans = nullptr;
+    UINT trans_len = 0;
+    if (!s_VerQueryValueW(buf.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>(&p_trans), &trans_len)
+        || !p_trans || trans_len < sizeof(LANGANDCODEPAGE))
+        return {};
+    wchar_t sub_block[64];
+    swprintf_s(sub_block, L"\\StringFileInfo\\%04x%04x\\ProductName", p_trans[0].wLanguage, p_trans[0].wCodePage);
+    void* p_block = nullptr;
+    UINT len = 0;
+    if (!s_VerQueryValueW(buf.data(), sub_block, &p_block, &len) || !p_block || len < sizeof(wchar_t)) return {};
+    const wchar_t* product = static_cast<const wchar_t*>(p_block);
+    size_t max_chars = len / sizeof(wchar_t);
+    size_t str_len = 0;
+    while (str_len < max_chars && product[str_len] != L'\0') ++str_len;
+    if (str_len == 0) return {};
+    const int utf8_size =
+        WideCharToMultiByte(CP_UTF8, 0, product, static_cast<int>(str_len), nullptr, 0, nullptr, nullptr);
+    if (utf8_size <= 0) return {};
+    std::string result(static_cast<size_t>(utf8_size), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, product, static_cast<int>(str_len), result.data(), utf8_size, nullptr, nullptr);
+    return result;
+}
+
 // Convert device API enum to readable string
 const char* GetDeviceApiString(reshade::api::device_api api) {
     switch (api) {

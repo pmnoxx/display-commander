@@ -1529,7 +1529,24 @@ static std::string GetModulePathUtf8(HMODULE hMod) {
 void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     CALL_GUARD(utils::get_now_ns());
     const bool has_dc_export = (GetProcAddress(hModule, "GetDisplayCommanderState") != nullptr);
-    LogInfo("[OnModuleLoaded] %ws (0x%p)%s", moduleName.c_str(), hModule, has_dc_export ? " (DC proxy)" : "");
+    std::string product_and_version;
+    wchar_t module_path[MAX_PATH];
+    if (GetModuleFileNameW(hModule, module_path, MAX_PATH) > 0) {
+        const std::wstring path_w(module_path);
+        const std::string product = GetDLLProductNameUtf8(path_w);
+        const std::string version = GetDLLVersionString(path_w);
+        if (!product.empty() || !version.empty()) {
+            if (!product.empty() && !version.empty()) {
+                product_and_version = " - " + product + " " + version;
+            } else if (!product.empty()) {
+                product_and_version = " - " + product;
+            } else {
+                product_and_version = " - " + version;
+            }
+        }
+    }
+    LogInfo("[OnModuleLoaded] %ws (0x%p)%s%s", moduleName.c_str(), hModule, has_dc_export ? " (DC proxy)" : "",
+            product_and_version.c_str());
 
     if (IsRenoDxAddonPath(moduleName)) {
         OnRenoDxAddonLoaded();

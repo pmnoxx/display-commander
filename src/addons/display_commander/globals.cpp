@@ -87,7 +87,7 @@ std::atomic<bool> s_restart_needed_nvapi{false};
 // Continue rendering in background
 
 // DirectInput hook suppression
-std::atomic<bool> s_suppress_dinput_hooks{false};  // Disabled by default
+std::atomic<bool> s_suppress_dinput_hooks{true};  // DirectInput hooks disabled by default
 
 // Logging level: read from main tab settings
 LogLevel GetMinLogLevel() { return LogLevelFromComboIndex(settings::g_mainTabSettings.log_level.GetValue()); }

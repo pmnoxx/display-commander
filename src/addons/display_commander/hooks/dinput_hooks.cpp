@@ -1,17 +1,17 @@
 #include "dinput_hooks.hpp"
-#include "hook_suppression_manager.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
+#include <dinput.h>
+#include <MinHook.h>
+#include <unordered_map>
+#include <vector>
 #include "../globals.hpp"
+#include "../settings/experimental_tab_settings.hpp"
+#include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/timing.hpp"
 #include "../utils/srwlock_wrapper.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include <MinHook.h>
-#include <vector>
-#include <unordered_map>
-#include <dinput.h>
+#include "../utils/timing.hpp"
+#include "hook_suppression_manager.hpp"
+#include "windows_hooks/windows_message_hooks.hpp"
 
 namespace display_commanderhooks {
 
@@ -41,19 +41,17 @@ static std::unordered_map<LPVOID, DInputDeviceHook> g_dinput_device_hooks;
 // Hook statistics are now part of the main system
 
 // Helper function to check if DirectInput hooks should be suppressed
-bool ShouldSuppressDInputHooks() {
-    return s_suppress_dinput_hooks.load();
-}
+bool ShouldSuppressDInputHooks() { return s_suppress_dinput_hooks.load(); }
 
 // Helper function to get device type name
 std::string GetDeviceTypeName(DWORD device_type) {
     switch (device_type) {
-        case 0x00000000: return "Keyboard";  // DIDEVTYPE_KEYBOARD
-        case 0x00000001: return "Mouse";     // DIDEVTYPE_MOUSE
-        case 0x00000002: return "Joystick";  // DIDEVTYPE_JOYSTICK
-        case 0x00000003: return "Gamepad";   // DIDEVTYPE_GAMEPAD
-        case 0x00000004: return "Generic Device"; // DIDEVTYPE_DEVICE
-        default: return "Unknown Device";
+        case 0x00000000: return "Keyboard";        // DIDEVTYPE_KEYBOARD
+        case 0x00000001: return "Mouse";           // DIDEVTYPE_MOUSE
+        case 0x00000002: return "Joystick";        // DIDEVTYPE_JOYSTICK
+        case 0x00000003: return "Gamepad";         // DIDEVTYPE_GAMEPAD
+        case 0x00000004: return "Generic Device";  // DIDEVTYPE_DEVICE
+        default:         return "Unknown Device";
     }
 }
 
@@ -76,15 +74,11 @@ void TrackDInputDeviceCreation(const std::string& device_name, DWORD device_type
 
     g_dinput_devices.push_back(info);
 
-    LogInfo("DirectInput device created: %s (%s) via %s",
-            device_name.c_str(),
-            GetDeviceTypeName(device_type).c_str(),
+    LogInfo("DirectInput device created: %s (%s) via %s", device_name.c_str(), GetDeviceTypeName(device_type).c_str(),
             interface_name.c_str());
 }
 
-const std::vector<DInputDeviceInfo>& GetDInputDevices() {
-    return g_dinput_devices;
-}
+const std::vector<DInputDeviceInfo>& GetDInputDevices() { return g_dinput_devices; }
 
 void ClearDInputDevices() {
     utils::SRWLockExclusive lock(utils::g_dinput_devices_mutex);
@@ -92,7 +86,8 @@ void ClearDInputDevices() {
 }
 
 // DirectInput8Create detour
-HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter) {
+HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut,
+                                         LPUNKNOWN punkOuter) {
     CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInput8CreateDevice].increment_total();
@@ -121,7 +116,7 @@ HRESULT WINAPI DirectInput8Create_Detour(HINSTANCE hinst, DWORD dwVersion, REFII
 }
 
 // DirectInputCreateA detour
-HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA *ppDI, LPUNKNOWN punkOuter) {
+HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTA* ppDI, LPUNKNOWN punkOuter) {
     CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
@@ -149,7 +144,7 @@ HRESULT WINAPI DirectInputCreateA_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIR
 }
 
 // DirectInputCreateW detour
-HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW *ppDI, LPUNKNOWN punkOuter) {
+HRESULT WINAPI DirectInputCreateW_Detour(HINSTANCE hinst, DWORD dwVersion, LPDIRECTINPUTW* ppDI, LPUNKNOWN punkOuter) {
     CALL_GUARD(utils::get_now_ns());
     // Track total calls
     g_hook_stats[HOOK_DInputCreateDevice].increment_total();
@@ -184,7 +179,8 @@ bool InstallDirectInput8Hooks(HMODULE hModule) {
     if (DirectInput8Create_Original) {
         return true;  // already hooked
     }
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DINPUT8)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::DINPUT8)) {
         LogInfo("DirectInput 8 hooks installation suppressed by user setting");
         return false;
     }
@@ -193,30 +189,38 @@ bool InstallDirectInput8Hooks(HMODULE hModule) {
         LogError("Failed to initialize MinHook for DirectInput 8 hooks - Status: %d", init_status);
         return false;
     }
-    auto DirectInput8Create_sys = reinterpret_cast<DirectInput8Create_pfn>(GetProcAddress(hModule, "DirectInput8Create"));
+    auto DirectInput8Create_sys =
+        reinterpret_cast<DirectInput8Create_pfn>(GetProcAddress(hModule, "DirectInput8Create"));
     if (!DirectInput8Create_sys) {
         LogWarn("DirectInput8Create not found in dinput8.dll");
         return false;
     }
-    if (!CreateAndEnableHook(DirectInput8Create_sys, DirectInput8Create_Detour, (LPVOID*)&DirectInput8Create_Original, "DirectInput8Create")) {
+    if (!CreateAndEnableHook(DirectInput8Create_sys, DirectInput8Create_Detour, (LPVOID*)&DirectInput8Create_Original,
+                             "DirectInput8Create")) {
         LogError("Failed to create and enable DirectInput8Create hook");
         return false;
     }
     LogInfo("DirectInput8Create hook installed successfully");
     g_dinput_hooks_installed.store(true);
-    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DINPUT8);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::DINPUT8);
     return true;
 }
 
 // Install legacy DirectInput hooks (DirectInputCreateA/W) for the given dinput.dll module. Called from OnModuleLoaded.
 bool InstallDirectInputHooks(HMODULE hModule) {
+    if (!enabled_experimental_features) {
+        LogInfo("DirectInput (legacy) hooks installation suppressed by user setting");
+        return false;
+    }
     if (!hModule) {
         return false;
     }
     if (DirectInputCreateA_Original && DirectInputCreateW_Original) {
         return true;  // already hooked
     }
-    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(display_commanderhooks::HookType::DINPUT)) {
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::DINPUT)) {
         LogInfo("DirectInput (legacy) hooks installation suppressed by user setting");
         return false;
     }
@@ -227,9 +231,11 @@ bool InstallDirectInputHooks(HMODULE hModule) {
     }
     bool any_installed = false;
     if (!DirectInputCreateA_Original) {
-        auto DirectInputCreateA_sys = reinterpret_cast<DirectInputCreateA_pfn>(GetProcAddress(hModule, "DirectInputCreateA"));
+        auto DirectInputCreateA_sys =
+            reinterpret_cast<DirectInputCreateA_pfn>(GetProcAddress(hModule, "DirectInputCreateA"));
         if (DirectInputCreateA_sys) {
-            if (CreateAndEnableHook(DirectInputCreateA_sys, DirectInputCreateA_Detour, (LPVOID*)&DirectInputCreateA_Original, "DirectInputCreateA")) {
+            if (CreateAndEnableHook(DirectInputCreateA_sys, DirectInputCreateA_Detour,
+                                    (LPVOID*)&DirectInputCreateA_Original, "DirectInputCreateA")) {
                 LogInfo("DirectInputCreateA hook installed successfully");
                 any_installed = true;
             } else {
@@ -240,9 +246,11 @@ bool InstallDirectInputHooks(HMODULE hModule) {
         }
     }
     if (!DirectInputCreateW_Original) {
-        auto DirectInputCreateW_sys = reinterpret_cast<DirectInputCreateW_pfn>(GetProcAddress(hModule, "DirectInputCreateW"));
+        auto DirectInputCreateW_sys =
+            reinterpret_cast<DirectInputCreateW_pfn>(GetProcAddress(hModule, "DirectInputCreateW"));
         if (DirectInputCreateW_sys) {
-            if (CreateAndEnableHook(DirectInputCreateW_sys, DirectInputCreateW_Detour, (LPVOID*)&DirectInputCreateW_Original, "DirectInputCreateW")) {
+            if (CreateAndEnableHook(DirectInputCreateW_sys, DirectInputCreateW_Detour,
+                                    (LPVOID*)&DirectInputCreateW_Original, "DirectInputCreateW")) {
                 LogInfo("DirectInputCreateW hook installed successfully");
                 any_installed = true;
             } else {
@@ -254,7 +262,8 @@ bool InstallDirectInputHooks(HMODULE hModule) {
     }
     if (any_installed) {
         g_dinput_hooks_installed.store(true);
-        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(display_commanderhooks::HookType::DINPUT);
+        display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+            display_commanderhooks::HookType::DINPUT);
     }
     return any_installed;
 }
@@ -329,4 +338,4 @@ int GetDirectInputDeviceHookCount() {
     return static_cast<int>(g_dinput_device_hooks.size());
 }
 
-} // namespace display_commanderhooks
+}  // namespace display_commanderhooks

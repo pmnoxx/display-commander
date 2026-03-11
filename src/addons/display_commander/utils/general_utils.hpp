@@ -47,6 +47,8 @@ SHORT FloatToShort(float value);
 
 // DLL version information
 std::string GetDLLVersionString(const std::wstring& dllPath);
+// ProductName from version resource (UTF-8), empty if absent or on error
+std::string GetDLLProductNameUtf8(const std::wstring& dllPath);
 
 // DLSS preset support functions
 bool isBetween(int major, int minor, int patch, int minMajor, int minMinor, int minPatch, int maxMajor, int maxMinor,

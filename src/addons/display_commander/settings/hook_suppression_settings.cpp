@@ -7,14 +7,15 @@ HookSuppressionSettings::HookSuppressionSettings()
     // Hook suppression settings - hooks with true are suppressed by default (blacklisted)
     // Most hooks are enabled by default (false) for normal operation
     // Only hooks that are typically not needed or can cause issues are blacklisted by default
+    // DInput/DInput8: blacklisted by default to avoid input or compatibility issues
     : suppress_dxgi_factory_hooks("DxgiFactoryHooks", false, "DisplayCommander.HookSuppression"),
       suppress_dxgi_swapchain_hooks("DxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
       suppress_sl_proxy_dxgi_swapchain_hooks("SlProxyDxgiSwapchainHooks", false, "DisplayCommander.HookSuppression"),
       suppress_d3d11_device_hooks("D3D11DeviceHooks", false, "DisplayCommander.HookSuppression"),
       suppress_d3d12_device_hooks("D3D12DeviceHooks", false, "DisplayCommander.HookSuppression"),
       suppress_xinput_hooks("XInputHooks", false, "DisplayCommander.HookSuppression"),
-      suppress_dinput_hooks("DInputHooks", false, "DisplayCommander.HookSuppression"),
-      suppress_dinput8_hooks("DInput8Hooks", false, "DisplayCommander.HookSuppression"),
+      suppress_dinput_hooks("DInputHooks", true, "DisplayCommander.HookSuppression"),
+      suppress_dinput8_hooks("DInput8Hooks", true, "DisplayCommander.HookSuppression"),
       suppress_streamline_hooks("StreamlineHooks", false, "DisplayCommander.HookSuppression"),
       suppress_ngx_hooks("NGXHooks", false, "DisplayCommander.HookSuppression"),
       suppress_windows_gaming_input_hooks("WindowsGamingInputHooks", false, "DisplayCommander.HookSuppression"),

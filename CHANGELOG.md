@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.419
+- [bugfix] **No HWND_NOTOPMOST or window style changes when Window mode is No changes** - When Main tab window mode is "No changes", the addon no longer forces the game window to non–always-on-top (HWND_NOTOPMOST) in `SetWindowPos`, and no longer modifies window styles in the `SetWindowLong*` detours. Previously we could still override `hWndInsertAfter` to HWND_NOTOPMOST and call `ModifyWindowStyle` when the swapchain window was targeted. Now all of these detours check `window_mode != kNoChanges` before applying any change, so the game window is left fully unchanged. Details: api_hooks.cpp SetWindowPos_Detour and SetWindowLongPtrW, SetWindowLongA, SetWindowLongW, SetWindowLongPtrA_Detour.
+
 ## v0.12.418
 - [cleanup] **DXGI/D3D11/D3D12 hook installers moved to dxgi_hooks** - The functions that install DXGI factory and D3D11/D3D12 device creation hooks (`InstallDxgiFactoryHooks`, `InstallD3D11DeviceHooks`, `InstallD3D12DeviceHooks`) are now implemented in `hooks/dxgi/dxgi_hooks.cpp` with declarations in `hooks/dxgi/dxgi_hooks.hpp`. Behavior is unchanged; this is a code-organization refactor to group DXGI-related hook installation in one place. Details: api_hooks.hpp includes dxgi/dxgi_hooks.hpp; loadlibrary_hooks and dxgi_proxy still call the same functions.
 

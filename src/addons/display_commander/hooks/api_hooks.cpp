@@ -316,7 +316,8 @@ LONG_PTR WINAPI SetWindowLongPtrW_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongPtrW].increment_total();
     // Only process if prevent_always_on_top is enabled
-    if (hWnd == g_last_swapchain_hwnd.load()) {
+    if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
+        && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
@@ -330,8 +331,8 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongA].increment_total();
 
-    // Check if fullscreen prevention is enabled
-    if (hWnd == g_last_swapchain_hwnd.load()) {
+    if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
+        && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
@@ -344,8 +345,8 @@ LONG WINAPI SetWindowLongA_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
 LONG WINAPI SetWindowLongW_Detour(HWND hWnd, int nIndex, LONG dwNewLong) {
     CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongW].increment_total();
-    // Check if fullscreen prevention is enabled
-    if (hWnd == g_last_swapchain_hwnd.load()) {
+    if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
+        && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
@@ -359,8 +360,8 @@ LONG_PTR WINAPI SetWindowLongPtrA_Detour(HWND hWnd, int nIndex, LONG_PTR dwNewLo
     CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowLongPtrA].increment_total();
 
-    // Prevent window style changes that enable fullscreen (when targeting swapchain window)
-    if (hWnd == g_last_swapchain_hwnd.load()) {
+    if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
+        && hWnd == g_last_swapchain_hwnd.load()) {
         ModifyWindowStyle(nIndex, dwNewLong, settings::g_advancedTabSettings.prevent_always_on_top.GetValue());
     }
 
@@ -374,7 +375,8 @@ BOOL WINAPI SetWindowPos_Detour(HWND hWnd, HWND hWndInsertAfter, int X, int Y, i
     CALL_GUARD(utils::get_now_ns());
     g_hook_stats[HOOK_SetWindowPos].increment_total();
     // Only process if prevent_always_on_top is enabled
-    if (hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
+    if (settings::g_mainTabSettings.window_mode.GetValue() != static_cast<int>(WindowMode::kNoChanges)
+        && hWnd == g_last_swapchain_hwnd.load() && settings::g_advancedTabSettings.prevent_always_on_top.GetValue()
         && hWndInsertAfter != HWND_NOTOPMOST) {
         hWndInsertAfter = HWND_NOTOPMOST;
     }

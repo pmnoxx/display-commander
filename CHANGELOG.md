@@ -2,6 +2,11 @@
 
 ---
 
+## v0.12.396 (unreleased)
+- **Update status above Updates** - Above the Updates section you now see whether a newer debug build is available ("New version available on GitHub") or "Display Commander: using latest". The check runs once when you open the addon; if it fails, nothing is shown.
+- **Version check uses the release page only** - When checking for a newer Display Commander, the addon only opens the public latest-debug release page and reads the version from it. No extra API calls or downloads; the Download button still works when you click it.
+- **"Use global version" and simplified download** - A single **"Use global version"** checkbox (off by default) replaces the old version selector. When off, Display Commander loads from the game folder if present, otherwise from the global folder. When on, it always loads from the global folder. One **"Download latest version"** button installs the latest build to the global Display Commander folder.
+
 ## v0.12.395 (unreleased)
 - **FPS limiter preset label and Reflex settings visibility** - The OnPresent FPS limiter preset is renamed from "Native Reflex FPS preset" to "FPS limiter preset" in the UI and comments. The Reflex control (Low latency / Low latency + boost / Off / Game Defaults) is now always shown when the OnPresent sync FPS limiter section is visible, so it is no longer hidden when using the FPS limiter preset with native Reflex in sync. Details: main_new_tab.cpp (DrawDisplaySettings_FpsLimiterOnPresentSync); main_tab_settings.hpp/cpp (comments).
 

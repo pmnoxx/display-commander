@@ -2392,6 +2392,38 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         }
     }
 
+    // Use global version is set but we're loaded from the game folder (same as exe): act as loader only and load global DC.
+    if (display_commander::utils::GetUseGlobalDcVersionFromConfig()) {
+        WCHAR mod_buf[MAX_PATH];
+        WCHAR exe_buf[MAX_PATH];
+        if (GetModuleFileNameW(h_module, mod_buf, MAX_PATH) > 0 && GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
+            std::filesystem::path mod_dir = std::filesystem::path(mod_buf).parent_path();
+            std::filesystem::path exe_dir = std::filesystem::path(exe_buf).parent_path();
+            std::error_code ec;
+            std::filesystem::path mod_canon = std::filesystem::canonical(mod_dir, ec);
+            std::filesystem::path exe_canon = std::filesystem::canonical(exe_dir, ec);
+            if (!ec && mod_canon == exe_canon) {
+                std::filesystem::path load_path = display_commander::utils::GetDcDirectoryForLoading(nullptr);
+                std::filesystem::path addon_path = display_commander::utils::GetDcAddonPathInDirectory(load_path);
+                if (!addon_path.empty()) {
+                    std::filesystem::path our_module_path(mod_buf);
+                    std::filesystem::path addon_canon = std::filesystem::canonical(addon_path, ec);
+                    std::filesystem::path our_canon = std::filesystem::canonical(our_module_path, ec);
+                    if (ec || addon_canon != our_canon) {
+                        g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
+                                                        std::memory_order_release);
+                        if (LoadLibraryW(addon_path.c_str()) != nullptr) {
+                            OutputDebugStringA("[DisplayCommander] Use global version is set; loaded global DC from game-folder instance, returning loader only.\n");
+                            return ProcessAttachEarlyResult::LoaderOnly;
+                        }
+                        g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,
+                                                        std::memory_order_release);
+                    }
+                }
+            }
+        }
+    }
+
     // Loader mode: when we're not under stable\ or Debug\, act as loader. GetDcDirectoryForLoading(h_module) returns
     // the directory to use (local addon > global > local proxy when mode is "local"; else global/debug/stable path).
     // If that path != base and contains the addon, we load it and stay quiet.

@@ -4,18 +4,17 @@
 
 namespace display_commander::utils {
 
-// Selector mode: local (injection DLL), global (base path), debug (Debug\X.Y.Z), stable (stable\X.Y.Z).
-// Config: dc_selector_mode ("local"|"global"|"debug"|"stable"), dc_version_for_debug, dc_version_for_stable
-// ("latest" or X.Y.Z). Migration from legacy DcSelectedVersion is done on first read.
+// Config: use_global_version (bool, default false). When false: load DC from game folder (same as .exe) if addon
+// is present there, otherwise from global folder. When true: load only from global folder.
 
 // Returns true if the given module was loaded from a file whose name ends with .dll (case-insensitive).
 // Used to detect proxy-DLL loader mode (e.g. dxgi.dll, d3d11.dll) vs addon load (.addon64/.addon32).
 bool IsLoadedWithDLLExtension(void* h_module);
 
 // Returns the directory to load DC from (from config). Optional current_module: HMODULE of the loader (e.g. proxy
-// DLL) for proxy-directory fallback when mode is "local".
-// When mode is "local", resolution order: (1) local zzz_display_commander.addon64/.addon32, (2) global same,
-// (3) proxy .dll dir (dxgi.dll/winmm.dll/d3d11.dll/etc.). When mode is global/debug/stable: unchanged.
+// DLL) for proxy-directory fallback when use_global_version is false.
+// When use_global_version is false: (1) game folder (same as .exe) if addon present, (2) global folder.
+// When use_global_version is true: global folder only (base, then stable/Debug subdirs).
 std::filesystem::path GetDcDirectoryForLoading(void* current_module = nullptr);
 
 // Local folder (%localappdata%\Programs\Display_Commander).
@@ -29,15 +28,9 @@ std::filesystem::path GetLocalDcAddonDirectory();
 // used for "Local Proxy DC version".
 std::filesystem::path GetDcProxyModulePath();
 
-// Config get/set (section DisplayCommander.DC).
-// dc_selector_mode: "local" | "global" | "debug" | "stable". Default "local".
-// dc_version_for_debug / dc_version_for_stable: "latest" | X.Y.Z.
-std::string GetDcSelectorModeFromConfig();
-void SetDcSelectorModeInConfig(const std::string& mode);
-std::string GetDcVersionForDebugFromConfig();
-void SetDcVersionForDebugInConfig(const std::string& version);
-std::string GetDcVersionForStableFromConfig();
-void SetDcVersionForStableInConfig(const std::string& version);
+// Config get/set (section DisplayCommander.DC). use_global_version: when true, load DC from global folder only.
+bool GetUseGlobalDcVersionFromConfig();
+void SetUseGlobalDcVersionInConfig(bool use_global);
 
 // Installed DC versions: stable = subdirs of .../Display_Commander/stable/; debug = subdirs of .../Debug/.
 const char* const* GetDcInstalledVersionListStable(size_t* out_count);

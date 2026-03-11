@@ -447,6 +447,8 @@ std::filesystem::path GetDownloadDirectory() {
     return base / L"Programs" / L"Display_Commander";
 }
 
+static std::string ParseVersionFromReleaseBody(const std::string& json);
+
 void CheckForUpdates() {
     auto& state = GetVersionCheckState();
 
@@ -463,113 +465,31 @@ void CheckForUpdates() {
         auto& state = GetVersionCheckState();
 
         try {
-            // Get latest release from GitHub API
-            std::string api_url = "https://api.github.com/repos/pmnoxx/display-commander/releases/latest";
-            std::string json_response;
+            // Get version from latest_debug HTML page only (no API, no asset download)
+            std::string page_url = "https://github.com/pmnoxx/display-commander/releases/tag/latest_debug";
+            std::string html;
 
             std::string dl_err;
-            if (!DownloadTextFromUrl(api_url, json_response, &dl_err)) {
-                auto* error = new std::string(dl_err.empty() ? "Failed to connect to GitHub API" : dl_err);
+            if (!DownloadTextFromUrl(page_url, html, &dl_err)) {
+                auto* error = new std::string(dl_err.empty() ? "Failed to fetch latest_debug page" : dl_err);
                 state.error_message.store(error);
                 state.status.store(VersionComparison::CheckFailed);
                 state.checking.store(false);
                 return;
             }
 
-            std::string latest_version;
-            std::string url_64;
-            std::string url_32;
-            std::string build_number;
-
-            // Parse release information - continue even if URLs are missing (they might be in assets)
-            if (!ParseGitHubReleaseJson(json_response, latest_version, url_64, url_32, build_number)) {
-                // If we at least got the version, store it and continue
-                if (!latest_version.empty()) {
-                    auto* version_str = new std::string(latest_version);
-                    state.latest_version.store(version_str);
-
-                    // Store build number if found
-                    if (!build_number.empty()) {
-                        auto* build_str = new std::string(build_number);
-                        state.build_number.store(build_str);
-                    }
-
-                    // If URLs are missing, try to find them in assets array
-                    if (url_64.empty() && url_32.empty()) {
-                        // Look for assets array and find download URLs there
-                        size_t assets_pos = json_response.find("\"assets\"");
-                        if (assets_pos != std::string::npos) {
-                            // Look for browser_download_url in assets
-                            size_t url_search = assets_pos;
-                            while ((url_search = json_response.find("\"browser_download_url\"", url_search))
-                                   != std::string::npos) {
-                                size_t url_colon = json_response.find(':', url_search);
-                                if (url_colon == std::string::npos) {
-                                    break;
-                                }
-                                size_t url_quote_start = json_response.find('"', url_colon);
-                                if (url_quote_start == std::string::npos) {
-                                    break;
-                                }
-                                size_t url_quote_end = json_response.find('"', url_quote_start + 1);
-                                if (url_quote_end == std::string::npos) {
-                                    break;
-                                }
-                                std::string url =
-                                    json_response.substr(url_quote_start + 1, url_quote_end - url_quote_start - 1);
-                                if (url.find(".addon64") != std::string::npos && url_64.empty()) {
-                                    url_64 = url;
-                                } else if (url.find(".addon32") != std::string::npos && url_32.empty()) {
-                                    url_32 = url;
-                                }
-                                url_search = url_quote_end + 1;
-                                if (url_search >= json_response.length()) break;
-                                if (!url_64.empty() && !url_32.empty()) break;  // Found both, stop searching
-                            }
-                        }
-                    }
-
-                    // Store URLs if found
-                    if (!url_64.empty()) {
-                        auto* url_str = new std::string(url_64);
-                        state.download_url_64.store(url_str);
-                    }
-                    if (!url_32.empty()) {
-                        auto* url_str = new std::string(url_32);
-                        state.download_url_32.store(url_str);
-                    }
-
-                    // Store URLs if found (only if not already stored)
-                    if (!url_64.empty() && state.download_url_64.load() == nullptr) {
-                        auto* url_str = new std::string(url_64);
-                        state.download_url_64.store(url_str);
-                    }
-                    if (!url_32.empty() && state.download_url_32.load() == nullptr) {
-                        auto* url_str = new std::string(url_32);
-                        state.download_url_32.store(url_str);
-                    }
-
-                    // If we have version but no URLs, show warning but don't fail completely
-                    if (url_64.empty() && url_32.empty() && state.download_url_64.load() == nullptr
-                        && state.download_url_32.load() == nullptr) {
-                        auto* error = new std::string("Version found but download URLs not available");
-                        state.error_message.store(error);
-                    } else {
-                        // Clear any previous error if we have URLs now
-                        state.error_message.store(nullptr);
-                    }
-
-                    // Continue with version comparison even if URLs are missing
-                    // (URLs might be available from previous check)
-                } else {
-                    // Complete failure - couldn't even get version
-                    auto* error = new std::string("Failed to parse release information (could not find version)");
-                    state.error_message.store(error);
-                    state.status.store(VersionComparison::CheckFailed);
-                    state.checking.store(false);
-                    return;
-                }
+            std::string latest_version = ParseVersionFromReleaseBody(html);
+            if (latest_version.empty()) {
+                auto* error = new std::string("Failed to parse latest_debug page (no 'Version in binaries')");
+                state.error_message.store(error);
+                state.status.store(VersionComparison::CheckFailed);
+                state.checking.store(false);
+                return;
             }
+
+            std::string build_number = ExtractBuildNumber(latest_version);
+            state.error_message.store(nullptr);
+            // Download URLs are not fetched here; they are resolved when user clicks Download (FetchReleaseByTag).
 
             // Store results (if not already stored above)
             if (state.latest_version.load() == nullptr && !latest_version.empty()) {
@@ -839,35 +759,35 @@ bool DownloadDcVersionToDll(const std::string& version, std::string* out_error) 
     return DownloadDcReleaseToDll(tag, version, out_error);
 }
 
-// Parse "Version in binaries: X.Y.Z.W" (or "**Version in binaries**: X.Y.Z.W") from release body.
-static std::string ParseVersionFromReleaseBody(const std::string& json) {
+// Parse "Version in binaries" then X.Y.Z.W from HTML or Markdown (e.g. "</strong>: 0.12.395.2637" or "**: 0.12.395.2637").
+static std::string ParseVersionFromReleaseBody(const std::string& text) {
     const char prefix[] = "Version in binaries";
-    size_t pos = json.find(prefix);
+    size_t pos = text.find(prefix);
     if (pos == std::string::npos) return {};
     pos += sizeof(prefix) - 1;
-    while (pos < json.size() && (json[pos] == ' ' || json[pos] == ':' || json[pos] == '*')) ++pos;
-    if (pos >= json.size() || !std::isdigit(static_cast<unsigned char>(json[pos]))) return {};
+    // Skip until first digit (handles HTML "</strong>: " and Markdown "**: ")
+    while (pos < text.size() && !std::isdigit(static_cast<unsigned char>(text[pos]))) ++pos;
+    if (pos >= text.size()) return {};
     size_t start = pos;
-    while (pos < json.size() && (std::isdigit(static_cast<unsigned char>(json[pos])) || json[pos] == '.')) ++pos;
-    return json.substr(start, pos - start);
+    while (pos < text.size() && (std::isdigit(static_cast<unsigned char>(text[pos])) || text[pos] == '.')) ++pos;
+    return text.substr(start, pos - start);
 }
 
-// Fetch latest_debug release and return the version string from the release body (e.g. "0.12.200.2316").
+// Fetch latest_debug page (HTML) and return the version from the page (no API, no asset download).
 bool FetchLatestDebugReleaseVersion(std::string* out_version, std::string* out_error) {
     if (out_version) out_version->clear();
-    std::string url =
-        "https://api.github.com/repos/pmnoxx/display-commander/releases/tags/latest_debug";
-    std::string json;
-    if (!DownloadTextFromUrl(url, json, out_error)) {
+    std::string url = "https://github.com/pmnoxx/display-commander/releases/tag/latest_debug";
+    std::string html;
+    if (!DownloadTextFromUrl(url, html, out_error)) {
         if (out_error && !out_error->empty())
-            *out_error = std::string("latest_debug release: ") + *out_error;
+            *out_error = std::string("latest_debug page: ") + *out_error;
         else if (out_error)
-            *out_error = "Failed to fetch latest_debug release";
+            *out_error = "Failed to fetch latest_debug page";
         return false;
     }
-    std::string ver = ParseVersionFromReleaseBody(json);
+    std::string ver = ParseVersionFromReleaseBody(html);
     if (ver.empty()) {
-        if (out_error) *out_error = "Release body has no 'Version in binaries'";
+        if (out_error) *out_error = "Page has no 'Version in binaries'";
         return false;
     }
     if (out_version) *out_version = ver;

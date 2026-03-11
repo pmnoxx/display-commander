@@ -13,10 +13,9 @@ namespace display_commander::utils {
 
 namespace {
 constexpr const char* DC_SECTION = "DisplayCommander.DC";
-constexpr const char* KEY_SELECTED_VERSION = "DcSelectedVersion";
-constexpr const char* KEY_SELECTOR_MODE = "dc_selector_mode";
-constexpr const char* KEY_VERSION_DEBUG = "dc_version_for_debug";
-constexpr const char* KEY_VERSION_STABLE = "dc_version_for_stable";
+constexpr const char* KEY_USE_GLOBAL = "use_global_version";
+constexpr const char* KEY_SELECTED_VERSION_LEGACY = "DcSelectedVersion";
+constexpr const char* KEY_SELECTOR_MODE_LEGACY = "dc_selector_mode";
 
 // Canonical DC addon filenames (load zzz_display_commander.addon64 / .addon32, not dc64.dll/dc32.dll).
 static const std::wstring DC_ADDON_64 = L"zzz_display_commander.addon64";
@@ -59,28 +58,25 @@ static std::string GetHighestDcVersionInFolder(const std::filesystem::path& base
     return versions.front();
 }
 
-// One-time migration: if dc_selector_mode is missing, derive from DcSelectedVersion and write new keys.
+// One-time migration: if use_global_version is not set, derive from legacy dc_selector_mode or DcSelectedVersion.
 static void EnsureDcConfigMigrated() {
     using namespace display_commander::config;
     auto& config = DisplayCommanderConfigManager::GetInstance();
-    std::string mode;
-    if (config.GetConfigValue(DC_SECTION, KEY_SELECTOR_MODE, mode) && !mode.empty()) {
+    std::string use_global_str;
+    if (config.GetConfigValue(DC_SECTION, KEY_USE_GLOBAL, use_global_str) && !use_global_str.empty()) {
         return;  // Already migrated
     }
-    std::string legacy;
-    config.GetConfigValue(DC_SECTION, KEY_SELECTED_VERSION, legacy);
-    if (legacy.empty()) {
-        config.SetConfigValue(DC_SECTION, KEY_SELECTOR_MODE, "local");
-        config.SetConfigValue(DC_SECTION, KEY_VERSION_STABLE, "latest");
-    } else if (legacy == "latest") {
-        config.SetConfigValue(DC_SECTION, KEY_SELECTOR_MODE, "stable");
-        config.SetConfigValue(DC_SECTION, KEY_VERSION_STABLE, "latest");
+    bool use_global = false;
+    std::string mode;
+    if (config.GetConfigValue(DC_SECTION, KEY_SELECTOR_MODE_LEGACY, mode) && !mode.empty()) {
+        use_global = (mode == "global" || mode == "stable" || mode == "debug");
     } else {
-        config.SetConfigValue(DC_SECTION, KEY_SELECTOR_MODE, "stable");
-        config.SetConfigValue(DC_SECTION, KEY_VERSION_STABLE, legacy);
+        std::string legacy;
+        config.GetConfigValue(DC_SECTION, KEY_SELECTED_VERSION_LEGACY, legacy);
+        use_global = (legacy == "latest" || (!legacy.empty() && legacy != "local"));
     }
-    config.SetConfigValue(DC_SECTION, KEY_VERSION_DEBUG, "latest");
-    config.SaveConfig("DC selector migration");
+    config.SetConfigValue(DC_SECTION, KEY_USE_GLOBAL, use_global ? "1" : "0");
+    config.SaveConfig("DC use_global_version migration");
 }
 
 // Fill static vectors and return pointer array for subdir (Dll or Debug). Caller must not keep pointers across calls.
@@ -157,40 +153,13 @@ extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule
 std::filesystem::path GetDcDirectoryForLoading(void* current_module) {
     using namespace display_commander::config;
     EnsureDcConfigMigrated();
-    auto& config = DisplayCommanderConfigManager::GetInstance();
-    std::string mode;
-    config.GetConfigValue(DC_SECTION, KEY_SELECTOR_MODE, mode);
-    if (mode != "global" && mode != "debug" && mode != "stable") {
-        mode = "local";
-    }
+    bool use_global = GetUseGlobalDcVersionFromConfig();
 
     std::filesystem::path base = GetDcBaseFromLocalAppData();
     std::filesystem::path stable_base = base / L"stable";
     std::filesystem::path debug_base = base / L"Debug";
 
-    // local: resolution order (1) local zzz_display_commander.addon64/.addon32, (2) global, (3) proxy .dll dir.
-    if (mode == "local") {
-        std::filesystem::path process_dir = GetProcessDirectory();
-        if (DirectoryHasDcAddonDlls(process_dir)) return process_dir;
-        if (DirectoryHasDcAddonDlls(base)) return base;
-        std::string latest_stable = GetHighestDcVersionInFolder(base, L"stable");
-        if (!latest_stable.empty()) return stable_base / std::filesystem::path(latest_stable);
-        std::string latest_debug = GetHighestDcVersionInFolder(base, L"Debug");
-        if (!latest_debug.empty()) return debug_base / std::filesystem::path(latest_debug);
-        if (current_module != nullptr) {
-            wchar_t mod_buf[MAX_PATH];
-            if (GetModuleFileNameW(reinterpret_cast<HMODULE>(current_module), mod_buf, MAX_PATH) > 0) {
-                std::filesystem::path module_path(mod_buf);
-                std::filesystem::path module_dir = module_path.has_filename() ? module_path.parent_path() : module_path;
-                if (!IsDcAddonModulePath(module_path)) return module_dir;
-            }
-        }
-        return base;
-    }
-
-    auto fallback_to_base = [&base]() { return base; };
-
-    if (mode == "global") {
+    if (use_global) {
         if (DirectoryHasDcAddonDlls(base)) return base;
         std::string latest_stable = GetHighestDcVersionInFolder(base, L"stable");
         if (!latest_stable.empty()) return stable_base / std::filesystem::path(latest_stable);
@@ -199,35 +168,22 @@ std::filesystem::path GetDcDirectoryForLoading(void* current_module) {
         return base;
     }
 
-    if (mode == "debug") {
-        std::string version;
-        config.GetConfigValue(DC_SECTION, KEY_VERSION_DEBUG, version);
-        if (version.empty()) version = "latest";
-        if (version == "latest") {
-            std::string highest = GetHighestDcVersionInFolder(base, L"Debug");
-            if (highest.empty()) return fallback_to_base();
-            return debug_base / std::filesystem::path(highest);
+    // Local: game folder (same as .exe) if addon present, then global, then proxy .dll dir.
+    std::filesystem::path process_dir = GetProcessDirectory();
+    if (DirectoryHasDcAddonDlls(process_dir)) return process_dir;
+    if (DirectoryHasDcAddonDlls(base)) return base;
+    std::string latest_stable = GetHighestDcVersionInFolder(base, L"stable");
+    if (!latest_stable.empty()) return stable_base / std::filesystem::path(latest_stable);
+    std::string latest_debug = GetHighestDcVersionInFolder(base, L"Debug");
+    if (!latest_debug.empty()) return debug_base / std::filesystem::path(latest_debug);
+    if (current_module != nullptr) {
+        wchar_t mod_buf[MAX_PATH];
+        if (GetModuleFileNameW(reinterpret_cast<HMODULE>(current_module), mod_buf, MAX_PATH) > 0) {
+            std::filesystem::path module_path(mod_buf);
+            std::filesystem::path module_dir = module_path.has_filename() ? module_path.parent_path() : module_path;
+            if (!IsDcAddonModulePath(module_path)) return module_dir;
         }
-        std::filesystem::path dir = debug_base / std::filesystem::path(version);
-        if (DirectoryHasDcAddonDlls(dir)) return dir;
-        std::string highest = GetHighestDcVersionInFolder(base, L"Debug");
-        if (!highest.empty()) return debug_base / std::filesystem::path(highest);
-        return base;
     }
-
-    // stable
-    std::string version;
-    config.GetConfigValue(DC_SECTION, KEY_VERSION_STABLE, version);
-    if (version.empty()) version = "latest";
-    if (version == "latest") {
-        std::string highest = GetHighestDcVersionInFolder(base, L"stable");
-        if (highest.empty()) return fallback_to_base();
-        return stable_base / std::filesystem::path(highest);
-    }
-    std::filesystem::path dir = stable_base / std::filesystem::path(version);
-    if (DirectoryHasDcAddonDlls(dir)) return dir;
-    std::string highest = GetHighestDcVersionInFolder(base, L"stable");
-    if (!highest.empty()) return stable_base / std::filesystem::path(highest);
     return base;
 }
 
@@ -295,46 +251,17 @@ bool IsLoadedWithDLLExtension(void* h_module) {
     return _wcsicmp(filename + len - 4, L".dll") == 0;
 }
 
-std::string GetDcSelectorModeFromConfig() {
+bool GetUseGlobalDcVersionFromConfig() {
     EnsureDcConfigMigrated();
     using namespace display_commander::config;
     std::string value;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(DC_SECTION, KEY_SELECTOR_MODE, value);
-    if (value != "local" && value != "global" && value != "debug" && value != "stable") value = "local";
-    return value;
+    DisplayCommanderConfigManager::GetInstance().GetConfigValue(DC_SECTION, KEY_USE_GLOBAL, value);
+    return (value == "1" || value == "true" || value == "yes");
 }
 
-void SetDcSelectorModeInConfig(const std::string& mode) {
+void SetUseGlobalDcVersionInConfig(bool use_global) {
     using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_SELECTOR_MODE, mode);
-}
-
-std::string GetDcVersionForDebugFromConfig() {
-    EnsureDcConfigMigrated();
-    using namespace display_commander::config;
-    std::string value;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(DC_SECTION, KEY_VERSION_DEBUG, value);
-    if (value.empty()) value = "latest";
-    return value;
-}
-
-void SetDcVersionForDebugInConfig(const std::string& version) {
-    using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_VERSION_DEBUG, version);
-}
-
-std::string GetDcVersionForStableFromConfig() {
-    EnsureDcConfigMigrated();
-    using namespace display_commander::config;
-    std::string value;
-    DisplayCommanderConfigManager::GetInstance().GetConfigValue(DC_SECTION, KEY_VERSION_STABLE, value);
-    if (value.empty()) value = "latest";
-    return value;
-}
-
-void SetDcVersionForStableInConfig(const std::string& version) {
-    using namespace display_commander::config;
-    DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_VERSION_STABLE, version);
+    DisplayCommanderConfigManager::GetInstance().SetConfigValue(DC_SECTION, KEY_USE_GLOBAL, use_global ? "1" : "0");
 }
 
 std::filesystem::path GetDcAddonPathInDirectory(const std::filesystem::path& dir) {

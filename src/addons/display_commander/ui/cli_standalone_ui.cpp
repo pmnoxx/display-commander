@@ -154,7 +154,7 @@ static const char* const kReshadeUpdateUrlLatest = "https://reshade.me/downloads
 
 static std::atomic<bool> s_reshadeUpdateInProgress{false};
 
-// Newest available version (ReShade from reshade.me, DC from GitHub releases/latest). Fetched once in background.
+// Newest available version (ReShade from reshade.me, DC from GitHub releases/tags/latest_debug). Fetched once in background.
 static std::atomic<bool> s_latestVersionsFetchStarted{false};
 static std::atomic<bool> s_latestVersionsFetchDone{false};
 static std::atomic<std::string*> s_latestReShadeVersion{nullptr};
@@ -529,7 +529,7 @@ static void LatestVersionsFetchWorker() {
     }
     std::string dc_ver;
     std::string dc_err;
-    if (display_commander::utils::version_check::FetchLatestStableReleaseVersion(&dc_ver, &dc_err)) {
+    if (display_commander::utils::version_check::FetchLatestDebugReleaseVersion(&dc_ver, &dc_err)) {
         s_latestDcVersion.store(new std::string(dc_ver), std::memory_order_release);
     } else {
         s_latestDcVersion.store(new std::string(), std::memory_order_release);

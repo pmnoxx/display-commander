@@ -1627,17 +1627,258 @@ display_commander::ui::GraphicsApi GetGraphicsApiFromLastDeviceApi() {
     }
 }
 
-static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgui) {
+static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapper& imgui) {
     using namespace display_commander::utils;
     using namespace display_commander::utils::version_check;
 
-    // --- ReShade (per docs/ui_specs/updates_ui_spec.md) ---
-    std::filesystem::path game_dir;
-    {
-        WCHAR exe_buf[MAX_PATH];
-        if (GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
-            game_dir = std::filesystem::path(exe_buf).parent_path();
+    if (imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+
+        // Use global version: when false, load DC from game folder (same as .exe) if addon is there; when true, load only from global folder.
+        bool use_global_version = GetUseGlobalDcVersionFromConfig();
+        if (imgui.Checkbox("Use global version", &use_global_version)) {
+            SetUseGlobalDcVersionInConfig(use_global_version);
+            display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("Use global version");
         }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "When off: use DC from the game folder (same as .exe) if the addon is there, otherwise from the global folder.\n"
+                "When on: always load DC from the global folder only.");
+        }
+        // Using Global Version: Yes if current DC module is in a different location than the exe.
+        {
+            bool using_global_version = true;
+            std::string tooltip_reason;
+            std::string current_module_path_str;
+            if (g_hmodule != nullptr) {
+                WCHAR mod_buf[MAX_PATH];
+                WCHAR exe_buf[MAX_PATH];
+                if (GetModuleFileNameW(g_hmodule, mod_buf, MAX_PATH) > 0 && GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
+                    current_module_path_str = std::filesystem::path(mod_buf).string();
+                    std::filesystem::path mod_dir = std::filesystem::path(mod_buf).parent_path();
+                    std::filesystem::path exe_dir = std::filesystem::path(exe_buf).parent_path();
+                    std::error_code ec;
+                    std::filesystem::path mod_canon = std::filesystem::canonical(mod_dir, ec);
+                    std::filesystem::path exe_canon = std::filesystem::canonical(exe_dir, ec);
+                    if (!ec && mod_canon == exe_canon) {
+                        using_global_version = false;
+                        tooltip_reason = "Reason: DC is running from the same folder as the game .exe.\nCurrent module: " + current_module_path_str
+                            + "\nFolder: " + exe_canon.string()
+                            + "\n\nThe \"Use global version\" setting applies to the next launch. This process was already started from the game folder (e.g. proxy DLL or addon next to exe).";
+                    } else {
+                        tooltip_reason = "Reason: DC is running from a different folder than the game .exe.\nCurrent module: " + current_module_path_str
+                            + "\nDC module folder: " + (ec ? mod_dir.string() : mod_canon.string())
+                            + "\nGame .exe folder: " + (ec ? exe_dir.string() : exe_canon.string());
+                    }
+                } else {
+                    tooltip_reason = "Reason: Could not get module or exe path.";
+                    WCHAR mod_buf[MAX_PATH];
+                    if (GetModuleFileNameW(g_hmodule, mod_buf, MAX_PATH) > 0) {
+                        tooltip_reason += "\nCurrent module: " + std::filesystem::path(mod_buf).string();
+                    }
+                }
+            } else {
+                tooltip_reason = "Reason: No DC module handle; assuming global.";
+            }
+            imgui.TextDisabled("Using Global Version: %s", using_global_version ? "Yes" : "No");
+            if (imgui.IsItemHovered() && !tooltip_reason.empty()) {
+                imgui.SetTooltip("%s", tooltip_reason.c_str());
+            }
+        }
+        std::string local_dc_ver;
+        std::filesystem::path local_addon_dir = GetLocalDcAddonDirectory();
+        std::filesystem::path local_addon_path;
+        if (!local_addon_dir.empty()) {
+            local_addon_path = GetDcAddonPathInDirectory(local_addon_dir);
+            if (!local_addon_path.empty()) {
+                local_dc_ver = GetDLLVersionString(local_addon_path.wstring());
+            }
+        }
+        std::string local_proxy_dc_ver;
+        std::filesystem::path local_proxy_path = GetDcProxyModulePath();
+        if (!local_proxy_path.empty()) {
+            local_proxy_dc_ver = GetDLLVersionString(local_proxy_path.wstring());
+        }
+        std::string global_dc_ver;
+        std::string global_dc_status;  // Version or reason why "(none)"
+        std::filesystem::path dc_base = GetDisplayCommanderAppDataFolder();
+        std::filesystem::path global_addon_path;
+        if (!std::filesystem::exists(dc_base)) {
+            global_dc_status = "Global folder missing";
+        } else {
+            global_addon_path = GetDcAddonPathInDirectory(dc_base);
+            if (global_addon_path.empty()) {
+                global_dc_status = "No addon in global folder";
+            } else {
+                global_dc_ver = GetDLLVersionString(global_addon_path.wstring());
+                global_dc_status = global_dc_ver.empty() ? "Version unknown" : global_dc_ver;
+            }
+        }
+        imgui.TextDisabled("Local DC version: %s", local_dc_ver.empty() ? "None" : local_dc_ver.c_str());
+        if (imgui.IsItemHovered()) {
+            if (local_addon_dir.empty()) {
+                imgui.SetTooltip(
+                    "The Display Commander addon (zzz_display_commander.addon64 or .addon32) is not present in the "
+                    "game folder. Install it there, use a proxy (e.g. dxgi.dll), or enable \"Use global version\".");
+            } else {
+                imgui.SetTooltip(
+                    "Version from the DC addon (zzz_display_commander.addon64 or .addon32) in the game "
+                    "folder.\nPath: "
+                    "%s",
+                    local_addon_path.empty() ? "(none)" : local_addon_path.string().c_str());
+            }
+        }
+        imgui.TextDisabled("Local Proxy DC version: %s",
+                           local_proxy_dc_ver.empty() ? "(none)" : local_proxy_dc_ver.c_str());
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip(
+                "Version from the Display Commander proxy DLL (e.g. dxgi.dll, winmm.dll) loaded from the game "
+                "folder.\nPath: %s",
+                local_proxy_path.empty() ? "(none)" : local_proxy_path.string().c_str());
+        }
+        imgui.TextDisabled("Global DC version: %s", global_dc_status.c_str());
+        if (imgui.IsItemHovered()) {
+            std::string path_for_tooltip("(none)");
+            if (!global_addon_path.empty()) {
+                path_for_tooltip = global_addon_path.string();
+            } else if (!dc_base.empty()) {
+                path_for_tooltip = dc_base.string();
+            }
+            imgui.SetTooltip("Global folder: %s", path_for_tooltip.c_str());
+        }
+
+        // Delete local DC addon (game folder): removes zzz_display_commander.addon64/.addon32. Next run can use
+        // global or proxy.
+        static std::atomic<std::string*> s_delete_local_dc_msg{nullptr};
+        if (!local_addon_dir.empty()) {
+            imgui.SameLine();
+            if (imgui.Button(ICON_FK_MINUS " Delete local DC")) {
+                std::string* old_msg = s_delete_local_dc_msg.exchange(nullptr);
+                delete old_msg;
+                std::filesystem::path dir = local_addon_dir;
+                std::thread([dir]() {
+                    std::string err;
+                    if (DeleteLocalDcAddonFromDirectory(dir, &err)) {
+                        s_delete_local_dc_msg.store(new std::string("Local DC addon removed."));
+                    } else {
+                        s_delete_local_dc_msg.store(new std::string(err.empty() ? "Delete failed" : err));
+                    }
+                }).detach();
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip(
+                    "Remove zzz_display_commander.addon64 and zzz_display_commander.addon32 from the game folder. "
+                    "Next run will use global or proxy DC if preferred.");
+            }
+        }
+        std::string* dc_msg_ptr = s_delete_local_dc_msg.load();
+        if (dc_msg_ptr != nullptr && !dc_msg_ptr->empty()) {
+            imgui.SameLine();
+            bool dc_success = (*dc_msg_ptr == "Local DC addon removed.");
+            imgui.TextColored(dc_success ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_ERROR, "%s",
+                              dc_msg_ptr->c_str());
+        }
+
+        // Latest debug on GitHub (fetched when section first shown)
+        static std::string s_dc_latest_debug_ver;
+        static std::atomic<int> s_dc_debug_status{0};  // 0=not started, 1=checking, 2=ok, 3=error
+        static std::atomic<bool> s_dc_debug_fetched{false};
+        if (!s_dc_debug_fetched.load()) {
+            s_dc_debug_fetched.store(true);
+            s_dc_debug_status.store(1);
+            std::thread([]() {
+                std::string ver, err;
+                if (FetchLatestDebugReleaseVersion(&ver, &err)) {
+                    s_dc_latest_debug_ver = ver;
+                    s_dc_debug_status.store(2);
+                } else {
+                    s_dc_latest_debug_ver = err.empty() ? "Fetch failed" : err;
+                    s_dc_debug_status.store(3);
+                }
+            }).detach();
+        }
+        size_t debug_count = 0;
+        const char* const* debug_list = GetDcInstalledVersionListDebug(&debug_count);
+        if (debug_count > 0 && debug_list != nullptr) {
+            std::string cached_debug;
+            for (size_t i = 0; i < debug_count && debug_list[i] != nullptr; ++i) {
+                if (!cached_debug.empty()) cached_debug += ", ";
+                cached_debug += debug_list[i];
+            }
+            imgui.Text("Cached debug (Display_Commander/Debug): %s", cached_debug.c_str());
+        } else {
+            imgui.Text("Cached debug (Display_Commander/Debug): (none)");
+        }
+        std::string dc_debug_display_ver = s_dc_latest_debug_ver;
+        if (s_dc_debug_status.load() == 2 && !dc_debug_display_ver.empty()
+            && dc_debug_display_ver.find_first_not_of("0123456789.") == std::string::npos) {
+            std::string norm = NormalizeVersionToXyz(dc_debug_display_ver);
+            if (!norm.empty()) dc_debug_display_ver = norm;
+        }
+        imgui.Text("Newest debug available: %s", dc_debug_display_ver.empty() ? "..." : dc_debug_display_ver.c_str());
+        if (s_dc_debug_status.load() == 1) {
+            imgui.SameLine();
+            imgui.TextDisabled("(checking...)");
+        }
+        // Download: debug only, to global DC folder.
+        imgui.Spacing();
+        static std::atomic<std::string*> s_dc_dl_err{nullptr};
+        if (imgui.Button(ICON_FK_FLOPPY " Download latest debug")) {
+            std::string* old_err = s_dc_dl_err.exchange(nullptr);
+            delete old_err;
+            std::thread([]() {
+                std::string err;
+                if (DownloadDcLatestDebugToDebugFolder(&err)) {
+                    LogInfo("Display Commander latest debug downloaded to global folder (Display_Commander/Debug/X.Y.Z)");
+                } else {
+                    std::string msg = err.empty() ? "Download failed" : err;
+                    LogError("DC debug download: %s", msg.c_str());
+                    s_dc_dl_err.store(new std::string(msg));
+                }
+            }).detach();
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltip("Download latest debug from GitHub to the global Display Commander folder (Display_Commander\\Debug\\X.Y.Z).");
+        }
+        std::string* err_ptr = s_dc_dl_err.load();
+        if (err_ptr != nullptr && !err_ptr->empty()) {
+            imgui.SameLine();
+            imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err_ptr->c_str());
+        }
+
+        // Open folder (global Display Commander folder)
+        std::filesystem::path dc_global = GetDisplayCommanderAppDataFolder();
+        if (!dc_global.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
+            std::filesystem::path folder_path = dc_global;
+            std::thread([folder_path]() {
+                std::error_code ec;
+                std::filesystem::create_directories(folder_path, ec);
+                std::wstring folder_w = folder_path.wstring();
+                HINSTANCE result = ShellExecuteW(nullptr, L"open", folder_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open Display Commander folder: %s (Error: %ld)", folder_path.string().c_str(),
+                             static_cast<long>(reinterpret_cast<intptr_t>(result)));
+                }
+            }).detach();
+        }
+        if (imgui.IsItemHovered() && !dc_global.empty()) {
+            imgui.SetTooltip("Open the Display Commander global folder. You can copy files manually to revert.\n\n%s",
+                             dc_global.string().c_str());
+        }
+
+        imgui.Unindent();
+    }
+}
+
+static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui,
+                                     const std::filesystem::path& game_dir) {
+    using namespace display_commander::utils;
+    using namespace display_commander::utils::version_check;
+
+    if (!display_commanderhooks::g_hooked_before_reshade.load()) {
+        imgui.TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
+                          "Reshade updates not possible unless running DC as dll proxy.");
+        return;
     }
     if (imgui.CollapsingHeader("Reshade", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
@@ -1762,7 +2003,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "Remove Reshade64.dll and Reshade32.dll from the game folder. Safe because we load from a copy, "
+                    "Remove Reshade64.dll and Reshade32.dll from the game folder. Safe because we load from a "
+                    "copy, "
                     "not the file directly. Next run will use global ReShade if preferred.");
             }
         }
@@ -1775,386 +2017,32 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
 
         imgui.Unindent();
     }
+}
 
-    // --- Display Commander (per docs/ui_specs/updates_ui_spec.md) ---
-    if (imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None)) {
-        imgui.Indent();
-
-        // Prefer global DC (default off = prefer local). When on, "Use version" combo picks stable or debug.
-        std::string dc_mode = GetDcSelectorModeFromConfig();
-        bool prefer_global_dc = (dc_mode == "global" || dc_mode == "stable" || dc_mode == "debug");
-        if (imgui.Checkbox("Prefer global DC", &prefer_global_dc)) {
-            if (prefer_global_dc) {
-                SetDcSelectorModeInConfig("stable");
-                SetDcVersionForStableInConfig("latest");
-            } else {
-                SetDcSelectorModeInConfig("local");
-            }
-            display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("Prefer global DC");
-        }
-        std::string local_dc_ver;
-        std::filesystem::path local_addon_dir = GetLocalDcAddonDirectory();
-        std::filesystem::path local_addon_path;
-        if (!local_addon_dir.empty()) {
-            local_addon_path = GetDcAddonPathInDirectory(local_addon_dir);
-            if (!local_addon_path.empty()) {
-                local_dc_ver = GetDLLVersionString(local_addon_path.wstring());
-            }
-        }
-        std::string local_proxy_dc_ver;
-        std::filesystem::path local_proxy_path = GetDcProxyModulePath();
-        if (!local_proxy_path.empty()) {
-            local_proxy_dc_ver = GetDLLVersionString(local_proxy_path.wstring());
-        }
-        std::string global_dc_ver;
-        std::string global_dc_status;  // Version or reason why "(none)"
-        std::filesystem::path dc_base = GetDisplayCommanderAppDataFolder();
-        std::filesystem::path global_addon_path;
-        if (!std::filesystem::exists(dc_base)) {
-            global_dc_status = "Global folder missing";
-        } else {
-            global_addon_path = GetDcAddonPathInDirectory(dc_base);
-            if (global_addon_path.empty()) {
-                global_dc_status = "No addon in global folder";
-            } else {
-                global_dc_ver = GetDLLVersionString(global_addon_path.wstring());
-                global_dc_status = global_dc_ver.empty() ? "Version unknown" : global_dc_ver;
-            }
-        }
-        imgui.TextDisabled("Local DC version: %s", local_dc_ver.empty() ? "None" : local_dc_ver.c_str());
-        if (imgui.IsItemHovered()) {
-            if (local_addon_dir.empty()) {
-                imgui.SetTooltip(
-                    "The Display Commander addon (zzz_display_commander.addon64 or .addon32) is not present in the "
-                    "game folder. Install it there or use a proxy (e.g. dxgi.dll) or prefer global.");
-            } else {
-                imgui.SetTooltip(
-                    "Version from the DC addon (zzz_display_commander.addon64 or .addon32) in the game folder.\nPath: "
-                    "%s",
-                    local_addon_path.empty() ? "(none)" : local_addon_path.string().c_str());
-            }
-        }
-        imgui.TextDisabled("Local Proxy DC version: %s",
-                           local_proxy_dc_ver.empty() ? "(none)" : local_proxy_dc_ver.c_str());
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "Version from the Display Commander proxy DLL (e.g. dxgi.dll, winmm.dll) loaded from the game "
-                "folder.\nPath: %s",
-                local_proxy_path.empty() ? "(none)" : local_proxy_path.string().c_str());
-        }
-        imgui.TextDisabled("Global DC version: %s", global_dc_status.c_str());
-        if (imgui.IsItemHovered()) {
-            std::string path_for_tooltip("(none)");
-            if (!global_addon_path.empty()) {
-                path_for_tooltip = global_addon_path.string();
-            } else if (!dc_base.empty()) {
-                path_for_tooltip = dc_base.string();
-            }
-            imgui.SetTooltip(
-                "Preference order: local zzz_display_commander.addon64/.addon32 > global > proxy .dll "
-                "(dxgi/winmm/etc.). "
-                "This checkbox switches to global > local.\nPath: %s",
-                path_for_tooltip.c_str());
-        }
-
-        // Delete local DC addon (game folder): removes zzz_display_commander.addon64/.addon32. Next run can use global
-        // or proxy.
-        static std::atomic<std::string*> s_delete_local_dc_msg{nullptr};
-        if (!local_addon_dir.empty()) {
-            imgui.SameLine();
-            if (imgui.Button(ICON_FK_MINUS " Delete local DC")) {
-                std::string* old_msg = s_delete_local_dc_msg.exchange(nullptr);
-                delete old_msg;
-                std::filesystem::path dir = local_addon_dir;
-                std::thread([dir]() {
-                    std::string err;
-                    if (DeleteLocalDcAddonFromDirectory(dir, &err)) {
-                        s_delete_local_dc_msg.store(new std::string("Local DC addon removed."));
-                    } else {
-                        s_delete_local_dc_msg.store(new std::string(err.empty() ? "Delete failed" : err));
-                    }
-                }).detach();
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "Remove zzz_display_commander.addon64 and zzz_display_commander.addon32 from the game folder. "
-                    "Next run will use global or proxy DC if preferred.");
-            }
-        }
-        std::string* dc_msg_ptr = s_delete_local_dc_msg.load();
-        if (dc_msg_ptr != nullptr && !dc_msg_ptr->empty()) {
-            imgui.SameLine();
-            bool dc_success = (*dc_msg_ptr == "Local DC addon removed.");
-            imgui.TextColored(dc_success ? ui::colors::TEXT_SUCCESS : ui::colors::TEXT_ERROR, "%s",
-                              dc_msg_ptr->c_str());
-        }
-
-        // Latest stable on GitHub + cached stable (Dll) / Latest debug (both fetched when section first shown)
-        static std::string s_dc_latest_stable_ver;
-        static std::string s_dc_stable_fetch_error;
-        static std::atomic<bool> s_dc_stable_fetched{false};
-        static std::string s_dc_latest_debug_ver;
-        static std::atomic<int> s_dc_debug_status{0};  // 0=not started, 1=checking, 2=ok, 3=error
-        static std::atomic<bool> s_dc_debug_fetched{false};
-        if (!s_dc_stable_fetched.load()) {
-            s_dc_stable_fetched.store(true);
-            std::thread([]() {
-                std::string err;
-                if (FetchLatestStableReleaseVersion(&s_dc_latest_stable_ver, &err)) {
-                    if (!err.empty()) s_dc_stable_fetch_error = err;
-                } else {
-                    s_dc_stable_fetch_error = err.empty() ? "Fetch failed" : err;
-                }
-            }).detach();
-        }
-        if (!s_dc_debug_fetched.load()) {
-            s_dc_debug_fetched.store(true);
-            s_dc_debug_status.store(1);
-            std::thread([]() {
-                std::string ver, err;
-                if (FetchLatestDebugReleaseVersion(&ver, &err)) {
-                    s_dc_latest_debug_ver = ver;
-                    s_dc_debug_status.store(2);
-                } else {
-                    s_dc_latest_debug_ver = err.empty() ? "Fetch failed" : err;
-                    s_dc_debug_status.store(3);
-                }
-            }).detach();
-        }
-        std::string latest_stable_display = s_dc_latest_stable_ver.empty() ? "..." : s_dc_latest_stable_ver;
-        imgui.Text("Latest stable on GitHub: %s", latest_stable_display.c_str());
-        if (!s_dc_stable_fetch_error.empty()) {
-            imgui.SameLine();
-            imgui.TextColored(ui::colors::TEXT_ERROR, "(%s)", s_dc_stable_fetch_error.c_str());
-        }
-        std::string current_dc_ver = NormalizeVersionToXyz(DISPLAY_COMMANDER_VERSION_STRING);
-        if (current_dc_ver.empty()) current_dc_ver = ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING);
-        if (!current_dc_ver.empty() && !s_dc_latest_stable_ver.empty()
-            && s_dc_latest_stable_ver.find_first_not_of("0123456789.") == std::string::npos) {
-            int dc_cmp = CompareVersions(current_dc_ver, s_dc_latest_stable_ver);
-            if (dc_cmp >= 0) {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Version info from: GitHub (Display Commander stable releases)");
-                }
-            } else {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("%s -> %s\n\nVersion info from: GitHub (Display Commander stable releases)",
-                                     current_dc_ver.c_str(), s_dc_latest_stable_ver.c_str());
-                }
-            }
-        }
-        size_t stable_count = 0;
-        const char* const* stable_list = GetDcInstalledVersionListStable(&stable_count);
-        if (stable_count > 0 && stable_list != nullptr) {
-            std::string cached_str;
-            for (size_t i = 0; i < stable_count && stable_list[i] != nullptr; ++i) {
-                if (!cached_str.empty()) cached_str += ", ";
-                cached_str += stable_list[i];
-            }
-            imgui.Text("Cached stable (Display_Commander/stable): %s", cached_str.c_str());
-        } else {
-            imgui.Text("Cached stable (Display_Commander/stable): (none)");
-        }
-        std::string dc_debug_display_ver = s_dc_latest_debug_ver;
-        if (s_dc_debug_status.load() == 2 && !dc_debug_display_ver.empty()
-            && dc_debug_display_ver.find_first_not_of("0123456789.") == std::string::npos) {
-            std::string norm = NormalizeVersionToXyz(dc_debug_display_ver);
-            if (!norm.empty()) dc_debug_display_ver = norm;
-        }
-        imgui.Text("Newest debug version available: %s",
-                   dc_debug_display_ver.empty() ? "..." : dc_debug_display_ver.c_str());
-        if (s_dc_debug_status.load() == 1) {
-            imgui.SameLine();
-            imgui.TextDisabled("(checking...)");
-        }
-
-        // When prefer global DC: choose stable (latest) or debug (latest from GitHub or cached version)
-        if (prefer_global_dc) {
-            static std::vector<std::string> s_dc_global_version_labels;
-            static std::vector<std::pair<std::string, std::string>> s_dc_global_version_values;
-            s_dc_global_version_labels.clear();
-            s_dc_global_version_values.clear();
-            s_dc_global_version_labels.push_back("Stable (latest)");
-            s_dc_global_version_values.push_back({"stable", "latest"});
-            s_dc_global_version_labels.push_back("Debug: Latest (highest in cache)");
-            s_dc_global_version_values.push_back({"debug", "latest"});
-            if (s_dc_debug_status.load() == 2 && !s_dc_latest_debug_ver.empty()
-                && s_dc_latest_debug_ver.find_first_not_of("0123456789.") == std::string::npos) {
-                std::string debug_xyz = NormalizeVersionToXyz(s_dc_latest_debug_ver);
-                if (debug_xyz.empty()) debug_xyz = s_dc_latest_debug_ver;
-                s_dc_global_version_labels.push_back("Debug: Latest from GitHub (" + debug_xyz + ")");
-                s_dc_global_version_values.push_back({"debug", debug_xyz});
-            }
-            size_t debug_count = 0;
-            const char* const* debug_list = GetDcInstalledVersionListDebug(&debug_count);
-            for (size_t i = 0; i < debug_count && debug_list != nullptr && debug_list[i] != nullptr; ++i) {
-                s_dc_global_version_labels.push_back(std::string("Debug: ") + debug_list[i] + " (cached)");
-                s_dc_global_version_values.push_back({"debug", debug_list[i]});
-            }
-            int current_index = 0;
-            std::string mode = GetDcSelectorModeFromConfig();
-            if (mode == "global") mode = "stable";  // show as Stable (latest); combo will overwrite on change
-            std::string ver = (mode == "stable") ? GetDcVersionForStableFromConfig() : GetDcVersionForDebugFromConfig();
-            if (mode.empty()) mode = "stable";
-            for (size_t i = 0; i < s_dc_global_version_values.size(); ++i) {
-                if (s_dc_global_version_values[i].first == mode && s_dc_global_version_values[i].second == ver) {
-                    current_index = static_cast<int>(i);
-                    break;
-                }
-            }
-            if (current_index >= static_cast<int>(s_dc_global_version_labels.size())) current_index = 0;
-            std::vector<const char*> label_ptrs;
-            for (const auto& s : s_dc_global_version_labels) label_ptrs.push_back(s.c_str());
-            if (!label_ptrs.empty()
-                && imgui.Combo("Use version", &current_index, label_ptrs.data(), static_cast<int>(label_ptrs.size()))) {
-                const auto& p = s_dc_global_version_values[static_cast<size_t>(current_index)];
-                SetDcSelectorModeInConfig(p.first);
-                if (p.first == "stable") {
-                    SetDcVersionForStableInConfig(p.second);
-                } else {
-                    SetDcVersionForDebugInConfig(p.second);
-                }
-                display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("DC use version");
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
-                    "When using global DC: Stable (latest from Dll) or Debug (latest from GitHub with version number, "
-                    "or any version already in Display_Commander\\Debug\\X.Y.Z).");
-            }
-        }
-
-        // Download subsection: debug or stable selector, version selector, Download button
-        imgui.Spacing();
-        enum { DC_DL_STABLE = 0, DC_DL_DEBUG = 1 };
-        static int s_dc_dl_type = DC_DL_DEBUG;
-        const char* dc_dl_type_items[] = {"Stable builds", "Debug builds"};
-        imgui.Combo("Build type", &s_dc_dl_type, dc_dl_type_items, 2);
-        if (s_dc_dl_type == DC_DL_STABLE) {
-            static std::atomic<std::string*> s_dc_stable_dl_err{nullptr};
-            if (imgui.Button(ICON_FK_FLOPPY " Download latest stable")) {
-                std::string* old_err = s_dc_stable_dl_err.exchange(nullptr);
-                delete old_err;
-                std::thread([]() {
-                    std::string ver, err;
-                    if (!FetchLatestStableReleaseVersion(&ver, &err)) {
-                        std::string msg = err.empty() ? "Fetch failed" : err;
-                        LogError("DC stable download: %s", msg.c_str());
-                        s_dc_stable_dl_err.store(new std::string(msg));
-                        return;
-                    }
-                    if (!DownloadDcVersionToDll(ver, &err)) {
-                        std::string msg = err.empty() ? "Download failed" : err;
-                        LogError("DC stable download: %s", msg.c_str());
-                        s_dc_stable_dl_err.store(new std::string(msg));
-                        return;
-                    }
-                    LogInfo("Display Commander %s downloaded to Display_Commander/stable", ver.c_str());
-                }).detach();
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Fetches latest stable from GitHub and saves to Display_Commander\\stable\\X.Y.Z");
-            }
-            std::string* err_ptr = s_dc_stable_dl_err.load();
-            if (err_ptr != nullptr && !err_ptr->empty()) {
-                imgui.SameLine();
-                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err_ptr->c_str());
-            }
-        } else if (s_dc_dl_type == DC_DL_DEBUG) {
-            // Selector: latest GitHub debug version + locally cached debug versions.
-            static int s_dc_debug_dl_index = 0;
-            static std::vector<std::string> s_dc_debug_dl_labels;
-            s_dc_debug_dl_labels.clear();
-
-            std::string github_label = "Latest from GitHub";
-            if (s_dc_debug_status.load() == 2 && !s_dc_latest_debug_ver.empty()
-                && s_dc_latest_debug_ver.find_first_not_of("0123456789.") == std::string::npos) {
-                std::string debug_xyz = NormalizeVersionToXyz(s_dc_latest_debug_ver);
-                github_label += " (" + (debug_xyz.empty() ? s_dc_latest_debug_ver : debug_xyz) + ")";
-            } else {
-                github_label += " (...)";
-            }
-            s_dc_debug_dl_labels.push_back(github_label);
-
-            size_t debug_count = 0;
-            const char* const* debug_list = GetDcInstalledVersionListDebug(&debug_count);
-            for (size_t i = 0; i < debug_count && debug_list != nullptr && debug_list[i] != nullptr; ++i) {
-                s_dc_debug_dl_labels.push_back(std::string("Cached: ") + debug_list[i]);
-            }
-
-            if (s_dc_debug_dl_index >= static_cast<int>(s_dc_debug_dl_labels.size())) s_dc_debug_dl_index = 0;
-            std::vector<const char*> debug_ptrs;
-            for (const auto& s : s_dc_debug_dl_labels) debug_ptrs.push_back(s.c_str());
-            if (!debug_ptrs.empty()) {
-                imgui.Combo("Debug version", &s_dc_debug_dl_index, debug_ptrs.data(),
-                            static_cast<int>(debug_ptrs.size()));
-            }
-            imgui.SameLine();
-
-            static std::atomic<std::string*> s_dc_debug_dl_err{nullptr};
-            const bool can_download = (s_dc_debug_dl_index == 0);
-            if (!can_download) imgui.BeginDisabled();
-            if (imgui.Button(ICON_FK_FLOPPY " Download")) {
-                std::string* old_err = s_dc_debug_dl_err.exchange(nullptr);
-                delete old_err;
-                std::thread([]() {
-                    std::string err;
-                    if (DownloadDcLatestDebugToDebugFolder(&err)) {
-                        LogInfo("Display Commander latest debug downloaded");
-                    } else {
-                        std::string msg = err.empty() ? "Download failed" : err;
-                        LogError("DC debug download: %s", msg.c_str());
-                        s_dc_debug_dl_err.store(new std::string(msg));
-                    }
-                }).detach();
-            }
-            if (!can_download) imgui.EndDisabled();
-            if (imgui.IsItemHovered()) {
-                if (can_download) {
-                    imgui.SetTooltip("Downloads latest_debug to Display_Commander\\Debug\\X.Y.Z (local cache).");
-                } else {
-                    imgui.SetTooltip(
-                        "Already in local cache. Use \"Use version\" to override to a cached debug build.");
-                }
-            }
-            std::string* err_ptr = s_dc_debug_dl_err.load();
-            if (err_ptr != nullptr && !err_ptr->empty()) {
-                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err_ptr->c_str());
-            }
-        }
-
-        // Open folder (global Display Commander folder)
-        std::filesystem::path dc_global = GetDisplayCommanderAppDataFolder();
-        if (!dc_global.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
-            std::filesystem::path folder_path = dc_global;
-            std::thread([folder_path]() {
-                std::error_code ec;
-                std::filesystem::create_directories(folder_path, ec);
-                std::wstring folder_w = folder_path.wstring();
-                HINSTANCE result = ShellExecuteW(nullptr, L"open", folder_w.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                if (reinterpret_cast<intptr_t>(result) <= 32) {
-                    LogError("Failed to open Display Commander folder: %s (Error: %ld)", folder_path.string().c_str(),
-                             static_cast<long>(reinterpret_cast<intptr_t>(result)));
-                }
-            }).detach();
-        }
-        if (imgui.IsItemHovered() && !dc_global.empty()) {
-            imgui.SetTooltip("Open the Display Commander global folder. You can copy files manually to revert.\n\n%s",
-                             dc_global.string().c_str());
-        }
-
-        imgui.Unindent();
-    }
-
-    // Subheader: Addons
+static void DrawUpdatesAddonsHeader(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.CollapsingHeader("Addons", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
         imgui.TextDisabled("TODO");
         imgui.Unindent();
     }
+}
+
+static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgui) {
+    using namespace display_commander::utils;
+    using namespace display_commander::utils::version_check;
+
+    // --- ReShade (per docs/ui_specs/updates_ui_spec.md) ---
+    std::filesystem::path game_dir;
+    {
+        WCHAR exe_buf[MAX_PATH];
+        if (GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
+            game_dir = std::filesystem::path(exe_buf).parent_path();
+        }
+    }
+
+    DrawUpdatesDisplayCommanderHeader(imgui);
+    DrawUpdatesReshadeHeader(imgui, game_dir);
+    DrawUpdatesAddonsHeader(imgui);
 }
 
 void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
@@ -2413,15 +2301,52 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             imgui.SetTooltip("Support Display Commander development with a coffee!");
         }
     }
-    // loaded_reshade only
-    if (display_commanderhooks::g_hooked_before_reshade.load()) {
-        // Updates (ReShade, Display Commander, Addons)
-        g_rendering_ui_section.store("ui:tab:main_new:updates", std::memory_order_release);
-        if (imgui.CollapsingHeader("Updates", ImGuiTreeNodeFlags_None)) {
-            imgui.Indent();
-            DrawUpdatesSectionContent(imgui);
-            imgui.Unindent();
+    // Display Commander update status (one check per app start), above Updates section
+    {
+        using namespace display_commander::utils::version_check;
+        static std::atomic<bool> s_dc_update_check_started{false};
+        static std::atomic<int> s_dc_update_status{0};  // 0=not started, 1=checking, 2=got version, 3=failed
+        static std::string s_dc_latest_on_github;
+        static std::string s_dc_update_check_error;
+        if (!s_dc_update_check_started.load()) {
+            s_dc_update_check_started.store(true);
+            s_dc_update_status.store(1);
+            std::thread([]() {
+                std::string ver, err;
+                if (FetchLatestDebugReleaseVersion(&ver, &err)) {
+                    s_dc_latest_on_github = ver;
+                    s_dc_update_status.store(2);
+                } else {
+                    s_dc_update_check_error = err.empty() ? "Check failed" : err;
+                    s_dc_update_status.store(3);
+                }
+            }).detach();
         }
+        const int status = s_dc_update_status.load();
+        if (status == 1) {
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "Display Commander: checking for updates...");
+        } else if (status == 2 && !s_dc_latest_on_github.empty()) {
+            std::string current = NormalizeVersionToXyz(DISPLAY_COMMANDER_VERSION_STRING);
+            if (current.empty()) current = ParseVersionString(DISPLAY_COMMANDER_VERSION_STRING);
+            bool newer_available = false;
+            if (!current.empty() && s_dc_latest_on_github.find_first_not_of("0123456789.") == std::string::npos) {
+                newer_available = (CompareVersions(current, s_dc_latest_on_github) < 0);
+            }
+            if (newer_available) {
+                imgui.TextColored(ui::colors::TEXT_WARNING, "Display Commander: new version available on GitHub (%s)",
+                                 s_dc_latest_on_github.c_str());
+            } else {
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, "Display Commander: using latest");
+            }
+        }
+        // status == 3: no line shown (check failed)
+    }
+    // Updates (ReShade, Display Commander, Addons)
+    g_rendering_ui_section.store("ui:tab:main_new:updates", std::memory_order_release);
+    if (imgui.CollapsingHeader("Updates", ImGuiTreeNodeFlags_None)) {
+        imgui.Indent();
+        DrawUpdatesSectionContent(imgui);
+        imgui.Unindent();
     }
 
     // Display Settings Section

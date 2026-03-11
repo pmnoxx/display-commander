@@ -135,10 +135,12 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         // Let's not do anything for invalid arguments
         return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
     }
+    bool reflex_marker_sent = false;
     // utils::SRWLockExclusive lock(g_nvapi_lock);
     // Increment counter
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
-    // Record that the game (not us) just called SetLatencyMarker; PCLStatsReportingAllowed() will return false for a while.
+    // Record that the game (not us) just called SetLatencyMarker; PCLStatsReportingAllowed() will return false for a
+    // while.
     NotifyGameSetLatencyMarkerCall();
 
     // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
@@ -200,6 +202,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
             && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END
             && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
             NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+            reflex_marker_sent = true;
         }
         bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
         if (use_fps_limiter) {
@@ -217,11 +220,6 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                 display_commanderhooks::dxgi::HandlePresentAfter(true);
             }
         }
-        if (pSetLatencyMarkerParams != nullptr
-            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
-            return NVAPI_OK;
-        }
-
         if (reflex_fps_limiter_max_queued_frames > 0) {
             const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
             const size_t prevSlot = static_cast<size_t>(
@@ -312,7 +310,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
         }
     }
 
-    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
+    if (settings::g_advancedTabSettings.reflex_supress_native.GetValue() || reflex_marker_sent) {
         return NVAPI_OK;
     }
 

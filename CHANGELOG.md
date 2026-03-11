@@ -2,7 +2,10 @@
 
 ---
 
-## v0.12.408 (unreleased)
+## v0.12.409 (unreleased)
+- **Reflex markers: fix double-send and missing sends** - Fixed bugs where Reflex latency markers were sometimes sent twice (e.g. from both DXGI Present and NVAPI SetLatencyMarker paths), causing frame generation (FG) to repeatedly turn on and off, and in other cases were not sent when they should have been. The addon now coordinates marker injection so markers are sent exactly once and reliably. Details: reflex marker injection / PCLStats and NVAPI SetLatencyMarker coordination.
+
+## v0.12.408
 - **PresentMon feature removed** - PresentMon ETW tracing and related UI (flip state, debug info, Advanced tab option) are disabled. The feature is gated behind `kPresentMonEnabled` (set to false in presentmon_manager.hpp). Details: presentmon_manager.hpp kPresentMonEnabled = false; all PresentMon UI and logic already guarded by this flag.
 
 ## v0.12.407 (unreleased)

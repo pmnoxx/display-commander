@@ -144,15 +144,23 @@ inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_t
 
     if (nIndex == GWL_STYLE) {
         // WS_POPUP added to fix godstrike
+        auto old_dwNewLong = dwNewLong;
         dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
-        LogInfoThrottled(1, "[WindowsApiHooks] ModifyWindowStyle: GWL_STYLE: %08X", dwNewLong);
+        if (old_dwNewLong != dwNewLong) {
+            LogInfoThrottled(1, "[WindowsApiHooks] ModifyWindowStyle: GWL_STYLE: %08X -> %08X", old_dwNewLong,
+                             dwNewLong);
+        }
     }
     if (nIndex == GWL_EXSTYLE) {
-        LogInfoThrottled(1, "[WindowsApiHooks] ModifyWindowStyle: GWL_EXSTYLE: %08X", dwNewLong);
+        auto old_dwNewLong = dwNewLong;
         dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
 
         if (prevent_always_on_top) {
             dwNewLong &= ~(WS_EX_TOPMOST | WS_EX_TOOLWINDOW);
+        }
+        if (old_dwNewLong != dwNewLong) {
+            LogInfoThrottled(1, "[WindowsApiHooks] ModifyWindowStyle: GWL_EXSTYLE: %08X -> %08X", old_dwNewLong,
+                             dwNewLong);
         }
     }
 }

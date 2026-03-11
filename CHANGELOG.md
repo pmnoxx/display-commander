@@ -1,6 +1,9 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.418
+- **DXGI/D3D11/D3D12 hook installers moved to dxgi_hooks** - The functions that install DXGI factory and D3D11/D3D12 device creation hooks (`InstallDxgiFactoryHooks`, `InstallD3D11DeviceHooks`, `InstallD3D12DeviceHooks`) are now implemented in `hooks/dxgi/dxgi_hooks.cpp` with declarations in `hooks/dxgi/dxgi_hooks.hpp`. Behavior is unchanged; this is a code-organization refactor to group DXGI-related hook installation in one place. Details: api_hooks.hpp includes dxgi/dxgi_hooks.hpp; loadlibrary_hooks and dxgi_proxy still call the same functions.
+
 ## v0.12.417
 - **Window style: skip when No changes mode** - When Main tab window mode is set to "No changes", the addon no longer modifies the game window’s style (caption, frame, topmost, etc.). Previously, `ModifyWindowStyle` could still strip styles even in that mode. Now it returns immediately when `WindowMode::kNoChanges` is selected, so the game window is left unchanged. Details: general_utils.hpp `ModifyWindowStyle` early return.
 

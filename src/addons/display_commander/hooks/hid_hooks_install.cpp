@@ -17,6 +17,10 @@ static std::atomic<bool> g_hid_d_hooks_installed{false};
 }  // namespace
 
 bool InstallHIDKernel32Hooks(HMODULE hModule) {
+    if (true) {
+        // breaks dualsense and networking
+        return false;
+    }
     if (hModule == nullptr) {
         return false;
     }
@@ -84,9 +88,8 @@ bool InstallHIDKernel32Hooks(HMODULE hModule) {
         } else {
             LogWarn("Failed to install WriteFile hook (kernel32), continuing");
         }
-        if (CreateAndEnableHookFromModule(
-                hModule, "WriteFileEx", reinterpret_cast<LPVOID>(WriteFileEx_Detour),
-                reinterpret_cast<LPVOID*>(&WriteFileEx_Original), "WriteFileEx")) {
+        if (CreateAndEnableHookFromModule(hModule, "WriteFileEx", reinterpret_cast<LPVOID>(WriteFileEx_Detour),
+                                          reinterpret_cast<LPVOID*>(&WriteFileEx_Original), "WriteFileEx")) {
             installed++;
         } else {
             LogWarn("Failed to install WriteFileEx hook (kernel32), continuing");
@@ -106,7 +109,9 @@ bool InstallHIDKernel32Hooks(HMODULE hModule) {
             HookSuppressionManager::GetInstance().MarkHookInstalled(HookType::HID_SUPPRESSION);
             renodx::hooks::MarkHIDSuppressionHooksInstalled(true);
         }
-        if (!suppress_hid && (WriteFile_Original != nullptr || WriteFileEx_Original != nullptr || DeviceIoControl_Original != nullptr)) {
+        if (!suppress_hid
+            && (WriteFile_Original != nullptr || WriteFileEx_Original != nullptr
+                || DeviceIoControl_Original != nullptr)) {
             HookSuppressionManager::GetInstance().MarkHookInstalled(HookType::HID_KERNEL32);
         }
         LogInfo("HID kernel32 hooks installed: %d hooks", installed);

@@ -3,6 +3,7 @@
 ---
 
 ## v0.12.404 (unreleased)
+- **Tooltips: default max width (SetTooltipEx)** - All UI tooltips now use `SetTooltipEx` with a default max width (800px), so long tooltips wrap and are easier to read instead of stretching across the screen. Details: migrated ~673 `SetTooltip` calls to `SetTooltipEx` across 21 files.
 - **Debug tab: Hooks sub-tab** - Added debug menu: Debug tab now has a **Hooks** sub-tab listing all hook types with **Suppressed** and **Installed** per line, and a **checkbox** to turn suppression on/off for each hook (saved to [DisplayCommander.HookSuppression]; takes effect on next hook install, e.g. game restart).
 - **WGI suppression: networking warning** - Advanced tab "Enable Windows Gaming Input suppression globally" now shows a warning on the same line: suppressing Windows Gaming Input may break networking in some games. Tooltip updated with the same warning.
 

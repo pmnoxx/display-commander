@@ -104,7 +104,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         s_lastFailedSettingId = 0;
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Re-scan driver profiles (e.g. after changing settings in NVIDIA Profile Inspector).");
+        imgui.SetTooltipEx("Re-scan driver profiles (e.g. after changing settings in NVIDIA Profile Inspector).");
     }
     imgui.SameLine();
     if (imgui.Button("Dump driver settings to file")) {
@@ -118,7 +118,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Enumerate all setting IDs recognized by the current NVIDIA driver and write them to a text file next to "
             "the addon DLL.");
     }
@@ -151,7 +151,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
     imgui.Text("Current executable:");
     imgui.TextColored(TEXT_DIMMED, "  Fully qualified path: %s", pathDisplay);
     if (imgui.IsItemHovered() && !pathUtf8.empty()) {
-        imgui.SetTooltip("%s", pathUtf8.c_str());
+        imgui.SetTooltipEx("%s", pathUtf8.c_str());
     }
     imgui.TextColored(TEXT_DIMMED, "  Name: %s", r.current_exe_name.c_str());
     imgui.Spacing();
@@ -159,7 +159,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
     if (!r.success) {
         imgui.TextColored(ICON_ERROR, "Error: %s", r.error.c_str());
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("NVAPI/DRS unavailable. Requires NVIDIA GPU and driver.");
+            imgui.SetTooltipEx("NVAPI/DRS unavailable. Requires NVIDIA GPU and driver.");
         }
         return;
     }
@@ -177,7 +177,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Creates an NVIDIA driver profile named after this executable and adds it. You can then edit settings "
                 "here or in NVIDIA Profile Inspector.");
         }
@@ -203,7 +203,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Remove the NVIDIA profile created by Display Commander for this game (profile name matches the "
                 "executable name).");
         }
@@ -236,7 +236,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                     if (entry.is_command_line && !entry.command_line.empty()) {
                         tip += "Command line: " + entry.command_line + "\n";
                     }
-                    imgui.SetTooltip("%s", tip.c_str());
+                    imgui.SetTooltipEx("%s", tip.c_str());
                 }
             }
         } else {
@@ -254,14 +254,14 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
             *show_advanced_profile_settings = show_advanced;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Show Ansel profile settings (allow, allowlisted, enable) in addition to the key profile settings.");
         }
         if (imgui.CollapsingHeader("Important profile settings (first matching profile)", TreeNodeFlags_DefaultOpen)) {
             if (!s_nvidiaProfileSetError.empty()) {
                 imgui.TextColored(ICON_ERROR, "Last change failed: %s", s_nvidiaProfileSetError.c_str());
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Try running the game/ReShade as administrator, or change this setting in NVIDIA Profile "
                         "Inspector.");
                 }
@@ -317,7 +317,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         }
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Run rundll32 as administrator to apply the last failed setting (UAC prompt may appear). "
                             "Profile data will refresh when the process exits.");
                     }
@@ -358,7 +358,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                      s.min_required_driver_version / 100, s.min_required_driver_version % 100);
                             tip += buf;
                         }
-                        imgui.SetTooltip("%s", tip.c_str());
+                        imgui.SetTooltipEx("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);
                     if (s.setting_id != 0) {
@@ -390,7 +390,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                 imgui.EndDisabled();
                             }
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
+                                imgui.SetTooltipEx("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
                             }
                         } else {
                             ImVec2 avail = imgui.GetContentRegionAvail();
@@ -437,7 +437,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                 imgui.EndCombo();
                             }
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("Change value and apply to profile (saved immediately).");
+                                imgui.SetTooltipEx("Change value and apply to profile (saved immediately).");
                             }
                             if (s.set_in_profile) {
                                 imgui.SameLine();
@@ -458,7 +458,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                 }
                                 imgui.PopID();
                                 if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                    imgui.SetTooltipEx("Remove from profile; use driver global default.");
                                 }
                             }
                         }
@@ -503,7 +503,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                          s.min_required_driver_version / 100, s.min_required_driver_version % 100);
                                 tip += buf;
                             }
-                            imgui.SetTooltip("%s", tip.c_str());
+                            imgui.SetTooltipEx("%s", tip.c_str());
                         }
                         imgui.TableSetColumnIndex(1);
                         imgui.TextUnformatted(s.value.c_str());
@@ -523,7 +523,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
         if (imgui.Checkbox("Show only settings with values set", &s_showOnlySetDriverSettings)) {
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When on, only settings that have a value in this profile are shown. Turn off to see all driver "
                 "settings.");
         }
@@ -563,13 +563,13 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                                      s.min_required_driver_version / 100, s.min_required_driver_version % 100);
                             tip += buf;
                         }
-                        imgui.SetTooltip("%s", tip.c_str());
+                        imgui.SetTooltipEx("%s", tip.c_str());
                     }
                     imgui.TableSetColumnIndex(1);
                     if (!s.known_to_driver) {
                         imgui.TextUnformatted(s.value.c_str());
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip(
+                            imgui.SetTooltipEx(
                                 "In profile but not in driver's recognized list. Edit in NVIDIA Profile Inspector or "
                                 "Delete to remove.");
                         }
@@ -601,7 +601,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             imgui.EndDisabled();
                         }
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
+                            imgui.SetTooltipEx("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
                         }
                     } else {
                         std::vector<std::pair<std::uint32_t, std::string>> opts =
@@ -662,7 +662,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                             }
                         }
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("Remove from profile; use driver global default.");
+                            imgui.SetTooltipEx("Remove from profile; use driver global default.");
                         }
                         imgui.SameLine();
                     }
@@ -676,7 +676,7 @@ void DrawNvidiaProfileTab(GraphicsApi /* api */, IImGuiWrapper& imgui, bool* sho
                         }
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("Remove from profile (use driver default).");
+                        imgui.SetTooltipEx("Remove from profile (use driver default).");
                     }
                     imgui.PopID();
                 }

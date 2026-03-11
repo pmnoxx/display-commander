@@ -385,7 +385,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         ui::colors::PopIconColor(&imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Refresh the list of available addons");
+            imgui.SetTooltipEx("Refresh the list of available addons");
         }
 
         imgui.SameLine();
@@ -408,7 +408,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         ui::colors::PopIconColor(&imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Enable all addons");
+            imgui.SetTooltipEx("Enable all addons");
         }
 
         imgui.SameLine();
@@ -426,7 +426,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         ui::colors::PopIconColor(&imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Disable all addons");
+            imgui.SetTooltipEx("Disable all addons");
         }
 
         imgui.SameLine();
@@ -459,7 +459,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         ui::colors::PopIconColor(&imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Open the global addons directory in Windows Explorer");
+            imgui.SetTooltipEx("Open the global addons directory in Windows Explorer");
         }
 
         imgui.Spacing();
@@ -497,14 +497,14 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
                         g_show_addon_restart_warning.store(true);
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("%s this addon", enabled ? "Disable" : "Enable");
+                        imgui.SetTooltipEx("%s this addon", enabled ? "Disable" : "Enable");
                     }
 
                     // Name
                     imgui.TableNextColumn();
                     imgui.Text("%s", addon.name.c_str());
                     if (!addon.description.empty() && imgui.IsItemHovered()) {
-                        imgui.SetTooltip("%s", addon.description.c_str());
+                        imgui.SetTooltipEx("%s", addon.description.c_str());
                     }
 
                     // File name
@@ -532,7 +532,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
                         }
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("Open the folder containing this addon");
+                        imgui.SetTooltipEx("Open the folder containing this addon");
                     }
                 }
 
@@ -595,7 +595,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         ui::colors::PopIconColor(&imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Open the shaders directory in Windows Explorer");
+            imgui.SetTooltipEx("Open the shaders directory in Windows Explorer");
         }
 
         imgui.SameLine();
@@ -629,7 +629,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         ui::colors::PopIconColor(&imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Open the textures directory in Windows Explorer");
+            imgui.SetTooltipEx("Open the textures directory in Windows Explorer");
         }
 
         imgui.Spacing();
@@ -657,7 +657,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
             settings::g_reshadeTabSettings.suppress_reshade_clock.SetValue(suppress_clock);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, suppresses ReShade's clock setting by setting ShowClock to 0.\n"
                 "When disabled, does nothing (ReShade's clock setting is not modified).");
         }
@@ -714,7 +714,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
                                       version.c_str());
                     if (imgui.IsItemHovered()) {
                         std::filesystem::path module_path_obj(module_path);
-                        imgui.SetTooltip("%s", GetPathRelativeToDocuments(module_path_obj).c_str());
+                        imgui.SetTooltipEx("%s", GetPathRelativeToDocuments(module_path_obj).c_str());
                     }
                 }
                 imgui.Unindent();
@@ -751,7 +751,7 @@ void DrawAddonsTab(display_commander::ui::IImGuiWrapper& imgui) {
             }
             ui::colors::PopIconColor(&imgui);
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Open the Reshade folder (containing reshade64.dll/reshade32.dll) in Windows Explorer");
             }
 
@@ -840,7 +840,7 @@ void DrawReShadeGlobalConfigSettings(display_commander::ui::IImGuiWrapper& imgui
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Reload and compare current game's ReShade settings with global profile\n(Useful if you edited either "
             "ReShade.ini or DisplayCommander.toml manually)");
     }
@@ -983,7 +983,7 @@ void DrawReShadeGlobalConfigSettings(display_commander::ui::IImGuiWrapper& imgui
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Copy current game's ReShade settings to global profile\n(Overwrites DisplayCommander.ini in user folder)");
     }
 
@@ -1012,7 +1012,7 @@ void DrawReShadeGlobalConfigSettings(display_commander::ui::IImGuiWrapper& imgui
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Apply global profile to current game's ReShade settings\n(Overwrites current game's ReShade.ini)");
     }
     // warn requires pressing reload button on Home page in reshade for settings to be visible

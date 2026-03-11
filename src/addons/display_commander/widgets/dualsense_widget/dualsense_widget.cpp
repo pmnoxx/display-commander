@@ -97,7 +97,7 @@ void DualSenseWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) 
             SaveSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Enable detection and monitoring of DualSense controllers");
+            imgui.SetTooltipEx("Enable detection and monitoring of DualSense controllers");
         }
 
         if (enable_detection) {
@@ -108,7 +108,7 @@ void DualSenseWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) 
                 SaveSettings();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Display vendor and product IDs for each device");
+                imgui.SetTooltipEx("Display vendor and product IDs for each device");
             }
 
             // Show connection type
@@ -118,7 +118,7 @@ void DualSenseWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) 
                 SaveSettings();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Display whether device is connected via USB or Bluetooth");
+                imgui.SetTooltipEx("Display whether device is connected via USB or Bluetooth");
             }
 
             // Show battery info
@@ -128,7 +128,7 @@ void DualSenseWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) 
                 SaveSettings();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Display battery level and charging status");
+                imgui.SetTooltipEx("Display battery level and charging status");
             }
 
             // Show advanced features
@@ -138,7 +138,7 @@ void DualSenseWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) 
                 SaveSettings();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Display DualSense-specific features like adaptive triggers and touchpad");
+                imgui.SetTooltipEx("Display DualSense-specific features like adaptive triggers and touchpad");
             }
 
             imgui.Spacing();
@@ -154,7 +154,7 @@ void DualSenseWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) 
                 SaveSettings();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Select which type of Sony controllers to detect and monitor");
+                imgui.SetTooltipEx("Select which type of Sony controllers to detect and monitor");
             }
 
             imgui.Spacing();
@@ -164,7 +164,7 @@ void DualSenseWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) 
                 display_commander::dualsense::EnumerateDualSenseDevices();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Manually refresh the list of connected devices");
+                imgui.SetTooltipEx("Manually refresh the list of connected devices");
             }
         }
     }
@@ -260,7 +260,7 @@ void DualSenseWidget::DrawDeviceList(display_commander::ui::IImGuiWrapper& imgui
 
                 // Show additional info on hover
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Click to select this device for detailed view");
+                    imgui.SetTooltipEx("Click to select this device for detailed view");
                 }
 
                 imgui.PopID();
@@ -315,12 +315,12 @@ void DualSenseWidget::DrawDeviceDetails(display_commander::ui::IImGuiWrapper& im
     if (device.packet_rate_ever_called) {
         imgui.Text("HID reports: %.1f/sec", device.last_packet_rate_hz);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Input report rate (ReadFile succeeded; packet-number-changed branch has run)");
+            imgui.SetTooltipEx("Input report rate (ReadFile succeeded; packet-number-changed branch has run)");
         }
     } else {
         imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "HID reports: never");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("No successful HID read yet; packet-number-changed branch has not run");
+            imgui.SetTooltipEx("No successful HID read yet; packet-number-changed branch has not run");
         }
     }
 

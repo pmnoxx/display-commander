@@ -557,7 +557,7 @@ static void DrawLauncherSettingsTab(display_commander::ui::IImGuiWrapper& imgui)
         display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("Launcher font scale");
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Scale the Launcher window text. Takes effect immediately.");
+        imgui.SetTooltipEx("Scale the Launcher window text. Takes effect immediately.");
     }
 
     imgui.Spacing();
@@ -575,7 +575,7 @@ static void DrawLauncherSettingsTab(display_commander::ui::IImGuiWrapper& imgui)
             imgui.Text("Version: %s", reshade_ver.c_str());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("%s", reshade_global.string().c_str());
+            imgui.SetTooltipEx("%s", reshade_global.string().c_str());
         }
     }
     if (s_latestVersionsFetchDone.load(std::memory_order_acquire)) {
@@ -615,7 +615,7 @@ static void DrawLauncherSettingsTab(display_commander::ui::IImGuiWrapper& imgui)
         imgui.EndDisabled();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Download latest ReShade Addon and install to global folder.");
+        imgui.SetTooltipEx("Download latest ReShade Addon and install to global folder.");
     }
     if (!s_reshadeUpdateResult.empty()) {
         imgui.TextColored(ImVec4(0.7f, 0.85f, 0.7f, 1.0f), "%s", s_reshadeUpdateResult.c_str());
@@ -641,7 +641,7 @@ static void DrawLauncherSettingsTab(display_commander::ui::IImGuiWrapper& imgui)
             imgui.Text("Version: %s", dc_ver.c_str());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("%s", dc_appdata.string().c_str());
+            imgui.SetTooltipEx("%s", dc_appdata.string().c_str());
         }
         imgui.Text("This instance: %s", DISPLAY_COMMANDER_VERSION_STRING);
     }
@@ -659,7 +659,7 @@ static void DrawLauncherSettingsTab(display_commander::ui::IImGuiWrapper& imgui)
         display_commander::utils::version_check::CheckForUpdates();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Check for Display Commander updates (GitHub). Result in main app or next launch.");
+        imgui.SetTooltipEx("Check for Display Commander updates (GitHub). Result in main app or next launch.");
     }
 }
 

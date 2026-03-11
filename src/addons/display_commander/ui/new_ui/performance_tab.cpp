@@ -17,7 +17,7 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
         // Auto-saved by CheckboxSetting
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "When enabled, measures CPU time spent in selected internal hot-path functions.\n"
             "When disabled, timing code does not run (no QPC reads, no stat updates).");
     }
@@ -27,7 +27,7 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
         perf_measurement::ResetAll();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Reset all performance measurement counters (samples, totals, last).");
+        imgui.SetTooltipEx("Reset all performance measurement counters (samples, totals, last).");
     }
 
     imgui.Spacing();
@@ -37,7 +37,7 @@ void DrawPerformanceTab(display_commander::ui::IImGuiWrapper& imgui) {
         // Auto-saved by CheckboxSetting
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "WARNING: Suppression changes behavior and can break features.\n"
             "Use this temporarily to isolate performance hotspots.\n"
             "Suppressed functions early-out, skipping their normal work.");

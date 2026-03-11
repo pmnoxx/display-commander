@@ -5,13 +5,13 @@
 #include "../../res/ui_colors.hpp"
 #include "../../utils/process_window_enumerator.hpp"
 #include "../../utils/standalone_launcher.hpp"
-#include "../standalone_ui_settings_bridge.hpp"
 #include "../../utils/steam_favorites.hpp"
 #include "../../utils/steam_hidden_games.hpp"
 #include "../../utils/steam_launch_history.hpp"
 #include "../../utils/steam_library.hpp"
 #include "../../utils/timing.hpp"
 #include "../imgui_wrapper_base.hpp"
+#include "../standalone_ui_settings_bridge.hpp"
 #include "advanced_tab.hpp"
 
 // Group 2 — ReShade / ImGui
@@ -92,7 +92,7 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
         RequestGamesListRefresh();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Refresh the list of games that currently have Display Commander loaded.");
+        imgui.SetTooltipEx("Refresh the list of games that currently have Display Commander loaded.");
     }
 
     imgui.SameLine();
@@ -110,7 +110,7 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Copy addon to %%LocalAppData%%\\Programs\\Display_Commander and open the Games-only window (rundll32 "
                 "Launcher).");
         }
@@ -155,7 +155,7 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.PushID(static_cast<int>(game.pid));
             imgui.Text("%ls", game.display_title.c_str());
             if (!game.exe_path.empty() && imgui.IsItemHovered()) {
-                imgui.SetTooltip("%ls", game.exe_path.c_str());
+                imgui.SetTooltipEx("%ls", game.exe_path.c_str());
             }
             if (imgui.BeginPopupContextItem("row_ctx")) {
                 if (imgui.MenuItem("Open details")) {
@@ -192,9 +192,9 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (imgui.IsItemHovered()) {
                 if (can_focus) {
-                    imgui.SetTooltip("Bring this game's main window to the foreground.");
+                    imgui.SetTooltipEx("Bring this game's main window to the foreground.");
                 } else {
-                    imgui.SetTooltip("No main window detected for this game.");
+                    imgui.SetTooltipEx("No main window detected for this game.");
                 }
             }
 
@@ -219,9 +219,9 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (imgui.IsItemHovered()) {
                 if (can_minimize) {
-                    imgui.SetTooltip("Minimize this game's main window to the taskbar.");
+                    imgui.SetTooltipEx("Minimize this game's main window to the taskbar.");
                 } else {
-                    imgui.SetTooltip("No main window detected for this game.");
+                    imgui.SetTooltipEx("No main window detected for this game.");
                 }
             }
 
@@ -299,11 +299,11 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (imgui.IsItemHovered()) {
                 if (game.exe_path.empty()) {
-                    imgui.SetTooltip("Cannot restart (executable path unknown).");
+                    imgui.SetTooltipEx("Cannot restart (executable path unknown).");
                 } else if (!game.main_window && !game.can_terminate && !is_current) {
-                    imgui.SetTooltip("Cannot restart (no window and cannot terminate process).");
+                    imgui.SetTooltipEx("Cannot restart (no window and cannot terminate process).");
                 } else {
-                    imgui.SetTooltip("Restart this game (close and relaunch).");
+                    imgui.SetTooltipEx("Restart this game (close and relaunch).");
                 }
             }
 
@@ -328,9 +328,9 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (imgui.IsItemHovered()) {
                 if (can_stop) {
-                    imgui.SetTooltip("Request graceful close (sends WM_CLOSE to the game window).");
+                    imgui.SetTooltipEx("Request graceful close (sends WM_CLOSE to the game window).");
                 } else {
-                    imgui.SetTooltip("No main window detected for this game.");
+                    imgui.SetTooltipEx("No main window detected for this game.");
                 }
             }
 
@@ -352,11 +352,11 @@ void DrawGamesTable(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (imgui.IsItemHovered()) {
                 if (game.pid == current_pid) {
-                    imgui.SetTooltip("Cannot terminate the current Display Commander process.");
+                    imgui.SetTooltipEx("Cannot terminate the current Display Commander process.");
                 } else if (!game.can_terminate) {
-                    imgui.SetTooltip("Insufficient permissions to terminate this process.");
+                    imgui.SetTooltipEx("Insufficient permissions to terminate this process.");
                 } else {
-                    imgui.SetTooltip("Terminate this game process.");
+                    imgui.SetTooltipEx("Terminate this game process.");
                 }
             }
         }
@@ -500,8 +500,7 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
     // focuses the search box so the user can quickly type the game name without clicking first.
     const ImGuiIO& io = imgui.GetIO();
     const bool has_type_ahead = (io.InputQueueCharacters.Size > 0);
-    const bool ctrl_a_pressed =
-        io.KeyCtrl && imgui.IsKeyPressed(static_cast<int>(ImGuiKey_A));
+    const bool ctrl_a_pressed = io.KeyCtrl && imgui.IsKeyPressed(static_cast<int>(ImGuiKey_A));
     const bool want_search_focus = !io.WantCaptureKeyboard && (has_type_ahead || ctrl_a_pressed);
     if (want_search_focus) {
         imgui.SetKeyboardFocusHere(0);
@@ -547,8 +546,7 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.TableNextRow();
                 imgui.TableSetColumnIndex(0);
                 imgui.PushID(static_cast<int>(game.app_id));
-                const bool is_favorite =
-                    display_commander::steam_favorites::IsSteamGameFavorite(game.app_id);
+                const bool is_favorite = display_commander::steam_favorites::IsSteamGameFavorite(game.app_id);
                 if (is_favorite) {
                     imgui.PushStyleColor(ImGuiCol_Text, ::ui::colors::TEXT_HIGHLIGHT);
                 }
@@ -565,9 +563,9 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
                 }
                 if (imgui.IsItemHovered()) {
                     if (game.install_dir.empty()) {
-                        imgui.SetTooltip("Launch this game via Steam.");
+                        imgui.SetTooltipEx("Launch this game via Steam.");
                     } else {
-                        imgui.SetTooltip("Launch this game via Steam.\n%ls", game.install_dir.c_str());
+                        imgui.SetTooltipEx("Launch this game via Steam.\n%ls", game.install_dir.c_str());
                     }
                 }
                 if (imgui.BeginPopupContextItem("steam_row_ctx")) {
@@ -619,7 +617,7 @@ void DrawSteamLaunchSection(display_commander::ui::IImGuiWrapper& imgui) {
                 ShellExecuteW(nullptr, L"explore", g.install_dir.c_str(), nullptr, nullptr, SW_SHOW);
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Open game folder in Explorer.");
+                imgui.SetTooltipEx("Open game folder in Explorer.");
             }
             imgui.SameLine();
         }

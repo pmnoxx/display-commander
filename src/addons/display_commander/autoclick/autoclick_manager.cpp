@@ -99,7 +99,7 @@ void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num)
         LogInfo("Click sequence %d %s", sequence_num, enabled ? "enabled" : "disabled");
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Enable/disable this click sequence.");
+        imgui.SetTooltipEx("Enable/disable this click sequence.");
     }
 
     if (enabled) {
@@ -110,7 +110,7 @@ void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num)
             settings::g_experimentalTabSettings.sequence_x.SetValue(idx, x);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("X coordinate for the click (game window client coordinates).");
+            imgui.SetTooltipEx("X coordinate for the click (game window client coordinates).");
         }
 
         imgui.SameLine();
@@ -120,7 +120,7 @@ void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num)
             settings::g_experimentalTabSettings.sequence_y.SetValue(idx, y);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Y coordinate for the click (game window client coordinates).");
+            imgui.SetTooltipEx("Y coordinate for the click (game window client coordinates).");
         }
 
         imgui.SameLine();
@@ -131,7 +131,7 @@ void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num)
             settings::g_experimentalTabSettings.sequence_interval.SetValue(idx, interval);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Time interval between clicks for this sequence (100ms to 60 seconds).");
+            imgui.SetTooltipEx("Time interval between clicks for this sequence (100ms to 60 seconds).");
         }
 
         imgui.SameLine();
@@ -139,7 +139,7 @@ void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num)
             PerformClick(x, y, sequence_num, true);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Send a test click for this sequence.");
+            imgui.SetTooltipEx("Send a test click for this sequence.");
         }
 
         imgui.SameLine();
@@ -158,7 +158,7 @@ void DrawSequence(display_commander::ui::IImGuiWrapper& imgui, int sequence_num)
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Set coordinates to current mouse position (relative to game window).");
+            imgui.SetTooltipEx("Set coordinates to current mouse position (relative to game window).");
         }
     }
     imgui.Spacing();
@@ -548,7 +548,7 @@ void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), ICON_FK_WARNING " EXPERIMENTAL FEATURE - Use with caution!");
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "This feature sends mouse click messages directly to the game window.\nUse responsibly and "
             "be aware of game rules and terms of service.");
     }
@@ -564,7 +564,7 @@ void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Enable/disable all auto-click sequences. Each sequence can be individually configured "
             "below.\n\nShortcut: Ctrl+P (can be enabled in Advanced tab)\n\nNote: Mouse position spoofing is always "
             "enabled for better stealth.");
@@ -621,7 +621,7 @@ void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Automatically presses W key for 10 seconds, then S key for 3 seconds, repeating forever.\nSequence: W "
             "down → wait 10s → W up → wait 100ms → S down → wait 3s → S up → wait 100ms → repeat.\nUses W and S keys "
             "with SendInput API.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");
@@ -646,7 +646,7 @@ void DrawAutoClickFeature(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Automatically presses Y button, then adds A button (Y+A), holds for 10 seconds, then clears and "
             "repeats.\nSequence: Y down → wait 100ms → Y+A down → hold 10s → clear → wait 100ms → repeat.\nNo stick "
             "movement - buttons only.\n\nRequires 'Enable Auto-Click Sequences' to be enabled.");

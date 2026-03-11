@@ -155,7 +155,7 @@ void ResolutionWidget::DrawAutoApplyCheckbox(display_commander::ui::IImGuiWrappe
                 auto_apply ? "true" : "false");
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Automatically apply resolution changes when selections are made");
+        imgui.SetTooltipEx("Automatically apply resolution changes when selections are made");
     }
 }
 
@@ -167,7 +167,7 @@ void ResolutionWidget::DrawAutoApplyOnStart(display_commander::ui::IImGuiWrapper
                 auto_apply_on_start ? "true" : "false");
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Automatically apply resolution changes after a delay when the game starts");
+        imgui.SetTooltipEx("Automatically apply resolution changes after a delay when the game starts");
     }
 
     if (auto_apply_on_start) {
@@ -180,7 +180,7 @@ void ResolutionWidget::DrawAutoApplyOnStart(display_commander::ui::IImGuiWrapper
         imgui.SameLine();
         imgui.Text("s delay");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Delay in seconds before applying resolution on game start (1-300 seconds)");
+            imgui.SetTooltipEx("Delay in seconds before applying resolution on game start (1-300 seconds)");
         }
     }
 }
@@ -443,7 +443,7 @@ void ResolutionWidget::DrawActionButtons(display_commander::ui::IImGuiWrapper& i
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Apply the selected resolution and refresh rate");
+        imgui.SetTooltipEx("Apply the selected resolution and refresh rate");
     }
 
     imgui.SameLine();
@@ -455,7 +455,7 @@ void ResolutionWidget::DrawActionButtons(display_commander::ui::IImGuiWrapper& i
             display_settings.Save();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Save current settings to configuration");
+            imgui.SetTooltipEx("Save current settings to configuration");
         }
     } else {
         imgui.PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
@@ -472,7 +472,7 @@ void ResolutionWidget::DrawActionButtons(display_commander::ui::IImGuiWrapper& i
             UpdateCurrentSelectionFromSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to last saved settings");
+            imgui.SetTooltipEx("Reset to last saved settings");
         }
     } else {
         imgui.PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
@@ -1191,7 +1191,7 @@ void ResolutionWidget::DrawAutoRestoreCheckbox(display_commander::ui::IImGuiWrap
         s_auto_restore_resolution_on_close.store(auto_restore);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Automatically restore original display settings when the game closes");
+        imgui.SetTooltipEx("Automatically restore original display settings when the game closes");
     }
 }
 
@@ -1201,7 +1201,7 @@ void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgu
         settings::g_mainTabSettings.auto_enable_disable_hdr.SetValue(auto_hdr);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "When enabled, automatically turn Windows HDR on for the game display when the game starts, "
             "and turn it off when the game exits.");
     }
@@ -1217,7 +1217,7 @@ void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgu
         imgui.TextColored(hdr_supported ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
                           "Display HDR capable: %s", hdr_supported ? "Yes" : "No");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Whether the selected display supports Windows HDR (advanced color).");
+            imgui.SetTooltipEx("Whether the selected display supports Windows HDR (advanced color).");
         }
         if (hdr_supported) {
             imgui.SameLine();
@@ -1231,7 +1231,7 @@ void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgu
                 }
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Turn Windows HDR (advanced color) on or off for the selected display.");
+                imgui.SetTooltipEx("Turn Windows HDR (advanced color) on or off for the selected display.");
             }
         }
     } else {
@@ -1247,7 +1247,7 @@ void ResolutionWidget::DrawHdrSection(display_commander::ui::IImGuiWrapper& imgu
             settings::g_mainTabSettings.auto_apply_maxmdl_1000_hdr_metadata.SetValue(auto_maxmdl);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Inject HDR10 static metadata instead of using source values. \n"
                 "Use when HDR looks dim or washed out on PC. TVs that often need this: Samsung, Sony, Panasonic "
                 "(they handle MaxCLL/MaxFALL differently or ignore source metadata).\n\n"
@@ -1265,7 +1265,7 @@ void ResolutionWidget::DrawDebugMenu(display_commander::ui::IImGuiWrapper& imgui
         show_debug_menu = !show_debug_menu;
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Show debug information about display resolution tracking");
+        imgui.SetTooltipEx("Show debug information about display resolution tracking");
     }
 
     if (!show_debug_menu) {
@@ -1399,7 +1399,7 @@ void ResolutionWidget::DrawDebugMenu(display_commander::ui::IImGuiWrapper& imgui
         display_cache::g_displayCache.Refresh();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Test the restore functionality that runs on game exit. "
             "This will restore all displays that had resolution changes applied.");
     }

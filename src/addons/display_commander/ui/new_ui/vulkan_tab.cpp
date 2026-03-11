@@ -68,7 +68,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Not loaded");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Game has not loaded NvLowLatencyVk.dll. Common for non-Vulkan or non-Reflex Vulkan games.");
             }
         }
@@ -86,7 +86,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Not loaded");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Vulkan loader not present. This process is likely not a Vulkan application.");
+                imgui.SetTooltipEx("Vulkan loader not present. This process is likely not a Vulkan application.");
             }
         }
 
@@ -106,7 +106,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, hooks NvLL_VK_SetLatencyMarker, NvLL_VK_Sleep, NvLL_VK_SetSleepMode for frame pacing. "
                 "Install on next NvLowLatencyVk.dll load, or now if already loaded.");
         }
@@ -119,7 +119,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, hooks vkGetDeviceProcAddr and wraps vkSetLatencyMarkerNV for frame pacing. Install on "
                 "next vulkan-1.dll load, or now if already loaded.");
         }
@@ -129,7 +129,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             // Setting persisted by CheckboxSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, appends VK_NV_low_latency2, VK_KHR_present_id, and VK_KHR_timeline_semaphore to the "
                 "device extension list in vkCreateDevice (same as Special K). If creation fails, falls back to the "
                 "original list. Requires vulkan-1 loader hooks to be installed.");
@@ -148,7 +148,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.TextColored(ui::colors::TEXT_DIMMED,
                              "No data. Enable vulkan-1 loader hooks and let the game create a Vulkan device.");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Extensions are captured when vkCreateDevice is called (via hooked vkGetInstanceProcAddr).");
             }
         } else {
@@ -188,7 +188,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         } else if (loader_active) {
             imgui.TextColored(ui::colors::ICON_SUCCESS, "VK_NV_low_latency2");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Game uses vulkan-1 vkSetLatencyMarkerNV (e.g. Doom).");
+                imgui.SetTooltipEx("Game uses vulkan-1 vkSetLatencyMarkerNV (e.g. Doom).");
             }
         } else if (nvll_active) {
             imgui.TextColored(ui::colors::ICON_SUCCESS, "NvLowLatencyVk");
@@ -238,7 +238,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
                           static_cast<std::uint64_t>(dummy_sleep_mode), static_cast<std::uint64_t>(dummy_sleep),
                           static_cast<std::uint64_t>(dummy_marker), static_cast<std::uint64_t>(dummy_timings));
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Game called these although vkGetDeviceProcAddr returned null; we returned dummies to "
                         "observe.");
                 }
@@ -284,7 +284,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         if (last_marker_type >= 0 || last_frame_id > 0) {
             imgui.Text("%d / %llu", last_marker_type, static_cast<std::uint64_t>(last_frame_id));
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("0=SIMULATION_START, 4=PRESENT_START, 5=PRESENT_END, ...");
+                imgui.SetTooltipEx("0=SIMULATION_START, 4=PRESENT_START, 5=PRESENT_END, ...");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "-");

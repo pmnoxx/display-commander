@@ -181,7 +181,7 @@ void DrawStreamlineTab(display_commander::ui::IImGuiWrapper& imgui) {
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Create subfolder under Display_Commander\\dlss_override.");
+            imgui.SetTooltipEx("Create subfolder under Display_Commander\\dlss_override.");
         }
         imgui.Unindent();
     }

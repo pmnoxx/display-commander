@@ -233,7 +233,7 @@ void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefiniti
     imgui.TableNextColumn();
     imgui.Text("%s", def.name.c_str());
     if (imgui.IsItemHovered() && !def.description.empty()) {
-        imgui.SetTooltip("%s", def.description.c_str());
+        imgui.SetTooltipEx("%s", def.description.c_str());
     }
 
     // Shortcut Input + Capture
@@ -292,7 +292,7 @@ void DrawHotkeyEntry(display_commander::ui::IImGuiWrapper& imgui, HotkeyDefiniti
             s_capturing_hotkey_index = index;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Capture shortcut (press key combination including numpad)");
+            imgui.SetTooltipEx("Capture shortcut (press key combination including numpad)");
         }
         imgui.SameLine();
         if (imgui.Button(("Reset##" + def.id).c_str())) {
@@ -889,7 +889,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
         s_enable_hotkeys.store(settings.enable_hotkeys.GetValue());
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Master toggle for all keyboard shortcuts. When disabled, all hotkeys will not work.");
+        imgui.SetTooltipEx("Master toggle for all keyboard shortcuts. When disabled, all hotkeys will not work.");
     }
 
     imgui.Spacing();
@@ -977,17 +977,17 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
 
         CheckboxSetting(settings.exclusive_keys_ad_enabled, "AD Group (A and D keys)", imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("When A is pressed, D is released. When D is pressed, A is released.");
+            imgui.SetTooltipEx("When A is pressed, D is released. When D is pressed, A is released.");
         }
 
         CheckboxSetting(settings.exclusive_keys_ws_enabled, "WS Group (W and S keys)", imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("When W is pressed, S is released. When S is pressed, W is released.");
+            imgui.SetTooltipEx("When W is pressed, S is released. When S is pressed, W is released.");
         }
 
         CheckboxSetting(settings.exclusive_keys_awsd_enabled, "AWSD Group (A, W, S, D keys)", imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
+            imgui.SetTooltipEx("When any key (A, W, S, or D) is pressed, all other keys in this group are released.");
         }
 
         imgui.Spacing();
@@ -1059,7 +1059,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
             settings.exclusive_keys_custom_groups.SetValue(oss.str());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Add a new custom exclusive key group");
+            imgui.SetTooltipEx("Add a new custom exclusive key group");
         }
     }
 
@@ -1082,7 +1082,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.Text(ICON_FK_WARNING);
                 ui::colors::PopIconColor(&imgui);
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("ProcessHotkeys hasn't been called recently - check continuous monitoring thread");
+                    imgui.SetTooltipEx("ProcessHotkeys hasn't been called recently - check continuous monitoring thread");
                 }
             }
         } else {
@@ -1185,7 +1185,7 @@ void DrawHotkeysTab(display_commander::ui::IImGuiWrapper& imgui) {
 
     SliderIntSetting(settings.brightness_hotkey_step_percent, "Brightness hotkey step (%)", "%d%%", imgui);
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Step size for Brightness Up/Down hotkeys (0-500%%, 100%% = neutral). Default 5%%.");
+        imgui.SetTooltipEx("Step size for Brightness Up/Down hotkeys (0-500%%, 100%% = neutral). Default 5%%.");
     }
 }
 

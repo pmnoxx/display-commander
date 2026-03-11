@@ -526,7 +526,7 @@ bool SliderFloatSetting(FloatSetting& setting, const char* label, const char* fo
             changed = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%.3f)", def);
+            imgui.SetTooltipEx("Reset to default (%.3f)", def);
         }
         imgui.PopID();
         imgui.EndGroup();
@@ -554,7 +554,7 @@ bool SliderIntSetting(IntSetting& setting, const char* label, const char* format
             changed = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%d)", def);
+            imgui.SetTooltipEx("Reset to default (%d)", def);
         }
         imgui.PopID();
         imgui.EndGroup();
@@ -580,7 +580,7 @@ bool CheckboxSetting(BoolSetting& setting, const char* label, display_commander:
             changed = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%s)", def ? "On" : "Off");
+            imgui.SetTooltipEx("Reset to default (%s)", def ? "On" : "Off");
         }
         imgui.PopID();
     }
@@ -612,7 +612,7 @@ bool ComboSettingWrapper(ComboSetting& setting, const char* label, display_comma
             changed = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%s)", def_label);
+            imgui.SetTooltipEx("Reset to default (%s)", def_label);
         }
         imgui.PopID();
     }
@@ -645,7 +645,7 @@ bool ComboSettingEnumWrapper(ComboSettingEnum<EnumType>& setting, const char* la
             changed = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset to default (%s)", def_label);
+            imgui.SetTooltipEx("Reset to default (%s)", def_label);
         }
         imgui.PopID();
     }

@@ -236,7 +236,7 @@ void DrawContinueRenderingAndInputBlocking(display_commander::ui::IImGuiWrapper&
             imgui.TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "  (Mismatch - hook state differs from setting)");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, rendering continues when the game loses focus (e.g. alt-tab).\n"
                 "Uses window proc hooks to spoof focus/activation.");
         }
@@ -244,7 +244,7 @@ void DrawContinueRenderingAndInputBlocking(display_commander::ui::IImGuiWrapper&
         imgui.Separator();
         imgui.Text("Should block input (current runtime result):");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Whether input is currently blocked for the game.\n"
                 "Depends on input blocking mode (Main tab), app in background, and Ctrl+I toggle.");
         }
@@ -261,7 +261,7 @@ void DrawContinueRenderingAndInputBlocking(display_commander::ui::IImGuiWrapper&
             display_commanderhooks::SetDebugSuppressAllGetMessage(debug_suppress_all);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When on, every message from GetMessage/PeekMessage is skipped (game receives none).\n"
                 "Use to see if we forgot to spoof some message type for continue rendering.\n"
                 "Default off, not saved to config.");
@@ -271,7 +271,7 @@ void DrawContinueRenderingAndInputBlocking(display_commander::ui::IImGuiWrapper&
             if (imgui.TreeNodeEx("Continue Rendering API debug",
                                  display_commander::ui::wrapper_flags::TreeNodeFlags_DefaultOpen)) {
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Last return value (HWND or BOOL) and override state for each API.\n"
                     "'(game window)' = returned HWND is the game/swapchain window.");
             }

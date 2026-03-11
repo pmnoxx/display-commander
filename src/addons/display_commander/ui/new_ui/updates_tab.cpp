@@ -239,7 +239,7 @@ void DrawUpdatesTab(display_commander::ui::IImGuiWrapper& imgui) {
             if (imgui.IsItemHovered()) {
                 auto download_dir = GetDownloadDirectory();
                 std::string download_path_str = download_dir.string();
-                imgui.SetTooltip("Download 64-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon64",
+                imgui.SetTooltipEx("Download 64-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon64",
                                   download_path_str.c_str());
             }
             imgui.SameLine();
@@ -259,7 +259,7 @@ void DrawUpdatesTab(display_commander::ui::IImGuiWrapper& imgui) {
             if (imgui.IsItemHovered()) {
                 auto download_dir = GetDownloadDirectory();
                 std::string download_path_str = download_dir.string();
-                imgui.SetTooltip("Download 32-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon32",
+                imgui.SetTooltipEx("Download 32-bit version to:\n%s\nFilename: zzz_display_commander_BUILD.addon32",
                                   download_path_str.c_str());
             }
         }
@@ -276,7 +276,7 @@ void DrawUpdatesTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Check GitHub for the latest release");
+        imgui.SetTooltipEx("Check GitHub for the latest release");
     }
 
     imgui.Spacing();
@@ -371,7 +371,7 @@ void DrawUpdatesTab(display_commander::ui::IImGuiWrapper& imgui) {
                     OpenFolderInExplorer(update.file_path.parent_path());
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Open folder containing the downloaded file");
+                    imgui.SetTooltipEx("Open folder containing the downloaded file");
                 }
 
                 imgui.SameLine();
@@ -394,7 +394,7 @@ void DrawUpdatesTab(display_commander::ui::IImGuiWrapper& imgui) {
                 }
                 imgui.PopStyleColor(3);
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Delete this downloaded file\nWarning: This action cannot be undone");
+                    imgui.SetTooltipEx("Delete this downloaded file\nWarning: This action cannot be undone");
                 }
             }
 
@@ -416,7 +416,7 @@ void DrawUpdatesTab(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (imgui.IsItemHovered()) {
                 std::string download_path_str = download_dir.string();
-                imgui.SetTooltip("Open: %s", download_path_str.c_str());
+                imgui.SetTooltipEx("Open: %s", download_path_str.c_str());
             }
         }
     }

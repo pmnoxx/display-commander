@@ -139,7 +139,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         display_commanderhooks::InstallXInputHooks(nullptr);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Enable XInput API hooks for input processing and remapping");
+        imgui.SetTooltipEx("Enable XInput API hooks for input processing and remapping");
     }
 
     const bool is_unity_player = (GetModuleHandleA("UnityPlayer.dll") != nullptr);
@@ -157,7 +157,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.TextColored(::ui::colors::ICON_WARNING,
                           "Windows Gaming Input is not suppressed. Controller remapping for XInput may not work.");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Games using Windows.Gaming.Input may not call XInput; enable suppression so the game falls "
                 "back to XInput and remapping works.");
         }
@@ -176,7 +176,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             restart_needed_to_apply_settings = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Enable Windows Gaming Input suppression (restart game to apply).");
+            imgui.SetTooltipEx("Enable Windows Gaming Input suppression (restart game to apply).");
         }
     }
 
@@ -189,7 +189,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         restart_needed_to_apply_settings = true;
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "When enabled, block Windows.Gaming.Input so the game can use XInput. Off by default. Enable and choose "
             "Unity or non-Unity below. Restart game to apply.");
     }
@@ -204,7 +204,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             restart_needed_to_apply_settings = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, block Windows.Gaming.Input factory requests so this Unity game uses XInput.");
         }
     } else {
@@ -216,7 +216,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             restart_needed_to_apply_settings = true;
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("When enabled, block Windows.Gaming.Input factory requests so the game uses XInput.");
+            imgui.SetTooltipEx("When enabled, block Windows.Gaming.Input factory requests so the game uses XInput.");
         }
     }
 
@@ -233,7 +233,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Swap the A and B button mappings");
+        imgui.SetTooltipEx("Swap the A and B button mappings");
     }
 
     // DualSense to XInput conversion (only when experimental features enabled)
@@ -244,7 +244,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             SaveSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Convert DualSense controller input to XInput format");
+            imgui.SetTooltipEx("Convert DualSense controller input to XInput format");
         }
     }
 
@@ -255,7 +255,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "When enabled, zeroes all gamepad output (buttons, sticks, triggers) returned to the game by "
             "XInputGetState/XInputGetStateEx. Use to test that suppression works; the game will see no input.");
     }
@@ -268,7 +268,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
             LogInfo("HID suppression %s", hid_suppression ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Suppress HID input reading for games to prevent them from detecting controllers.\nUseful for "
                 "preventing games from interfering with controller input handling.");
         }
@@ -280,7 +280,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Text("HID CreateFile Total: %llu", hid_total);
         imgui.Text("HID CreateFile DualSense: %llu", hid_dualsense);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows how many times the game tried to open HID devices via CreateFile.\nDualSense counter shows "
                 "specifically DualSense controller access attempts.");
         }
@@ -289,7 +289,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextColored(::ui::colors::TEXT_DIMMED, "Stick mapping: input range [min%%, max%%] -> output [min%%, max%%]");
     imgui.SameLine();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Example: input 30%%-70%% mapped to 10%%-80%%");
+        imgui.SetTooltipEx("Example: input 30%%-70%% mapped to 10%%-80%%");
     }
 
     auto DrawStickMappingSliders =
@@ -325,13 +325,13 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
                 float mo = min_out_x.load() * 100.0f;
                 float mx = max_out_x.load() * 100.0f;
                 Slider4("Min Input %", &mi, 0.0f, 100.0f, "%.0f%%", min_in_x);
-                if (imgui.IsItemHovered()) imgui.SetTooltip("Input below this is zero (deadzone)");
+                if (imgui.IsItemHovered()) imgui.SetTooltipEx("Input below this is zero (deadzone)");
                 Slider4("Max Input %", &ma, 0.0f, 100.0f, "%.0f%%", max_in_x);
-                if (imgui.IsItemHovered()) imgui.SetTooltip("Input at/above this maps to Max Output");
+                if (imgui.IsItemHovered()) imgui.SetTooltipEx("Input at/above this maps to Max Output");
                 Slider4("Min Output (anti-deadzone) %", &mo, 0.0f, 100.0f, "%.0f%%", min_out_x);
-                if (imgui.IsItemHovered()) imgui.SetTooltip("Output at Min Input threshold");
+                if (imgui.IsItemHovered()) imgui.SetTooltipEx("Output at Min Input threshold");
                 Slider4("Max Output %", &mx, 0.0f, 100.0f, "%.0f%%", max_out_x);
-                if (imgui.IsItemHovered()) imgui.SetTooltip("Output at Max Input");
+                if (imgui.IsItemHovered()) imgui.SetTooltipEx("Output at Max Input");
                 min_in_y.store(min_in_x.load());
                 max_in_y.store(max_in_x.load());
                 min_out_y.store(min_out_x.load());
@@ -385,7 +385,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.SameLine();
     imgui.TextColored(::ui::colors::TEXT_DIMMED, "(%s)", left_mode_text);
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
             "Square: X/Y axes processed separately (independent deadzone per axis)\n"
             "Affects deadzone, anti-deadzone, and sensitivity settings");
@@ -401,7 +401,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.SameLine();
     imgui.TextColored(::ui::colors::TEXT_DIMMED, "(%s)", right_mode_text);
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Circular: X/Y axes processed together (radial deadzone preserves direction)\n"
             "Square: X/Y axes processed separately (independent deadzone per axis)\n"
             "Affects deadzone, anti-deadzone, and sensitivity settings");
@@ -418,7 +418,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("X-axis center offset for left stick (-1.0 to 1.0)");
+        imgui.SetTooltipEx("X-axis center offset for left stick (-1.0 to 1.0)");
     }
 
     // Left stick center Y setting
@@ -428,7 +428,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Y-axis center offset for left stick (-1.0 to 1.0)");
+        imgui.SetTooltipEx("Y-axis center offset for left stick (-1.0 to 1.0)");
     }
 
     // Right stick center X setting
@@ -438,7 +438,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("X-axis center offset for right stick (-1.0 to 1.0)");
+        imgui.SetTooltipEx("X-axis center offset for right stick (-1.0 to 1.0)");
     }
 
     // Right stick center Y setting
@@ -448,7 +448,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Y-axis center offset for right stick (-1.0 to 1.0)");
+        imgui.SetTooltipEx("Y-axis center offset for right stick (-1.0 to 1.0)");
     }
 
     // Reset centers button
@@ -460,7 +460,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Reset all stick center offsets to 0.0");
+        imgui.SetTooltipEx("Reset all stick center offsets to 0.0");
     }
 
     imgui.Separator();
@@ -475,7 +475,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Amplify controller vibration intensity (100%% = normal, 200%% = double, 500%% = maximum).\n"
             "This affects all vibration commands from the game.");
     }
@@ -486,7 +486,7 @@ void XInputWidget::DrawSettings(display_commander::ui::IImGuiWrapper& imgui) {
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Reset vibration amplification to 100%% (normal)");
+        imgui.SetTooltipEx("Reset vibration amplification to 100%% (normal)");
     }
 }
 
@@ -589,7 +589,7 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
         TestLeftMotor();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Test the left (low-frequency) vibration motor");
+        imgui.SetTooltipEx("Test the left (low-frequency) vibration motor");
     }
 
     imgui.SameLine();
@@ -599,7 +599,7 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
         TestRightMotor();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Test the right (high-frequency) vibration motor");
+        imgui.SetTooltipEx("Test the right (high-frequency) vibration motor");
     }
 
     imgui.Spacing();
@@ -609,7 +609,7 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
         StopVibration();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Stop all vibration on the selected controller");
+        imgui.SetTooltipEx("Stop all vibration on the selected controller");
     }
 
     imgui.SameLine();
@@ -620,7 +620,7 @@ void XInputWidget::DrawVibrationTest(display_commander::ui::IImGuiWrapper& imgui
         TestRightMotor();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Test both vibration motors simultaneously");
+        imgui.SetTooltipEx("Test both vibration motors simultaneously");
     }
 
     imgui.Spacing();
@@ -652,7 +652,7 @@ void XInputWidget::DrawControllerSelector(display_commander::ui::IImGuiWrapper& 
         imgui.EndCombo();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("XInput controller indices 0-3 (first to fourth controller). Same numbering as Autofire.");
+        imgui.SetTooltipEx("XInput controller indices 0-3 (first to fourth controller). Same numbering as Autofire.");
     }
     imgui.PopID();
 }
@@ -685,7 +685,7 @@ void XInputWidget::DrawControllerState(display_commander::ui::IImGuiWrapper& img
                               "No game calls to XInputGetState(0) yet. Game may use Windows.Gaming.Input or "
                               "DirectInput instead of XInput.");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Hollow Knight and some other games use Windows.Gaming.Input for controllers, so XInput is never "
                     "polled. Hooks are active on the XInput DLL when/if the game loads it.");
             }
@@ -1654,7 +1654,7 @@ void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.CollapsingHeader("Active input APIs (last 10s)", ImGuiTreeNodeFlags_DefaultOpen)) {
         imgui.Indent();
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "APIs the game has used recently (at least one call in the last 10 seconds). "
                 "Similar to Special K input API display.");
         }
@@ -1674,7 +1674,7 @@ void DrawActiveInputApisSection(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Spacing();
             imgui.TextColored(::ui::colors::ICON_WARNING, "WindowsGamingInput was suppressed");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "The game requested Windows.Gaming.Input but it was blocked (E_NOTIMPL). Game may use XInput "
                     "instead.");
             }
@@ -1696,7 +1696,7 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
     }
     imgui.Indent();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("XInput GetState(0) calls/sec (game polling) and DualSense HID report rate (addon reading).");
+        imgui.SetTooltipEx("XInput GetState(0) calls/sec (game polling) and DualSense HID report rate (addon reading).");
     }
 
     // XInput GetState(0) rate (use original tick so time-slowdown doesn't skew rate)
@@ -1718,7 +1718,7 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
     imgui.Text("XInput GetState(0): %.1f/sec (total: %llu)", g_getstate0_rate_hz,
                static_cast<unsigned long long>(getstate0_calls));
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Game (or addon) calls to XInputGetState(0) per second.");
+        imgui.SetTooltipEx("Game (or addon) calls to XInputGetState(0) per second.");
     }
 
     // DualSense HID report rate (first device if any)
@@ -1734,7 +1734,7 @@ void DrawControllerPollingRatesSection(display_commander::ui::IImGuiWrapper& img
                 imgui.TextColored(::ui::colors::TEXT_DIMMED, "DualSense HID: never");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Addon ReadFile rate for first DualSense (packet-number-changed branch).");
+                imgui.SetTooltipEx("Addon ReadFile rate for first DualSense (packet-number-changed branch).");
             }
         }
     } else {
@@ -2196,7 +2196,7 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
         SaveSettings();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Enable autofire for selected buttons. When a button is held, it will cycle between hold down and hold "
             "up phases.");
     }
@@ -2224,7 +2224,7 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
             SaveSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Number of frames to hold button down (1-1000). Enter a value or use slider below.");
+            imgui.SetTooltipEx("Number of frames to hold button down (1-1000). Enter a value or use slider below.");
         }
 
         // Slider for quick adjustment (1-60 range for common use)
@@ -2235,7 +2235,7 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
             SaveSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
+            imgui.SetTooltipEx("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
         }
 
         imgui.Spacing();
@@ -2259,7 +2259,7 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
             SaveSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Number of frames to hold button up (1-1000). Enter a value or use slider below.");
+            imgui.SetTooltipEx("Number of frames to hold button up (1-1000). Enter a value or use slider below.");
         }
 
         // Slider for quick adjustment (1-60 range for common use)
@@ -2270,7 +2270,7 @@ void XInputWidget::DrawAutofireSettings(display_commander::ui::IImGuiWrapper& im
             SaveSettings();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
+            imgui.SetTooltipEx("Quick adjustment slider (1-60 frames). Use input field above for values > 60.");
         }
 
         // Show effective rate information

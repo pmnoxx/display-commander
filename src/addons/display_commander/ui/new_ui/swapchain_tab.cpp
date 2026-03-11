@@ -513,14 +513,14 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
 
                 imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "Last Sleep: %.2f ms ago", time_since_sleep_ms);
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Time since the last NVAPI_D3D_Sleep call was made.\nLower values indicate more recent sleep "
                         "calls.");
                 }
             } else {
                 imgui.TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Last Sleep: Never");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("No NVAPI_D3D_Sleep calls have been made yet.");
+                    imgui.SetTooltipEx("No NVAPI_D3D_Sleep calls have been made yet.");
                 }
             }
 
@@ -682,7 +682,7 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SameLine();
             imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Skip compute shader dispatches when app is in background");
+                imgui.SetTooltipEx("Skip compute shader dispatches when app is in background");
             }
 
             // Resource copy suppression
@@ -693,7 +693,7 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SameLine();
             imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Skip resource copy operations when app is in background");
+                imgui.SetTooltipEx("Skip resource copy operations when app is in background");
             }
 
             // Memory operations suppression
@@ -704,7 +704,7 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SameLine();
             imgui.TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "?");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Skip resource mapping operations when app is in background");
+                imgui.SetTooltipEx("Skip resource mapping operations when app is in background");
             }
 
             // Resource binding suppression (more conservative)
@@ -715,7 +715,7 @@ void DrawSwapchainEventCounters(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.SameLine();
             imgui.TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), ICON_FK_WARNING);
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Skip resource binding operations (may cause rendering issues)");
+                imgui.SetTooltipEx("Skip resource binding operations (may cause rendering issues)");
             }
 
             imgui.Unindent();
@@ -1355,7 +1355,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
     imgui.TextColored(ui::colors::TEXT_WARNING,
                       ICON_FK_WARNING " EXPERIMENTAL FEATURE - May require alt-tab to apply changes!");
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "This feature overrides DLSS presets at runtime.\nChanges may require alt-tabbing out and back into "
             "the game to take effect.\nUse with caution as it may cause rendering issues in some games.");
     }
@@ -1372,7 +1372,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
     }
 
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Override DLSS presets at runtime using NGX parameter interception.\nThis works similar to Special-K's "
             "DLSS preset override feature.");
     }
@@ -1412,7 +1412,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
                 ResetNGXPresetInitialization();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Select the DLSS Super Resolution preset to override.\nGame Default = no override (don't "
                     "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, etc.\nOnly "
                     "presets supported by your DLSS version are shown.");
@@ -1448,7 +1448,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
                 ResetNGXPresetInitialization();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Select the DLSS Ray Reconstruction preset to override.\nGame Default = no override (don't "
                     "change anything)\nDLSS Default = set value to 0\nPreset A = 1, Preset B = 2, Preset C = 3, "
                     "Preset D = 4, Preset E = 5, etc.\nA, B, C, D, E presets are supported for Ray Reconstruction "
@@ -1462,7 +1462,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
                 ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                 "NVIDIA App DLSS override detected (.bin). Version and presets are controlled by the NVIDIA app.");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited "
                     "effect.");
             }
@@ -1541,7 +1541,7 @@ void DrawDLSSPresetOverrideContent(display_commander::ui::IImGuiWrapper& imgui) 
 
         // Show all values in tooltip
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "All DLSS Model Profile Values:\n"
                 "Super Resolution:\n"
                 "  Quality: %d, Balanced: %d, Performance: %d\n"

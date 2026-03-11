@@ -124,7 +124,7 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
         settings::g_mainTabSettings.show_dxgi_vrr_status.SetValue(show_dxgi_vrr_status);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows DXGI-based VRR status in the performance overlay (RefreshRateMonitor heuristic: rate spread / "
             "samples below threshold). Enable \"DXGI refresh rate / VRR detection\" in Advanced tab for data.");
     }
@@ -135,7 +135,7 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
         settings::g_mainTabSettings.show_dxgi_refresh_rate.SetValue(show_dxgi_refresh_rate);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows DXGI refresh rate (Hz) in the performance overlay from swap chain GetFrameStatistics. "
             "Enable \"DXGI refresh rate / VRR detection\" in Advanced tab for data.");
     }
@@ -168,7 +168,7 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "Refresh rate: -- Hz");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Current DXGI refresh rate from swap chain. Enable \"Show DXGI VRR status\" / \"Show DXGI refresh "
                     "rate\" above to show in overlay.");
             }
@@ -196,7 +196,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
         settings::g_mainTabSettings.show_vrr_status.SetValue(show_vrr_status);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows whether Variable Refresh Rate (VRR) is active in the performance overlay. "
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
@@ -207,7 +207,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
         settings::g_mainTabSettings.vrr_debug_mode.SetValue(vrr_debug_mode);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows detailed VRR debugging in the performance overlay: Fixed Hz, Threshold, Samples, and NVAPI "
             "fields from NvAPI_Disp_GetVRRInfo (NV_GET_VRR_INFO):\n"
             "  enabled: VRR is enabled for the display (driver/app has enabled it).\n"
@@ -223,7 +223,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
         settings::g_mainTabSettings.show_actual_refresh_rate.SetValue(show_actual_refresh_rate);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows actual refresh rate in the performance overlay (NvAPI_DISP_GetAdaptiveSyncData). "
             "Also feeds the refresh rate time graph when \"Refresh rate time graph\" is on. "
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
@@ -235,7 +235,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
         settings::g_mainTabSettings.show_refresh_rate_frame_times.SetValue(show_refresh_rate_frame_times);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows a graph of actual refresh rate frame times (NVAPI Adaptive Sync) in the overlay. "
             "Requires NVAPI and a resolved display.\n"
             "WARNING: May cause a heartbeat/hitch (frame time spike). Uses NVAPI (NVIDIA only).");
@@ -247,7 +247,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
         settings::g_mainTabSettings.show_refresh_rate_frame_time_stats.SetValue(show_refresh_rate_frame_time_stats);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows refresh rate time statistics (avg, deviation, min, max) in the overlay. "
             "Uses NVAPI (NVIDIA only; may cause occasional hiccups).");
     }
@@ -270,7 +270,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
             // Setting is automatically saved by SliderIntSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Polling interval for the actual refresh rate monitoring thread when the time graph is enabled. "
                 "Lower values update the graph more frequently but use more CPU. When the time graph is off, "
                 "polling defaults to 1 s and this setting is not used.");
@@ -355,7 +355,7 @@ void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
                     overlay_text.c_str(), scale_min, scale_max, graph_size);
 
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Frame time graph showing recent frame times in milliseconds.\n"
             "Lower values = higher FPS, smoother gameplay.\n"
             "Spikes indicate frame drops or stuttering.");
@@ -375,7 +375,7 @@ void DrawFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
     }
 
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Select which timing events to record for the frame time graph:\n"
             "- Present-to-Present: Records time between Present calls\n"
             "- Frame Begin-to-Frame Begin: Records time between frame begin events\n"
@@ -535,7 +535,7 @@ void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
 
     imgui.Text("Frame timeline (start to end, relative to sim start, updates every 1 s)");
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Each row = one phase. Bar shows when it started and ended (0 = sim start). "
             "Times from last completed frame (g_frame_data).");
     }
@@ -594,7 +594,7 @@ void DrawFrameTimelineBar(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Dummy(bar_size);
 
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("%s: %.2f ms - %.2f ms (%.2f ms)", p.label, p.start_ms, p.end_ms, duration);
+            imgui.SetTooltipEx("%s: %.2f ms - %.2f ms (%.2f ms)", p.label, p.start_ms, p.end_ms, duration);
         }
     }
 
@@ -672,7 +672,7 @@ void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bo
                                  imgui.ColorConvertFloat4ToU32(p.color), bar_rounding);
         imgui.Dummy(bar_size);
         if (show_tooltips && imgui.IsItemHovered()) {
-            imgui.SetTooltip("%s: %.2f - %.2f ms", p.label, p.start_ms, p.end_ms);
+            imgui.SetTooltipEx("%s: %.2f - %.2f ms", p.label, p.start_ms, p.end_ms);
         }
     }
     imgui.TableNextColumn();
@@ -690,7 +690,7 @@ void DrawFrameTimelineBarOverlay(display_commander::ui::IImGuiWrapper& imgui, bo
 static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& imgui) {
     if (imgui.TreeNodeEx("DLSS indicator (Registry)", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Show DLSS on-screen indicator in games. Writes NVIDIA registry; may require restart. Admin if apply "
                 "fails.");
         }
@@ -704,7 +704,7 @@ static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& 
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Show DLSS on-screen indicator (resolution/version) in games. Writes NVIDIA registry; may require "
                 "restart. Admin needed if apply fails.");
         }
@@ -722,7 +722,7 @@ static void DrawDLSSInfo_IndicatorSection(display_commander::ui::IImGuiWrapper& 
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "DLSS-FG on-screen indicator text level (registry DLSSG_IndicatorText). Off / Minimal / Detailed. "
                 "May require restart. Admin needed if apply fails.");
         }
@@ -747,7 +747,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         if (path_dlss.has_value() || path_dlssg.has_value() || path_dlssd.has_value()) {
             if (imgui.TreeNodeEx("DLSS module paths (tracked)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
+                    imgui.SetTooltipEx("Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
                 }
                 if (path_dlss.has_value()) {
                     imgui.Text("nvngx_dlss.dll: %s", path_dlss->c_str());
@@ -867,7 +867,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
             ResetNGXPresetInitialization();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Override DLSS presets at runtime (Game Default / DLSS Default / Preset A, B, C, etc.). Same as "
                 "Swapchain tab.");
         }
@@ -877,7 +877,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
                 ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                 "NVIDIA App DLSS override detected (.bin). Version and presets are controlled by the NVIDIA app.");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "DLSS was loaded from a .bin bundle (Streamline/NVIDIA App). Preset override may have limited "
                     "effect.");
             }
@@ -917,7 +917,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
                 ResetNGXPresetInitialization();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
+                imgui.SetTooltipEx("Preset: Game Default = no override, DLSS Default = 0, Preset A/B/C... = 1/2/3...");
             }
         }
     }
@@ -998,7 +998,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
             settings::g_swapchainTabSettings.dlss_forced_auto_exposure.SetValue(ae_items[ae_idx]);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Override DLSS auto-exposure. Takes effect when DLSS feature is (re)created.\n"
                 "See Create.Flags field for current DLSS.Feature.Create.Flags value and decoded bits.");
         }
@@ -1054,7 +1054,7 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
                               " Override not applied for: %s. Restart game with override enabled before launch.",
                               not_applied.c_str());
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "The game loaded these DLLs before our hooks were active. Enable override and restart the game to "
                     "use override versions.");
             }
@@ -1129,7 +1129,7 @@ void DrawNativeFrameTimeGraph(display_commander::ui::IImGuiWrapper& imgui) {
                     overlay_text.c_str(), scale_min, scale_max, graph_size);
 
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Native frame time graph showing frames actually shown to display via native swapchain Present.\n"
             "This tracks frames when limit real frames is enabled.\n"
             "Lower values = higher FPS, smoother gameplay.\n"
@@ -1215,7 +1215,7 @@ void DrawRefreshRateFrameTimesGraph(display_commander::ui::IImGuiWrapper& imgui,
     }
 
     if (imgui.IsItemHovered() && show_tooltips) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Actual refresh rate frame time graph (NvAPI_DISP_GetAdaptiveSyncData) in milliseconds.\n"
             "Lower values = higher refresh rate.\n"
             "Spikes indicate refresh rate variations (VRR, power management, etc.).");
@@ -1306,7 +1306,7 @@ void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool
     }
 
     if (imgui.IsItemHovered() && show_tooltips) {
-        imgui.SetTooltip("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
+        imgui.SetTooltipEx("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
                          max_frame_time);
     }
 }
@@ -1380,7 +1380,7 @@ void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui
     imgui.PopStyleColor();
 
     if (imgui.IsItemHovered() && show_tooltips) {
-        imgui.SetTooltip("Native frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
+        imgui.SetTooltipEx("Native frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
                          max_frame_time);
     }
 }
@@ -1442,7 +1442,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
             LogInfo("Advanced settings %s", advanced_settings ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Enable advanced settings to show advanced tabs (Advanced, Debug, HID Input, etc.).\n"
                 "When disabled, advanced tabs will be hidden to simplify the interface.");
         }
@@ -1456,7 +1456,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
         LogCurrentLogLevel();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Controls the minimum log level to display:\n\n"
             "- Error Only: Only error messages\n"
             "- Warning: Errors and warnings\n"
@@ -1476,7 +1476,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_advanced_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
+            imgui.SetTooltipEx("Shows the Advanced tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -1486,7 +1486,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_window_info_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
+            imgui.SetTooltipEx("Shows the Window Info tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -1496,7 +1496,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_swapchain_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
+            imgui.SetTooltipEx("Shows the Swapchain tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -1506,7 +1506,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_controller_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows the Controller tab (XInput monitoring and remapping) even when 'Show All Tabs' is disabled.");
         }
     }
@@ -1517,7 +1517,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_streamline_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
+            imgui.SetTooltipEx("Shows the Streamline tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -1527,7 +1527,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_experimental_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the Debug tab even when 'Show All Tabs' is disabled.");
+            imgui.SetTooltipEx("Shows the Debug tab even when 'Show All Tabs' is disabled.");
         }
     }
 
@@ -1537,7 +1537,7 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_vulkan_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
+            imgui.SetTooltipEx("Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
         }
     }
 
@@ -1636,15 +1636,17 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
     if (imgui.CollapsingHeader("Display Commander", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
 
-        // Use global version: when false, load DC from game folder (same as .exe) if addon is there; when true, load only from global folder.
+        // Use global version: when false, load DC from game folder (same as .exe) if addon is there; when true, load
+        // only from global folder.
         bool use_global_version = GetUseGlobalDcVersionFromConfig();
         if (imgui.Checkbox("Use global version", &use_global_version)) {
             SetUseGlobalDcVersionInConfig(use_global_version);
             display_commander::config::DisplayCommanderConfigManager::GetInstance().SaveConfig("Use global version");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
-                "When off: use DC from the game folder (same as .exe) if the addon is there, otherwise from the global folder.\n"
+            imgui.SetTooltipEx(
+                "When off: use DC from the game folder (same as .exe) if the addon is there, otherwise from the global "
+                "folder.\n"
                 "When on: always load DC from the global folder only.");
         }
         // Using Global Version: Yes if current DC module is in a different location than the exe.
@@ -1655,7 +1657,8 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
             if (g_hmodule != nullptr) {
                 WCHAR mod_buf[MAX_PATH];
                 WCHAR exe_buf[MAX_PATH];
-                if (GetModuleFileNameW(g_hmodule, mod_buf, MAX_PATH) > 0 && GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
+                if (GetModuleFileNameW(g_hmodule, mod_buf, MAX_PATH) > 0
+                    && GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
                     current_module_path_str = std::filesystem::path(mod_buf).string();
                     std::filesystem::path mod_dir = std::filesystem::path(mod_buf).parent_path();
                     std::filesystem::path exe_dir = std::filesystem::path(exe_buf).parent_path();
@@ -1668,7 +1671,9 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
                             + "\nFolder: " + exe_canon.string()
                             + "\n\nThe \"Use global version\" setting applies to the next launch. This process was already started from the game folder (e.g. proxy DLL or addon next to exe).";
                     } else {
-                        tooltip_reason = "Reason: DC is running from a different folder than the game .exe.\nCurrent module: " + current_module_path_str
+                        tooltip_reason =
+                            "Reason: DC is running from a different folder than the game .exe.\nCurrent module: "
+                            + current_module_path_str
                             + "\nDC module folder: " + (ec ? mod_dir.string() : mod_canon.string())
                             + "\nGame .exe folder: " + (ec ? exe_dir.string() : exe_canon.string());
                     }
@@ -1684,7 +1689,7 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
             }
             imgui.TextDisabled("Using Global Version: %s", using_global_version ? "Yes" : "No");
             if (imgui.IsItemHovered() && !tooltip_reason.empty()) {
-                imgui.SetTooltip("%s", tooltip_reason.c_str());
+                imgui.SetTooltipEx("%s", tooltip_reason.c_str());
             }
         }
         std::string local_dc_ver;
@@ -1719,11 +1724,11 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
         imgui.TextDisabled("Local DC version: %s", local_dc_ver.empty() ? "None" : local_dc_ver.c_str());
         if (imgui.IsItemHovered()) {
             if (local_addon_dir.empty()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "The Display Commander addon (zzz_display_commander.addon64 or .addon32) is not present in the "
                     "game folder. Install it there, use a proxy (e.g. dxgi.dll), or enable \"Use global version\".");
             } else {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Version from the DC addon (zzz_display_commander.addon64 or .addon32) in the game "
                     "folder.\nPath: "
                     "%s",
@@ -1733,7 +1738,7 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
         imgui.TextDisabled("Local Proxy DC version: %s",
                            local_proxy_dc_ver.empty() ? "(none)" : local_proxy_dc_ver.c_str());
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Version from the Display Commander proxy DLL (e.g. dxgi.dll, winmm.dll) loaded from the game "
                 "folder.\nPath: %s",
                 local_proxy_path.empty() ? "(none)" : local_proxy_path.string().c_str());
@@ -1746,7 +1751,7 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
             } else if (!dc_base.empty()) {
                 path_for_tooltip = dc_base.string();
             }
-            imgui.SetTooltip("Global folder: %s", path_for_tooltip.c_str());
+            imgui.SetTooltipEx("Global folder: %s", path_for_tooltip.c_str());
         }
 
         // Delete local DC addon (game folder): removes zzz_display_commander.addon64/.addon32. Next run can use
@@ -1768,7 +1773,7 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
                 }).detach();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Remove zzz_display_commander.addon64 and zzz_display_commander.addon32 from the game folder. "
                     "Next run will use global or proxy DC if preferred.");
             }
@@ -1831,7 +1836,8 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
             std::thread([]() {
                 std::string err;
                 if (DownloadDcLatestDebugToDebugFolder(&err)) {
-                    LogInfo("Display Commander latest debug downloaded to global folder (Display_Commander/Debug/X.Y.Z)");
+                    LogInfo(
+                        "Display Commander latest debug downloaded to global folder (Display_Commander/Debug/X.Y.Z)");
                 } else {
                     std::string msg = err.empty() ? "Download failed" : err;
                     LogError("DC debug download: %s", msg.c_str());
@@ -1840,7 +1846,9 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
             }).detach();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Download latest debug from GitHub to the global Display Commander folder (Display_Commander\\Debug\\X.Y.Z).");
+            imgui.SetTooltipEx(
+                "Download latest debug from GitHub to the global Display Commander folder "
+                "(Display_Commander\\Debug\\X.Y.Z).");
         }
         std::string* err_ptr = s_dc_dl_err.load();
         if (err_ptr != nullptr && !err_ptr->empty()) {
@@ -1864,7 +1872,7 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
             }).detach();
         }
         if (imgui.IsItemHovered() && !dc_global.empty()) {
-            imgui.SetTooltip("Open the Display Commander global folder. You can copy files manually to revert.\n\n%s",
+            imgui.SetTooltipEx("Open the Display Commander global folder. You can copy files manually to revert.\n\n%s",
                              dc_global.string().c_str());
         }
 
@@ -1880,7 +1888,8 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
     static int s_reshade_dl_index = 0;
 
     if (!display_commanderhooks::g_hooked_before_reshade.load()) {
-        // Not running as DLL proxy: show as which module ReShade is loaded (and its version), and option to replace with global.
+        // Not running as DLL proxy: show as which module ReShade is loaded (and its version), and option to replace
+        // with global.
         std::filesystem::path loaded_path = display_commander::utils::GetReshadeLoadedModulePath();
         if (!loaded_path.empty()) {
             std::string loaded_ver = GetDLLVersionString(loaded_path.wstring());
@@ -1907,15 +1916,18 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
                     s_replace_last_message += " Check log for [reshade_replace].";
                 } else {
                     s_replace_last_ok = true;
-                    s_replace_last_message = "Script created and started. It will replace the DLL after you close the game.";
+                    s_replace_last_message =
+                        "Script created and started. It will replace the DLL after you close the game.";
                     if (!script_path.empty()) {
                         s_replace_last_message += " Debug: script path: " + script_path;
                     }
                 }
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Create a .cmd script and run it. The script waits for you to close the game, then replaces the DLL with global ReShade %s (retries until successful). Log tag: [reshade_replace].",
-                                global_ver.c_str());
+                imgui.SetTooltipEx(
+                    "Create a .cmd script and run it. The script waits for you to close the game, then replaces the "
+                    "DLL with global ReShade %s (retries until successful). Log tag: [reshade_replace].",
+                    global_ver.c_str());
             }
             if (!s_replace_last_message.empty()) {
                 if (s_replace_last_ok) {
@@ -1942,7 +1954,7 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
                 StartReshadeVersionDownloadToGlobalRoot(std::string(ver_list[s_reshade_dl_index]));
             }
             if (imgui.IsItemHovered() && can_dl) {
-                imgui.SetTooltip("Overwrites the global ReShade folder with the selected version.");
+                imgui.SetTooltipEx("Overwrites the global ReShade folder with the selected version.");
             }
             if (dl_status == ReshadeDownloadStatus::Downloading || dl_status == ReshadeDownloadStatus::Extracting) {
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "%s",
@@ -1974,7 +1986,7 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
         imgui.TextDisabled("Local version: %s", local_ver.empty() ? "(none)" : local_ver.c_str());
         imgui.TextDisabled("Global version: %s", global_ver.empty() ? "(none)" : global_ver.c_str());
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "By default we prefer local > global. This checkbox changes preference to global > local.");
         }
 
@@ -1999,13 +2011,13 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Version info from: GitHub (crosire/reshade), reshade.me");
+                    imgui.SetTooltipEx("Version info from: GitHub (crosire/reshade), reshade.me");
                 }
             } else {
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("%s -> %s\n\nVersion info from: GitHub (crosire/reshade), reshade.me",
+                    imgui.SetTooltipEx("%s -> %s\n\nVersion info from: GitHub (crosire/reshade), reshade.me",
                                      loaded_ver.c_str(), newest_available.c_str());
                 }
             }
@@ -2028,7 +2040,7 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
                 StartReshadeVersionDownloadToGlobalRoot(std::string(ver_list[s_reshade_dl_index]));
             }
             if (imgui.IsItemHovered() && can_dl) {
-                imgui.SetTooltip("Overwrites the global ReShade folder with the selected version.");
+                imgui.SetTooltipEx("Overwrites the global ReShade folder with the selected version.");
             }
             if (dl_status == ReshadeDownloadStatus::Downloading || dl_status == ReshadeDownloadStatus::Extracting) {
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "%s",
@@ -2054,7 +2066,7 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
             }).detach();
         }
         if (imgui.IsItemHovered() && !reshade_global.empty()) {
-            imgui.SetTooltip("Open the ReShade global folder. You can copy files manually to revert.\n\n%s",
+            imgui.SetTooltipEx("Open the ReShade global folder. You can copy files manually to revert.\n\n%s",
                              reshade_global.string().c_str());
         }
 
@@ -2077,7 +2089,7 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
                 }).detach();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Remove Reshade64.dll and Reshade32.dll from the game folder. Safe because we load from a "
                     "copy, "
                     "not the file directly. Next run will use global ReShade if preferred.");
@@ -2140,14 +2152,14 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 tooltip += "  - " + e.display_name + " = " + value_display + "\n";
             }
             tooltip += "\nClick \"Apply to config\" to save these to DisplayCommander.toml.";
-            imgui.SetTooltip("%s", tooltip.c_str());
+            imgui.SetTooltipEx("%s", tooltip.c_str());
         }
         imgui.SameLine();
         if (imgui.Button("Apply to config")) {
             display_commander::config::ApplyDefaultOverridesToConfig();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Save the current override values to this game's DisplayCommander.toml.");
+            imgui.SetTooltipEx("Save the current override values to this game's DisplayCommander.toml.");
         }
         imgui.Spacing();
     }
@@ -2160,7 +2172,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Error: Failed to save config to %s",
                           config_save_failure_path->c_str());
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("The configuration file could not be saved. Check file permissions and disk space.");
+            imgui.SetTooltipEx("The configuration file could not be saved. Check file permissions and disk space.");
         }
         imgui.Spacing();
     }
@@ -2175,7 +2187,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.TextColored(ui::colors::TEXT_WARNING,
                           ICON_FK_WARNING " WARNING: LoadFromDllMain is set to 1 in ReShade configuration");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "LoadFromDllMain=1 can cause compatibility issues with some games and addons. "
                 "Consider disabling it in the Advanced tab or ReShade.ini if you experience problems.");
         }
@@ -2190,7 +2202,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         imgui.TextColored(ui::colors::TEXT_ERROR,
                           ICON_FK_WARNING " ERROR: Multiple Display Commander versions detected!");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Another Display Commander instance (v%s) is loaded in this process. "
                 "This may cause conflicts and unexpected behavior. Please ensure only one version is loaded.",
                 other_dc_version->c_str());
@@ -2209,7 +2221,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                           ICON_FK_WARNING " WARNING: Multiple swapchains detected (%zu ReShade runtimes)",
                           runtime_count);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "More than one swapchain/runtime is active. Some features may target only the first runtime. "
                 "This can happen with multi-window or multi-context games.");
         }
@@ -2248,7 +2260,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.TextColored(ui::colors::TEXT_WARNING, ICON_FK_WARNING " Update available: v%s",
                                   latest_version_ptr->c_str());
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Version info from: GitHub (Display Commander stable releases)");
+                    imgui.SetTooltipEx("Version info from: GitHub (Display Commander stable releases)");
                 }
                 imgui.SameLine();
 
@@ -2275,7 +2287,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     if (imgui.IsItemHovered()) {
                         auto download_dir = GetDownloadDirectory();
                         std::string download_path_str = download_dir.string();
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Download will be saved to:\n%s\nFilename: zzz_display_commander_BUILD.addon%s",
                             download_path_str.c_str(), is_64bit ? "64" : "32");
                     }
@@ -2283,7 +2295,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             } else if (status == VersionComparison::UpToDate) {
                 imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Up to date");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Version info from: GitHub (Display Commander stable releases)");
+                    imgui.SetTooltipEx("Version info from: GitHub (Display Commander stable releases)");
                 }
             } else if (status == VersionComparison::CheckFailed && error_ptr != nullptr) {
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Check failed: %s", error_ptr->c_str());
@@ -2297,7 +2309,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 }
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Check for updates");
+                imgui.SetTooltipEx("Check for updates");
             }
         }
 
@@ -2373,7 +2385,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         }
         imgui.PopStyleColor();
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Support Display Commander development with a coffee!");
+            imgui.SetTooltipEx("Support Display Commander development with a coffee!");
         }
     }
     // Display Commander update status (one check per app start), above Updates section
@@ -2409,7 +2421,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
             if (newer_available) {
                 imgui.TextColored(ui::colors::TEXT_WARNING, "Display Commander: new version available on GitHub (%s)",
-                                 s_dc_latest_on_github.c_str());
+                                  s_dc_latest_on_github.c_str());
             } else {
                 imgui.TextColored(ui::colors::TEXT_SUCCESS, "Display Commander: using latest");
             }
@@ -2464,7 +2476,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 }).detach();
             }
             if (imgui.IsItemHovered() && !dc_reshade_root.empty()) {
-                imgui.SetTooltip("Open the Display Commander ReShade root folder (Shaders and Textures).");
+                imgui.SetTooltipEx("Open the Display Commander ReShade root folder (Shaders and Textures).");
             }
             if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
                 imgui.BeginDisabled();
@@ -2663,7 +2675,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
+            imgui.SetTooltipEx("Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
         }
 
         // Show statistics if we have any calls
@@ -2772,7 +2784,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             LogInfo("Max anisotropy set to %d", settings::g_mainTabSettings.max_anisotropy.GetValue());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Override maximum anisotropic filtering level (1-16) for existing anisotropic filters.\n"
                 "Set to 0 (Game default) to preserve the game's original AF settings.\n"
                 "Only affects samplers that already use anisotropic filtering.");
@@ -2787,7 +2799,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             LogInfo("Mipmap LOD bias set to %.2f", lod_bias);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Use a small (i.e. -0.6'ish) negative LOD bias to sharpen DLSS and FSR games");
+            imgui.SetTooltipEx("Use a small (i.e. -0.6'ish) negative LOD bias to sharpen DLSS and FSR games");
         }
 
         // Reset button for LOD bias
@@ -2845,7 +2857,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Controls keyboard input blocking behavior.");
+            imgui.SetTooltipEx("Controls keyboard input blocking behavior.");
         }
 
         imgui.NextColumn();
@@ -2859,14 +2871,14 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Controls mouse input blocking behavior.");
+            imgui.SetTooltipEx("Controls mouse input blocking behavior.");
         }
 
         imgui.NextColumn();
 
         ui::new_ui::ComboSettingEnumWrapper(settings::g_mainTabSettings.gamepad_input_blocking, "##Gamepad", imgui);
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Controls gamepad input blocking behavior.");
+            imgui.SetTooltipEx("Controls gamepad input blocking behavior.");
         }
 
         imgui.Columns(1);  // Reset to single column
@@ -2888,7 +2900,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Limits mouse movement to the game window when the game is in foreground.\n"
                 "Unlocks cursor when game is in background.\n\n"
                 "This fixes games which don't lock the mouse cursor, preventing focus switches\n"
@@ -2905,7 +2917,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 remapper.set_remapping_enabled(remapping_enabled);
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "When enabled, XINPUT gamepad buttons can be remapped to keyboard keys, other gamepad buttons, "
                     "or actions (e.g. volume, screenshot). Supports chords (e.g. Home + D-Pad for volume) and hold "
                     "mode.\n\n"
@@ -2921,7 +2933,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     settings::g_mainTabSettings.guide_button_solo_ui_toggle_only.SetValue(require_solo_press);
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "When enabled, tapping the Home button will open/close Display Commander UI only if no other\n"
                         "gamepad buttons were pressed between Home down and Home up.\n\n"
                         "Example:\n"
@@ -2968,7 +2980,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Prevent games from pausing or reducing performance when alt-tabbed. Blocks window focus "
                 "messages to keep games running in background.");
         }
@@ -2986,7 +2998,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     settings::g_mainTabSettings.screensaver_mode.GetValue());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Controls display sleep and screensaver while the game is running:\n\n"
                 "- Default (no change): Preserves original game behavior\n"
                 "- Disable when Focused: Prevents display sleep & screensaver when game window is focused\n"
@@ -3001,7 +3013,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                     settings::g_mainTabSettings.taskbar_hide_mode.GetValue());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Controls Windows taskbar visibility (main and secondary monitors):\n\n"
                 "- No changes: Do not hide the taskbar\n"
                 "- In foreground: Hide taskbar while game is in foreground, show when in background\n"
@@ -3071,7 +3083,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         // Show tooltip for slider
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Controls CPU core affinity for the game process:\n\n"
                 "- 0 (Default): No change to process affinity\n"
                 "- %d-%d: Limit game to use specified number of CPU cores\n\n"
@@ -3201,7 +3213,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         }
 
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows all visible windows that overlap with the game window.\n"
                 "Windows can be above or below the game in Z-order.\n"
                 "Overlapping windows may cause performance issues.");
@@ -3294,7 +3306,7 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
                         tooltip_oss << "FPS = " << refresh_hz << " ÷ " << x << " = " << candidate_precise << " FPS\n\n";
                         tooltip_oss << "Creates a smooth frame rate that divides evenly\n";
                         tooltip_oss << "into the monitor's refresh rate.";
-                        imgui.SetTooltip("%s", tooltip_oss.str().c_str());
+                        imgui.SetTooltipEx("%s", tooltip_oss.str().c_str());
                     }
                 }
             }
@@ -3337,7 +3349,7 @@ void DrawQuickFpsLimitChanger(display_commander::ui::IImGuiWrapper& imgui) {
                 if (reflex_enabled) {
                     tooltip_oss << "\n(×0.995 applied because Reflex limiter is enabled.)";
                 }
-                imgui.SetTooltip("%s", tooltip_oss.str().c_str());
+                imgui.SetTooltipEx("%s", tooltip_oss.str().c_str());
             }
         }
     }
@@ -3418,7 +3430,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "—");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Render resolution: the resolution the game requested (before any modifications). "
                     "Matches Special K's render_x/render_y.\n"
                     "Refresh rate: actual (NVAPI) when available, else selected display's configured rate.");
@@ -3435,14 +3447,14 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 imgui.Text("%llu / %llu MiB", static_cast<unsigned long long>(used_mib),
                            static_cast<unsigned long long>(total_mib));
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
+                    imgui.SetTooltipEx("GPU video memory used / budget (DXGI adapter memory budget).");
                 }
             } else {
                 imgui.TextColored(ui::colors::TEXT_LABEL, "VRAM:");
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "N/A");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("VRAM unavailable (DXGI adapter or budget query failed).");
+                    imgui.SetTooltipEx("VRAM unavailable (DXGI adapter or budget query failed).");
                 }
             }
 
@@ -3469,7 +3481,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                                static_cast<unsigned long long>(ram_total_mib));
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "System RAM in use (this app working set) / total (GlobalMemoryStatusEx, "
                         "GetProcessMemoryInfo).");
                 }
@@ -3478,7 +3490,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 imgui.SameLine();
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "N/A");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("System memory info unavailable.");
+                    imgui.SetTooltipEx("System memory info unavailable.");
                 }
             }
 
@@ -3515,7 +3527,7 @@ void DrawDisplaySettings_DisplayAndTarget(display_commander::ui::IImGuiWrapper& 
                 && saved_device_id != "Monitor Info Failed") {
                 tooltip_text += "\n\nGame window is on: " + saved_device_id;
             }
-            imgui.SetTooltip("%s", tooltip_text.c_str());
+            imgui.SetTooltipEx("%s", tooltip_text.c_str());
         }
         // Warn if mode does not resize; moving to another display isn't implemented in those modes
         const WindowMode mode = GetCurrentWindowMode();
@@ -3555,7 +3567,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
             LogInfo("Aspect ratio changed");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Choose the aspect ratio for window resizing.");
+            imgui.SetTooltipEx("Choose the aspect ratio for window resizing.");
         }
     }
     if (GetCurrentWindowMode() == WindowMode::kAspectRatio) {
@@ -3565,7 +3577,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
                     settings::g_mainTabSettings.window_aspect_width.GetValue());
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Choose the width for the aspect ratio window. 'Display Width' uses the current monitor width.");
         }
     }
@@ -3577,7 +3589,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
             LogInfo("Window alignment changed");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Choose how to align the window when repositioning is needed. 0=Center, 1=Top Left, "
                 "2=Top Right, 3=Bottom Left, 4=Bottom Right.");
         }
@@ -3596,7 +3608,7 @@ void DrawDisplaySettings_WindowModeAndApply(display_commander::ui::IImGuiWrapper
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Apply the current window size and position settings immediately.");
+        imgui.SetTooltipEx("Apply the current window size and position settings immediately.");
     }
 }
 
@@ -3634,7 +3646,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         LogInfo("FPS Limiter: %s", enabled ? "enabled" : "disabled (no limiting)");
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("When checked, the selected mode is active. When unchecked, no FPS limiting.");
+        imgui.SetTooltipEx("When checked, the selected mode is active. When unchecked, no FPS limiting.");
     }
     imgui.SameLine();
     if (!fps_limit_enabled) {
@@ -3650,7 +3662,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         settings::g_mainTabSettings.fps_limit.SetValue(0.0f);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
+        imgui.SetTooltipEx("Set FPS limit for the game (0 = no limit). Now uses the new Custom FPS Limiter system.");
     }
     if (!fps_limit_enabled) {
         imgui.EndDisabled();
@@ -3667,7 +3679,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             settings::g_mainTabSettings.background_fps_enabled.SetValue(background_fps_enabled);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, cap FPS when the game window is in the background. Slider sets the limit (default 60).");
         }
         imgui.SameLine();
@@ -3684,7 +3696,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
             imgui.EndDisabled();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, caps FPS to the limit above when the game window is not in the foreground. Uses the "
                 "Custom FPS Limiter.");
         }
@@ -3713,7 +3725,7 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Choose limiter mode (when FPS limiter is enabled):\n"
             "Default - OnPresent frame synchronizer (recommended).\n"
             "Reflex - uses Reflex library to limit FPS.\n"
@@ -3803,7 +3815,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 tooltip += "none";
             }
         }
-        imgui.SetTooltip("%s", tooltip.c_str());
+        imgui.SetTooltipEx("%s", tooltip.c_str());
     }
 
     if (!::IsNativeFramePacingInSync()) {
@@ -3825,7 +3837,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 // Setting is automatically saved via ComboSettingWrapper
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Controls the balance between display latency and input latency.\n\n"
                     "Available in 12.5%% steps:\n"
                     "100%% Display / 0%% Input: Prioritizes consistent frame timing (better frame timing at "
@@ -3849,7 +3861,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 show_delay_bias_debug = !show_delay_bias_debug;
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Show delay_bias debug information");
+                imgui.SetTooltipEx("Show delay_bias debug information");
             }
 
             // Debug Info Window
@@ -3948,7 +3960,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
             LogInfo("FPS limiter preset changed to %d", new_preset);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Quick presets for FPS limiter when the game has native Reflex. Custom allows manual configuration.");
         }
 
@@ -3965,7 +3977,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                                                                                                     : "disabled");
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "When enabled, FPS limiter runs on the Streamline proxy swap chain (Present/Present1).\n"
                         "Use when the game presents through Streamline's proxy (e.g. DLSS-G).");
                 }
@@ -3978,7 +3990,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                     settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue() ? "enabled" : "disabled");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "When enabled with Frame Generation (DLSS-G) active, limits native (real) frame rate.\n"
                     "Experimental; may improve frame pacing with FG.");
             }
@@ -3989,7 +4001,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                     LogInfo("Max queued frames changed");
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Max frames to queue when using Reflex markers as FPS limiter. Game default = no limit; 1–6 = "
                         "limit.");
                 }
@@ -4002,7 +4014,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                         settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue() ? "enabled" : "disabled");
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "When enabled, native frame pacing uses SIMULATION_START instead of PRESENT_END.\n"
                         "Matches Special-K behavior (pacing on simulation thread rather than render thread).");
                 }
@@ -4014,7 +4026,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                                                                                                          : "disabled");
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "When enabled, PRESENT_START is scheduled for (SIMULATION_START + N frame times).\n"
                         "Improves frame pacing when using native frame pacing. Use the slider to set N (0 = no delay, "
                         "1 = one frame, 0.5 = half frame, etc.).");
@@ -4025,7 +4037,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                                        imgui)) {
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
+                    imgui.SetTooltipEx("Frames to delay PRESENT_START after SIMULATION_START (0–2). 0 = no delay.");
                 }
                 if (settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue() > 0)
                     imgui.EndDisabled();
@@ -4045,7 +4057,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 settings::g_mainTabSettings.safe_mode_fps_limiter.GetValue() ? "enabled" : "disabled");
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Uses a safer FPS limiting path with reduced risk of stutter or instability.\n"
             "Experimental; may have slightly higher latency than the default limiter.");
     }
@@ -4108,7 +4120,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
                 imgui.EndCombo();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "When multiple ReShade runtimes (swapchains) exist, select which one Display Commander uses for "
                     "input blocking, Reflex, and other features. 0 = first runtime.");
             }
@@ -4137,7 +4149,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                 imgui.TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
                                   ICON_FK_OK " Native Reflex: ACTIVE Limit Real Frames: ON");
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("The game has native Reflex support and is actively using it. ");
+                    imgui.SetTooltipEx("The game has native Reflex support and is actively using it. ");
                 }
                 double native_ns = static_cast<double>(g_sleep_reflex_native_ns_smooth.load());
                 double calls_per_second = native_ns <= 0 ? -1 : 1000000000.0 / native_ns;
@@ -4145,7 +4157,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                                   calls_per_second, native_ns / 1000000.0);
                 if (imgui.IsItemHovered()) {
                     double raw_ns = static_cast<double>(g_sleep_reflex_native_ns.load());
-                    imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                    imgui.SetTooltipEx("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
                 }
             } else {
                 bool limit_real = settings::g_mainTabSettings.limit_real_frames.GetValue();
@@ -4158,7 +4170,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                                   calls_per_second, injected_ns / 1000000.0);
                 if (imgui.IsItemHovered()) {
                     double raw_ns = static_cast<double>(g_sleep_reflex_injected_ns.load());
-                    imgui.SetTooltip("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
+                    imgui.SetTooltipEx("Smoothed interval using rolling average. Raw: %.1f ms", raw_ns / 1000000.0);
                 }
 
                 // Warn if both native and injected reflex are running simultaneously
@@ -4175,7 +4187,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_limiter_reflex_mode, "Reflex", imgui)) {
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "NVIDIA Reflex setting when using Reflex FPS limiter.\n\n"
                 "Low latency: Enables Reflex Low Latency Mode (default).\n"
                 "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
@@ -4195,7 +4207,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                     settings::g_advancedTabSettings.reflex_supress_native.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Override the game's native Reflex implementation with the addon's injected version.");
+            imgui.SetTooltipEx("Override the game's native Reflex implementation with the addon's injected version.");
         }
     }
     // When PCLStatsReportingAllowed(), "Inject Reflex" is already shown next to Reflex combo via
@@ -4206,7 +4218,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
             LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
                 "latency.");
         }
@@ -4219,7 +4231,7 @@ static void DrawDisplaySettings_FpsLimiterReflex(display_commander::ui::IImGuiWr
                 settings::g_mainTabSettings.suppress_reflex_sleep.GetValue() ? "enabled" : "disabled");
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Suppresses both native Reflex sleep calls (from the game) and injected Reflex sleep calls.\n"
             "This prevents Reflex from sleeping the CPU, which may help with certain compatibility issues.");
     }
@@ -4231,7 +4243,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
         // Setting is automatically saved by SliderIntSetting
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Scanline offset for latent sync (-1000 to 1000). This defines the offset from the "
             "threshold where frame pacing is active.");
     }
@@ -4265,7 +4277,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
             tooltip_oss << "\n";
         }
         tooltip_oss << "\n0 = Disabled, higher values reduce effective frame rate for smoother frame pacing.";
-        imgui.SetTooltip("%s", tooltip_oss.str().c_str());
+        imgui.SetTooltipEx("%s", tooltip_oss.str().c_str());
     }
 
     // VBlank Monitor Status (only visible if latent sync is enabled and FPS limit > 0)
@@ -4277,7 +4289,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
                 imgui.TextColored(ui::colors::STATUS_ACTIVE, "✁EVBlank Monitor: ACTIVE");
                 if (imgui.IsItemHovered()) {
                     std::string status = latent.GetVBlankMonitorStatusString();
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "VBlank monitoring thread is running and collecting scanline data for frame pacing.\n\n%s",
                         status.c_str());
                 }
@@ -4295,7 +4307,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
                 imgui.TextColored(ui::colors::STATUS_STARTING, ICON_FK_WARNING " VBlank Monitor: STARTING...");
                 if (imgui.IsItemHovered()) {
                     std::string status = latent.GetVBlankMonitorStatusString();
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "VBlank monitoring is enabled in settings but the thread is not running yet.\n\n"
                         "• %s\n\n"
                         "The thread starts when the FPS limiter runs (i.e. when a frame is presented with "
@@ -4317,7 +4329,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
                 LogInfo(limit_real ? "Limit Real Frames enabled" : "Limit Real Frames disabled");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Limit real frames when using DLSS Frame Generation.\n"
                     "When enabled, the FPS limiter limits the game's internal framerate (real frames)\n"
                     "instead of generated frames. This helps maintain proper frame timing with Frame Gen enabled.");
@@ -4337,7 +4349,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
             settings::g_mainTabSettings.no_render_in_background.SetValue(no_render_in_bg);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Skip rendering draw calls when the game window is not in the foreground. This can save "
                 "GPU power and reduce background processing.");
         }
@@ -4347,7 +4359,7 @@ static void DrawDisplaySettings_FpsLimiterLatentSync(display_commander::ui::IImG
             settings::g_mainTabSettings.no_present_in_background.SetValue(no_present_in_bg);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Skip ReShade's on_present processing when the game window is not in the foreground. "
                 "This can save GPU power and reduce background processing.");
         }
@@ -4371,7 +4383,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
             LogInfo("Inject Reflex %s", settings::g_mainTabSettings.inject_reflex.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When the game has no native Reflex, use the addon's Reflex (sleep + latency markers) for low "
                 "latency.");
         }
@@ -4387,7 +4399,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         if (imgui.IsItemHovered()) {
             const uint64_t count = GetPCLStatsMarkerCallCount();
             const bool pcl_init = ReflexProvider::IsPCLStatsInitialized();
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Enables PCL stats reporting for injected reflex.\nPCLSTATS_MARKER called %llu times.\nPCLStats "
                 "initialized: %s",
                 static_cast<unsigned long long>(count), pcl_init ? "yes" : "no");
@@ -4408,7 +4420,7 @@ static void DrawDisplaySettings_FpsLimiterAdvanced(display_commander::ui::IImGui
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.reflex_disabled_limiter_mode, "Reflex", imgui)) {
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Reflex setting when FPS limiter is off or mode is LatentSync.\n"
                 "Used for Vulkan NvLL and other paths when no FPS limiter mode is active.");
         }
@@ -4487,7 +4499,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
                 LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Forces sync interval = 1 (requires restart).");
+                imgui.SetTooltipEx("Forces sync interval = 1 (requires restart).");
             }
             imgui.SameLine();
 
@@ -4501,7 +4513,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
                 LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Forces sync interval = 0 (requires restart).");
+                imgui.SetTooltipEx("Forces sync interval = 0 (requires restart).");
             }
         }
         if (is_dxgi_pt) {
@@ -4513,14 +4525,14 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
                                   : "Prevent Tearing disabled");
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+                imgui.SetTooltipEx("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
             }
         } else if (desc_ptr_cb) {
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
                               GetPresentModeNameNonDxgi(static_cast<int>(current_api_pt), desc_ptr_cb->present_mode));
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
+                imgui.SetTooltipEx("Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
             }
         }
     } else {
@@ -4543,7 +4555,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
             tooltip
                 << "Override swapchain backbuffer count at creation (requires restart). No override = game default.\n"
                 << "Current: " << desc_ptr->back_buffer_count << ". DXGI flip requires at least 2.";
-            imgui.SetTooltip("%s", tooltip.str().c_str());
+            imgui.SetTooltipEx("%s", tooltip.str().c_str());
         }
     }
 
@@ -4573,7 +4585,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
             LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
                 "This setting requires a game restart to take effect.\n"
                 "Only works with DirectX 10/11/12 (DXGI) games.");
@@ -4637,7 +4649,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
             LogInfo(vs_on ? "Force VSync ON enabled" : "Force VSync ON disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Forces sync interval = 1 (requires restart).");
+            imgui.SetTooltipEx("Forces sync interval = 1 (requires restart).");
         }
         imgui.SameLine();
 
@@ -4651,7 +4663,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
             LogInfo(vs_off ? "Force VSync OFF enabled" : "Force VSync OFF disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Forces sync interval = 0 (requires restart).");
+            imgui.SetTooltipEx("Forces sync interval = 0 (requires restart).");
         }
     }
 
@@ -4663,7 +4675,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
             LogInfo(prevent_t ? "Prevent Tearing enabled (tearing flags will be cleared)" : "Prevent Tearing disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
+            imgui.SetTooltipEx("Prevents tearing by clearing DXGI tearing flags and preferring sync.");
         }
     }
 
@@ -4674,7 +4686,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
                 settings::g_mainTabSettings.backbuffer_count_override.GetValue());
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Override swapchain backbuffer count at creation (requires restart). No override = game default. "
             "Applies when game creates swapchain.");
     }
@@ -4688,7 +4700,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
             LogInfo(enable_flip ? "Enable Flip Chain enabled" : "Enable Flip Chain disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Forces games to use flip model swap chains (FLIP_DISCARD) for better performance.\n"
                 "This setting requires a game restart to take effect.\n"
                 "Only works with DirectX 10/11/12 (DXGI) games.");
@@ -4704,7 +4716,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
                                           : "Enable D9EX with Flip Model disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("D3D9: use CreateDeviceEx + flip-model present (requires restart).");
+            imgui.SetTooltipEx("D3D9: use CreateDeviceEx + flip-model present (requires restart).");
         }
     }
 
@@ -4735,7 +4747,7 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_NoReshadeMode(display
                               api_str, swap_str, snap->back_buffer_count, interval_str,
                               snap->windowed ? "windowed" : "fullscreen");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "State of the last D3D9 device created via our CreateDevice/CreateDeviceEx hooks (no-ReShade "
                     "path).");
             }
@@ -5217,7 +5229,7 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Flip: (waiting..., may require restart)");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Waiting for PresentMon events. Flip mode will appear once ETW data is available.");
+                imgui.SetTooltipEx("Waiting for PresentMon events. Flip mode will appear once ETW data is available.");
             }
         }
         return;
@@ -5235,7 +5247,7 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Click to enable PresentMon ETW tracing. Same as Advanced tab -> Enable PresentMon ETW Tracing.");
     }
 }
@@ -5374,7 +5386,7 @@ void DrawDisplaySettings_VSyncAndTearing(display_commander::ui::IImGuiWrapper& i
         if (!g_last_swapchain_desc_post.load()) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "No swapchain information available");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "No game detected or swapchain not yet created.\nThis information will appear once a game is "
                     "running.");
             }
@@ -5408,7 +5420,7 @@ static void DrawDisplaySettings_DXGI(display_commander::ui::IImGuiWrapper& imgui
                 s_restart_needed_vsync_tearing.store(true);
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Game requested FLIP_SEQUENTIAL. When enabled, upgrade to FLIP_DISCARD on next swapchain "
                     "create for better frame pacing (requires restart).\n"
                     "FLIP_DISCARD allows the OS to drop queued frames and can enable DirectFlip.\n"
@@ -5427,7 +5439,7 @@ static void DrawDisplaySettings_DXGI(display_commander::ui::IImGuiWrapper& imgui
             ShellExecuteA(nullptr, "open", kDxgiFlipModelDocUrl, nullptr, nullptr, SW_SHOW);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Opens: %s", kDxgiFlipModelDocUrl);
+            imgui.SetTooltipEx("Opens: %s", kDxgiFlipModelDocUrl);
         }
         imgui.Spacing();
         imgui.Unindent();
@@ -5449,7 +5461,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
         if (!host_apis.empty()) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "APIs (loaded by host): %s", host_apis.c_str());
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Graphics/API libraries that the game (or host process) loaded via LoadLibrary.\n"
                     "Excludes loads where the caller was Display Commander or ReShade.");
             }
@@ -5463,7 +5475,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
         if (!traffic_apis.empty()) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Active APIs: %s", traffic_apis.c_str());
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Graphics APIs where we observed present/swap traffic in the last 1 second (our hooks were "
                     "called).\n"
                     "DXGI = IDXGISwapChain::Present, D3D9 = IDirect3DDevice9::Present, OpenGL32 = wglSwapBuffers, "
@@ -5488,7 +5500,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     imgui.TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f),
                                       ICON_FK_WARNING " NGX Parameter vtable hooks were never installed.");
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "This is usually caused by ReShade loading Display Commander too late (e.g. _nvngx.dll was "
                             "already loaded). "
                             "Recommendation: use Display Commander as dxgi.dll/d3d12.dll/d3d11.dll/version.dll and "
@@ -5509,7 +5521,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         imgui.TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "NvLowLatencyVk status. Enable NvLowLatencyVk hooks in Vulkan tab for frame pacing.");
                     }
                 } else {
@@ -5525,7 +5537,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         imgui.TextColored(ui::colors::TEXT_DIMMED, "(hooks not installed)");
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Vulkan loader status. Enable vulkan-1 loader hooks in Vulkan tab for frame pacing.");
                     }
                 } else {
@@ -5542,13 +5554,13 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     imgui.TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " NVIDIA profile: %s",
                                       preset_status.profile_error.c_str());
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Driver profile search failed (e.g. no NVIDIA GPU). DLSS driver overrides do not apply.");
                     }
                 } else if (!preset_status.has_profile) {
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: No profile for this game.");
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "No NVIDIA driver profile matches this executable. Driver DLSS preset overrides do not "
                             "apply. Use the NVIDIA Profile tab to create or assign a profile.");
                     }
@@ -5556,7 +5568,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "NVIDIA profile: %s",
                                       preset_status.profile_names.c_str());
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Matching driver profile(s). See below for DLSS preset overrides from the profile.");
                     }
                     const char* sr_label = "DLSS-SR preset (driver):";
@@ -5571,7 +5583,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         imgui.TextColored(ui::colors::TEXT_DIMMED, "  %s %s", sr_label, sr_val);
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Driver profile DLSS Super Resolution render preset. Override in NVIDIA Profile tab if "
                             "needed.");
                     }
@@ -5581,7 +5593,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         imgui.TextColored(ui::colors::TEXT_DIMMED, "  %s %s", rr_label, rr_val);
                     }
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Driver profile DLSS Ray Reconstruction render preset. Override in NVIDIA Profile tab if "
                             "needed.");
                     }
@@ -5597,7 +5609,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         }
                         imgui.PopStyleColor();
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip(
+                            imgui.SetTooltipEx(
                                 "Set driver profile DLSS-SR and DLSS-RR preset to default (clears override).");
                         }
                     }
@@ -5638,7 +5650,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     imgui.EndDisabled();
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Sends two WM_SIZE messages: first with -1,-1, then after a short delay with the current "
                         "client size. Use this to force the game to process a resize and recreate the DLSS feature.");
                 }
@@ -5667,7 +5679,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     }
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Actually resizes the game window to quarter size (half width, half height), waits 150 ms, "
                         "then restores the previous size. The system sends real WM_SIZE messages, which can force "
                         "the game to recreate the swap chain and DLSS feature.");
@@ -5692,7 +5704,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     settings::g_swapchainTabSettings.dlss_internal_resolution_scale.SetValue(s_dlss_scale_ui);
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Scale DLSS internal render resolution. 0 = no override. e.g. 0.5 = half width/height "
                         "(OutWidth = "
                         "Width * 0.5, OutHeight = Height * 0.5).");
@@ -5719,7 +5731,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     ResetNGXPresetInitialization();
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
+                    imgui.SetTooltipEx(
                         "Override DLSS quality preset (Performance, Balanced, Quality, etc.). Game Default = no "
                         "override. This is the quality mode, not the render preset (A, B, C).");
                 }
@@ -5731,7 +5743,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 settings::g_streamlineTabSettings.dlss_override_enabled.SetValue(dlss_override_enabled);
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Load DLSS DLLs from Display Commander\\dlss_override subfolders. Each DLL has its own checkbox "
                     "and subfolder.");
             }
@@ -5818,7 +5830,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     }
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Create subfolder under Display Commander\\dlss_override.");
+                    imgui.SetTooltipEx("Create subfolder under Display Commander\\dlss_override.");
                 }
             }
             imgui.SameLine();
@@ -5843,7 +5855,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
             }
             imgui.PopStyleColor();
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Open the folder where you can place custom DLSS DLLs (created if missing).");
+                imgui.SetTooltipEx("Open the folder where you can place custom DLSS DLLs (created if missing).");
             }
 
             imgui.Unindent();
@@ -5868,7 +5880,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 display_commander::nvapi::InvalidateProfileSearchCache();
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Reload profile data from the driver.");
+                imgui.SetTooltipEx("Reload profile data from the driver.");
             }
             display_commander::nvapi::NvidiaProfileSearchResult r =
                 display_commander::nvapi::GetCachedProfileSearchResult();
@@ -5895,13 +5907,13 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     }
                 }
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Create a driver profile for the current executable. Then you can set RTX HDR.");
+                    imgui.SetTooltipEx("Create a driver profile for the current executable. Then you can set RTX HDR.");
                 }
             } else {
                 if (!s_nvidiaMainTabSetError.empty()) {
                     imgui.TextColored(ui::colors::TEXT_WARNING, "%s", s_nvidiaMainTabSetError.c_str());
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("Use NVIDIA Profile tab to run as admin if needed.");
+                        imgui.SetTooltipEx("Use NVIDIA Profile tab to run as admin if needed.");
                     }
                 }
                 std::vector<std::uint32_t> rtx_ids = display_commander::nvapi::GetRtxHdrSettingIds();
@@ -5966,7 +5978,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                  s.min_required_driver_version / 100, s.min_required_driver_version % 100);
                         tip += buf;
                     }
-                    imgui.SetTooltip("%s", tip.c_str());
+                    imgui.SetTooltipEx("%s", tip.c_str());
                 };
                 auto draw_combo_or_checkbox = [&](const display_commander::nvapi::ImportantProfileSetting& s) {
                     if (s.setting_id == 0) {
@@ -5993,7 +6005,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                 apply_delete(s.setting_id);
                             }
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("Remove from profile; use driver global default.");
+                                imgui.SetTooltipEx("Remove from profile; use driver global default.");
                             }
                         }
                     } else {
@@ -6028,7 +6040,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                 apply_delete(s.setting_id);
                             }
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("Remove from profile; use driver global default.");
+                                imgui.SetTooltipEx("Remove from profile; use driver global default.");
                             }
                         }
                     }
@@ -6075,7 +6087,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                 }
                             }
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip(
+                                imgui.SetTooltipEx(
                                     "FPS limit stored in the NVIDIA driver profile. Takes effect after game restart.");
                             }
                         }
@@ -6089,7 +6101,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 const float nvidia_checkbox_label_width = 600.f;
                 if (imgui.TreeNodeEx("Smooth Motion", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip("Smooth Motion profile settings for this game.");
+                        imgui.SetTooltipEx("Smooth Motion profile settings for this game.");
                     }
                     const auto* smooth_enable =
                         find_rtx_setting(display_commander::nvapi::NVPI_SMOOTH_MOTION_ENABLE_50_ID);
@@ -6118,7 +6130,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         imgui.PopID();
                         if (already_all) imgui.EndDisabled();
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
+                            imgui.SetTooltipEx("Set allowed APIs to DX11, DX12, and Vulkan (saved immediately).");
                         }
                     }
                     imgui.TreePop();
@@ -6129,7 +6141,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 const bool rtx_hdr_on = rtx_enable && (rtx_enable->value_id == 1);
                 if (imgui.TreeNodeEx("RTX HDR", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Enable and tune RTX HDR for this profile. Sub-options only apply when RTX HDR is "
                             "enabled.");
                     }
@@ -6162,7 +6174,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                     apply_delete(contrast->setting_id);
                                 }
                                 if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                    imgui.SetTooltipEx("Remove from profile; use driver global default.");
                                 }
                             }
                         }
@@ -6186,7 +6198,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                     apply_delete(midgrey->setting_id);
                                 }
                                 if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                    imgui.SetTooltipEx("Remove from profile; use driver global default.");
                                 }
                             }
                         }
@@ -6212,7 +6224,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                     apply_delete(peak->setting_id);
                                 }
                                 if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                    imgui.SetTooltipEx("Remove from profile; use driver global default.");
                                 }
                             }
                         }
@@ -6235,7 +6247,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                     apply_delete(sat->setting_id);
                                 }
                                 if (imgui.IsItemHovered()) {
-                                    imgui.SetTooltip("Remove from profile; use driver global default.");
+                                    imgui.SetTooltipEx("Remove from profile; use driver global default.");
                                 }
                             }
                         }
@@ -6248,7 +6260,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                             imgui.SameLine(nvidia_checkbox_label_width);
                             draw_combo_or_checkbox(*dv_enable);
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip(
+                                imgui.SetTooltipEx(
                                     "When On, enabling globally affects normal apps and may cause graphic bugs.");
                             }
                         }
@@ -6274,7 +6286,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                         apply_delete(dv_sat->setting_id);
                                     }
                                     if (imgui.IsItemHovered()) {
-                                        imgui.SetTooltip("Remove from profile; use driver global default.");
+                                        imgui.SetTooltipEx("Remove from profile; use driver global default.");
                                     }
                                 }
                             }
@@ -6297,7 +6309,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                         apply_delete(dv_val->setting_id);
                                     }
                                     if (imgui.IsItemHovered()) {
-                                        imgui.SetTooltip("Remove from profile; use driver global default.");
+                                        imgui.SetTooltipEx("Remove from profile; use driver global default.");
                                     }
                                 }
                             }
@@ -6309,7 +6321,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                 // --- Low latency subsection ---
                 if (imgui.TreeNodeEx("Low latency", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (imgui.IsItemHovered()) {
-                        imgui.SetTooltip(
+                        imgui.SetTooltipEx(
                             "Ultra Low Latency, Vertical Sync, and max pre-rendered frames for this profile.");
                     }
                     const float low_latency_ull_label_width = 600.f;
@@ -6350,7 +6362,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                         }
                         imgui.PopID();
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("0 = Use the 3D application setting; 1-8 = max pre-rendered frames.");
+                            imgui.SetTooltipEx("0 = Use the 3D application setting; 1-8 = max pre-rendered frames.");
                         }
                         if (prerender->set_in_profile) {
                             imgui.SameLine();
@@ -6358,7 +6370,7 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                                 apply_delete(prerender->setting_id);
                             }
                             if (imgui.IsItemHovered()) {
-                                imgui.SetTooltip("Remove from profile; use driver global default.");
+                                imgui.SetTooltipEx("Remove from profile; use driver global default.");
                             }
                         }
                     }
@@ -6450,7 +6462,7 @@ void DrawOverlayVUBars(display_commander::ui::IImGuiWrapper& imgui, bool show_to
         imgui.TextColored(ui::colors::TEXT_DIMMED, "%s", raw_buf);
     }
     if (show_tooltips && imgui.IsItemHovered()) {
-        imgui.SetTooltip("Per-channel peak level (default output device).");
+        imgui.SetTooltipEx("Per-channel peak level (default output device).");
     }
     imgui.SetCursorScreenPos(ImVec2(cursor.x, label_y + line_height));
     imgui.Dummy(ImVec2(total_width, line_height));
@@ -6519,7 +6531,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             }
 
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("Playtime: Time elapsed since game start");
+                imgui.SetTooltipEx("Playtime: Time elapsed since game start");
             }
         }
     }
@@ -6599,12 +6611,12 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             s_smoothed_actual_hz = k_alpha * actual_hz + (1.0 - k_alpha) * s_smoothed_actual_hz;
             imgui.Text("%.1f Hz", s_smoothed_actual_hz);
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
+                imgui.SetTooltipEx("Actual refresh rate from NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Actual: -- Hz");
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("Waiting for NVAPI display or samples.");
+                imgui.SetTooltipEx("Waiting for NVAPI display or samples.");
             }
         }
     }
@@ -6720,7 +6732,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI VRR: --");
             }
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "DXGI-based VRR heuristic (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection in "
                     "Advanced tab.");
             }
@@ -6737,7 +6749,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 imgui.TextColored(ui::colors::TEXT_DIMMED, "DXGI refresh rate: -- Hz");
             }
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "From swap chain GetFrameStatistics (RefreshRateMonitor). Enable DXGI refresh rate / VRR detection "
                     "in Advanced tab.");
             }
@@ -6758,12 +6770,12 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                            static_cast<unsigned long long>(total_mib));
             }
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("GPU video memory used / budget (DXGI adapter memory budget).");
+                imgui.SetTooltipEx("GPU video memory used / budget (DXGI adapter memory budget).");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "VRAM: N/A");
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("VRAM unavailable (DXGI adapter or budget query failed).");
+                imgui.SetTooltipEx("VRAM unavailable (DXGI adapter or budget query failed).");
             }
         }
 
@@ -6799,13 +6811,13 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                 }
             }
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "System RAM in use (this app working set) / total (GlobalMemoryStatusEx, GetProcessMemoryInfo).");
             }
         } else {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "RAM: N/A");
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("System memory info unavailable.");
+                imgui.SetTooltipEx("System memory info unavailable.");
             }
         }
     }
@@ -6840,7 +6852,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                    static_cast<unsigned long long>(tstats.texture_cache_3d.inserts),
                    static_cast<double>(tstats.texture_cache_3d.total_bytes) / (1024.0 * 1024.0));
         if (imgui.IsItemHovered() && show_tooltips) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Per-dimension: lookups, hit, miss, entries, stored MiB. Skip (2D): no_init %llu  track_off %llu  "
                 "cache_off %llu  ppNull %llu  key0 %llu  size0 %llu",
                 static_cast<unsigned long long>(tstats.texture_cache_skip_no_initial_data),
@@ -7076,9 +7088,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
         if (imgui.IsItemHovered() && show_tooltips) {
             if (is_muted) {
-                imgui.SetTooltip("Game Volume: %.0f%% | System Volume: %.0f%% (Muted)", current_volume, system_volume);
+                imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%% (Muted)", current_volume, system_volume);
             } else {
-                imgui.SetTooltip("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
+                imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
             }
         }
     }
@@ -7239,9 +7251,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
 
         if (imgui.IsItemHovered() && show_tooltips) {
             if (is_running) {
-                imgui.SetTooltip("Stopwatch: Running\nPress Ctrl+S to pause");
+                imgui.SetTooltipEx("Stopwatch: Running\nPress Ctrl+S to pause");
             } else {
-                imgui.SetTooltip("Stopwatch: Paused\nPress Ctrl+S to reset and start");
+                imgui.SetTooltipEx("Stopwatch: Paused\nPress Ctrl+S to reset and start");
             }
         }
     }
@@ -7274,9 +7286,9 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                     }
                     if (imgui.IsItemHovered() && show_tooltips) {
                         if (is_muted) {
-                            imgui.SetTooltip("Audio Volume: %.0f%% (Muted)", volume_value);
+                            imgui.SetTooltipEx("Audio Volume: %.0f%% (Muted)", volume_value);
                         } else {
-                            imgui.SetTooltip("Audio Volume: %.0f%%", volume_value);
+                            imgui.SetTooltipEx("Audio Volume: %.0f%%", volume_value);
                         }
                     }
                     break;
@@ -7289,7 +7301,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                         imgui.Text("%s", mute_state ? "Muted" : "Unmuted");
                     }
                     if (imgui.IsItemHovered() && show_tooltips) {
-                        imgui.SetTooltip("Audio: %s", mute_state ? "Muted" : "Unmuted");
+                        imgui.SetTooltipEx("Audio: %s", mute_state ? "Muted" : "Unmuted");
                     }
                     break;
                 }
@@ -7300,7 +7312,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
                         imgui.Text("%s", notification.action_name);
                     }
                     if (imgui.IsItemHovered() && show_tooltips) {
-                        imgui.SetTooltip("Gamepad Action: %s", notification.action_name);
+                        imgui.SetTooltipEx("Gamepad Action: %s", notification.action_name);
                     }
                     break;
                 }
@@ -7391,7 +7403,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         if (feature_text[0] != '\0') {
             imgui.TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", feature_text);
             if (imgui.IsItemHovered() && show_tooltips) {
-                imgui.SetTooltip("%s", tooltip_text);
+                imgui.SetTooltipEx("%s", tooltip_text);
             }
         }
     }
@@ -7429,7 +7441,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         if (name_str && *name_str) {
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Device: %s", name_str);
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Default render endpoint. Extension/codec (Dolby, DTS, PCM, etc.) shown on next line.\n\nRaw: %s",
                     device_info.raw_format_utf8.empty() ? "(none)" : device_info.raw_format_utf8.c_str());
             }
@@ -7442,7 +7454,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
                               device_info.sample_rate_hz, device_info.bits_per_sample, ext_str);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Source: Default output device mix format from WASAPI (IAudioClient::GetMixFormat).\n"
                 "Extension: stream/codec type (e.g. PCM, Float, Dolby AC3, DTS). Device name shows endpoint (e.g. "
                 "Dolby Atmos).\n\n"
@@ -7472,7 +7484,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Game audio volume control (0-100%%). When at 100%%, volume adjustments will affect system volume "
             "instead.");
     }
@@ -7482,7 +7494,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         // No immediate action required; stored for consistency with other UI
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Auto-apply volume changes when adjusting the slider.");
+        imgui.SetTooltipEx("Auto-apply volume changes when adjusting the slider.");
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:system_volume", std::memory_order_release);
@@ -7502,7 +7514,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "System master volume control (0-100%%). This adjusts the Windows system volume for the default output "
             "device.\n"
             "Note: System volume may also be adjusted automatically when game volume is at 100%% and you increase it.");
@@ -7527,7 +7539,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Manually mute/unmute audio.");
+        imgui.SetTooltipEx("Manually mute/unmute audio.");
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:audio:vu_peaks", std::memory_order_release);
@@ -7612,7 +7624,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
                             }
                         }
                         if (imgui.IsItemHovered()) {
-                            imgui.SetTooltip("Volume for channel %u (%s), game audio session.", ch, label);
+                            imgui.SetTooltipEx("Volume for channel %u (%s), game audio session.", ch, label);
                         }
                     }
                     imgui.TreePop();
@@ -7623,7 +7635,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
                               "Per-channel volume is not available for this output (e.g. Dolby Atmos PCM 7.1). "
                               "Switch Windows sound output to PCM 5.1 or Stereo for per-channel control.");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "IChannelAudioVolume is not exposed by the game audio session on some outputs (e.g. Dolby Atmos).");
             }
         }
@@ -7639,7 +7651,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Spacing();
         imgui.TextColored(ui::colors::TEXT_DIMMED, "Level (output)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Per-channel peak level (default output device, mixed).");
+            imgui.SetTooltipEx("Per-channel peak level (default output device, mixed).");
         }
         auto draw_list = imgui.GetWindowDrawList();
         const ImVec2 cursor = imgui.GetCursorScreenPos();
@@ -7705,7 +7717,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Mute the game's audio when it is not the foreground window.");
+        imgui.SetTooltipEx("Mute the game's audio when it is not the foreground window.");
     }
     if (settings::g_mainTabSettings.audio_mute.GetValue()) {
         imgui.EndDisabled();
@@ -7733,7 +7745,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Mute only if app is background AND another app outputs audio.");
+        imgui.SetTooltipEx("Mute only if app is background AND another app outputs audio.");
     }
     if (settings::g_mainTabSettings.audio_mute.GetValue()) {
         imgui.EndDisabled();
@@ -7824,7 +7836,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         }
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Select which audio output device this game should use.\n"
             "Uses Windows per-application audio routing (similar to 'App volume and device preferences').");
     }
@@ -7835,7 +7847,7 @@ void DrawAudioSettings(display_commander::ui::IImGuiWrapper& imgui) {
         refresh_audio_devices();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Re-scan active audio output devices (use after plugging/unplugging audio hardware).");
+        imgui.SetTooltipEx("Re-scan active audio output devices (use after plugging/unplugging audio hardware).");
     }
 }
 
@@ -7861,7 +7873,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Minimize the current game window.");
+        imgui.SetTooltipEx("Minimize the current game window.");
     }
 
     imgui.SameLine();
@@ -7878,7 +7890,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Focus the game window. Restores the window if minimized.");
+        imgui.SetTooltipEx("Focus the game window. Restores the window if minimized.");
     }
 
     imgui.SameLine();
@@ -7894,7 +7906,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Request graceful close of the game window (sends WM_CLOSE).");
+        imgui.SetTooltipEx("Request graceful close of the game window (sends WM_CLOSE).");
     }
 
     imgui.SameLine();
@@ -7939,7 +7951,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Open the game's installation folder in Windows Explorer.");
+        imgui.SetTooltipEx("Open the game's installation folder in Windows Explorer.");
     }
 
     imgui.SameLine();
@@ -7968,10 +7980,10 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
         std::string config_path =
             display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
         if (!config_path.empty()) {
-            imgui.SetTooltip("Open DisplayCommander config in the default text editor.\nFull path: %s",
+            imgui.SetTooltipEx("Open DisplayCommander config in the default text editor.\nFull path: %s",
                              config_path.c_str());
         } else {
-            imgui.SetTooltip("Open DisplayCommander.toml (config path not available).");
+            imgui.SetTooltipEx("Open DisplayCommander.toml (config path not available).");
         }
     }
 
@@ -7988,7 +8000,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("Restore the minimized game window.");
+        imgui.SetTooltipEx("Restore the minimized game window.");
     }
 
     imgui.SameLine();
@@ -8039,13 +8051,13 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
             size_t last_slash = full_path.find_last_of("\\/");
             if (last_slash != std::string::npos) {
                 std::string log_path = full_path.substr(0, last_slash) + "\\DisplayCommander.log";
-                imgui.SetTooltip("Open DisplayCommander.log in the default text editor.\nFull path: %s",
+                imgui.SetTooltipEx("Open DisplayCommander.log in the default text editor.\nFull path: %s",
                                  log_path.c_str());
             } else {
-                imgui.SetTooltip("Open DisplayCommander.log in the default text editor.");
+                imgui.SetTooltipEx("Open DisplayCommander.log in the default text editor.");
             }
         } else {
-            imgui.SetTooltip("Open DisplayCommander.log in the default text editor.");
+            imgui.SetTooltipEx("Open DisplayCommander.log in the default text editor.");
         }
     }
 
@@ -8098,12 +8110,12 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
                 size_t last_slash = full_path.find_last_of("\\/");
                 if (last_slash != std::string::npos) {
                     std::string log_path = full_path.substr(0, last_slash) + "\\reshade.log";
-                    imgui.SetTooltip("Open reshade.log in the default text editor.\nFull path: %s", log_path.c_str());
+                    imgui.SetTooltipEx("Open reshade.log in the default text editor.\nFull path: %s", log_path.c_str());
                 } else {
-                    imgui.SetTooltip("Open reshade.log in the default text editor.");
+                    imgui.SetTooltipEx("Open reshade.log in the default text editor.");
                 }
             } else {
-                imgui.SetTooltip("Open reshade.log in the default text editor.");
+                imgui.SetTooltipEx("Open reshade.log in the default text editor.");
             }
         }
 
@@ -8152,13 +8164,13 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
                 size_t last_slash = full_path.find_last_of("\\/");
                 if (last_slash != std::string::npos) {
                     std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
-                    imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
+                    imgui.SetTooltipEx("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
                                      ini_path.c_str());
                 } else {
-                    imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
+                    imgui.SetTooltipEx("Open reshade.ini (ReShade config) in the default text editor.");
                 }
             } else {
-                imgui.SetTooltip("Open reshade.ini (ReShade config) in the default text editor.");
+                imgui.SetTooltipEx("Open reshade.ini (ReShade config) in the default text editor.");
             }
         }
     }
@@ -8175,7 +8187,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             LogInfo("Performance overlay %s", show_test_overlay ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows a performance monitoring widget in the main ReShade overlay with frame time graph, "
                 "FPS counter, and other performance metrics. Demonstrates reshade_overlay event usage.");
         }
@@ -8187,7 +8199,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_labels.SetValue(show_labels);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
+            imgui.SetTooltipEx("Shows text labels (like 'fps:', 'lat:', etc.) before values in the overlay.");
         }
 
         // Separator
@@ -8202,7 +8214,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_playtime.SetValue(show_playtime);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows total playtime (time from game start) in the performance overlay.");
+            imgui.SetTooltipEx("Shows total playtime (time from game start) in the performance overlay.");
         }
         imgui.NextColumn();
 
@@ -8211,7 +8223,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_fps_counter.SetValue(show_fps_counter);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the current FPS counter in the main ReShade overlay.");
+            imgui.SetTooltipEx("Shows the current FPS counter in the main ReShade overlay.");
         }
         imgui.NextColumn();
 
@@ -8224,7 +8236,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_native_fps.SetValue(show_native_fps);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows native FPS (calculated from native Reflex sleep calls) alongside regular FPS in format: XX.X / "
                 "YY.Y fps%s",
                 native_reflex_active ? "" : ". Requires a game with native Reflex.");
@@ -8243,7 +8255,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_flip_status.SetValue(show_flip_status);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows the DXGI flip mode status (Composed, Independent Flip, MPO Overlay) in the performance "
                 "overlay.%s",
                 presentmon_enabled ? "" : " Requires PresentMon (enable in Advanced tab).");
@@ -8264,7 +8276,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_cpu_usage.SetValue(show_cpu_usage);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "100%% minus the %% of frame time the FPS limiter spends sleeping. "
                 "Not actual CPU usage: measures how much headroom the game has. 100%% = CPU limited.");
         }
@@ -8275,7 +8287,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_cpu_fps.SetValue(show_cpu_fps);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Current FPS / (cpu busy %%). Theoretical FPS if CPU were 100%% busy. "
                 "E.g. 100 fps at 50%% busy = 200 cpu fps.");
         }
@@ -8292,7 +8304,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_frame_time_graph.SetValue(show_frame_time_graph);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows a graph of frame times in the overlay.");
+            imgui.SetTooltipEx("Shows a graph of frame times in the overlay.");
         }
         imgui.NextColumn();
 
@@ -8301,7 +8313,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_frame_time_stats.SetValue(show_frame_time_stats);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
+            imgui.SetTooltipEx("Shows frame time statistics (avg, deviation, min, max) in the overlay.");
         }
         imgui.NextColumn();
 
@@ -8310,7 +8322,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_native_frame_time_graph.SetValue(show_native_frame_time_graph);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows a graph of native frame times (frames shown to display via native swapchain Present) in the "
                 "overlay.\nOnly available when limit real frames is enabled.");
         }
@@ -8321,7 +8333,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_frame_timeline_bar.SetValue(show_frame_timeline_bar);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows a compact frame timeline in the overlay (Simulation, Render Submit, Present, etc. as bars). "
                 "Updates every 1 s.");
         }
@@ -8345,7 +8357,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_fg_mode.SetValue(show_fg_mode);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.%s",
+            imgui.SetTooltipEx("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.%s",
                              dlss_ngx_seen ? "" : " Requires a game that uses DLSS/NGX.");
         }
         imgui.NextColumn();
@@ -8355,7 +8367,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_dlss_internal_resolution.SetValue(show_dlss_internal_resolution);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows DLSS internal resolution (e.g., 1920x1080) in the performance overlay.");
+            imgui.SetTooltipEx("Shows DLSS internal resolution (e.g., 1920x1080) in the performance overlay.");
         }
         imgui.NextColumn();
 
@@ -8364,7 +8376,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_dlss_status.SetValue(show_dlss_status);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows DLSS on/off status in the performance overlay.");
+            imgui.SetTooltipEx("Shows DLSS on/off status in the performance overlay.");
         }
         imgui.NextColumn();
 
@@ -8373,7 +8385,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_dlss_quality_preset.SetValue(show_dlss_quality_preset);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows DLSS quality preset (Performance, Balanced, Quality, Ultra Performance, Ultra Quality, DLAA) in "
                 "the performance overlay.");
         }
@@ -8385,7 +8397,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             ResetNGXPresetInitialization();
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Shows DLSS render preset (A, B, C, D, E, etc.) for the current quality mode in the performance "
                 "overlay.");
         }
@@ -8406,7 +8418,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_overlay_vram.SetValue(show_overlay_vram);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
+            imgui.SetTooltipEx("Shows GPU video memory used / budget (MiB) in the performance overlay (DXGI adapter).");
         }
         imgui.NextColumn();
 
@@ -8416,7 +8428,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
                 settings::g_mainTabSettings.show_overlay_texture_stats.SetValue(show_overlay_texture_stats);
             }
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "Shows texture tracker in overlay: total memory, peak memory, cache misses. "
                     "Requires Advanced -> Track loaded texture size.");
             }
@@ -8431,7 +8443,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.gpu_measurement_enabled.SetValue(gpu_measurement ? 1 : 0);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Measures time from Present call to GPU completion using fences.\n"
                 "Requires D3D11 with Windows 10+ or D3D12.\n"
                 "Shows as 'GPU Duration' in the timing metrics below.");
@@ -8441,7 +8453,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_WARNING, "(Disabled due to Smooth Motion)");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "nvpresent DLL is loaded; GPU completion measurement is suppressed while Smooth Motion is active.");
             }
         }
@@ -8458,7 +8470,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_stopwatch.SetValue(show_stopwatch);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
+            imgui.SetTooltipEx("Shows a stopwatch in the performance overlay. Use Ctrl+S to start/reset.");
         }
         imgui.NextColumn();
 
@@ -8467,7 +8479,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_overlay_vu_bars.SetValue(show_overlay_vu_bars);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows per-channel audio level (VU) bars in the performance overlay.");
+            imgui.SetTooltipEx("Shows per-channel audio level (VU) bars in the performance overlay.");
         }
         imgui.NextColumn();
 
@@ -8476,7 +8488,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_mainTabSettings.show_clock.SetValue(show_clock);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the current time (HH:MM:SS) in the overlay.");
+            imgui.SetTooltipEx("Shows the current time (HH:MM:SS) in the overlay.");
         }
         imgui.NextColumn();
 
@@ -8485,7 +8497,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             settings::g_experimentalTabSettings.show_volume.SetValue(show_volume);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Shows the current audio volume percentage in the overlay.");
+            imgui.SetTooltipEx("Shows the current audio volume percentage in the overlay.");
         }
         imgui.NextColumn();
 
@@ -8500,7 +8512,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Controls the transparency of the overlay background. 0.0 = fully transparent, 1.0 = fully opaque.");
         }
         // Overlay chart transparency slider
@@ -8509,7 +8521,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Controls the transparency of the frame time and refresh rate chart backgrounds. 0.0 = fully "
                 "transparent, 1.0 = fully opaque. Chart lines remain fully visible.");
         }
@@ -8518,7 +8530,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Controls the size of the frame time and refresh rate graphs in the overlay. "
                 "1.0x = default size (300x60px), 4.0x = maximum size (1200x240px).");
         }
@@ -8528,7 +8540,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Controls the maximum Y-axis value for the frame time and refresh rate graphs. "
                 "The graph will scale from 0ms to (average frame time × this multiplier). "
                 "Lower values (2x-4x) show more detail for normal frame times. "
@@ -8540,7 +8552,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Adds vertical spacing to the performance overlay position. "
                 "Useful to prevent overlap with stream overlay text. "
                 "Positive values move the overlay down, negative values move it up.");
@@ -8551,7 +8563,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
             // Setting is automatically saved by SliderFloatSetting
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Adds horizontal spacing to the performance overlay position. "
                 "Useful to prevent overlap with stream overlay text. "
                 "Positive values move the overlay to the right, negative values move it to the left.");
@@ -8574,7 +8586,7 @@ static void DrawImportantInfo_FpsCounterAndReset(display_commander::ui::IImGuiWr
         }
         imgui.PopStyleColor();
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Reset FPS/frametime statistics. Metrics are computed since reset.");
+            imgui.SetTooltipEx("Reset FPS/frametime statistics. Metrics are computed since reset.");
         }
     }
 }
@@ -8653,7 +8665,7 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
     // Native Frame Time Graph
     imgui.Text("Native Frame Time Graph");
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Shows frame times for frames actually displayed via native swapchain Present when limit real "
             "frames "
             "is enabled.");
@@ -8694,7 +8706,7 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
         imgui.SameLine();
         imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
+            imgui.SetTooltipEx("Time from Present call to GPU completion (D3D11 only, requires Windows 10+)");
         }
 
         // Sim-to-Display Latency (only show if we have valid measurement)
@@ -8707,7 +8719,7 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip("Time from simulation start to frame displayed (includes GPU work and present)");
+                imgui.SetTooltipEx("Time from simulation start to frame displayed (includes GPU work and present)");
             }
 
             // GPU Late Time (how much later GPU finishes compared to Present)
@@ -8719,7 +8731,7 @@ static void DrawImportantInfo_FrameTimeGraphContent(display_commander::ui::IImGu
             imgui.SameLine();
             imgui.TextColored(ui::colors::TEXT_VALUE, "(smoothed)");
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltip(
+                imgui.SetTooltipEx(
                     "How much later GPU completion finishes compared to Present\n0 ms = GPU finished before "
                     "Present\n>0 ms = GPU finished after Present (GPU is late)");
             }
@@ -8811,7 +8823,7 @@ static void DrawImportantInfo_RefreshRateMonitorContent(display_commander::ui::I
     }
 
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Measures actual display refresh rate via NvAPI_DISP_GetAdaptiveSyncData (flip count/timestamp).\n"
             "Requires NVAPI and a resolved display. Shows the real refresh rate which may differ\n"
             "from the configured rate due to VRR, power management, or other factors.");
@@ -8937,9 +8949,9 @@ void DrawAdhdMultiMonitorControls(display_commander::ui::IImGuiWrapper& imgui) {
                               info.hwnd, info.not_null ? "not null" : "null", info.left, info.top, info.width,
                               info.height, info.is_visible ? "yes" : "no");
         if (n > 0 && n < static_cast<int>(sizeof(buf))) {
-            imgui.SetTooltip("%s", buf);
+            imgui.SetTooltipEx("%s", buf);
         } else {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "ADHD on game display: black window on game's monitor.\n"
                 "ADHD Multi-Monitor Mode: cover all other monitors.");
         }

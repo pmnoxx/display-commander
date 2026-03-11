@@ -135,7 +135,7 @@ void DualSensePollingThread() {
 }
 
 bool InitializeDualSenseSupport() {
-    if (!enabled_experimental_features) {
+    if (!enabled_experimental_features || true) {
         return false;
     }
     if (g_dualsense_initialized.load()) {

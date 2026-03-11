@@ -95,7 +95,7 @@ void RemappingWidget::DrawRemappingSettings(display_commander::ui::IImGuiWrapper
         imgui.SameLine();
         imgui.TextDisabled("(?)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("When enabled, gamepad buttons will be mapped to keyboard inputs");
+            imgui.SetTooltipEx("When enabled, gamepad buttons will be mapped to keyboard inputs");
         }
 
         // Block gamepad input to game when home button is pressed
@@ -109,7 +109,7 @@ void RemappingWidget::DrawRemappingSettings(display_commander::ui::IImGuiWrapper
         imgui.SameLine();
         imgui.TextDisabled("(?)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "When enabled, blocks all gamepad input to the game (except home button) while home button is "
                 "pressed.\n"
                 "This prevents accidental button presses while using shortcuts.\n"
@@ -132,7 +132,7 @@ void RemappingWidget::DrawRemappingSettings(display_commander::ui::IImGuiWrapper
             }
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "Enable default gamepad chords:\n"
                 "- Home + D-Pad Up: Increase Volume\n"
                 "- Home + D-Pad Down: Decrease Volume\n"
@@ -379,7 +379,7 @@ void RemappingWidget::DrawAddRemapDialog(display_commander::ui::IImGuiWrapper& i
         imgui.SameLine();
         imgui.TextDisabled("(?)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("If enabled, the target will be held down while the gamepad button is pressed");
+            imgui.SetTooltipEx("If enabled, the target will be held down while the gamepad button is pressed");
         }
 
         // Chord Mode
@@ -387,7 +387,7 @@ void RemappingWidget::DrawAddRemapDialog(display_commander::ui::IImGuiWrapper& i
         imgui.SameLine();
         imgui.TextDisabled("(?)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "If enabled, the remapping will only work when the Home button is also pressed at the same time");
         }
 
@@ -496,7 +496,7 @@ void RemappingWidget::DrawEditRemapDialog(display_commander::ui::IImGuiWrapper& 
         imgui.SameLine();
         imgui.TextDisabled("(?)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip("If enabled, the target will be held down while the gamepad button is pressed");
+            imgui.SetTooltipEx("If enabled, the target will be held down while the gamepad button is pressed");
         }
 
         // Chord Mode
@@ -504,7 +504,7 @@ void RemappingWidget::DrawEditRemapDialog(display_commander::ui::IImGuiWrapper& 
         imgui.SameLine();
         imgui.TextDisabled("(?)");
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltip(
+            imgui.SetTooltipEx(
                 "If enabled, the remapping will only work when the Home button is also pressed at the same time");
         }
 

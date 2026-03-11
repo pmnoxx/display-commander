@@ -685,7 +685,7 @@ void HandleApplyDisplaySettingsAtStartCheckbox(display_commander::ui::IImGuiWrap
         g_setting_apply_display_settings_at_start.SetValue(value);
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip("When enabled, applies the selected resolution/refresh to the target monitor when the game starts.");
+        imgui.SetTooltipEx("When enabled, applies the selected resolution/refresh to the target monitor when the game starts.");
     }
 }
 
@@ -704,7 +704,7 @@ void HandleAutoRestoreResolutionCheckbox(display_commander::ui::IImGuiWrapper& i
     }
 
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "When enabled, automatically restores the original monitor resolution and refresh rate when the game "
             "closes.\nThis ensures your display settings return to normal after gaming sessions.");
     }
@@ -714,7 +714,7 @@ void HandleAutoRestoreResolutionCheckbox(display_commander::ui::IImGuiWrapper& i
 void HandleDXGIAPIApplyButton(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.TextDisabled("(?)");
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltip(
+        imgui.SetTooltipEx(
             "Uses DXGI SetFullscreenState + ResizeTarget to set fractional refresh rates.\nThis method "
             "creates a temporary swap chain to apply the mode.");
     }

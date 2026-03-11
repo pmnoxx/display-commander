@@ -1632,7 +1632,9 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     // d3d11.dll
     else if (lowerModuleName.find(L"d3d11.dll") != std::wstring::npos) {
-        if (InstallD3D11DeviceHooks(hModule)) {
+        if (HasReframeworkPluginModule()) {
+            LogInfo("[OnModuleLoaded] Skipping D3D11 hooks installation - ReFramework plugin detected");
+        } else if (InstallD3D11DeviceHooks(hModule)) {
             LogInfo("[OnModuleLoaded] D3D11 device hooks installed successfully");
         }
     }

@@ -15,6 +15,7 @@
 
 #include <MinHook.h>
 #include <algorithm>
+#include <functional>
 
 // Function pointer type definitions (following Special-K's approach)
 using NvAPI_D3D_SetLatencyMarker_pfn = NvAPI_Status(__cdecl*)(__in IUnknown* pDev,
@@ -115,41 +116,16 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
     return NVAPI_NO_IMPLEMENTATION;
 }
 
-// Hooked NvAPI_D3D_SetLatencyMarker function
-NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
-                                                       NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
-    // Filter out RTSS calls (following Special-K approach)
-    // RTSS is not native Reflex, so ignore it
-    static HMODULE hModRTSS =
-        Is64BitBuild() ? GetModuleHandleW(L"RTSSHooks64.dll") : GetModuleHandleW(L"RTSSHooks.dll");
-
-    // Get calling module using GetCallingDLL (similar to Special-K's SK_GetCallingDLL)
-    HMODULE calling_module = GetCallingDLL();
-
-    if (hModRTSS != nullptr && calling_module == hModRTSS) {
-        // Ignore RTSS calls - it's not native Reflex
-        return NVAPI_OK;
-    }
-    CALL_GUARD(utils::get_now_ns());
-    if (pDev == nullptr || pSetLatencyMarkerParams == nullptr) {
-        // Let's not do anything for invalid arguments
-        return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
-    }
+NvAPI_Status ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
+                                           const std::function<NvAPI_Status()>& send_present_end_to_driver) {
     bool reflex_marker_sent = false;
-    // utils::SRWLockExclusive lock(g_nvapi_lock);
-    // Increment counter
-    g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
-    // Record that the game (not us) just called SetLatencyMarker; PCLStatsReportingAllowed() will return false for a
-    // while.
     NotifyGameSetLatencyMarkerCall();
 
     // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
-    if (g_thread_tracking_enabled.load(std::memory_order_relaxed) && pSetLatencyMarkerParams != nullptr) {
-        const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
+    if (g_thread_tracking_enabled.load(std::memory_order_relaxed)) {
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
             g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
-            g_latency_marker_last_frame_id[marker_type].store(pSetLatencyMarkerParams->frameID,
-                                                              std::memory_order_relaxed);
+            g_latency_marker_last_frame_id[marker_type].store(frame_id, std::memory_order_relaxed);
         }
     }
 
@@ -168,11 +144,11 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
 
     // only for first 6 latency marker types
-    if (pSetLatencyMarkerParams != nullptr
-        && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), FpsLimiterCallSite::reflex_marker);
+    if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
+        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
     }
     bool use_present_end = false;
+    NvAPI_Status result = NVAPI_OK;
 
     auto reflex_fps_limiter_max_queued_frames =
         settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue();
@@ -181,10 +157,9 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                                         && reflex_fps_limiter_max_queued_frames == 0;  // game default
 
     if (native_pacing_sim_start_only) {
-        bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
+        bool use_fps_limiter = GetChosenFpsLimiter(site);
         if (use_fps_limiter) {
-            if (pSetLatencyMarkerParams != nullptr
-                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+            if (marker_type == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
                 OnPresentFlags2(false,
                                 true);  // Called from wrapper, not present_detour
 
@@ -192,22 +167,19 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                 RecordNativeFrameTime();
                 // display_commanderhooks::dxgi::HandlePresentBefore2();
             }
-            if (pSetLatencyMarkerParams != nullptr
-                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+            if (marker_type == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
                 display_commanderhooks::dxgi::HandlePresentAfter(true);
             }
         }
     } else {
-        if (pSetLatencyMarkerParams != nullptr
-            && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END
+        if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_END
             && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
-            NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+            result = send_present_end_to_driver();
             reflex_marker_sent = true;
         }
-        bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker);
+        bool use_fps_limiter = GetChosenFpsLimiter(site);
         if (use_fps_limiter) {
-            if (pSetLatencyMarkerParams != nullptr
-                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
+            if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
                 OnPresentFlags2(false,
                                 true);  // Called from wrapper, not present_detour
 
@@ -215,15 +187,13 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                 RecordNativeFrameTime();
                 // display_commanderhooks::dxgi::HandlePresentBefore2();
             }
-            if (pSetLatencyMarkerParams != nullptr
-                && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
+            if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
                 display_commanderhooks::dxgi::HandlePresentAfter(true);
             }
 
             // wait until the previous frame is ready to be shown to display based on
             // reflex_fps_limiter_max_queued_frames setting
             if (reflex_fps_limiter_max_queued_frames > 0) {
-                const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
                 const size_t prevSlot = static_cast<size_t>(
                     (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
@@ -250,9 +220,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
 
     // Cyclic buffer: record timestamp when this marker was called, keyed by (frame_id, markerType)
-    if (pSetLatencyMarkerParams != nullptr) {
-        const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
-        const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
+    if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
             const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
             const LONGLONG now_ns = utils::get_now_ns();
@@ -262,13 +230,10 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
 
     // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
-    if (pSetLatencyMarkerParams != nullptr
-        && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_START
-        && pSetLatencyMarkerParams->frameID > 300) {
+    if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START && frame_id > 300) {
         const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
         const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
         if (delay_enabled && delay_frames > 0.0f) {
-            const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
             const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
             const LONGLONG sim_start_ns =
                 g_latency_marker_buffer[slot]
@@ -317,18 +282,45 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
 
     if (settings::g_advancedTabSettings.reflex_supress_native.GetValue() || reflex_marker_sent) {
-        return NVAPI_OK;
+        return result;
     }
 
     // Log the call (first few times only)
     static int log_count = 0;
     if (log_count < 3) {
-        LogInfo("NVAPI SetLatencyMarker called - MarkerType: %d",
-                pSetLatencyMarkerParams ? pSetLatencyMarkerParams->markerType : -1);
+        LogInfo("NVAPI SetLatencyMarker called - MarkerType: %d", marker_type);
         log_count++;
     }
 
-    return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+    return send_present_end_to_driver();
+}
+
+// Hooked NvAPI_D3D_SetLatencyMarker function
+NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
+                                                       NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
+    // Filter out RTSS calls (following Special-K approach)
+    // RTSS is not native Reflex, so ignore it
+    static HMODULE hModRTSS =
+        Is64BitBuild() ? GetModuleHandleW(L"RTSSHooks64.dll") : GetModuleHandleW(L"RTSSHooks.dll");
+
+    // Get calling module using GetCallingDLL (similar to Special-K's SK_GetCallingDLL)
+    HMODULE calling_module = GetCallingDLL();
+
+    if (hModRTSS != nullptr && calling_module == hModRTSS) {
+        // Ignore RTSS calls - it's not native Reflex
+        return NVAPI_OK;
+    }
+    CALL_GUARD(utils::get_now_ns());
+    if (pDev == nullptr || pSetLatencyMarkerParams == nullptr) {
+        // Let's not do anything for invalid arguments
+        return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+    }
+    g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
+
+    return ProcessReflexMarkerFpsLimiter(
+        FpsLimiterCallSite::reflex_marker, static_cast<int>(pSetLatencyMarkerParams->markerType),
+        pSetLatencyMarkerParams->frameID,
+        [&]() { return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams); });
 }
 
 // Hooked NvAPI_D3D_SetSleepMode function

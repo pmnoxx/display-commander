@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.414 (unreleased)
+- **Prevent D3D11 hooking when ReFramework is detected** - When the ReFramework plugin (e.g. for Monster Hunter Rise, other REF games) is present, Display Commander no longer installs its D3D11 device hooks on d3d11.dll. This avoids conflicts and instability when both mods hook the same API. A log line is written when hooks are skipped. Details: loadlibrary_hooks.cpp OnModuleLoaded d3d11.dll branch checks HasReframeworkPluginModule() before InstallD3D11DeviceHooks.
+
 ## v0.12.413 (unreleased)
 - **Override game’s exception handler** - The AddVectoredExceptionHandler detour now registers the addon’s own vectored exception handler so Display Commander’s crash reporting runs even when the game registers its own. Process exit hooks use Initialize/Shutdown. Details: process_exit_hooks.hpp; api_hooks.cpp.
 

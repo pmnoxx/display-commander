@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.408 (unreleased)
+- **PresentMon feature removed** - PresentMon ETW tracing and related UI (flip state, debug info, Advanced tab option) are disabled. The feature is gated behind `kPresentMonEnabled` (set to false in presentmon_manager.hpp). Details: presentmon_manager.hpp kPresentMonEnabled = false; all PresentMon UI and logic already guarded by this flag.
+
 ## v0.12.407 (unreleased)
 - **Performance overlay: FPS limiter source** - Added an optional line in the performance overlay that shows which path is currently applying the FPS limiter (e.g. reflex_marker, dxgi_swapchain). Enable via the new "FPS limiter src" checkbox under Main tab → overlay controls (CPU / limiter section). Same value as "(src: xxx)" in the Main tab FPS limiter section. Details: show_fps_limiter_src in main_tab_settings; DrawPerformanceOverlayContent uses GetChosenFpsLimiterSiteName().
 

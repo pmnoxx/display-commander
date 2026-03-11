@@ -13,7 +13,7 @@
 
 namespace presentmon {
 
-constexpr bool kPresentMonEnabled = true;
+constexpr bool kPresentMonEnabled = false;
 
 // ETW event-type summary (cached schema for exploration/debug)
 struct PresentMonEventTypeSummary {

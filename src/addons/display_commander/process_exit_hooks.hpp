@@ -18,6 +18,9 @@ void Shutdown();
 // Our custom unhandled exception handler function
 LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info);
 
+// Vectored exception handler (used by AddVectoredExceptionHandler detour)
+LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS exception_info);
+
 // Last handler set via SetUnhandledExceptionFilter_Detour (not our handler)
 extern std::atomic<LPTOP_LEVEL_EXCEPTION_FILTER> g_last_detour_handler;
 

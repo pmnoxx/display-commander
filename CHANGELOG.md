@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.413 (unreleased)
+- **Override game’s exception handler** - The AddVectoredExceptionHandler detour now registers the addon’s own vectored exception handler so Display Commander’s crash reporting runs even when the game registers its own. Process exit hooks use Initialize/Shutdown. Details: process_exit_hooks.hpp; api_hooks.cpp.
+
 ## v0.12.412 (unreleased)
 - **Vulkan NVLL: use shared Reflex-marker FPS limiter** - The NvLowLatencyVk (reflex_marker_vk_nvll) path now uses the same Reflex-marker FPS limiter as the NVAPI path. Vulkan games that use NvLowLatencyVk.dll SetLatencyMarker get centralized handling via `ProcessReflexMarkerFpsLimiter`: FPS limiter choice, max-queued-frames throttling, OnPresentFlags2, HandlePresentAfter, and latency buffer recording. `NotifyGameSetLatencyMarkerCall` is now invoked for Vulkan NVLL as well, so PCLStats / "Inject Reflex" visibility is consistent with native Reflex. Details: ProcessReflexMarkerFpsLimiter declared in globals.hpp (int return, std::function<int()> callback); nvlowlatencyvk_hooks.cpp delegates to it; NVAPI and Vulkan share one implementation.
 

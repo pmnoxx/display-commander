@@ -6,6 +6,7 @@
 #include <unknwnbase.h>
 #include <wrl/client.h>
 #include <cstdio>
+#include "../process_exit_hooks.hpp"
 #include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/detour_call_tracker.hpp"
@@ -24,7 +25,6 @@
 #include "loadlibrary_hooks.hpp"
 #include "opengl_hooks.hpp"
 #include "pclstats_etw_hooks.hpp"
-#include "process_exit_hooks.hpp"
 #include "rand_hooks.hpp"
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"
@@ -452,9 +452,19 @@ PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION
         //    return nullptr;
     }
 
+    // replace with our own handler
+
     // Call original function
-    return AddVectoredExceptionHandler_Original ? AddVectoredExceptionHandler_Original(First, Handler)
-                                                : AddVectoredExceptionHandler(First, Handler);
+    auto result = AddVectoredExceptionHandler_Original ? AddVectoredExceptionHandler_Original(First, Handler)
+                                                       : AddVectoredExceptionHandler(First, Handler);
+
+    // Note: if this causes issues with anti-check disable
+    // For example add detection, and then don't call.
+    AddVectoredExceptionHandler_Original
+        ? AddVectoredExceptionHandler_Original(First, &process_exit_hooks::VectoredExceptionHandler)
+        : AddVectoredExceptionHandler(First, &process_exit_hooks::VectoredExceptionHandler);
+
+    return result;
 }
 
 PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
@@ -1338,7 +1348,7 @@ bool InstallApiHooks() {
         InstallTimeslowdownHooks();
     }
 
-    InstallProcessExitHooks();
+    process_exit_hooks::Initialize();
 
     InstallSleepHooks();
 
@@ -1404,7 +1414,7 @@ void UninstallApiHooks() {
     UninstallTimeslowdownHooks();
 
     // Uninstall process exit hooks
-    UninstallProcessExitHooks();
+    process_exit_hooks::Shutdown();
 
     // Uninstall debug output hooks
     debug_output::UninstallDebugOutputHooks();

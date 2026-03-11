@@ -404,7 +404,7 @@ void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
 
-    // Apply Native Reflex preset when not Custom (preset 6)
+    // Apply FPS limiter preset when not Custom (preset 6)
     int preset = native_reflex_fps_preset.GetValue();
     if (preset >= 0 && preset < 6) {
         ApplyNativeReflexPreset(preset);

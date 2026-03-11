@@ -3769,161 +3769,158 @@ void DrawDisplaySettings_FpsLimiter(display_commander::ui::IImGuiWrapper& imgui)
 
 static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::IImGuiWrapper& imgui,
                                                         const std::function<void()>& drawPclStatsCheckbox) {
+    // Reflex mode selector (Low latency / Low+boost / Off / Game Defaults) — always visible so it's not lost when FPS
+    // limiter preset is used
+    imgui.Spacing();
+    if (ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
+        // Setting is automatically saved via ComboSettingEnumWrapper
+    }
+    if (imgui.IsItemHovered()) {
+        std::string tooltip =
+            "NVIDIA Reflex setting when using OnPresent FPS limiter.\n\n"
+            "Low latency: Enables Reflex Low Latency Mode (default).\n"
+            "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
+            "Off: Disables both Low Latency and Boost.\n"
+            "Game Defaults: Do not override; use the game's own Reflex settings.";
+        auto last_params = ::g_last_reflex_params_set_by_addon.load();
+        if (last_params) {
+            float fps = (last_params->minimumIntervalUs > 0)
+                            ? (1000000.0f / static_cast<float>(last_params->minimumIntervalUs))
+                            : 0.0f;
+            tooltip += "\n\nLast Reflex settings we set via API:";
+            tooltip += "\n  Low Latency: ";
+            tooltip += (last_params->bLowLatencyMode != 0) ? "On" : "Off";
+            tooltip += ", Boost: ";
+            tooltip += (last_params->bLowLatencyBoost != 0) ? "On" : "Off";
+            tooltip += ", Use Markers: ";
+            tooltip += (last_params->bUseMarkersToOptimize != 0) ? "On" : "Off";
+            tooltip += "\n  FPS limit: ";
+            if (fps > 0.0f) {
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(1) << fps;
+                tooltip += oss.str();
+            } else {
+                tooltip += "none";
+            }
+        }
+        imgui.SetTooltip("%s", tooltip.c_str());
+    }
+
     if (!::IsNativeFramePacingInSync()) {
         // Check if we're running on D3D9 and show warning
         const reshade::api::device_api current_api = g_last_reshade_device_api.load();
         if (current_api == reshade::api::device_api::d3d9) {
             imgui.TextColored(ui::colors::TEXT_WARNING,
                               ICON_FK_WARNING " Warning: Reflex does not work with Direct3D 9");
-        } else {
-            if (imgui.IsItemHovered()) {
-                std::string tooltip = "Reflex is enabled by default when supported.";
-                auto last_params = ::g_last_reflex_params_set_by_addon.load();
-                if (last_params) {
-                    float fps = (last_params->minimumIntervalUs > 0)
-                                    ? (1000000.0f / static_cast<float>(last_params->minimumIntervalUs))
-                                    : 0.0f;
-                    tooltip += "\n\nLast Reflex settings we set via API:";
-                    tooltip += "\n  Low Latency: ";
-                    tooltip += (last_params->bLowLatencyMode != 0) ? "On" : "Off";
-                    tooltip += ", Boost: ";
-                    tooltip += (last_params->bLowLatencyBoost != 0) ? "On" : "Off";
-                    tooltip += ", Use Markers: ";
-                    tooltip += (last_params->bUseMarkersToOptimize != 0) ? "On" : "Off";
-                    tooltip += "\n  FPS limit: ";
-                    if (fps > 0.0f) {
-                        std::ostringstream oss;
-                        oss << std::fixed << std::setprecision(1) << fps;
-                        tooltip += oss.str();
-                    } else {
-                        tooltip += "none";
-                    }
-                }
-                imgui.SetTooltip("%s", tooltip.c_str());
-            }
+        }
 
-            // Reflex mode selector for OnPresent: Low latency (default), Low+boost, Off, Game Defaults
-            imgui.Spacing();
-            if (ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
-                // Setting is automatically saved via ComboSettingEnumWrapper
+        // Low Latency Ratio Selector (Experimental WIP placeholder)
+        imgui.Spacing();
+        auto display_input_ratio =
+            !(::IsNativeFramePacingInSync() && settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue());
+
+        if (display_input_ratio) {
+            if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
+                                    "Display / Input Ratio", imgui, 600.f)) {
+                // Setting is automatically saved via ComboSettingWrapper
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltip(
-                    "NVIDIA Reflex setting when using OnPresent FPS limiter.\n\n"
-                    "Low latency: Enables Reflex Low Latency Mode (default).\n"
-                    "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
-                    "Off: Disables both Low Latency and Boost.\n"
-                    "Game Defaults: Do not override; use the game's own Reflex settings.");
+                    "Controls the balance between display latency and input latency.\n\n"
+                    "Available in 12.5%% steps:\n"
+                    "100%% Display / 0%% Input: Prioritizes consistent frame timing (better frame timing at "
+                    "cost "
+                    "of latency)\n"
+                    "87.5%% Display / 12.5%% Input: Slight input latency reduction\n"
+                    "75%% Display / 25%% Input: Moderate input latency reduction\n"
+                    "62.5%% Display / 37.5%% Input: Balanced with slight input preference\n"
+                    "50%% Display / 50%% Input: Balanced approach\n"
+                    "37.5%% Display / 62.5%% Input: Balanced with slight display preference\n"
+                    "25%% Display / 75%% Input: Prioritizes input responsiveness\n"
+                    "12.5%% Display / 87.5%% Input: Strong input preference\n"
+                    "0%% Display / 100%% Input: Maximum input responsiveness (lower latency)\n\n"
+                    "Note: This is an experimental feature.");
             }
 
-            // Low Latency Ratio Selector (Experimental WIP placeholder)
-            imgui.Spacing();
-            auto display_input_ratio =
-                !(::IsNativeFramePacingInSync() && settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue());
+            // Debug Info Button
+            imgui.SameLine();
+            static bool show_delay_bias_debug = false;
+            if (imgui.SmallButton("[Debug]")) {
+                show_delay_bias_debug = !show_delay_bias_debug;
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Show delay_bias debug information");
+            }
 
-            if (display_input_ratio) {
-                if (ComboSettingWrapper(settings::g_mainTabSettings.onpresent_sync_low_latency_ratio,
-                                        "Display / Input Ratio", imgui, 600.f)) {
-                    // Setting is automatically saved via ComboSettingWrapper
+            // Debug Info Window
+            if (show_delay_bias_debug) {
+                imgui.Begin("Delay Bias Debug Info", &show_delay_bias_debug, ImGuiWindowFlags_AlwaysAutoResize);
+
+                // Get current values
+                int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
+                float delay_bias = g_onpresent_sync_delay_bias.load();
+                LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
+                LONGLONG last_frame_end_ns = g_onpresent_sync_last_frame_end_ns.load();
+                LONGLONG frame_start_ns = g_onpresent_sync_frame_start_ns.load();
+                LONGLONG pre_sleep_ns = g_onpresent_sync_pre_sleep_ns.load();
+                LONGLONG post_sleep_ns = g_onpresent_sync_post_sleep_ns.load();
+                LONGLONG late_ns = late_amount_ns.load();
+
+                // Display ratio index and delay_bias
+                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Ratio Settings:");
+                imgui.Text("Ratio Index: %d", ratio_index);
+                float display_pct = (1.0f - delay_bias) * 100.0f;
+                float input_pct = delay_bias * 100.0f;
+                imgui.Text("Delay Bias: %.3f (%.1f%% Display / %.1f%% Input)", delay_bias, display_pct, input_pct);
+
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing:");
+                if (frame_time_ns > 0) {
+                    float frame_time_ms = frame_time_ns / 1'000'000.0f;
+                    float target_fps = 1000.0f / frame_time_ms;
+                    imgui.Text("Frame Time: %.3f ms (%.1f FPS)", frame_time_ms, target_fps);
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "Frame Time: Not set (FPS limiter disabled?)");
                 }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip(
-                        "Controls the balance between display latency and input latency.\n\n"
-                        "Available in 12.5%% steps:\n"
-                        "100%% Display / 0%% Input: Prioritizes consistent frame timing (better frame timing at "
-                        "cost "
-                        "of latency)\n"
-                        "87.5%% Display / 12.5%% Input: Slight input latency reduction\n"
-                        "75%% Display / 25%% Input: Moderate input latency reduction\n"
-                        "62.5%% Display / 37.5%% Input: Balanced with slight input preference\n"
-                        "50%% Display / 50%% Input: Balanced approach\n"
-                        "37.5%% Display / 62.5%% Input: Balanced with slight display preference\n"
-                        "25%% Display / 75%% Input: Prioritizes input responsiveness\n"
-                        "12.5%% Display / 87.5%% Input: Strong input preference\n"
-                        "0%% Display / 100%% Input: Maximum input responsiveness (lower latency)\n\n"
-                        "Note: This is an experimental feature.");
+
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Sleep Times:");
+                if (pre_sleep_ns > 0) {
+                    imgui.Text("Pre-Sleep: %.3f ms", pre_sleep_ns / 1'000'000.0f);
+                } else {
+                    imgui.Text("Pre-Sleep: 0 ms");
+                }
+                if (post_sleep_ns > 0) {
+                    imgui.Text("Post-Sleep: %.3f ms", post_sleep_ns / 1'000'000.0f);
+                } else {
+                    imgui.Text("Post-Sleep: 0 ms");
+                }
+                if (late_ns != 0) {
+                    imgui.TextColored(ui::colors::TEXT_WARNING, "Late Amount: %.3f ms", late_ns / 1'000'000.0f);
+                } else {
+                    imgui.Text("Late Amount: 0 ms");
                 }
 
-                // Debug Info Button
-                imgui.SameLine();
-                static bool show_delay_bias_debug = false;
-                if (imgui.SmallButton("[Debug]")) {
-                    show_delay_bias_debug = !show_delay_bias_debug;
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing (Raw):");
+                if (last_frame_end_ns > 0) {
+                    LONGLONG now_ns = utils::get_now_ns();
+                    LONGLONG time_since_last_frame_ns = now_ns - last_frame_end_ns;
+                    imgui.Text("Last Frame End: %lld ns (%.3f ms ago)", last_frame_end_ns,
+                               time_since_last_frame_ns / 1'000'000.0f);
+                } else {
+                    imgui.Text("Last Frame End: Not set (first frame?)");
                 }
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltip("Show delay_bias debug information");
+                if (frame_start_ns > 0) {
+                    LONGLONG now_ns = utils::get_now_ns();
+                    LONGLONG time_since_start_ns = now_ns - frame_start_ns;
+                    imgui.Text("Frame Start: %lld ns (%.3f ms ago)", frame_start_ns,
+                               time_since_start_ns / 1'000'000.0f);
+                } else {
+                    imgui.Text("Frame Start: Not set");
                 }
 
-                // Debug Info Window
-                if (show_delay_bias_debug) {
-                    imgui.Begin("Delay Bias Debug Info", &show_delay_bias_debug, ImGuiWindowFlags_AlwaysAutoResize);
-
-                    // Get current values
-                    int ratio_index = settings::g_mainTabSettings.onpresent_sync_low_latency_ratio.GetValue();
-                    float delay_bias = g_onpresent_sync_delay_bias.load();
-                    LONGLONG frame_time_ns = g_onpresent_sync_frame_time_ns.load();
-                    LONGLONG last_frame_end_ns = g_onpresent_sync_last_frame_end_ns.load();
-                    LONGLONG frame_start_ns = g_onpresent_sync_frame_start_ns.load();
-                    LONGLONG pre_sleep_ns = g_onpresent_sync_pre_sleep_ns.load();
-                    LONGLONG post_sleep_ns = g_onpresent_sync_post_sleep_ns.load();
-                    LONGLONG late_ns = late_amount_ns.load();
-
-                    // Display ratio index and delay_bias
-                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Ratio Settings:");
-                    imgui.Text("Ratio Index: %d", ratio_index);
-                    float display_pct = (1.0f - delay_bias) * 100.0f;
-                    float input_pct = delay_bias * 100.0f;
-                    imgui.Text("Delay Bias: %.3f (%.1f%% Display / %.1f%% Input)", delay_bias, display_pct, input_pct);
-
-                    imgui.Spacing();
-                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing:");
-                    if (frame_time_ns > 0) {
-                        float frame_time_ms = frame_time_ns / 1'000'000.0f;
-                        float target_fps = 1000.0f / frame_time_ms;
-                        imgui.Text("Frame Time: %.3f ms (%.1f FPS)", frame_time_ms, target_fps);
-                    } else {
-                        imgui.TextColored(ui::colors::TEXT_WARNING, "Frame Time: Not set (FPS limiter disabled?)");
-                    }
-
-                    imgui.Spacing();
-                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Sleep Times:");
-                    if (pre_sleep_ns > 0) {
-                        imgui.Text("Pre-Sleep: %.3f ms", pre_sleep_ns / 1'000'000.0f);
-                    } else {
-                        imgui.Text("Pre-Sleep: 0 ms");
-                    }
-                    if (post_sleep_ns > 0) {
-                        imgui.Text("Post-Sleep: %.3f ms", post_sleep_ns / 1'000'000.0f);
-                    } else {
-                        imgui.Text("Post-Sleep: 0 ms");
-                    }
-                    if (late_ns != 0) {
-                        imgui.TextColored(ui::colors::TEXT_WARNING, "Late Amount: %.3f ms", late_ns / 1'000'000.0f);
-                    } else {
-                        imgui.Text("Late Amount: 0 ms");
-                    }
-
-                    imgui.Spacing();
-                    imgui.TextColored(ui::colors::TEXT_HIGHLIGHT, "Frame Timing (Raw):");
-                    if (last_frame_end_ns > 0) {
-                        LONGLONG now_ns = utils::get_now_ns();
-                        LONGLONG time_since_last_frame_ns = now_ns - last_frame_end_ns;
-                        imgui.Text("Last Frame End: %lld ns (%.3f ms ago)", last_frame_end_ns,
-                                   time_since_last_frame_ns / 1'000'000.0f);
-                    } else {
-                        imgui.Text("Last Frame End: Not set (first frame?)");
-                    }
-                    if (frame_start_ns > 0) {
-                        LONGLONG now_ns = utils::get_now_ns();
-                        LONGLONG time_since_start_ns = now_ns - frame_start_ns;
-                        imgui.Text("Frame Start: %lld ns (%.3f ms ago)", frame_start_ns,
-                                   time_since_start_ns / 1'000'000.0f);
-                    } else {
-                        imgui.Text("Frame Start: Not set");
-                    }
-
-                    imgui.End();
-                }
+                imgui.End();
             }
         }
     }
@@ -3933,7 +3930,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         drawPclStatsCheckbox();
     }
 
-    // Native Reflex FPS presets (only visible if OnPresentSync mode is selected and in sync)
+    // FPS limiter presets (only visible if OnPresentSync mode is selected and in sync)
     if (::IsNativeFramePacingInSync()) {
         int preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
         if (preset < 0 || preset > 6) {
@@ -3942,13 +3939,13 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         }
         imgui.Spacing();
         imgui.SetNextItemWidth(500.f);
-        if (ComboSettingWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "Native Reflex FPS preset", imgui,
-                                500.f)) {
+        if (ComboSettingWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "FPS limiter preset", imgui,
+                                600.f)) {
             int new_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
             if (new_preset >= 0 && new_preset < 6) {
                 settings::ApplyNativeReflexPreset(new_preset);
             }
-            LogInfo("Native Reflex FPS preset changed to %d", new_preset);
+            LogInfo("FPS limiter preset changed to %d", new_preset);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltip(
@@ -4039,9 +4036,9 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     }
 
     // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
-    // Shown when Custom preset, or when outside native reflex block (safe mode is not preset-controlled)
-    const int native_reflex_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
-    const bool show_safe_mode = !::IsNativeFramePacingInSync() || native_reflex_preset == 6;
+    // Shown when Custom FPS limiter preset, or when outside native reflex block (safe mode is not preset-controlled)
+    const int fps_limiter_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
+    const bool show_safe_mode = !::IsNativeFramePacingInSync() || fps_limiter_preset == 6;
     if (show_safe_mode
         && CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {
         LogInfo("Safe Mode fps limiter %s",

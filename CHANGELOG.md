@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.410 (unreleased)
+- **Reflex FPS limiter: max queued frames only when limiter active** - The `reflex_fps_limiter_max_queued_frames` wait (throttling until the previous frame's SIMULATION_START is after PRESENT_START) now runs only when the Reflex-marker FPS limiter is the active limiter. Previously it could run for every marker even when another FPS limiter was in use, which was incorrect. Details: nvapi_hooks.cpp — block moved inside `use_fps_limiter` and PRESENT_END branch.
+
 ## v0.12.409 (unreleased)
 - **Reflex markers: fix double-send and missing sends** - Fixed bugs where Reflex latency markers were sometimes sent twice (e.g. from both DXGI Present and NVAPI SetLatencyMarker paths), causing frame generation (FG) to repeatedly turn on and off, and in other cases were not sent when they should have been. The addon now coordinates marker injection so markers are sent exactly once and reliably. Details: reflex marker injection / PCLStats and NVAPI SetLatencyMarker coordination.
 

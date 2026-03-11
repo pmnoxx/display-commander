@@ -219,25 +219,31 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                 && pSetLatencyMarkerParams->markerType == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
                 display_commanderhooks::dxgi::HandlePresentAfter(true);
             }
-        }
-        if (reflex_fps_limiter_max_queued_frames > 0) {
-            const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
-            const size_t prevSlot = static_cast<size_t>(
-                (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
-            const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
 
-            if (g_latency_marker_buffer[prevSlot].frame_id.load(std::memory_order_relaxed)
-                == frame_id - reflex_fps_limiter_max_queued_frames) {
-                auto start_ns = utils::get_now_ns();
-                while (
-                    g_latency_marker_buffer[prevSlot].marker_time_ns[NV_LATENCY_MARKER_TYPE::SIMULATION_START].load()
-                    > g_latency_marker_buffer[prevSlot].marker_time_ns[NV_LATENCY_MARKER_TYPE::PRESENT_START].load()) {
-                    // XXX
-                    if (utils::get_now_ns() - start_ns > 100 * utils::NS_TO_MS) {
-                        // safety net
-                        break;
+            // wait until the previous frame is ready to be shown to display based on
+            // reflex_fps_limiter_max_queued_frames setting
+            if (reflex_fps_limiter_max_queued_frames > 0) {
+                const uint64_t frame_id = pSetLatencyMarkerParams->frameID;
+                const size_t prevSlot = static_cast<size_t>(
+                    (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
+                const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+
+                if (g_latency_marker_buffer[prevSlot].frame_id.load(std::memory_order_relaxed)
+                    == frame_id - reflex_fps_limiter_max_queued_frames) {
+                    auto start_ns = utils::get_now_ns();
+                    while (g_latency_marker_buffer[prevSlot]
+                               .marker_time_ns[NV_LATENCY_MARKER_TYPE::SIMULATION_START]
+                               .load()
+                           > g_latency_marker_buffer[prevSlot]
+                                 .marker_time_ns[NV_LATENCY_MARKER_TYPE::PRESENT_START]
+                                 .load()) {
+                        // XXX
+                        if (utils::get_now_ns() - start_ns > 50 * utils::NS_TO_MS) {
+                            // safety net
+                            break;
+                        }
+                        YieldProcessor();
                     }
-                    YieldProcessor();
                 }
             }
         }

@@ -2,6 +2,10 @@
 
 ---
 
+## v0.12.404 (unreleased)
+- **Debug tab: Hooks sub-tab** - Added debug menu: Debug tab now has a **Hooks** sub-tab listing all hook types with **Suppressed** and **Installed** per line, and a **checkbox** to turn suppression on/off for each hook (saved to [DisplayCommander.HookSuppression]; takes effect on next hook install, e.g. game restart).
+- **WGI suppression: networking warning** - Advanced tab "Enable Windows Gaming Input suppression globally" now shows a warning on the same line: suppressing Windows Gaming Input may break networking in some games. Tooltip updated with the same warning.
+
 ## v0.12.403 (unreleased)
 - **OnModuleLoaded log: ProductName and Version** - The [OnModuleLoaded] log line now includes the module’s version resource ProductName and Version (e.g. " - Display Commander 0.12.403.0" or " - NVIDIA DLSS 3.7.0.0") when available, making it easier to identify loaded DLLs from the log. Details: GetDLLProductNameUtf8 in general_utils; loadlibrary_hooks.cpp OnModuleLoaded uses GetModuleFileNameW then GetDLLProductNameUtf8 and GetDLLVersionString.
 

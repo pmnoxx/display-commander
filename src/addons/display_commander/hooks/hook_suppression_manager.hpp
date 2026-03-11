@@ -43,11 +43,23 @@ class HookSuppressionManager {
     // Check if a specific hook type should be suppressed
     bool ShouldSuppressHook(HookType hookType);
 
+    // Set suppression for a hook type and persist to config. Takes effect on next hook install attempt.
+    void SetSuppressHook(HookType hookType, bool suppress);
+
     // Mark a hook as successfully installed
     void MarkHookInstalled(HookType hookType);
 
     // Get the human-readable name for a hook type
     std::string GetHookTypeName(HookType hookType);
+
+    // Check if a hook type is currently marked as installed (from config DisplayCommander.HooksInstalled)
+    bool IsHookInstalled(HookType hookType);
+
+    // Number of hook types (for UI iteration)
+    static constexpr int kHookTypeCount = 27;
+
+    // Get hook type by index (0 .. kHookTypeCount-1). Valid only for display iteration.
+    static HookType GetHookTypeByIndex(int index);
 
    private:
     HookSuppressionManager() = default;

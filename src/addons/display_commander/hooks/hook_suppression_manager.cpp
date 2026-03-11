@@ -198,6 +198,122 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
     }
 }
 
+void HookSuppressionManager::SetSuppressHook(HookType hookType, bool suppress) {
+    switch (hookType) {
+        case HookType::DXGI_FACTORY:
+            settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_dxgi_factory_hooks.Save();
+            break;
+        case HookType::DXGI_SWAPCHAIN:
+            settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_dxgi_swapchain_hooks.Save();
+            break;
+        case HookType::SL_PROXY_DXGI_SWAPCHAIN:
+            settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_sl_proxy_dxgi_swapchain_hooks.Save();
+            break;
+        case HookType::D3D11_DEVICE:
+            settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_d3d11_device_hooks.Save();
+            break;
+        case HookType::D3D12_DEVICE:
+            settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_d3d12_device_hooks.Save();
+            break;
+        case HookType::XINPUT:
+            settings::g_hook_suppression_settings.suppress_xinput_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_xinput_hooks.Save();
+            break;
+        case HookType::DINPUT:
+            settings::g_hook_suppression_settings.suppress_dinput_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_dinput_hooks.Save();
+            break;
+        case HookType::DINPUT8:
+            settings::g_hook_suppression_settings.suppress_dinput8_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_dinput8_hooks.Save();
+            break;
+        case HookType::STREAMLINE:
+            settings::g_hook_suppression_settings.suppress_streamline_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_streamline_hooks.Save();
+            break;
+        case HookType::NGX:
+            settings::g_hook_suppression_settings.suppress_ngx_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_ngx_hooks.Save();
+            break;
+        case HookType::WINDOWS_GAMING_INPUT:
+            settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_windows_gaming_input_hooks.Save();
+            break;
+        case HookType::HID_KERNEL32:
+            settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_hid_kernel32_hooks.Save();
+            break;
+        case HookType::HID_HID_DLL:
+            settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_hid_hid_dll_hooks.Save();
+            break;
+        case HookType::API:
+            settings::g_hook_suppression_settings.suppress_api_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_api_hooks.Save();
+            break;
+        case HookType::WINDOW_API:
+            settings::g_hook_suppression_settings.suppress_window_api_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_window_api_hooks.Save();
+            break;
+        case HookType::SLEEP:
+            settings::g_hook_suppression_settings.suppress_sleep_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_sleep_hooks.Save();
+            break;
+        case HookType::TIMESLOWDOWN:
+            settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_timeslowdown_hooks.Save();
+            break;
+        case HookType::DEBUG_OUTPUT:
+            settings::g_hook_suppression_settings.suppress_debug_output_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_debug_output_hooks.Save();
+            break;
+        case HookType::LOADLIBRARY:
+            settings::g_hook_suppression_settings.suppress_loadlibrary_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_loadlibrary_hooks.Save();
+            break;
+        case HookType::DISPLAY_SETTINGS:
+            settings::g_hook_suppression_settings.suppress_display_settings_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_display_settings_hooks.Save();
+            break;
+        case HookType::WINDOWS_MESSAGE:
+            settings::g_hook_suppression_settings.suppress_windows_message_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_windows_message_hooks.Save();
+            break;
+        case HookType::OPENGL:
+            settings::g_hook_suppression_settings.suppress_opengl_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_opengl_hooks.Save();
+            break;
+        case HookType::HID_SUPPRESSION:
+            settings::g_hook_suppression_settings.suppress_hid_suppression_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_hid_suppression_hooks.Save();
+            break;
+        case HookType::NVAPI:
+            settings::g_hook_suppression_settings.suppress_nvapi_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_nvapi_hooks.Save();
+            break;
+        case HookType::PROCESS_EXIT:
+            settings::g_hook_suppression_settings.suppress_process_exit_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_process_exit_hooks.Save();
+            break;
+        case HookType::WINDOW_PROC:
+            settings::g_hook_suppression_settings.suppress_window_proc_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_window_proc_hooks.Save();
+            break;
+        case HookType::DBGHELP:
+            settings::g_hook_suppression_settings.suppress_dbghelp_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_dbghelp_hooks.Save();
+            break;
+        default:
+            LogError("HookSuppressionManager::SetSuppressHook - Invalid hook type: %d", static_cast<int>(hookType));
+            break;
+    }
+}
+
 void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
     switch (hookType) {
         case HookType::DXGI_FACTORY:
@@ -406,6 +522,74 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
             LogError("HookSuppressionManager::GetHookTypeName - Invalid hook type: %d", static_cast<int>(hookType));
             return "Unknown";
     }
+}
+
+bool HookSuppressionManager::IsHookInstalled(HookType hookType) {
+    switch (hookType) {
+        case HookType::DXGI_FACTORY:
+            return settings::g_hook_suppression_settings.dxgi_factory_hooks_installed.GetValue();
+        case HookType::DXGI_SWAPCHAIN:
+            return settings::g_hook_suppression_settings.dxgi_swapchain_hooks_installed.GetValue();
+        case HookType::SL_PROXY_DXGI_SWAPCHAIN:
+            return settings::g_hook_suppression_settings.sl_proxy_dxgi_swapchain_hooks_installed.GetValue();
+        case HookType::D3D11_DEVICE:
+            return settings::g_hook_suppression_settings.d3d11_device_hooks_installed.GetValue();
+        case HookType::D3D12_DEVICE:
+            return settings::g_hook_suppression_settings.d3d12_device_hooks_installed.GetValue();
+        case HookType::XINPUT:
+            return settings::g_hook_suppression_settings.xinput_hooks_installed.GetValue();
+        case HookType::DINPUT:
+            return settings::g_hook_suppression_settings.dinput_hooks_installed.GetValue();
+        case HookType::DINPUT8:
+            return settings::g_hook_suppression_settings.dinput8_hooks_installed.GetValue();
+        case HookType::STREAMLINE:
+            return settings::g_hook_suppression_settings.streamline_hooks_installed.GetValue();
+        case HookType::NGX:
+            return settings::g_hook_suppression_settings.ngx_hooks_installed.GetValue();
+        case HookType::WINDOWS_GAMING_INPUT:
+            return settings::g_hook_suppression_settings.windows_gaming_input_hooks_installed.GetValue();
+        case HookType::HID_KERNEL32:
+            return settings::g_hook_suppression_settings.hid_kernel32_hooks_installed.GetValue();
+        case HookType::HID_HID_DLL:
+            return settings::g_hook_suppression_settings.hid_hid_dll_hooks_installed.GetValue();
+        case HookType::API:
+            return settings::g_hook_suppression_settings.api_hooks_installed.GetValue();
+        case HookType::WINDOW_API:
+            return settings::g_hook_suppression_settings.window_api_hooks_installed.GetValue();
+        case HookType::SLEEP:
+            return settings::g_hook_suppression_settings.sleep_hooks_installed.GetValue();
+        case HookType::TIMESLOWDOWN:
+            return settings::g_hook_suppression_settings.timeslowdown_hooks_installed.GetValue();
+        case HookType::DEBUG_OUTPUT:
+            return settings::g_hook_suppression_settings.debug_output_hooks_installed.GetValue();
+        case HookType::LOADLIBRARY:
+            return settings::g_hook_suppression_settings.loadlibrary_hooks_installed.GetValue();
+        case HookType::DISPLAY_SETTINGS:
+            return settings::g_hook_suppression_settings.display_settings_hooks_installed.GetValue();
+        case HookType::WINDOWS_MESSAGE:
+            return settings::g_hook_suppression_settings.windows_message_hooks_installed.GetValue();
+        case HookType::OPENGL:
+            return settings::g_hook_suppression_settings.opengl_hooks_installed.GetValue();
+        case HookType::HID_SUPPRESSION:
+            return settings::g_hook_suppression_settings.hid_suppression_hooks_installed.GetValue();
+        case HookType::NVAPI:
+            return settings::g_hook_suppression_settings.nvapi_hooks_installed.GetValue();
+        case HookType::PROCESS_EXIT:
+            return settings::g_hook_suppression_settings.process_exit_hooks_installed.GetValue();
+        case HookType::WINDOW_PROC:
+            return settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue();
+        case HookType::DBGHELP:
+            return settings::g_hook_suppression_settings.dbghelp_hooks_installed.GetValue();
+        default:
+            return false;
+    }
+}
+
+HookType HookSuppressionManager::GetHookTypeByIndex(int index) {
+    if (index < 0 || index >= kHookTypeCount) {
+        return static_cast<HookType>(0);
+    }
+    return static_cast<HookType>(index);
 }
 
 }  // namespace display_commanderhooks

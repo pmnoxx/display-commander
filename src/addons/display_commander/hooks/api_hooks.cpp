@@ -449,7 +449,7 @@ PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION
     LogDebug("AddVectoredExceptionHandler_Detour: First=%lu, Handler=0x%p", First, Handler);
     if (installed_dc_addvectoredexceptionhandler_hook) {
         // return error
-        return nullptr;
+        //    return nullptr;
     }
 
     // Call original function

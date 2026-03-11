@@ -116,8 +116,8 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
     return NVAPI_NO_IMPLEMENTATION;
 }
 
-NvAPI_Status ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
-                                           const std::function<NvAPI_Status()>& send_present_end_to_driver) {
+int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
+                                 const std::function<int()>& send_present_end_to_driver) {
     bool reflex_marker_sent = false;
     NotifyGameSetLatencyMarkerCall();
 
@@ -148,7 +148,7 @@ NvAPI_Status ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_t
         ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
     }
     bool use_present_end = false;
-    NvAPI_Status result = NVAPI_OK;
+    int result = 0;
 
     auto reflex_fps_limiter_max_queued_frames =
         settings::g_mainTabSettings.reflex_fps_limiter_max_queued_frames.GetValue();
@@ -317,10 +317,14 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
 
-    return ProcessReflexMarkerFpsLimiter(
+    const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker, static_cast<int>(pSetLatencyMarkerParams->markerType),
         pSetLatencyMarkerParams->frameID,
-        [&]() { return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams); });
+        [&]() {
+            const NvAPI_Status s = NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+            return (s == NVAPI_OK) ? 0 : static_cast<int>(s);
+        });
+    return (r == 0) ? NVAPI_OK : static_cast<NvAPI_Status>(r);
 }
 
 // Hooked NvAPI_D3D_SetSleepMode function

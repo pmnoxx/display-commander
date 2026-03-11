@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.412 (unreleased)
+- **Vulkan NVLL: use shared Reflex-marker FPS limiter** - The NvLowLatencyVk (reflex_marker_vk_nvll) path now uses the same Reflex-marker FPS limiter as the NVAPI path. Vulkan games that use NvLowLatencyVk.dll SetLatencyMarker get centralized handling via `ProcessReflexMarkerFpsLimiter`: FPS limiter choice, max-queued-frames throttling, OnPresentFlags2, HandlePresentAfter, and latency buffer recording. `NotifyGameSetLatencyMarkerCall` is now invoked for Vulkan NVLL as well, so PCLStats / "Inject Reflex" visibility is consistent with native Reflex. Details: ProcessReflexMarkerFpsLimiter declared in globals.hpp (int return, std::function<int()> callback); nvlowlatencyvk_hooks.cpp delegates to it; NVAPI and Vulkan share one implementation.
+
 ## v0.12.411 (unreleased)
 - **NVAPI SetLatencyMarker refactor** - Reflex marker handling is centralized in `ProcessReflexMarkerFpsLimiter`; the detour now delegates to it with a callback. The callback type was changed from a function pointer to `std::function<NvAPI_Status()>` so a capturing lambda can be passed. Details: nvapi_hooks.cpp (ProcessReflexMarkerFpsLimiter, NvAPI_D3D_SetLatencyMarker_Detour).
 

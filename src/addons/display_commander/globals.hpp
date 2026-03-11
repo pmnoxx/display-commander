@@ -15,6 +15,7 @@
 
 #include <array>
 #include <atomic>
+#include <functional>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -679,6 +680,12 @@ FpsLimiterCallSite GetChosenFrameTimeLocation();
 
 /** Returns display name for a FPS limiter call site ("reflex_marker", "reflex_marker_vk_nvll", etc.). */
 const char* FpsLimiterSiteName(FpsLimiterCallSite site);
+
+/** Shared Reflex latency-marker handling (NVAPI and Vulkan NVLL). Calls NotifyGameSetLatencyMarkerCall, runs FPS
+ * limiter logic, and optionally forwards the marker via the callback. Returns 0 on success; callback returns 0 on
+ * success. */
+int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
+                                 const std::function<int()>& send_present_end_to_driver);
 
 /** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset".
  */

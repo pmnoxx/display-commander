@@ -71,46 +71,21 @@ static NVLL_VK_SET_SLEEP_MODE_PARAMS g_last_nvll_vk_applied_sleep_mode_params = 
 static std::atomic<bool> g_nvll_vk_has_applied_params{false};
 
 static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATENCY_MARKER_PARAMS* params) {
+    if (params == nullptr) {
+        if (NvLL_VK_SetLatencyMarker_Original != nullptr) {
+            return NvLL_VK_SetLatencyMarker_Original(device, params);
+        }
+        return 1;
+    }
+
     static bool first_call = true;
     if (first_call) {
         first_call = false;
         LogInfo("NvLowLatencyVk: SetLatencyMarker first call");
     }
-    if (params != nullptr) {
-        g_nvll_marker_call_count.fetch_add(1);
-        g_nvll_last_marker_type.store(static_cast<int>(params->markerType));
-        g_nvll_last_frame_id.store(params->frameID);
-    }
-
-    const uint64_t now_ns = static_cast<uint64_t>(utils::get_now_ns());
-    if (params != nullptr && params->markerType == VK_PRESENT_START) {
-        ChooseFpsLimiter(now_ns, FpsLimiterCallSite::reflex_marker_vk_nvll);
-    }
-
-    const bool native_pacing_sim_start_only = settings::g_mainTabSettings.native_pacing_sim_start_only.GetValue();
-    bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::reflex_marker_vk_nvll);
-
-    if (native_pacing_sim_start_only) {
-        if (use_fps_limiter && params != nullptr) {
-            if (params->markerType == VK_SIMULATION_START) {
-                OnPresentFlags2(false, true);
-                RecordNativeFrameTime();
-            }
-            if (params->markerType == VK_SIMULATION_START) {
-                display_commanderhooks::dxgi::HandlePresentAfter(true);
-            }
-        }
-    } else {
-        if (use_fps_limiter && params != nullptr) {
-            if (params->markerType == VK_PRESENT_START) {
-                OnPresentFlags2(false, true);
-                RecordNativeFrameTime();
-            }
-            if (params->markerType == VK_PRESENT_END) {
-                display_commanderhooks::dxgi::HandlePresentAfter(true);
-            }
-        }
-    }
+    g_nvll_marker_call_count.fetch_add(1);
+    g_nvll_last_marker_type.store(static_cast<int>(params->markerType));
+    g_nvll_last_frame_id.store(params->frameID);
 
     // Re-apply SleepMode on SIMULATION_START (same idea as D3D ApplySleepMode on present): either our
     // overridden params or the last params the game tried to set.
@@ -155,7 +130,10 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
     if (NvLL_VK_SetLatencyMarker_Original == nullptr) {
         return 1;  // error
     }
-    return NvLL_VK_SetLatencyMarker_Original(device, params);
+    const int r = ProcessReflexMarkerFpsLimiter(
+        FpsLimiterCallSite::reflex_marker_vk_nvll, static_cast<int>(params->markerType), params->frameID,
+        [&]() { return (NvLL_VK_SetLatencyMarker_Original(device, params) == NVLL_VK_OK) ? 0 : 1; });
+    return (r == 0) ? NVLL_VK_OK : static_cast<NvLL_VK_Status>(r);
 }
 
 static NvLL_VK_Status NvLL_VK_InitLowLatencyDevice_Detour(void* device, void* pSignalSemaphoreHandle) {

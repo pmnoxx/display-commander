@@ -1,6 +1,8 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.416
+- **D3D9 hook suppression** - D3D9 hooks (Direct3DCreate9/CreateDeviceEx and present) can be suppressed like other hook types. When suppressed, Display Commander does not install hooks on d3d9.dll. Use Debug → Hooks and enable "Suppressed" for "D3D9", or set `D3D9Hooks = true` under `[DisplayCommander.HookSuppression]` in DisplayCommander.toml. Takes effect on next game start. Details: HookType::D3D9; suppress_d3d9_hooks / d3d9_hooks_installed in hook_suppression_settings; InstallDX9Hooks checks ShouldSuppressHook(HookType::D3D9) and calls MarkHookInstalled on success.
 
 ## v0.12.415 (unreleased)
 - **Brightness / Auto HDR section off by default** - The Brightness and Auto HDR subsection on the Main tab is now disabled by default for new configs. The setting uses a new config key so existing users keep their current choice; new installs see the section collapsed until they enable it. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default false, key brightness_autohdr_section_enabled_doff).

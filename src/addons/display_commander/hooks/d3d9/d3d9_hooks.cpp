@@ -3,6 +3,7 @@
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
+#include "../hook_suppression_manager.hpp"
 #include "d3d9_device_vtable_logging.hpp"
 #include "d3d9_no_reshade_device_state.hpp"
 #include "d3d9_present_hooks.hpp"
@@ -330,6 +331,11 @@ bool InstallDX9Hooks(HMODULE hModule) {
         return false;
     }
 
+    if (HookSuppressionManager::GetInstance().ShouldSuppressHook(HookType::D3D9)) {
+        LogInfo("InstallDX9Hooks: D3D9 hooks suppressed by user setting");
+        return false;
+    }
+
     if (hModule == nullptr) {
         LogWarn("InstallDX9Hooks: null module handle, skipping");
         return false;
@@ -359,6 +365,7 @@ bool InstallDX9Hooks(HMODULE hModule) {
 
     LogInfo("InstallDX9Hooks: d3d9.dll hooked (CreateDevice/CreateDeviceEx will hook on first factory)");
     g_dx9_hooks_installed.store(true, std::memory_order_relaxed);
+    HookSuppressionManager::GetInstance().MarkHookInstalled(HookType::D3D9);
     return true;
 }
 

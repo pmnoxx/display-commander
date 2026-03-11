@@ -32,7 +32,8 @@ enum class HookType {
     NVAPI,
     PROCESS_EXIT,
     WINDOW_PROC,
-    DBGHELP
+    DBGHELP,
+    D3D9
 };
 
 // Hook suppression manager
@@ -56,7 +57,7 @@ class HookSuppressionManager {
     bool IsHookInstalled(HookType hookType);
 
     // Number of hook types (for UI iteration)
-    static constexpr int kHookTypeCount = 27;
+    static constexpr int kHookTypeCount = 28;
 
     // Get hook type by index (0 .. kHookTypeCount-1). Valid only for display iteration.
     static HookType GetHookTypeByIndex(int index);

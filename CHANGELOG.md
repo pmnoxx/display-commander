@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.415 (unreleased)
+- **Brightness / Auto HDR section off by default** - The Brightness and Auto HDR subsection on the Main tab is now disabled by default for new configs. The setting uses a new config key so existing users keep their current choice; new installs see the section collapsed until they enable it. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default false, key brightness_autohdr_section_enabled_doff).
+
 ## v0.12.414 (unreleased)
 - **Prevent D3D11 hooking when ReFramework is detected** - When the ReFramework plugin (e.g. for Monster Hunter Rise, other REF games) is present, Display Commander no longer installs its D3D11 device hooks on d3d11.dll. This avoids conflicts and instability when both mods hook the same API. A log line is written when hooks are skipped. Details: loadlibrary_hooks.cpp OnModuleLoaded d3d11.dll branch checks HasReframeworkPluginModule() before InstallD3D11DeviceHooks.
 

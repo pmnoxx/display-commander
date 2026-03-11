@@ -2,6 +2,12 @@
 
 ---
 
+## v0.12.407 (unreleased)
+- **Performance overlay: FPS limiter source** - Added an optional line in the performance overlay that shows which path is currently applying the FPS limiter (e.g. reflex_marker, dxgi_swapchain). Enable via the new "FPS limiter src" checkbox under Main tab → overlay controls (CPU / limiter section). Same value as "(src: xxx)" in the Main tab FPS limiter section. Details: show_fps_limiter_src in main_tab_settings; DrawPerformanceOverlayContent uses GetChosenFpsLimiterSiteName().
+
+## v0.12.406
+- **AddVectoredExceptionHandler detour** - The addon hooks `AddVectoredExceptionHandler` so the game cannot override Display Commander’s crash-reporting vectored exception handler. Our handler is registered via `AddVectoredExceptionHandler_Direct` (real API), and the detour forwards game registrations to the real API while keeping our handler in place. Details: api_hooks (AddVectoredExceptionHandler_Detour, AddVectoredExceptionHandler_Direct); process_exit_hooks uses _Direct for registration.
+
 ## v0.12.405 (unreleased)
 - **FPS limiter preset: enum and default change** - The FPS limiter preset (when the game has native Reflex) is now a typed enum `FpsLimiterPreset` in code. "Pace real frames Low-latency (Use native frame pacing)" is **slot 0** and the **default** for new configs; the combo order and default in main tab settings updated accordingly. Stored config value is unchanged (0–6); existing configs are not migrated, so a previously saved preset index may refer to a different preset after this release.
 - **FPS limiter preset: Low-latency (native frame pacing) fixed** - The "Pace real frames Low-latency (Use native frame pacing)" preset now correctly does not use the Reflex Latency Markers as FPS limiter (`use_reflex_markers_as_fps_limiter` is set off); it uses native frame pacing as intended. Details: ApplyNativeReflexPreset (FpsLimiterPreset::kLowLatencyNativePacing).

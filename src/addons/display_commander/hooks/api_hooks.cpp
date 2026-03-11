@@ -440,13 +440,26 @@ int WINAPI ShowCursor_Detour(BOOL bShow) {
     return result;
 }
 
+static std::atomic<bool> installed_dc_addvectoredexceptionhandler_hook{false};
+
 // Hooked AddVectoredExceptionHandler function
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
     CALL_GUARD(utils::get_now_ns());
     // Log the call for debugging
     LogDebug("AddVectoredExceptionHandler_Detour: First=%lu, Handler=0x%p", First, Handler);
+    if (installed_dc_addvectoredexceptionhandler_hook) {
+        // return error
+        return nullptr;
+    }
 
     // Call original function
+    return AddVectoredExceptionHandler_Original ? AddVectoredExceptionHandler_Original(First, Handler)
+                                                : AddVectoredExceptionHandler(First, Handler);
+}
+
+PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
+    installed_dc_addvectoredexceptionhandler_hook.store(true, std::memory_order_release);
+
     return AddVectoredExceptionHandler_Original ? AddVectoredExceptionHandler_Original(First, Handler)
                                                 : AddVectoredExceptionHandler(First, Handler);
 }

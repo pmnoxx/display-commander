@@ -747,7 +747,8 @@ void DrawDLSSInfo(display_commander::ui::IImGuiWrapper& imgui, const DLSSGSummar
         if (path_dlss.has_value() || path_dlssg.has_value() || path_dlssd.has_value()) {
             if (imgui.TreeNodeEx("DLSS module paths (tracked)", ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx("Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
+                    imgui.SetTooltipEx(
+                        "Paths from OnModuleLoaded (DLL name or .bin identified as DLSS/DLSS-G/DLSS-D).");
                 }
                 if (path_dlss.has_value()) {
                     imgui.Text("nvngx_dlss.dll: %s", path_dlss->c_str());
@@ -1307,7 +1308,7 @@ void DrawFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui, bool
 
     if (imgui.IsItemHovered() && show_tooltips) {
         imgui.SetTooltipEx("Frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
-                         max_frame_time);
+                           max_frame_time);
     }
 }
 
@@ -1381,7 +1382,7 @@ void DrawNativeFrameTimeGraphOverlay(display_commander::ui::IImGuiWrapper& imgui
 
     if (imgui.IsItemHovered() && show_tooltips) {
         imgui.SetTooltipEx("Native frame time graph (last 256 frames)\nAvg: %.2f ms | Max: %.2f ms", avg_frame_time,
-                         max_frame_time);
+                           max_frame_time);
     }
 }
 
@@ -1537,7 +1538,8 @@ void DrawAdvancedSettings(display_commander::ui::IImGuiWrapper& imgui) {
                     settings::g_mainTabSettings.show_vulkan_tab.GetValue() ? "enabled" : "disabled");
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
+            imgui.SetTooltipEx(
+                "Shows the Vulkan (Experimental) tab for Reflex / frame pacing controls and debug info.");
         }
     }
 
@@ -1873,7 +1875,7 @@ static void DrawUpdatesDisplayCommanderHeader(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered() && !dc_global.empty()) {
             imgui.SetTooltipEx("Open the Display Commander global folder. You can copy files manually to revert.\n\n%s",
-                             dc_global.string().c_str());
+                               dc_global.string().c_str());
         }
 
         imgui.Unindent();
@@ -2018,7 +2020,7 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
                 imgui.TextColored(ui::colors::TEXT_ERROR, ICON_FK_WARNING " Newer version available");
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltipEx("%s -> %s\n\nVersion info from: GitHub (crosire/reshade), reshade.me",
-                                     loaded_ver.c_str(), newest_available.c_str());
+                                       loaded_ver.c_str(), newest_available.c_str());
                 }
             }
         }
@@ -2067,7 +2069,7 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
         }
         if (imgui.IsItemHovered() && !reshade_global.empty()) {
             imgui.SetTooltipEx("Open the ReShade global folder. You can copy files manually to revert.\n\n%s",
-                             reshade_global.string().c_str());
+                               reshade_global.string().c_str());
         }
 
         // Delete local ReShade (game folder): safe because we never load that copy directly.
@@ -2675,7 +2677,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
             imgui.TextColored(ui::colors::TEXT_DIMMED, "(D3D12: %u)", d3d12_count);
         }
         if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx("Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
+            imgui.SetTooltipEx(
+                "Total number of CreateSamplerState (D3D11) and CreateSampler (D3D12) calls intercepted.");
         }
 
         // Show statistics if we have any calls
@@ -3953,7 +3956,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         imgui.Spacing();
         imgui.SetNextItemWidth(500.f);
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "FPS limiter preset", imgui,
-                                   600.f)) {
+                                    600.f)) {
             const int new_preset_int = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
             if (new_preset_int >= 0 && new_preset_int < kCustomInt) {
                 settings::ApplyNativeReflexPreset(static_cast<FpsLimiterPreset>(new_preset_int));
@@ -4534,7 +4537,8 @@ static void DrawDisplaySettings_VSyncAndTearing_Checkboxes_Reshade(display_comma
             imgui.TextColored(ui::colors::TEXT_DIMMED, "Present mode: %s",
                               GetPresentModeNameNonDxgi(static_cast<int>(current_api_pt), desc_ptr_cb->present_mode));
             if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx("Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
+                imgui.SetTooltipEx(
+                    "Current swapchain present mode (Vulkan: VkPresentModeKHR, OpenGL: WGL). Read-only.");
             }
         }
     } else {
@@ -5546,6 +5550,11 @@ void DrawDisplaySettings(display_commander::ui::GraphicsApi api, display_command
                     imgui.TextColored(ui::colors::TEXT_DIMMED, "vulkan-1.dll not loaded");
                 }
             }
+            if (settings::g_mainTabSettings.show_fps_limiter_src.GetValue()) {
+                const char* src_name = GetChosenFpsLimiterSiteName();
+                imgui.Text("src: %s", src_name);
+            }
+
             DrawDLSSInfo(imgui, dlss_summary);
 
             // NVIDIA driver profile DLSS preset override status (same cache as NVIDIA Profile tab)
@@ -6499,6 +6508,7 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
     bool show_dlss_status = settings::g_mainTabSettings.show_dlss_status.GetValue();
     bool show_dlss_quality_preset = settings::g_mainTabSettings.show_dlss_quality_preset.GetValue();
     bool show_dlss_render_preset = settings::g_mainTabSettings.show_dlss_render_preset.GetValue();
+    bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
     bool show_overlay_vram = settings::g_mainTabSettings.show_overlay_vram.GetValue();
     bool show_overlay_texture_stats = settings::g_mainTabSettings.show_overlay_texture_stats.GetValue();
     bool show_dxgi_vrr_status = settings::g_mainTabSettings.show_dxgi_vrr_status.GetValue();
@@ -7090,7 +7100,8 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
         }
         if (imgui.IsItemHovered() && show_tooltips) {
             if (is_muted) {
-                imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%% (Muted)", current_volume, system_volume);
+                imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%% (Muted)", current_volume,
+                                   system_volume);
             } else {
                 imgui.SetTooltipEx("Game Volume: %.0f%% | System Volume: %.0f%%", current_volume, system_volume);
             }
@@ -7167,6 +7178,15 @@ void DrawPerformanceOverlayContent(display_commander::ui::IImGuiWrapper& imgui,
             } else {
                 imgui.Text("%.1f%% (max: %.1f%%)", displayed_cpu_usage, max_cpu_usage);
             }
+        }
+    }
+
+    if (show_fps_limiter_src) {
+        const char* src_name = GetChosenFpsLimiterSiteName();
+        if (settings::g_mainTabSettings.show_labels.GetValue()) {
+            imgui.Text("src: %s", src_name);
+        } else {
+            imgui.Text("%s", src_name);
         }
     }
 
@@ -7983,7 +8003,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
             display_commander::config::DisplayCommanderConfigManager::GetInstance().GetConfigPath();
         if (!config_path.empty()) {
             imgui.SetTooltipEx("Open DisplayCommander config in the default text editor.\nFull path: %s",
-                             config_path.c_str());
+                               config_path.c_str());
         } else {
             imgui.SetTooltipEx("Open DisplayCommander.toml (config path not available).");
         }
@@ -8054,7 +8074,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
             if (last_slash != std::string::npos) {
                 std::string log_path = full_path.substr(0, last_slash) + "\\DisplayCommander.log";
                 imgui.SetTooltipEx("Open DisplayCommander.log in the default text editor.\nFull path: %s",
-                                 log_path.c_str());
+                                   log_path.c_str());
             } else {
                 imgui.SetTooltipEx("Open DisplayCommander.log in the default text editor.");
             }
@@ -8167,7 +8187,7 @@ void DrawWindowControls(display_commander::ui::IImGuiWrapper& imgui) {
                 if (last_slash != std::string::npos) {
                     std::string ini_path = full_path.substr(0, last_slash) + "\\reshade.ini";
                     imgui.SetTooltipEx("Open reshade.ini (ReShade config) in the default text editor.\nFull path: %s",
-                                     ini_path.c_str());
+                                       ini_path.c_str());
                 } else {
                     imgui.SetTooltipEx("Open reshade.ini (ReShade config) in the default text editor.");
                 }
@@ -8295,6 +8315,18 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         imgui.NextColumn();
 
+        bool show_fps_limiter_src = settings::g_mainTabSettings.show_fps_limiter_src.GetValue();
+        if (imgui.Checkbox("FPS limiter src", &show_fps_limiter_src)) {
+            settings::g_mainTabSettings.show_fps_limiter_src.SetValue(show_fps_limiter_src);
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Shows which path is currently applying the FPS limiter in the performance overlay (e.g. "
+                "reflex_marker, "
+                "dxgi_swapchain). Same value as (src: xxx) in Main tab FPS limiter section.");
+        }
+        imgui.NextColumn();
+
         // --- Frame timing & graphs ---
         imgui.Columns(1);
         imgui.Separator();
@@ -8360,7 +8392,7 @@ static void DrawImportantInfo_OverlayControls(display_commander::ui::IImGuiWrapp
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx("Shows DLSS Frame Generation mode (OFF / 2x / 3x / 4x) in the performance overlay.%s",
-                             dlss_ngx_seen ? "" : " Requires a game that uses DLSS/NGX.");
+                               dlss_ngx_seen ? "" : " Requires a game that uses DLSS/NGX.");
         }
         imgui.NextColumn();
 

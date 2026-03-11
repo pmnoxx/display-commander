@@ -110,6 +110,8 @@ HWND WINAPI CreateWindowExW_Detour(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR
 HCURSOR WINAPI SetCursor_Detour(HCURSOR hCursor);
 int WINAPI ShowCursor_Detour(BOOL bShow);
 PVOID WINAPI AddVectoredExceptionHandler_Detour(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
+// Bypass detour: register vectored exception handler with real API (e.g. for process_exit_hooks).
+PVOID AddVectoredExceptionHandler_Direct(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler);
 HRESULT WINAPI CreateDXGIFactory_Detour(REFIID riid, void** ppFactory);
 HRESULT WINAPI CreateDXGIFactory1_Detour(REFIID riid, void** ppFactory);
 HRESULT WINAPI CreateDXGIFactory2_Detour(UINT Flags, REFIID riid, void** ppFactory);

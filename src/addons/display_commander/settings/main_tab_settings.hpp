@@ -128,9 +128,11 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_refresh_rate_frame_times;
     ui::new_ui::IntSetting refresh_rate_monitor_poll_ms;  // Only used when show_refresh_rate_frame_times is true
     ui::new_ui::BoolSetting show_refresh_rate_frame_time_stats;
-    /** Show DXGI-based VRR status in performance overlay (RefreshRateMonitor heuristic). Requires DXGI refresh rate / VRR detection enabled in Advanced tab. */
+    /** Show DXGI-based VRR status in performance overlay (RefreshRateMonitor heuristic). Requires DXGI refresh rate /
+     * VRR detection enabled in Advanced tab. */
     ui::new_ui::BoolSetting show_dxgi_vrr_status;
-    /** Show DXGI refresh rate (Hz) in performance overlay (from RefreshRateMonitor / GetFrameStatistics). Requires DXGI refresh rate / VRR detection enabled in Advanced tab. */
+    /** Show DXGI refresh rate (Hz) in performance overlay (from RefreshRateMonitor / GetFrameStatistics). Requires DXGI
+     * refresh rate / VRR detection enabled in Advanced tab. */
     ui::new_ui::BoolSetting show_dxgi_refresh_rate;
     ui::new_ui::BoolSetting show_cpu_usage;
     ui::new_ui::BoolSetting show_cpu_fps;
@@ -139,6 +141,8 @@ class MainTabSettings {
     ui::new_ui::BoolSetting show_dlss_status;
     ui::new_ui::BoolSetting show_dlss_quality_preset;  // Quality preset: Performance, Balanced, Quality, etc.
     ui::new_ui::BoolSetting show_dlss_render_preset;   // Render preset: A, B, C, D, E, etc. (letter presets)
+    /** Show FPS limiter source (e.g. reflex_marker, dxgi_swapchain) in performance overlay. */
+    ui::new_ui::BoolSetting show_fps_limiter_src;
     ui::new_ui::BoolSetting show_stopwatch;
     ui::new_ui::BoolSetting show_playtime;
     ui::new_ui::BoolSetting show_overlay_vu_bars;

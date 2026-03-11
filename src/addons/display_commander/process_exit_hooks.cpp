@@ -1,4 +1,5 @@
 #include "process_exit_hooks.hpp"
+#include "hooks/api_hooks.hpp"
 #include <psapi.h>
 #include <windows.h>
 #include <atomic>
@@ -416,7 +417,8 @@ void Initialize() {
     // This allows us to print stack traces for all crashes, similar to ReShade's approach
     // First parameter (1) means this handler is called first (before other handlers)
     LogInfo("Installing vectored exception handler");
-    g_vectored_exception_handler_handle = ::AddVectoredExceptionHandler(1, &VectoredExceptionHandler);
+    g_vectored_exception_handler_handle =
+        display_commanderhooks::AddVectoredExceptionHandler_Direct(1, &VectoredExceptionHandler);
     if (g_vectored_exception_handler_handle == nullptr) {
         LogInfo("Failed to install vectored exception handler");
     } else {

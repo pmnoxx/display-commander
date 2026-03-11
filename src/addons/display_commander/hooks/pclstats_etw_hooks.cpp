@@ -43,6 +43,10 @@ static std::atomic<uint64_t> g_count_pclstats_by_marker[kPCLStatsMarkerTypeCount
 // Number of times PCLSTATS_MARKER was called from our code (injected reflex)
 static std::atomic<uint64_t> g_count_pclstats_marker_calls{0};
 
+// Monotonic time (ns) of last NvAPI_D3D_SetLatencyMarker_Detour call from the game (not us).
+// If recent, PCLStatsReportingAllowed() returns false so we don't inject PCLStats over native Reflex.
+static std::atomic<uint64_t> g_last_game_set_latency_marker_ns{0};
+
 // First 6 PCLStats markers (same as Reflex): 0=SIMULATION_START .. 5=PRESENT_END
 constexpr int kPCLStatsMarkerFirstSixMax = 5;
 
@@ -317,6 +321,10 @@ void UninstallPCLStatsEtwHooks() {
 
 bool ArePCLStatsEtwHooksInstalled() { return g_pclstats_etw_hooks_installed.load(std::memory_order_acquire); }
 
+void NotifyGameSetLatencyMarkerCall() {
+    g_last_game_set_latency_marker_ns.store(utils::get_now_ns(), std::memory_order_release);
+}
+
 bool PCLStatsReportingAllowed() {
     // Only allow PCLStats reporting for DXGI (D3D10/11/12); not D3D9, OpenGL, Vulkan
     const reshade::api::device_api api = g_last_reshade_device_api.load(std::memory_order_acquire);
@@ -327,7 +335,15 @@ bool PCLStatsReportingAllowed() {
                                   && g_count_pclstats_event_v2.load(std::memory_order_relaxed) == 0
                                   && g_count_pclstats_event_v3.load(std::memory_order_relaxed) == 0;
     const bool past_warmup = g_global_frame_id.load(std::memory_order_acquire) >= 500;
-    return is_dxgi && no_game_pclstats && past_warmup;
+
+    // If the game recently called NvAPI_D3D_SetLatencyMarker (native Reflex), do not allow our PCLStats injection.
+    constexpr uint64_t kRecentNs = 1'000'000'000ULL;  // 1 second
+    const uint64_t now_ns = utils::get_now_ns();
+    const uint64_t last_game_ns = g_last_game_set_latency_marker_ns.load(std::memory_order_acquire);
+    const bool no_recent_game_reflex =
+        (last_game_ns == 0) || (now_ns - last_game_ns >= kRecentNs);
+
+    return is_dxgi && no_game_pclstats && past_warmup && no_recent_game_reflex;
 }
 
 bool PCLStatsReportingEnabled() {
@@ -385,6 +401,7 @@ void ResetPCLStatsEtwCounts() {
     g_count_pclstats_event_v2.store(0, std::memory_order_relaxed);
     g_count_pclstats_event_v3.store(0, std::memory_order_relaxed);
     g_count_pclstats_marker_calls.store(0, std::memory_order_relaxed);
+    g_last_game_set_latency_marker_ns.store(0, std::memory_order_relaxed);
     for (size_t i = 0; i < kPCLStatsMarkerTypeCount; ++i) {
         g_count_pclstats_by_marker[i].store(0, std::memory_order_relaxed);
     }

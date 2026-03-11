@@ -11,6 +11,7 @@
 #include "../utils/timing.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
 #include "hook_suppression_manager.hpp"
+#include "pclstats_etw_hooks.hpp"
 
 #include <MinHook.h>
 #include <algorithm>
@@ -117,25 +118,6 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 // Hooked NvAPI_D3D_SetLatencyMarker function
 NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
                                                        NV_LATENCY_MARKER_PARAMS* pSetLatencyMarkerParams) {
-    CALL_GUARD(utils::get_now_ns());
-    if (pDev == nullptr || pSetLatencyMarkerParams == nullptr) {
-        // Let's not do anything for invalid arguments
-        return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
-    }
-    // utils::SRWLockExclusive lock(g_nvapi_lock);
-    // Increment counter
-    g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
-
-    // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
-    if (g_thread_tracking_enabled.load(std::memory_order_relaxed) && pSetLatencyMarkerParams != nullptr) {
-        const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
-        if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
-            g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
-            g_latency_marker_last_frame_id[marker_type].store(pSetLatencyMarkerParams->frameID,
-                                                              std::memory_order_relaxed);
-        }
-    }
-
     // Filter out RTSS calls (following Special-K approach)
     // RTSS is not native Reflex, so ignore it
     static HMODULE hModRTSS =
@@ -147,6 +129,26 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     if (hModRTSS != nullptr && calling_module == hModRTSS) {
         // Ignore RTSS calls - it's not native Reflex
         return NVAPI_OK;
+    }
+    CALL_GUARD(utils::get_now_ns());
+    if (pDev == nullptr || pSetLatencyMarkerParams == nullptr) {
+        // Let's not do anything for invalid arguments
+        return NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
+    }
+    // utils::SRWLockExclusive lock(g_nvapi_lock);
+    // Increment counter
+    g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
+    // Record that the game (not us) just called SetLatencyMarker; PCLStatsReportingAllowed() will return false for a while.
+    NotifyGameSetLatencyMarkerCall();
+
+    // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
+    if (g_thread_tracking_enabled.load(std::memory_order_relaxed) && pSetLatencyMarkerParams != nullptr) {
+        const int marker_type = static_cast<int>(pSetLatencyMarkerParams->markerType);
+        if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
+            g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
+            g_latency_marker_last_frame_id[marker_type].store(pSetLatencyMarkerParams->frameID,
+                                                              std::memory_order_relaxed);
+        }
     }
 
     // Mark native Reflex as active when we see SetLatencyMarker from game or Streamline (sl.chi/sl.reflex).

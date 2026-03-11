@@ -44,11 +44,13 @@
 #include "../../utils.hpp"
 #include "../../utils/d3d9_api_version.hpp"
 #include "../../utils/dc_load_path.hpp"
+#include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/overlay_window_detector.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/platform_api_detector.hpp"
 #include "../../utils/reshade_load_path.hpp"
+#include "../../utils/reshade_replace_after_exit.hpp"
 #include "../../utils/reshade_version_download.hpp"
 #include "../../utils/texture_tracker.hpp"
 #include "../../utils/version_check.hpp"
@@ -1875,9 +1877,83 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
     using namespace display_commander::utils;
     using namespace display_commander::utils::version_check;
 
+    static int s_reshade_dl_index = 0;
+
     if (!display_commanderhooks::g_hooked_before_reshade.load()) {
-        imgui.TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
-                          "Reshade updates not possible unless running DC as dll proxy.");
+        // Not running as DLL proxy: show as which module ReShade is loaded (and its version), and option to replace with global.
+        std::filesystem::path loaded_path = display_commander::utils::GetReshadeLoadedModulePath();
+        if (!loaded_path.empty()) {
+            std::string loaded_ver = GetDLLVersionString(loaded_path.wstring());
+            if (!loaded_ver.empty()) {
+                imgui.Text("ReShade loaded as: %s (%s)", loaded_path.filename().string().c_str(), loaded_ver.c_str());
+            } else {
+                imgui.Text("ReShade loaded as: %s", loaded_path.filename().string().c_str());
+            }
+        } else {
+            imgui.TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "ReShade module not detected.");
+        }
+        std::string global_ver = GetGlobalReshadeVersion();
+        imgui.TextDisabled("Global ReShade version: %s", global_ver.empty() ? "(none)" : global_ver.c_str());
+
+        if (!global_ver.empty() && !loaded_path.empty()) {
+            static std::string s_replace_last_message;
+            static bool s_replace_last_ok = false;
+            if (imgui.Button(ICON_FK_REFRESH " Create script and run script to replace the DLL")) {
+                std::string err;
+                std::string script_path;
+                if (!display_commander::utils::StartReplaceWithGlobalAfterExitScript(&err, &script_path)) {
+                    s_replace_last_ok = false;
+                    s_replace_last_message = err.empty() ? "Unknown error." : err;
+                    s_replace_last_message += " Check log for [reshade_replace].";
+                } else {
+                    s_replace_last_ok = true;
+                    s_replace_last_message = "Script created and started. It will replace the DLL after you close the game.";
+                    if (!script_path.empty()) {
+                        s_replace_last_message += " Debug: script path: " + script_path;
+                    }
+                }
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Create a .cmd script and run it. The script waits for you to close the game, then replaces the DLL with global ReShade %s (retries until successful). Log tag: [reshade_replace].",
+                                global_ver.c_str());
+            }
+            if (!s_replace_last_message.empty()) {
+                if (s_replace_last_ok) {
+                    imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " %s", s_replace_last_message.c_str());
+                } else {
+                    imgui.TextColored(ui::colors::TEXT_ERROR, "%s", s_replace_last_message.c_str());
+                }
+            }
+        }
+
+        // Upgrade global ReShade: version selector + Download button (same as in Reshade collapsing header)
+        size_t ver_count = 0;
+        const char* const* ver_list = GetReshadeVersionList(&ver_count);
+        if (s_reshade_dl_index >= static_cast<int>(ver_count)) s_reshade_dl_index = 0;
+        if (ver_count > 0 && ver_list != nullptr) {
+            std::vector<const char*> ver_ptrs;
+            for (size_t i = 0; i < ver_count; ++i) ver_ptrs.push_back(ver_list[i]);
+            imgui.Combo("Version to download", &s_reshade_dl_index, ver_ptrs.data(), static_cast<int>(ver_count));
+            ReshadeDownloadStatus dl_status = GetReshadeDownloadStatus();
+            bool can_dl =
+                (dl_status != ReshadeDownloadStatus::Downloading && dl_status != ReshadeDownloadStatus::Extracting);
+            imgui.SameLine();
+            if (can_dl && imgui.Button(ICON_FK_FLOPPY " Download")) {
+                StartReshadeVersionDownloadToGlobalRoot(std::string(ver_list[s_reshade_dl_index]));
+            }
+            if (imgui.IsItemHovered() && can_dl) {
+                imgui.SetTooltip("Overwrites the global ReShade folder with the selected version.");
+            }
+            if (dl_status == ReshadeDownloadStatus::Downloading || dl_status == ReshadeDownloadStatus::Extracting) {
+                imgui.TextColored(ui::colors::TEXT_DIMMED, "%s",
+                                  dl_status == ReshadeDownloadStatus::Downloading ? "Downloading..." : "Extracting...");
+            } else if (dl_status == ReshadeDownloadStatus::Error) {
+                const char* err = GetReshadeDownloadStatusMessage();
+                imgui.TextColored(ui::colors::TEXT_ERROR, "%s", err && *err ? err : "Download failed");
+            } else if (dl_status == ReshadeDownloadStatus::Ready) {
+                imgui.TextColored(ui::colors::TEXT_SUCCESS, ICON_FK_OK " Ready");
+            }
+        }
         return;
     }
     if (imgui.CollapsingHeader("Reshade", ImGuiTreeNodeFlags_None)) {
@@ -1939,7 +2015,6 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
         imgui.Spacing();
         size_t ver_count = 0;
         const char* const* ver_list = GetReshadeVersionList(&ver_count);
-        static int s_reshade_dl_index = 0;
         if (s_reshade_dl_index >= static_cast<int>(ver_count)) s_reshade_dl_index = 0;
         if (ver_count > 0 && ver_list != nullptr) {
             std::vector<const char*> ver_ptrs;

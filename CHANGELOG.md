@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.401
+- **Version bump** - Bump to 0.12.401 after revert of 0.12.399 / 0.12.400.
+
 ## v0.12.398 (unreleased)
 - **PCLStats / Inject Reflex: hide when game uses native Reflex** - When the game is actively calling NvAPI SetLatencyMarker (native Reflex), the addon no longer offers or shows "Inject Reflex" / PCLStats injection. PCLStatsReportingAllowed() returns false if the game has called SetLatencyMarker in the last second, so the Inject Reflex option and related UI are hidden when native Reflex is detected. Details: pclstats_etw_hooks (NotifyGameSetLatencyMarkerCall, g_last_game_set_latency_marker_ns); nvapi_hooks.cpp (notify from detour); PCLStatsReportingAllowed() checks recent game marker time.
 

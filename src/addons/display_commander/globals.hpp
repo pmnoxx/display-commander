@@ -348,6 +348,17 @@ enum class OnPresentReflexMode : std::uint8_t {
     kGameDefaults = 3      // Do not override; use game's Reflex settings
 };
 
+/** FPS limiter preset when game has native Reflex (main tab combo). kCustom = no auto-apply. Slot 0 = default. */
+enum class FpsLimiterPreset : std::uint8_t {
+    kLowLatencyNativePacing = 0,  // Pace real frames Low-latency (native frame pacing) — default
+    kBalanced = 1,                 // Pace real frames Balanced (Reflex markers, max queued=2)
+    kStability = 2,                // Pace real frames Stability (Reflex markers, max queued=3)
+    kLowLatencyMarkers = 3,         // Pace real frames Low-latency (Reflex markers, max queued=1)
+    kPaceGenerated = 4,            // Pace generated frames
+    kPaceGeneratedSafe = 5,        // Pace generated (safe) - Reshade APIs fallback
+    kCustom = 6                    // Custom (configure manually)
+};
+
 enum class InputBlockingMode : std::uint8_t {
     kDisabled = 0,                  // Disabled
     kEnabled = 1,                   // Always enabled

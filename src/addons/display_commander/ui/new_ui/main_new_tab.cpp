@@ -3944,27 +3944,28 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
 
     // FPS limiter presets (only visible if OnPresentSync mode is selected and in sync)
     if (::IsNativeFramePacingInSync()) {
-        int preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
-        if (preset < 0 || preset > 6) {
-            preset = 0;
-            settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(0);
+        int preset_int = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
+        const int kCustomInt = static_cast<int>(FpsLimiterPreset::kCustom);
+        if (preset_int < 0 || preset_int > kCustomInt) {
+            preset_int = static_cast<int>(FpsLimiterPreset::kBalanced);
+            settings::g_mainTabSettings.native_reflex_fps_preset.SetValue(preset_int);
         }
         imgui.Spacing();
         imgui.SetNextItemWidth(500.f);
-        if (ComboSettingWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "FPS limiter preset", imgui,
-                                600.f)) {
-            int new_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
-            if (new_preset >= 0 && new_preset < 6) {
-                settings::ApplyNativeReflexPreset(new_preset);
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.native_reflex_fps_preset, "FPS limiter preset", imgui,
+                                   600.f)) {
+            const int new_preset_int = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
+            if (new_preset_int >= 0 && new_preset_int < kCustomInt) {
+                settings::ApplyNativeReflexPreset(static_cast<FpsLimiterPreset>(new_preset_int));
             }
-            LogInfo("FPS limiter preset changed to %d", new_preset);
+            LogInfo("FPS limiter preset changed to %d", new_preset_int);
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Quick presets for FPS limiter when the game has native Reflex. Custom allows manual configuration.");
         }
 
-        const bool show_custom_options = (preset == 6);
+        const bool show_custom_options = (preset_int == kCustomInt);
         if (show_custom_options) {
             auto use_reflex_markers_as_fps_limiter =
                 settings::g_mainTabSettings.use_reflex_markers_as_fps_limiter.GetValue();
@@ -4049,8 +4050,9 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
 
     // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
     // Shown when Custom FPS limiter preset, or when outside native reflex block (safe mode is not preset-controlled)
-    const int fps_limiter_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetValue();
-    const bool show_safe_mode = !::IsNativeFramePacingInSync() || fps_limiter_preset == 6;
+    const auto fps_limiter_preset =
+        static_cast<FpsLimiterPreset>(settings::g_mainTabSettings.native_reflex_fps_preset.GetValue());
+    const bool show_safe_mode = !::IsNativeFramePacingInSync() || fps_limiter_preset == FpsLimiterPreset::kCustom;
     if (show_safe_mode
         && CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {
         LogInfo("Safe Mode fps limiter %s",

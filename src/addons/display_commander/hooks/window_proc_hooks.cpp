@@ -103,13 +103,13 @@ static void CheckMessageRateAndLogIfHigh(HWND hwnd, UINT uMsg, WPARAM wParam, LP
     if (remaining > 0) {
         const char* msg_name = GetWindowMessageNameForLog(uMsg);
         if (msg_name != nullptr) {
-            LogError("Window message [rate dump]: hwnd=0x%p uMsg=%s(0x%u) wParam=0x%llx lParam=0x%llx",
-                     static_cast<void*>(hwnd), msg_name, static_cast<unsigned>(uMsg),
-                     static_cast<unsigned long long>(wParam), static_cast<unsigned long long>(lParam));
+            LogErrorThrottled(40, "Window message [rate dump]: hwnd=0x%p uMsg=%s(0x%u) wParam=0x%llx lParam=0x%llx",
+                              static_cast<void*>(hwnd), msg_name, static_cast<unsigned>(uMsg),
+                              static_cast<unsigned long long>(wParam), static_cast<unsigned long long>(lParam));
         } else {
-            LogError("Window message [rate dump]: hwnd=0x%p uMsg=0x%u wParam=0x%llx lParam=0x%llx",
-                     static_cast<void*>(hwnd), static_cast<unsigned>(uMsg), static_cast<unsigned long long>(wParam),
-                     static_cast<unsigned long long>(lParam));
+            LogErrorThrottled(40, "Window message [rate dump]: hwnd=0x%p uMsg=0x%u wParam=0x%llx lParam=0x%llx",
+                              static_cast<void*>(hwnd), static_cast<unsigned>(uMsg),
+                              static_cast<unsigned long long>(wParam), static_cast<unsigned long long>(lParam));
         }
         g_message_rate_print_remaining.store(remaining - 1, std::memory_order_release);
     }
@@ -134,7 +134,8 @@ static void CheckMessageRateAndLogIfHigh(HWND hwnd, UINT uMsg, WPARAM wParam, LP
         if (last < threshold) {
             if (g_message_rate_last_logged_threshold.compare_exchange_strong(last, threshold, std::memory_order_release,
                                                                              std::memory_order_acquire)) {
-                LogError("Window message rate very high: %u messages in the last second (threshold %u)", c, threshold);
+                LogErrorThrottled(40, "Window message rate very high: %u messages in the last second (threshold %u)", c,
+                                  threshold);
                 if (threshold == kMessageRateThresholds[0]) {
                     uint32_t to_print = g_message_rate_next_print_count.load(std::memory_order_acquire);
                     g_message_rate_print_remaining.store(to_print, std::memory_order_release);
@@ -148,7 +149,7 @@ static void CheckMessageRateAndLogIfHigh(HWND hwnd, UINT uMsg, WPARAM wParam, LP
 
 // Trampoline (SK-style): 1) ProcessWindowMessage; 2) if not skipped, call original WNDPROC.
 static LRESULT CALLBACK WindowProc_Detour(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    CheckMessageRateAndLogIfHigh(hwnd, uMsg, wParam, lParam);
+    // CheckMessageRateAndLogIfHigh(hwnd, uMsg, wParam, lParam);
     g_last_window_message_processed_ns.store(utils::get_real_time_ns(), std::memory_order_release);
     if (ProcessWindowMessage(hwnd, uMsg, wParam, lParam)) {
         return 0;  // Message suppressed (skipped)

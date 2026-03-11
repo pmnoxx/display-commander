@@ -2,8 +2,13 @@
 
 ---
 
+## v0.12.405 (unreleased)
+- **FPS limiter preset: enum and default change** - The FPS limiter preset (when the game has native Reflex) is now a typed enum `FpsLimiterPreset` in code. "Pace real frames Low-latency (Use native frame pacing)" is **slot 0** and the **default** for new configs; the combo order and default in main tab settings updated accordingly. Stored config value is unchanged (0–6); existing configs are not migrated, so a previously saved preset index may refer to a different preset after this release.
+- **FPS limiter preset: Low-latency (native frame pacing) fixed** - The "Pace real frames Low-latency (Use native frame pacing)" preset now correctly does not use the Reflex Latency Markers as FPS limiter (`use_reflex_markers_as_fps_limiter` is set off); it uses native frame pacing as intended. Details: ApplyNativeReflexPreset (FpsLimiterPreset::kLowLatencyNativePacing).
+
 ## v0.12.404 (unreleased)
 - **Tooltips: default max width (SetTooltipEx)** - All UI tooltips now use `SetTooltipEx` with a default max width (800px), so long tooltips wrap and are easier to read instead of stretching across the screen. Details: migrated ~673 `SetTooltip` calls to `SetTooltipEx` across 21 files.
+- **Window message rate logs: throttled** - When the window receives very high message rates, the debug dump and threshold messages from `CheckMessageRateAndLogIfHigh` are now throttled (LogErrorThrottled with 40 ms) so the log is not flooded. Details: window_proc_hooks.cpp.
 - **Debug tab: Hooks sub-tab** - Added debug menu: Debug tab now has a **Hooks** sub-tab listing all hook types with **Suppressed** and **Installed** per line, and a **checkbox** to turn suppression on/off for each hook (saved to [DisplayCommander.HookSuppression]; takes effect on next hook install, e.g. game restart).
 - **WGI suppression: networking warning** - Advanced tab "Enable Windows Gaming Input suppression globally" now shows a warning on the same line: suppressing Windows Gaming Input may break networking in some games. Tooltip updated with the same warning.
 

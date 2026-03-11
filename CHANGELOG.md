@@ -1,6 +1,9 @@
 **When releasing:** the version is stored in one place only. Update `src/addons/display_commander/CMakeLists.txt` (`DISPLAY_COMMANDER_VERSION_MAJOR`/`MINOR`/`PATCH`). CMake passes these into the build; `version.hpp` uses them and derives the version string. Do not edit `version.hpp` for version numbers. See `VERSION_BUMPING.md` for the bump script.
 
 ---
+## v0.12.417
+- **Window style: skip when No changes mode** - When Main tab window mode is set to "No changes", the addon no longer modifies the game window’s style (caption, frame, topmost, etc.). Previously, `ModifyWindowStyle` could still strip styles even in that mode. Now it returns immediately when `WindowMode::kNoChanges` is selected, so the game window is left unchanged. Details: general_utils.hpp `ModifyWindowStyle` early return.
+
 ## v0.12.416
 - **D3D9 hook suppression** - D3D9 hooks (Direct3DCreate9/CreateDeviceEx and present) can be suppressed like other hook types. When suppressed, Display Commander does not install hooks on d3d9.dll. Use Debug → Hooks and enable "Suppressed" for "D3D9", or set `D3D9Hooks = true` under `[DisplayCommander.HookSuppression]` in DisplayCommander.toml. Takes effect on next game start. Details: HookType::D3D9; suppress_d3d9_hooks / d3d9_hooks_installed in hook_suppression_settings; InstallDX9Hooks checks ShouldSuppressHook(HookType::D3D9) and calls MarkHookInstalled on success.
 

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "../settings/main_tab_settings.hpp"
+#include "globals.hpp"
+#include "utils/logging.hpp"
+
 #define ImTextureID ImU64
 #define WIN32_LEAN_AND_MEAN
 
@@ -133,11 +137,18 @@ std::string D3DPresentFlagsToString(uint32_t presentFlags);
 // Modifies window styles to prevent fullscreen/always-on-top behavior
 template <typename T>
 inline void ModifyWindowStyle(int nIndex, T& dwNewLong, bool prevent_always_on_top) {
+    // do nothing if no changes mode
+    if (settings::g_mainTabSettings.window_mode.GetValue() == static_cast<int>(WindowMode::kNoChanges)) {
+        return;
+    }
+
     if (nIndex == GWL_STYLE) {
         // WS_POPUP added to fix godstrike
         dwNewLong &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_POPUP);
+        LogInfoThrottled(1, "[WindowsApiHooks] ModifyWindowStyle: GWL_STYLE: %08X", dwNewLong);
     }
     if (nIndex == GWL_EXSTYLE) {
+        LogInfoThrottled(1, "[WindowsApiHooks] ModifyWindowStyle: GWL_EXSTYLE: %08X", dwNewLong);
         dwNewLong &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
 
         if (prevent_always_on_top) {

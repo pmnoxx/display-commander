@@ -676,6 +676,10 @@ template class ComboSettingEnum<TaskbarHideMode>;
 template bool ComboSettingEnumWrapper<TaskbarHideMode>(ComboSettingEnum<TaskbarHideMode>&, const char*,
                                                        display_commander::ui::IImGuiWrapper&, float);
 
+template class ComboSettingEnum<FpsLimiterPreset>;
+template bool ComboSettingEnumWrapper<FpsLimiterPreset>(ComboSettingEnum<FpsLimiterPreset>&, const char*,
+                                                       display_commander::ui::IImGuiWrapper&, float);
+
 // Smart logging function that only logs settings changed from default values
 void LoadTabSettingsWithSmartLogging(const std::vector<SettingBase*>& settings, const std::string& tab_name) {
     std::vector<std::string> changed_settings;

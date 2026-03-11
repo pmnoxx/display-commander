@@ -49,16 +49,14 @@ MainTabSettings::MainTabSettings()
       use_reflex_markers_as_fps_limiter("use_reflex_markers_as_fps_limiter", true, "DisplayCommander"),
       reflex_fps_limiter_max_queued_frames("reflex_fps_limiter_max_queued_frames", 2,
                                            {"Game default", "1", "2", "3", "4", "5", "6"}, "DisplayCommander"),
-      native_reflex_fps_preset(
-          "native_reflex_fps_preset", 0,
-          {"Pace real frames Balanced (Use Reflex Latency Markers, max queued=2)",
-           "Pace real frames Stability (Use Reflex Latency Markers, max queued=3)",
-           "Pace real frames Low-latency (Use Reflex Latency Markers, max queued=1)",
-           "Pace real frames Low-latency (Use native frame pacing)",
-           "Pace generated frames (FPS limiter on generated frames)",
-           "Pace generated (safe) - Use Reshade APIs as fallback",
-           "Custom (configure manually)"},
-          "DisplayCommander"),
+      native_reflex_fps_preset("native_reflex_fps_preset", static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacing),
+                               {"Pace real frames Low-latency (Use native frame pacing)",
+                                "Pace real frames Balanced (Use Reflex Latency Markers, max queued=2)",
+                                "Pace real frames Stability (Use Reflex Latency Markers, max queued=3)",
+                                "Pace real frames Low-latency (Use Reflex Latency Markers, max queued=1)",
+                                "Pace generated frames (FPS limiter on generated frames)",
+                                "Pace generated (safe) - Use Reshade APIs as fallback", "Custom (configure manually)"},
+                               "DisplayCommander"),
       use_streamline_proxy_fps_limiter("use_streamline_proxy_fps_limiter", false, "DisplayCommander"),
       native_pacing_sim_start_only("native_pacing_sim_start_only_doff", false, "DisplayCommander"),
       delay_present_start_after_sim_enabled("delay_present_start_after_sim_enabled_doff", false, "DisplayCommander"),
@@ -338,9 +336,18 @@ MainTabSettings::MainTabSettings()
     };
 }
 
-void ApplyNativeReflexPreset(int preset) {
+void ApplyNativeReflexPreset(FpsLimiterPreset preset) {
     switch (preset) {
-        case 0:  // Pace real frames Balanced
+        case FpsLimiterPreset::kLowLatencyNativePacing:
+            g_mainTabSettings.limit_real_frames.SetValue(true);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(true);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            break;
+        case FpsLimiterPreset::kBalanced:
             g_mainTabSettings.limit_real_frames.SetValue(true);
             g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
             g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(2);
@@ -349,7 +356,7 @@ void ApplyNativeReflexPreset(int preset) {
             g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
             g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
             break;
-        case 1:  // Pace real frames Stability
+        case FpsLimiterPreset::kStability:
             g_mainTabSettings.limit_real_frames.SetValue(true);
             g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
             g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(3);
@@ -358,7 +365,7 @@ void ApplyNativeReflexPreset(int preset) {
             g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
             g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
             break;
-        case 2:  // Pace real frames Low-latency (Reflex markers, max queued=1)
+        case FpsLimiterPreset::kLowLatencyMarkers:
             g_mainTabSettings.limit_real_frames.SetValue(true);
             g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
             g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(1);
@@ -367,16 +374,7 @@ void ApplyNativeReflexPreset(int preset) {
             g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
             g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
             break;
-        case 3:  // Pace real frames Low-latency (Use native frame pacing)
-            g_mainTabSettings.limit_real_frames.SetValue(true);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(true);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
-            break;
-        case 4:  // Pace generated frames
+        case FpsLimiterPreset::kPaceGenerated:
             g_mainTabSettings.limit_real_frames.SetValue(false);
             g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
             g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
@@ -385,7 +383,7 @@ void ApplyNativeReflexPreset(int preset) {
             g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
             g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
             break;
-        case 5:  // Pace generated (safe) - Use Reshade APIs as fallback
+        case FpsLimiterPreset::kPaceGeneratedSafe:
             g_mainTabSettings.limit_real_frames.SetValue(false);
             g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(false);
             g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(0);
@@ -394,8 +392,7 @@ void ApplyNativeReflexPreset(int preset) {
             g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
             g_mainTabSettings.safe_mode_fps_limiter.SetValue(true);
             break;
-        default:  // Custom (6) - no auto-apply
-            break;
+        case FpsLimiterPreset::kCustom: break;
     }
 }
 
@@ -404,10 +401,10 @@ void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
 
-    // Apply FPS limiter preset when not Custom (preset 6)
-    int preset = native_reflex_fps_preset.GetValue();
-    if (preset >= 0 && preset < 6) {
-        ApplyNativeReflexPreset(preset);
+    // Apply FPS limiter preset when not Custom
+    int preset_int = native_reflex_fps_preset.GetValue();
+    if (preset_int >= 0 && preset_int < static_cast<int>(FpsLimiterPreset::kCustom)) {
+        ApplyNativeReflexPreset(static_cast<FpsLimiterPreset>(preset_int));
     }
 
     // Update CPU cores maximum based on system CPU count

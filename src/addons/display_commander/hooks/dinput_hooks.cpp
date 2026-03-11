@@ -209,7 +209,7 @@ bool InstallDirectInput8Hooks(HMODULE hModule) {
 
 // Install legacy DirectInput hooks (DirectInputCreateA/W) for the given dinput.dll module. Called from OnModuleLoaded.
 bool InstallDirectInputHooks(HMODULE hModule) {
-    if (!enabled_experimental_features) {
+    if (!enabled_experimental_features || true) {
         LogInfo("DirectInput (legacy) hooks installation suppressed by user setting");
         return false;
     }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxgi/dxgi_hooks.hpp"
 #include <d3d11.h>
 #include <d3d12.h>
 #include <dxgi.h>
@@ -137,9 +138,6 @@ HRESULT WINAPI D3D12CreateDevice_Detour(IUnknown* pAdapter, D3D_FEATURE_LEVEL Mi
 // Hook management
 bool InstallApiHooks();
 bool InstallWindowsApiHooks();
-bool InstallDxgiFactoryHooks(HMODULE dxgi_module);
-bool InstallD3D11DeviceHooks(HMODULE d3d11_module);
-bool InstallD3D12DeviceHooks(HMODULE d3d12_module);
 void UninstallApiHooks();
 
 // Helper functions

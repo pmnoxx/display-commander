@@ -5,6 +5,7 @@
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/debug_output_hooks.hpp"
 #include "../../hooks/hid_suppression_hooks.hpp"
+#include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/rand_hooks.hpp"
 #include "../../hooks/sleep_hooks.hpp"
@@ -46,6 +47,7 @@
 namespace ui::new_ui {
 
 static void DrawThreadTrackingSubTab(display_commander::ui::IImGuiWrapper& imgui);
+static void DrawHooksConfigTab(display_commander::ui::IImGuiWrapper& imgui);
 
 void DrawNvidiaProfileTab(reshade::api::effect_runtime* runtime) {
     display_commander::ui::GraphicsApi api = display_commander::ui::GraphicsApi::Unknown;
@@ -310,6 +312,11 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
         }
     }
 
+    if (imgui.BeginTabItem("Hooks", nullptr, 0)) {
+        DrawHooksConfigTab(imgui);
+        imgui.EndTabItem();
+    }
+
     if (imgui.BeginTabItem("Monitor Settings", nullptr, 0)) {
         ui::monitor_settings::DrawMonitorSettings(imgui);
         imgui.EndTabItem();
@@ -331,6 +338,42 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
     }
 
     imgui.EndTabBar();
+}
+
+static void DrawHooksConfigTab(display_commander::ui::IImGuiWrapper& imgui) {
+    using namespace display_commander::ui::wrapper_flags;
+    imgui.TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f), "=== All Hooks (Suppression & Installed) ===");
+    imgui.Text("Suppressed: checkbox = hook suppressed (saved to [DisplayCommander.HookSuppression]). Installed = [DisplayCommander.HooksInstalled]. Changes take effect on next hook install (e.g. game restart).");
+    imgui.Separator();
+    const int table_flags = TableFlags_Borders | TableFlags_RowBg | TableFlags_Resizable;
+    if (imgui.BeginTable("HooksConfigTable", 3, table_flags)) {
+        imgui.TableSetupColumn("Hook", TableColumnFlags_WidthFixed, 220.0f);
+        imgui.TableSetupColumn("Suppressed", TableColumnFlags_WidthFixed, 100.0f);
+        imgui.TableSetupColumn("Installed", TableColumnFlags_WidthFixed, 100.0f);
+        imgui.TableHeadersRow();
+        auto& mgr = display_commanderhooks::HookSuppressionManager::GetInstance();
+        for (int i = 0; i < display_commanderhooks::HookSuppressionManager::kHookTypeCount; ++i) {
+            display_commanderhooks::HookType t = display_commanderhooks::HookSuppressionManager::GetHookTypeByIndex(i);
+            imgui.TableNextRow();
+            imgui.TableSetColumnIndex(0);
+            imgui.TextUnformatted(mgr.GetHookTypeName(t).c_str());
+            imgui.TableSetColumnIndex(1);
+            bool suppressed = mgr.ShouldSuppressHook(t);
+            imgui.PushID(i);
+            if (imgui.Checkbox("##suppress", &suppressed)) {
+                mgr.SetSuppressHook(t, suppressed);
+            }
+            imgui.PopID();
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltip("Checked = hook suppressed (not installed). Uncheck to allow hook on next load.");
+            }
+            imgui.TableSetColumnIndex(2);
+            bool installed = mgr.IsHookInstalled(t);
+            imgui.TextColored(installed ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ui::colors::TEXT_DIMMED,
+                              installed ? "Yes" : "No");
+        }
+        imgui.EndTable();
+    }
 }
 
 void DrawMouseCoordinatesDisplay(display_commander::ui::IImGuiWrapper& imgui) {

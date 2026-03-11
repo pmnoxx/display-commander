@@ -13,9 +13,13 @@ void UninstallPCLStatsEtwHooks();
 /** Returns true if PCLStats ETW hooks are installed. */
 bool ArePCLStatsEtwHooksInstalled();
 
+/** Called from NvAPI_D3D_SetLatencyMarker_Detour when the call is from the game (not us).
+ *  Used so PCLStatsReportingAllowed() can return false when the game is actively using Reflex. */
+void NotifyGameSetLatencyMarkerCall();
+
 /** Returns true if we are allowed to emit our own PCLStats markers.
  *  Conditions: DXGI only (D3D10/11/12); no game PCLStats events (all three counts 0);
- *  and g_global_frame_id >= 500. */
+ *  g_global_frame_id >= 500; and no recent game-originated NvAPI_D3D_SetLatencyMarker calls. */
 bool PCLStatsReportingAllowed();
 
 /** Returns true if PCLStats reporting should be active: PCLStatsReportingAllowed() and pcl_stats_enabled setting. */

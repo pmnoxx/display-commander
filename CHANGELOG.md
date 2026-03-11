@@ -2,6 +2,9 @@
 
 ---
 
+## v0.12.398 (unreleased)
+- **PCLStats / Inject Reflex: hide when game uses native Reflex** - When the game is actively calling NvAPI SetLatencyMarker (native Reflex), the addon no longer offers or shows "Inject Reflex" / PCLStats injection. PCLStatsReportingAllowed() returns false if the game has called SetLatencyMarker in the last second, so the Inject Reflex option and related UI are hidden when native Reflex is detected. Details: pclstats_etw_hooks (NotifyGameSetLatencyMarkerCall, g_last_game_set_latency_marker_ns); nvapi_hooks.cpp (notify from detour); PCLStatsReportingAllowed() checks recent game marker time.
+
 ## v0.12.397 (unreleased)
 - **ReShade addon mode: global version and upgrade button** - When Display Commander runs as an addon (ReShade loaded the game first), the ReShade section in Updates now always shows the **Global ReShade version** (or "(none)" if no global install), and the same **Version to download** combo plus **Download** button used to upgrade the global ReShade folder. You can see which version is installed globally and download a different version without switching to proxy mode. Details: main_new_tab.cpp DrawUpdatesReshadeHeader (!g_hooked_before_reshade branch).
 

@@ -7,9 +7,9 @@
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../dxgi/vram_info.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/d3d9/d3d9_no_reshade_device_state.hpp"
 #include "../../hooks/d3d9/d3d9_present_hooks.hpp"
+#include "../../hooks/input/windows_gaming_input_hooks.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../hooks/nvidia/nvapi_hooks.hpp"
@@ -18,8 +18,8 @@
 #include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
+#include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
-#include "../../hooks/input/windows_gaming_input_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
 #include "../../latency/reflex_provider.hpp"
@@ -3971,6 +3971,14 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
                 "Quick presets for FPS limiter when the game has native Reflex. Custom allows manual configuration.");
+        }
+
+        if (preset_int == static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacing)) {
+            imgui.TextColored(ui::colors::TEXT_WARNING, "Warning: may offer poor frame pacing.");
+            imgui.TextWrapped("Consider switching to a preset with Reflex markers (max queued 1, 2, or 3).");
+        } else if (preset_int == static_cast<int>(FpsLimiterPreset::kLowLatencyMarkers)) {
+            imgui.TextColored(ui::colors::TEXT_WARNING, "Warning: may reduce FPS.");
+            imgui.TextWrapped("Consider switching to Balanced or Stability  (max queued 2, or 3)..");
         }
 
         const bool show_custom_options = (preset_int == kCustomInt);

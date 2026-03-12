@@ -4,6 +4,8 @@
 
 ---
 ## v0.12.442
+- [ui] **FPS limiter preset: warnings for native pacing and max queued=1** - When "Low-latency (native frame pacing)" is selected, a warning suggests it may offer poor frame pacing and to consider Reflex markers (max queued 1, 2, or 3). When "Low-latency (Reflex markers, max queued=1)" is selected, a warning suggests it may reduce FPS and to consider Balanced or Stability. Details: main_new_tab.cpp FPS limiter preset block.
+- [ui] [settings] **FPS limiter preset: combo order by max queued** - The native Reflex FPS limiter preset combo is reordered so presets follow "Low-latency (native pacing)" then Reflex markers by max queued frames (1, 2, 3), then pace generated options, then Custom. Stored value 0–6 is unchanged; existing configs may refer to a different preset after this change. Details: FpsLimiterPreset in globals.hpp.
 - [new feature] [hooks] [ui] **Vulkan: optional extension injection (Reflex / low latency)** - Added a Vulkan tab checkbox "Inject Vulkan extensions (Reflex / low latency)" to add VK_KHR_present_id, VK_KHR_timeline_semaphore, and VK_NV_low_latency2 in vkCreateDevice when the application did not request them (SpecialK-style injection). When enabled and vulkan-1 loader hooks are active, each missing extension is appended. The UI shows a warning if VK_NV_low_latency or VK_NV_low_latency2 is already enabled by the application. Details: main_tab_settings vulkan_inject_extensions_enabled (default off); vulkan_loader_hooks.cpp HasExtension, vkCreateDevice_Detour inject path (all three extensions); vulkan_tab.cpp checkbox and warning.
 
 ---

@@ -3,16 +3,16 @@
 #include <windows.h>
 #include <wingdi.h>
 #include <array>
-#include "../globals.hpp"
-#include "../latency/gpu_completion_monitoring.hpp"
-#include "../performance_types.hpp"
-#include "../swapchain_events.hpp"
-#include "../utils.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/logging.hpp"
-#include "dxgi/dxgi_present_hooks.hpp"
-#include "hook_suppression_manager.hpp"
-#include "present_traffic_tracking.hpp"
+#include "../../globals.hpp"
+#include "../../latency/gpu_completion_monitoring.hpp"
+#include "../../performance_types.hpp"
+#include "../../swapchain_events.hpp"
+#include "../../utils.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/logging.hpp"
+#include "../dxgi/dxgi_present_hooks.hpp"
+#include "../hook_suppression_manager.hpp"
+#include "../present_traffic_tracking.hpp"
 
 // WGL function pointers (dynamically loaded)
 static wglSwapBuffers_pfn wglSwapBuffers_ptr = nullptr;

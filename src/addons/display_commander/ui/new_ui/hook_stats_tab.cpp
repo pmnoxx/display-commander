@@ -2,7 +2,7 @@
 #include "../imgui_wrapper_base.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/dinput_hooks.hpp"
-#include "../../hooks/opengl_hooks.hpp"
+#include "../../hooks/opengl/opengl_hooks.hpp"
 #include "../../hooks/display_settings_hooks.hpp"
 #include "../../hooks/hid_statistics.hpp"
 #include "../../settings/experimental_tab_settings.hpp"

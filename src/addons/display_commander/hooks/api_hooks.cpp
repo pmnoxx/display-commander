@@ -23,7 +23,7 @@
 #include "globals.hpp"
 #include "hook_suppression_manager.hpp"
 #include "loadlibrary_hooks.hpp"
-#include "opengl_hooks.hpp"
+#include "opengl/opengl_hooks.hpp"
 #include "nvidia/pclstats_etw_hooks.hpp"
 #include "rand_hooks.hpp"
 #include "sleep_hooks.hpp"

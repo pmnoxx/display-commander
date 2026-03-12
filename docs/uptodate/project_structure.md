@@ -86,7 +86,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **windows_gaming_input_hooks.cpp**, **windows_gaming_input_hooks.hpp**: Windows.Gaming.Input hooks
 - **display_settings_hooks.cpp**, **display_settings_hooks.hpp**: Display settings hooks
 - **dxgi_factory_wrapper.cpp**, **dxgi_factory_wrapper.hpp**: DXGI factory wrapper
-- **opengl_hooks.cpp**, **opengl_hooks.hpp**: OpenGL hooks
 - **rand_hooks.cpp**, **rand_hooks.hpp**: Rand hooks
 - **sleep_hooks.cpp**, **sleep_hooks.hpp**: Sleep hooks
 - **timeslowdown_hooks.cpp**, **timeslowdown_hooks.hpp**: Time slowdown hooks
@@ -109,6 +108,7 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **d3d9/d3d9_hooks.cpp**, **.hpp**, **d3d9_present_hooks**, **d3d9_present_params_upgrade**, **d3d9_pool_upgrade**, **d3d9_device_vtable_logging**, **d3d9_no_reshade_device_state.hpp**, **d3d9_vtable_indices.hpp**
 - **dxgi/dxgi_present_hooks.cpp**, **.hpp**, **dxgi_gpu_completion.hpp**
 - **ddraw/ddraw_present_hooks.cpp**, **.hpp**
+- **opengl/opengl_hooks.cpp**, **.hpp**: OpenGL (WGL) hooks
 - **nvidia/ngx_hooks.cpp**, **.hpp**: NGX (DLSS) hooks
 - **nvidia/nvapi_hooks.cpp**, **.hpp**: NVAPI hooks
 - **nvidia/streamline_hooks.cpp**, **.hpp**: Streamline hooks

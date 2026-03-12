@@ -32,7 +32,7 @@
 #include "hook_suppression_manager.hpp"
 #include "nvidia/ngx_hooks.hpp"
 #include "nvidia/nvapi_hooks.hpp"
-#include "opengl_hooks.hpp"
+#include "opengl/opengl_hooks.hpp"
 #include "nvidia/pclstats_etw_hooks.hpp"
 #include "nvidia/streamline_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"

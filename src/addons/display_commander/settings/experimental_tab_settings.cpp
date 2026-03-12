@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include "../globals.hpp"
 #include "../hooks/loadlibrary_hooks.hpp"
-#include "../hooks/timeslowdown_hooks.hpp"
+#include "../hooks/system/timeslowdown_hooks.hpp"
 
 namespace settings {
 

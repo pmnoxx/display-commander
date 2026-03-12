@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <string>
 
-// Detect if Display Commander is being loaded as a proxy DLL (d3d9.dll, ddraw.dll, dxgi.dll, d3d11.dll, d3d12.dll, or
-// version.dll) This checks the name of the Display Commander DLL itself, not the executable
+// Detect if Display Commander is being loaded as a proxy DLL (d3d9.dll, ddraw.dll, dxgi.dll, d3d11.dll, d3d12.dll,
+// dinput8.dll, version.dll, or opengl32.dll). This checks the name of the Display Commander DLL itself, not the executable.
 inline bool IsProxyDllMode(HMODULE h_module = nullptr) {
     if (h_module == nullptr) {
         // Get the module handle for the current DLL
@@ -30,10 +30,10 @@ inline bool IsProxyDllMode(HMODULE h_module = nullptr) {
     // Convert to lowercase for comparison
     std::transform(module_name.begin(), module_name.end(), module_name.begin(), ::towlower);
 
-    // Check if we're being loaded as d3d9.dll, ddraw.dll, dxgi.dll, d3d11.dll, d3d12.dll, version.dll, or opengl32.dll
+    // Check if we're being loaded as d3d9.dll, ddraw.dll, dxgi.dll, d3d11.dll, d3d12.dll, dinput8.dll, version.dll, or opengl32.dll
     return module_name == L"d3d9.dll" || module_name == L"ddraw.dll" || module_name == L"dxgi.dll"
-           || module_name == L"d3d11.dll" || module_name == L"d3d12.dll" || module_name == L"version.dll"
-           || module_name == L"opengl32.dll";
+           || module_name == L"d3d11.dll" || module_name == L"d3d12.dll" || module_name == L"dinput8.dll"
+           || module_name == L"version.dll" || module_name == L"opengl32.dll";
 }
 
 // Get the module name (stem) to determine which proxy DLL we are

@@ -1,6 +1,6 @@
 #include "streamline_tab.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/streamline_hooks.hpp"
+#include "../../hooks/nvidia/streamline_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../settings/streamline_tab_settings.hpp"
 #include "../../utils.hpp"

@@ -9,16 +9,17 @@
 #include <map>
 #include <string>
 #include <vector>
-#include "../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
-#include "../globals.hpp"
-#include "../settings/advanced_tab_settings.hpp"
-#include "../settings/swapchain_tab_settings.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../utils/timing.hpp"
-#include "hook_suppression_manager.hpp"
+
+#include "../../../../external/nvidia-dlss/include/nvsdk_ngx_defs.h"
+#include "../../globals.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
+#include "../../settings/swapchain_tab_settings.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "../../utils/timing.hpp"
+#include "../hook_suppression_manager.hpp"
 
 // NGX type definitions (minimal subset needed for hooks)
 #define NVSDK_CONV __cdecl

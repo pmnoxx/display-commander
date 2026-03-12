@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.429
+- [cleanup] **NVIDIA-related hooks moved to hooks/nvidia/** - NGX, NVAPI, Streamline, and PCLStats ETW hook sources (ngx_hooks, nvapi_hooks, streamline_hooks, pclstats_etw_hooks) are now under `hooks/nvidia/` for clearer structure alongside `hooks/dxgi/`, `hooks/vulkan/`, etc. All consumer includes and docs updated. Details: private_docs/feature_nvidia_hooks_folder.md.
+
 ## v0.12.428
 - [ui] [settings] **Brightness / Auto HDR section on by default** - The Brightness and Auto HDR subsection (including adding Display Commander's Shaders/Textures to ReShade's EffectSearchPaths and TextureSearchPaths) now defaults to enabled for new configs. The setting uses a new config key (`brightness_autohdr_section_enabled_don`) so existing users keep their current choice. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default true, key brightness_autohdr_section_enabled_don).
 

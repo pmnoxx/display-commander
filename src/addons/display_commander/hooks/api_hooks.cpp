@@ -24,7 +24,7 @@
 #include "hook_suppression_manager.hpp"
 #include "loadlibrary_hooks.hpp"
 #include "opengl_hooks.hpp"
-#include "pclstats_etw_hooks.hpp"
+#include "nvidia/pclstats_etw_hooks.hpp"
 #include "rand_hooks.hpp"
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"

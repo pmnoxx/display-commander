@@ -7,7 +7,7 @@
 #include "globals.hpp"
 #include "hooks/api_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
-#include "hooks/nvapi_hooks.hpp"
+#include "hooks/nvidia/nvapi_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "latent_sync/refresh_rate_monitor_integration.hpp"
 #include "nvapi/nvapi_init.hpp"

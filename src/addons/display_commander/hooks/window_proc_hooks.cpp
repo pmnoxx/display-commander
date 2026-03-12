@@ -20,7 +20,7 @@
 #include "../utils/srwlock_wrapper.hpp"
 #include "../utils/timing.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
-#include "pclstats_etw_hooks.hpp"
+#include "nvidia/pclstats_etw_hooks.hpp"
 
 #include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 

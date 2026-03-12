@@ -86,9 +86,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **windows_gaming_input_hooks.cpp**, **windows_gaming_input_hooks.hpp**: Windows.Gaming.Input hooks
 - **display_settings_hooks.cpp**, **display_settings_hooks.hpp**: Display settings hooks
 - **dxgi_factory_wrapper.cpp**, **dxgi_factory_wrapper.hpp**: DXGI factory wrapper
-- **streamline_hooks.cpp**, **streamline_hooks.hpp**: Streamline hooks
-- **nvapi_hooks.cpp**, **nvapi_hooks.hpp**: NVAPI hooks
-- **ngx_hooks.cpp**, **ngx_hooks.hpp**: NGX (DLSS) hooks
 - **opengl_hooks.cpp**, **opengl_hooks.hpp**: OpenGL hooks
 - **rand_hooks.cpp**, **rand_hooks.hpp**: Rand hooks
 - **sleep_hooks.cpp**, **sleep_hooks.hpp**: Sleep hooks
@@ -103,7 +100,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **hook_suppression_manager.cpp**, **hook_suppression_manager.hpp**: Hook suppression
 - **input_activity_stats.cpp**, **input_activity_stats.hpp**: Input activity stats
 - **present_traffic_tracking.cpp**, **present_traffic_tracking.hpp**: Present traffic tracking
-- **pclstats_etw_hooks.cpp**, **pclstats_etw_hooks.hpp**: PCLStats ETW reporting
 - **hid_hooks_install.cpp**, **hid_hooks_install.hpp**: HID hooks installation
 - **hid_additional_hooks.cpp**, **hid_additional_hooks.hpp**: HID additional hooks
 - **hid_suppression_hooks.cpp**, **hid_suppression_hooks.hpp**: HID suppression
@@ -113,6 +109,10 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **d3d9/d3d9_hooks.cpp**, **.hpp**, **d3d9_present_hooks**, **d3d9_present_params_upgrade**, **d3d9_pool_upgrade**, **d3d9_device_vtable_logging**, **d3d9_no_reshade_device_state.hpp**, **d3d9_vtable_indices.hpp**
 - **dxgi/dxgi_present_hooks.cpp**, **.hpp**, **dxgi_gpu_completion.hpp**
 - **ddraw/ddraw_present_hooks.cpp**, **.hpp**
+- **nvidia/ngx_hooks.cpp**, **.hpp**: NGX (DLSS) hooks
+- **nvidia/nvapi_hooks.cpp**, **.hpp**: NVAPI hooks
+- **nvidia/streamline_hooks.cpp**, **.hpp**: Streamline hooks
+- **nvidia/pclstats_etw_hooks.cpp**, **.hpp**: PCLStats ETW reporting
 - **vulkan/nvlowlatencyvk_hooks.cpp**, **.hpp**, **vulkan_loader_hooks.cpp**, **.hpp**
 
 ## addons/display_commander/input_remapping

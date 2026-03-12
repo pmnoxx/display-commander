@@ -4,7 +4,7 @@
 
 // Define the PCLStats provider (must be in exactly one .cpp)
 PCLSTATS_DEFINE()
-#include "../hooks/pclstats_etw_hooks.hpp"
+#include "../hooks/nvidia/pclstats_etw_hooks.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"

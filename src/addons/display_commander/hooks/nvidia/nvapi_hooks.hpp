@@ -1,8 +1,8 @@
 #pragma once
 
 #include <windows.h>
-#include "../../../external/nvapi/nvapi.h"
-#include "../../../external/nvapi/nvapi_lite_common.h"
+#include "../../../../external/nvapi/nvapi.h"
+#include "../../../../external/nvapi/nvapi_lite_common.h"
 
 // NVAPI function pointer types
 using NvAPI_Disp_GetHdrCapabilities_pfn = NvAPI_Status(__cdecl*)(NvU32, NV_HDR_CAPABILITIES*);

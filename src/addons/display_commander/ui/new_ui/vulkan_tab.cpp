@@ -1,5 +1,5 @@
 #include "vulkan_tab.hpp"
-#include "../../hooks/pclstats_etw_hooks.hpp"
+#include "../../hooks/nvidia/pclstats_etw_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "../../res/forkawesome.h"

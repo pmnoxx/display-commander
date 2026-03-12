@@ -51,9 +51,9 @@ MainTabSettings::MainTabSettings()
                                            {"Game default", "1", "2", "3", "4", "5", "6"}, "DisplayCommander"),
       native_reflex_fps_preset("native_reflex_fps_preset", static_cast<int>(FpsLimiterPreset::kLowLatencyNativePacing),
                                {"Pace real frames Low-latency (Use native frame pacing)",
+                                "Pace real frames Low-latency (Use Reflex Latency Markers, max queued=1)",
                                 "Pace real frames Balanced (Use Reflex Latency Markers, max queued=2)",
                                 "Pace real frames Stability (Use Reflex Latency Markers, max queued=3)",
-                                "Pace real frames Low-latency (Use Reflex Latency Markers, max queued=1)",
                                 "Pace generated frames (FPS limiter on generated frames)",
                                 "Pace generated (safe) - Use Reshade APIs as fallback", "Custom (configure manually)"},
                                "DisplayCommander"),
@@ -353,6 +353,15 @@ void ApplyNativeReflexPreset(FpsLimiterPreset preset) {
             g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
             g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
             break;
+        case FpsLimiterPreset::kLowLatencyMarkers:
+            g_mainTabSettings.limit_real_frames.SetValue(true);
+            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
+            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(1);
+            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
+            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
+            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
+            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
+            break;
         case FpsLimiterPreset::kBalanced:
             g_mainTabSettings.limit_real_frames.SetValue(true);
             g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
@@ -366,15 +375,6 @@ void ApplyNativeReflexPreset(FpsLimiterPreset preset) {
             g_mainTabSettings.limit_real_frames.SetValue(true);
             g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
             g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(3);
-            g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
-            g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
-            g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
-            g_mainTabSettings.safe_mode_fps_limiter.SetValue(false);
-            break;
-        case FpsLimiterPreset::kLowLatencyMarkers:
-            g_mainTabSettings.limit_real_frames.SetValue(true);
-            g_mainTabSettings.use_reflex_markers_as_fps_limiter.SetValue(true);
-            g_mainTabSettings.reflex_fps_limiter_max_queued_frames.SetValue(1);
             g_mainTabSettings.use_streamline_proxy_fps_limiter.SetValue(false);
             g_mainTabSettings.native_pacing_sim_start_only.SetValue(false);
             g_mainTabSettings.delay_present_start_after_sim_enabled.SetValue(false);
@@ -407,10 +407,11 @@ void MainTabSettings::LoadSettings() {
     LogInfo("MainTabSettings::LoadSettings() called");
     LoadTabSettingsWithSmartLogging(all_settings_, "Main Tab");
 
-    // Apply FPS limiter preset when not Custom
-    int preset_int = native_reflex_fps_preset.GetValue();
-    if (preset_int >= 0 && preset_int < static_cast<int>(FpsLimiterPreset::kCustom)) {
-        ApplyNativeReflexPreset(static_cast<FpsLimiterPreset>(preset_int));
+    // Apply FPS limiter preset when not Custom (validate range to avoid UB on corrupted config)
+    const int preset_raw = native_reflex_fps_preset.GetValue();
+    if (preset_raw >= 0 && preset_raw < static_cast<int>(FpsLimiterPreset::kCustom)) {
+        const FpsLimiterPreset preset = static_cast<FpsLimiterPreset>(preset_raw);
+        ApplyNativeReflexPreset(preset);
     }
 
     // Update CPU cores maximum based on system CPU count

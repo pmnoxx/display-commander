@@ -3,6 +3,10 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.452
+- [cleanup] [ui] [settings] **FPS limiter preset: use enum in code** - The FPS limiter preset is now handled as `FpsLimiterPreset` in code instead of raw `int`. `ComboSettingEnum` gained `GetEnumValue()` and `SetValue(EnumType)` so the main tab and settings use type-safe comparisons and apply logic; storage and config remain int. Details: settings_wrapper.hpp ComboSettingEnum; main_new_tab.cpp preset/new_preset/fps_limiter_preset as enum; main_tab_settings.cpp LoadSettings ApplyNativeReflexPreset(preset).
+
+---
 ## v0.12.451
 - [hooks] **Reverted changes** - Reverted the Reflex marker deduplication and related changes from v0.12.450.
 

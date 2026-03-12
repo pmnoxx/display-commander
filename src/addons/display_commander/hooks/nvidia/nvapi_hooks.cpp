@@ -117,7 +117,8 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 }
 
 int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
-                                  const std::function<int()>& send_present_end_to_driver) {
+                                  const std::function<int()>& send_present_end_to_driver, uint64_t marker_time_ns) {
+    const LONGLONG now_ns = (marker_time_ns != 0) ? static_cast<LONGLONG>(marker_time_ns) : utils::get_now_ns();
     bool reflex_marker_sent = false;
     NotifyGameSetLatencyMarkerCall();
     g_native_reflex_detected.store(true, std::memory_order_relaxed);
@@ -133,7 +134,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
 
     // only for first 6 latency marker types
     if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
+        ChooseFpsLimiter(static_cast<uint64_t>(now_ns), site);
     }
     bool use_fps_limiter = GetChosenFpsLimiter(site);
     if (!use_fps_limiter) {
@@ -222,7 +223,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
             if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
-                const LONGLONG now_ns = utils::get_now_ns();
                 g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
                 g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
             }

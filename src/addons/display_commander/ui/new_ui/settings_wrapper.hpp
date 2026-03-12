@@ -261,6 +261,9 @@ class ComboSettingEnum : public SettingBase {
 
     int GetValue() const { return value_; }
     void SetValue(int value);
+    /** Returns current value as the enum type. Use for type-safe comparisons; validate range when loading from config. */
+    EnumType GetEnumValue() const { return static_cast<EnumType>(value_); }
+    void SetValue(EnumType value) { SetValue(static_cast<int>(value)); }
     // Returns effective default (game default override if any, else constructor default). Used for reset and tooltip.
     int GetDefaultValue() const;
     const std::vector<const char*>& GetLabels() const { return labels_; }

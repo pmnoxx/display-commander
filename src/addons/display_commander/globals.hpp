@@ -685,9 +685,9 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site);
 
 /** Shared Reflex latency-marker handling (NVAPI and Vulkan NVLL). Calls NotifyGameSetLatencyMarkerCall, runs FPS
  * limiter logic, and optionally forwards the marker via the callback. Returns 0 on success; callback returns 0 on
- * success. */
+ * success. marker_time_ns: timestamp for this marker (used for buffer and ChooseFpsLimiter); 0 = use get_now_ns(). */
 int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
-                                 const std::function<int()>& send_present_end_to_driver);
+                                 const std::function<int()>& send_present_end_to_driver, uint64_t marker_time_ns = 0);
 
 /** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset".
  */

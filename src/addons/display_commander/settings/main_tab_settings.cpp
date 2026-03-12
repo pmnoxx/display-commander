@@ -170,7 +170,7 @@ MainTabSettings::MainTabSettings()
       show_performance_tab("show_performance_tab", false, "DisplayCommander"),
       show_vulkan_tab("show_vulkan_tab", false, "DisplayCommander"),
       vulkan_nvll_hooks_enabled("vulkan_nvll_hooks_enabled_don", true, "DisplayCommander"),
-      vulkan_vk_loader_hooks_enabled("vulkan_vk_loader_hooks_enabled", false, "DisplayCommander"),
+      vulkan_vk_loader_hooks_enabled("vulkan_vk_loader_hooks_enabled_don", true, "DisplayCommander"),
       skip_ansel_loading("skip_ansel_loading", false, "DisplayCommander"),
       force_anisotropic_filtering("force_anisotropic_filtering", false, "DisplayCommander"),
       upgrade_min_mag_mip_linear("upgrade_min_mag_mip_linear", true, "DisplayCommander"),

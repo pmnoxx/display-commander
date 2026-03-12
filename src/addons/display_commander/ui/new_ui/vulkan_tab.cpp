@@ -151,7 +151,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             }
         } else {
             imgui.Text("Device extension count: %zu", exts.size());
-            if (imgui.BeginChild("VulkanExtensionsList", ImVec2(-1.0f, 120.0f), true)) {
+            if (imgui.BeginChild("VulkanExtensionsList", ImVec2(-1.0f, 400.0f), true)) {
                 for (const std::string& name : exts) {
                     imgui.TextUnformatted(name.c_str());
                 }

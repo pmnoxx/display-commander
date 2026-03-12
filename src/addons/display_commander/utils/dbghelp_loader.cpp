@@ -15,6 +15,8 @@ SymGetModuleBase64_pfn SymGetModuleBase64_Original = nullptr;
 SymFromAddr_pfn SymFromAddr_Original = nullptr;
 SymGetLineFromAddr64_pfn SymGetLineFromAddr64_Original = nullptr;
 SymGetModuleInfo64_pfn SymGetModuleInfo64_Original = nullptr;
+SymSetSearchPathW_pfn SymSetSearchPathW_Original = nullptr;
+SymGetSearchPathW_pfn SymGetSearchPathW_Original = nullptr;
 
 // State tracking
 static std::atomic<bool> g_dbghelp_loaded{false};
@@ -61,6 +63,12 @@ bool LoadDbgHelp() {
     if (!SymGetModuleInfo64_Original) {
         SymGetModuleInfo64_Original = (SymGetModuleInfo64_pfn)GetProcAddress(g_dbghelp_module, "SymGetModuleInfo64");
     }
+    if (!SymSetSearchPathW_Original) {
+        SymSetSearchPathW_Original = (SymSetSearchPathW_pfn)GetProcAddress(g_dbghelp_module, "SymSetSearchPathW");
+    }
+    if (!SymGetSearchPathW_Original) {
+        SymGetSearchPathW_Original = (SymGetSearchPathW_pfn)GetProcAddress(g_dbghelp_module, "SymGetSearchPathW");
+    }
 
     // Check if all required functions are available
     bool all_functions_available =
@@ -105,6 +113,8 @@ void UnloadDbgHelp() {
     SymFromAddr_Original = nullptr;
     SymGetLineFromAddr64_Original = nullptr;
     SymGetModuleInfo64_Original = nullptr;
+    SymSetSearchPathW_Original = nullptr;
+    SymGetSearchPathW_Original = nullptr;
 
     g_dbghelp_loaded.store(false);
     g_dbghelp_available.store(false);

@@ -19,6 +19,8 @@ using SymGetModuleBase64_pfn = DWORD64(WINAPI*)(HANDLE, DWORD64);
 using SymFromAddr_pfn = BOOL(WINAPI*)(HANDLE, DWORD64, PDWORD64, PSYMBOL_INFO);
 using SymGetLineFromAddr64_pfn = BOOL(WINAPI*)(HANDLE, DWORD64, PDWORD, PIMAGEHLP_LINE64);
 using SymGetModuleInfo64_pfn = BOOL(WINAPI*)(HANDLE, DWORD64, PIMAGEHLP_MODULE64);
+using SymSetSearchPathW_pfn = BOOL(WINAPI*)(HANDLE, PCWSTR);
+using SymGetSearchPathW_pfn = BOOL(WINAPI*)(HANDLE, PWSTR, DWORD);
 
 // Function pointers
 extern SymGetOptions_pfn SymGetOptions_Original;
@@ -31,6 +33,8 @@ extern SymGetModuleBase64_pfn SymGetModuleBase64_Original;
 extern SymFromAddr_pfn SymFromAddr_Original;
 extern SymGetLineFromAddr64_pfn SymGetLineFromAddr64_Original;
 extern SymGetModuleInfo64_pfn SymGetModuleInfo64_Original;
+extern SymSetSearchPathW_pfn SymSetSearchPathW_Original;
+extern SymGetSearchPathW_pfn SymGetSearchPathW_Original;
 
 // Dynamic loading functions
 bool LoadDbgHelp();

@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.420
+- [new feature] **Stack trace: set symbol search path and warn if PDB missing** - Before each stack trace, the addon sets DbgHelp’s symbol search path to include the addon directory (and any existing path) so Display Commander’s PDB can be found. If the addon’s `.pdb` file is not present at the expected path, a warning is logged: "Display Commander debug symbols ('...') not found, stack trace may be inaccurate." This makes crash and exit logs more informative when symbols are missing. Details: dbghelp_loader SymSetSearchPathW/SymGetSearchPathW; stack_trace.cpp sets path and checks PDB before each GenerateStackTrace.
+
 ## v0.12.419
 - [bugfix] **No HWND_NOTOPMOST or window style changes when Window mode is No changes** - When Main tab window mode is "No changes", the addon no longer forces the game window to non–always-on-top (HWND_NOTOPMOST) in `SetWindowPos`, and no longer modifies window styles in the `SetWindowLong*` detours. Previously we could still override `hWndInsertAfter` to HWND_NOTOPMOST and call `ModifyWindowStyle` when the swapchain window was targeted. Now all of these detours check `window_mode != kNoChanges` before applying any change, so the game window is left fully unchanged. Details: api_hooks.cpp SetWindowPos_Detour and SetWindowLongPtrW, SetWindowLongA, SetWindowLongW, SetWindowLongPtrA_Detour.
 

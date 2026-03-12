@@ -2192,7 +2192,9 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
          "Display Commander loaded as opengl32.dll proxy - OpenGL/WGL functions will be forwarded to system "
          "opengl32.dll"},
         {L"dbghelp", L"dbghelp.dll", "[DisplayCommander] Entry point detected: dbghelp.dll (proxy mode)\n",
-         "Display Commander loaded as dbghelp.dll proxy - DbgHelp functions will be forwarded to system dbghelp.dll"}};
+         "Display Commander loaded as dbghelp.dll proxy - DbgHelp functions will be forwarded to system dbghelp.dll"},
+        {L"vulkan-1", L"vulkan-1.dll", "[DisplayCommander] Entry point detected: vulkan-1.dll (proxy mode)\n",
+         "Display Commander loaded as vulkan-1.dll proxy - Vulkan functions will be forwarded to system vulkan-1.dll"}};
     for (const auto& proxy : proxy_dlls) {
         if (_wcsicmp(module_name.c_str(), proxy.name) == 0) {
             entry_point = proxy.entry_point_val;

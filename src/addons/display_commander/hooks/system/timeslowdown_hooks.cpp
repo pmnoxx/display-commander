@@ -8,13 +8,13 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "../globals.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include "../swapchain_events.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "hook_suppression_manager.hpp"
+#include "../../globals.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../swapchain_events.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "../hook_suppression_manager.hpp"
 
 // NTSTATUS constants
 #ifndef STATUS_SUCCESS

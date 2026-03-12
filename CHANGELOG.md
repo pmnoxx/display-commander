@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.435
+- [cleanup] **System hooks moved to hooks/system/** - sleep_hooks, timeslowdown_hooks, rand_hooks, debug_output_hooks, and process_exit_hooks (MinHook detours) are now under `hooks/system/`. All consumer includes and docs updated.
+
 ## v0.12.434
 - [cleanup] **api_hooks, window_proc_hooks, dpi_hooks moved to hooks/windows_hooks/** - Windows API hooks (focus/foreground), WindowProc hooks, and DPI hooks are now under `hooks/windows_hooks/` alongside windows_message_hooks. All consumer includes and docs updated.
 

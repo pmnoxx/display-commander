@@ -1,14 +1,14 @@
 #include <MinHook.h>
 #include <Windows.h>
 #include <string>
-#include "../exit_handler.hpp"
-#include "../globals.hpp"
-#include "../nvapi/nvapi_init.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/stack_trace.hpp"
-#include "../utils/timing.hpp"
-#include "hook_suppression_manager.hpp"
+#include "../../exit_handler.hpp"
+#include "../../globals.hpp"
+#include "../../nvapi/nvapi_init.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/stack_trace.hpp"
+#include "../../utils/timing.hpp"
+#include "../hook_suppression_manager.hpp"
 
 namespace display_commanderhooks {
 

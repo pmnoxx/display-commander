@@ -1,12 +1,12 @@
 #include "sleep_hooks.hpp"
 #include <MinHook.h>
 #include <windows.h>
-#include "../globals.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "hook_suppression_manager.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
+#include "../../globals.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../hook_suppression_manager.hpp"
+#include "../windows_hooks/windows_message_hooks.hpp"
 
 // Removed unused headers
 

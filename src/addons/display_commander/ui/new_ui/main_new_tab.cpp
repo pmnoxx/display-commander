@@ -15,7 +15,7 @@
 #include "../../hooks/nvidia/nvapi_hooks.hpp"
 #include "../../hooks/nvidia/pclstats_etw_hooks.hpp"
 #include "../../hooks/present_traffic_tracking.hpp"
-#include "../../hooks/timeslowdown_hooks.hpp"
+#include "../../hooks/system/timeslowdown_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"

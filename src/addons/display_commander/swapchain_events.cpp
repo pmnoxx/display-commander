@@ -15,7 +15,7 @@
 #include "hooks/input/hid_suppression_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "hooks/nvidia/streamline_hooks.hpp"
-#include "hooks/timeslowdown_hooks.hpp"
+#include "hooks/system/timeslowdown_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
 #include "hooks/input/xinput_hooks.hpp"

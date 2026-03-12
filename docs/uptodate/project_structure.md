@@ -81,11 +81,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 
 - **loadlibrary_hooks.cpp**, **loadlibrary_hooks.hpp**: DLL loading hooks
 - **display_settings_hooks.cpp**, **display_settings_hooks.hpp**: Display settings hooks
-- **rand_hooks.cpp**, **rand_hooks.hpp**: Rand hooks
-- **sleep_hooks.cpp**, **sleep_hooks.hpp**: Sleep hooks
-- **timeslowdown_hooks.cpp**, **timeslowdown_hooks.hpp**: Time slowdown hooks
-- **process_exit_hooks.cpp**, **process_exit_hooks.hpp**: Process exit hooks (hooks copy)
-- **debug_output_hooks.cpp**, **debug_output_hooks.hpp**: Debug output hooks
 - **dbghelp_hooks.cpp**, **dbghelp_hooks.hpp**: DbgHelp hooks
 - **hook_suppression_manager.cpp**, **hook_suppression_manager.hpp**: Hook suppression
 - **present_traffic_tracking.cpp**, **present_traffic_tracking.hpp**: Present traffic tracking
@@ -100,6 +95,11 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **input/hid_additional_hooks.cpp**, **.hpp**: HID additional hooks
 - **input/hid_suppression_hooks.cpp**, **.hpp**: HID suppression
 - **input/hid_statistics.cpp**, **.hpp**: HID statistics
+- **system/sleep_hooks.cpp**, **.hpp**: Sleep hooks
+- **system/timeslowdown_hooks.cpp**, **.hpp**: Time slowdown hooks
+- **system/rand_hooks.cpp**, **.hpp**: Rand hooks
+- **system/debug_output_hooks.cpp**, **.hpp**: Debug output hooks
+- **system/process_exit_hooks.cpp**, **.hpp**: Process exit hooks (MinHook ExitProcess/TerminateProcess)
 - **windows_hooks/api_hooks.cpp**, **.hpp**: Windows API hooks (focus/foreground spoofing)
 - **windows_hooks/window_proc_hooks.cpp**, **.hpp**: Window procedure hooks
 - **windows_hooks/dpi_hooks.cpp**, **.hpp**: DPI hooks

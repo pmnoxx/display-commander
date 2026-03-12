@@ -2,11 +2,11 @@
 #include <errno.h>
 #include <MinHook.h>
 #include <atomic>
-#include "../globals.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "hook_suppression_manager.hpp"
+#include "../../globals.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../hook_suppression_manager.hpp"
 
 namespace display_commanderhooks {
 

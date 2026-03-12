@@ -20,11 +20,11 @@ python scripts/extract_vulkan_api_from_headers.py --win32
 ## Audit process: one API at a time
 
 1. **For each API** in `vulkan-1_official_api_list.txt` (in order, or by category):
-   - **Present in proxy?**  
+   - **Present in proxy?**
      Check that the proxy exports and implements the symbol (e.g. in `proxy_dll/vulkan-1_proxy.cpp` and `proxy_dll/exports.def`).
-   - **Signature correct?**  
+   - **Signature correct?**
      Compare proxy declaration/forwarding against the official header (same parameter types, return type, calling convention).
-   - **Behavior correct?**  
+   - **Behavior correct?**
      Proxy should forward to the real loader/driver; no missing null checks, wrong order of calls, or incorrect error handling where the spec defines it.
 
 2. **Track results** in a simple way, e.g.:
@@ -69,9 +69,50 @@ python scripts/compare_vulkan_proxy_to_doc.py --win32 -o docs/vulkan_proxy_vs_do
 
 Use the report to fix the generator/spec and then re-run to verify.
 
+## Full ABI header (extern declarations)
+
+A generated header provides the **exact** Vulkan ABI as `extern "C"` declarations, so the proxy can include it and ensure its stubs match.
+
+- **Script:** `scripts/gen_vulkan_proxy_abi.py`
+- **Output:** `src/addons/display_commander/proxy_dll/vulkan_proxy_abi.hpp` (default)
+
+Generate:
+
+```bash
+python scripts/gen_vulkan_proxy_abi.py --win32 -o src/addons/display_commander/proxy_dll/vulkan_proxy_abi.hpp
+```
+
+The generated `.hpp`:
+
+- Includes `<vulkan/vulkan_core.h>` (and `<vulkan/vulkan_win32.h>` when `VK_USE_PLATFORM_WIN32_KHR` is defined).
+- Declares every vk* API as `RET VKAPI_CALL vkName(PARAMS);` with the same types and order as the Khronos headers.
+- Excludes callback typedefs (e.g. `vkAllocationFunction`); only API entry points are declared.
+
+**Using it so the proxy matches the ABI:** Include `vulkan_proxy_abi.hpp` in the proxy build and implement each exported symbol with the same signature as in the header (same return type, parameter types, and `VKAPI_CALL`). The build must have the Vulkan headers in the include path (e.g. `external/vulkan-headers/include`). Then the proxy’s ABI is guaranteed to match the official API.
+
+## Full proxy generated from ABI
+
+The entire vulkan-1 proxy (stubs that forward to the real vulkan-1.dll) can be generated from the same Vulkan headers used for the ABI:
+
+- **Script:** `scripts/gen_vulkan_proxy_from_abi.py`
+- **Input:** Same as `gen_vulkan_proxy_abi.py` — `vulkan_core.h` and optionally `vulkan_win32.h`.
+- **Outputs:**
+  - `src/addons/display_commander/proxy_dll/vulkan-1_proxy.cpp` — one stub per API with correct signature, `LoadRealVulkan1()`, and forward via `GetProcAddress` + PFN cast.
+  - Optionally: replace the vulkan block in `exports.def` with `--update-exports-def PATH`.
+
+Generate proxy and update exports:
+
+```bash
+python scripts/gen_vulkan_proxy_from_abi.py --win32 --update-exports-def src/addons/display_commander/proxy_dll/exports.def
+```
+
+The generated proxy includes `vulkan_proxy_abi.hpp`, uses real Vulkan types and `VKAPI_CALL`, and exports every API from the headers (e.g. 734 symbols). Regenerate after updating Vulkan headers to stay in sync.
+
 ## Summary
 
 - **Spec:** `scripts/specs/vulkan-1_official_api_list.txt` (from official headers only).
 - **Process:** For each API in the spec, verify presence, signature, and behavior in the proxy.
 - **Comparison vs doc:** Run `compare_vulkan_proxy_to_doc.py` to get mismatches against the headers (see report above).
+- **Full ABI:** `gen_vulkan_proxy_abi.py` generates `vulkan_proxy_abi.hpp` with exact `extern "C"` declarations; include it in the proxy to align stubs with the official ABI.
+- **Full proxy:** `gen_vulkan_proxy_from_abi.py` generates the complete `vulkan-1_proxy.cpp` and can update the vulkan block in `exports.def` so the proxy covers all header APIs.
 - **Do not** derive the spec from the existing vulkan-1 proxy or exports.

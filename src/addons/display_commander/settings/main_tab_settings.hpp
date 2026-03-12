@@ -199,6 +199,9 @@ class MainTabSettings {
     /** When enabled, inject Reflex (markers + sleep) for Vulkan games that don't use native Reflex. Requires vulkan-1
      * loader hooks. Default off. */
     ui::new_ui::BoolSetting vulkan_injected_reflex_enabled;
+    /** When enabled, add Vulkan device extensions (e.g. VK_NV_low_latency2) in vkCreateDevice if not already
+     * requested by the application. Part of Vulkan injection (SpecialK-style). Default off. */
+    ui::new_ui::BoolSetting vulkan_inject_extensions_enabled;
 
     // Brightness (ReShade effect driven by DC)
     /** When true, DC adds its Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths.

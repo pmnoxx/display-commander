@@ -1,11 +1,13 @@
+
+
+#include <toml++/toml.hpp>
+
 // Source Code <Display Commander> // follow this order for includes in all files
-#include "default_overrides.hpp"
 #include "../globals.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"
+#include "default_overrides.hpp"
 #include "display_commander_config.hpp"
-
-#include <toml++/toml.hpp>
 
 #include <algorithm>
 #include <atomic>

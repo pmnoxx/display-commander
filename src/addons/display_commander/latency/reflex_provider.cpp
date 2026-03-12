@@ -32,8 +32,11 @@ void ReflexProvider::Shutdown() {
 }
 
 void ReflexProvider::EnsurePCLStatsInitialized() {
-    // Only initialize if feature is enabled and not already initialized
-    if (!_is_pcl_initialized && PCLStatsReportingEnabled()) {
+    // Initialize when user has "PCL stats for injected reflex" on and we're not yet initialized.
+    // Use only the setting here so init succeeds for injected reflex even if PCLStatsReportingAllowed()
+    // is temporarily false (e.g. warmup, or game once called SetLatencyMarker). The caller only
+    // invokes us when PCLStatsReportingEnabled() is true, so we only attempt init when we will emit.
+    if (!_is_pcl_initialized && settings::g_mainTabSettings.pcl_stats_enabled.GetValue()) {
         PCLSTATS_INIT(0);
         _is_pcl_initialized = true;
     }

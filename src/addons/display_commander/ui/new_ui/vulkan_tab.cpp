@@ -125,6 +125,37 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
                 "next vulkan-1.dll load, or now if already loaded.");
         }
 
+        if (CheckboxSetting(settings::g_mainTabSettings.vulkan_inject_extensions_enabled,
+                            "Inject Vulkan extensions (Reflex / low latency)", imgui)) {
+            // No hook install here; injection runs in vkCreateDevice when loader hooks are active.
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "When enabled, add VK_KHR_present_id, VK_KHR_timeline_semaphore, and VK_NV_low_latency2 to the "
+                "device extension list in vkCreateDevice if the application did not request them. Requires vulkan-1 "
+                "loader hooks. Part of Vulkan injection (SpecialK-style).");
+        }
+
+        // Warning if low-latency extension is already present (redundant or potential conflict).
+        {
+            std::vector<std::string> exts;
+            GetVulkanEnabledExtensions(exts);
+            bool has_low_latency = false;
+            bool has_low_latency2 = false;
+            for (const std::string& e : exts) {
+                if (e == "VK_NV_low_latency") has_low_latency = true;
+                if (e == "VK_NV_low_latency2") has_low_latency2 = true;
+            }
+            if (has_low_latency || has_low_latency2) {
+                imgui.Spacing();
+                imgui.TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " VK_NV_low_latency or VK_NV_low_latency2 is already enabled by the application.");
+                if (imgui.IsItemHovered()) {
+                    imgui.SetTooltipEx(
+                        "The game already requested a low-latency extension. Extension injection may be redundant or cause conflicts.");
+                }
+            }
+        }
+
         if (CheckboxSetting(settings::g_mainTabSettings.vulkan_injected_reflex_enabled,
                             "Enable injected Reflex for Vulkan", imgui)) {
             // No hook install here; injection runs when loader hooks are on and this is true.

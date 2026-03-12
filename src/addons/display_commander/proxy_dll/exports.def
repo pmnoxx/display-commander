@@ -877,166 +877,442 @@ EXPORTS
 	WinDbgExtensionDllInit PRIVATE
 	wine_get_module_information PRIVATE
 
-	; vulkan-1.dll exports (from scripts/gen_proxy_from_spec.py + scripts/specs/vulkan-1.spec)
-	; https://github.com/wine-mirror/wine/blob/master/dlls/vulkan-1/vulkan-1.spec
+	; vulkan-1.dll exports (from scripts/gen_vulkan_proxy_from_abi.py + Vulkan headers)
+
+	vkAcquireDrmDisplayEXT PRIVATE
+	vkAcquireFullScreenExclusiveModeEXT PRIVATE
 	vkAcquireNextImage2KHR PRIVATE
 	vkAcquireNextImageKHR PRIVATE
+	vkAcquirePerformanceConfigurationINTEL PRIVATE
+	vkAcquireProfilingLockKHR PRIVATE
+	vkAcquireWinrtDisplayNV PRIVATE
 	vkAllocateCommandBuffers PRIVATE
 	vkAllocateDescriptorSets PRIVATE
 	vkAllocateMemory PRIVATE
+	vkAntiLagUpdateAMD PRIVATE
 	vkBeginCommandBuffer PRIVATE
+	vkBindAccelerationStructureMemoryNV PRIVATE
 	vkBindBufferMemory PRIVATE
 	vkBindBufferMemory2 PRIVATE
+	vkBindBufferMemory2KHR PRIVATE
+	vkBindDataGraphPipelineSessionMemoryARM PRIVATE
 	vkBindImageMemory PRIVATE
 	vkBindImageMemory2 PRIVATE
+	vkBindImageMemory2KHR PRIVATE
+	vkBindOpticalFlowSessionImageNV PRIVATE
+	vkBindTensorMemoryARM PRIVATE
+	vkBindVideoSessionMemoryKHR PRIVATE
+	vkBuildAccelerationStructuresKHR PRIVATE
+	vkBuildMicromapsEXT PRIVATE
+	vkCmdBeginConditionalRenderingEXT PRIVATE
+	vkCmdBeginCustomResolveEXT PRIVATE
+	vkCmdBeginDebugUtilsLabelEXT PRIVATE
+	vkCmdBeginPerTileExecutionQCOM PRIVATE
 	vkCmdBeginQuery PRIVATE
+	vkCmdBeginQueryIndexedEXT PRIVATE
 	vkCmdBeginRenderPass PRIVATE
 	vkCmdBeginRenderPass2 PRIVATE
+	vkCmdBeginRenderPass2KHR PRIVATE
 	vkCmdBeginRendering PRIVATE
+	vkCmdBeginRenderingKHR PRIVATE
+	vkCmdBeginTransformFeedbackEXT PRIVATE
+	vkCmdBeginVideoCodingKHR PRIVATE
+	vkCmdBindDescriptorBufferEmbeddedSamplers2EXT PRIVATE
+	vkCmdBindDescriptorBufferEmbeddedSamplersEXT PRIVATE
+	vkCmdBindDescriptorBuffersEXT PRIVATE
 	vkCmdBindDescriptorSets PRIVATE
 	vkCmdBindDescriptorSets2 PRIVATE
+	vkCmdBindDescriptorSets2KHR PRIVATE
 	vkCmdBindIndexBuffer PRIVATE
 	vkCmdBindIndexBuffer2 PRIVATE
+	vkCmdBindIndexBuffer2KHR PRIVATE
+	vkCmdBindInvocationMaskHUAWEI PRIVATE
 	vkCmdBindPipeline PRIVATE
+	vkCmdBindPipelineShaderGroupNV PRIVATE
+	vkCmdBindResourceHeapEXT PRIVATE
+	vkCmdBindSamplerHeapEXT PRIVATE
+	vkCmdBindShadersEXT PRIVATE
+	vkCmdBindShadingRateImageNV PRIVATE
+	vkCmdBindTileMemoryQCOM PRIVATE
+	vkCmdBindTransformFeedbackBuffersEXT PRIVATE
 	vkCmdBindVertexBuffers PRIVATE
 	vkCmdBindVertexBuffers2 PRIVATE
+	vkCmdBindVertexBuffers2EXT PRIVATE
 	vkCmdBlitImage PRIVATE
 	vkCmdBlitImage2 PRIVATE
+	vkCmdBlitImage2KHR PRIVATE
+	vkCmdBuildAccelerationStructureNV PRIVATE
+	vkCmdBuildAccelerationStructuresIndirectKHR PRIVATE
+	vkCmdBuildAccelerationStructuresKHR PRIVATE
+	vkCmdBuildClusterAccelerationStructureIndirectNV PRIVATE
+	vkCmdBuildMicromapsEXT PRIVATE
+	vkCmdBuildPartitionedAccelerationStructuresNV PRIVATE
 	vkCmdClearAttachments PRIVATE
 	vkCmdClearColorImage PRIVATE
 	vkCmdClearDepthStencilImage PRIVATE
+	vkCmdControlVideoCodingKHR PRIVATE
+	vkCmdConvertCooperativeVectorMatrixNV PRIVATE
+	vkCmdCopyAccelerationStructureKHR PRIVATE
+	vkCmdCopyAccelerationStructureNV PRIVATE
+	vkCmdCopyAccelerationStructureToMemoryKHR PRIVATE
 	vkCmdCopyBuffer PRIVATE
 	vkCmdCopyBuffer2 PRIVATE
+	vkCmdCopyBuffer2KHR PRIVATE
 	vkCmdCopyBufferToImage PRIVATE
 	vkCmdCopyBufferToImage2 PRIVATE
+	vkCmdCopyBufferToImage2KHR PRIVATE
 	vkCmdCopyImage PRIVATE
 	vkCmdCopyImage2 PRIVATE
+	vkCmdCopyImage2KHR PRIVATE
 	vkCmdCopyImageToBuffer PRIVATE
 	vkCmdCopyImageToBuffer2 PRIVATE
+	vkCmdCopyImageToBuffer2KHR PRIVATE
+	vkCmdCopyMemoryIndirectKHR PRIVATE
+	vkCmdCopyMemoryIndirectNV PRIVATE
+	vkCmdCopyMemoryToAccelerationStructureKHR PRIVATE
+	vkCmdCopyMemoryToImageIndirectKHR PRIVATE
+	vkCmdCopyMemoryToImageIndirectNV PRIVATE
+	vkCmdCopyMemoryToMicromapEXT PRIVATE
+	vkCmdCopyMicromapEXT PRIVATE
+	vkCmdCopyMicromapToMemoryEXT PRIVATE
 	vkCmdCopyQueryPoolResults PRIVATE
+	vkCmdCopyTensorARM PRIVATE
+	vkCmdCuLaunchKernelNVX PRIVATE
+	vkCmdDebugMarkerBeginEXT PRIVATE
+	vkCmdDebugMarkerEndEXT PRIVATE
+	vkCmdDebugMarkerInsertEXT PRIVATE
+	vkCmdDecodeVideoKHR PRIVATE
+	vkCmdDecompressMemoryEXT PRIVATE
+	vkCmdDecompressMemoryIndirectCountEXT PRIVATE
+	vkCmdDecompressMemoryIndirectCountNV PRIVATE
+	vkCmdDecompressMemoryNV PRIVATE
 	vkCmdDispatch PRIVATE
 	vkCmdDispatchBase PRIVATE
+	vkCmdDispatchBaseKHR PRIVATE
+	vkCmdDispatchDataGraphARM PRIVATE
 	vkCmdDispatchIndirect PRIVATE
+	vkCmdDispatchTileQCOM PRIVATE
 	vkCmdDraw PRIVATE
+	vkCmdDrawClusterHUAWEI PRIVATE
+	vkCmdDrawClusterIndirectHUAWEI PRIVATE
 	vkCmdDrawIndexed PRIVATE
 	vkCmdDrawIndexedIndirect PRIVATE
 	vkCmdDrawIndexedIndirectCount PRIVATE
+	vkCmdDrawIndexedIndirectCountAMD PRIVATE
+	vkCmdDrawIndexedIndirectCountKHR PRIVATE
 	vkCmdDrawIndirect PRIVATE
+	vkCmdDrawIndirectByteCountEXT PRIVATE
 	vkCmdDrawIndirectCount PRIVATE
+	vkCmdDrawIndirectCountAMD PRIVATE
+	vkCmdDrawIndirectCountKHR PRIVATE
+	vkCmdDrawMeshTasksEXT PRIVATE
+	vkCmdDrawMeshTasksIndirectCountEXT PRIVATE
+	vkCmdDrawMeshTasksIndirectCountNV PRIVATE
+	vkCmdDrawMeshTasksIndirectEXT PRIVATE
+	vkCmdDrawMeshTasksIndirectNV PRIVATE
+	vkCmdDrawMeshTasksNV PRIVATE
+	vkCmdDrawMultiEXT PRIVATE
+	vkCmdDrawMultiIndexedEXT PRIVATE
+	vkCmdEncodeVideoKHR PRIVATE
+	vkCmdEndConditionalRenderingEXT PRIVATE
+	vkCmdEndDebugUtilsLabelEXT PRIVATE
+	vkCmdEndPerTileExecutionQCOM PRIVATE
 	vkCmdEndQuery PRIVATE
+	vkCmdEndQueryIndexedEXT PRIVATE
 	vkCmdEndRenderPass PRIVATE
 	vkCmdEndRenderPass2 PRIVATE
+	vkCmdEndRenderPass2KHR PRIVATE
 	vkCmdEndRendering PRIVATE
+	vkCmdEndRendering2EXT PRIVATE
+	vkCmdEndRendering2KHR PRIVATE
+	vkCmdEndRenderingKHR PRIVATE
+	vkCmdEndTransformFeedbackEXT PRIVATE
+	vkCmdEndVideoCodingKHR PRIVATE
 	vkCmdExecuteCommands PRIVATE
+	vkCmdExecuteGeneratedCommandsEXT PRIVATE
+	vkCmdExecuteGeneratedCommandsNV PRIVATE
 	vkCmdFillBuffer PRIVATE
+	vkCmdInsertDebugUtilsLabelEXT PRIVATE
 	vkCmdNextSubpass PRIVATE
 	vkCmdNextSubpass2 PRIVATE
+	vkCmdNextSubpass2KHR PRIVATE
+	vkCmdOpticalFlowExecuteNV PRIVATE
 	vkCmdPipelineBarrier PRIVATE
 	vkCmdPipelineBarrier2 PRIVATE
+	vkCmdPipelineBarrier2KHR PRIVATE
+	vkCmdPreprocessGeneratedCommandsEXT PRIVATE
+	vkCmdPreprocessGeneratedCommandsNV PRIVATE
 	vkCmdPushConstants PRIVATE
 	vkCmdPushConstants2 PRIVATE
+	vkCmdPushConstants2KHR PRIVATE
+	vkCmdPushDataEXT PRIVATE
 	vkCmdPushDescriptorSet PRIVATE
 	vkCmdPushDescriptorSet2 PRIVATE
+	vkCmdPushDescriptorSet2KHR PRIVATE
+	vkCmdPushDescriptorSetKHR PRIVATE
 	vkCmdPushDescriptorSetWithTemplate PRIVATE
 	vkCmdPushDescriptorSetWithTemplate2 PRIVATE
+	vkCmdPushDescriptorSetWithTemplate2KHR PRIVATE
+	vkCmdPushDescriptorSetWithTemplateKHR PRIVATE
 	vkCmdResetEvent PRIVATE
 	vkCmdResetEvent2 PRIVATE
+	vkCmdResetEvent2KHR PRIVATE
 	vkCmdResetQueryPool PRIVATE
 	vkCmdResolveImage PRIVATE
 	vkCmdResolveImage2 PRIVATE
+	vkCmdResolveImage2KHR PRIVATE
+	vkCmdSetAlphaToCoverageEnableEXT PRIVATE
+	vkCmdSetAlphaToOneEnableEXT PRIVATE
+	vkCmdSetAttachmentFeedbackLoopEnableEXT PRIVATE
 	vkCmdSetBlendConstants PRIVATE
+	vkCmdSetCheckpointNV PRIVATE
+	vkCmdSetCoarseSampleOrderNV PRIVATE
+	vkCmdSetColorBlendAdvancedEXT PRIVATE
+	vkCmdSetColorBlendEnableEXT PRIVATE
+	vkCmdSetColorBlendEquationEXT PRIVATE
+	vkCmdSetColorWriteEnableEXT PRIVATE
+	vkCmdSetColorWriteMaskEXT PRIVATE
+	vkCmdSetComputeOccupancyPriorityNV PRIVATE
+	vkCmdSetConservativeRasterizationModeEXT PRIVATE
+	vkCmdSetCoverageModulationModeNV PRIVATE
+	vkCmdSetCoverageModulationTableEnableNV PRIVATE
+	vkCmdSetCoverageModulationTableNV PRIVATE
+	vkCmdSetCoverageReductionModeNV PRIVATE
+	vkCmdSetCoverageToColorEnableNV PRIVATE
+	vkCmdSetCoverageToColorLocationNV PRIVATE
 	vkCmdSetCullMode PRIVATE
+	vkCmdSetCullModeEXT PRIVATE
 	vkCmdSetDepthBias PRIVATE
+	vkCmdSetDepthBias2EXT PRIVATE
 	vkCmdSetDepthBiasEnable PRIVATE
+	vkCmdSetDepthBiasEnableEXT PRIVATE
 	vkCmdSetDepthBounds PRIVATE
 	vkCmdSetDepthBoundsTestEnable PRIVATE
+	vkCmdSetDepthBoundsTestEnableEXT PRIVATE
+	vkCmdSetDepthClampEnableEXT PRIVATE
+	vkCmdSetDepthClampRangeEXT PRIVATE
+	vkCmdSetDepthClipEnableEXT PRIVATE
+	vkCmdSetDepthClipNegativeOneToOneEXT PRIVATE
 	vkCmdSetDepthCompareOp PRIVATE
+	vkCmdSetDepthCompareOpEXT PRIVATE
 	vkCmdSetDepthTestEnable PRIVATE
+	vkCmdSetDepthTestEnableEXT PRIVATE
 	vkCmdSetDepthWriteEnable PRIVATE
+	vkCmdSetDepthWriteEnableEXT PRIVATE
+	vkCmdSetDescriptorBufferOffsets2EXT PRIVATE
+	vkCmdSetDescriptorBufferOffsetsEXT PRIVATE
 	vkCmdSetDeviceMask PRIVATE
+	vkCmdSetDeviceMaskKHR PRIVATE
+	vkCmdSetDiscardRectangleEXT PRIVATE
+	vkCmdSetDiscardRectangleEnableEXT PRIVATE
+	vkCmdSetDiscardRectangleModeEXT PRIVATE
 	vkCmdSetEvent PRIVATE
 	vkCmdSetEvent2 PRIVATE
+	vkCmdSetEvent2KHR PRIVATE
+	vkCmdSetExclusiveScissorEnableNV PRIVATE
+	vkCmdSetExclusiveScissorNV PRIVATE
+	vkCmdSetExtraPrimitiveOverestimationSizeEXT PRIVATE
+	vkCmdSetFragmentShadingRateEnumNV PRIVATE
+	vkCmdSetFragmentShadingRateKHR PRIVATE
 	vkCmdSetFrontFace PRIVATE
+	vkCmdSetFrontFaceEXT PRIVATE
+	vkCmdSetLineRasterizationModeEXT PRIVATE
 	vkCmdSetLineStipple PRIVATE
+	vkCmdSetLineStippleEXT PRIVATE
+	vkCmdSetLineStippleEnableEXT PRIVATE
+	vkCmdSetLineStippleKHR PRIVATE
 	vkCmdSetLineWidth PRIVATE
+	vkCmdSetLogicOpEXT PRIVATE
+	vkCmdSetLogicOpEnableEXT PRIVATE
+	vkCmdSetPatchControlPointsEXT PRIVATE
+	vkCmdSetPerformanceMarkerINTEL PRIVATE
+	vkCmdSetPerformanceOverrideINTEL PRIVATE
+	vkCmdSetPerformanceStreamMarkerINTEL PRIVATE
+	vkCmdSetPolygonModeEXT PRIVATE
 	vkCmdSetPrimitiveRestartEnable PRIVATE
+	vkCmdSetPrimitiveRestartEnableEXT PRIVATE
 	vkCmdSetPrimitiveTopology PRIVATE
+	vkCmdSetPrimitiveTopologyEXT PRIVATE
+	vkCmdSetProvokingVertexModeEXT PRIVATE
+	vkCmdSetRasterizationSamplesEXT PRIVATE
+	vkCmdSetRasterizationStreamEXT PRIVATE
 	vkCmdSetRasterizerDiscardEnable PRIVATE
+	vkCmdSetRasterizerDiscardEnableEXT PRIVATE
+	vkCmdSetRayTracingPipelineStackSizeKHR PRIVATE
 	vkCmdSetRenderingAttachmentLocations PRIVATE
+	vkCmdSetRenderingAttachmentLocationsKHR PRIVATE
 	vkCmdSetRenderingInputAttachmentIndices PRIVATE
+	vkCmdSetRenderingInputAttachmentIndicesKHR PRIVATE
+	vkCmdSetRepresentativeFragmentTestEnableNV PRIVATE
+	vkCmdSetSampleLocationsEXT PRIVATE
+	vkCmdSetSampleLocationsEnableEXT PRIVATE
+	vkCmdSetSampleMaskEXT PRIVATE
 	vkCmdSetScissor PRIVATE
 	vkCmdSetScissorWithCount PRIVATE
+	vkCmdSetScissorWithCountEXT PRIVATE
+	vkCmdSetShadingRateImageEnableNV PRIVATE
 	vkCmdSetStencilCompareMask PRIVATE
 	vkCmdSetStencilOp PRIVATE
+	vkCmdSetStencilOpEXT PRIVATE
 	vkCmdSetStencilReference PRIVATE
 	vkCmdSetStencilTestEnable PRIVATE
+	vkCmdSetStencilTestEnableEXT PRIVATE
 	vkCmdSetStencilWriteMask PRIVATE
+	vkCmdSetTessellationDomainOriginEXT PRIVATE
+	vkCmdSetVertexInputEXT PRIVATE
 	vkCmdSetViewport PRIVATE
+	vkCmdSetViewportShadingRatePaletteNV PRIVATE
+	vkCmdSetViewportSwizzleNV PRIVATE
+	vkCmdSetViewportWScalingEnableNV PRIVATE
+	vkCmdSetViewportWScalingNV PRIVATE
 	vkCmdSetViewportWithCount PRIVATE
+	vkCmdSetViewportWithCountEXT PRIVATE
+	vkCmdSubpassShadingHUAWEI PRIVATE
+	vkCmdTraceRaysIndirect2KHR PRIVATE
+	vkCmdTraceRaysIndirectKHR PRIVATE
+	vkCmdTraceRaysKHR PRIVATE
+	vkCmdTraceRaysNV PRIVATE
 	vkCmdUpdateBuffer PRIVATE
+	vkCmdUpdatePipelineIndirectBufferNV PRIVATE
 	vkCmdWaitEvents PRIVATE
 	vkCmdWaitEvents2 PRIVATE
+	vkCmdWaitEvents2KHR PRIVATE
+	vkCmdWriteAccelerationStructuresPropertiesKHR PRIVATE
+	vkCmdWriteAccelerationStructuresPropertiesNV PRIVATE
+	vkCmdWriteBufferMarker2AMD PRIVATE
+	vkCmdWriteBufferMarkerAMD PRIVATE
+	vkCmdWriteMicromapsPropertiesEXT PRIVATE
 	vkCmdWriteTimestamp PRIVATE
 	vkCmdWriteTimestamp2 PRIVATE
+	vkCmdWriteTimestamp2KHR PRIVATE
+	vkCompileDeferredNV PRIVATE
+	vkConvertCooperativeVectorMatrixNV PRIVATE
+	vkCopyAccelerationStructureKHR PRIVATE
+	vkCopyAccelerationStructureToMemoryKHR PRIVATE
 	vkCopyImageToImage PRIVATE
+	vkCopyImageToImageEXT PRIVATE
 	vkCopyImageToMemory PRIVATE
+	vkCopyImageToMemoryEXT PRIVATE
+	vkCopyMemoryToAccelerationStructureKHR PRIVATE
 	vkCopyMemoryToImage PRIVATE
+	vkCopyMemoryToImageEXT PRIVATE
+	vkCopyMemoryToMicromapEXT PRIVATE
+	vkCopyMicromapEXT PRIVATE
+	vkCopyMicromapToMemoryEXT PRIVATE
+	vkCreateAccelerationStructureKHR PRIVATE
+	vkCreateAccelerationStructureNV PRIVATE
 	vkCreateBuffer PRIVATE
 	vkCreateBufferView PRIVATE
 	vkCreateCommandPool PRIVATE
 	vkCreateComputePipelines PRIVATE
+	vkCreateCuFunctionNVX PRIVATE
+	vkCreateCuModuleNVX PRIVATE
+	vkCreateDataGraphPipelineSessionARM PRIVATE
+	vkCreateDataGraphPipelinesARM PRIVATE
+	vkCreateDebugReportCallbackEXT PRIVATE
+	vkCreateDebugUtilsMessengerEXT PRIVATE
+	vkCreateDeferredOperationKHR PRIVATE
 	vkCreateDescriptorPool PRIVATE
 	vkCreateDescriptorSetLayout PRIVATE
 	vkCreateDescriptorUpdateTemplate PRIVATE
+	vkCreateDescriptorUpdateTemplateKHR PRIVATE
 	vkCreateDevice PRIVATE
 	vkCreateDisplayModeKHR PRIVATE
 	vkCreateDisplayPlaneSurfaceKHR PRIVATE
 	vkCreateEvent PRIVATE
+	vkCreateExternalComputeQueueNV PRIVATE
 	vkCreateFence PRIVATE
 	vkCreateFramebuffer PRIVATE
 	vkCreateGraphicsPipelines PRIVATE
+	vkCreateHeadlessSurfaceEXT PRIVATE
 	vkCreateImage PRIVATE
 	vkCreateImageView PRIVATE
+	vkCreateIndirectCommandsLayoutEXT PRIVATE
+	vkCreateIndirectCommandsLayoutNV PRIVATE
+	vkCreateIndirectExecutionSetEXT PRIVATE
 	vkCreateInstance PRIVATE
+	vkCreateMicromapEXT PRIVATE
+	vkCreateOpticalFlowSessionNV PRIVATE
+	vkCreatePipelineBinariesKHR PRIVATE
 	vkCreatePipelineCache PRIVATE
 	vkCreatePipelineLayout PRIVATE
 	vkCreatePrivateDataSlot PRIVATE
+	vkCreatePrivateDataSlotEXT PRIVATE
 	vkCreateQueryPool PRIVATE
+	vkCreateRayTracingPipelinesKHR PRIVATE
+	vkCreateRayTracingPipelinesNV PRIVATE
 	vkCreateRenderPass PRIVATE
 	vkCreateRenderPass2 PRIVATE
+	vkCreateRenderPass2KHR PRIVATE
 	vkCreateSampler PRIVATE
 	vkCreateSamplerYcbcrConversion PRIVATE
+	vkCreateSamplerYcbcrConversionKHR PRIVATE
 	vkCreateSemaphore PRIVATE
 	vkCreateShaderModule PRIVATE
+	vkCreateShadersEXT PRIVATE
 	vkCreateSharedSwapchainsKHR PRIVATE
 	vkCreateSwapchainKHR PRIVATE
+	vkCreateTensorARM PRIVATE
+	vkCreateTensorViewARM PRIVATE
+	vkCreateValidationCacheEXT PRIVATE
+	vkCreateVideoSessionKHR PRIVATE
+	vkCreateVideoSessionParametersKHR PRIVATE
 	vkCreateWin32SurfaceKHR PRIVATE
+	vkDebugMarkerSetObjectNameEXT PRIVATE
+	vkDebugMarkerSetObjectTagEXT PRIVATE
+	vkDebugReportMessageEXT PRIVATE
+	vkDeferredOperationJoinKHR PRIVATE
+	vkDestroyAccelerationStructureKHR PRIVATE
+	vkDestroyAccelerationStructureNV PRIVATE
 	vkDestroyBuffer PRIVATE
 	vkDestroyBufferView PRIVATE
 	vkDestroyCommandPool PRIVATE
+	vkDestroyCuFunctionNVX PRIVATE
+	vkDestroyCuModuleNVX PRIVATE
+	vkDestroyDataGraphPipelineSessionARM PRIVATE
+	vkDestroyDebugReportCallbackEXT PRIVATE
+	vkDestroyDebugUtilsMessengerEXT PRIVATE
+	vkDestroyDeferredOperationKHR PRIVATE
 	vkDestroyDescriptorPool PRIVATE
 	vkDestroyDescriptorSetLayout PRIVATE
 	vkDestroyDescriptorUpdateTemplate PRIVATE
+	vkDestroyDescriptorUpdateTemplateKHR PRIVATE
 	vkDestroyDevice PRIVATE
 	vkDestroyEvent PRIVATE
+	vkDestroyExternalComputeQueueNV PRIVATE
 	vkDestroyFence PRIVATE
 	vkDestroyFramebuffer PRIVATE
 	vkDestroyImage PRIVATE
 	vkDestroyImageView PRIVATE
+	vkDestroyIndirectCommandsLayoutEXT PRIVATE
+	vkDestroyIndirectCommandsLayoutNV PRIVATE
+	vkDestroyIndirectExecutionSetEXT PRIVATE
 	vkDestroyInstance PRIVATE
+	vkDestroyMicromapEXT PRIVATE
+	vkDestroyOpticalFlowSessionNV PRIVATE
 	vkDestroyPipeline PRIVATE
+	vkDestroyPipelineBinaryKHR PRIVATE
 	vkDestroyPipelineCache PRIVATE
 	vkDestroyPipelineLayout PRIVATE
 	vkDestroyPrivateDataSlot PRIVATE
+	vkDestroyPrivateDataSlotEXT PRIVATE
 	vkDestroyQueryPool PRIVATE
 	vkDestroyRenderPass PRIVATE
 	vkDestroySampler PRIVATE
 	vkDestroySamplerYcbcrConversion PRIVATE
+	vkDestroySamplerYcbcrConversionKHR PRIVATE
 	vkDestroySemaphore PRIVATE
+	vkDestroyShaderEXT PRIVATE
 	vkDestroyShaderModule PRIVATE
 	vkDestroySurfaceKHR PRIVATE
 	vkDestroySwapchainKHR PRIVATE
+	vkDestroyTensorARM PRIVATE
+	vkDestroyTensorViewARM PRIVATE
+	vkDestroyValidationCacheEXT PRIVATE
+	vkDestroyVideoSessionKHR PRIVATE
+	vkDestroyVideoSessionParametersKHR PRIVATE
 	vkDeviceWaitIdle PRIVATE
+	vkDisplayPowerControlEXT PRIVATE
 	vkEndCommandBuffer PRIVATE
 	vkEnumerateDeviceExtensionProperties PRIVATE
 	vkEnumerateDeviceLayerProperties PRIVATE
@@ -1044,104 +1320,299 @@ EXPORTS
 	vkEnumerateInstanceLayerProperties PRIVATE
 	vkEnumerateInstanceVersion PRIVATE
 	vkEnumeratePhysicalDeviceGroups PRIVATE
+	vkEnumeratePhysicalDeviceGroupsKHR PRIVATE
+	vkEnumeratePhysicalDeviceQueueFamilyPerformanceCountersByRegionARM PRIVATE
+	vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR PRIVATE
 	vkEnumeratePhysicalDevices PRIVATE
 	vkFlushMappedMemoryRanges PRIVATE
 	vkFreeCommandBuffers PRIVATE
 	vkFreeDescriptorSets PRIVATE
 	vkFreeMemory PRIVATE
+	vkGetAccelerationStructureBuildSizesKHR PRIVATE
+	vkGetAccelerationStructureDeviceAddressKHR PRIVATE
+	vkGetAccelerationStructureHandleNV PRIVATE
+	vkGetAccelerationStructureMemoryRequirementsNV PRIVATE
+	vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT PRIVATE
 	vkGetBufferDeviceAddress PRIVATE
+	vkGetBufferDeviceAddressEXT PRIVATE
+	vkGetBufferDeviceAddressKHR PRIVATE
 	vkGetBufferMemoryRequirements PRIVATE
 	vkGetBufferMemoryRequirements2 PRIVATE
+	vkGetBufferMemoryRequirements2KHR PRIVATE
 	vkGetBufferOpaqueCaptureAddress PRIVATE
-	vkGetCommandPoolMemoryConsumption PRIVATE
+	vkGetBufferOpaqueCaptureAddressKHR PRIVATE
+	vkGetBufferOpaqueCaptureDescriptorDataEXT PRIVATE
+	vkGetCalibratedTimestampsEXT PRIVATE
+	vkGetCalibratedTimestampsKHR PRIVATE
+	vkGetClusterAccelerationStructureBuildSizesNV PRIVATE
+	vkGetDataGraphPipelineAvailablePropertiesARM PRIVATE
+	vkGetDataGraphPipelinePropertiesARM PRIVATE
+	vkGetDataGraphPipelineSessionBindPointRequirementsARM PRIVATE
+	vkGetDataGraphPipelineSessionMemoryRequirementsARM PRIVATE
+	vkGetDeferredOperationMaxConcurrencyKHR PRIVATE
+	vkGetDeferredOperationResultKHR PRIVATE
+	vkGetDescriptorEXT PRIVATE
+	vkGetDescriptorSetHostMappingVALVE PRIVATE
+	vkGetDescriptorSetLayoutBindingOffsetEXT PRIVATE
+	vkGetDescriptorSetLayoutHostMappingInfoVALVE PRIVATE
+	vkGetDescriptorSetLayoutSizeEXT PRIVATE
 	vkGetDescriptorSetLayoutSupport PRIVATE
+	vkGetDescriptorSetLayoutSupportKHR PRIVATE
+	vkGetDeviceAccelerationStructureCompatibilityKHR PRIVATE
 	vkGetDeviceBufferMemoryRequirements PRIVATE
+	vkGetDeviceBufferMemoryRequirementsKHR PRIVATE
+	vkGetDeviceCombinedImageSamplerIndexNVX PRIVATE
+	vkGetDeviceFaultInfoEXT PRIVATE
 	vkGetDeviceGroupPeerMemoryFeatures PRIVATE
+	vkGetDeviceGroupPeerMemoryFeaturesKHR PRIVATE
 	vkGetDeviceGroupPresentCapabilitiesKHR PRIVATE
+	vkGetDeviceGroupSurfacePresentModes2EXT PRIVATE
 	vkGetDeviceGroupSurfacePresentModesKHR PRIVATE
 	vkGetDeviceImageMemoryRequirements PRIVATE
+	vkGetDeviceImageMemoryRequirementsKHR PRIVATE
 	vkGetDeviceImageSparseMemoryRequirements PRIVATE
+	vkGetDeviceImageSparseMemoryRequirementsKHR PRIVATE
 	vkGetDeviceImageSubresourceLayout PRIVATE
+	vkGetDeviceImageSubresourceLayoutKHR PRIVATE
 	vkGetDeviceMemoryCommitment PRIVATE
 	vkGetDeviceMemoryOpaqueCaptureAddress PRIVATE
+	vkGetDeviceMemoryOpaqueCaptureAddressKHR PRIVATE
+	vkGetDeviceMicromapCompatibilityEXT PRIVATE
 	vkGetDeviceProcAddr PRIVATE
 	vkGetDeviceQueue PRIVATE
 	vkGetDeviceQueue2 PRIVATE
+	vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI PRIVATE
+	vkGetDeviceTensorMemoryRequirementsARM PRIVATE
+	vkGetDisplayModeProperties2KHR PRIVATE
 	vkGetDisplayModePropertiesKHR PRIVATE
+	vkGetDisplayPlaneCapabilities2KHR PRIVATE
 	vkGetDisplayPlaneCapabilitiesKHR PRIVATE
 	vkGetDisplayPlaneSupportedDisplaysKHR PRIVATE
+	vkGetDrmDisplayEXT PRIVATE
+	vkGetDynamicRenderingTilePropertiesQCOM PRIVATE
+	vkGetEncodedVideoSessionParametersKHR PRIVATE
 	vkGetEventStatus PRIVATE
-	vkGetFaultData PRIVATE
+	vkGetExternalComputeQueueDataNV PRIVATE
+	vkGetFenceFdKHR PRIVATE
 	vkGetFenceStatus PRIVATE
+	vkGetFenceWin32HandleKHR PRIVATE
+	vkGetFramebufferTilePropertiesQCOM PRIVATE
+	vkGetGeneratedCommandsMemoryRequirementsEXT PRIVATE
+	vkGetGeneratedCommandsMemoryRequirementsNV PRIVATE
+	vkGetImageDrmFormatModifierPropertiesEXT PRIVATE
 	vkGetImageMemoryRequirements PRIVATE
 	vkGetImageMemoryRequirements2 PRIVATE
+	vkGetImageMemoryRequirements2KHR PRIVATE
+	vkGetImageOpaqueCaptureDataEXT PRIVATE
+	vkGetImageOpaqueCaptureDescriptorDataEXT PRIVATE
 	vkGetImageSparseMemoryRequirements PRIVATE
 	vkGetImageSparseMemoryRequirements2 PRIVATE
+	vkGetImageSparseMemoryRequirements2KHR PRIVATE
 	vkGetImageSubresourceLayout PRIVATE
 	vkGetImageSubresourceLayout2 PRIVATE
+	vkGetImageSubresourceLayout2EXT PRIVATE
+	vkGetImageSubresourceLayout2KHR PRIVATE
+	vkGetImageViewAddressNVX PRIVATE
+	vkGetImageViewHandle64NVX PRIVATE
+	vkGetImageViewHandleNVX PRIVATE
+	vkGetImageViewOpaqueCaptureDescriptorDataEXT PRIVATE
 	vkGetInstanceProcAddr PRIVATE
+	vkGetLatencyTimingsNV PRIVATE
+	vkGetMemoryFdKHR PRIVATE
+	vkGetMemoryFdPropertiesKHR PRIVATE
+	vkGetMemoryHostPointerPropertiesEXT PRIVATE
+	vkGetMemoryRemoteAddressNV PRIVATE
+	vkGetMemoryWin32HandleKHR PRIVATE
+	vkGetMemoryWin32HandleNV PRIVATE
+	vkGetMemoryWin32HandlePropertiesKHR PRIVATE
+	vkGetMicromapBuildSizesEXT PRIVATE
+	vkGetPartitionedAccelerationStructuresBuildSizesNV PRIVATE
+	vkGetPastPresentationTimingEXT PRIVATE
+	vkGetPastPresentationTimingGOOGLE PRIVATE
+	vkGetPerformanceParameterINTEL PRIVATE
+	vkGetPhysicalDeviceCalibrateableTimeDomainsEXT PRIVATE
+	vkGetPhysicalDeviceCalibrateableTimeDomainsKHR PRIVATE
+	vkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV PRIVATE
+	vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR PRIVATE
+	vkGetPhysicalDeviceCooperativeMatrixPropertiesNV PRIVATE
+	vkGetPhysicalDeviceCooperativeVectorPropertiesNV PRIVATE
+	vkGetPhysicalDeviceDescriptorSizeEXT PRIVATE
+	vkGetPhysicalDeviceDisplayPlaneProperties2KHR PRIVATE
 	vkGetPhysicalDeviceDisplayPlanePropertiesKHR PRIVATE
+	vkGetPhysicalDeviceDisplayProperties2KHR PRIVATE
 	vkGetPhysicalDeviceDisplayPropertiesKHR PRIVATE
 	vkGetPhysicalDeviceExternalBufferProperties PRIVATE
+	vkGetPhysicalDeviceExternalBufferPropertiesKHR PRIVATE
 	vkGetPhysicalDeviceExternalFenceProperties PRIVATE
+	vkGetPhysicalDeviceExternalFencePropertiesKHR PRIVATE
+	vkGetPhysicalDeviceExternalImageFormatPropertiesNV PRIVATE
 	vkGetPhysicalDeviceExternalSemaphoreProperties PRIVATE
+	vkGetPhysicalDeviceExternalSemaphorePropertiesKHR PRIVATE
+	vkGetPhysicalDeviceExternalTensorPropertiesARM PRIVATE
 	vkGetPhysicalDeviceFeatures PRIVATE
 	vkGetPhysicalDeviceFeatures2 PRIVATE
+	vkGetPhysicalDeviceFeatures2KHR PRIVATE
 	vkGetPhysicalDeviceFormatProperties PRIVATE
 	vkGetPhysicalDeviceFormatProperties2 PRIVATE
+	vkGetPhysicalDeviceFormatProperties2KHR PRIVATE
+	vkGetPhysicalDeviceFragmentShadingRatesKHR PRIVATE
 	vkGetPhysicalDeviceImageFormatProperties PRIVATE
 	vkGetPhysicalDeviceImageFormatProperties2 PRIVATE
+	vkGetPhysicalDeviceImageFormatProperties2KHR PRIVATE
 	vkGetPhysicalDeviceMemoryProperties PRIVATE
 	vkGetPhysicalDeviceMemoryProperties2 PRIVATE
+	vkGetPhysicalDeviceMemoryProperties2KHR PRIVATE
+	vkGetPhysicalDeviceMultisamplePropertiesEXT PRIVATE
+	vkGetPhysicalDeviceOpticalFlowImageFormatsNV PRIVATE
 	vkGetPhysicalDevicePresentRectanglesKHR PRIVATE
 	vkGetPhysicalDeviceProperties PRIVATE
 	vkGetPhysicalDeviceProperties2 PRIVATE
+	vkGetPhysicalDeviceProperties2KHR PRIVATE
+	vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM PRIVATE
+	vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM PRIVATE
+	vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR PRIVATE
 	vkGetPhysicalDeviceQueueFamilyProperties PRIVATE
 	vkGetPhysicalDeviceQueueFamilyProperties2 PRIVATE
+	vkGetPhysicalDeviceQueueFamilyProperties2KHR PRIVATE
 	vkGetPhysicalDeviceSparseImageFormatProperties PRIVATE
 	vkGetPhysicalDeviceSparseImageFormatProperties2 PRIVATE
+	vkGetPhysicalDeviceSparseImageFormatProperties2KHR PRIVATE
+	vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV PRIVATE
+	vkGetPhysicalDeviceSurfaceCapabilities2EXT PRIVATE
 	vkGetPhysicalDeviceSurfaceCapabilities2KHR PRIVATE
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR PRIVATE
 	vkGetPhysicalDeviceSurfaceFormats2KHR PRIVATE
 	vkGetPhysicalDeviceSurfaceFormatsKHR PRIVATE
+	vkGetPhysicalDeviceSurfacePresentModes2EXT PRIVATE
 	vkGetPhysicalDeviceSurfacePresentModesKHR PRIVATE
 	vkGetPhysicalDeviceSurfaceSupportKHR PRIVATE
 	vkGetPhysicalDeviceToolProperties PRIVATE
+	vkGetPhysicalDeviceToolPropertiesEXT PRIVATE
+	vkGetPhysicalDeviceVideoCapabilitiesKHR PRIVATE
+	vkGetPhysicalDeviceVideoEncodeQualityLevelPropertiesKHR PRIVATE
+	vkGetPhysicalDeviceVideoFormatPropertiesKHR PRIVATE
 	vkGetPhysicalDeviceWin32PresentationSupportKHR PRIVATE
+	vkGetPipelineBinaryDataKHR PRIVATE
 	vkGetPipelineCacheData PRIVATE
+	vkGetPipelineExecutableInternalRepresentationsKHR PRIVATE
+	vkGetPipelineExecutablePropertiesKHR PRIVATE
+	vkGetPipelineExecutableStatisticsKHR PRIVATE
+	vkGetPipelineIndirectDeviceAddressNV PRIVATE
+	vkGetPipelineIndirectMemoryRequirementsNV PRIVATE
+	vkGetPipelineKeyKHR PRIVATE
+	vkGetPipelinePropertiesEXT PRIVATE
 	vkGetPrivateData PRIVATE
+	vkGetPrivateDataEXT PRIVATE
 	vkGetQueryPoolResults PRIVATE
+	vkGetQueueCheckpointData2NV PRIVATE
+	vkGetQueueCheckpointDataNV PRIVATE
+	vkGetRayTracingCaptureReplayShaderGroupHandlesKHR PRIVATE
+	vkGetRayTracingShaderGroupHandlesKHR PRIVATE
+	vkGetRayTracingShaderGroupHandlesNV PRIVATE
+	vkGetRayTracingShaderGroupStackSizeKHR PRIVATE
+	vkGetRefreshCycleDurationGOOGLE PRIVATE
 	vkGetRenderAreaGranularity PRIVATE
 	vkGetRenderingAreaGranularity PRIVATE
+	vkGetRenderingAreaGranularityKHR PRIVATE
+	vkGetSamplerOpaqueCaptureDescriptorDataEXT PRIVATE
 	vkGetSemaphoreCounterValue PRIVATE
+	vkGetSemaphoreCounterValueKHR PRIVATE
+	vkGetSemaphoreFdKHR PRIVATE
+	vkGetSemaphoreWin32HandleKHR PRIVATE
+	vkGetShaderBinaryDataEXT PRIVATE
+	vkGetShaderInfoAMD PRIVATE
+	vkGetShaderModuleCreateInfoIdentifierEXT PRIVATE
+	vkGetShaderModuleIdentifierEXT PRIVATE
+	vkGetSwapchainCounterEXT PRIVATE
 	vkGetSwapchainImagesKHR PRIVATE
+	vkGetSwapchainStatusKHR PRIVATE
+	vkGetSwapchainTimeDomainPropertiesEXT PRIVATE
+	vkGetSwapchainTimingPropertiesEXT PRIVATE
+	vkGetTensorMemoryRequirementsARM PRIVATE
+	vkGetTensorOpaqueCaptureDataARM PRIVATE
+	vkGetTensorOpaqueCaptureDescriptorDataARM PRIVATE
+	vkGetTensorViewOpaqueCaptureDescriptorDataARM PRIVATE
+	vkGetValidationCacheDataEXT PRIVATE
+	vkGetVideoSessionMemoryRequirementsKHR PRIVATE
+	vkGetWinrtDisplayNV PRIVATE
+	vkImportFenceFdKHR PRIVATE
+	vkImportFenceWin32HandleKHR PRIVATE
+	vkImportSemaphoreFdKHR PRIVATE
+	vkImportSemaphoreWin32HandleKHR PRIVATE
+	vkInitializePerformanceApiINTEL PRIVATE
 	vkInvalidateMappedMemoryRanges PRIVATE
+	vkLatencySleepNV PRIVATE
 	vkMapMemory PRIVATE
 	vkMapMemory2 PRIVATE
+	vkMapMemory2KHR PRIVATE
 	vkMergePipelineCaches PRIVATE
+	vkMergeValidationCachesEXT PRIVATE
+	vkQueueBeginDebugUtilsLabelEXT PRIVATE
 	vkQueueBindSparse PRIVATE
+	vkQueueEndDebugUtilsLabelEXT PRIVATE
+	vkQueueInsertDebugUtilsLabelEXT PRIVATE
+	vkQueueNotifyOutOfBandNV PRIVATE
 	vkQueuePresentKHR PRIVATE
+	vkQueueSetPerformanceConfigurationINTEL PRIVATE
 	vkQueueSubmit PRIVATE
 	vkQueueSubmit2 PRIVATE
+	vkQueueSubmit2KHR PRIVATE
 	vkQueueWaitIdle PRIVATE
+	vkRegisterCustomBorderColorEXT PRIVATE
+	vkRegisterDeviceEventEXT PRIVATE
+	vkRegisterDisplayEventEXT PRIVATE
+	vkReleaseCapturedPipelineDataKHR PRIVATE
+	vkReleaseDisplayEXT PRIVATE
+	vkReleaseFullScreenExclusiveModeEXT PRIVATE
+	vkReleasePerformanceConfigurationINTEL PRIVATE
+	vkReleaseProfilingLockKHR PRIVATE
+	vkReleaseSwapchainImagesEXT PRIVATE
+	vkReleaseSwapchainImagesKHR PRIVATE
 	vkResetCommandBuffer PRIVATE
 	vkResetCommandPool PRIVATE
 	vkResetDescriptorPool PRIVATE
 	vkResetEvent PRIVATE
 	vkResetFences PRIVATE
 	vkResetQueryPool PRIVATE
+	vkResetQueryPoolEXT PRIVATE
+	vkSetDebugUtilsObjectNameEXT PRIVATE
+	vkSetDebugUtilsObjectTagEXT PRIVATE
+	vkSetDeviceMemoryPriorityEXT PRIVATE
 	vkSetEvent PRIVATE
+	vkSetHdrMetadataEXT PRIVATE
+	vkSetLatencyMarkerNV PRIVATE
+	vkSetLatencySleepModeNV PRIVATE
+	vkSetLocalDimmingAMD PRIVATE
 	vkSetPrivateData PRIVATE
+	vkSetPrivateDataEXT PRIVATE
+	vkSetSwapchainPresentTimingQueueSizeEXT PRIVATE
 	vkSignalSemaphore PRIVATE
+	vkSignalSemaphoreKHR PRIVATE
+	vkSubmitDebugUtilsMessageEXT PRIVATE
 	vkTransitionImageLayout PRIVATE
+	vkTransitionImageLayoutEXT PRIVATE
 	vkTrimCommandPool PRIVATE
+	vkTrimCommandPoolKHR PRIVATE
+	vkUninitializePerformanceApiINTEL PRIVATE
 	vkUnmapMemory PRIVATE
 	vkUnmapMemory2 PRIVATE
+	vkUnmapMemory2KHR PRIVATE
+	vkUnregisterCustomBorderColorEXT PRIVATE
 	vkUpdateDescriptorSetWithTemplate PRIVATE
+	vkUpdateDescriptorSetWithTemplateKHR PRIVATE
 	vkUpdateDescriptorSets PRIVATE
+	vkUpdateIndirectExecutionSetPipelineEXT PRIVATE
+	vkUpdateIndirectExecutionSetShaderEXT PRIVATE
+	vkUpdateVideoSessionParametersKHR PRIVATE
 	vkWaitForFences PRIVATE
+	vkWaitForPresent2KHR PRIVATE
+	vkWaitForPresentKHR PRIVATE
 	vkWaitSemaphores PRIVATE
-
+	vkWaitSemaphoresKHR PRIVATE
+	vkWriteAccelerationStructuresPropertiesKHR PRIVATE
+	vkWriteMicromapsPropertiesEXT PRIVATE
+	vkWriteResourceDescriptorsEXT PRIVATE
+	vkWriteSamplerDescriptorsEXT PRIVATE
 	; ReShade loader API (same names as ReShade so installer/tools work when this proxy is used as d3d11/dxgi)
 	Service30
 	Start

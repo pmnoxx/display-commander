@@ -75,32 +75,62 @@ def parse_doc_header(path: str, apis: dict[str, DocApi]) -> None:
 
 
 def parse_proxy_cpp(path: str, apis: dict[str, ProxyApi]) -> None:
-    """Extract API name, return (int/void), param count from extern "C" ... vk*(...)"""
+    """Extract API name, return (int/void/pointer), param count from proxy .cpp."""
     with open(path, "r", encoding="utf-8", errors="replace") as f:
         content = f.read()
-    # extern "C" int WINAPI vkName(...) or void WINAPI vkName(...); multiline params
-    pattern = re.compile(
+    # New format (gen_vulkan_proxy_from_abi): RET VKAPI_CALL vkName(PARAMS) {
+    pattern_new = re.compile(
+        r"(\S+(?:\s+\S+)?)\s+VKAPI_CALL\s+(vk[A-Za-z0-9]+)\s*\((.*?)\)\s*\{",
+        re.DOTALL,
+    )
+    for m in pattern_new.finditer(content):
+        ret_raw = m.group(1).strip()
+        name = m.group(2)
+        param_part = m.group(3).strip()
+        if not param_part or param_part == "void":
+            param_count = 0
+        else:
+            param_count = param_part.count(",") + 1
+        if "void" in ret_raw and "*" not in ret_raw and "PFN" not in ret_raw:
+            return_kind = "void"
+        elif "PFN" in ret_raw or "Function" in ret_raw:
+            return_kind = "pointer"
+        else:
+            return_kind = "int"
+        apis[name] = ProxyApi(name=name, return_kind=return_kind, param_count=param_count)
+    if apis:
+        return
+    # Legacy format: extern "C" int WINAPI vkName(...) or void WINAPI vkName(...)
+    pattern_legacy = re.compile(
         r'extern\s+"C"\s+(int|void)\s+WINAPI\s+(vk[A-Za-z0-9]+)\s*\((.*?)\)\s*\{',
         re.DOTALL,
     )
-    for m in pattern.finditer(content):
+    for m in pattern_legacy.finditer(content):
         ret = m.group(1)
         name = m.group(2)
         param_part = m.group(3).strip()
         if not param_part:
             param_count = 0
         else:
-            # Count params: split by comma, but only at top level (proxy uses p0, p1, ...)
             param_count = len([p.strip() for p in param_part.split(",")])
         apis[name] = ProxyApi(name=name, return_kind=ret, param_count=param_count)
 
 
 def doc_return_matches_proxy(doc_ret: str, proxy_ret: str) -> bool:
-    """Doc return kind vs proxy int/void. pointer should be int on 32-bit but LPVOID/ptr on 64-bit; proxy uses int so 64-bit is wrong."""
+    """Doc return kind vs proxy (void / int / pointer)."""
     if proxy_ret == "void":
         return doc_ret == "void"
     if proxy_ret == "int":
-        return doc_ret in ("VkResult", "VkBool32", "uint64", "size_t")
+        return doc_ret in (
+            "VkResult",
+            "VkBool32",
+            "uint64",
+            "size_t",
+            "VkDeviceAddress",
+            "uint32_t",
+        )
+    if proxy_ret == "pointer":
+        return doc_ret == "pointer"
     return False
 
 

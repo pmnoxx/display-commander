@@ -142,6 +142,24 @@ static std::atomic<uint64_t> g_injected_sleep_calls{0};
 static std::atomic<uint64_t> g_injected_swapchain_latency_creates{0};
 static std::atomic<bool> g_injected_procs_resolved{false};
 
+// Extension names for injection (stable pointers for VkDeviceCreateInfo). Order: dependencies first, then VK_NV_low_latency2.
+static const char* const kVkKHRPresentIdExtensionName = "VK_KHR_present_id";
+static const char* const kVkKHRTimelineSemaphoreExtensionName = "VK_KHR_timeline_semaphore";
+static const char* const kVkNVLowLatency2ExtensionName = "VK_NV_low_latency2";
+
+static bool HasExtension(const VkDeviceCreateInfo* pCreateInfo, const char* extName) {
+    if (pCreateInfo == nullptr || pCreateInfo->ppEnabledExtensionNames == nullptr || extName == nullptr) {
+        return false;
+    }
+    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; ++i) {
+        const char* name = pCreateInfo->ppEnabledExtensionNames[i];
+        if (name != nullptr && std::strcmp(name, extName) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
                                                  const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
     g_calls_vkCreateDevice.fetch_add(1);
@@ -150,24 +168,66 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
-    std::vector<std::string> exts_for_ui;
-    if (pCreateInfo != nullptr && pCreateInfo->ppEnabledExtensionNames != nullptr
-        && pCreateInfo->enabledExtensionCount > 0) {
+    const VkDeviceCreateInfo* createInfoToUse = pCreateInfo;
+    std::vector<const char*> injected_extension_ptrs;  // Only used when we inject; must outlive the call below
+    VkDeviceCreateInfo injected_create_info;           // Copy when we inject
+
+    const bool want_inject = settings::g_mainTabSettings.vulkan_inject_extensions_enabled.GetValue()
+                             && pCreateInfo != nullptr && pCreateInfo->ppEnabledExtensionNames != nullptr
+                             && pCreateInfo->enabledExtensionCount > 0;
+    const bool need_present_id = want_inject && !HasExtension(pCreateInfo, kVkKHRPresentIdExtensionName);
+    const bool need_timeline_semaphore =
+        want_inject && !HasExtension(pCreateInfo, kVkKHRTimelineSemaphoreExtensionName);
+    const bool need_low_latency2 = want_inject && !HasExtension(pCreateInfo, kVkNVLowLatency2ExtensionName);
+    const bool inject_extensions = need_present_id || need_timeline_semaphore || need_low_latency2;
+
+    if (inject_extensions) {
+        const uint32_t extra = (need_present_id ? 1u : 0u) + (need_timeline_semaphore ? 1u : 0u)
+                               + (need_low_latency2 ? 1u : 0u);
+        injected_extension_ptrs.reserve(static_cast<std::size_t>(pCreateInfo->enabledExtensionCount) + extra);
         for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; ++i) {
-            const char* name = pCreateInfo->ppEnabledExtensionNames[i];
+            injected_extension_ptrs.push_back(pCreateInfo->ppEnabledExtensionNames[i]);
+        }
+        if (need_present_id) {
+            injected_extension_ptrs.push_back(kVkKHRPresentIdExtensionName);
+        }
+        if (need_timeline_semaphore) {
+            injected_extension_ptrs.push_back(kVkKHRTimelineSemaphoreExtensionName);
+        }
+        if (need_low_latency2) {
+            injected_extension_ptrs.push_back(kVkNVLowLatency2ExtensionName);
+        }
+
+        injected_create_info = *pCreateInfo;
+        injected_create_info.ppEnabledExtensionNames = injected_extension_ptrs.data();
+        injected_create_info.enabledExtensionCount =
+            static_cast<uint32_t>(injected_extension_ptrs.size());
+        createInfoToUse = &injected_create_info;
+        LogInfo("VulkanLoader: injecting Vulkan extensions in vkCreateDevice (%u -> %u):%s%s%s",
+                pCreateInfo->enabledExtensionCount, injected_create_info.enabledExtensionCount,
+                need_present_id ? " VK_KHR_present_id" : "",
+                need_timeline_semaphore ? " VK_KHR_timeline_semaphore" : "",
+                need_low_latency2 ? " VK_NV_low_latency2" : "");
+    }
+
+    std::vector<std::string> exts_for_ui;
+    if (createInfoToUse != nullptr && createInfoToUse->ppEnabledExtensionNames != nullptr
+        && createInfoToUse->enabledExtensionCount > 0) {
+        for (uint32_t i = 0; i < createInfoToUse->enabledExtensionCount; ++i) {
+            const char* name = createInfoToUse->ppEnabledExtensionNames[i];
             if (name != nullptr) {
                 exts_for_ui.push_back(name);
             }
         }
     }
 
-    const VkResult r = g_real_vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice);
+    const VkResult r = g_real_vkCreateDevice(physicalDevice, createInfoToUse, pAllocator, pDevice);
     if (!exts_for_ui.empty()) {
         utils::SRWLockExclusive lock(utils::g_vulkan_extensions_lock);
         g_vulkan_enabled_extensions = std::move(exts_for_ui);
     }
     if (pCreateInfo != nullptr) {
-        LogInfo("VulkanLoader: vkCreateDevice captured %u enabled extension(s)", pCreateInfo->enabledExtensionCount);
+        LogInfo("VulkanLoader: vkCreateDevice captured %u enabled extension(s)", createInfoToUse->enabledExtensionCount);
     }
     return r;
 }

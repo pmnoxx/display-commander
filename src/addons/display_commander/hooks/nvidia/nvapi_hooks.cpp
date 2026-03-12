@@ -117,8 +117,8 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 }
 
 int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
-                                  const std::function<int()>& send_present_end_to_driver, uint64_t marker_time_ns) {
-    const LONGLONG now_ns = (marker_time_ns != 0) ? static_cast<LONGLONG>(marker_time_ns) : utils::get_now_ns();
+                                  const ReflexMarkerTypes& marker_types,
+                                  const std::function<int()>& send_present_end_to_driver) {
     bool reflex_marker_sent = false;
     NotifyGameSetLatencyMarkerCall();
     g_native_reflex_detected.store(true, std::memory_order_relaxed);
@@ -133,8 +133,8 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     // Reflex low-latency and sleep from working (e.g. with Streamline).
 
     // only for first 6 latency marker types
-    if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-        ChooseFpsLimiter(static_cast<uint64_t>(now_ns), site);
+    if (marker_type == marker_types.present_start) {
+        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
     }
     bool use_fps_limiter = GetChosenFpsLimiter(site);
     if (!use_fps_limiter) {
@@ -159,7 +159,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
 
     if (native_pacing_sim_start_only) {
         if (use_fps_limiter) {
-            if (marker_type == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+            if (marker_type == marker_types.simulation_start) {
                 OnPresentFlags2(false,
                                 true);  // Called from wrapper, not present_detour
 
@@ -167,18 +167,18 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                 RecordNativeFrameTime();
                 // display_commanderhooks::dxgi::HandlePresentBefore2();
             }
-            if (marker_type == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
+            if (marker_type == marker_types.simulation_start) {
                 display_commanderhooks::dxgi::HandlePresentAfter(true);
             }
         }
     } else {
-        if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_END
+        if (marker_type == marker_types.present_end
             && !settings::g_advancedTabSettings.reflex_supress_native.GetValue()) {
             result = send_present_end_to_driver();
             reflex_marker_sent = true;
         }
         if (use_fps_limiter) {
-            if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
+            if (marker_type == marker_types.present_start) {
                 OnPresentFlags2(false,
                                 true);  // Called from wrapper, not present_detour
 
@@ -186,7 +186,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                 RecordNativeFrameTime();
                 // display_commanderhooks::dxgi::HandlePresentBefore2();
             }
-            if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_END) {
+            if (marker_type == marker_types.present_end) {
                 display_commanderhooks::dxgi::HandlePresentAfter(true);
             }
 
@@ -197,18 +197,36 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                     (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
 
+                float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
+                if (effective_fps > 0.0f) {
+                    const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
+                    switch (lite.fg_mode) {
+                        case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
+                        case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
+                        case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
+                        default:               break;
+                    }
+                    static bool logged = false;
+                    if (!logged
+                        && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
+                            || lite.fg_mode == DLSSGFgMode::k4x)) {
+                        LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
+                        logged = true;
+                    }
+                }
+                LONGLONG frame_time_ns =
+                    (effective_fps > 0.0f) ? static_cast<LONGLONG>(1'000'000'000.0 / static_cast<double>(effective_fps))
+                                           : 0;
+
                 if (g_latency_marker_buffer[prevSlot].frame_id.load(std::memory_order_relaxed)
                     == frame_id - reflex_fps_limiter_max_queued_frames) {
                     auto start_ns = utils::get_now_ns();
-                    while (g_latency_marker_buffer[prevSlot]
-                               .marker_time_ns[NV_LATENCY_MARKER_TYPE::SIMULATION_START]
-                               .load()
-                           > g_latency_marker_buffer[prevSlot]
-                                 .marker_time_ns[NV_LATENCY_MARKER_TYPE::PRESENT_START]
-                                 .load()) {
+                    while (g_latency_marker_buffer[prevSlot].marker_time_ns[marker_types.simulation_start].load()
+                           > g_latency_marker_buffer[prevSlot].marker_time_ns[marker_types.present_start].load()) {
                         // XXX
-                        if (utils::get_now_ns() - start_ns > 50 * utils::NS_TO_MS) {
-                            // safety net
+                        // fail safe: break after 1 frame time so we don't lower FPS as much
+                        const LONGLONG fail_safe_frame_time_ns = (std::min)(frame_time_ns * 2, 50 * utils::NS_TO_MS);
+                        if (utils::get_now_ns() - start_ns > fail_safe_frame_time_ns) {
                             break;
                         }
                         YieldProcessor();
@@ -223,21 +241,21 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
             if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+                const LONGLONG now_ns = utils::get_now_ns();
                 g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
                 g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
             }
         }
 
         // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
-        if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START && frame_id > 300) {
+        if (marker_type == marker_types.present_start && frame_id > 300) {
             const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
             const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
             if (delay_enabled && delay_frames > 0.0f) {
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
                 const LONGLONG sim_start_ns =
-                    g_latency_marker_buffer[slot]
-                        .marker_time_ns[static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START)]
-                        .load(std::memory_order_relaxed);
+                    g_latency_marker_buffer[slot].marker_time_ns[marker_types.simulation_start].load(
+                        std::memory_order_relaxed);
                 // Prefer frame time derived from FPS limit (and FG mode) when set; otherwise Reflex/OnPresentSync or
                 // measured
                 float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
@@ -307,9 +325,14 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
     }
     g_nvapi_event_counters[NVAPI_EVENT_D3D_SET_LATENCY_MARKER].fetch_add(1);
 
+    const ReflexMarkerTypes nvapi_markers = {
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START),
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_START),
+        static_cast<int>(NV_LATENCY_MARKER_TYPE::PRESENT_END),
+    };
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker, static_cast<int>(pSetLatencyMarkerParams->markerType),
-        pSetLatencyMarkerParams->frameID, [&]() {
+        pSetLatencyMarkerParams->frameID, nvapi_markers, [&]() {
             const NvAPI_Status s = NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
             return (s == NVAPI_OK) ? 0 : static_cast<int>(s);
         });

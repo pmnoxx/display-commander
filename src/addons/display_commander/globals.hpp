@@ -15,8 +15,8 @@
 
 #include <array>
 #include <atomic>
-#include <functional>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -353,12 +353,12 @@ enum class OnPresentReflexMode : std::uint8_t {
  *  Order: Low-latency native pacing, then Reflex markers by max queued (1, 2, 3), then pace generated, then Custom. */
 enum class FpsLimiterPreset : std::uint8_t {
     kLowLatencyNativePacing = 0,  // Pace real frames Low-latency (native frame pacing) — default
-    kLowLatencyMarkers = 1,        // Pace real frames Low-latency (Reflex markers, max queued=1)
-    kBalanced = 2,                 // Pace real frames Balanced (Reflex markers, max queued=2)
-    kStability = 3,                // Pace real frames Stability (Reflex markers, max queued=3)
-    kPaceGenerated = 4,            // Pace generated frames
-    kPaceGeneratedSafe = 5,        // Pace generated (safe) - Reshade APIs fallback
-    kCustom = 6                    // Custom (configure manually)
+    kLowLatencyMarkers = 1,       // Pace real frames Low-latency (Reflex markers, max queued=1)
+    kBalanced = 2,                // Pace real frames Balanced (Reflex markers, max queued=2)
+    kStability = 3,               // Pace real frames Stability (Reflex markers, max queued=3)
+    kPaceGenerated = 4,           // Pace generated frames
+    kPaceGeneratedSafe = 5,       // Pace generated (safe) - Reshade APIs fallback
+    kCustom = 6                   // Custom (configure manually)
 };
 
 enum class InputBlockingMode : std::uint8_t {
@@ -683,11 +683,20 @@ FpsLimiterCallSite GetChosenFrameTimeLocation();
 /** Returns display name for a FPS limiter call site ("reflex_marker", "reflex_marker_vk_nvll", etc.). */
 const char* FpsLimiterSiteName(FpsLimiterCallSite site);
 
+/** Marker type constants for ProcessReflexMarkerFpsLimiter. Pass API-specific values (e.g. NVAPI vs Vulkan NVLL)
+ * so the implementation can compare marker_type and index into buffers without hardcoding one API. */
+struct ReflexMarkerTypes {
+    int simulation_start;
+    int present_start;
+    int present_end;
+};
+
 /** Shared Reflex latency-marker handling (NVAPI and Vulkan NVLL). Calls NotifyGameSetLatencyMarkerCall, runs FPS
  * limiter logic, and optionally forwards the marker via the callback. Returns 0 on success; callback returns 0 on
- * success. marker_time_ns: timestamp for this marker (used for buffer and ChooseFpsLimiter); 0 = use get_now_ns(). */
+ * success. marker_types supplies the API-specific values for SIMULATION_START, PRESENT_START, PRESENT_END. */
 int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
-                                 const std::function<int()>& send_present_end_to_driver, uint64_t marker_time_ns = 0);
+                                  const ReflexMarkerTypes& marker_types,
+                                  const std::function<int()>& send_present_end_to_driver);
 
 /** Returns display name of the current chosen FPS limiter source ("reflex_marker", "dxgi_swapchain", etc.) or "unset".
  */

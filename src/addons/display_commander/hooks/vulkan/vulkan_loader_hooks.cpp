@@ -76,7 +76,8 @@ static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBu
 void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,
                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo);
 
-/** Table-driven hook install: name, detour, original. All hooks installed from vulkan-1.dll exports (no vkGetDeviceProcAddr). */
+/** Table-driven hook install: name, detour, original. All hooks installed from vulkan-1.dll exports (no
+ * vkGetDeviceProcAddr). */
 struct VulkanLoaderHookEntry {
     const char* name;
     LPVOID detour;
@@ -142,7 +143,8 @@ static std::atomic<uint64_t> g_injected_sleep_calls{0};
 static std::atomic<uint64_t> g_injected_swapchain_latency_creates{0};
 static std::atomic<bool> g_injected_procs_resolved{false};
 
-// Extension names for injection (stable pointers for VkDeviceCreateInfo). Order: dependencies first, then VK_NV_low_latency2.
+// Extension names for injection (stable pointers for VkDeviceCreateInfo). Order: dependencies first, then
+// VK_NV_low_latency2.
 static const char* const kVkKHRPresentIdExtensionName = "VK_KHR_present_id";
 static const char* const kVkKHRTimelineSemaphoreExtensionName = "VK_KHR_timeline_semaphore";
 static const char* const kVkNVLowLatency2ExtensionName = "VK_NV_low_latency2";
@@ -182,8 +184,8 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
     const bool inject_extensions = need_present_id || need_timeline_semaphore || need_low_latency2;
 
     if (inject_extensions) {
-        const uint32_t extra = (need_present_id ? 1u : 0u) + (need_timeline_semaphore ? 1u : 0u)
-                               + (need_low_latency2 ? 1u : 0u);
+        const uint32_t extra =
+            (need_present_id ? 1u : 0u) + (need_timeline_semaphore ? 1u : 0u) + (need_low_latency2 ? 1u : 0u);
         injected_extension_ptrs.reserve(static_cast<std::size_t>(pCreateInfo->enabledExtensionCount) + extra);
         for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; ++i) {
             injected_extension_ptrs.push_back(pCreateInfo->ppEnabledExtensionNames[i]);
@@ -200,8 +202,7 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
 
         injected_create_info = *pCreateInfo;
         injected_create_info.ppEnabledExtensionNames = injected_extension_ptrs.data();
-        injected_create_info.enabledExtensionCount =
-            static_cast<uint32_t>(injected_extension_ptrs.size());
+        injected_create_info.enabledExtensionCount = static_cast<uint32_t>(injected_extension_ptrs.size());
         createInfoToUse = &injected_create_info;
         LogInfo("VulkanLoader: injecting Vulkan extensions in vkCreateDevice (%u -> %u):%s%s%s",
                 pCreateInfo->enabledExtensionCount, injected_create_info.enabledExtensionCount,
@@ -227,7 +228,8 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
         g_vulkan_enabled_extensions = std::move(exts_for_ui);
     }
     if (pCreateInfo != nullptr) {
-        LogInfo("VulkanLoader: vkCreateDevice captured %u enabled extension(s)", createInfoToUse->enabledExtensionCount);
+        LogInfo("VulkanLoader: vkCreateDevice captured %u enabled extension(s)",
+                createInfoToUse->enabledExtensionCount);
     }
     return r;
 }
@@ -251,6 +253,13 @@ static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBu
 
 void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,
                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
+    const bool disabled = true;
+    if (disabled) {
+        if (g_real_vkSetLatencyMarkerNV != nullptr) {
+            g_real_vkSetLatencyMarkerNV(device, swapchain, pLatencyMarkerInfo);
+        }
+        return;
+    }
     (void)swapchain;
     g_loader_marker_count.fetch_add(1);
     LogInfo("VulkanLoader: vkSetLatencyMarkerNV_Detour called marker=%d presentID=%llu", pLatencyMarkerInfo->marker,
@@ -380,8 +389,7 @@ static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
             LogInfo("VulkanLoader: %s not exported by vulkan-1.dll, skipping", entry.name);
             continue;
         }
-        if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(target), entry.detour, entry.original,
-                                entry.name)) {
+        if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(target), entry.detour, entry.original, entry.name)) {
             LogInfo("VulkanLoader: failed to hook %s", entry.name);
             RollbackVulkanLoaderHooks();
             return false;
@@ -391,8 +399,9 @@ static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
     g_loader_hooks_installed.store(true);
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::VULKAN_LOADER);
-    LogInfo("VulkanLoader: hooks installed (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, "
-            "vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV from exports)");
+    LogInfo(
+        "VulkanLoader: hooks installed (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, "
+        "vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV from exports)");
     return true;
 }
 

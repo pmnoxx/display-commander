@@ -117,11 +117,29 @@ NvAPI_Status __cdecl NvAPI_Disp_GetHdrCapabilities_Detour(NvU32 displayId, NV_HD
 }
 
 int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint64_t frame_id,
-                                 const std::function<int()>& send_present_end_to_driver) {
+                                  const std::function<int()>& send_present_end_to_driver) {
     bool reflex_marker_sent = false;
     NotifyGameSetLatencyMarkerCall();
+    g_native_reflex_detected.store(true, std::memory_order_relaxed);
+    LogInfoThrottled(1, "NvAPI_D3D_SetLatencyMarker_Detour: First call for frame %llu",
+                     g_global_frame_id.load(std::memory_order_acquire));
 
     // Thread tracking for first 6 marker types (SIMULATION_START..PRESENT_END)
+
+    // Mark native Reflex as active when we see SetLatencyMarker from game or Streamline (sl.chi/sl.reflex).
+    // Without this, g_native_reflex_detected stays false and IsNativeReflexActive() is false, so
+    // SetSleepMode_Detour and Sleep_Detour return early and never forward to the driver, preventing
+    // Reflex low-latency and sleep from working (e.g. with Streamline).
+
+    // only for first 6 latency marker types
+    if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
+        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
+    }
+    bool use_fps_limiter = GetChosenFpsLimiter(site);
+    if (!use_fps_limiter) {
+        return send_present_end_to_driver();
+    }
+
     if (g_thread_tracking_enabled.load(std::memory_order_relaxed)) {
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCountFirstSix)) {
             g_latency_marker_thread_id[marker_type].store(GetCurrentThreadId(), std::memory_order_relaxed);
@@ -129,24 +147,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         }
     }
 
-    // Mark native Reflex as active when we see SetLatencyMarker from game or Streamline (sl.chi/sl.reflex).
-    // Without this, g_native_reflex_detected stays false and IsNativeReflexActive() is false, so
-    // SetSleepMode_Detour and Sleep_Detour return early and never forward to the driver, preventing
-    // Reflex low-latency and sleep from working (e.g. with Streamline).
-    g_native_reflex_detected.store(true, std::memory_order_relaxed);
-    {
-        static bool first_call = true;
-        if (first_call) {
-            first_call = false;
-            LogInfo("NvAPI_D3D_SetLatencyMarker_Detour: First call for frame %llu",
-                    g_global_frame_id.load(std::memory_order_acquire));
-        }
-    }
-
-    // only for first 6 latency marker types
-    if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
-        ChooseFpsLimiter(static_cast<uint64_t>(utils::get_now_ns()), site);
-    }
     bool use_present_end = false;
     int result = 0;
 
@@ -157,7 +157,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                                         && reflex_fps_limiter_max_queued_frames == 0;  // game default
 
     if (native_pacing_sim_start_only) {
-        bool use_fps_limiter = GetChosenFpsLimiter(site);
         if (use_fps_limiter) {
             if (marker_type == NV_LATENCY_MARKER_TYPE::SIMULATION_START) {
                 OnPresentFlags2(false,
@@ -177,7 +176,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
             result = send_present_end_to_driver();
             reflex_marker_sent = true;
         }
-        bool use_fps_limiter = GetChosenFpsLimiter(site);
         if (use_fps_limiter) {
             if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START) {
                 OnPresentFlags2(false,
@@ -219,64 +217,56 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
         }
     }
 
-    // Cyclic buffer: record timestamp when this marker was called, keyed by (frame_id, markerType)
-    if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
+    if (use_fps_limiter) {
+        // Cyclic buffer: record timestamp when this marker was called, keyed by (frame_id, markerType)
         if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
-            const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
-            const LONGLONG now_ns = utils::get_now_ns();
-            g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
-            g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
-        }
-    }
-
-    // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
-    if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START && frame_id > 300) {
-        const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
-        const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
-        if (delay_enabled && delay_frames > 0.0f) {
-            const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
-            const LONGLONG sim_start_ns =
-                g_latency_marker_buffer[slot]
-                    .marker_time_ns[static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START)]
-                    .load(std::memory_order_relaxed);
-            // Prefer frame time derived from FPS limit (and FG mode) when set; otherwise Reflex/OnPresentSync or
-            // measured
-            float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
-            if (effective_fps > 0.0f) {
-                const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
-                switch (lite.fg_mode) {
-                    case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
-                    case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
-                    case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
-                    default:               break;
-                }
-                static bool logged = false;
-                if (!logged
-                    && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
-                        || lite.fg_mode == DLSSGFgMode::k4x)) {
-                    LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
-                    logged = true;
-                }
+            if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
+                const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+                const LONGLONG now_ns = utils::get_now_ns();
+                g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
+                g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
             }
-            LONGLONG frame_time_ns = (effective_fps > 0.0f)
-                                         ? static_cast<LONGLONG>(1'000'000'000.0 / static_cast<double>(effective_fps))
-                                         : 0;
-            /*
-        if (frame_time_ns <= 0) {
-            frame_time_ns = g_sleep_reflex_injected_ns_smooth.load(std::memory_order_relaxed);
         }
-        if (frame_time_ns <= 0) {
-            frame_time_ns = g_onpresent_sync_frame_time_ns.load(std::memory_order_relaxed);
-        }
-        if (frame_time_ns <= 0) {
-            frame_time_ns = g_frame_time_ns.load(std::memory_order_relaxed);
-        }*/
-            frame_time_ns = (std::max)(frame_time_ns, static_cast<LONGLONG>(1));
-            const LONGLONG delay_ns = static_cast<LONGLONG>(delay_frames * static_cast<float>(frame_time_ns));
-            const LONGLONG target_ns = sim_start_ns + delay_ns;
-            const LONGLONG now_ns = utils::get_now_ns();
-            if (sim_start_ns > 0 && target_ns > now_ns) {
-                utils::wait_until_ns(target_ns, g_timer_handle_delay_present_start);
+
+        // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
+        if (marker_type == NV_LATENCY_MARKER_TYPE::PRESENT_START && frame_id > 300) {
+            const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();
+            const float delay_frames = settings::g_mainTabSettings.delay_present_start_frames.GetValue();
+            if (delay_enabled && delay_frames > 0.0f) {
+                const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+                const LONGLONG sim_start_ns =
+                    g_latency_marker_buffer[slot]
+                        .marker_time_ns[static_cast<int>(NV_LATENCY_MARKER_TYPE::SIMULATION_START)]
+                        .load(std::memory_order_relaxed);
+                // Prefer frame time derived from FPS limit (and FG mode) when set; otherwise Reflex/OnPresentSync or
+                // measured
+                float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
+                if (effective_fps > 0.0f) {
+                    const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
+                    switch (lite.fg_mode) {
+                        case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
+                        case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
+                        case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
+                        default:               break;
+                    }
+                    static bool logged = false;
+                    if (!logged
+                        && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
+                            || lite.fg_mode == DLSSGFgMode::k4x)) {
+                        LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
+                        logged = true;
+                    }
+                }
+                LONGLONG frame_time_ns =
+                    (effective_fps > 0.0f) ? static_cast<LONGLONG>(1'000'000'000.0 / static_cast<double>(effective_fps))
+                                           : 0;
+                frame_time_ns = (std::max)(frame_time_ns, static_cast<LONGLONG>(1));
+                const LONGLONG delay_ns = static_cast<LONGLONG>(delay_frames * static_cast<float>(frame_time_ns));
+                const LONGLONG target_ns = sim_start_ns + delay_ns;
+                const LONGLONG now_ns = utils::get_now_ns();
+                if (sim_start_ns > 0 && target_ns > now_ns) {
+                    utils::wait_until_ns(target_ns, g_timer_handle_delay_present_start);
+                }
             }
         }
     }
@@ -319,8 +309,7 @@ NvAPI_Status __cdecl NvAPI_D3D_SetLatencyMarker_Detour(IUnknown* pDev,
 
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker, static_cast<int>(pSetLatencyMarkerParams->markerType),
-        pSetLatencyMarkerParams->frameID,
-        [&]() {
+        pSetLatencyMarkerParams->frameID, [&]() {
             const NvAPI_Status s = NvAPI_D3D_SetLatencyMarker_Direct(pDev, pSetLatencyMarkerParams);
             return (s == NVAPI_OK) ? 0 : static_cast<int>(s);
         });

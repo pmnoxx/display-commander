@@ -34,6 +34,8 @@ static PFN_vkCreateDevice_t g_real_vkCreateDevice = nullptr;
 // Forward declarations for the detour table (defined below).
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance instance, const char* pName);
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice device, const char* pName);
+static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
+                                                const VkAllocationCallbacks* pAllocator, VkDevice* pDevice);
 
 /** Table-driven hook install: name, detour, original (same order as InstallVulkanLoaderHooks loop). */
 struct VulkanLoaderHookEntry {
@@ -41,12 +43,14 @@ struct VulkanLoaderHookEntry {
     LPVOID detour;
     LPVOID* original;
 };
-static constexpr std::size_t kVulkanLoaderHookCount = 2;
+static constexpr std::size_t kVulkanLoaderHookCount = 3;
 static const VulkanLoaderHookEntry kVulkanLoaderHooks[kVulkanLoaderHookCount] = {
     {"vkGetInstanceProcAddr", reinterpret_cast<LPVOID>(&vkGetInstanceProcAddr_Detour),
      reinterpret_cast<LPVOID*>(&vkGetInstanceProcAddr_Original)},
     {"vkGetDeviceProcAddr", reinterpret_cast<LPVOID>(&vkGetDeviceProcAddr_Detour),
      reinterpret_cast<LPVOID*>(&vkGetDeviceProcAddr_Original)},
+    {"vkCreateDevice", reinterpret_cast<LPVOID>(&vkCreateDevice_Detour),
+     reinterpret_cast<LPVOID*>(&g_real_vkCreateDevice)},
 };
 /** Trampoline to the real vkSetLatencyMarkerNV (filled by MinHook when we hook the real). */
 static PFN_vkSetLatencyMarkerNV_t g_real_vkSetLatencyMarkerNV = nullptr;
@@ -213,10 +217,10 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance
         return nullptr;
     }
     PFN_vkVoidFunction result = vkGetInstanceProcAddr_Original(instance, pName);
+    // Return our detour so callers that resolve vkCreateDevice via vkGetInstanceProcAddr hit us.
+    // (Direct export hook catches GetProcAddress("vkCreateDevice") on vulkan-1.dll.)
     if (pName != nullptr && std::strcmp(pName, "vkCreateDevice") == 0 && result != nullptr) {
-        g_real_vkCreateDevice = reinterpret_cast<PFN_vkCreateDevice_t>(result);
         result = reinterpret_cast<PFN_vkVoidFunction>(&vkCreateDevice_Detour);
-        LogInfo("VulkanLoader: vkGetInstanceProcAddr returning vkCreateDevice detour");
     }
     return result;
 }
@@ -289,7 +293,7 @@ static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
     g_loader_hooks_installed.store(true);
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::VULKAN_LOADER);
-    LogInfo("VulkanLoader: VK_NV_low_latency2 hooks installed (vkGetInstanceProcAddr + vkGetDeviceProcAddr)");
+    LogInfo("VulkanLoader: VK_NV_low_latency2 hooks installed (vkGetInstanceProcAddr + vkGetDeviceProcAddr + vkCreateDevice export)");
     return true;
 }
 

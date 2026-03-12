@@ -13,7 +13,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/perf_measurement.hpp"
 #include "../../utils/timing.hpp"
-#include "../dxgi_factory_wrapper.hpp"
+#include "dxgi_factory_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
 #include "../present_traffic_tracking.hpp"
 #include "dxgi_gpu_completion.hpp"

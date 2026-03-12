@@ -19,7 +19,7 @@
 #include "display_settings_hooks.hpp"
 #include "dpi_hooks.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
-#include "dxgi_factory_wrapper.hpp"
+#include "dxgi/dxgi_factory_wrapper.hpp"
 #include "globals.hpp"
 #include "hook_suppression_manager.hpp"
 #include "loadlibrary_hooks.hpp"

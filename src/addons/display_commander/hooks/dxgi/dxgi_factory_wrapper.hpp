@@ -3,7 +3,7 @@
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 #include <atomic>
-#include "../globals.hpp"
+#include "../../globals.hpp"
 
 // Custom IID for DXGIFactoryWrapper interface
 // {A1B2C3D4-E5F6-4789-A012-B345C678D909}

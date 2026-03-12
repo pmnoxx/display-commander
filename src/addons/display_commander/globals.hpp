@@ -1176,6 +1176,7 @@ constexpr size_t kLatencyMarkerTypeCount = 13;  // SIMULATION_START(0) .. OUT_OF
 struct LatencyMarkerFrameRecord {
     std::atomic<uint64_t> frame_id{0};
     std::atomic<LONGLONG> marker_time_ns[kLatencyMarkerTypeCount];
+    std::atomic<uint64_t> frame_id_by_marker_type[kLatencyMarkerTypeCount];
 };
 extern LatencyMarkerFrameRecord g_latency_marker_buffer[kFrameDataBufferSize];
 

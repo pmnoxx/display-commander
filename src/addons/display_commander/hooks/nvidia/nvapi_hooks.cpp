@@ -147,6 +147,21 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
             g_latency_marker_last_frame_id[marker_type].store(frame_id, std::memory_order_relaxed);
         }
     }
+    // Cyclic buffer: record timestamp when this marker was called, keyed by (frame_id, markerType)
+    if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
+        const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
+        const LONGLONG now_ns = utils::get_now_ns();
+        g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
+        g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
+        if (g_latency_marker_buffer[slot].frame_id_by_marker_type[marker_type].load(std::memory_order_relaxed)
+            != frame_id) {
+            g_latency_marker_buffer[slot].frame_id_by_marker_type[marker_type].store(frame_id,
+                                                                                     std::memory_order_relaxed);
+        } else {
+            // skip
+            return 0;
+        }
+    }
 
     bool use_present_end = false;
     int result = 0;
@@ -197,35 +212,21 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                     (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
 
-                float effective_fps = settings::g_mainTabSettings.fps_limit.GetValue();
-                if (effective_fps > 0.0f) {
-                    const DLSSGSummaryLite lite = GetDLSSGSummaryLite();
-                    switch (lite.fg_mode) {
-                        case DLSSGFgMode::k2x: effective_fps /= 2.0f; break;
-                        case DLSSGFgMode::k3x: effective_fps /= 3.0f; break;
-                        case DLSSGFgMode::k4x: effective_fps /= 4.0f; break;
-                        default:               break;
-                    }
-                    static bool logged = false;
-                    if (!logged
-                        && (lite.fg_mode == DLSSGFgMode::k2x || lite.fg_mode == DLSSGFgMode::k3x
-                            || lite.fg_mode == DLSSGFgMode::k4x)) {
-                        LogInfo("DLSS-G FG mode: %d", static_cast<int>(lite.fg_mode));
-                        logged = true;
-                    }
-                }
-                LONGLONG frame_time_ns =
-                    (effective_fps > 0.0f) ? static_cast<LONGLONG>(1'000'000'000.0 / static_cast<double>(effective_fps))
-                                           : 0;
+                const size_t prevSlotM1 = (prevSlot - 1 + kFrameDataBufferSize) % kFrameDataBufferSize;
+                // avoid deadlock
+                bool prev_frame_rendered =
+                    g_latency_marker_buffer[prevSlotM1].marker_time_ns[marker_types.simulation_start].load()
+                    < g_latency_marker_buffer[prevSlotM1].marker_time_ns[marker_types.present_start].load();
 
-                if (g_latency_marker_buffer[prevSlot].frame_id.load(std::memory_order_relaxed)
-                    == frame_id - reflex_fps_limiter_max_queued_frames) {
+                if (prev_frame_rendered
+                    && g_latency_marker_buffer[prevSlot].frame_id.load(std::memory_order_relaxed)
+                           == frame_id - reflex_fps_limiter_max_queued_frames) {
                     auto start_ns = utils::get_now_ns();
                     while (g_latency_marker_buffer[prevSlot].marker_time_ns[marker_types.simulation_start].load()
                            > g_latency_marker_buffer[prevSlot].marker_time_ns[marker_types.present_start].load()) {
                         // XXX
                         // fail safe: break after 1 frame time so we don't lower FPS as much
-                        const LONGLONG fail_safe_frame_time_ns = (std::min)(frame_time_ns * 2, 50 * utils::NS_TO_MS);
+                        const LONGLONG fail_safe_frame_time_ns = 50 * utils::NS_TO_MS;
                         if (utils::get_now_ns() - start_ns > fail_safe_frame_time_ns) {
                             break;
                         }
@@ -237,16 +238,6 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
     }
 
     if (use_fps_limiter) {
-        // Cyclic buffer: record timestamp when this marker was called, keyed by (frame_id, markerType)
-        if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
-            if (marker_type >= 0 && marker_type < static_cast<int>(kLatencyMarkerTypeCount)) {
-                const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);
-                const LONGLONG now_ns = utils::get_now_ns();
-                g_latency_marker_buffer[slot].frame_id.store(frame_id, std::memory_order_relaxed);
-                g_latency_marker_buffer[slot].marker_time_ns[marker_type].store(now_ns, std::memory_order_relaxed);
-            }
-        }
-
         // Delay PRESENT_START until (SIMULATION_START + delay_present_start_frames * frame_time) when enabled
         if (marker_type == marker_types.present_start && frame_id > 300) {
             const bool delay_enabled = settings::g_mainTabSettings.delay_present_start_after_sim_enabled.GetValue();

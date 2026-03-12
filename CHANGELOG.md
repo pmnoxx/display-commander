@@ -3,6 +3,10 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.456
+- [hooks] **Reflex FPS limiter: improve FPS in case of deadlock** - The failsafe that breaks out of the PRESENT_START sync spin now triggers after 1 frame time instead of 2, so when the sync hits a deadlock-like stall we recover sooner and FPS is not lowered as much. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
+
+---
 ## v0.12.455
 - [hooks] **Reflex FPS limiter failsafe: less FPS impact** - The failsafe that breaks out of the PRESENT_START sync spin now triggers after 1 frame time instead of 2, so when it fires we spend less time in the busy-wait and FPS is not lowered as much. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
 

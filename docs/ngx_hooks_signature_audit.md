@@ -38,15 +38,14 @@ When we install hooks via `GetProcAddress(ngx_dll, "NVSDK_NGX_...")`, we are hoo
 
 ---
 
-## 3. NVSDK_NGX_D3D12_Init_ProjectID / NVSDK_NGX_D3D11_Init_ProjectID
+## 3. NVSDK_NGX_D3D12_Init_with_ProjectID / NVSDK_NGX_D3D11_Init_with_ProjectID
 
 | Source | Signature |
 |--------|-----------|
-| **Our impl** | We hook **"NVSDK_NGX_D3D12_Init_ProjectID"** and use `(InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion)`. |
-| **SDK – App** | Declared as **NVSDK_NGX_D3D12_Init_with_ProjectID** (name has **"with"**) with same parameter list. |
-| **SDK – DLL** | Init_ProjectID is **not** in the NGX_SNIPPET_BUILD block; only Init_with_ProjectID exists in the non-SNIPPET block. |
+| **Our impl** | We hook **"NVSDK_NGX_D3D12_Init_with_ProjectID"** (and D3D11) and use `(InProjectId, InEngineType, InEngineVersion, InApplicationDataPath, InDevice, InFeatureInfo, InSDKVersion)`. |
+| **SDK – App** | Declared as **NVSDK_NGX_D3D12_Init_with_ProjectID** with that parameter list. |
 
-**Verdict:** Export name may be **NVSDK_NGX_D3D12_Init_with_ProjectID**, not `Init_ProjectID`. If the DLL exports `Init_with_ProjectID`, then `GetProcAddress(..., "NVSDK_NGX_D3D12_Init_ProjectID")` can be NULL and the hook is skipped. Parameter list matches the SDK’s Init_with_ProjectID; only the **symbol name** may differ.
+**Verdict:** We use the exact SDK export name **Init_with_ProjectID**. **Init_ProjectID** (no "with") is a different ABI; we do not hook it or use it as a fallback name.
 
 ---
 
@@ -105,18 +104,30 @@ When we install hooks via `GetProcAddress(ngx_dll, "NVSDK_NGX_...")`, we are hoo
 
 ---
 
+## 9. ABI and export resolution (index vs name)
+
+- **We do not use export ordinals or a fixed table index.** All NGX hooks are installed by **symbol name** via `GetProcAddress(ngx_dll, entry.name)` (and optional `entry.name_alt`). The order of entries in `kNGXHooks` is irrelevant to resolution; only the export names matter. So any external list that maps indices (e.g. `[00]`, `[01]`, `[02]`) to NGX symbols is **not** our resolution path and may not match the actual _nvngx.dll export order.
+- **NVSDK_NGX_*_GetFeatureRequirements** are **not hooked** by Display Commander. Official ABI (single declaration in `nvsdk_ngx.h`, no NGX_SNIPPET_BUILD split):
+  - `NVSDK_NGX_D3D11_GetFeatureRequirements(IDXGIAdapter *Adapter, const NVSDK_NGX_FeatureDiscoveryInfo *FeatureDiscoveryInfo, NVSDK_NGX_FeatureRequirement *OutSupported)`
+  - `NVSDK_NGX_D3D12_GetFeatureRequirements(IDXGIAdapter *Adapter, const NVSDK_NGX_FeatureDiscoveryInfo *FeatureDiscoveryInfo, NVSDK_NGX_FeatureRequirement *OutSupported)`
+  - Calling convention: `NVSDK_CONV` (__cdecl). If you add hooks for these later, use this signature.
+- **Init_with_ProjectID**: The SDK export name is **NVSDK_NGX_*_Init_with_ProjectID**. We hook only that symbol. **NVSDK_NGX_*_Init_ProjectID** (no "with") is a different ABI; we do not use it.
+
+---
+
 ## Summary (vs official SDK / DLL)
 
 | Function | Our signature vs DLL export | Status |
 |----------|-----------------------------|--------|
 | **NVSDK_NGX_D3D12/11_Init** | 4 params `(AppId, Path, Device, Version)` | **Match** |
 | **NVSDK_NGX_D3D12/11_Init_Ext** | 5 params `(..., Version, const NVSDK_NGX_Parameter*)` | **Match** |
-| **NVSDK_NGX_*_Init_ProjectID** | Param list matches SDK `Init_with_ProjectID`; we try symbol `Init_with_ProjectID` then `Init_ProjectID` | **Match** (name fallback) |
+| **NVSDK_NGX_*_Init_with_ProjectID** | Symbol `Init_with_ProjectID` only; param list matches SDK. `Init_ProjectID` is a different ABI, not used | **Match** |
 | **Shutdown1** | `(Device*)` | **Match** |
 | **CreateFeature** | `(..., const NVSDK_NGX_Parameter*, OutHandle)` | **Match** |
 | **ReleaseFeature** | `(Handle*)` | **Match** |
 | **EvaluateFeature** | `(..., const Handle*, const Parameter*, Callback)` | **Match** |
 | **EvaluateFeature_C** | `(..., const Handle*, const Parameter*, ProgressCallback_C)` | **Match** |
 | **GetParameters / GetCapabilityParameters / AllocateParameters** | `(NVSDK_NGX_Parameter** OutParameters)` — single declaration in SDK, no NGX_SNIPPET_BUILD split | **Match** |
+| **GetFeatureRequirements (D3D11/D3D12)** | Not hooked. Official ABI: `(IDXGIAdapter*, const NVSDK_NGX_FeatureDiscoveryInfo*, NVSDK_NGX_FeatureRequirement*)` — single declaration in SDK | **N/A (not hooked)** |
 
 All hooked NGX functions are aligned with `external/nvidia-dlss/include/nvsdk_ngx.h` (DLL/Core interface where applicable) and the [NVIDIA NGX Programming Guide](https://docs.nvidia.com/ngx/latest/programming-guide/index.html).

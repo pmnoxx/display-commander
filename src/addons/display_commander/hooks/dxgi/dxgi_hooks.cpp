@@ -1,6 +1,6 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "dxgi_hooks.hpp"
-#include "../api_hooks.hpp"
+#include "../windows_hooks/api_hooks.hpp"
 #include "../../globals.hpp"
 #include "../hook_suppression_manager.hpp"
 #include "../loadlibrary_hooks.hpp"

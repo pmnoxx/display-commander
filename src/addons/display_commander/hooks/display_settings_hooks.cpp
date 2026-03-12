@@ -8,9 +8,9 @@
 #include "../utils.hpp"
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/logging.hpp"
-#include "api_hooks.hpp"  // GetGameWindow
+#include "windows_hooks/api_hooks.hpp"  // GetGameWindow
 #include "hook_suppression_manager.hpp"
-#include "window_proc_hooks.hpp"  // WindowHasBorder
+#include "windows_hooks/window_proc_hooks.hpp"  // WindowHasBorder
 
 // Original function pointers
 ChangeDisplaySettingsA_pfn ChangeDisplaySettingsA_Original = nullptr;

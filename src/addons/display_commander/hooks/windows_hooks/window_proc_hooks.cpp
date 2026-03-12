@@ -11,18 +11,18 @@
 #include <atomic>
 #include <thread>
 #include <unordered_map>
-#include "../exit_handler.hpp"
-#include "../globals.hpp"
-#include "../settings/advanced_tab_settings.hpp"
-#include "../ui/new_ui/window_info_tab.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_registry.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../utils/timing.hpp"
+#include "../../exit_handler.hpp"
+#include "../../globals.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
+#include "../../ui/new_ui/window_info_tab.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_registry.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "../../utils/timing.hpp"
 #include "api_hooks.hpp"  // For GetGameWindow
-#include "nvidia/pclstats_etw_hooks.hpp"
+#include "../nvidia/pclstats_etw_hooks.hpp"
 
-#include "../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
+#include "../../../../../external/Streamline/source/plugins/sl.pcl/pclstats.h"
 
 namespace display_commanderhooks {
 

@@ -22,7 +22,7 @@
 #include "../utils/logging.hpp"
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
-#include "api_hooks.hpp"
+#include "windows_hooks/api_hooks.hpp"
 #include "d3d9/d3d9_hooks.hpp"
 #include "dbghelp_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"

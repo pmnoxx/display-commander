@@ -2,7 +2,7 @@
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../dlss/dlss_indicator_manager.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/api_hooks.hpp"
+#include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/debug_output_hooks.hpp"
 #include "../../hooks/input/hid_suppression_hooks.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"

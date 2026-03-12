@@ -12,7 +12,7 @@
 
 #include "dxgi_proxy_init.hpp"
 
-#include "../hooks/api_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../hooks/hook_suppression_manager.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"

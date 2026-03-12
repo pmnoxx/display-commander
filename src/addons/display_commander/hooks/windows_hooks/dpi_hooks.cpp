@@ -1,7 +1,7 @@
 #include "dpi_hooks.hpp"
-#include "../settings/advanced_tab_settings.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 
 #include <MinHook.h>
 

@@ -1,6 +1,6 @@
 #include "standalone_ui_settings_bridge.hpp"
 #include "../globals.hpp"
-#include "../hooks/api_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
 
 namespace standalone_ui_settings {
 

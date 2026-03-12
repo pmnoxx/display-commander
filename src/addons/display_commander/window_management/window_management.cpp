@@ -2,7 +2,7 @@
 #include "../addon.hpp"
 #include "display/display_cache.hpp"
 #include "../globals.hpp"
-#include "../hooks/api_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../settings/advanced_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"
 #include "../ui/ui_display_tab.hpp"

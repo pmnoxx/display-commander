@@ -3,7 +3,7 @@
 // Group 1 — Source Code (Display Commander)
 #include "process_window_enumerator.hpp"
 #include "overlay_window_detector.hpp"
-#include "../hooks/api_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../utils/logging.hpp"
 
 // Group 2 — ReShade / ImGui

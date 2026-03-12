@@ -5,7 +5,7 @@
 #include "display/display_cache.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
-#include "hooks/api_hooks.hpp"
+#include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "hooks/nvidia/nvapi_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"

@@ -1,5 +1,5 @@
 #include "process_exit_hooks.hpp"
-#include "hooks/api_hooks.hpp"
+#include "hooks/windows_hooks/api_hooks.hpp"
 #include <psapi.h>
 #include <windows.h>
 #include <atomic>

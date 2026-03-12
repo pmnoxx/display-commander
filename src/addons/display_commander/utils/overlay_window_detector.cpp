@@ -1,7 +1,7 @@
 #include "overlay_window_detector.hpp"
 #include <algorithm>
 #include <set>
-#include "../hooks/api_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
 
 namespace display_commander::utils {
 

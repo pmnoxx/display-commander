@@ -1,7 +1,7 @@
 #include "swapchain_tab.hpp"
 #include "../../config/display_commander_config.hpp"
 #include "../../globals.hpp"
-#include "../../hooks/api_hooks.hpp"
+#include "../../hooks/windows_hooks/api_hooks.hpp"
 #include "../../hooks/nvidia/ngx_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"

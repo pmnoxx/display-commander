@@ -4,7 +4,7 @@
 #include <cctype>
 #include <filesystem>
 #include "../../../external/nvapi/nvapi.h"
-#include "hooks/api_hooks.hpp"
+#include "hooks/windows_hooks/api_hooks.hpp"
 #include "latency/reflex_provider.hpp"
 #include "nvapi/vrr_status.hpp"
 #include "settings/advanced_tab_settings.hpp"

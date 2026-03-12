@@ -9,7 +9,7 @@
 #include "../audio/audio_management.hpp"
 #include "../config/display_commander_config.hpp"
 #include "../globals.hpp"
-#include "../hooks/api_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../hooks/timeslowdown_hooks.hpp"
 #include "../settings/experimental_tab_settings.hpp"
 #include "../settings/main_tab_settings.hpp"

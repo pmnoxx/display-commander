@@ -79,8 +79,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 
 ## addons/display_commander/hooks
 
-- **api_hooks.cpp**, **api_hooks.hpp**: Windows API hooks (focus/foreground spoofing)
-- **window_proc_hooks.cpp**, **window_proc_hooks.hpp**: Window procedure hooks
 - **loadlibrary_hooks.cpp**, **loadlibrary_hooks.hpp**: DLL loading hooks
 - **display_settings_hooks.cpp**, **display_settings_hooks.hpp**: Display settings hooks
 - **rand_hooks.cpp**, **rand_hooks.hpp**: Rand hooks
@@ -89,7 +87,6 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **process_exit_hooks.cpp**, **process_exit_hooks.hpp**: Process exit hooks (hooks copy)
 - **debug_output_hooks.cpp**, **debug_output_hooks.hpp**: Debug output hooks
 - **dbghelp_hooks.cpp**, **dbghelp_hooks.hpp**: DbgHelp hooks
-- **dpi_hooks.cpp**, **dpi_hooks.hpp**: DPI hooks
 - **hook_suppression_manager.cpp**, **hook_suppression_manager.hpp**: Hook suppression
 - **present_traffic_tracking.cpp**, **present_traffic_tracking.hpp**: Present traffic tracking
 - **hook_call_stats.hpp**: Hook call stats (header-only)
@@ -103,6 +100,9 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **input/hid_additional_hooks.cpp**, **.hpp**: HID additional hooks
 - **input/hid_suppression_hooks.cpp**, **.hpp**: HID suppression
 - **input/hid_statistics.cpp**, **.hpp**: HID statistics
+- **windows_hooks/api_hooks.cpp**, **.hpp**: Windows API hooks (focus/foreground spoofing)
+- **windows_hooks/window_proc_hooks.cpp**, **.hpp**: Window procedure hooks
+- **windows_hooks/dpi_hooks.cpp**, **.hpp**: DPI hooks
 - **windows_hooks/windows_message_hooks.cpp**, **.hpp**: Windows message hooks
 - **d3d9/d3d9_hooks.cpp**, **.hpp**, **d3d9_present_hooks**, **d3d9_present_params_upgrade**, **d3d9_pool_upgrade**, **d3d9_device_vtable_logging**, **d3d9_no_reshade_device_state.hpp**, **d3d9_vtable_indices.hpp**
 - **dxgi/dxgi_factory_wrapper.cpp**, **.hpp**, **dxgi_present_hooks.cpp**, **.hpp**, **dxgi_gpu_completion.hpp**

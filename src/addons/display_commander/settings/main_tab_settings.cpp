@@ -1,6 +1,6 @@
 #include "main_tab_settings.hpp"
 #include "../adhd_multi_monitor/adhd_simple_api.hpp"
-#include "../hooks/api_hooks.hpp"
+#include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 

@@ -201,8 +201,11 @@ class MainTabSettings {
     ui::new_ui::BoolSetting vulkan_injected_reflex_enabled;
 
     // Brightness (ReShade effect driven by DC)
-    /** When true, Brightness/AutoHDR controls are active and DC adds EffectSearchPaths/TextureSearchPaths to ReShade.
-     * When false, the whole Brightness and AutoHDR section is disabled and paths are not added. Default on. */
+    /** When true, DC adds its Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths.
+     * When false, those paths are removed from ReShade config. Default on. */
+    ui::new_ui::BoolSetting add_dc_to_reshade_shader_paths;
+    /** When true, Brightness/AutoHDR and DC shader effects are active (section enabled). When false, the whole
+     * Brightness and AutoHDR section is disabled. Default on. */
     ui::new_ui::BoolSetting brightness_autohdr_section_enabled;
     ui::new_ui::FloatSetting brightness_percent;
     /** Decode only: how to interpret backbuffer (DECODE_METHOD). Default scRGB (1). */

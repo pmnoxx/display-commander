@@ -4,17 +4,18 @@
 #include <string>
 #include <vector>
 
-/** Install hooks on vulkan-1.dll (vkGetInstanceProcAddr, vkGetDeviceProcAddr) so we can wrap vkCreateDevice
- *  (capture enabled extensions) and vkSetLatencyMarkerNV (VK_NV_low_latency2).
+/** Install hooks on vulkan-1.dll exports (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, vkQueuePresentKHR,
+ *  vkBeginCommandBuffer, vkSetLatencyMarkerNV). No vkGetDeviceProcAddr; all hooks are from GetProcAddress(module, name).
+ *  Logging and stats only; no Reflex injection. Missing exports (e.g. vkSetLatencyMarkerNV) are skipped.
  *  Called from LoadLibrary detour when vulkan-1.dll is loaded, or when user enables the setting and the loader is already loaded.
  */
 bool InstallVulkanLoaderHooks(void* vulkan1_module);
 
-/** Returns true if vulkan-1 vkGetDeviceProcAddr hook is installed (VK_NV_low_latency2 wrapper active when game requests it). */
+/** Returns true if Vulkan loader hooks were successfully installed on vulkan-1.dll. */
 bool AreVulkanLoaderHooksInstalled();
 
 /** Debug state for VK_NV_low_latency2 path. All params nullable.
- *  out_intercept_count = number of times vkGetDeviceProcAddr returned our vkSetLatencyMarkerNV detour. */
+ *  out_intercept_count is unused (always 0; we no longer hook vkGetDeviceProcAddr). */
 void GetVulkanLoaderDebugState(uint64_t* out_marker_count,
                                int* out_last_marker_type,
                                uint64_t* out_last_present_id,
@@ -32,7 +33,7 @@ void GetVulkanEnabledExtensions(std::vector<std::string>& out);
 /** True if vkCreateDevice_Detour has been entered at least once (hooks installed and game called vkCreateDevice). */
 bool HasVulkanCreateDeviceBeenCalled();
 
-/** Injected Reflex (VK_NV_low_latency2) debug state for Vulkan tab. All params nullable. */
+/** Injected Reflex debug state for Vulkan tab (injection removed; fields always zero/false for compatibility). All params nullable. */
 struct VulkanInjectedReflexDebugState {
     bool enabled;           /**< vulkan_injected_reflex_enabled setting. */
     bool loader_hooks_on;   /**< Vulkan loader hooks installed. */

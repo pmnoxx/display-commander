@@ -120,7 +120,8 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "When enabled, hooks vkGetDeviceProcAddr and wraps vkSetLatencyMarkerNV for frame pacing. Install on "
+                "When enabled, hooks vulkan-1.dll exports (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, "
+                "vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV) for logging and FPS limiter. Install on "
                 "next vulkan-1.dll load, or now if already loaded.");
         }
 
@@ -297,7 +298,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Text("vkGetInstanceProcAddr:");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.Text("%llu", static_cast<std::uint64_t>(calls_get_instance));
-            imgui.Text("vkGetDeviceProcAddr:");
+            imgui.Text("vkGetDeviceProcAddr (not hooked):");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.Text("%llu", static_cast<std::uint64_t>(calls_get_device));
             imgui.Text("vkCreateDevice:");

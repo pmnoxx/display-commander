@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.422
+- [new feature] **dinput8.dll proxy** - Display Commander can be used as a dinput8.dll proxy (rename/copy the addon DLL to dinput8.dll in the game directory). All DirectInput8 exports (DirectInput8Create, DllCanUnloadNow, DllGetClassObject, DllRegisterServer, DllUnregisterServer) are forwarded to the real system dinput8.dll. Exports are generated from Wine’s dinput8.spec; the spec parser now supports `-private` in @ stdcall lines. Details: proxy_dll/dinput8_proxy.cpp, dinput8_proxy_init.hpp; exports.def; scripts/specs/dinput8.spec; gen_proxy_from_spec.py -private support.
+
 ## v0.12.421
 - [new feature] **PresentMon ETW tracing re-enabled** - PresentMon ETW tracing is enabled again. Enable "Enable PresentMon ETW Tracing" in the Advanced tab; the continuous monitoring thread starts the worker after a 5s delay (start/creation does not run from the UI or DllMain). Details: presentmon_manager.hpp kPresentMonEnabled = true.
 

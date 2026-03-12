@@ -6,6 +6,7 @@ Takes DLL name and path to .spec file. Outputs xxx_proxy.cpp and xxx_exports.def
 
   python scripts/gen_proxy_from_spec.py winmm scripts/specs/winmm.spec
   python scripts/gen_proxy_from_spec.py d3d11 scripts/specs/d3d11.spec
+  python scripts/gen_proxy_from_spec.py dinput8 scripts/specs/dinput8.spec
   python scripts/gen_proxy_from_spec.py dbghelp scripts/specs/dbghelp.spec
 
 Wine .spec format:
@@ -80,20 +81,21 @@ def parse_spec(spec_text, dll_name):
                 seen.add(name)
                 yield (name, True, [], False, None)
             continue
-        # @ stdcall [-arch=win32|-arch=win64] [-import] Name(params) [Alias]
+        # @ stdcall [-arch=win32|-arch=win64] [-import] [-private] Name(params) [Alias]
         m = re.match(
             r"@\s+stdcall\s+"
             r"(?:-arch=win32|-arch=win64\s+)?"
             r"(-import\s+)?"
+            r"(-private\s+)?"
             r"(\w+)\s*\((.*?)\)\s*"
             r"(\w+)?\s*$",
             line,
         )
         if m:
             has_import = m.group(1) is not None
-            name = m.group(2)
-            params_str = m.group(3).strip()
-            alias = m.group(4)
+            name = m.group(3)
+            params_str = m.group(4).strip()
+            alias = m.group(5)
             # -import: export the DLL name (e.g. ImageNtHeader), not the ntdll alias
             export_name = name if has_import else (alias if alias and "gdi32." not in alias else name)
             use_gdi32 = False
@@ -108,12 +110,12 @@ def parse_spec(spec_text, dll_name):
                 seen.add(ex)
                 yield (ex, False, params, use_gdi32, None)
             continue
-        # @ stdcall Name(params) [AliasOrGdi32] (no -arch/-import)
-        m = re.match(r"@\s+stdcall\s+(\w+)\s*\((.*?)\)\s*(.*)$", line)
+        # @ stdcall [-private] Name(params) [AliasOrGdi32] (no -arch/-import)
+        m = re.match(r"@\s+stdcall\s+(-private\s+)?(\w+)\s*\((.*?)\)\s*(.*)$", line)
         if m:
-            name = m.group(1)
-            params_str = m.group(2).strip()
-            rest = m.group(3).strip()
+            name = m.group(2)
+            params_str = m.group(3).strip()
+            rest = m.group(4).strip()
             use_gdi32 = "gdi32." in rest
             alias = rest.split()[-1] if rest and re.match(r"^\w+$", rest.split()[-1]) else None
             export_name = alias if alias and not use_gdi32 else name
@@ -127,6 +129,8 @@ def parse_spec(spec_text, dll_name):
 def default_return_type(name, dll_name):
     dll_lower = dll_name.lower().replace(".dll", "")
     if dll_lower == "d3d11" and name.startswith("D3D11"):
+        return "HRESULT"
+    if dll_lower == "dinput8":
         return "HRESULT"
     if dll_lower == "winmm":
         return "UINT"  # MMRESULT

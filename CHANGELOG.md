@@ -3,6 +3,10 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.444
+- [hooks] [cleanup] **NGX: hook only Init_with_ProjectID; remove name_alt** - NVSDK_NGX_*_Init_with_ProjectID and NVSDK_NGX_*_Init_ProjectID are different ABIs. We now hook only the SDK export name Init_with_ProjectID (no fallback to Init_ProjectID). Removed the name_alt field from NGXHookEntry and the GetProcAddress fallback. NGX hook table uses designated initializers (.name, .detour, .original). Details: ngx_hooks.cpp NGXHookEntry, kNGXHooks, InstallNGXHooks; docs/ngx_hooks_signature_audit.md.
+
+---
 ## v0.12.443
 - [ui] **FPS limiter preset: warnings for native pacing and max queued=1** - When "Low-latency (native frame pacing)" is selected, a warning suggests it may offer poor frame pacing and to consider Reflex markers (max queued 1, 2, or 3). When "Low-latency (Reflex markers, max queued=1)" is selected, a warning suggests it may reduce FPS and to consider Balanced or Stability. Details: main_new_tab.cpp FPS limiter preset block.
 

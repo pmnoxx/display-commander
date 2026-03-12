@@ -124,17 +124,6 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
                 "next vulkan-1.dll load, or now if already loaded.");
         }
 
-        if (CheckboxSetting(settings::g_mainTabSettings.vulkan_append_reflex_extensions,
-                            "Append Reflex extensions in vkCreateDevice", imgui)) {
-            // Setting persisted by CheckboxSetting
-        }
-        if (imgui.IsItemHovered()) {
-            imgui.SetTooltipEx(
-                "When enabled, appends VK_NV_low_latency2, VK_KHR_present_id, and VK_KHR_timeline_semaphore to the "
-                "device extension list in vkCreateDevice (same as Special K). If creation fails, falls back to the "
-                "original list. Requires vulkan-1 loader hooks to be installed.");
-        }
-
         imgui.Unindent();
         imgui.Spacing();
     }

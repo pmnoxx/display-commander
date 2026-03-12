@@ -72,7 +72,7 @@ static constexpr int VK_LATENCY_MARKER_SIMULATION_START_NV = 0;
 static constexpr int VK_LATENCY_MARKER_PRESENT_START_NV = 4;
 static constexpr int VK_LATENCY_MARKER_PRESENT_END_NV = 5;
 
-// Extensions to append when vulkan_append_reflex_extensions is on (Special K style).
+// Extensions to append in vkCreateDevice (Special K style; always on).
 static const char* const kReflexExtensionNames[] = {
     "VK_NV_low_latency2",
     "VK_KHR_present_id",
@@ -97,7 +97,7 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
-    const bool append_extensions = settings::g_mainTabSettings.vulkan_append_reflex_extensions.GetValue();
+    const bool append_extensions = true;  // Always append Reflex extensions in vkCreateDevice.
     std::vector<std::string> exts_for_ui;
 
     if (pCreateInfo != nullptr && pCreateInfo->ppEnabledExtensionNames != nullptr

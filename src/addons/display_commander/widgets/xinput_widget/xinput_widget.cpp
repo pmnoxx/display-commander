@@ -8,7 +8,7 @@
 #include "../../dualsense/dualsense_hid_wrapper.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
-#include "../../hooks/input_activity_stats.hpp"
+#include "../../hooks/input/input_activity_stats.hpp"
 #include "../../hooks/timeslowdown_hooks.hpp"
 #include "../../hooks/input/windows_gaming_input_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"

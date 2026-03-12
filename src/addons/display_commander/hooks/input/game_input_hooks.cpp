@@ -1,5 +1,5 @@
 #include "game_input_hooks.hpp"
-#include "../input_activity_stats.hpp"
+#include "input_activity_stats.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include <MinHook.h>

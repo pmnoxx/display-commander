@@ -49,7 +49,7 @@ hooks/d3d9/*.cpp: UpgradePoolForDevice9Ex, IsD3D9FixCreateTextureDimensionsEnabl
 hooks/dualsense_hooks.cpp: InitializeDualSenseSupport, IsDualSenseAvailable, ConvertDualSenseToXInput
 hooks/hid_statistics.hpp: increment_dualsense, increment_xbox, increment_generic, increment_unknown
 hooks/hook_suppression_manager.cpp: ShouldSuppressHook, MarkHookInstalled
-hooks/input_activity_stats.cpp: MarkActiveByHookIndex, GetActiveApiNames
+hooks/input/input_activity_stats.cpp: MarkActiveByHookIndex, GetActiveApiNames
 hooks/present_traffic_tracking.cpp: GetPresentTrafficApisString
 hooks/sleep_hooks.hpp: increment_modified, add_original_duration, add_modified_duration
 hooks/window_proc_hooks.cpp: InstallWindowProcHooks, UninstallWindowProcHooks

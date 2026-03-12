@@ -91,9 +91,9 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **dbghelp_hooks.cpp**, **dbghelp_hooks.hpp**: DbgHelp hooks
 - **dpi_hooks.cpp**, **dpi_hooks.hpp**: DPI hooks
 - **hook_suppression_manager.cpp**, **hook_suppression_manager.hpp**: Hook suppression
-- **input_activity_stats.cpp**, **input_activity_stats.hpp**: Input activity stats
 - **present_traffic_tracking.cpp**, **present_traffic_tracking.hpp**: Present traffic tracking
 - **hook_call_stats.hpp**: Hook call stats (header-only)
+- **input/input_activity_stats.cpp**, **.hpp**: Input activity stats (active input APIs display)
 - **input/xinput_hooks.cpp**, **.hpp**: XInput controller hooks and remapping
 - **input/windows_gaming_input_hooks.cpp**, **.hpp**: Windows.Gaming.Input hooks
 - **input/dinput_hooks.cpp**, **.hpp**: DirectInput hooks

@@ -10,7 +10,7 @@
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
 #include "../hook_suppression_manager.hpp"
-#include "../input_activity_stats.hpp"
+#include "input_activity_stats.hpp"
 
 namespace {
 

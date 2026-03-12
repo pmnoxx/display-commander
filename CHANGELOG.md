@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.433
+- [cleanup] **Input activity stats moved to hooks/input/** - input_activity_stats.cpp and input_activity_stats.hpp are now under `hooks/input/` alongside the other input-related hooks. All consumer includes and docs updated.
+
 ## v0.12.432
 - [cleanup] **Input and HID hooks moved to hooks/input/** - XInput, DirectInput, Windows.Gaming.Input, DualSense, Game Input, and HID (install, additional, suppression, statistics) hook sources are now under `hooks/input/` for clearer structure. All consumer includes and docs updated.
 

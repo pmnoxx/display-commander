@@ -209,7 +209,7 @@ using NVSDK_NGX_D3D12_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*
 using NVSDK_NGX_D3D12_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D12_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
                                                                         NVSDK_NGX_Feature InFeatureID,
-                                                                        NVSDK_NGX_Parameter* InParameters,
+                                                                        const NVSDK_NGX_Parameter* InParameters,
                                                                         NVSDK_NGX_Handle** OutHandle);
 using NVSDK_NGX_D3D12_ReleaseFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Handle* InHandle);
 using NVSDK_NGX_D3D12_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12GraphicsCommandList* InCmdList,
@@ -234,7 +234,7 @@ using NVSDK_NGX_D3D11_GetCapabilityParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*
 using NVSDK_NGX_D3D11_AllocateParameters_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter** OutParameters);
 using NVSDK_NGX_D3D11_CreateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
                                                                         NVSDK_NGX_Feature InFeatureID,
-                                                                        NVSDK_NGX_Parameter* InParameters,
+                                                                        const NVSDK_NGX_Parameter* InParameters,
                                                                         NVSDK_NGX_Handle** OutHandle);
 using NVSDK_NGX_D3D11_ReleaseFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Handle* InHandle);
 using NVSDK_NGX_D3D11_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D11DeviceContext* InDevCtx,
@@ -1174,10 +1174,10 @@ static void LogNGXCreateFeatureParameters(NVSDK_NGX_Parameter* InParameters) {
     }
 }
 
-// D3D12 CreateFeature detour
+// D3D12 CreateFeature detour (DLL/Core: const NVSDK_NGX_Parameter* per nvsdk_ngx.h NGX_SNIPPET_BUILD)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsCommandList* InCmdList,
                                                                  NVSDK_NGX_Feature InFeatureID,
-                                                                 NVSDK_NGX_Parameter* InParameters,
+                                                                 const NVSDK_NGX_Parameter* InParameters,
                                                                  NVSDK_NGX_Handle** OutHandle) {
     CALL_GUARD(utils::get_now_ns());
     // Increment NGX counters
@@ -1190,17 +1190,18 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_CreateFeature_Detour(ID3D12GraphicsC
         g_ngx_counters.framegen_create_attempt_count.fetch_add(1);
     }
 
-    // Hook the parameter vtable if we have parameters
+    // Hook the parameter vtable if we have parameters (const_cast for our preset override / logging only)
     if (InParameters != nullptr) {
-        HookNGXParameterVTable(InParameters, "D3D12_CreateFeature");
-        LogNGXCreateFeatureParameters(InParameters);
+        NVSDK_NGX_Parameter* params_mut = const_cast<NVSDK_NGX_Parameter*>(InParameters);
+        HookNGXParameterVTable(params_mut, "D3D12_CreateFeature");
+        LogNGXCreateFeatureParameters(params_mut);
         // Override PerfQualityValue at CreateFeature for DLSS (FeatureID 1) when user has a non-Game Default preset
         if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
             const NVSDK_NGX_PerfQuality_Value override_preset =
                 GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
             const int override_preset_int = static_cast<int>(override_preset);
             if (override_preset_int >= 0) {
-                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue,
+                NVSDK_NGX_Parameter_SetI_Original(params_mut, NVSDK_NGX_Parameter_PerfQualityValue,
                                                   override_preset_int);
                 g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
                 LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);
@@ -1557,9 +1558,10 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_ProjectID_Detour(
 }
 
 // D3D11 CreateFeature detour
+// D3D11 CreateFeature detour (DLL/Core: const NVSDK_NGX_Parameter* per nvsdk_ngx.h NGX_SNIPPET_BUILD)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceContext* InDevCtx,
                                                                  NVSDK_NGX_Feature InFeatureID,
-                                                                 NVSDK_NGX_Parameter* InParameters,
+                                                                 const NVSDK_NGX_Parameter* InParameters,
                                                                  NVSDK_NGX_Handle** OutHandle) {
     CALL_GUARD(utils::get_now_ns());
     // Increment NGX counters
@@ -1572,17 +1574,18 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_CreateFeature_Detour(ID3D11DeviceCon
         g_ngx_counters.framegen_create_attempt_count.fetch_add(1);
     }
 
-    // Hook the parameter vtable if we have parameters
+    // Hook the parameter vtable if we have parameters (const_cast for our preset override / logging only)
     if (InParameters != nullptr) {
-        HookNGXParameterVTable(InParameters, "D3D11_CreateFeature");
-        LogNGXCreateFeatureParameters(InParameters);
+        NVSDK_NGX_Parameter* params_mut = const_cast<NVSDK_NGX_Parameter*>(InParameters);
+        HookNGXParameterVTable(params_mut, "D3D11_CreateFeature");
+        LogNGXCreateFeatureParameters(params_mut);
         // Override PerfQualityValue at CreateFeature for DLSS (FeatureID 1) when user has a non-Game Default preset
         if (InFeatureID == NVSDK_NGX_Feature_SuperSampling && NVSDK_NGX_Parameter_SetI_Original != nullptr) {
             const NVSDK_NGX_PerfQuality_Value override_preset =
                 GetDLSSQualityPresetValue(settings::g_swapchainTabSettings.dlss_quality_preset_override.GetValue());
             const int override_preset_int = static_cast<int>(override_preset);
             if (override_preset_int >= 0) {
-                NVSDK_NGX_Parameter_SetI_Original(InParameters, NVSDK_NGX_Parameter_PerfQualityValue,
+                NVSDK_NGX_Parameter_SetI_Original(params_mut, NVSDK_NGX_Parameter_PerfQualityValue,
                                                   override_preset_int);
                 g_ngx_parameters.update_int(NVSDK_NGX_Parameter_PerfQualityValue, override_preset_int);
                 LogInfo("  NGX CreateFeature: overrode PerfQualityValue -> %d", override_preset_int);

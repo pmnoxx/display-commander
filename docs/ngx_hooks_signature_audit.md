@@ -1,6 +1,6 @@
 # NGX Hooks vs Official SDK Signature Audit
 
-This document compares the NGX detour signatures in `ngx_hooks.cpp` (lines ~1938–2010) with the **official NVIDIA NGX SDK** headers in `external/nvidia-dlss/include/nvsdk_ngx.h` and the [NVIDIA NGX Programming Guide](https://docs.nvidia.com/ngx/latest/programming-guide/index.html). These hooks were disabled in the past due to crashes; signature mismatches are a likely cause.
+This document compares the NGX detour signatures in `ngx_hooks.cpp` with the **official NVIDIA NGX SDK** headers in `external/nvidia-dlss/include/nvsdk_ngx.h` and the [NVIDIA NGX Programming Guide](https://docs.nvidia.com/ngx/latest/programming-guide/index.html). Hooks target the **DLL/Core** interface (NGX_SNIPPET_BUILD in the header). Last re-check: current implementation aligned with SDK and docs.
 
 ## Important: Two Interfaces in the Same Header
 
@@ -19,11 +19,11 @@ When we install hooks via `GetProcAddress(ngx_dll, "NVSDK_NGX_...")`, we are hoo
 
 | Source | Signature |
 |--------|-----------|
-| **Our impl** (`ngx_hooks.cpp` ~194–198, 221–224) | `(InApplicationId, InApplicationDataPath, InDevice, **InFeatureInfo**, InSDKVersion)` → **5 parameters** |
-| **SDK – App** (no NGX_SNIPPET_BUILD) | `(InApplicationId, InApplicationDataPath, InDevice, const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo, NVSDK_NGX_Version InSDKVersion)` → **5 params** ✓ |
-| **SDK – DLL/Core** (NGX_SNIPPET_BUILD) | `(InApplicationId, InApplicationDataPath, InDevice, **NVSDK_NGX_Version InSDKVersion**)` → **4 parameters** |
+| **Our impl** (`ngx_hooks.cpp` ~195–198, 219–221) | `(InApplicationId, InApplicationDataPath, InDevice, NVSDK_NGX_Version InSDKVersion)` → **4 parameters** |
+| **SDK – DLL/Core** (NGX_SNIPPET_BUILD, `nvsdk_ngx.h` 165–166, 167–168) | `(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion)` → **4 params** |
+| **SDK – App** (no NGX_SNIPPET_BUILD) | 5 params with `const NVSDK_NGX_FeatureCommonInfo *InFeatureInfo` (not used for hooks). |
 
-**Verdict:** We use the **App** signature (5 params with `InFeatureInfo`). The **exported** DLL symbol likely uses the **4-parameter** Core signature. Using a 5-parameter detour on a 4-parameter call causes **stack misalignment** and can crash.
+**Verdict:** **Match.** Our typedefs and detours use the 4-parameter DLL/Core signature.
 
 ---
 
@@ -31,11 +31,10 @@ When we install hooks via `GetProcAddress(ngx_dll, "NVSDK_NGX_...")`, we are hoo
 
 | Source | Signature |
 |--------|-----------|
-| **Our impl** | `(InApplicationId, InApplicationDataPath, InDevice, **InFeatureInfo**, **void* Unknown5**)` → 5 params, 4th = FeatureCommonInfo*, 5th = void* |
-| **SDK – App** | Not in App block (Init_Ext only in Snippet block). |
-| **SDK – DLL/Core** (NGX_SNIPPET_BUILD) | `(InApplicationId, InApplicationDataPath, InDevice, **InSDKVersion**, **const NVSDK_NGX_Parameter* InParameters**)` → 5 params, 4th = Version, 5th = **Parameter*** |
+| **Our impl** (`ngx_hooks.cpp` ~198–202, 223–226) | `(InApplicationId, InApplicationDataPath, InDevice, NVSDK_NGX_Version InSDKVersion, const NVSDK_NGX_Parameter* InParameters)` → **5 params** |
+| **SDK – DLL/Core** (NGX_SNIPPET_BUILD, `nvsdk_ngx.h` 166, 168) | `(..., InSDKVersion, const NVSDK_NGX_Parameter* InParameters)` → **5 params** |
 
-**Verdict:** We use `(FeatureCommonInfo*, void*)` for the last two arguments. The DLL uses `(InSDKVersion, const NVSDK_NGX_Parameter*)`. **Type and order mismatch** → same stack/crash risk.
+**Verdict:** **Match.** Our typedefs and detours use the 5-parameter DLL/Core signature.
 
 ---
 
@@ -66,10 +65,10 @@ When we install hooks via `GetProcAddress(ngx_dll, "NVSDK_NGX_...")`, we are hoo
 
 | Source | Signature |
 |--------|-----------|
-| **Our impl** | `(InCmdList/InDevCtx, InFeatureID, **NVSDK_NGX_Parameter* InParameters**, OutHandle)` — **non-const** InParameters |
-| **SDK** (main export) | `(..., **const NVSDK_NGX_Parameter *InParameters**, ...)` (lines 561–562). Header also has overload with non-const (566–567). |
+| **Our impl** | `(InCmdList/InDevCtx, InFeatureID, const NVSDK_NGX_Parameter* InParameters, OutHandle)` — matches DLL. |
+| **SDK – DLL/Core** (NGX_SNIPPET_BUILD, `nvsdk_ngx.h` 561–562) | `(..., const NVSDK_NGX_Parameter *InParameters, ...)` |
 
-**Verdict:** SDK exposes both `const` and non-const. Using non-const in the detour is ABI-compatible; **match** for calling convention. Optional improvement: use `const NVSDK_NGX_Parameter*` in our typedef to match the primary declaration.
+**Verdict:** **Match.** Our typedefs and detours use `const NVSDK_NGX_Parameter*` to match the exported DLL; detour uses `const_cast` only where it needs to pass the pointer to helpers that modify (e.g. preset override).
 
 ---
 
@@ -88,8 +87,8 @@ When we install hooks via `GetProcAddress(ngx_dll, "NVSDK_NGX_...")`, we are hoo
 
 | Source | Signature |
 |--------|-----------|
-| **Our impl** | `(InCmdList/InDevCtx, InFeatureHandle, InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback)` with `bool& OutShouldCancel` in callback |
-| **SDK** | Same; callback optional (default NULL). |
+| **Our impl** | `(InCmdList/InDevCtx, const NVSDK_NGX_Handle* InFeatureHandle, const NVSDK_NGX_Parameter* InParameters, PFN_NVSDK_NGX_ProgressCallback InCallback)`; we use `bool* OutShouldCancel` in callback (C ABI). |
+| **SDK** (`nvsdk_ngx.h` 700–702) | Same; C++ overload uses `bool &`; C ABI uses pointer. |
 
 **Verdict:** **Match.**
 
@@ -106,26 +105,18 @@ When we install hooks via `GetProcAddress(ngx_dll, "NVSDK_NGX_...")`, we are hoo
 
 ---
 
-## Summary and Recommendations
+## Summary (vs official SDK / DLL)
 
-| Function | Our signature vs DLL export | Risk |
-|----------|-----------------------------|------|
-| **NVSDK_NGX_D3D12/11_Init** | We use 5 params (with InFeatureInfo); DLL likely 4 params | **High** – stack corruption / crash |
-| **NVSDK_NGX_D3D12/11_Init_Ext** | We use (FeatureCommonInfo*, void*); DLL (InSDKVersion, Parameter*) | **High** – stack corruption / crash |
-| **NVSDK_NGX_*_Init_ProjectID** | Parameter list OK; export name may be **Init_with_ProjectID** | Medium – hook may not install if name wrong |
-| **Shutdown1** | Match | None |
-| **CreateFeature** | Match (const vs non-const compatible) | None |
-| **ReleaseFeature** | Match | None |
-| **EvaluateFeature** | Match | None |
-| **EvaluateFeature_C** | Match | None |
+| Function | Our signature vs DLL export | Status |
+|----------|-----------------------------|--------|
+| **NVSDK_NGX_D3D12/11_Init** | 4 params `(AppId, Path, Device, Version)` | **Match** |
+| **NVSDK_NGX_D3D12/11_Init_Ext** | 5 params `(..., Version, const NVSDK_NGX_Parameter*)` | **Match** |
+| **NVSDK_NGX_*_Init_ProjectID** | Param list matches SDK `Init_with_ProjectID`; we try symbol `Init_with_ProjectID` then `Init_ProjectID` | **Match** (name fallback) |
+| **Shutdown1** | `(Device*)` | **Match** |
+| **CreateFeature** | `(..., const NVSDK_NGX_Parameter*, OutHandle)` | **Match** |
+| **ReleaseFeature** | `(Handle*)` | **Match** |
+| **EvaluateFeature** | `(..., const Handle*, const Parameter*, Callback)` | **Match** |
+| **EvaluateFeature_C** | `(..., const Handle*, const Parameter*, ProgressCallback_C)` | **Match** |
+| **GetParameters / GetCapabilityParameters / AllocateParameters** | `(NVSDK_NGX_Parameter** OutParameters)` — single declaration in SDK, no NGX_SNIPPET_BUILD split | **Match** |
 
-**Suggested next steps:**
-
-1. **Confirm exported names** from the NGX DLL (e.g. `dumpbin /EXPORTS` on `_nvngx.dll` or the game’s NGX DLL) for `Init`, `Init_Ext`, and `Init_ProjectID` / `Init_with_ProjectID`.
-2. **Align Init and Init_Ext detours with the DLL (Core) interface:**
-   - **Init**: 4 parameters `(unsigned long long, const wchar_t*, ID3D12Device*, NVSDK_NGX_Version)`.
-   - **Init_Ext**: 5 parameters `(..., NVSDK_NGX_Version, const NVSDK_NGX_Parameter*)`.
-3. **Init_ProjectID**: Try hooking **NVSDK_NGX_D3D12_Init_with_ProjectID** (and D3D11) if the DLL exports that name; keep parameter list as in SDK.
-4. Keep **Shutdown1**, **CreateFeature**, **ReleaseFeature**, **EvaluateFeature**, and **EvaluateFeature_C** as-is; their signatures match the SDK.
-
-**Update (signatures fixed):** Init and Init_Ext detours were updated to match the DLL/Core interface (4-param Init, 5-param Init_Ext with `InSDKVersion` and `const NVSDK_NGX_Parameter*`). Init_ProjectID hook now tries `NVSDK_NGX_*_Init_with_ProjectID` then `NVSDK_NGX_*_Init_ProjectID`. The NGX Init/Shutdown/CreateFeature/ReleaseFeature/EvaluateFeature hooks are re-enabled in `ngx_hooks.cpp`.
+All hooked NGX functions are aligned with `external/nvidia-dlss/include/nvsdk_ngx.h` (DLL/Core interface where applicable) and the [NVIDIA NGX Programming Guide](https://docs.nvidia.com/ngx/latest/programming-guide/index.html).

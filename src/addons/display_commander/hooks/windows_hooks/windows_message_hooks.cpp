@@ -15,7 +15,7 @@
 #include "../../utils/logging.hpp"
 #include "../api_hooks.hpp"  // For GetGameWindow and other functions
 #include "../hook_suppression_manager.hpp"
-#include "../input_activity_stats.hpp"
+#include "../input/input_activity_stats.hpp"
 #include "../window_proc_hooks.hpp"  // For ProcessWindowMessage
 
 namespace display_commanderhooks {

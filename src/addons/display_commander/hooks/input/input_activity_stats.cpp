@@ -1,6 +1,6 @@
 #include "input_activity_stats.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
-#include "../utils/timing.hpp"
+#include "../windows_hooks/windows_message_hooks.hpp"
+#include "../../utils/timing.hpp"
 #include <algorithm>
 
 namespace display_commanderhooks {

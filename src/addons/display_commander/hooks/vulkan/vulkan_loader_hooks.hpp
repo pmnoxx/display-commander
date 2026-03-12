@@ -14,17 +14,20 @@ bool InstallVulkanLoaderHooks(void* vulkan1_module);
 bool AreVulkanLoaderHooksInstalled();
 
 /** Debug state for VK_NV_low_latency2 path. All params nullable.
- *  out_intercept_count = number of times vkGetDeviceProcAddr returned our vkSetLatencyMarkerNV wrapper. */
+ *  out_intercept_count = number of times vkGetDeviceProcAddr returned our vkSetLatencyMarkerNV detour. */
 void GetVulkanLoaderDebugState(uint64_t* out_marker_count,
                                int* out_last_marker_type,
                                uint64_t* out_last_present_id,
                                uint64_t* out_intercept_count = nullptr);
 
-/** Call counts for dummy VK_NV_low_latency2 procs (returned when loader reported null). All params nullable. */
-void GetVulkanLoaderDummyCallCounts(uint64_t* out_set_sleep_mode,
-                                    uint64_t* out_latency_sleep,
-                                    uint64_t* out_set_latency_marker,
-                                    uint64_t* out_get_latency_timings);
+/** Call counts for each Vulkan loader detour (incremented on every entry). All params nullable. */
+void GetVulkanLoaderCallCounts(uint64_t* out_vkGetInstanceProcAddr,
+                               uint64_t* out_vkGetDeviceProcAddr,
+                               uint64_t* out_vkCreateDevice,
+                               uint64_t* out_vkSetLatencyMarkerNV);
 
 /** Copy of enabled device extension names from last vkCreateDevice (empty if not yet called or hooks not installed). */
 void GetVulkanEnabledExtensions(std::vector<std::string>& out);
+
+/** True if vkCreateDevice_Detour has been entered at least once (hooks installed and game called vkCreateDevice). */
+bool HasVulkanCreateDeviceBeenCalled();

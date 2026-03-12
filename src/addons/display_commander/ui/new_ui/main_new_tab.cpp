@@ -19,7 +19,7 @@
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "../../hooks/window_proc_hooks.hpp"
-#include "../../hooks/windows_gaming_input_hooks.hpp"
+#include "../../hooks/input/windows_gaming_input_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"
 #include "../../latency/reflex_provider.hpp"

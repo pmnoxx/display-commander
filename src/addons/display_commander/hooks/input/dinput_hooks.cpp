@@ -3,15 +3,15 @@
 #include <MinHook.h>
 #include <unordered_map>
 #include <vector>
-#include "../globals.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../utils/timing.hpp"
-#include "hook_suppression_manager.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
+#include "../../globals.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "../../utils/timing.hpp"
+#include "../hook_suppression_manager.hpp"
+#include "../windows_hooks/windows_message_hooks.hpp"
 
 namespace display_commanderhooks {
 

@@ -1,11 +1,11 @@
 #include "hid_hooks_install.hpp"
 #include <MinHook.h>
 #include <atomic>
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
 #include "hid_additional_hooks.hpp"
 #include "hid_suppression_hooks.hpp"
-#include "hook_suppression_manager.hpp"
+#include "../hook_suppression_manager.hpp"
 
 namespace display_commanderhooks {
 

@@ -2,11 +2,11 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
-#include "../dualsense/dualsense_hid_wrapper.hpp"
-#include "../globals.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "../../dualsense/dualsense_hid_wrapper.hpp"
+#include "../../globals.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "hid_suppression_hooks.hpp"
 
 namespace display_commander::hooks {

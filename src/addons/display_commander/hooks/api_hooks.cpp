@@ -15,7 +15,7 @@
 #include "../utils/timing.hpp"
 #include "d3d11/d3d11_device_hooks.hpp"
 #include "debug_output_hooks.hpp"
-#include "dinput_hooks.hpp"
+#include "input/dinput_hooks.hpp"
 #include "display_settings_hooks.hpp"
 #include "dpi_hooks.hpp"
 #include "dxgi/dxgi_present_hooks.hpp"
@@ -28,7 +28,7 @@
 #include "rand_hooks.hpp"
 #include "sleep_hooks.hpp"
 #include "timeslowdown_hooks.hpp"
-#include "windows_gaming_input_hooks.hpp"
+#include "input/windows_gaming_input_hooks.hpp"
 #include "windows_hooks/windows_message_hooks.hpp"
 
 namespace display_commanderhooks {

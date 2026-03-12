@@ -9,7 +9,7 @@ Only add files to the list in **docs/project_structure.md** after you have read 
 
 ### addons/display_commander (folders)
 - audio, autoclick, config, display, dlss, dualsense, dxgi
-- hdr_upgrade, hooks (d3d9, dxgi, ddraw, nvidia, opengl, vulkan, windows_hooks, wgi)
+- hdr_upgrade, hooks (d3d9, dxgi, ddraw, input, nvidia, opengl, vulkan, windows_hooks, wgi)
 - input_remapping, latency, latent_sync, nvapi, presentmon, proxy_dll
 - res, settings
 - ui (new_ui, monitor_settings)

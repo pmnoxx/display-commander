@@ -7,8 +7,8 @@
 #include <cstring>
 #include <thread>
 #include <reshade_imgui.hpp>
-#include "../hooks/hid_additional_hooks.hpp"
-#include "../hooks/hid_suppression_hooks.hpp"
+#include "../hooks/input/hid_additional_hooks.hpp"
+#include "../hooks/input/hid_suppression_hooks.hpp"
 #include "../utils.hpp"
 #include "../utils/logging.hpp"
 #include "../utils/srwlock_wrapper.hpp"

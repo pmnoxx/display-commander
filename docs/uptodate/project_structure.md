@@ -82,15 +82,10 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **api_hooks.cpp**, **api_hooks.hpp**: Windows API hooks (focus/foreground spoofing)
 - **window_proc_hooks.cpp**, **window_proc_hooks.hpp**: Window procedure hooks
 - **loadlibrary_hooks.cpp**, **loadlibrary_hooks.hpp**: DLL loading hooks
-- **xinput_hooks.cpp**, **xinput_hooks.hpp**: XInput controller hooks and remapping
-- **windows_gaming_input_hooks.cpp**, **windows_gaming_input_hooks.hpp**: Windows.Gaming.Input hooks
 - **display_settings_hooks.cpp**, **display_settings_hooks.hpp**: Display settings hooks
 - **rand_hooks.cpp**, **rand_hooks.hpp**: Rand hooks
 - **sleep_hooks.cpp**, **sleep_hooks.hpp**: Sleep hooks
 - **timeslowdown_hooks.cpp**, **timeslowdown_hooks.hpp**: Time slowdown hooks
-- **dinput_hooks.cpp**, **dinput_hooks.hpp**: DirectInput hooks
-- **dualsense_hooks.cpp**, **dualsense_hooks.hpp**: DualSense hooks
-- **game_input_hooks.cpp**, **game_input_hooks.hpp**: Game input hooks
 - **process_exit_hooks.cpp**, **process_exit_hooks.hpp**: Process exit hooks (hooks copy)
 - **debug_output_hooks.cpp**, **debug_output_hooks.hpp**: Debug output hooks
 - **dbghelp_hooks.cpp**, **dbghelp_hooks.hpp**: DbgHelp hooks
@@ -98,11 +93,16 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 - **hook_suppression_manager.cpp**, **hook_suppression_manager.hpp**: Hook suppression
 - **input_activity_stats.cpp**, **input_activity_stats.hpp**: Input activity stats
 - **present_traffic_tracking.cpp**, **present_traffic_tracking.hpp**: Present traffic tracking
-- **hid_hooks_install.cpp**, **hid_hooks_install.hpp**: HID hooks installation
-- **hid_additional_hooks.cpp**, **hid_additional_hooks.hpp**: HID additional hooks
-- **hid_suppression_hooks.cpp**, **hid_suppression_hooks.hpp**: HID suppression
-- **hid_statistics.cpp**, **hid_statistics.hpp**: HID statistics
 - **hook_call_stats.hpp**: Hook call stats (header-only)
+- **input/xinput_hooks.cpp**, **.hpp**: XInput controller hooks and remapping
+- **input/windows_gaming_input_hooks.cpp**, **.hpp**: Windows.Gaming.Input hooks
+- **input/dinput_hooks.cpp**, **.hpp**: DirectInput hooks
+- **input/dualsense_hooks.cpp**, **.hpp**: DualSense hooks
+- **input/game_input_hooks.cpp**, **.hpp**: Game input hooks
+- **input/hid_hooks_install.cpp**, **.hpp**: HID hooks installation
+- **input/hid_additional_hooks.cpp**, **.hpp**: HID additional hooks
+- **input/hid_suppression_hooks.cpp**, **.hpp**: HID suppression
+- **input/hid_statistics.cpp**, **.hpp**: HID statistics
 - **windows_hooks/windows_message_hooks.cpp**, **.hpp**: Windows message hooks
 - **d3d9/d3d9_hooks.cpp**, **.hpp**, **d3d9_present_hooks**, **d3d9_present_params_upgrade**, **d3d9_pool_upgrade**, **d3d9_device_vtable_logging**, **d3d9_no_reshade_device_state.hpp**, **d3d9_vtable_indices.hpp**
 - **dxgi/dxgi_factory_wrapper.cpp**, **.hpp**, **dxgi_present_hooks.cpp**, **.hpp**, **dxgi_gpu_completion.hpp**

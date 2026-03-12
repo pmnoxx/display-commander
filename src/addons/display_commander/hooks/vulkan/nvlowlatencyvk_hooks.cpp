@@ -135,9 +135,14 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
     if (NvLL_VK_SetLatencyMarker_Original == nullptr) {
         return 1;  // error
     }
+    const ReflexMarkerTypes vk_nvll_markers = {
+        static_cast<int>(VK_SIMULATION_START),
+        static_cast<int>(VK_PRESENT_START) - 1,
+        static_cast<int>(VK_PRESENT_END) - 2,
+    };
     const int r = ProcessReflexMarkerFpsLimiter(
         FpsLimiterCallSite::reflex_marker_vk_nvll, static_cast<int>(params->markerType), params->frameID,
-        [&]() { return (NvLL_VK_SetLatencyMarker_Original(device, params) == NVLL_VK_OK) ? 0 : 1; });
+        vk_nvll_markers, [&]() { return (NvLL_VK_SetLatencyMarker_Original(device, params) == NVLL_VK_OK) ? 0 : 1; });
     return (r == 0) ? NVLL_VK_OK : static_cast<NvLL_VK_Status>(r);
 }
 
@@ -301,15 +306,15 @@ void GetNvLowLatencyVkMarkerCountsByType(uint64_t* out_counts, size_t max_count)
 const char* GetNvLowLatencyVkMarkerTypeName(int index) {
     if (index < 0 || index >= static_cast<int>(kNvllVkMarkerTypeCount)) return "?";
     switch (index) {
-        case 0: return "SIMULATION_START";
-        case 1: return "SIMULATION_END";
-        case 2: return "RENDERSUBMIT_START";
-        case 3: return "RENDERSUBMIT_END";
-        case 4: return "PRESENT_START";
-        case 5: return "PRESENT_END";
-        case 6: return "INPUT_SAMPLE";
-        case 7: return "TRIGGER_FLASH";
-        case 8: return "PC_LATENCY_PING";
+        case 0:  return "SIMULATION_START";
+        case 1:  return "SIMULATION_END";
+        case 2:  return "RENDERSUBMIT_START";
+        case 3:  return "RENDERSUBMIT_END";
+        case 4:  return "PRESENT_START";
+        case 5:  return "PRESENT_END";
+        case 6:  return "INPUT_SAMPLE";
+        case 7:  return "TRIGGER_FLASH";
+        case 8:  return "PC_LATENCY_PING";
         default: return "?";
     }
 }

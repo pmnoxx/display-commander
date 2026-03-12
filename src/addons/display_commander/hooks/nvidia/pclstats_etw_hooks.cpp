@@ -214,6 +214,13 @@ ULONG WINAPI EventWriteTransfer_Detour(REGHANDLE RegHandle, PCEVENT_DESCRIPTOR E
                                            UserData);
     }
 
+    // disabled for now
+    const bool disabled = true;
+    if (disabled) {
+        return EventWriteTransfer_Original(RegHandle, EventDescriptor, ActivityId, RelatedActivityId, UserDataCount,
+                                           UserData);
+    }
+
     REGHANDLE pcl_handle = g_pclstats_provider_handle.load(std::memory_order_relaxed);
     int marker = -1;
     if (pcl_handle != REGHANDLE(0) && RegHandle == pcl_handle && UserData != nullptr && UserDataCount > 0) {

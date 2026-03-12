@@ -3,6 +3,10 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.451
+- [hooks] **Reverted changes** - Reverted the Reflex marker deduplication and related changes from v0.12.450.
+
+---
 ## v0.12.446
 - [ui] [hooks] **Vulkan: reflex_marker_vk_nvll call counts by marker type** - The Vulkan tab Debug section now shows the number of NvLL_VK_SetLatencyMarker (reflex_marker_vk_nvll) calls per marker type in a collapsible "reflex_marker_vk_nvll by marker type" block. Counts are shown for SIMULATION_START, SIMULATION_END, RENDERSUBMIT_START/END, PRESENT_START/END, INPUT_SAMPLE, TRIGGER_FLASH, and PC_LATENCY_PING. Only types with non-zero counts are listed. Details: nvlowlatencyvk_hooks per-marker-type atomics and GetNvLowLatencyVkMarkerCountsByType / GetNvLowLatencyVkMarkerTypeName; vulkan_tab.cpp Debug collapsible.
 

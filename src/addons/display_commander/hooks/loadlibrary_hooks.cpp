@@ -26,9 +26,9 @@
 #include "d3d9/d3d9_hooks.hpp"
 #include "dbghelp_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
-#include "dinput_hooks.hpp"
-#include "game_input_hooks.hpp"
-#include "hid_hooks_install.hpp"
+#include "input/dinput_hooks.hpp"
+#include "input/game_input_hooks.hpp"
+#include "input/hid_hooks_install.hpp"
 #include "hook_suppression_manager.hpp"
 #include "nvidia/ngx_hooks.hpp"
 #include "nvidia/nvapi_hooks.hpp"
@@ -38,8 +38,8 @@
 #include "utils/srwlock_wrapper.hpp"
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
 #include "vulkan/vulkan_loader_hooks.hpp"
-#include "windows_gaming_input_hooks.hpp"
-#include "xinput_hooks.hpp"
+#include "input/windows_gaming_input_hooks.hpp"
+#include "input/xinput_hooks.hpp"
 
 // Declare K32EnumProcessModules (kernel32 variant, safe from DllMain)
 extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);

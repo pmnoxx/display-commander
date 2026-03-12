@@ -1,5 +1,5 @@
 #include "hid_additional_hooks.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
+#include "../windows_hooks/windows_message_hooks.hpp"
 
 namespace display_commanderhooks {
 

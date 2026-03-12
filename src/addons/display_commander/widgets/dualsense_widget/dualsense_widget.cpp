@@ -8,7 +8,7 @@
 #include <reshade_imgui.hpp>
 #include <vector>
 #include "../../config/display_commander_config.hpp"
-#include "../../hooks/dualsense_hooks.hpp"
+#include "../../hooks/input/dualsense_hooks.hpp"
 #include "../../utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/timing.hpp"

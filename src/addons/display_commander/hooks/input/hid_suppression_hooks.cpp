@@ -3,14 +3,14 @@
 #include <algorithm>
 #include <atomic>
 #include <string>
-#include "../globals.hpp"
-#include "../settings/experimental_tab_settings.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/srwlock_registry.hpp"
-#include "../utils/srwlock_wrapper.hpp"
-#include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "../../globals.hpp"
+#include "../../settings/experimental_tab_settings.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/srwlock_registry.hpp"
+#include "../../utils/srwlock_wrapper.hpp"
+#include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "hid_statistics.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
+#include "../windows_hooks/windows_message_hooks.hpp"
 
 namespace renodx::hooks {
 

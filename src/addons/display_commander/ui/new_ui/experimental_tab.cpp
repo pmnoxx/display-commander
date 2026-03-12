@@ -4,7 +4,7 @@
 #include "../../globals.hpp"
 #include "../../hooks/api_hooks.hpp"
 #include "../../hooks/debug_output_hooks.hpp"
-#include "../../hooks/hid_suppression_hooks.hpp"
+#include "../../hooks/input/hid_suppression_hooks.hpp"
 #include "../../hooks/hook_suppression_manager.hpp"
 #include "../../hooks/loadlibrary_hooks.hpp"
 #include "../../hooks/rand_hooks.hpp"

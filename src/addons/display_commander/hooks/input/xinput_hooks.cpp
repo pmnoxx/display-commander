@@ -6,19 +6,19 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "../dualsense/dualsense_hid_wrapper.hpp"
-#include "../globals.hpp"
-#include "../input_remapping/input_remapping.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../swapchain_events.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/timing.hpp"
-#include "../widgets/xinput_widget/xinput_widget.hpp"
+#include "../../dualsense/dualsense_hid_wrapper.hpp"
+#include "../../globals.hpp"
+#include "../../input_remapping/input_remapping.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../swapchain_events.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/timing.hpp"
+#include "../../widgets/xinput_widget/xinput_widget.hpp"
 #include "dualsense_hooks.hpp"
-#include "hook_suppression_manager.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
+#include "../hook_suppression_manager.hpp"
+#include "../windows_hooks/windows_message_hooks.hpp"
 
 // Guide button constant (not defined in standard XInput headers)
 #ifndef XINPUT_GAMEPAD_GUIDE

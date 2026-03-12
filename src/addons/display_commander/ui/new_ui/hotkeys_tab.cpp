@@ -4,7 +4,7 @@
 #include "../../autoclick/autoclick_manager.hpp"
 #include "../../globals.hpp"
 #include "../../hooks/windows_hooks/api_hooks.hpp"
-#include "../../hooks/display_settings_hooks.hpp"
+#include "../../hooks/system/display_settings_hooks.hpp"
 #include "../../hooks/windows_hooks/window_proc_hooks.hpp"
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../input_remapping/input_remapping.hpp"

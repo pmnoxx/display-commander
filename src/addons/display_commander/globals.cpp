@@ -219,6 +219,7 @@ constexpr std::array<FpsLimiterCallSite, kFpsLimiterCallSiteCount> kFpsLimiterPr
     FpsLimiterCallSite::reflex_marker_vk_nvll,
     FpsLimiterCallSite::reflex_marker_vk_loader,
     FpsLimiterCallSite::reflex_marker_pclstats_etw,
+    FpsLimiterCallSite::vk_queue_present_khr,
     FpsLimiterCallSite::dxgi_swapchain1,
     FpsLimiterCallSite::dxgi_swapchain,
     FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy,
@@ -257,6 +258,7 @@ const char* FpsLimiterSiteName(FpsLimiterCallSite site) {
         case FpsLimiterCallSite::opengl_swapbuffers:               return "opengl_swapbuffers";
         case FpsLimiterCallSite::ddraw_flip:                       return "ddraw_flip";
         case FpsLimiterCallSite::reshade_addon_event:              return "reshade_addon_event";
+        case FpsLimiterCallSite::vk_queue_present_khr:              return "vk_queue_present_khr";
         case FpsLimiterCallSite::dxgi_factory_wrapper:             return "dxgi_factory_wrapper";
         default:                                                   return "?";
     }
@@ -272,7 +274,8 @@ FpsLimiterCallSite GetChosenFrameTimeLocation() {
         || site == FpsLimiterCallSite::dxgi_swapchain1_streamline_proxy
         || site == FpsLimiterCallSite::dxgi_swapchain_streamline_proxy || site == FpsLimiterCallSite::dx9_present
         || site == FpsLimiterCallSite::dx9_presentex || site == FpsLimiterCallSite::opengl_swapbuffers
-        || site == FpsLimiterCallSite::ddraw_flip || site == FpsLimiterCallSite::reshade_addon_event) {
+        || site == FpsLimiterCallSite::ddraw_flip || site == FpsLimiterCallSite::reshade_addon_event
+        || site == FpsLimiterCallSite::vk_queue_present_khr) {
         return site;
     }
     return FpsLimiterCallSite::reshade_addon_event;

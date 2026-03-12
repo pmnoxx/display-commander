@@ -652,6 +652,7 @@ enum class FpsLimiterCallSite {
     opengl_swapbuffers,                // OpenGL wglSwapBuffers detour
     ddraw_flip,                        // DirectDraw IDirectDrawSurface::Flip detour
     reshade_addon_event,               // ReShade presentBefore/presentAfter (Vulkan/OpenGL/D3D9 or safe mode)
+    vk_queue_present_khr,              // Vulkan vkQueuePresentKHR detour (FPS limiter for native Vulkan)
     dxgi_factory_wrapper,              // Rarely hit in practice (CreateSwapChain path)
     kFpsLimiterCallSiteCount           // count of call sites above (use for array size / iteration)
 };

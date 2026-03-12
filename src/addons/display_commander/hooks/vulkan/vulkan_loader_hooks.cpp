@@ -26,6 +26,7 @@ using PFN_vkGetInstanceProcAddr_t = PFN_vkGetInstanceProcAddr;
 using PFN_vkGetDeviceProcAddr_t = PFN_vkGetDeviceProcAddr;
 using PFN_vkSetLatencyMarkerNV_t = PFN_vkSetLatencyMarkerNV;
 using PFN_vkCreateDevice_t = PFN_vkCreateDevice;
+using PFN_vkQueuePresentKHR_t = VkResult(VKAPI_CALL*)(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
 
 static PFN_vkGetInstanceProcAddr_t vkGetInstanceProcAddr_Original = nullptr;
 static PFN_vkGetDeviceProcAddr_t vkGetDeviceProcAddr_Original = nullptr;
@@ -36,6 +37,7 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice device, const char* pName);
 static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
                                                 const VkAllocationCallbacks* pAllocator, VkDevice* pDevice);
+static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
 
 /** Table-driven hook install: name, detour, original (same order as InstallVulkanLoaderHooks loop). */
 struct VulkanLoaderHookEntry {
@@ -56,6 +58,10 @@ static const VulkanLoaderHookEntry kVulkanLoaderHooks[kVulkanLoaderHookCount] = 
 static PFN_vkSetLatencyMarkerNV_t g_real_vkSetLatencyMarkerNV = nullptr;
 /** First time we see the real pointer we MinHook it so callers that already cached it still hit our detour. */
 static void* g_hooked_vkSetLatencyMarkerNV_target = nullptr;
+
+/** Trampoline to the real vkQueuePresentKHR (filled when we hook it via vkGetDeviceProcAddr). */
+static PFN_vkQueuePresentKHR_t g_real_vkQueuePresentKHR = nullptr;
+static void* g_hooked_vkQueuePresentKHR_target = nullptr;
 static std::atomic<bool> g_loader_hooks_installed{false};
 static std::atomic<uint64_t> g_loader_marker_count{0};
 static std::atomic<int> g_loader_last_marker_type{-1};
@@ -211,6 +217,28 @@ void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swap
     }
 }
 
+// vkQueuePresentKHR detour: FPS limiter for Vulkan (same pattern as IDXGISwapChain_Present_Detour).
+static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
+    if (g_real_vkQueuePresentKHR == nullptr) {
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+    const LONGLONG now_ns = utils::get_now_ns();
+    ChooseFpsLimiter(static_cast<uint64_t>(now_ns), FpsLimiterCallSite::vk_queue_present_khr);
+    const bool use_fps_limiter = GetChosenFpsLimiter(FpsLimiterCallSite::vk_queue_present_khr);
+    if (use_fps_limiter) {
+        OnPresentFlags2(true, false);
+        RecordNativeFrameTime();
+    }
+    if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::vk_queue_present_khr) {
+        RecordFrameTime(FrameTimeMode::kPresent);
+    }
+    const VkResult ret = g_real_vkQueuePresentKHR(queue, pPresentInfo);
+    if (use_fps_limiter) {
+        display_commanderhooks::dxgi::HandlePresentAfter(false);
+    }
+    return ret;
+}
+
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance instance, const char* pName) {
     g_calls_vkGetInstanceProcAddr.fetch_add(1);
     if (vkGetInstanceProcAddr_Original == nullptr) {
@@ -243,6 +271,19 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice dev
             }
         }
         result = reinterpret_cast<PFN_vkVoidFunction>(&vkSetLatencyMarkerNV_Detour);
+    }
+    if (pName != nullptr && std::strcmp(pName, "vkQueuePresentKHR") == 0 && result != nullptr) {
+        if (g_real_vkQueuePresentKHR == nullptr) {
+            if (CreateAndEnableHook(reinterpret_cast<LPVOID>(result),
+                                   reinterpret_cast<LPVOID>(&vkQueuePresentKHR_Detour),
+                                   reinterpret_cast<LPVOID*>(&g_real_vkQueuePresentKHR), "vkQueuePresentKHR")) {
+                g_hooked_vkQueuePresentKHR_target = result;
+                LogInfo("VulkanLoader: vkQueuePresentKHR hooked for FPS limiter");
+            } else {
+                g_real_vkQueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR_t>(result);
+            }
+        }
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkQueuePresentKHR_Detour);
     }
     return result;
 }

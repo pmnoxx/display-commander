@@ -2453,18 +2453,23 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
         if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
-            if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
-                                "Enable Brightness, AutoHDR and ReShade paths", imgui)) {
-                // Value gates ApplyDisplayCommanderBrightness, ApplyDisplayCommanderAutoHdr, and path add/remove.
-                // Re-apply ReShade config so paths are added or removed immediately.
+            if (CheckboxSetting(settings::g_mainTabSettings.add_dc_to_reshade_shader_paths,
+                                "Add DC Shaders/Textures to ReShade paths", imgui)) {
                 OverrideReShadeSettings();
             }
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx(
-                    "When on: Brightness, AutoHDR and related controls are active, and Display Commander adds its "
-                    "Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths. When off: the "
-                    "whole "
-                    "section is disabled and DC removes those paths from ReShade config.");
+                    "When on: Display Commander adds its Shaders/Textures folder to ReShade's EffectSearchPaths and "
+                    "TextureSearchPaths. When off: DC removes those paths from ReShade config.");
+            }
+            if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
+                                "Load DC's shaders (Brightness, AutoHDR)", imgui)) {
+                // Value gates ApplyDisplayCommanderBrightness and ApplyDisplayCommanderAutoHdr only.
+            }
+            if (imgui.IsItemHovered()) {
+                imgui.SetTooltipEx(
+                    "When on: Brightness, AutoHDR and related controls are active (DC's ReShade effects are applied). "
+                    "When off: the whole Brightness and AutoHDR section is disabled.");
             }
             std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
             if (!dc_reshade_root.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open Shaders/Textures folder")) {

@@ -864,7 +864,7 @@ void OverrideReShadeSettings_LoadFromDllMainOnce() {
 }
 
 void OverrideReShadeSettings_AddDisplayCommanderPaths() {
-    if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+    if (!settings::g_mainTabSettings.add_dc_to_reshade_shader_paths.GetValue()) {
         return;
     }
     std::filesystem::path dc_base_dir = GetDisplayCommanderReshadeRootFolder();
@@ -1015,7 +1015,7 @@ void OverrideReShadeSettings() {
     OverrideReShadeSettings_WindowConfig();
     OverrideReShadeSettings_TutorialAndUpdates();
     OverrideReShadeSettings_LoadFromDllMainOnce();
-    if (settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+    if (settings::g_mainTabSettings.add_dc_to_reshade_shader_paths.GetValue()) {
         OverrideReShadeSettings_AddDisplayCommanderPaths();
     } else {
         OverrideReShadeSettings_RemoveDisplayCommanderPaths();

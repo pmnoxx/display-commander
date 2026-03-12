@@ -16,7 +16,7 @@
 #include "../d3d11/d3d11_device_hooks.hpp"
 #include "../system/debug_output_hooks.hpp"
 #include "../input/dinput_hooks.hpp"
-#include "../display_settings_hooks.hpp"
+#include "../system/display_settings_hooks.hpp"
 #include "dpi_hooks.hpp"
 #include "../dxgi/dxgi_present_hooks.hpp"
 #include "../dxgi/dxgi_factory_wrapper.hpp"

@@ -1,16 +1,16 @@
 #include "display_settings_hooks.hpp"
-#include "windows_hooks/windows_message_hooks.hpp"
+#include "../windows_hooks/windows_message_hooks.hpp"
 #include <MinHook.h>
 #include <windows.h>
 #include <wingdi.h>
-#include "../globals.hpp"
-#include "../settings/advanced_tab_settings.hpp"
-#include "../utils.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/logging.hpp"
-#include "windows_hooks/api_hooks.hpp"  // GetGameWindow
-#include "hook_suppression_manager.hpp"
-#include "windows_hooks/window_proc_hooks.hpp"  // WindowHasBorder
+#include "../../globals.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
+#include "../../utils.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/logging.hpp"
+#include "../windows_hooks/api_hooks.hpp"  // GetGameWindow
+#include "../hook_suppression_manager.hpp"
+#include "../windows_hooks/window_proc_hooks.hpp"  // WindowHasBorder
 
 // Original function pointers
 ChangeDisplaySettingsA_pfn ChangeDisplaySettingsA_Original = nullptr;

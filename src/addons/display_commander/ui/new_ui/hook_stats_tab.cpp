@@ -3,7 +3,7 @@
 #include "../../hooks/windows_hooks/windows_message_hooks.hpp"
 #include "../../hooks/input/dinput_hooks.hpp"
 #include "../../hooks/opengl/opengl_hooks.hpp"
-#include "../../hooks/display_settings_hooks.hpp"
+#include "../../hooks/system/display_settings_hooks.hpp"
 #include "../../hooks/input/hid_statistics.hpp"
 #include "../../settings/experimental_tab_settings.hpp"
 #include "../../globals.hpp"

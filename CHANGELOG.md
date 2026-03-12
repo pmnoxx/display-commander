@@ -3,6 +3,10 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.446
+- [ui] [hooks] **Vulkan: reflex_marker_vk_nvll call counts by marker type** - The Vulkan tab Debug section now shows the number of NvLL_VK_SetLatencyMarker (reflex_marker_vk_nvll) calls per marker type in a collapsible "reflex_marker_vk_nvll by marker type" block. Counts are shown for SIMULATION_START, SIMULATION_END, RENDERSUBMIT_START/END, PRESENT_START/END, INPUT_SAMPLE, TRIGGER_FLASH, and PC_LATENCY_PING. Only types with non-zero counts are listed. Details: nvlowlatencyvk_hooks per-marker-type atomics and GetNvLowLatencyVkMarkerCountsByType / GetNvLowLatencyVkMarkerTypeName; vulkan_tab.cpp Debug collapsible.
+
+---
 ## v0.12.445
 - [hooks] [bugfix] **Reflex markers: early return when FPS limiter off** - When the FPS limiter is disabled, `ProcessReflexMarkerFpsLimiter` now forwards the latency marker to the driver immediately and skips buffer recording, thread tracking, and PRESENT_START delay logic. Reflex low-latency continues to work with the driver when the limiter is off, and we avoid unnecessary work. Cyclic buffer and delay logic run only when the limiter is in use; duplicate `GetChosenFpsLimiter` calls and dead commented code removed. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
 

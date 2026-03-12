@@ -57,6 +57,7 @@ static NvLL_VK_Sleep_pfn NvLL_VK_Sleep_Original = nullptr;
 static std::atomic<bool> g_nvll_hooks_installed{false};
 static std::atomic<uint64_t> g_nvll_init_call_count{0};
 static std::atomic<uint64_t> g_nvll_marker_call_count{0};
+static std::atomic<uint64_t> g_nvll_marker_count_by_type[kNvllVkMarkerTypeCount] = {};
 static std::atomic<uint64_t> g_nvll_set_sleep_mode_call_count{0};
 static std::atomic<uint64_t> g_nvll_sleep_call_count{0};
 static std::atomic<int> g_nvll_last_marker_type{-1};
@@ -84,7 +85,11 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
         LogInfo("NvLowLatencyVk: SetLatencyMarker first call");
     }
     g_nvll_marker_call_count.fetch_add(1);
-    g_nvll_last_marker_type.store(static_cast<int>(params->markerType));
+    const int marker_type = static_cast<int>(params->markerType);
+    if (marker_type >= 0 && marker_type < static_cast<int>(kNvllVkMarkerTypeCount)) {
+        g_nvll_marker_count_by_type[marker_type].fetch_add(1);
+    }
+    g_nvll_last_marker_type.store(marker_type);
     g_nvll_last_frame_id.store(params->frameID);
 
     // Re-apply SleepMode on SIMULATION_START (same idea as D3D ApplySleepMode on present): either our
@@ -282,6 +287,30 @@ void GetNvLowLatencyVkDetourCallCounts(uint64_t* out_init_count, uint64_t* out_s
     }
     if (out_sleep_count) {
         *out_sleep_count = g_nvll_sleep_call_count.load();
+    }
+}
+
+void GetNvLowLatencyVkMarkerCountsByType(uint64_t* out_counts, size_t max_count) {
+    if (out_counts == nullptr) return;
+    const size_t n = (max_count < kNvllVkMarkerTypeCount) ? max_count : kNvllVkMarkerTypeCount;
+    for (size_t i = 0; i < n; ++i) {
+        out_counts[i] = g_nvll_marker_count_by_type[i].load();
+    }
+}
+
+const char* GetNvLowLatencyVkMarkerTypeName(int index) {
+    if (index < 0 || index >= static_cast<int>(kNvllVkMarkerTypeCount)) return "?";
+    switch (index) {
+        case 0: return "SIMULATION_START";
+        case 1: return "SIMULATION_END";
+        case 2: return "RENDERSUBMIT_START";
+        case 3: return "RENDERSUBMIT_END";
+        case 4: return "PRESENT_START";
+        case 5: return "PRESENT_END";
+        case 6: return "INPUT_SAMPLE";
+        case 7: return "TRIGGER_FLASH";
+        case 8: return "PC_LATENCY_PING";
+        default: return "?";
     }
 }
 

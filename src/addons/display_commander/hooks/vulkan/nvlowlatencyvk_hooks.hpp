@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+
 #include <windows.h>
 
 /** View struct for NvLL VK SetSleepMode params (for UI; no dependency on internal types). */
@@ -27,6 +29,16 @@ void GetNvLowLatencyVkDetourCallCounts(uint64_t* out_init_count,
                                       uint64_t* out_set_latency_marker_count,
                                       uint64_t* out_set_sleep_mode_count,
                                       uint64_t* out_sleep_count);
+
+/** Number of NvLL VK latency marker types (0..8 = SIMULATION_START .. PC_LATENCY_PING). */
+constexpr size_t kNvllVkMarkerTypeCount = 9;
+
+/** Get call counts for reflex_marker_vk_nvll (NvLL_VK_SetLatencyMarker) per marker type.
+ *  out_counts must hold at least kNvllVkMarkerTypeCount elements. */
+void GetNvLowLatencyVkMarkerCountsByType(uint64_t* out_counts, size_t max_count);
+
+/** Display name for marker type index (0..8). Returns "?" if index out of range. */
+const char* GetNvLowLatencyVkMarkerTypeName(int index);
 
 /** Last params actually sent to NvLL_VK_SetSleepMode_Original (from detour or SIMULATION_START re-apply). */
 void GetNvLowLatencyVkLastAppliedSleepModeParams(NvLLVkSleepModeParamsView* out);

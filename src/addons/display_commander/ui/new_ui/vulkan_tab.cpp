@@ -313,6 +313,18 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Text("NvLL SetLatencyMarker:");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.Text("%llu", static_cast<std::uint64_t>(nvll_marker));
+            std::uint64_t nvll_by_type[kNvllVkMarkerTypeCount] = {};
+            GetNvLowLatencyVkMarkerCountsByType(nvll_by_type, kNvllVkMarkerTypeCount);
+            if (imgui.CollapsingHeader("reflex_marker_vk_nvll by marker type", ImGuiTreeNodeFlags_None)) {
+                imgui.Indent();
+                for (size_t i = 0; i < kNvllVkMarkerTypeCount; ++i) {
+                    if (nvll_by_type[i] == 0) continue;
+                    imgui.Text("%d %s:", static_cast<int>(i), GetNvLowLatencyVkMarkerTypeName(static_cast<int>(i)));
+                    imgui.SameLine(kVulkanTabValueColumnX);
+                    imgui.Text("%llu", static_cast<std::uint64_t>(nvll_by_type[i]));
+                }
+                imgui.Unindent();
+            }
             imgui.Text("NvLL SetSleepMode:");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.Text("%llu", static_cast<std::uint64_t>(nvll_sleep_mode));

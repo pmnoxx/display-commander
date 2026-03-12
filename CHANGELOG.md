@@ -3,6 +3,10 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.445
+- [hooks] [bugfix] **Reflex markers: early return when FPS limiter off** - When the FPS limiter is disabled, `ProcessReflexMarkerFpsLimiter` now forwards the latency marker to the driver immediately and skips buffer recording, thread tracking, and PRESENT_START delay logic. Reflex low-latency continues to work with the driver when the limiter is off, and we avoid unnecessary work. Cyclic buffer and delay logic run only when the limiter is in use; duplicate `GetChosenFpsLimiter` calls and dead commented code removed. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
+
+---
 ## v0.12.444
 - [hooks] [cleanup] **NGX: hook only Init_with_ProjectID; remove name_alt** - NVSDK_NGX_*_Init_with_ProjectID and NVSDK_NGX_*_Init_ProjectID are different ABIs. We now hook only the SDK export name Init_with_ProjectID (no fallback to Init_ProjectID). Removed the name_alt field from NGXHookEntry and the GetProcAddress fallback. NGX hook table uses designated initializers (.name, .detour, .original). Details: ngx_hooks.cpp NGXHookEntry, kNGXHooks, InstallNGXHooks; docs/ngx_hooks_signature_audit.md.
 

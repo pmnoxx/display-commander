@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <algorithm>
 #include <atomic>
+#include <cstddef>
 #include <cstring>
 #include <map>
 #include <string>
@@ -190,17 +191,15 @@ using NVSDK_NGX_Parameter_GetULL_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_P
 using NVSDK_NGX_Parameter_GetVoidPointer_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(NVSDK_NGX_Parameter* InParameter,
                                                                              const char* InName, void** OutValue);
 
-// NGX initialization function pointer types
+// NGX initialization function pointer types (DLL/Core interface: see docs/ngx_hooks_signature_audit.md)
 using NVSDK_NGX_D3D12_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                const wchar_t* InApplicationDataPath,
-                                                               ID3D12Device* InDevice,
-                                                               const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
-                                                               NVSDK_NGX_Version InSDKVersion);
+                                                               ID3D12Device* InDevice, NVSDK_NGX_Version InSDKVersion);
 using NVSDK_NGX_D3D12_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                    const wchar_t* InApplicationDataPath,
                                                                    ID3D12Device* InDevice,
-                                                                   const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
-                                                                   void* Unknown5);
+                                                                   NVSDK_NGX_Version InSDKVersion,
+                                                                   const NVSDK_NGX_Parameter* InParameters);
 using NVSDK_NGX_D3D12_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D12Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -220,14 +219,12 @@ using NVSDK_NGX_D3D12_EvaluateFeature_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(ID3D12
 
 using NVSDK_NGX_D3D11_Init_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                const wchar_t* InApplicationDataPath,
-                                                               ID3D11Device* InDevice,
-                                                               const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
-                                                               NVSDK_NGX_Version InSDKVersion);
+                                                               ID3D11Device* InDevice, NVSDK_NGX_Version InSDKVersion);
 using NVSDK_NGX_D3D11_Init_Ext_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(unsigned long long InApplicationId,
                                                                    const wchar_t* InApplicationDataPath,
                                                                    ID3D11Device* InDevice,
-                                                                   const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
-                                                                   void* Unknown5);
+                                                                   NVSDK_NGX_Version InSDKVersion,
+                                                                   const NVSDK_NGX_Parameter* InParameters);
 using NVSDK_NGX_D3D11_Init_ProjectID_pfn = NVSDK_NGX_Result(NVSDK_CONV*)(
     const char* InProjectId, NVSDK_NGX_EngineType InEngineType, const char* InEngineVersion,
     const wchar_t* InApplicationDataPath, ID3D11Device* InDevice, const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
@@ -332,6 +329,14 @@ NVSDK_NGX_D3D11_EvaluateFeature_C_pfn NVSDK_NGX_D3D11_EvaluateFeature_C_Original
 
 // UpdateFeature original function pointer
 NVSDK_NGX_UpdateFeature_pfn NVSDK_NGX_UpdateFeature_Original = nullptr;
+
+/** Table-driven NGX hook install: name, optional alternate name, detour, original (like Vulkan loader hooks). */
+struct NGXHookEntry {
+    const char* name;
+    const char* name_alt;  // fallback for GetProcAddress if name is null (e.g. Init_with_ProjectID then Init_ProjectID)
+    LPVOID detour;
+    LPVOID* original;
+};
 
 // Global flag to track if vtable hooks are installed
 static bool g_ngx_vtable_hooks_installed = false;
@@ -1073,42 +1078,37 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_Parameter_GetVoidPointer_Detour(NVSDK_NGX_
     return res;
 }
 
-// D3D12 Init detour
+// D3D12 Init detour (DLL/Core: 4 params)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D12Device* InDevice,
-                                                        const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                         NVSDK_NGX_Version InSDKVersion) {
     CALL_GUARD(utils::get_now_ns());
-    // Increment NGX counters
     g_ngx_counters.d3d12_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D12 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D12_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
-                                             InSDKVersion);
+        return NVSDK_NGX_D3D12_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
-// D3D12 Init Ext detour
+// D3D12 Init Ext detour (DLL/Core: 5 params, 5th = const NVSDK_NGX_Parameter*)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D12_Init_Ext_Detour(unsigned long long InApplicationId,
                                                             const wchar_t* InApplicationDataPath,
-                                                            ID3D12Device* InDevice,
-                                                            const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
-                                                            void* Unknown5) {
+                                                            ID3D12Device* InDevice, NVSDK_NGX_Version InSDKVersion,
+                                                            const NVSDK_NGX_Parameter* InParameters) {
     CALL_GUARD(utils::get_now_ns());
-    // Increment NGX counters
     g_ngx_counters.d3d12_init_ext_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D12 Init Ext called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D12_Init_Ext_Original != nullptr) {
-        return NVSDK_NGX_D3D12_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
-                                                 Unknown5);
+        return NVSDK_NGX_D3D12_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion,
+                                                 InParameters);
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1336,42 +1336,37 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_EvaluateFeature_C_Detour(ID3D11Devic
     return NVSDK_NGX_Result_Fail;
 }
 
-// D3D11 Init detour
+// D3D11 Init detour (DLL/Core: 4 params)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Detour(unsigned long long InApplicationId,
                                                         const wchar_t* InApplicationDataPath, ID3D11Device* InDevice,
-                                                        const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
                                                         NVSDK_NGX_Version InSDKVersion) {
     CALL_GUARD(utils::get_now_ns());
-    // Increment NGX counters
     g_ngx_counters.d3d11_init_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D11 Init called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D11_Init_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
-                                             InSDKVersion);
+        return NVSDK_NGX_D3D11_Init_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion);
     }
 
     return NVSDK_NGX_Result_Fail;
 }
 
-// D3D11 Init Ext detour
+// D3D11 Init Ext detour (DLL/Core: 5 params, 5th = const NVSDK_NGX_Parameter*)
 NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_Init_Ext_Detour(unsigned long long InApplicationId,
                                                             const wchar_t* InApplicationDataPath,
-                                                            ID3D11Device* InDevice,
-                                                            const NVSDK_NGX_FeatureCommonInfo* InFeatureInfo,
-                                                            void* Unknown5) {
+                                                            ID3D11Device* InDevice, NVSDK_NGX_Version InSDKVersion,
+                                                            const NVSDK_NGX_Parameter* InParameters) {
     CALL_GUARD(utils::get_now_ns());
-    // Increment NGX counters
     g_ngx_counters.d3d11_init_ext_count.fetch_add(1);
     g_ngx_counters.total_count.fetch_add(1);
 
     LogInfo("NGX D3D11 Init Ext called - AppId: %llu", InApplicationId);
 
     if (NVSDK_NGX_D3D11_Init_Ext_Original != nullptr) {
-        return NVSDK_NGX_D3D11_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InFeatureInfo,
-                                                 Unknown5);
+        return NVSDK_NGX_D3D11_Init_Ext_Original(InApplicationId, InApplicationDataPath, InDevice, InSDKVersion,
+                                                 InParameters);
     }
 
     return NVSDK_NGX_Result_Fail;
@@ -1909,6 +1904,57 @@ NVSDK_NGX_Result NVSDK_CONV NVSDK_NGX_D3D11_AllocateParameters_Detour(NVSDK_NGX_
     return ret;
 }
 
+static constexpr std::size_t kNGXHookCount = 21;
+static const NGXHookEntry kNGXHooks[kNGXHookCount] = {
+    {"NVSDK_NGX_D3D12_Init", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Init_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Original)},
+    {"NVSDK_NGX_D3D12_Init_Ext", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Init_Ext_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Ext_Original)},
+    {"NVSDK_NGX_D3D12_Init_with_ProjectID", "NVSDK_NGX_D3D12_Init_ProjectID",
+     reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Init_ProjectID_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_ProjectID_Original)},
+    {"NVSDK_NGX_D3D12_Shutdown1", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_Shutdown1_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Shutdown1_Original)},
+    {"NVSDK_NGX_D3D12_CreateFeature", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_CreateFeature_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_CreateFeature_Original)},
+    {"NVSDK_NGX_D3D12_ReleaseFeature", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_ReleaseFeature_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_ReleaseFeature_Original)},
+    {"NVSDK_NGX_D3D12_EvaluateFeature", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_EvaluateFeature_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_EvaluateFeature_Original)},
+    {"NVSDK_NGX_D3D12_EvaluateFeature_C", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_EvaluateFeature_C_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_EvaluateFeature_C_Original)},
+    {"NVSDK_NGX_D3D11_Init", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Init_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original)},
+    {"NVSDK_NGX_D3D11_Init_Ext", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Init_Ext_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original)},
+    {"NVSDK_NGX_D3D11_Init_with_ProjectID", "NVSDK_NGX_D3D11_Init_ProjectID",
+     reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Init_ProjectID_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_ProjectID_Original)},
+    {"NVSDK_NGX_D3D11_Shutdown1", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_Shutdown1_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Shutdown1_Original)},
+    {"NVSDK_NGX_D3D11_CreateFeature", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_CreateFeature_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_CreateFeature_Original)},
+    {"NVSDK_NGX_D3D11_ReleaseFeature", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_ReleaseFeature_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_ReleaseFeature_Original)},
+    {"NVSDK_NGX_D3D11_EvaluateFeature", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_EvaluateFeature_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_EvaluateFeature_Original)},
+    {"NVSDK_NGX_D3D12_GetParameters", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_GetParameters_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetParameters_Original)},
+    {"NVSDK_NGX_D3D12_GetCapabilityParameters", nullptr,
+     reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_GetCapabilityParameters_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetCapabilityParameters_Original)},
+    {"NVSDK_NGX_D3D12_AllocateParameters", nullptr,
+     reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D12_AllocateParameters_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_AllocateParameters_Original)},
+    {"NVSDK_NGX_D3D11_GetParameters", nullptr, reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_GetParameters_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetParameters_Original)},
+    {"NVSDK_NGX_D3D11_GetCapabilityParameters", nullptr,
+     reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_GetCapabilityParameters_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetCapabilityParameters_Original)},
+    {"NVSDK_NGX_D3D11_AllocateParameters", nullptr,
+     reinterpret_cast<LPVOID>(&NVSDK_NGX_D3D11_AllocateParameters_Detour),
+     reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_AllocateParameters_Original)},
+};
 // Install NGX hooks
 bool InstallNGXHooks(HMODULE ngx_dll) {
     if (ngx_dll == nullptr) {
@@ -1933,125 +1979,19 @@ bool InstallNGXHooks(HMODULE ngx_dll) {
 
     LogInfo("Installing NGX initialization hooks...");
 
-    /*
-    // Hook NGX initialization functions
-    // D3D12 Init hooks
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Original), "NVSDK_NGX_D3D12_Init");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init_Ext"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_Ext_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_Ext_Original), "NVSDK_NGX_D3D12_Init_Ext");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Init_ProjectID"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Init_ProjectID_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Init_ProjectID_Original),
-                        "NVSDK_NGX_D3D12_Init_ProjectID");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_Shutdown1"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_Shutdown1_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_Shutdown1_Original), "NVSDK_NGX_D3D12_Shutdown1");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_CreateFeature"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_CreateFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_CreateFeature_Original),
-                        "NVSDK_NGX_D3D12_CreateFeature");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_ReleaseFeature"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_ReleaseFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_ReleaseFeature_Original),
-                        "NVSDK_NGX_D3D12_ReleaseFeature");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_EvaluateFeature"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_EvaluateFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_EvaluateFeature_Original),
-                        "NVSDK_NGX_D3D12_EvaluateFeature");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_EvaluateFeature_C"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_EvaluateFeature_C_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_EvaluateFeature_C_Original),
-                        "NVSDK_NGX_D3D12_EvaluateFeature_C");
-
-    // D3D11 Init hooks
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Original), "NVSDK_NGX_D3D11_Init");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_Ext"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_Ext_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_Ext_Original), "NVSDK_NGX_D3D11_Init_Ext");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Init_ProjectID"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Init_ProjectID_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Init_ProjectID_Original),
-                        "NVSDK_NGX_D3D11_Init_ProjectID");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_Shutdown1"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_Shutdown1_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_Shutdown1_Original), "NVSDK_NGX_D3D11_Shutdown1");
-*/
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_CreateFeature"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_CreateFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_CreateFeature_Original),
-                        "NVSDK_NGX_D3D11_CreateFeature");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_ReleaseFeature"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_ReleaseFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_ReleaseFeature_Original),
-                        "NVSDK_NGX_D3D11_ReleaseFeature");
-
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_EvaluateFeature"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_EvaluateFeature_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_EvaluateFeature_Original),
-                        "NVSDK_NGX_D3D11_EvaluateFeature");
-
-    /*
-// Hook UpdateFeature function
-CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_UpdateFeature"),
-    reinterpret_cast<LPVOID>(NVSDK_NGX_UpdateFeature_Detour),
-    reinterpret_cast<LPVOID*>(&NVSDK_NGX_UpdateFeature_Original), "NVSDK_NGX_UpdateFeature");
-*/
-    // Hook NGX parameter functions to get Parameter objects
-    // These functions are exported from _nvngx.dll and return Parameter objects
-    // We'll hook their vtables when they're called
-
-    // Hook D3D12 GetParameters
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_GetParameters"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_GetParameters_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetParameters_Original),
-                        "NVSDK_NGX_D3D12_GetParameters");
-
-    // Hook D3D12 GetCapabilityParameters (used for DLSS optimal settings / recommendations before AllocateParameters)
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_GetCapabilityParameters"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_GetCapabilityParameters_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_GetCapabilityParameters_Original),
-                        "NVSDK_NGX_D3D12_GetCapabilityParameters");
-
-    // Hook D3D12 AllocateParameters
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D12_AllocateParameters"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D12_AllocateParameters_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D12_AllocateParameters_Original),
-                        "NVSDK_NGX_D3D12_AllocateParameters");
-
-    // Hook D3D11 GetParameters
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_GetParameters"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_GetParameters_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetParameters_Original),
-                        "NVSDK_NGX_D3D11_GetParameters");
-
-    // Hook D3D11 GetCapabilityParameters (used for DLSS optimal settings / recommendations before AllocateParameters)
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_GetCapabilityParameters"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_GetCapabilityParameters_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_GetCapabilityParameters_Original),
-                        "NVSDK_NGX_D3D11_GetCapabilityParameters");
-
-    // Hook D3D11 AllocateParameters
-    CreateAndEnableHook(GetProcAddress(ngx_dll, "NVSDK_NGX_D3D11_AllocateParameters"),
-                        reinterpret_cast<LPVOID>(NVSDK_NGX_D3D11_AllocateParameters_Detour),
-                        reinterpret_cast<LPVOID*>(&NVSDK_NGX_D3D11_AllocateParameters_Original),
-                        "NVSDK_NGX_D3D11_AllocateParameters");
+    // Table-driven install (signatures match DLL/Core interface; see docs/ngx_hooks_signature_audit.md)
+    for (std::size_t i = 0; i < kNGXHookCount; ++i) {
+        const NGXHookEntry& entry = kNGXHooks[i];
+        LPVOID target = GetProcAddress(ngx_dll, entry.name);
+        if (target == nullptr && entry.name_alt != nullptr) {
+            target = GetProcAddress(ngx_dll, entry.name_alt);
+        }
+        if (target != nullptr) {
+            CreateAndEnableHook(target, entry.detour, entry.original, entry.name);
+        } else {
+            LogInfo("NGX: symbol %s not found, skipping", entry.name);
+        }
+    }
 
     LogInfo("NGX initialization hooks installed successfully");
     LogInfo("NGX Parameter vtable hooks will be installed when Parameter objects are created");

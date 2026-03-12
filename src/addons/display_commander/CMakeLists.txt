@@ -71,9 +71,15 @@ target_include_directories(display_commander_common_options INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../../external/tomlplusplus/include>
 )
 if(MSVC)
+  # Single /arch flag: MSVC does not allow multiple /arch options (x86 build was failing with /arch:SSE2 /arch:AVX /arch:AVX2).
+  if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    set(DC_MSVC_ARCH "/arch:SSE2")
+  else()
+    set(DC_MSVC_ARCH "/arch:AVX2")
+  endif()
   # Suppress warnings: 4191 unsafe cast, 4244/4267 conversion loss, 4996 deprecated CRT, 4005 macro redefinition
   target_compile_options(display_commander_common_options INTERFACE
-    /bigobj /arch:SSE2 /arch:AVX /arch:AVX2 /utf-8 /D_ENABLE_EXTENDED_ALIGNED_STORAGE
+    /bigobj ${DC_MSVC_ARCH} /utf-8 /D_ENABLE_EXTENDED_ALIGNED_STORAGE
     /wd4191 /wd4244 /wd4267 /wd4996 /wd4005
   )
   target_compile_options(display_commander_common_options INTERFACE

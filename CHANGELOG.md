@@ -4,6 +4,7 @@
 
 ---
 ## v0.12.427
+- [bugfix] **x86 (32-bit) build fixed** - The 32-bit addon build was failing in CI (Build Debug x86, Build x86) because MSVC does not allow multiple `/arch` options on the same compilation. The addon now uses a single architecture flag: `/arch:SSE2` for 32-bit and `/arch:AVX2` for 64-bit. Details: CMakeLists.txt DC_MSVC_ARCH set from CMAKE_SIZEOF_VOID_P.
 - [hooks] [bugfix] **NGX Init/Init_Ext hook signatures aligned with DLL** - NGX initialization hooks were disabled due to crashes caused by signature mismatch: the addon used the SDK "App" interface (5-param Init with FeatureCommonInfo, Init_Ext with FeatureCommonInfo + void*) while the NGX DLL exports the "Core" interface (4-param Init, 5-param Init_Ext with InSDKVersion + const NVSDK_NGX_Parameter*). Typedefs and detours for NVSDK_NGX_D3D12/11_Init and NVSDK_NGX_D3D12/11_Init_Ext were updated to match the DLL; Init_ProjectID hook now tries NVSDK_NGX_*_Init_with_ProjectID then Init_ProjectID. NGX Init, Shutdown1, CreateFeature, ReleaseFeature, and EvaluateFeature hooks are re-enabled. Details: docs/ngx_hooks_signature_audit.md; ngx_hooks.cpp typedefs, detours, and InstallNGXHooks.
 - [cleanup] **NGX hooks: table-driven install** - NGX hook installation now uses a single table of triples (name, optional alternate name, detour, original) and a for-loop, matching the Vulkan loader hooks pattern. Init_ProjectID uses name_alt for the fallback symbol. Adding a new NGX hook is a single table entry. Details: ngx_hooks.cpp NGXHookEntry, kNGXHooks, kNGXHookCount, InstallNGXHooks loop.
 

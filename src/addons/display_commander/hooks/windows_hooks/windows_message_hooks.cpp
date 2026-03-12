@@ -336,8 +336,6 @@ void SetDebugSuppressAllGetMessage(bool enable) {
 // Suppress Microsoft extension warnings for MinHook function pointer conversions
 #pragma warning(push)
 #pragma warning(disable : 4191)  // 'type cast': unsafe conversion from 'function_pointer' to 'data_pointer'
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmicrosoft-cast"
 
 // Helper function to check if HWND belongs to current process
 static bool IsWindowFromCurrentProcess(HWND hwnd) {
@@ -2845,5 +2843,3 @@ void Update() {
 }  // namespace display_commanderhooks
 
 // Restore warning settings
-#pragma clang diagnostic pop
-#pragma warning(pop)

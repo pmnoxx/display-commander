@@ -1,13 +1,13 @@
 #include "vulkan_loader_hooks.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
-#include "../hook_suppression_manager.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
 #include "../../utils/timing.hpp"
 #include "../dxgi/dxgi_present_hooks.hpp"
+#include "../hook_suppression_manager.hpp"
 
 #include <MinHook.h>
 #include <atomic>
@@ -16,6 +16,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
+
+#include <Windows.h>
 
 #define VK_NO_PROTOTYPES 1
 #include <vulkan/vulkan_core.h>
@@ -27,6 +29,13 @@ using PFN_vkGetDeviceProcAddr_t = PFN_vkGetDeviceProcAddr;
 using PFN_vkSetLatencyMarkerNV_t = PFN_vkSetLatencyMarkerNV;
 using PFN_vkCreateDevice_t = PFN_vkCreateDevice;
 using PFN_vkQueuePresentKHR_t = VkResult(VKAPI_CALL*)(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
+using PFN_vkCreateSwapchainKHR_t = PFN_vkCreateSwapchainKHR;
+using PFN_vkBeginCommandBuffer_t = PFN_vkBeginCommandBuffer;
+using PFN_vkSetLatencySleepModeNV_t = PFN_vkSetLatencySleepModeNV;
+using PFN_vkLatencySleepNV_t = PFN_vkLatencySleepNV;
+using PFN_vkCreateSemaphore_t = PFN_vkCreateSemaphore;
+using PFN_vkGetSemaphoreCounterValue_t = PFN_vkGetSemaphoreCounterValue;
+using PFN_vkWaitSemaphores_t = PFN_vkWaitSemaphores;
 
 static PFN_vkGetInstanceProcAddr_t vkGetInstanceProcAddr_Original = nullptr;
 static PFN_vkGetDeviceProcAddr_t vkGetDeviceProcAddr_Original = nullptr;
@@ -36,8 +45,13 @@ static PFN_vkCreateDevice_t g_real_vkCreateDevice = nullptr;
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance instance, const char* pName);
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice device, const char* pName);
 static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
-                                                const VkAllocationCallbacks* pAllocator, VkDevice* pDevice);
+                                                 const VkAllocationCallbacks* pAllocator, VkDevice* pDevice);
 static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoKHR* pPresentInfo);
+static VkResult VKAPI_CALL vkCreateSwapchainKHR_Detour(VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
+                                                       const VkAllocationCallbacks* pAllocator,
+                                                       VkSwapchainKHR* pSwapchain);
+static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBuffer,
+                                                        const VkCommandBufferBeginInfo* pBeginInfo);
 
 /** Table-driven hook install: name, detour, original (same order as InstallVulkanLoaderHooks loop). */
 struct VulkanLoaderHookEntry {
@@ -74,11 +88,34 @@ static std::atomic<uint64_t> g_calls_vkCreateDevice{0};
 
 /** Enabled device extensions from last vkCreateDevice (thread-safe). */
 static std::vector<std::string> g_vulkan_enabled_extensions;
-/** True once vkCreateDevice_Detour has been entered at least once (so UI can show "not called yet" vs "no extensions"). */
+/** True once vkCreateDevice_Detour has been entered at least once (so UI can show "not called yet" vs "no extensions").
+ */
 static std::atomic<bool> g_vkCreateDevice_detour_ever_called{false};
+
+// --- Injected Reflex (VK_NV_low_latency2) state ---
+static PFN_vkCreateSwapchainKHR_t g_real_vkCreateSwapchainKHR = nullptr;
+static PFN_vkBeginCommandBuffer_t g_real_vkBeginCommandBuffer = nullptr;
+static PFN_vkSetLatencySleepModeNV_t g_real_vkSetLatencySleepModeNV = nullptr;
+static PFN_vkLatencySleepNV_t g_real_vkLatencySleepNV = nullptr;
+static PFN_vkCreateSemaphore_t g_real_vkCreateSemaphore = nullptr;
+static PFN_vkGetSemaphoreCounterValue_t g_real_vkGetSemaphoreCounterValue = nullptr;
+static PFN_vkWaitSemaphores_t g_real_vkWaitSemaphores = nullptr;
+
+static std::atomic<VkDevice> g_injected_reflex_device{0};
+static std::atomic<uint64_t> g_injected_reflex_swapchain_u64{0};  // VkSwapchainKHR as uint64_t
+static std::atomic<uint64_t> g_injected_reflex_semaphore_u64{0};
+static std::atomic<uint64_t> g_injected_reflex_present_id{0};
+static std::atomic<uint64_t> g_injected_markers_count{0};
+static std::atomic<uint64_t> g_injected_sleep_calls{0};
+static std::atomic<uint64_t> g_injected_swapchain_latency_creates{0};
+static std::atomic<uint64_t> g_injected_renderbatch_frame{0};  // once-per-frame guard for BeginCommandBuffer
+static std::atomic<bool> g_injected_procs_resolved{false};
 
 // VK_NV_low_latency2 marker enum (same order as NvLL): 0=SIMULATION_START, 4=PRESENT_START, 5=PRESENT_END
 static constexpr int VK_LATENCY_MARKER_SIMULATION_START_NV = 0;
+static constexpr int VK_LATENCY_MARKER_SIMULATION_END_NV = 1;
+static constexpr int VK_LATENCY_MARKER_RENDERSUBMIT_START_NV = 2;
+static constexpr int VK_LATENCY_MARKER_RENDERSUBMIT_END_NV = 3;
 static constexpr int VK_LATENCY_MARKER_PRESENT_START_NV = 4;
 static constexpr int VK_LATENCY_MARKER_PRESENT_END_NV = 5;
 
@@ -98,8 +135,47 @@ static bool HasExtension(const char* const* names, uint32_t count, const char* w
     return false;
 }
 
-static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice,
-                                                 const VkDeviceCreateInfo* pCreateInfo,
+/** Walk pNext chain to find VkPresentIdKHR; returns nullptr if not found. */
+static const VkPresentIdKHR* FindPresentIdInPresentInfo(const VkPresentInfoKHR* pPresentInfo) {
+    const void* p = pPresentInfo->pNext;
+    while (p != nullptr) {
+        const auto* base = static_cast<const VkBaseInStructure*>(p);
+        if (base->sType == VK_STRUCTURE_TYPE_PRESENT_ID_KHR) {
+            return static_cast<const VkPresentIdKHR*>(p);
+        }
+        p = base->pNext;
+    }
+    return nullptr;
+}
+
+static void ResolveInjectedReflexProcs(VkDevice device) {
+    if (g_injected_procs_resolved.load()) {
+        return;
+    }
+    if (device == VK_NULL_HANDLE) {
+        return;
+    }
+    PFN_vkGetDeviceProcAddr getProc = vkGetDeviceProcAddr_Original;
+    if (!getProc) {
+        return;
+    }
+    g_real_vkSetLatencySleepModeNV =
+        reinterpret_cast<PFN_vkSetLatencySleepModeNV_t>(getProc(device, "vkSetLatencySleepModeNV"));
+    g_real_vkLatencySleepNV =
+        reinterpret_cast<PFN_vkLatencySleepNV_t>(getProc(device, "vkLatencySleepNV"));
+    g_real_vkCreateSemaphore =
+        reinterpret_cast<PFN_vkCreateSemaphore_t>(getProc(device, "vkCreateSemaphore"));
+    g_real_vkGetSemaphoreCounterValue =
+        reinterpret_cast<PFN_vkGetSemaphoreCounterValue_t>(getProc(device, "vkGetSemaphoreCounterValue"));
+    g_real_vkWaitSemaphores =
+        reinterpret_cast<PFN_vkWaitSemaphores_t>(getProc(device, "vkWaitSemaphores"));
+    g_injected_procs_resolved.store(
+        g_real_vkSetLatencySleepModeNV != nullptr && g_real_vkLatencySleepNV != nullptr &&
+        g_real_vkCreateSemaphore != nullptr && g_real_vkGetSemaphoreCounterValue != nullptr &&
+        g_real_vkWaitSemaphores != nullptr);
+}
+
+static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
                                                  const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
     g_calls_vkCreateDevice.fetch_add(1);
     g_vkCreateDevice_detour_ever_called.store(true);
@@ -107,7 +183,8 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
-    const bool append_extensions = true;  // Always append Reflex extensions in vkCreateDevice.
+    const bool append_extensions =
+        settings::g_mainTabSettings.vulkan_injected_reflex_enabled.GetValue();
     std::vector<std::string> exts_for_ui;
 
     if (pCreateInfo != nullptr && pCreateInfo->ppEnabledExtensionNames != nullptr
@@ -170,6 +247,82 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
     return r;
 }
 
+static VkResult VKAPI_CALL vkCreateSwapchainKHR_Detour(VkDevice device,
+                                                        const VkSwapchainCreateInfoKHR* pCreateInfo,
+                                                        const VkAllocationCallbacks* pAllocator,
+                                                        VkSwapchainKHR* pSwapchain) {
+    if (g_real_vkCreateSwapchainKHR == nullptr) {
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+    const bool inject = settings::g_mainTabSettings.vulkan_injected_reflex_enabled.GetValue() &&
+                        settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled.GetValue();
+    if (!inject) {
+        return g_real_vkCreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
+    }
+    VkSwapchainLatencyCreateInfoNV latency_info = {};
+    latency_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV;
+    latency_info.pNext = pCreateInfo->pNext;
+    latency_info.latencyModeEnable = VK_TRUE;
+    VkSwapchainCreateInfoKHR mod = *pCreateInfo;
+    mod.pNext = &latency_info;
+    VkResult r = g_real_vkCreateSwapchainKHR(device, &mod, pAllocator, pSwapchain);
+    if (r == VK_SUCCESS && pSwapchain != nullptr && *pSwapchain != VK_NULL_HANDLE) {
+        ResolveInjectedReflexProcs(device);
+        if (g_real_vkCreateSemaphore != nullptr) {
+            VkSemaphoreTypeCreateInfo type_info = {};
+            type_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+            type_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+            type_info.initialValue = 0;
+            VkSemaphoreCreateInfo sem_info = {};
+            sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            sem_info.pNext = &type_info;
+            VkSemaphore sem = VK_NULL_HANDLE;
+            if (g_real_vkCreateSemaphore(device, &sem_info, pAllocator, &sem) == VK_SUCCESS) {
+                g_injected_reflex_device.store(device);
+                g_injected_reflex_swapchain_u64.store(
+                    *reinterpret_cast<const uint64_t*>(pSwapchain));
+                g_injected_reflex_semaphore_u64.store(reinterpret_cast<uint64_t>(sem));
+                g_injected_swapchain_latency_creates.fetch_add(1);
+            }
+        }
+    }
+    return r;
+}
+
+static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBuffer,
+                                                        const VkCommandBufferBeginInfo* pBeginInfo) {
+    if (g_real_vkBeginCommandBuffer == nullptr) {
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
+    const bool inject = settings::g_mainTabSettings.vulkan_injected_reflex_enabled.GetValue() &&
+                        settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled.GetValue();
+    if (inject && GetModuleHandleW(L"NvLowLatencyVk.dll") == nullptr) {
+        VkDevice device = g_injected_reflex_device.load();
+        VkSwapchainKHR swapchain =
+            reinterpret_cast<VkSwapchainKHR>(g_injected_reflex_swapchain_u64.load());
+        if (device != VK_NULL_HANDLE && swapchain != VK_NULL_HANDLE &&
+            g_real_vkSetLatencyMarkerNV != nullptr) {
+            const uint64_t frame_id = g_injected_reflex_present_id.load();
+            uint64_t expected = g_injected_renderbatch_frame.load();
+            if (expected < frame_id &&
+                g_injected_renderbatch_frame.compare_exchange_strong(expected, frame_id)) {
+                    VkSetLatencyMarkerInfoNV marker = {};
+                    marker.sType = VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV;
+                    marker.presentID = frame_id;
+                    marker.marker = static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_SIMULATION_START_NV);
+                    g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+                    marker.marker = static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_SIMULATION_END_NV);
+                    g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+                    marker.marker =
+                        static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
+                    g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+                    g_injected_markers_count.fetch_add(3);
+                }
+        }
+    }
+    return g_real_vkBeginCommandBuffer(commandBuffer, pBeginInfo);
+}
+
 void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,
                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
     (void)swapchain;
@@ -217,7 +370,7 @@ void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swap
     }
 }
 
-// vkQueuePresentKHR detour: FPS limiter for Vulkan (same pattern as IDXGISwapChain_Present_Detour).
+// vkQueuePresentKHR detour: FPS limiter + optional injected Reflex (present ID, markers, sleep).
 static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
     if (g_real_vkQueuePresentKHR == nullptr) {
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -232,7 +385,117 @@ static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPrese
     if (GetChosenFrameTimeLocation() == FpsLimiterCallSite::vk_queue_present_khr) {
         RecordFrameTime(FrameTimeMode::kPresent);
     }
-    const VkResult ret = g_real_vkQueuePresentKHR(queue, pPresentInfo);
+
+    const bool inject_reflex = settings::g_mainTabSettings.vulkan_injected_reflex_enabled.GetValue() &&
+                               settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled.GetValue() &&
+                               (GetModuleHandleW(L"NvLowLatencyVk.dll") == nullptr);
+    const VkPresentInfoKHR* pPresent = pPresentInfo;
+    uint64_t present_id_value = 0;
+    VkPresentIdKHR present_id_struct = {};
+    VkLatencySubmissionPresentIdNV latency_submission = {};
+    VkPresentInfoKHR present_info_copy = {};
+    if (inject_reflex && pPresentInfo->swapchainCount == 1) {
+        const VkPresentIdKHR* pGamePresentId = FindPresentIdInPresentInfo(pPresentInfo);
+        if (pGamePresentId != nullptr && pGamePresentId->pPresentIds != nullptr &&
+            pGamePresentId->swapchainCount > 0) {
+            present_id_value = pGamePresentId->pPresentIds[0];
+        } else {
+            present_id_value = g_injected_reflex_present_id.load();
+        }
+        g_injected_reflex_present_id.store(present_id_value + 1);
+
+        latency_submission.sType = VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV;
+        latency_submission.pNext = pPresentInfo->pNext;
+        latency_submission.presentID = present_id_value;
+        present_id_struct.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
+        present_id_struct.pNext = &latency_submission;
+        present_id_struct.swapchainCount = 1;
+        present_id_struct.pPresentIds = &present_id_value;
+        present_info_copy = *pPresentInfo;
+        present_info_copy.pNext = &present_id_struct;
+        pPresent = &present_info_copy;
+
+        VkDevice device = g_injected_reflex_device.load();
+        VkSwapchainKHR swapchain =
+            reinterpret_cast<VkSwapchainKHR>(g_injected_reflex_swapchain_u64.load());
+        if (device != VK_NULL_HANDLE && swapchain != VK_NULL_HANDLE &&
+            g_real_vkSetLatencyMarkerNV != nullptr) {
+            VkSetLatencyMarkerInfoNV marker = {};
+            marker.sType = VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV;
+            marker.presentID = present_id_value;
+            if (present_id_value == 0) {
+                marker.marker =
+                    static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_SIMULATION_START_NV);
+                g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+                g_injected_markers_count.fetch_add(1);
+            }
+            const uint64_t batch = g_injected_renderbatch_frame.load();
+            if (batch != present_id_value) {
+                marker.marker =
+                    static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_SIMULATION_END_NV);
+                g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+                marker.marker =
+                    static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
+                g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+                g_injected_markers_count.fetch_add(2);
+            }
+            marker.marker =
+                static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
+            g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+            marker.marker =
+                static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_PRESENT_START_NV);
+            g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+            g_injected_markers_count.fetch_add(2);
+        }
+    }
+
+    const VkResult ret = g_real_vkQueuePresentKHR(queue, pPresent);
+
+    if (inject_reflex && ret == VK_SUCCESS && pPresentInfo->swapchainCount == 1) {
+        VkDevice device = g_injected_reflex_device.load();
+        VkSwapchainKHR swapchain =
+            reinterpret_cast<VkSwapchainKHR>(g_injected_reflex_swapchain_u64.load());
+        VkSemaphore semaphore =
+            reinterpret_cast<VkSemaphore>(g_injected_reflex_semaphore_u64.load());
+        if (device != VK_NULL_HANDLE && swapchain != VK_NULL_HANDLE &&
+            g_real_vkSetLatencyMarkerNV != nullptr) {
+            VkSetLatencyMarkerInfoNV marker = {};
+            marker.sType = VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV;
+            marker.presentID = present_id_value;
+            marker.marker = static_cast<VkLatencyMarkerNV>(VK_LATENCY_MARKER_PRESENT_END_NV);
+            g_real_vkSetLatencyMarkerNV(device, swapchain, &marker);
+            g_injected_markers_count.fetch_add(1);
+        }
+        if (g_real_vkSetLatencySleepModeNV != nullptr && g_real_vkLatencySleepNV != nullptr &&
+            g_real_vkGetSemaphoreCounterValue != nullptr && g_real_vkWaitSemaphores != nullptr &&
+            semaphore != VK_NULL_HANDLE) {
+            ResolveInjectedReflexProcs(device);
+            uint64_t sem_value = 0;
+            if (g_real_vkGetSemaphoreCounterValue(device, semaphore, &sem_value) == VK_SUCCESS) {
+                sem_value += 1;
+                VkLatencySleepModeInfoNV sleep_mode = {};
+                sleep_mode.sType = VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV;
+                sleep_mode.lowLatencyMode = VK_TRUE;
+                sleep_mode.lowLatencyBoost = VK_FALSE;
+                sleep_mode.minimumIntervalUs = 0;
+                g_real_vkSetLatencySleepModeNV(device, swapchain, &sleep_mode);
+                VkLatencySleepInfoNV sleep_info = {};
+                sleep_info.sType = VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV;
+                sleep_info.signalSemaphore = semaphore;
+                sleep_info.value = sem_value;
+                if (g_real_vkLatencySleepNV(device, swapchain, &sleep_info) == VK_SUCCESS) {
+                    g_injected_sleep_calls.fetch_add(1);
+                    VkSemaphoreWaitInfo wait_info = {};
+                    wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+                    wait_info.semaphoreCount = 1;
+                    wait_info.pSemaphores = &semaphore;
+                    wait_info.pValues = &sem_value;
+                    g_real_vkWaitSemaphores(device, &wait_info, UINT64_MAX);
+                }
+            }
+        }
+    }
+
     if (use_fps_limiter) {
         display_commanderhooks::dxgi::HandlePresentAfter(false);
     }
@@ -262,9 +525,9 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice dev
     if (pName != nullptr && std::strcmp(pName, "vkSetLatencyMarkerNV") == 0 && result != nullptr) {
         g_loader_intercept_count.fetch_add(1);
         if (g_real_vkSetLatencyMarkerNV == nullptr) {
-            if (CreateAndEnableHook(
-                    reinterpret_cast<LPVOID>(result), reinterpret_cast<LPVOID>(&vkSetLatencyMarkerNV_Detour),
-                    reinterpret_cast<LPVOID*>(&g_real_vkSetLatencyMarkerNV), "vkSetLatencyMarkerNV")) {
+            if (CreateAndEnableHook(reinterpret_cast<LPVOID>(result),
+                                    reinterpret_cast<LPVOID>(&vkSetLatencyMarkerNV_Detour),
+                                    reinterpret_cast<LPVOID*>(&g_real_vkSetLatencyMarkerNV), "vkSetLatencyMarkerNV")) {
                 g_hooked_vkSetLatencyMarkerNV_target = result;
             } else {
                 g_real_vkSetLatencyMarkerNV = reinterpret_cast<PFN_vkSetLatencyMarkerNV_t>(result);
@@ -275,8 +538,8 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice dev
     if (pName != nullptr && std::strcmp(pName, "vkQueuePresentKHR") == 0 && result != nullptr) {
         if (g_real_vkQueuePresentKHR == nullptr) {
             if (CreateAndEnableHook(reinterpret_cast<LPVOID>(result),
-                                   reinterpret_cast<LPVOID>(&vkQueuePresentKHR_Detour),
-                                   reinterpret_cast<LPVOID*>(&g_real_vkQueuePresentKHR), "vkQueuePresentKHR")) {
+                                    reinterpret_cast<LPVOID>(&vkQueuePresentKHR_Detour),
+                                    reinterpret_cast<LPVOID*>(&g_real_vkQueuePresentKHR), "vkQueuePresentKHR")) {
                 g_hooked_vkQueuePresentKHR_target = result;
                 LogInfo("VulkanLoader: vkQueuePresentKHR hooked for FPS limiter");
             } else {
@@ -284,6 +547,18 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice dev
             }
         }
         result = reinterpret_cast<PFN_vkVoidFunction>(&vkQueuePresentKHR_Detour);
+    }
+    if (pName != nullptr && std::strcmp(pName, "vkCreateSwapchainKHR") == 0 && result != nullptr) {
+        if (g_real_vkCreateSwapchainKHR == nullptr) {
+            g_real_vkCreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR_t>(result);
+        }
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkCreateSwapchainKHR_Detour);
+    }
+    if (pName != nullptr && std::strcmp(pName, "vkBeginCommandBuffer") == 0 && result != nullptr) {
+        if (g_real_vkBeginCommandBuffer == nullptr) {
+            g_real_vkBeginCommandBuffer = reinterpret_cast<PFN_vkBeginCommandBuffer_t>(result);
+        }
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkBeginCommandBuffer_Detour);
     }
     return result;
 }
@@ -334,15 +609,15 @@ static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
     g_loader_hooks_installed.store(true);
     display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
         display_commanderhooks::HookType::VULKAN_LOADER);
-    LogInfo("VulkanLoader: VK_NV_low_latency2 hooks installed (vkGetInstanceProcAddr + vkGetDeviceProcAddr + vkCreateDevice export)");
+    LogInfo(
+        "VulkanLoader: VK_NV_low_latency2 hooks installed (vkGetInstanceProcAddr + vkGetDeviceProcAddr + "
+        "vkCreateDevice export)");
     return true;
 }
 
 }  // namespace
 
-bool InstallVulkanLoaderHooks(void* vulkan1_module) {
-    return InstallVulkanLoaderHooksImpl(vulkan1_module);
-}
+bool InstallVulkanLoaderHooks(void* vulkan1_module) { return InstallVulkanLoaderHooksImpl(vulkan1_module); }
 
 bool AreVulkanLoaderHooksInstalled() { return g_loader_hooks_installed.load(); }
 
@@ -377,3 +652,26 @@ void GetVulkanEnabledExtensions(std::vector<std::string>& out) {
 }
 
 bool HasVulkanCreateDeviceBeenCalled() { return g_vkCreateDevice_detour_ever_called.load(); }
+
+void GetVulkanInjectedReflexDebugState(VulkanInjectedReflexDebugState* out) {
+    if (out == nullptr) {
+        return;
+    }
+    out->enabled = settings::g_mainTabSettings.vulkan_injected_reflex_enabled.GetValue();
+    out->loader_hooks_on = g_loader_hooks_installed.load();
+    out->nvll_loaded = (GetModuleHandleW(L"NvLowLatencyVk.dll") != nullptr);
+    const bool has_dev = g_injected_reflex_device.load() != VK_NULL_HANDLE;
+    const bool has_swap = g_injected_reflex_swapchain_u64.load() != 0;
+    const bool has_sem = g_injected_reflex_semaphore_u64.load() != 0;
+    out->injecting =
+        out->enabled && out->loader_hooks_on && !out->nvll_loaded && has_dev && has_swap &&
+        g_real_vkSetLatencyMarkerNV != nullptr;
+    out->present_id = g_injected_reflex_present_id.load();
+    out->markers_injected = g_injected_markers_count.load();
+    out->sleep_calls = g_injected_sleep_calls.load();
+    out->swapchain_latency_creates = g_injected_swapchain_latency_creates.load();
+    out->has_device = has_dev;
+    out->has_swapchain = has_swap;
+    out->has_semaphore = has_sem;
+    out->procs_resolved = g_injected_procs_resolved.load();
+}

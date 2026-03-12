@@ -124,8 +124,81 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
                 "next vulkan-1.dll load, or now if already loaded.");
         }
 
+        if (CheckboxSetting(settings::g_mainTabSettings.vulkan_injected_reflex_enabled,
+                            "Enable injected Reflex for Vulkan", imgui)) {
+            // No hook install here; injection runs when loader hooks are on and this is true.
+        }
+        if (imgui.IsItemHovered()) {
+            imgui.SetTooltipEx(
+                "Inject Reflex (markers + sleep) for Vulkan games that don't use native Reflex. Requires vulkan-1 "
+                "loader hooks. Default off. Disabled when NvLowLatencyVk.dll is loaded.");
+        }
+
         imgui.Unindent();
         imgui.Spacing();
+    }
+
+    // --- Injected Reflex debug (when feature is relevant) ---
+    VulkanInjectedReflexDebugState inj_state = {};
+    GetVulkanInjectedReflexDebugState(&inj_state);
+    if (inj_state.enabled || inj_state.loader_hooks_on) {
+        if (imgui.CollapsingHeader("Injected Reflex (debug)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            imgui.Indent();
+
+            imgui.Text("Setting enabled:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.TextColored(inj_state.enabled ? ui::colors::ICON_POSITIVE : ui::colors::TEXT_DIMMED,
+                             inj_state.enabled ? "Yes" : "No");
+
+            imgui.Text("Loader hooks on:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.TextColored(inj_state.loader_hooks_on ? ui::colors::ICON_POSITIVE : ui::colors::TEXT_DIMMED,
+                             inj_state.loader_hooks_on ? "Yes" : "No");
+
+            imgui.Text("NvLowLatencyVk loaded (injection skipped):");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.TextColored(inj_state.nvll_loaded ? ui::colors::ICON_WARNING : ui::colors::TEXT_DIMMED,
+                             inj_state.nvll_loaded ? "Yes" : "No");
+            if (inj_state.nvll_loaded && imgui.IsItemHovered()) {
+                imgui.SetTooltipEx("Game uses native NvLowLatencyVk; we do not inject.");
+            }
+
+            imgui.Text("Injecting (all conditions met):");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.TextColored(inj_state.injecting ? ui::colors::ICON_SUCCESS : ui::colors::TEXT_DIMMED,
+                             inj_state.injecting ? "Yes" : "No");
+
+            imgui.Text("Present ID:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<unsigned long long>(inj_state.present_id));
+
+            imgui.Text("Markers injected:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<unsigned long long>(inj_state.markers_injected));
+
+            imgui.Text("Sleep calls:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<unsigned long long>(inj_state.sleep_calls));
+
+            imgui.Text("Swapchains w/ latency mode:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<unsigned long long>(inj_state.swapchain_latency_creates));
+
+            imgui.Text("Has device / swapchain / semaphore:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%s / %s / %s",
+                       inj_state.has_device ? "Y" : "N",
+                       inj_state.has_swapchain ? "Y" : "N",
+                       inj_state.has_semaphore ? "Y" : "N");
+
+            imgui.Text("Procs resolved:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.TextColored(inj_state.procs_resolved ? ui::colors::ICON_POSITIVE : ui::colors::TEXT_DIMMED,
+                             inj_state.procs_resolved ? "Yes" : "No");
+
+            imgui.Unindent();
+            imgui.Spacing();
+        }
     }
 
     // --- Enabled extensions (from vkCreateDevice) ---

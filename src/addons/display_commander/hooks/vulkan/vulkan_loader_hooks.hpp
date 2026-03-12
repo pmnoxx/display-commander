@@ -31,3 +31,20 @@ void GetVulkanEnabledExtensions(std::vector<std::string>& out);
 
 /** True if vkCreateDevice_Detour has been entered at least once (hooks installed and game called vkCreateDevice). */
 bool HasVulkanCreateDeviceBeenCalled();
+
+/** Injected Reflex (VK_NV_low_latency2) debug state for Vulkan tab. All params nullable. */
+struct VulkanInjectedReflexDebugState {
+    bool enabled;           /**< vulkan_injected_reflex_enabled setting. */
+    bool loader_hooks_on;   /**< Vulkan loader hooks installed. */
+    bool nvll_loaded;       /**< NvLowLatencyVk.dll loaded (injection skipped when true). */
+    bool injecting;        /**< Actually injecting this frame (enabled + hooks + !nvll + device/swapchain/sem ready). */
+    uint64_t present_id;   /**< Last present ID used (game or our counter). */
+    uint64_t markers_injected;   /**< Total markers we injected (present path + BeginCommandBuffer). */
+    uint64_t sleep_calls;  /**< vkLatencySleepNV calls we issued. */
+    uint64_t swapchain_latency_creates; /**< Swapchains created with latency mode. */
+    bool has_device;       /**< We have a tracked VkDevice. */
+    bool has_swapchain;     /**< We have a tracked VkSwapchainKHR. */
+    bool has_semaphore;    /**< We have a timeline semaphore for sleep. */
+    bool procs_resolved;   /**< vkSetLatencySleepModeNV etc. resolved. */
+};
+void GetVulkanInjectedReflexDebugState(VulkanInjectedReflexDebugState* out);

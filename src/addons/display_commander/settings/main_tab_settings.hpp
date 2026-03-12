@@ -196,6 +196,9 @@ class MainTabSettings {
     /** When enabled, hook vulkan-1.dll vkGetDeviceProcAddr and wrap vkSetLatencyMarkerNV (VK_NV_low_latency2) for frame
      * pacing. */
     ui::new_ui::BoolSetting vulkan_vk_loader_hooks_enabled;
+    /** When enabled, inject Reflex (markers + sleep) for Vulkan games that don't use native Reflex. Requires vulkan-1
+     * loader hooks. Default off. */
+    ui::new_ui::BoolSetting vulkan_injected_reflex_enabled;
 
     // Brightness (ReShade effect driven by DC)
     /** When true, Brightness/AutoHDR controls are active and DC adds EffectSearchPaths/TextureSearchPaths to ReShade.

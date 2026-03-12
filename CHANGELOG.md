@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.431
+- [cleanup] **DXGI factory wrapper moved to hooks/dxgi/** - dxgi_factory_wrapper.cpp and dxgi_factory_wrapper.hpp are now under `hooks/dxgi/` alongside dxgi_present_hooks for consistency. All consumer includes and docs updated.
+
 ## v0.12.430
 - [cleanup] **OpenGL hooks moved to hooks/opengl/** - OpenGL (WGL) hook sources (opengl_hooks.cpp, opengl_hooks.hpp) are now under `hooks/opengl/` for consistency with `hooks/dxgi/`, `hooks/nvidia/`, `hooks/vulkan/`, etc. All consumer includes and docs updated.
 

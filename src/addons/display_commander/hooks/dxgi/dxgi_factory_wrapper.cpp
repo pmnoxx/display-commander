@@ -9,16 +9,16 @@
 #include <dxgi1_6.h>
 #include <initguid.h>
 #include <cmath>
-#include "../globals.hpp"
-#include "../settings/advanced_tab_settings.hpp"
-#include "../settings/main_tab_settings.hpp"
-#include "../swapchain_events.hpp"
-#include "../utils/detour_call_tracker.hpp"
-#include "../utils/general_utils.hpp"
-#include "../utils/logging.hpp"
-#include "../utils/perf_measurement.hpp"
-#include "../utils/timing.hpp"
-#include "dxgi/dxgi_present_hooks.hpp"
+#include "../../globals.hpp"
+#include "../../settings/advanced_tab_settings.hpp"
+#include "../../settings/main_tab_settings.hpp"
+#include "../../swapchain_events.hpp"
+#include "../../utils/detour_call_tracker.hpp"
+#include "../../utils/general_utils.hpp"
+#include "../../utils/logging.hpp"
+#include "../../utils/perf_measurement.hpp"
+#include "../../utils/timing.hpp"
+#include "dxgi_present_hooks.hpp"
 
 // Custom IID for DXGIFactoryWrapper interface
 // {A1B2C3D4-E5F6-4789-A012-B345C678D909}

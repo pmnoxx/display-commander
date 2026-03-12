@@ -11,7 +11,7 @@
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
-#include "hooks/dxgi_factory_wrapper.hpp"
+#include "hooks/dxgi/dxgi_factory_wrapper.hpp"
 #include "hooks/hid_suppression_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "hooks/nvidia/streamline_hooks.hpp"

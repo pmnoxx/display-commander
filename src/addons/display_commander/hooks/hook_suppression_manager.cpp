@@ -44,6 +44,7 @@ ui::new_ui::SettingBase* GetSuppressionSetting(HookType hookType) {
         case HookType::WINDOW_PROC:      return &settings::g_hook_suppression_settings.suppress_window_proc_hooks;
         case HookType::DBGHELP:          return &settings::g_hook_suppression_settings.suppress_dbghelp_hooks;
         case HookType::D3D9:             return &settings::g_hook_suppression_settings.suppress_d3d9_hooks;
+        case HookType::VULKAN_LOADER:     return &settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks;
         default:                         return nullptr;
     }
 }
@@ -144,6 +145,9 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
                 case HookType::D3D9:
                     current_value = settings::g_hook_suppression_settings.suppress_d3d9_hooks.GetValue();
                     break;
+                case HookType::VULKAN_LOADER:
+                    current_value = settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.GetValue();
+                    break;
                 default: break;
             }
 
@@ -197,6 +201,8 @@ bool HookSuppressionManager::ShouldSuppressHook(HookType hookType) {
         case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.suppress_window_proc_hooks.GetValue();
         case HookType::DBGHELP:     return settings::g_hook_suppression_settings.suppress_dbghelp_hooks.GetValue();
         case HookType::D3D9:        return settings::g_hook_suppression_settings.suppress_d3d9_hooks.GetValue();
+        case HookType::VULKAN_LOADER:
+            return settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.GetValue();
         default:
             LogError("HookSuppressionManager::ShouldSuppressHook - Invalid hook type: %d", static_cast<int>(hookType));
             return false;
@@ -316,6 +322,10 @@ void HookSuppressionManager::SetSuppressHook(HookType hookType, bool suppress) {
         case HookType::D3D9:
             settings::g_hook_suppression_settings.suppress_d3d9_hooks.SetValue(suppress);
             settings::g_hook_suppression_settings.suppress_d3d9_hooks.Save();
+            break;
+        case HookType::VULKAN_LOADER:
+            settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.SetValue(suppress);
+            settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.Save();
             break;
         default:
             LogError("HookSuppressionManager::SetSuppressHook - Invalid hook type: %d", static_cast<int>(hookType));
@@ -493,6 +503,12 @@ void HookSuppressionManager::MarkHookInstalled(HookType hookType) {
                 settings::g_hook_suppression_settings.suppress_d3d9_hooks.SetValue(false);
             }
             break;
+        case HookType::VULKAN_LOADER:
+            if (!settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue()) {
+                settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.SetValue(true);
+                settings::g_hook_suppression_settings.suppress_vulkan_loader_hooks.SetValue(false);
+            }
+            break;
 
         default:
 
@@ -534,6 +550,7 @@ std::string HookSuppressionManager::GetHookTypeName(HookType hookType) {
         case HookType::WINDOW_PROC:             return "Window Procedure";
         case HookType::DBGHELP:                 return "DbgHelp";
         case HookType::D3D9:                    return "D3D9";
+        case HookType::VULKAN_LOADER:           return "Vulkan Loader";
         default:
             LogError("HookSuppressionManager::GetHookTypeName - Invalid hook type: %d", static_cast<int>(hookType));
             return "Unknown";
@@ -583,6 +600,8 @@ bool HookSuppressionManager::IsHookInstalled(HookType hookType) {
         case HookType::WINDOW_PROC: return settings::g_hook_suppression_settings.window_proc_hooks_installed.GetValue();
         case HookType::DBGHELP:     return settings::g_hook_suppression_settings.dbghelp_hooks_installed.GetValue();
         case HookType::D3D9:        return settings::g_hook_suppression_settings.d3d9_hooks_installed.GetValue();
+        case HookType::VULKAN_LOADER:
+            return settings::g_hook_suppression_settings.vulkan_loader_hooks_installed.GetValue();
         default:                    return false;
     }
 }

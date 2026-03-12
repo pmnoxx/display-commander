@@ -40,6 +40,7 @@ HookSuppressionSettings::HookSuppressionSettings()
       suppress_window_proc_hooks("WindowProcHooks", false, "DisplayCommander.HookSuppression"),
       suppress_dbghelp_hooks("DbghelpHooks", false, "DisplayCommander.HookSuppression"),
       suppress_d3d9_hooks("D3D9Hooks", false, "DisplayCommander.HookSuppression"),
+      suppress_vulkan_loader_hooks("VulkanLoaderHooks", false, "DisplayCommander.HookSuppression"),
       dxgi_factory_hooks_installed("DxgiFactoryHooks", false, "DisplayCommander.HooksInstalled"),
       dxgi_swapchain_hooks_installed("DxgiSwapchainHooks", false, "DisplayCommander.HooksInstalled"),
       sl_proxy_dxgi_swapchain_hooks_installed("SlProxyDxgiSwapchainHooks", false, "DisplayCommander.HooksInstalled"),
@@ -67,7 +68,8 @@ HookSuppressionSettings::HookSuppressionSettings()
       process_exit_hooks_installed("ProcessExitHooks", false, "DisplayCommander.HooksInstalled"),
       window_proc_hooks_installed("WindowProcHooks", false, "DisplayCommander.HooksInstalled"),
       dbghelp_hooks_installed("DbghelpHooks", false, "DisplayCommander.HooksInstalled"),
-      d3d9_hooks_installed("D3D9Hooks", false, "DisplayCommander.HooksInstalled") {
+      d3d9_hooks_installed("D3D9Hooks", false, "DisplayCommander.HooksInstalled"),
+      vulkan_loader_hooks_installed("VulkanLoaderHooks", false, "DisplayCommander.HooksInstalled") {
     // Initialize the all_settings_ vector
     all_settings_ = {
         &suppress_dxgi_factory_hooks,
@@ -98,6 +100,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &suppress_window_proc_hooks,
         &suppress_dbghelp_hooks,
         &suppress_d3d9_hooks,
+        &suppress_vulkan_loader_hooks,
         &dxgi_factory_hooks_installed,
         &dxgi_swapchain_hooks_installed,
         &sl_proxy_dxgi_swapchain_hooks_installed,
@@ -126,6 +129,7 @@ HookSuppressionSettings::HookSuppressionSettings()
         &window_proc_hooks_installed,
         &dbghelp_hooks_installed,
         &d3d9_hooks_installed,
+        &vulkan_loader_hooks_installed,
     };
 }
 

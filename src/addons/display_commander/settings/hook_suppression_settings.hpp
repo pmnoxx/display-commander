@@ -53,6 +53,7 @@ class HookSuppressionSettings {
     BoolSetting suppress_window_proc_hooks;
     BoolSetting suppress_dbghelp_hooks;
     BoolSetting suppress_d3d9_hooks;
+    BoolSetting suppress_vulkan_loader_hooks;
 
     // Auto-detection settings (set to 1 when hooks are successfully installed)
     BoolSetting dxgi_factory_hooks_installed;
@@ -83,6 +84,7 @@ class HookSuppressionSettings {
     BoolSetting window_proc_hooks_installed;
     BoolSetting dbghelp_hooks_installed;
     BoolSetting d3d9_hooks_installed;
+    BoolSetting vulkan_loader_hooks_installed;
 
    private:
     std::vector<SettingBase*> all_settings_;

@@ -1,6 +1,7 @@
 #include "vulkan_loader_hooks.hpp"
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
+#include "../hook_suppression_manager.hpp"
 #include "../../swapchain_events.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
@@ -10,6 +11,7 @@
 
 #include <MinHook.h>
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -25,71 +27,45 @@ using PFN_vkGetDeviceProcAddr_t = PFN_vkGetDeviceProcAddr;
 using PFN_vkSetLatencyMarkerNV_t = PFN_vkSetLatencyMarkerNV;
 using PFN_vkCreateDevice_t = PFN_vkCreateDevice;
 
-// Dummy implementations returned when the loader reports null for VK_NV_low_latency2 (so we can see if the game calls
-// them).
-static std::atomic<uint64_t> g_dummy_SetLatencySleepModeNV_calls{0};
-static std::atomic<uint64_t> g_dummy_LatencySleepNV_calls{0};
-static std::atomic<uint64_t> g_dummy_SetLatencyMarkerNV_calls{0};
-static std::atomic<uint64_t> g_dummy_GetLatencyTimingsNV_calls{0};
-
-static VkResult VKAPI_CALL Dummy_vkSetLatencySleepModeNV(VkDevice device, VkSwapchainKHR swapchain,
-                                                         const VkLatencySleepModeInfoNV* pSleepModeInfo) {
-    (void)device;
-    (void)swapchain;
-    (void)pSleepModeInfo;
-    g_dummy_SetLatencySleepModeNV_calls.fetch_add(1);
-    LogInfo("VulkanLoader: Dummy_vkSetLatencySleepModeNV called (driver returned null)");
-    return VK_SUCCESS;
-}
-
-static VkResult VKAPI_CALL Dummy_vkLatencySleepNV(VkDevice device, VkSwapchainKHR swapchain,
-                                                  const VkLatencySleepInfoNV* pSleepInfo) {
-    (void)device;
-    (void)swapchain;
-    (void)pSleepInfo;
-    g_dummy_LatencySleepNV_calls.fetch_add(1);
-    LogInfo("VulkanLoader: Dummy_vkLatencySleepNV called (driver returned null)");
-    return VK_SUCCESS;
-}
-
-static void VKAPI_CALL Dummy_vkSetLatencyMarkerNV(VkDevice device, VkSwapchainKHR swapchain,
-                                                  const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
-    (void)device;
-    (void)swapchain;
-    uint64_t count = g_dummy_SetLatencyMarkerNV_calls.fetch_add(1) + 1;
-    int marker = (pLatencyMarkerInfo != nullptr) ? static_cast<int>(pLatencyMarkerInfo->marker) : -1;
-    uint64_t present_id = (pLatencyMarkerInfo != nullptr) ? pLatencyMarkerInfo->presentID : 0;
-    LogInfo(
-        "VulkanLoader: Dummy_vkSetLatencyMarkerNV called (driver returned null) marker=%d presentID=%llu "
-        "total_calls=%llu",
-        marker, static_cast<unsigned long long>(present_id), static_cast<unsigned long long>(count));
-}
-
-static void VKAPI_CALL Dummy_vkGetLatencyTimingsNV(VkDevice device, VkSwapchainKHR swapchain,
-                                                   VkGetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
-    (void)device;
-    (void)swapchain;
-    (void)pLatencyMarkerInfo;
-    uint64_t count = g_dummy_GetLatencyTimingsNV_calls.fetch_add(1) + 1;
-    LogInfo("VulkanLoader: Dummy_vkGetLatencyTimingsNV called (driver returned null) total_calls=%llu",
-            static_cast<unsigned long long>(count));
-}
-
 static PFN_vkGetInstanceProcAddr_t vkGetInstanceProcAddr_Original = nullptr;
 static PFN_vkGetDeviceProcAddr_t vkGetDeviceProcAddr_Original = nullptr;
 static PFN_vkCreateDevice_t g_real_vkCreateDevice = nullptr;
+
+// Forward declarations for the detour table (defined below).
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance instance, const char* pName);
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice device, const char* pName);
+
+/** Table-driven hook install: name, detour, original (same order as InstallVulkanLoaderHooks loop). */
+struct VulkanLoaderHookEntry {
+    const char* name;
+    LPVOID detour;
+    LPVOID* original;
+};
+static constexpr std::size_t kVulkanLoaderHookCount = 2;
+static const VulkanLoaderHookEntry kVulkanLoaderHooks[kVulkanLoaderHookCount] = {
+    {"vkGetInstanceProcAddr", reinterpret_cast<LPVOID>(&vkGetInstanceProcAddr_Detour),
+     reinterpret_cast<LPVOID*>(&vkGetInstanceProcAddr_Original)},
+    {"vkGetDeviceProcAddr", reinterpret_cast<LPVOID>(&vkGetDeviceProcAddr_Detour),
+     reinterpret_cast<LPVOID*>(&vkGetDeviceProcAddr_Original)},
+};
 /** Trampoline to the real vkSetLatencyMarkerNV (filled by MinHook when we hook the real). */
 static PFN_vkSetLatencyMarkerNV_t g_real_vkSetLatencyMarkerNV = nullptr;
-/** First time we see the real pointer we MinHook it so callers that already cached it still hit our wrapper. */
+/** First time we see the real pointer we MinHook it so callers that already cached it still hit our detour. */
 static void* g_hooked_vkSetLatencyMarkerNV_target = nullptr;
 static std::atomic<bool> g_loader_hooks_installed{false};
 static std::atomic<uint64_t> g_loader_marker_count{0};
 static std::atomic<int> g_loader_last_marker_type{-1};
 static std::atomic<uint64_t> g_loader_last_present_id{0};
-static std::atomic<uint64_t> g_loader_intercept_count{0};  // times we returned wrapper from vkGetDeviceProcAddr
+static std::atomic<uint64_t> g_loader_intercept_count{0};  // times we returned detour from vkGetDeviceProcAddr
+/** Call counts for each detour (incremented on entry). */
+static std::atomic<uint64_t> g_calls_vkGetInstanceProcAddr{0};
+static std::atomic<uint64_t> g_calls_vkGetDeviceProcAddr{0};
+static std::atomic<uint64_t> g_calls_vkCreateDevice{0};
 
 /** Enabled device extensions from last vkCreateDevice (thread-safe). */
 static std::vector<std::string> g_vulkan_enabled_extensions;
+/** True once vkCreateDevice_Detour has been entered at least once (so UI can show "not called yet" vs "no extensions"). */
+static std::atomic<bool> g_vkCreateDevice_detour_ever_called{false};
 
 // VK_NV_low_latency2 marker enum (same order as NvLL): 0=SIMULATION_START, 4=PRESENT_START, 5=PRESENT_END
 static constexpr int VK_LATENCY_MARKER_SIMULATION_START_NV = 0;
@@ -112,11 +88,12 @@ static bool HasExtension(const char* const* names, uint32_t count, const char* w
     return false;
 }
 
-static VkResult VKAPI_CALL vkCreateDevice_Wrapper(VkPhysicalDevice physicalDevice,
-                                                  const VkDeviceCreateInfo* pCreateInfo,
-                                                  const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
+static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice,
+                                                 const VkDeviceCreateInfo* pCreateInfo,
+                                                 const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
+    g_calls_vkCreateDevice.fetch_add(1);
+    g_vkCreateDevice_detour_ever_called.store(true);
     if (g_real_vkCreateDevice == nullptr) {
-        LogInfo("VulkanLoader: vkCreateDevice_Wrapper called but real pointer not set");
         return VK_ERROR_INITIALIZATION_FAILED;
     }
 
@@ -183,13 +160,13 @@ static VkResult VKAPI_CALL vkCreateDevice_Wrapper(VkPhysicalDevice physicalDevic
     return r;
 }
 
-void VKAPI_CALL VkSetLatencyMarkerNV_Wrapper(VkDevice device, VkSwapchainKHR swapchain,
-                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
+void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,
+                                            const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
     (void)swapchain;
-    LogInfo("VulkanLoader: VkSetLatencyMarkerNV_Wrapper called marker=%d presentID=%llu", pLatencyMarkerInfo->marker,
+    g_loader_marker_count.fetch_add(1);
+    LogInfo("VulkanLoader: vkSetLatencyMarkerNV_Detour called marker=%d presentID=%llu", pLatencyMarkerInfo->marker,
             pLatencyMarkerInfo->presentID);
     if (pLatencyMarkerInfo != nullptr) {
-        g_loader_marker_count.fetch_add(1);
         g_loader_last_marker_type.store(static_cast<int>(pLatencyMarkerInfo->marker));
         g_loader_last_present_id.store(pLatencyMarkerInfo->presentID);
     }
@@ -231,82 +208,54 @@ void VKAPI_CALL VkSetLatencyMarkerNV_Wrapper(VkDevice device, VkSwapchainKHR swa
 }
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance instance, const char* pName) {
-    PFN_vkGetInstanceProcAddr_t orig = vkGetInstanceProcAddr_Original;
-    if (orig == nullptr) {
+    g_calls_vkGetInstanceProcAddr.fetch_add(1);
+    if (vkGetInstanceProcAddr_Original == nullptr) {
         return nullptr;
     }
-    PFN_vkVoidFunction result = orig(instance, pName);
+    PFN_vkVoidFunction result = vkGetInstanceProcAddr_Original(instance, pName);
     if (pName != nullptr && std::strcmp(pName, "vkCreateDevice") == 0 && result != nullptr) {
         g_real_vkCreateDevice = reinterpret_cast<PFN_vkCreateDevice_t>(result);
-        result = reinterpret_cast<PFN_vkVoidFunction>(&vkCreateDevice_Wrapper);
-        LogInfo("VulkanLoader: vkGetInstanceProcAddr returning vkCreateDevice wrapper");
-    }
-    return result;
-}
-
-/** When the loader returns null for a VK_NV_low_latency2 proc, return our dummy so we can see if the game calls it. */
-static PFN_vkVoidFunction ReturnDummyIfNull(const char* pName, PFN_vkVoidFunction result) {
-    if (pName == nullptr || result != nullptr) return result;
-    if (std::strcmp(pName, "vkSetLatencySleepModeNV") == 0) {
-        LogInfo("VulkanLoader: vkGetDeviceProcAddr(%s) was null, returning dummy", pName);
-        return reinterpret_cast<PFN_vkVoidFunction>(&Dummy_vkSetLatencySleepModeNV);
-    }
-    if (std::strcmp(pName, "vkLatencySleepNV") == 0) {
-        LogInfo("VulkanLoader: vkGetDeviceProcAddr(%s) was null, returning dummy", pName);
-        return reinterpret_cast<PFN_vkVoidFunction>(&Dummy_vkLatencySleepNV);
-    }
-    if (std::strcmp(pName, "vkSetLatencyMarkerNV") == 0) {
-        LogInfo("VulkanLoader: vkGetDeviceProcAddr(%s) was null, returning dummy", pName);
-        return reinterpret_cast<PFN_vkVoidFunction>(&Dummy_vkSetLatencyMarkerNV);
-    }
-    if (std::strcmp(pName, "vkGetLatencyTimingsNV") == 0) {
-        LogInfo("VulkanLoader: vkGetDeviceProcAddr(%s) was null, returning dummy", pName);
-        return reinterpret_cast<PFN_vkVoidFunction>(&Dummy_vkGetLatencyTimingsNV);
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkCreateDevice_Detour);
+        LogInfo("VulkanLoader: vkGetInstanceProcAddr returning vkCreateDevice detour");
     }
     return result;
 }
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr_Detour(VkDevice device, const char* pName) {
-    PFN_vkGetDeviceProcAddr_t orig = vkGetDeviceProcAddr_Original;
-    if (orig == nullptr) {
-        LogInfo("VulkanLoader: vkGetDeviceProcAddr_Detour called with nullptr");
+    g_calls_vkGetDeviceProcAddr.fetch_add(1);
+    if (vkGetDeviceProcAddr_Original == nullptr) {
         return nullptr;
     }
-    PFN_vkVoidFunction result = orig(device, pName);
-    LogInfo("VulkanLoader: vkGetDeviceProcAddr_Detour called with pName=%s result=%p", pName ? pName : "(null)",
-            result);
-
-    // If loader returned null for a Reflex proc, return our dummies so we can observe if the game calls them.
-    result = ReturnDummyIfNull(pName, result);
-
+    PFN_vkVoidFunction result = vkGetDeviceProcAddr_Original(device, pName);
     if (pName != nullptr && std::strcmp(pName, "vkSetLatencyMarkerNV") == 0 && result != nullptr) {
-        // result may be real (from loader) or our dummy (from above). Only hook the real one.
-        if (result != reinterpret_cast<PFN_vkVoidFunction>(&Dummy_vkSetLatencyMarkerNV)) {
-            LogInfo("VulkanLoader: vkSetLatencyMarkerNV found (real)");
-            g_loader_intercept_count.fetch_add(1);
-            if (g_real_vkSetLatencyMarkerNV == nullptr) {
-                if (CreateAndEnableHook(
-                        reinterpret_cast<LPVOID>(result), reinterpret_cast<LPVOID>(&VkSetLatencyMarkerNV_Wrapper),
-                        reinterpret_cast<LPVOID*>(&g_real_vkSetLatencyMarkerNV), "vkSetLatencyMarkerNV")) {
-                    g_hooked_vkSetLatencyMarkerNV_target = result;
-                    LogInfo(
-                        "VulkanLoader: hooked real vkSetLatencyMarkerNV (callers that cached the pointer will now go "
-                        "through our wrapper)");
-                } else {
-                    g_real_vkSetLatencyMarkerNV = reinterpret_cast<PFN_vkSetLatencyMarkerNV_t>(result);
-                    LogInfo("VulkanLoader: vkSetLatencyMarkerNV found but MinHook failed, returning wrapper only");
-                }
+        g_loader_intercept_count.fetch_add(1);
+        if (g_real_vkSetLatencyMarkerNV == nullptr) {
+            if (CreateAndEnableHook(
+                    reinterpret_cast<LPVOID>(result), reinterpret_cast<LPVOID>(&vkSetLatencyMarkerNV_Detour),
+                    reinterpret_cast<LPVOID*>(&g_real_vkSetLatencyMarkerNV), "vkSetLatencyMarkerNV")) {
+                g_hooked_vkSetLatencyMarkerNV_target = result;
+            } else {
+                g_real_vkSetLatencyMarkerNV = reinterpret_cast<PFN_vkSetLatencyMarkerNV_t>(result);
             }
-            result = reinterpret_cast<PFN_vkVoidFunction>(&VkSetLatencyMarkerNV_Wrapper);
         }
+        result = reinterpret_cast<PFN_vkVoidFunction>(&vkSetLatencyMarkerNV_Detour);
     }
     return result;
 }
 
-}  // namespace
+static void RollbackVulkanLoaderHooks(std::size_t installed_count) {
+    for (std::size_t j = installed_count; j-- > 0;) {
+        LPVOID* const orig = kVulkanLoaderHooks[j].original;
+        if (orig != nullptr && *orig != nullptr) {
+            MH_DisableHook(*orig);
+            MH_RemoveHook(*orig);
+            *orig = nullptr;
+        }
+    }
+}
 
-bool InstallVulkanLoaderHooks(void* vulkan1_module) {
-    auto* module = static_cast<HMODULE>(vulkan1_module);
+static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
+    HMODULE module = static_cast<HMODULE>(vulkan1_module);
     if (module == nullptr) {
         module = GetModuleHandleW(L"vulkan-1.dll");
     }
@@ -318,53 +267,36 @@ bool InstallVulkanLoaderHooks(void* vulkan1_module) {
         LogInfo("VulkanLoader: hooks already installed");
         return true;
     }
+    if (display_commanderhooks::HookSuppressionManager::GetInstance().ShouldSuppressHook(
+            display_commanderhooks::HookType::VULKAN_LOADER)) {
+        LogInfo("VulkanLoader: hooks installation suppressed by user setting");
+        return false;
+    }
     if (!settings::g_mainTabSettings.vulkan_vk_loader_hooks_enabled.GetValue()) {
         LogInfo("VulkanLoader: hooks disabled by setting");
         return false;
     }
 
-    // Hook vkGetInstanceProcAddr so we can wrap vkCreateDevice and capture enabled extensions.
-    auto* pGetInstanceProcAddr =
-        reinterpret_cast<PFN_vkGetInstanceProcAddr_t>(GetProcAddress(module, "vkGetInstanceProcAddr"));
-    if (pGetInstanceProcAddr != nullptr) {
-        if (CreateAndEnableHook(reinterpret_cast<LPVOID>(pGetInstanceProcAddr),
-                                reinterpret_cast<LPVOID>(&vkGetInstanceProcAddr_Detour),
-                                reinterpret_cast<LPVOID*>(&vkGetInstanceProcAddr_Original), "vkGetInstanceProcAddr")) {
-            LogInfo("VulkanLoader: vkGetInstanceProcAddr hooked (vkCreateDevice wrapper for extensions)");
-        } else {
-            LogInfo("VulkanLoader: failed to hook vkGetInstanceProcAddr");
+    for (std::size_t i = 0; i < kVulkanLoaderHookCount; ++i) {
+        const VulkanLoaderHookEntry& entry = kVulkanLoaderHooks[i];
+        if (!CreateAndEnableHookFromModule(module, entry.name, entry.detour, entry.original, entry.name)) {
+            LogInfo("VulkanLoader: failed to hook %s", entry.name);
+            RollbackVulkanLoaderHooks(i);
+            return false;
         }
-    } else {
-        LogInfo("VulkanLoader: vkGetInstanceProcAddr not found");
-    }
-
-    auto* pGetDeviceProcAddr =
-        reinterpret_cast<PFN_vkGetDeviceProcAddr_t>(GetProcAddress(module, "vkGetDeviceProcAddr"));
-    if (pGetDeviceProcAddr == nullptr) {
-        LogInfo("VulkanLoader: vkGetDeviceProcAddr not found");
-        if (vkGetInstanceProcAddr_Original != nullptr) {
-            MH_DisableHook(vkGetInstanceProcAddr_Original);
-            MH_RemoveHook(vkGetInstanceProcAddr_Original);
-            vkGetInstanceProcAddr_Original = nullptr;
-        }
-        return false;
-    }
-
-    if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(pGetDeviceProcAddr),
-                             reinterpret_cast<LPVOID>(&vkGetDeviceProcAddr_Detour),
-                             reinterpret_cast<LPVOID*>(&vkGetDeviceProcAddr_Original), "vkGetDeviceProcAddr")) {
-        LogInfo("VulkanLoader: failed to hook vkGetDeviceProcAddr");
-        if (vkGetInstanceProcAddr_Original != nullptr) {
-            MH_DisableHook(vkGetInstanceProcAddr_Original);
-            MH_RemoveHook(vkGetInstanceProcAddr_Original);
-            vkGetInstanceProcAddr_Original = nullptr;
-        }
-        return false;
     }
 
     g_loader_hooks_installed.store(true);
+    display_commanderhooks::HookSuppressionManager::GetInstance().MarkHookInstalled(
+        display_commanderhooks::HookType::VULKAN_LOADER);
     LogInfo("VulkanLoader: VK_NV_low_latency2 hooks installed (vkGetInstanceProcAddr + vkGetDeviceProcAddr)");
     return true;
+}
+
+}  // namespace
+
+bool InstallVulkanLoaderHooks(void* vulkan1_module) {
+    return InstallVulkanLoaderHooksImpl(vulkan1_module);
 }
 
 bool AreVulkanLoaderHooksInstalled() { return g_loader_hooks_installed.load(); }
@@ -385,16 +317,18 @@ void GetVulkanLoaderDebugState(uint64_t* out_marker_count, int* out_last_marker_
     }
 }
 
+void GetVulkanLoaderCallCounts(uint64_t* out_vkGetInstanceProcAddr, uint64_t* out_vkGetDeviceProcAddr,
+                               uint64_t* out_vkCreateDevice, uint64_t* out_vkSetLatencyMarkerNV) {
+    if (out_vkGetInstanceProcAddr) *out_vkGetInstanceProcAddr = g_calls_vkGetInstanceProcAddr.load();
+    if (out_vkGetDeviceProcAddr) *out_vkGetDeviceProcAddr = g_calls_vkGetDeviceProcAddr.load();
+    if (out_vkCreateDevice) *out_vkCreateDevice = g_calls_vkCreateDevice.load();
+    if (out_vkSetLatencyMarkerNV) *out_vkSetLatencyMarkerNV = g_loader_marker_count.load();
+}
+
 void GetVulkanEnabledExtensions(std::vector<std::string>& out) {
     out.clear();
     utils::SRWLockShared lock(utils::g_vulkan_extensions_lock);
     out = g_vulkan_enabled_extensions;
 }
 
-void GetVulkanLoaderDummyCallCounts(uint64_t* out_set_sleep_mode, uint64_t* out_latency_sleep,
-                                    uint64_t* out_set_latency_marker, uint64_t* out_get_latency_timings) {
-    if (out_set_sleep_mode) *out_set_sleep_mode = g_dummy_SetLatencySleepModeNV_calls.load();
-    if (out_latency_sleep) *out_latency_sleep = g_dummy_LatencySleepNV_calls.load();
-    if (out_set_latency_marker) *out_set_latency_marker = g_dummy_SetLatencyMarkerNV_calls.load();
-    if (out_get_latency_timings) *out_get_latency_timings = g_dummy_GetLatencyTimingsNV_calls.load();
-}
+bool HasVulkanCreateDeviceBeenCalled() { return g_vkCreateDevice_detour_ever_called.load(); }

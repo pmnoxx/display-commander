@@ -33,7 +33,8 @@ enum class HookType {
     PROCESS_EXIT,
     WINDOW_PROC,
     DBGHELP,
-    D3D9
+    D3D9,
+    VULKAN_LOADER  // vulkan-1.dll vkGetInstanceProcAddr / vkGetDeviceProcAddr (VK_NV_low_latency2, extensions)
 };
 
 // Hook suppression manager
@@ -57,7 +58,7 @@ class HookSuppressionManager {
     bool IsHookInstalled(HookType hookType);
 
     // Number of hook types (for UI iteration)
-    static constexpr int kHookTypeCount = 28;
+    static constexpr int kHookTypeCount = 29;
 
     // Get hook type by index (0 .. kHookTypeCount-1). Valid only for display iteration.
     static HookType GetHookTypeByIndex(int index);

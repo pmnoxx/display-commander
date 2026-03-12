@@ -1,15 +1,15 @@
 #include "vulkan_tab.hpp"
-#include "../imgui_wrapper_base.hpp"
 #include "../../hooks/pclstats_etw_hooks.hpp"
 #include "../../hooks/vulkan/nvlowlatencyvk_hooks.hpp"
 #include "../../hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "../../res/forkawesome.h"
 #include "../../res/ui_colors.hpp"
 #include "../../settings/main_tab_settings.hpp"
+#include "../imgui_wrapper_base.hpp"
 #include "settings_wrapper.hpp"
 
-#include <windows.h>
 #include <imgui.h>
+#include <windows.h>
 
 #include <cstdint>
 #include <string>
@@ -145,8 +145,17 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         std::vector<std::string> exts;
         GetVulkanEnabledExtensions(exts);
         if (exts.empty()) {
-            imgui.TextColored(ui::colors::TEXT_DIMMED,
-                             "No data. Enable vulkan-1 loader hooks and let the game create a Vulkan device.");
+            const bool loader_hooks = AreVulkanLoaderHooksInstalled();
+            const bool create_device_called = HasVulkanCreateDeviceBeenCalled();
+            const char* reason = nullptr;
+            if (!loader_hooks) {
+                reason = "Enable vulkan-1 loader hooks and let the game create a Vulkan device.";
+            } else if (!create_device_called) {
+                reason = "vkCreateDevice has not been called yet (game has not created a Vulkan device).";
+            } else {
+                reason = "vkCreateDevice was called but no enabled extensions were reported.";
+            }
+            imgui.TextColored(ui::colors::TEXT_DIMMED, "No data. %s", reason);
             if (imgui.IsItemHovered()) {
                 imgui.SetTooltipEx(
                     "Extensions are captured when vkCreateDevice is called (via hooked vkGetInstanceProcAddr).");
@@ -219,30 +228,22 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         if (loader_active) {
-            std::uint64_t loader_marker_count = 0;
-            std::uint64_t loader_intercept = 0;
-            GetVulkanLoaderDebugState(&loader_marker_count, nullptr, nullptr, &loader_intercept);
-            imgui.Text("vkGetDeviceProcAddr(\"vkSetLatencyMarkerNV\") intercepts:");
-            imgui.SameLine();
-            imgui.Text("%llu", static_cast<std::uint64_t>(loader_intercept));
-            imgui.Text("vkSetLatencyMarkerNV (wrapper) calls:");
-            imgui.SameLine();
-            imgui.Text("%llu", static_cast<std::uint64_t>(loader_marker_count));
-
-            std::uint64_t dummy_sleep_mode = 0, dummy_sleep = 0, dummy_marker = 0, dummy_timings = 0;
-            GetVulkanLoaderDummyCallCounts(&dummy_sleep_mode, &dummy_sleep, &dummy_marker, &dummy_timings);
-            if (dummy_sleep_mode > 0 || dummy_sleep > 0 || dummy_marker > 0 || dummy_timings > 0) {
-                imgui.TextColored(ui::colors::TEXT_SUBTLE, "Dummy procs (loader returned null):");
-                imgui.SameLine(kVulkanTabValueColumnX);
-                imgui.Text("SetSleepMode:%llu Sleep:%llu SetLatencyMarker:%llu GetLatencyTimings:%llu",
-                          static_cast<std::uint64_t>(dummy_sleep_mode), static_cast<std::uint64_t>(dummy_sleep),
-                          static_cast<std::uint64_t>(dummy_marker), static_cast<std::uint64_t>(dummy_timings));
-                if (imgui.IsItemHovered()) {
-                    imgui.SetTooltipEx(
-                        "Game called these although vkGetDeviceProcAddr returned null; we returned dummies to "
-                        "observe.");
-                }
-            }
+            std::uint64_t calls_get_instance = 0, calls_get_device = 0, calls_create_device = 0,
+                          calls_set_latency_marker = 0;
+            GetVulkanLoaderCallCounts(&calls_get_instance, &calls_get_device, &calls_create_device,
+                                      &calls_set_latency_marker);
+            imgui.Text("vkGetInstanceProcAddr:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<std::uint64_t>(calls_get_instance));
+            imgui.Text("vkGetDeviceProcAddr:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<std::uint64_t>(calls_get_device));
+            imgui.Text("vkCreateDevice:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<std::uint64_t>(calls_create_device));
+            imgui.Text("vkSetLatencyMarkerNV:");
+            imgui.SameLine(kVulkanTabValueColumnX);
+            imgui.Text("%llu", static_cast<std::uint64_t>(calls_set_latency_marker));
         }
 
         // PCLStats ETW (game + Display Commander) – counts from EventWriteTransfer hook

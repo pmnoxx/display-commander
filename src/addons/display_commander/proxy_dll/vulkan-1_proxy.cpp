@@ -21,7 +21,7 @@ static bool LoadRealVulkan1() {
 
 extern "C" int WINAPI vkAcquireNextImage2KHR(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkAcquireNextImage2KHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -29,7 +29,7 @@ extern "C" int WINAPI vkAcquireNextImage2KHR(LPVOID p0, LPVOID p1, LPVOID p2) {
 
 extern "C" int WINAPI vkAcquireNextImageKHR(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, DWORD64 p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64, DWORD64, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkAcquireNextImageKHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4, p5);
@@ -37,7 +37,7 @@ extern "C" int WINAPI vkAcquireNextImageKHR(LPVOID p0, DWORD64 p1, DWORD64 p2, D
 
 extern "C" int WINAPI vkAllocateCommandBuffers(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkAllocateCommandBuffers") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -45,7 +45,7 @@ extern "C" int WINAPI vkAllocateCommandBuffers(LPVOID p0, LPVOID p1, LPVOID p2) 
 
 extern "C" int WINAPI vkAllocateDescriptorSets(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkAllocateDescriptorSets") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -53,7 +53,7 @@ extern "C" int WINAPI vkAllocateDescriptorSets(LPVOID p0, LPVOID p1, LPVOID p2) 
 
 extern "C" int WINAPI vkAllocateMemory(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkAllocateMemory") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -61,7 +61,7 @@ extern "C" int WINAPI vkAllocateMemory(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p
 
 extern "C" int WINAPI vkBeginCommandBuffer(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkBeginCommandBuffer") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
@@ -69,7 +69,7 @@ extern "C" int WINAPI vkBeginCommandBuffer(LPVOID p0, LPVOID p1) {
 
 extern "C" int WINAPI vkBindBufferMemory(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkBindBufferMemory") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -77,7 +77,7 @@ extern "C" int WINAPI vkBindBufferMemory(LPVOID p0, DWORD64 p1, DWORD64 p2, DWOR
 
 extern "C" int WINAPI vkBindBufferMemory2(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkBindBufferMemory2") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -85,7 +85,7 @@ extern "C" int WINAPI vkBindBufferMemory2(LPVOID p0, LONG p1, LPVOID p2) {
 
 extern "C" int WINAPI vkBindImageMemory(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkBindImageMemory") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -93,7 +93,7 @@ extern "C" int WINAPI vkBindImageMemory(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD
 
 extern "C" int WINAPI vkBindImageMemory2(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkBindImageMemory2") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -101,7 +101,7 @@ extern "C" int WINAPI vkBindImageMemory2(LPVOID p0, LONG p1, LPVOID p2) {
 
 extern "C" void WINAPI vkCmdBeginQuery(LPVOID p0, DWORD64 p1, LONG p2, LONG p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBeginQuery") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -109,7 +109,7 @@ extern "C" void WINAPI vkCmdBeginQuery(LPVOID p0, DWORD64 p1, LONG p2, LONG p3) 
 
 extern "C" void WINAPI vkCmdBeginRenderPass(LPVOID p0, LPVOID p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBeginRenderPass") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -117,7 +117,7 @@ extern "C" void WINAPI vkCmdBeginRenderPass(LPVOID p0, LPVOID p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdBeginRenderPass2(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBeginRenderPass2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -125,15 +125,16 @@ extern "C" void WINAPI vkCmdBeginRenderPass2(LPVOID p0, LPVOID p1, LPVOID p2) {
 
 extern "C" void WINAPI vkCmdBeginRendering(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBeginRendering") : nullptr);
     if (!fn) return;
     fn(p0, p1);
 }
 
-extern "C" void WINAPI vkCmdBindDescriptorSets(LPVOID p0, LONG p1, DWORD64 p2, LONG p3, LONG p4, LPVOID p5, LONG p6, LPVOID p7) {
+extern "C" void WINAPI vkCmdBindDescriptorSets(LPVOID p0, LONG p1, DWORD64 p2, LONG p3, LONG p4, LPVOID p5, LONG p6,
+                                               LPVOID p7) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, DWORD64, LONG, LONG, LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, DWORD64, LONG, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBindDescriptorSets") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6, p7);
@@ -141,7 +142,7 @@ extern "C" void WINAPI vkCmdBindDescriptorSets(LPVOID p0, LONG p1, DWORD64 p2, L
 
 extern "C" void WINAPI vkCmdBindDescriptorSets2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBindDescriptorSets2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -149,7 +150,7 @@ extern "C" void WINAPI vkCmdBindDescriptorSets2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdBindIndexBuffer(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBindIndexBuffer") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -157,7 +158,7 @@ extern "C" void WINAPI vkCmdBindIndexBuffer(LPVOID p0, DWORD64 p1, DWORD64 p2, L
 
 extern "C" void WINAPI vkCmdBindIndexBuffer2(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, LONG p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBindIndexBuffer2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
@@ -165,7 +166,7 @@ extern "C" void WINAPI vkCmdBindIndexBuffer2(LPVOID p0, DWORD64 p1, DWORD64 p2, 
 
 extern "C" void WINAPI vkCmdBindPipeline(LPVOID p0, LONG p1, DWORD64 p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, DWORD64);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBindPipeline") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -173,23 +174,25 @@ extern "C" void WINAPI vkCmdBindPipeline(LPVOID p0, LONG p1, DWORD64 p2) {
 
 extern "C" void WINAPI vkCmdBindVertexBuffers(LPVOID p0, LONG p1, LONG p2, LPVOID p3, LPVOID p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBindVertexBuffers") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
 }
 
-extern "C" void WINAPI vkCmdBindVertexBuffers2(LPVOID p0, LONG p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5, LPVOID p6) {
+extern "C" void WINAPI vkCmdBindVertexBuffers2(LPVOID p0, LONG p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5,
+                                               LPVOID p6) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBindVertexBuffers2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6);
 }
 
-extern "C" void WINAPI vkCmdBlitImage(LPVOID p0, DWORD64 p1, LONG p2, DWORD64 p3, LONG p4, LONG p5, LPVOID p6, LONG p7) {
+extern "C" void WINAPI vkCmdBlitImage(LPVOID p0, DWORD64 p1, LONG p2, DWORD64 p3, LONG p4, LONG p5, LPVOID p6,
+                                      LONG p7) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LONG, LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LONG, LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBlitImage") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6, p7);
@@ -197,7 +200,7 @@ extern "C" void WINAPI vkCmdBlitImage(LPVOID p0, DWORD64 p1, LONG p2, DWORD64 p3
 
 extern "C" void WINAPI vkCmdBlitImage2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdBlitImage2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -205,7 +208,7 @@ extern "C" void WINAPI vkCmdBlitImage2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdClearAttachments(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdClearAttachments") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
@@ -213,7 +216,7 @@ extern "C" void WINAPI vkCmdClearAttachments(LPVOID p0, LONG p1, LPVOID p2, LONG
 
 extern "C" void WINAPI vkCmdClearColorImage(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3, LONG p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdClearColorImage") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -221,7 +224,7 @@ extern "C" void WINAPI vkCmdClearColorImage(LPVOID p0, DWORD64 p1, LONG p2, LPVO
 
 extern "C" void WINAPI vkCmdClearDepthStencilImage(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3, LONG p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdClearDepthStencilImage") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -229,7 +232,7 @@ extern "C" void WINAPI vkCmdClearDepthStencilImage(LPVOID p0, DWORD64 p1, LONG p
 
 extern "C" void WINAPI vkCmdCopyBuffer(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p3, LPVOID p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyBuffer") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
@@ -237,7 +240,7 @@ extern "C" void WINAPI vkCmdCopyBuffer(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p
 
 extern "C" void WINAPI vkCmdCopyBuffer2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyBuffer2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -245,7 +248,7 @@ extern "C" void WINAPI vkCmdCopyBuffer2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdCopyBufferToImage(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p3, LONG p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LONG, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyBufferToImage") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -253,7 +256,7 @@ extern "C" void WINAPI vkCmdCopyBufferToImage(LPVOID p0, DWORD64 p1, DWORD64 p2,
 
 extern "C" void WINAPI vkCmdCopyBufferToImage2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyBufferToImage2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -261,7 +264,7 @@ extern "C" void WINAPI vkCmdCopyBufferToImage2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdCopyImage(LPVOID p0, DWORD64 p1, LONG p2, DWORD64 p3, LONG p4, LONG p5, LPVOID p6) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyImage") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6);
@@ -269,7 +272,7 @@ extern "C" void WINAPI vkCmdCopyImage(LPVOID p0, DWORD64 p1, LONG p2, DWORD64 p3
 
 extern "C" void WINAPI vkCmdCopyImage2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyImage2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -277,7 +280,7 @@ extern "C" void WINAPI vkCmdCopyImage2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdCopyImageToBuffer(LPVOID p0, DWORD64 p1, LONG p2, DWORD64 p3, LONG p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyImageToBuffer") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -285,15 +288,16 @@ extern "C" void WINAPI vkCmdCopyImageToBuffer(LPVOID p0, DWORD64 p1, LONG p2, DW
 
 extern "C" void WINAPI vkCmdCopyImageToBuffer2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyImageToBuffer2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
 }
 
-extern "C" void WINAPI vkCmdCopyQueryPoolResults(LPVOID p0, DWORD64 p1, LONG p2, LONG p3, DWORD64 p4, DWORD64 p5, DWORD64 p6, LONG p7) {
+extern "C" void WINAPI vkCmdCopyQueryPoolResults(LPVOID p0, DWORD64 p1, LONG p2, LONG p3, DWORD64 p4, DWORD64 p5,
+                                                 DWORD64 p6, LONG p7) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LONG, DWORD64, DWORD64, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LONG, DWORD64, DWORD64, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdCopyQueryPoolResults") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6, p7);
@@ -301,7 +305,7 @@ extern "C" void WINAPI vkCmdCopyQueryPoolResults(LPVOID p0, DWORD64 p1, LONG p2,
 
 extern "C" void WINAPI vkCmdDispatch(LPVOID p0, LONG p1, LONG p2, LONG p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDispatch") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -309,7 +313,7 @@ extern "C" void WINAPI vkCmdDispatch(LPVOID p0, LONG p1, LONG p2, LONG p3) {
 
 extern "C" void WINAPI vkCmdDispatchBase(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LONG p5, LONG p6) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDispatchBase") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6);
@@ -317,7 +321,7 @@ extern "C" void WINAPI vkCmdDispatchBase(LPVOID p0, LONG p1, LONG p2, LONG p3, L
 
 extern "C" void WINAPI vkCmdDispatchIndirect(LPVOID p0, DWORD64 p1, DWORD64 p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDispatchIndirect") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -325,7 +329,7 @@ extern "C" void WINAPI vkCmdDispatchIndirect(LPVOID p0, DWORD64 p1, DWORD64 p2) 
 
 extern "C" void WINAPI vkCmdDraw(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDraw") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
@@ -333,7 +337,7 @@ extern "C" void WINAPI vkCmdDraw(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4) 
 
 extern "C" void WINAPI vkCmdDrawIndexed(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LONG p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDrawIndexed") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -341,15 +345,16 @@ extern "C" void WINAPI vkCmdDrawIndexed(LPVOID p0, LONG p1, LONG p2, LONG p3, LO
 
 extern "C" void WINAPI vkCmdDrawIndexedIndirect(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p3, LONG p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDrawIndexedIndirect") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
 }
 
-extern "C" void WINAPI vkCmdDrawIndexedIndirectCount(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, DWORD64 p4, LONG p5, LONG p6) {
+extern "C" void WINAPI vkCmdDrawIndexedIndirectCount(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, DWORD64 p4, LONG p5,
+                                                     LONG p6) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64, DWORD64, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64, DWORD64, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDrawIndexedIndirectCount") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6);
@@ -357,15 +362,16 @@ extern "C" void WINAPI vkCmdDrawIndexedIndirectCount(LPVOID p0, DWORD64 p1, DWOR
 
 extern "C" void WINAPI vkCmdDrawIndirect(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p3, LONG p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDrawIndirect") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
 }
 
-extern "C" void WINAPI vkCmdDrawIndirectCount(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, DWORD64 p4, LONG p5, LONG p6) {
+extern "C" void WINAPI vkCmdDrawIndirectCount(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, DWORD64 p4, LONG p5,
+                                              LONG p6) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64, DWORD64, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64, DWORD64, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdDrawIndirectCount") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6);
@@ -373,7 +379,7 @@ extern "C" void WINAPI vkCmdDrawIndirectCount(LPVOID p0, DWORD64 p1, DWORD64 p2,
 
 extern "C" void WINAPI vkCmdEndQuery(LPVOID p0, DWORD64 p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdEndQuery") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -381,7 +387,7 @@ extern "C" void WINAPI vkCmdEndQuery(LPVOID p0, DWORD64 p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdEndRenderPass(LPVOID p0) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdEndRenderPass") : nullptr);
     if (!fn) return;
     fn(p0);
@@ -389,7 +395,7 @@ extern "C" void WINAPI vkCmdEndRenderPass(LPVOID p0) {
 
 extern "C" void WINAPI vkCmdEndRenderPass2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdEndRenderPass2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -397,7 +403,7 @@ extern "C" void WINAPI vkCmdEndRenderPass2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdEndRendering(LPVOID p0) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdEndRendering") : nullptr);
     if (!fn) return;
     fn(p0);
@@ -405,7 +411,7 @@ extern "C" void WINAPI vkCmdEndRendering(LPVOID p0) {
 
 extern "C" void WINAPI vkCmdExecuteCommands(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdExecuteCommands") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -413,7 +419,7 @@ extern "C" void WINAPI vkCmdExecuteCommands(LPVOID p0, LONG p1, LPVOID p2) {
 
 extern "C" void WINAPI vkCmdFillBuffer(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, LONG p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdFillBuffer") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
@@ -421,7 +427,7 @@ extern "C" void WINAPI vkCmdFillBuffer(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD6
 
 extern "C" void WINAPI vkCmdNextSubpass(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdNextSubpass") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -429,15 +435,16 @@ extern "C" void WINAPI vkCmdNextSubpass(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdNextSubpass2(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdNextSubpass2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
 }
 
-extern "C" void WINAPI vkCmdPipelineBarrier(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LPVOID p5, LONG p6, LPVOID p7, LONG p8, LPVOID p9) {
+extern "C" void WINAPI vkCmdPipelineBarrier(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LPVOID p5, LONG p6,
+                                            LPVOID p7, LONG p8, LPVOID p9) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LONG, LPVOID, LONG, LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LONG, LPVOID, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPipelineBarrier") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9);
@@ -445,7 +452,7 @@ extern "C" void WINAPI vkCmdPipelineBarrier(LPVOID p0, LONG p1, LONG p2, LONG p3
 
 extern "C" void WINAPI vkCmdPipelineBarrier2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPipelineBarrier2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -453,7 +460,7 @@ extern "C" void WINAPI vkCmdPipelineBarrier2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdPushConstants(LPVOID p0, DWORD64 p1, LONG p2, LONG p3, LONG p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LONG, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushConstants") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -461,7 +468,7 @@ extern "C" void WINAPI vkCmdPushConstants(LPVOID p0, DWORD64 p1, LONG p2, LONG p
 
 extern "C" void WINAPI vkCmdPushConstants2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushConstants2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -469,7 +476,7 @@ extern "C" void WINAPI vkCmdPushConstants2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdPushDescriptorSet(LPVOID p0, LONG p1, DWORD64 p2, LONG p3, LONG p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, DWORD64, LONG, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, DWORD64, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushDescriptorSet") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -477,7 +484,7 @@ extern "C" void WINAPI vkCmdPushDescriptorSet(LPVOID p0, LONG p1, DWORD64 p2, LO
 
 extern "C" void WINAPI vkCmdPushDescriptorSet2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushDescriptorSet2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -485,23 +492,25 @@ extern "C" void WINAPI vkCmdPushDescriptorSet2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdPushDescriptorSetWithTemplate(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p3, LPVOID p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LONG, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushDescriptorSetWithTemplate") : nullptr);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LONG, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushDescriptorSetWithTemplate") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
 }
 
 extern "C" void WINAPI vkCmdPushDescriptorSetWithTemplate2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushDescriptorSetWithTemplate2") : nullptr);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdPushDescriptorSetWithTemplate2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
 }
 
 extern "C" void WINAPI vkCmdResetEvent(LPVOID p0, DWORD64 p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdResetEvent") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -509,7 +518,7 @@ extern "C" void WINAPI vkCmdResetEvent(LPVOID p0, DWORD64 p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdResetEvent2(LPVOID p0, DWORD64 p1, DWORD64 p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdResetEvent2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -517,7 +526,7 @@ extern "C" void WINAPI vkCmdResetEvent2(LPVOID p0, DWORD64 p1, DWORD64 p2) {
 
 extern "C" void WINAPI vkCmdResetQueryPool(LPVOID p0, DWORD64 p1, LONG p2, LONG p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdResetQueryPool") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -525,7 +534,7 @@ extern "C" void WINAPI vkCmdResetQueryPool(LPVOID p0, DWORD64 p1, LONG p2, LONG 
 
 extern "C" void WINAPI vkCmdResolveImage(LPVOID p0, DWORD64 p1, LONG p2, DWORD64 p3, LONG p4, LONG p5, LPVOID p6) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, DWORD64, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdResolveImage") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6);
@@ -533,7 +542,7 @@ extern "C" void WINAPI vkCmdResolveImage(LPVOID p0, DWORD64 p1, LONG p2, DWORD64
 
 extern "C" void WINAPI vkCmdResolveImage2(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdResolveImage2") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -541,7 +550,7 @@ extern "C" void WINAPI vkCmdResolveImage2(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdSetBlendConstants(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetBlendConstants") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -549,7 +558,7 @@ extern "C" void WINAPI vkCmdSetBlendConstants(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkCmdSetCullMode(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetCullMode") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -557,7 +566,7 @@ extern "C" void WINAPI vkCmdSetCullMode(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetDepthBias(LPVOID p0, float p1, float p2, float p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, float, float, float);
+    typedef void(WINAPI * PFN)(LPVOID, float, float, float);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDepthBias") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -565,7 +574,7 @@ extern "C" void WINAPI vkCmdSetDepthBias(LPVOID p0, float p1, float p2, float p3
 
 extern "C" void WINAPI vkCmdSetDepthBiasEnable(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDepthBiasEnable") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -573,7 +582,7 @@ extern "C" void WINAPI vkCmdSetDepthBiasEnable(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetDepthBounds(LPVOID p0, float p1, float p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, float, float);
+    typedef void(WINAPI * PFN)(LPVOID, float, float);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDepthBounds") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -581,7 +590,7 @@ extern "C" void WINAPI vkCmdSetDepthBounds(LPVOID p0, float p1, float p2) {
 
 extern "C" void WINAPI vkCmdSetDepthBoundsTestEnable(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDepthBoundsTestEnable") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -589,7 +598,7 @@ extern "C" void WINAPI vkCmdSetDepthBoundsTestEnable(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetDepthCompareOp(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDepthCompareOp") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -597,7 +606,7 @@ extern "C" void WINAPI vkCmdSetDepthCompareOp(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetDepthTestEnable(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDepthTestEnable") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -605,7 +614,7 @@ extern "C" void WINAPI vkCmdSetDepthTestEnable(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetDepthWriteEnable(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDepthWriteEnable") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -613,7 +622,7 @@ extern "C" void WINAPI vkCmdSetDepthWriteEnable(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetDeviceMask(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetDeviceMask") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -621,7 +630,7 @@ extern "C" void WINAPI vkCmdSetDeviceMask(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetEvent(LPVOID p0, DWORD64 p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetEvent") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -629,7 +638,7 @@ extern "C" void WINAPI vkCmdSetEvent(LPVOID p0, DWORD64 p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdSetEvent2(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetEvent2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -637,7 +646,7 @@ extern "C" void WINAPI vkCmdSetEvent2(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkCmdSetFrontFace(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetFrontFace") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -645,7 +654,7 @@ extern "C" void WINAPI vkCmdSetFrontFace(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetLineStipple(LPVOID p0, LONG p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetLineStipple") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -653,7 +662,7 @@ extern "C" void WINAPI vkCmdSetLineStipple(LPVOID p0, LONG p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdSetLineWidth(LPVOID p0, float p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, float);
+    typedef void(WINAPI * PFN)(LPVOID, float);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetLineWidth") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -661,7 +670,7 @@ extern "C" void WINAPI vkCmdSetLineWidth(LPVOID p0, float p1) {
 
 extern "C" void WINAPI vkCmdSetPrimitiveRestartEnable(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetPrimitiveRestartEnable") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -669,7 +678,7 @@ extern "C" void WINAPI vkCmdSetPrimitiveRestartEnable(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetPrimitiveTopology(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetPrimitiveTopology") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -677,7 +686,7 @@ extern "C" void WINAPI vkCmdSetPrimitiveTopology(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetRasterizerDiscardEnable(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetRasterizerDiscardEnable") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -685,23 +694,25 @@ extern "C" void WINAPI vkCmdSetRasterizerDiscardEnable(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetRenderingAttachmentLocations(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetRenderingAttachmentLocations") : nullptr);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetRenderingAttachmentLocations") : nullptr);
     if (!fn) return;
     fn(p0, p1);
 }
 
 extern "C" void WINAPI vkCmdSetRenderingInputAttachmentIndices(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetRenderingInputAttachmentIndices") : nullptr);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetRenderingInputAttachmentIndices")
+                                     : nullptr);
     if (!fn) return;
     fn(p0, p1);
 }
 
 extern "C" void WINAPI vkCmdSetScissor(LPVOID p0, LONG p1, LONG p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetScissor") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -709,7 +720,7 @@ extern "C" void WINAPI vkCmdSetScissor(LPVOID p0, LONG p1, LONG p2, LPVOID p3) {
 
 extern "C" void WINAPI vkCmdSetScissorWithCount(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetScissorWithCount") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -717,7 +728,7 @@ extern "C" void WINAPI vkCmdSetScissorWithCount(LPVOID p0, LONG p1, LPVOID p2) {
 
 extern "C" void WINAPI vkCmdSetStencilCompareMask(LPVOID p0, LONG p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetStencilCompareMask") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -725,7 +736,7 @@ extern "C" void WINAPI vkCmdSetStencilCompareMask(LPVOID p0, LONG p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdSetStencilOp(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LONG p5) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetStencilOp") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5);
@@ -733,7 +744,7 @@ extern "C" void WINAPI vkCmdSetStencilOp(LPVOID p0, LONG p1, LONG p2, LONG p3, L
 
 extern "C" void WINAPI vkCmdSetStencilReference(LPVOID p0, LONG p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetStencilReference") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -741,7 +752,7 @@ extern "C" void WINAPI vkCmdSetStencilReference(LPVOID p0, LONG p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdSetStencilTestEnable(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetStencilTestEnable") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -749,7 +760,7 @@ extern "C" void WINAPI vkCmdSetStencilTestEnable(LPVOID p0, LONG p1) {
 
 extern "C" void WINAPI vkCmdSetStencilWriteMask(LPVOID p0, LONG p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetStencilWriteMask") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -757,7 +768,7 @@ extern "C" void WINAPI vkCmdSetStencilWriteMask(LPVOID p0, LONG p1, LONG p2) {
 
 extern "C" void WINAPI vkCmdSetViewport(LPVOID p0, LONG p1, LONG p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetViewport") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -765,7 +776,7 @@ extern "C" void WINAPI vkCmdSetViewport(LPVOID p0, LONG p1, LONG p2, LPVOID p3) 
 
 extern "C" void WINAPI vkCmdSetViewportWithCount(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdSetViewportWithCount") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -773,15 +784,16 @@ extern "C" void WINAPI vkCmdSetViewportWithCount(LPVOID p0, LONG p1, LPVOID p2) 
 
 extern "C" void WINAPI vkCmdUpdateBuffer(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, LPVOID p4) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdUpdateBuffer") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4);
 }
 
-extern "C" void WINAPI vkCmdWaitEvents(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LONG p4, LONG p5, LPVOID p6, LONG p7, LPVOID p8, LONG p9, LPVOID p10) {
+extern "C" void WINAPI vkCmdWaitEvents(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LONG p4, LONG p5, LPVOID p6, LONG p7,
+                                       LPVOID p8, LONG p9, LPVOID p10) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG, LONG, LONG, LPVOID, LONG, LPVOID, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID, LONG, LONG, LONG, LPVOID, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdWaitEvents") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10);
@@ -789,7 +801,7 @@ extern "C" void WINAPI vkCmdWaitEvents(LPVOID p0, LONG p1, LPVOID p2, LONG p3, L
 
 extern "C" void WINAPI vkCmdWaitEvents2(LPVOID p0, LONG p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdWaitEvents2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -797,7 +809,7 @@ extern "C" void WINAPI vkCmdWaitEvents2(LPVOID p0, LONG p1, LPVOID p2, LPVOID p3
 
 extern "C" void WINAPI vkCmdWriteTimestamp(LPVOID p0, LONG p1, DWORD64 p2, LONG p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LONG, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, LONG, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdWriteTimestamp") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -805,7 +817,7 @@ extern "C" void WINAPI vkCmdWriteTimestamp(LPVOID p0, LONG p1, DWORD64 p2, LONG 
 
 extern "C" void WINAPI vkCmdWriteTimestamp2(LPVOID p0, DWORD64 p1, DWORD64 p2, LONG p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCmdWriteTimestamp2") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
@@ -813,7 +825,7 @@ extern "C" void WINAPI vkCmdWriteTimestamp2(LPVOID p0, DWORD64 p1, DWORD64 p2, L
 
 extern "C" int WINAPI vkCopyImageToImage(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCopyImageToImage") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
@@ -821,7 +833,7 @@ extern "C" int WINAPI vkCopyImageToImage(LPVOID p0, LPVOID p1) {
 
 extern "C" int WINAPI vkCopyImageToMemory(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCopyImageToMemory") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
@@ -829,7 +841,7 @@ extern "C" int WINAPI vkCopyImageToMemory(LPVOID p0, LPVOID p1) {
 
 extern "C" int WINAPI vkCopyMemoryToImage(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCopyMemoryToImage") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
@@ -837,7 +849,7 @@ extern "C" int WINAPI vkCopyMemoryToImage(LPVOID p0, LPVOID p1) {
 
 extern "C" int WINAPI vkCreateBuffer(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateBuffer") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -845,7 +857,7 @@ extern "C" int WINAPI vkCreateBuffer(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3)
 
 extern "C" int WINAPI vkCreateBufferView(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateBufferView") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -853,7 +865,7 @@ extern "C" int WINAPI vkCreateBufferView(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID
 
 extern "C" int WINAPI vkCreateCommandPool(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateCommandPool") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -861,7 +873,7 @@ extern "C" int WINAPI vkCreateCommandPool(LPVOID p0, LPVOID p1, LPVOID p2, LPVOI
 
 extern "C" int WINAPI vkCreateComputePipelines(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LONG, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateComputePipelines") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4, p5);
@@ -869,7 +881,7 @@ extern "C" int WINAPI vkCreateComputePipelines(LPVOID p0, DWORD64 p1, LONG p2, L
 
 extern "C" int WINAPI vkCreateDescriptorPool(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateDescriptorPool") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -877,7 +889,7 @@ extern "C" int WINAPI vkCreateDescriptorPool(LPVOID p0, LPVOID p1, LPVOID p2, LP
 
 extern "C" int WINAPI vkCreateDescriptorSetLayout(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateDescriptorSetLayout") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -885,7 +897,7 @@ extern "C" int WINAPI vkCreateDescriptorSetLayout(LPVOID p0, LPVOID p1, LPVOID p
 
 extern "C" int WINAPI vkCreateDescriptorUpdateTemplate(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateDescriptorUpdateTemplate") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -893,23 +905,19 @@ extern "C" int WINAPI vkCreateDescriptorUpdateTemplate(LPVOID p0, LPVOID p1, LPV
 
 extern "C" int WINAPI vkCreateDevice(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateDevice") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkCreateDisplayModeKHR(void) {
-    return 0;
-}
+extern "C" int WINAPI vkCreateDisplayModeKHR(void) { return 0; }
 
-extern "C" int WINAPI vkCreateDisplayPlaneSurfaceKHR(void) {
-    return 0;
-}
+extern "C" int WINAPI vkCreateDisplayPlaneSurfaceKHR(void) { return 0; }
 
 extern "C" int WINAPI vkCreateEvent(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateEvent") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -917,7 +925,7 @@ extern "C" int WINAPI vkCreateEvent(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) 
 
 extern "C" int WINAPI vkCreateFence(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateFence") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -925,7 +933,7 @@ extern "C" int WINAPI vkCreateFence(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) 
 
 extern "C" int WINAPI vkCreateFramebuffer(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateFramebuffer") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -933,7 +941,7 @@ extern "C" int WINAPI vkCreateFramebuffer(LPVOID p0, LPVOID p1, LPVOID p2, LPVOI
 
 extern "C" int WINAPI vkCreateGraphicsPipelines(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3, LPVOID p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LONG, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LONG, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateGraphicsPipelines") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4, p5);
@@ -941,7 +949,7 @@ extern "C" int WINAPI vkCreateGraphicsPipelines(LPVOID p0, DWORD64 p1, LONG p2, 
 
 extern "C" int WINAPI vkCreateImage(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateImage") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -949,7 +957,7 @@ extern "C" int WINAPI vkCreateImage(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) 
 
 extern "C" int WINAPI vkCreateImageView(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateImageView") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -957,7 +965,7 @@ extern "C" int WINAPI vkCreateImageView(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID 
 
 extern "C" int WINAPI vkCreateInstance(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateInstance") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -965,7 +973,7 @@ extern "C" int WINAPI vkCreateInstance(LPVOID p0, LPVOID p1, LPVOID p2) {
 
 extern "C" int WINAPI vkCreatePipelineCache(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreatePipelineCache") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -973,7 +981,7 @@ extern "C" int WINAPI vkCreatePipelineCache(LPVOID p0, LPVOID p1, LPVOID p2, LPV
 
 extern "C" int WINAPI vkCreatePipelineLayout(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreatePipelineLayout") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -981,7 +989,7 @@ extern "C" int WINAPI vkCreatePipelineLayout(LPVOID p0, LPVOID p1, LPVOID p2, LP
 
 extern "C" int WINAPI vkCreatePrivateDataSlot(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreatePrivateDataSlot") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -989,7 +997,7 @@ extern "C" int WINAPI vkCreatePrivateDataSlot(LPVOID p0, LPVOID p1, LPVOID p2, L
 
 extern "C" int WINAPI vkCreateQueryPool(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateQueryPool") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -997,7 +1005,7 @@ extern "C" int WINAPI vkCreateQueryPool(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID 
 
 extern "C" int WINAPI vkCreateRenderPass(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateRenderPass") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1005,7 +1013,7 @@ extern "C" int WINAPI vkCreateRenderPass(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID
 
 extern "C" int WINAPI vkCreateRenderPass2(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateRenderPass2") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1013,7 +1021,7 @@ extern "C" int WINAPI vkCreateRenderPass2(LPVOID p0, LPVOID p1, LPVOID p2, LPVOI
 
 extern "C" int WINAPI vkCreateSampler(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateSampler") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1021,7 +1029,7 @@ extern "C" int WINAPI vkCreateSampler(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3
 
 extern "C" int WINAPI vkCreateSamplerYcbcrConversion(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateSamplerYcbcrConversion") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1029,7 +1037,7 @@ extern "C" int WINAPI vkCreateSamplerYcbcrConversion(LPVOID p0, LPVOID p1, LPVOI
 
 extern "C" int WINAPI vkCreateSemaphore(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateSemaphore") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1037,19 +1045,17 @@ extern "C" int WINAPI vkCreateSemaphore(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID 
 
 extern "C" int WINAPI vkCreateShaderModule(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateShaderModule") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkCreateSharedSwapchainsKHR(void) {
-    return 0;
-}
+extern "C" int WINAPI vkCreateSharedSwapchainsKHR(void) { return 0; }
 
 extern "C" int WINAPI vkCreateSwapchainKHR(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateSwapchainKHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1057,7 +1063,7 @@ extern "C" int WINAPI vkCreateSwapchainKHR(LPVOID p0, LPVOID p1, LPVOID p2, LPVO
 
 extern "C" int WINAPI vkCreateWin32SurfaceKHR(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkCreateWin32SurfaceKHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1065,7 +1071,7 @@ extern "C" int WINAPI vkCreateWin32SurfaceKHR(LPVOID p0, LPVOID p1, LPVOID p2, L
 
 extern "C" void WINAPI vkDestroyBuffer(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyBuffer") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1073,7 +1079,7 @@ extern "C" void WINAPI vkDestroyBuffer(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyBufferView(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyBufferView") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1081,7 +1087,7 @@ extern "C" void WINAPI vkDestroyBufferView(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyCommandPool(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyCommandPool") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1089,7 +1095,7 @@ extern "C" void WINAPI vkDestroyCommandPool(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyDescriptorPool(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyDescriptorPool") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1097,7 +1103,7 @@ extern "C" void WINAPI vkDestroyDescriptorPool(LPVOID p0, DWORD64 p1, LPVOID p2)
 
 extern "C" void WINAPI vkDestroyDescriptorSetLayout(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyDescriptorSetLayout") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1105,15 +1111,16 @@ extern "C" void WINAPI vkDestroyDescriptorSetLayout(LPVOID p0, DWORD64 p1, LPVOI
 
 extern "C" void WINAPI vkDestroyDescriptorUpdateTemplate(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyDescriptorUpdateTemplate") : nullptr);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyDescriptorUpdateTemplate") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
 }
 
 extern "C" void WINAPI vkDestroyDevice(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyDevice") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -1121,7 +1128,7 @@ extern "C" void WINAPI vkDestroyDevice(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkDestroyEvent(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyEvent") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1129,7 +1136,7 @@ extern "C" void WINAPI vkDestroyEvent(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyFence(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyFence") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1137,7 +1144,7 @@ extern "C" void WINAPI vkDestroyFence(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyFramebuffer(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyFramebuffer") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1145,7 +1152,7 @@ extern "C" void WINAPI vkDestroyFramebuffer(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyImage(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyImage") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1153,7 +1160,7 @@ extern "C" void WINAPI vkDestroyImage(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyImageView(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyImageView") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1161,7 +1168,7 @@ extern "C" void WINAPI vkDestroyImageView(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyInstance(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyInstance") : nullptr);
     if (!fn) return;
     fn(p0, p1);
@@ -1169,7 +1176,7 @@ extern "C" void WINAPI vkDestroyInstance(LPVOID p0, LPVOID p1) {
 
 extern "C" void WINAPI vkDestroyPipeline(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyPipeline") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1177,7 +1184,7 @@ extern "C" void WINAPI vkDestroyPipeline(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyPipelineCache(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyPipelineCache") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1185,7 +1192,7 @@ extern "C" void WINAPI vkDestroyPipelineCache(LPVOID p0, DWORD64 p1, LPVOID p2) 
 
 extern "C" void WINAPI vkDestroyPipelineLayout(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyPipelineLayout") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1193,7 +1200,7 @@ extern "C" void WINAPI vkDestroyPipelineLayout(LPVOID p0, DWORD64 p1, LPVOID p2)
 
 extern "C" void WINAPI vkDestroyPrivateDataSlot(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyPrivateDataSlot") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1201,7 +1208,7 @@ extern "C" void WINAPI vkDestroyPrivateDataSlot(LPVOID p0, DWORD64 p1, LPVOID p2
 
 extern "C" void WINAPI vkDestroyQueryPool(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyQueryPool") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1209,7 +1216,7 @@ extern "C" void WINAPI vkDestroyQueryPool(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyRenderPass(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyRenderPass") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1217,7 +1224,7 @@ extern "C" void WINAPI vkDestroyRenderPass(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroySampler(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroySampler") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1225,7 +1232,7 @@ extern "C" void WINAPI vkDestroySampler(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroySamplerYcbcrConversion(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroySamplerYcbcrConversion") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1233,7 +1240,7 @@ extern "C" void WINAPI vkDestroySamplerYcbcrConversion(LPVOID p0, DWORD64 p1, LP
 
 extern "C" void WINAPI vkDestroySemaphore(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroySemaphore") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1241,7 +1248,7 @@ extern "C" void WINAPI vkDestroySemaphore(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroyShaderModule(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroyShaderModule") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1249,7 +1256,7 @@ extern "C" void WINAPI vkDestroyShaderModule(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroySurfaceKHR(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroySurfaceKHR") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1257,7 +1264,7 @@ extern "C" void WINAPI vkDestroySurfaceKHR(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" void WINAPI vkDestroySwapchainKHR(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDestroySwapchainKHR") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -1265,7 +1272,7 @@ extern "C" void WINAPI vkDestroySwapchainKHR(LPVOID p0, DWORD64 p1, LPVOID p2) {
 
 extern "C" int WINAPI vkDeviceWaitIdle(LPVOID p0) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkDeviceWaitIdle") : nullptr);
     if (!fn) return 0;
     return fn(p0);
@@ -1273,7 +1280,7 @@ extern "C" int WINAPI vkDeviceWaitIdle(LPVOID p0) {
 
 extern "C" int WINAPI vkEndCommandBuffer(LPVOID p0) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEndCommandBuffer") : nullptr);
     if (!fn) return 0;
     return fn(p0);
@@ -1281,15 +1288,16 @@ extern "C" int WINAPI vkEndCommandBuffer(LPVOID p0) {
 
 extern "C" int WINAPI vkEnumerateDeviceExtensionProperties(LPVOID p0, LPCSTR p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPCSTR, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateDeviceExtensionProperties") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPCSTR, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateDeviceExtensionProperties") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
 extern "C" int WINAPI vkEnumerateDeviceLayerProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateDeviceLayerProperties") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1297,23 +1305,25 @@ extern "C" int WINAPI vkEnumerateDeviceLayerProperties(LPVOID p0, LPVOID p1, LPV
 
 extern "C" int WINAPI vkEnumerateInstanceExtensionProperties(LPCSTR p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPCSTR, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateInstanceExtensionProperties") : nullptr);
+    typedef int(WINAPI * PFN)(LPCSTR, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateInstanceExtensionProperties")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
 extern "C" int WINAPI vkEnumerateInstanceLayerProperties(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateInstanceLayerProperties") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateInstanceLayerProperties") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
 }
 
 extern "C" int WINAPI vkEnumerateInstanceVersion(LPVOID p0) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumerateInstanceVersion") : nullptr);
     if (!fn) return 0;
     return fn(p0);
@@ -1321,7 +1331,7 @@ extern "C" int WINAPI vkEnumerateInstanceVersion(LPVOID p0) {
 
 extern "C" int WINAPI vkEnumeratePhysicalDeviceGroups(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumeratePhysicalDeviceGroups") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1329,7 +1339,7 @@ extern "C" int WINAPI vkEnumeratePhysicalDeviceGroups(LPVOID p0, LPVOID p1, LPVO
 
 extern "C" int WINAPI vkEnumeratePhysicalDevices(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkEnumeratePhysicalDevices") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1337,7 +1347,7 @@ extern "C" int WINAPI vkEnumeratePhysicalDevices(LPVOID p0, LPVOID p1, LPVOID p2
 
 extern "C" int WINAPI vkFlushMappedMemoryRanges(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkFlushMappedMemoryRanges") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1345,515 +1355,540 @@ extern "C" int WINAPI vkFlushMappedMemoryRanges(LPVOID p0, LONG p1, LPVOID p2) {
 
 extern "C" void WINAPI vkFreeCommandBuffers(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkFreeCommandBuffers") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2, p3);
 }
 
-extern "C" void WINAPI vkFreeDescriptorSets(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG, LPVOID);
+extern "C" int WINAPI vkFreeDescriptorSets(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return 0;
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkFreeDescriptorSets") : nullptr);
-    if (!fn) return;
-    fn(p0, p1, p2, p3);
+    if (!fn) return 0;
+    return fn(p0, p1, p2, p3);
 }
 
 extern "C" void WINAPI vkFreeMemory(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkFreeMemory") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetBufferDeviceAddress(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+extern "C" LPVOID WINAPI vkGetBufferDeviceAddress(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return nullptr;
+    typedef LPVOID(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetBufferDeviceAddress") : nullptr);
-    if (!fn) return 0;
+    if (!fn) return nullptr;
     return fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetBufferMemoryRequirements(LPVOID p0, DWORD64 p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+extern "C" void WINAPI vkGetBufferMemoryRequirements(LPVOID p0, DWORD64 p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetBufferMemoryRequirements") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetBufferMemoryRequirements2(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+extern "C" void WINAPI vkGetBufferMemoryRequirements2(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetBufferMemoryRequirements2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
 extern "C" int WINAPI vkGetBufferOpaqueCaptureAddress(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetBufferOpaqueCaptureAddress") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetCommandPoolMemoryConsumption(void) {
-    return 0;
-}
+extern "C" int WINAPI vkGetCommandPoolMemoryConsumption(void) { return 0; }
 
-extern "C" int WINAPI vkGetDescriptorSetLayoutSupport(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+extern "C" void WINAPI vkGetDescriptorSetLayoutSupport(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDescriptorSetLayoutSupport") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetDeviceBufferMemoryRequirements(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceBufferMemoryRequirements") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetDeviceBufferMemoryRequirements(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceBufferMemoryRequirements") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetDeviceGroupPeerMemoryFeatures(LPVOID p0, LONG p1, LONG p2, LONG p3, LPVOID p4) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceGroupPeerMemoryFeatures") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+extern "C" void WINAPI vkGetDeviceGroupPeerMemoryFeatures(LPVOID p0, LONG p1, LONG p2, LONG p3, LPVOID p4) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceGroupPeerMemoryFeatures") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2, p3, p4);
 }
 
 extern "C" int WINAPI vkGetDeviceGroupPresentCapabilitiesKHR(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceGroupPresentCapabilitiesKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceGroupPresentCapabilitiesKHR")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
 }
 
 extern "C" int WINAPI vkGetDeviceGroupSurfacePresentModesKHR(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceGroupSurfacePresentModesKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceGroupSurfacePresentModesKHR")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetDeviceImageMemoryRequirements(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceImageMemoryRequirements") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetDeviceImageMemoryRequirements(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceImageMemoryRequirements") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetDeviceImageSparseMemoryRequirements(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceImageSparseMemoryRequirements") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+extern "C" void WINAPI vkGetDeviceImageSparseMemoryRequirements(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceImageSparseMemoryRequirements")
+                                     : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetDeviceImageSubresourceLayout(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceImageSubresourceLayout") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetDeviceImageSubresourceLayout(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceImageSubresourceLayout") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetDeviceMemoryCommitment(LPVOID p0, DWORD64 p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+extern "C" void WINAPI vkGetDeviceMemoryCommitment(LPVOID p0, DWORD64 p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceMemoryCommitment") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
 extern "C" int WINAPI vkGetDeviceMemoryOpaqueCaptureAddress(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceMemoryOpaqueCaptureAddress") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceMemoryOpaqueCaptureAddress") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetDeviceProcAddr(LPVOID p0, LPCSTR p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPCSTR);
+extern "C" LPVOID WINAPI vkGetDeviceProcAddr(LPVOID p0, LPCSTR p1) {
+    if (!LoadRealVulkan1()) return nullptr;
+    typedef LPVOID(WINAPI * PFN)(LPVOID, LPCSTR);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceProcAddr") : nullptr);
-    if (!fn) return 0;
+    if (!fn) return nullptr;
     return fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetDeviceQueue(LPVOID p0, LONG p1, LONG p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LONG, LPVOID);
+extern "C" void WINAPI vkGetDeviceQueue(LPVOID p0, LONG p1, LONG p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceQueue") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetDeviceQueue2(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+extern "C" void WINAPI vkGetDeviceQueue2(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetDeviceQueue2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetDisplayModePropertiesKHR(void) {
-    return 0;
-}
+extern "C" int WINAPI vkGetDisplayModePropertiesKHR(void) { return 0; }
 
-extern "C" int WINAPI vkGetDisplayPlaneCapabilitiesKHR(void) {
-    return 0;
-}
+extern "C" int WINAPI vkGetDisplayPlaneCapabilitiesKHR(void) { return 0; }
 
-extern "C" int WINAPI vkGetDisplayPlaneSupportedDisplaysKHR(void) {
-    return 0;
-}
+extern "C" int WINAPI vkGetDisplayPlaneSupportedDisplaysKHR(void) { return 0; }
 
 extern "C" int WINAPI vkGetEventStatus(LPVOID p0, DWORD64 p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetEventStatus") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetFaultData(void) {
-    return 0;
-}
+extern "C" int WINAPI vkGetFaultData(void) { return 0; }
 
 extern "C" int WINAPI vkGetFenceStatus(LPVOID p0, DWORD64 p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetFenceStatus") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetImageMemoryRequirements(LPVOID p0, DWORD64 p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+extern "C" void WINAPI vkGetImageMemoryRequirements(LPVOID p0, DWORD64 p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageMemoryRequirements") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetImageMemoryRequirements2(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+extern "C" void WINAPI vkGetImageMemoryRequirements2(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageMemoryRequirements2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetImageSparseMemoryRequirements(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageSparseMemoryRequirements") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+extern "C" void WINAPI vkGetImageSparseMemoryRequirements(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageSparseMemoryRequirements") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetImageSparseMemoryRequirements2(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageSparseMemoryRequirements2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+extern "C" void WINAPI vkGetImageSparseMemoryRequirements2(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageSparseMemoryRequirements2") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetImageSubresourceLayout(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+extern "C" void WINAPI vkGetImageSubresourceLayout(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageSubresourceLayout") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetImageSubresourceLayout2(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+extern "C" void WINAPI vkGetImageSubresourceLayout2(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetImageSubresourceLayout2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetInstanceProcAddr(LPVOID p0, LPCSTR p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPCSTR);
+extern "C" LPVOID WINAPI vkGetInstanceProcAddr(LPVOID p0, LPCSTR p1) {
+    if (!LoadRealVulkan1()) return nullptr;
+    typedef LPVOID(WINAPI * PFN)(LPVOID, LPCSTR);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetInstanceProcAddr") : nullptr);
-    if (!fn) return 0;
+    if (!fn) return nullptr;
     return fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceDisplayPlanePropertiesKHR(void) {
-    return 0;
+extern "C" int WINAPI vkGetPhysicalDeviceDisplayPlanePropertiesKHR(void) { return 0; }
+
+extern "C" int WINAPI vkGetPhysicalDeviceDisplayPropertiesKHR(void) { return 0; }
+
+extern "C" void WINAPI vkGetPhysicalDeviceExternalBufferProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceExternalBufferProperties")
+                                     : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceDisplayPropertiesKHR(void) {
-    return 0;
+extern "C" void WINAPI vkGetPhysicalDeviceExternalFenceProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceExternalFenceProperties")
+                                     : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceExternalBufferProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceExternalBufferProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetPhysicalDeviceExternalSemaphoreProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceExternalSemaphoreProperties")
+                                : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceExternalFenceProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceExternalFenceProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
-}
-
-extern "C" int WINAPI vkGetPhysicalDeviceExternalSemaphoreProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceExternalSemaphoreProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
-}
-
-extern "C" int WINAPI vkGetPhysicalDeviceFeatures(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+extern "C" void WINAPI vkGetPhysicalDeviceFeatures(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceFeatures") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+    if (!fn) return;
+    fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceFeatures2(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+extern "C" void WINAPI vkGetPhysicalDeviceFeatures2(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceFeatures2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+    if (!fn) return;
+    fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceFormatProperties(LPVOID p0, LONG p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceFormatProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetPhysicalDeviceFormatProperties(LPVOID p0, LONG p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceFormatProperties") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceFormatProperties2(LPVOID p0, LONG p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceFormatProperties2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetPhysicalDeviceFormatProperties2(LPVOID p0, LONG p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceFormatProperties2") : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceImageFormatProperties(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LONG p5, LPVOID p6) {
+extern "C" int WINAPI vkGetPhysicalDeviceImageFormatProperties(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LONG p5,
+                                                               LPVOID p6) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceImageFormatProperties") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceImageFormatProperties")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4, p5, p6);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceImageFormatProperties2(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceImageFormatProperties2") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceImageFormatProperties2")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceMemoryProperties(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceMemoryProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+extern "C" void WINAPI vkGetPhysicalDeviceMemoryProperties(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceMemoryProperties") : nullptr);
+    if (!fn) return;
+    fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceMemoryProperties2(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceMemoryProperties2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+extern "C" void WINAPI vkGetPhysicalDeviceMemoryProperties2(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceMemoryProperties2") : nullptr);
+    if (!fn) return;
+    fn(p0, p1);
 }
 
 extern "C" int WINAPI vkGetPhysicalDevicePresentRectanglesKHR(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDevicePresentRectanglesKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDevicePresentRectanglesKHR")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceProperties(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+extern "C" void WINAPI vkGetPhysicalDeviceProperties(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+    if (!fn) return;
+    fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceProperties2(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+extern "C" void WINAPI vkGetPhysicalDeviceProperties2(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceProperties2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1);
+    if (!fn) return;
+    fn(p0, p1);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceQueueFamilyProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceQueueFamilyProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetPhysicalDeviceQueueFamilyProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceQueueFamilyProperties")
+                                     : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceQueueFamilyProperties2(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceQueueFamilyProperties2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+extern "C" void WINAPI vkGetPhysicalDeviceQueueFamilyProperties2(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceQueueFamilyProperties2")
+                                      : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceSparseImageFormatProperties(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4, LONG p5, LPVOID p6, LPVOID p7) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSparseImageFormatProperties") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4, p5, p6, p7);
+extern "C" void WINAPI vkGetPhysicalDeviceSparseImageFormatProperties(LPVOID p0, LONG p1, LONG p2, LONG p3, LONG p4,
+                                                                      LONG p5, LPVOID p6, LPVOID p7) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LONG, LONG, LONG, LONG, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSparseImageFormatProperties")
+                                : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2, p3, p4, p5, p6, p7);
 }
 
-extern "C" int WINAPI vkGetPhysicalDeviceSparseImageFormatProperties2(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSparseImageFormatProperties2") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+extern "C" void WINAPI vkGetPhysicalDeviceSparseImageFormatProperties2(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSparseImageFormatProperties2")
+                                : nullptr);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceSurfaceCapabilities2KHR(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceCapabilities2KHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceCapabilities2KHR")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceSurfaceCapabilitiesKHR(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceSurfaceFormats2KHR(LPVOID p0, LPVOID p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceFormats2KHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceFormats2KHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceSurfaceFormatsKHR(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceFormatsKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceFormatsKHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceSurfacePresentModesKHR(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfacePresentModesKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfacePresentModesKHR")
+                                     : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceSurfaceSupportKHR(LPVOID p0, LONG p1, DWORD64 p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, DWORD64, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceSupportKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, DWORD64, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceSurfaceSupportKHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceToolProperties(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceToolProperties") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceToolProperties") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
 extern "C" int WINAPI vkGetPhysicalDeviceWin32PresentationSupportKHR(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceWin32PresentationSupportKHR") : nullptr);
+    typedef int(WINAPI * PFN)(LPVOID, LONG);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPhysicalDeviceWin32PresentationSupportKHR")
+                                : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
 }
 
 extern "C" int WINAPI vkGetPipelineCacheData(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPipelineCacheData") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkGetPrivateData(LPVOID p0, LONG p1, DWORD64 p2, DWORD64 p3, LPVOID p4) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, DWORD64, DWORD64, LPVOID);
+extern "C" void WINAPI vkGetPrivateData(LPVOID p0, LONG p1, DWORD64 p2, DWORD64 p3, LPVOID p4) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LONG, DWORD64, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetPrivateData") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!fn) return;
+    fn(p0, p1, p2, p3, p4);
 }
 
-extern "C" int WINAPI vkGetQueryPoolResults(LPVOID p0, DWORD64 p1, LONG p2, LONG p3, LONG p4, LPVOID p5, DWORD64 p6, LONG p7) {
+extern "C" int WINAPI vkGetQueryPoolResults(LPVOID p0, DWORD64 p1, LONG p2, LONG p3, LONG p4, LPVOID p5, DWORD64 p6,
+                                            LONG p7) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LONG, LONG, LONG, LPVOID, DWORD64, LONG);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LONG, LONG, LONG, LPVOID, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetQueryPoolResults") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4, p5, p6, p7);
 }
 
-extern "C" int WINAPI vkGetRenderAreaGranularity(LPVOID p0, DWORD64 p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+extern "C" void WINAPI vkGetRenderAreaGranularity(LPVOID p0, DWORD64 p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetRenderAreaGranularity") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkGetRenderingAreaGranularity(LPVOID p0, LPVOID p1, LPVOID p2) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+extern "C" void WINAPI vkGetRenderingAreaGranularity(LPVOID p0, LPVOID p1, LPVOID p2) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetRenderingAreaGranularity") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2);
+    if (!fn) return;
+    fn(p0, p1, p2);
 }
 
 extern "C" int WINAPI vkGetSemaphoreCounterValue(LPVOID p0, DWORD64 p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetSemaphoreCounterValue") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1861,7 +1896,7 @@ extern "C" int WINAPI vkGetSemaphoreCounterValue(LPVOID p0, DWORD64 p1, LPVOID p
 
 extern "C" int WINAPI vkGetSwapchainImagesKHR(LPVOID p0, DWORD64 p1, LPVOID p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkGetSwapchainImagesKHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1869,7 +1904,7 @@ extern "C" int WINAPI vkGetSwapchainImagesKHR(LPVOID p0, DWORD64 p1, LPVOID p2, 
 
 extern "C" int WINAPI vkInvalidateMappedMemoryRanges(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkInvalidateMappedMemoryRanges") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1877,7 +1912,7 @@ extern "C" int WINAPI vkInvalidateMappedMemoryRanges(LPVOID p0, LONG p1, LPVOID 
 
 extern "C" int WINAPI vkMapMemory(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3, LONG p4, LPVOID p5) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, DWORD64, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkMapMemory") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4, p5);
@@ -1885,7 +1920,7 @@ extern "C" int WINAPI vkMapMemory(LPVOID p0, DWORD64 p1, DWORD64 p2, DWORD64 p3,
 
 extern "C" int WINAPI vkMapMemory2(LPVOID p0, LPVOID p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkMapMemory2") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1893,7 +1928,7 @@ extern "C" int WINAPI vkMapMemory2(LPVOID p0, LPVOID p1, LPVOID p2) {
 
 extern "C" int WINAPI vkMergePipelineCaches(LPVOID p0, DWORD64 p1, LONG p2, LPVOID p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkMergePipelineCaches") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1901,7 +1936,7 @@ extern "C" int WINAPI vkMergePipelineCaches(LPVOID p0, DWORD64 p1, LONG p2, LPVO
 
 extern "C" int WINAPI vkQueueBindSparse(LPVOID p0, LONG p1, LPVOID p2, DWORD64 p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkQueueBindSparse") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1909,7 +1944,7 @@ extern "C" int WINAPI vkQueueBindSparse(LPVOID p0, LONG p1, LPVOID p2, DWORD64 p
 
 extern "C" int WINAPI vkQueuePresentKHR(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkQueuePresentKHR") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
@@ -1917,7 +1952,7 @@ extern "C" int WINAPI vkQueuePresentKHR(LPVOID p0, LPVOID p1) {
 
 extern "C" int WINAPI vkQueueSubmit(LPVOID p0, LONG p1, LPVOID p2, DWORD64 p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkQueueSubmit") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1925,7 +1960,7 @@ extern "C" int WINAPI vkQueueSubmit(LPVOID p0, LONG p1, LPVOID p2, DWORD64 p3) {
 
 extern "C" int WINAPI vkQueueSubmit2(LPVOID p0, LONG p1, LPVOID p2, DWORD64 p3) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkQueueSubmit2") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3);
@@ -1933,7 +1968,7 @@ extern "C" int WINAPI vkQueueSubmit2(LPVOID p0, LONG p1, LPVOID p2, DWORD64 p3) 
 
 extern "C" int WINAPI vkQueueWaitIdle(LPVOID p0) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkQueueWaitIdle") : nullptr);
     if (!fn) return 0;
     return fn(p0);
@@ -1941,7 +1976,7 @@ extern "C" int WINAPI vkQueueWaitIdle(LPVOID p0) {
 
 extern "C" int WINAPI vkResetCommandBuffer(LPVOID p0, LONG p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG);
+    typedef int(WINAPI * PFN)(LPVOID, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkResetCommandBuffer") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
@@ -1949,7 +1984,7 @@ extern "C" int WINAPI vkResetCommandBuffer(LPVOID p0, LONG p1) {
 
 extern "C" int WINAPI vkResetCommandPool(LPVOID p0, DWORD64 p1, LONG p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LONG);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkResetCommandPool") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -1957,47 +1992,47 @@ extern "C" int WINAPI vkResetCommandPool(LPVOID p0, DWORD64 p1, LONG p2) {
 
 extern "C" int WINAPI vkResetDescriptorPool(LPVOID p0, DWORD64 p1, LONG p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LONG);
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkResetDescriptorPool") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
-extern "C" void WINAPI vkResetEvent(LPVOID p0, DWORD64 p1) {
-    if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64);
+extern "C" int WINAPI vkResetEvent(LPVOID p0, DWORD64 p1) {
+    if (!LoadRealVulkan1()) return 0;
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkResetEvent") : nullptr);
-    if (!fn) return;
-    fn(p0, p1);
+    if (!fn) return 0;
+    return fn(p0, p1);
 }
 
 extern "C" int WINAPI vkResetFences(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkResetFences") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
 }
 
-extern "C" int WINAPI vkResetQueryPool(LPVOID p0, DWORD64 p1, LONG p2, LONG p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, LONG, LONG);
+extern "C" void WINAPI vkResetQueryPool(LPVOID p0, DWORD64 p1, LONG p2, LONG p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkResetQueryPool") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
+    if (!fn) return;
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" void WINAPI vkSetEvent(LPVOID p0, DWORD64 p1) {
-    if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64);
+extern "C" int WINAPI vkSetEvent(LPVOID p0, DWORD64 p1) {
+    if (!LoadRealVulkan1()) return 0;
+    typedef int(WINAPI * PFN)(LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkSetEvent") : nullptr);
-    if (!fn) return;
-    fn(p0, p1);
+    if (!fn) return 0;
+    return fn(p0, p1);
 }
 
 extern "C" int WINAPI vkSetPrivateData(LPVOID p0, LONG p1, DWORD64 p2, DWORD64 p3, DWORD64 p4) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, DWORD64, DWORD64, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, DWORD64, DWORD64, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkSetPrivateData") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4);
@@ -2005,7 +2040,7 @@ extern "C" int WINAPI vkSetPrivateData(LPVOID p0, LONG p1, DWORD64 p2, DWORD64 p
 
 extern "C" int WINAPI vkSignalSemaphore(LPVOID p0, LPVOID p1) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkSignalSemaphore") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1);
@@ -2013,7 +2048,7 @@ extern "C" int WINAPI vkSignalSemaphore(LPVOID p0, LPVOID p1) {
 
 extern "C" int WINAPI vkTransitionImageLayout(LPVOID p0, LONG p1, LPVOID p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkTransitionImageLayout") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);
@@ -2021,7 +2056,7 @@ extern "C" int WINAPI vkTransitionImageLayout(LPVOID p0, LONG p1, LPVOID p2) {
 
 extern "C" void WINAPI vkTrimCommandPool(LPVOID p0, DWORD64 p1, LONG p2) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64, LONG);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, LONG);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkTrimCommandPool") : nullptr);
     if (!fn) return;
     fn(p0, p1, p2);
@@ -2029,39 +2064,40 @@ extern "C" void WINAPI vkTrimCommandPool(LPVOID p0, DWORD64 p1, LONG p2) {
 
 extern "C" void WINAPI vkUnmapMemory(LPVOID p0, DWORD64 p1) {
     if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, DWORD64);
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkUnmapMemory") : nullptr);
     if (!fn) return;
     fn(p0, p1);
 }
 
-extern "C" void WINAPI vkUnmapMemory2(LPVOID p0, LPVOID p1) {
-    if (!LoadRealVulkan1()) return;
-    typedef void (WINAPI *PFN)(LPVOID, LPVOID);
+extern "C" int WINAPI vkUnmapMemory2(LPVOID p0, LPVOID p1) {
+    if (!LoadRealVulkan1()) return 0;
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkUnmapMemory2") : nullptr);
+    if (!fn) return 0;
+    return fn(p0, p1);
+}
+
+extern "C" void WINAPI vkUpdateDescriptorSetWithTemplate(LPVOID p0, DWORD64 p1, DWORD64 p2, LPVOID p3) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, DWORD64, DWORD64, LPVOID);
+    PFN fn =
+        (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkUpdateDescriptorSetWithTemplate") : nullptr);
     if (!fn) return;
-    fn(p0, p1);
+    fn(p0, p1, p2, p3);
 }
 
-extern "C" int WINAPI vkUpdateDescriptorSetWithTemplate(LPVOID p0, DWORD64 p1, DWORD64 p2, LPVOID p3) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, DWORD64, DWORD64, LPVOID);
-    PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkUpdateDescriptorSetWithTemplate") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3);
-}
-
-extern "C" int WINAPI vkUpdateDescriptorSets(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4) {
-    if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID);
+extern "C" void WINAPI vkUpdateDescriptorSets(LPVOID p0, LONG p1, LPVOID p2, LONG p3, LPVOID p4) {
+    if (!LoadRealVulkan1()) return;
+    typedef void(WINAPI * PFN)(LPVOID, LONG, LPVOID, LONG, LPVOID);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkUpdateDescriptorSets") : nullptr);
-    if (!fn) return 0;
-    return fn(p0, p1, p2, p3, p4);
+    if (!fn) return;
+    fn(p0, p1, p2, p3, p4);
 }
 
 extern "C" int WINAPI vkWaitForFences(LPVOID p0, LONG p1, LPVOID p2, LONG p3, DWORD64 p4) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LONG, LPVOID, LONG, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, LONG, LPVOID, LONG, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkWaitForFences") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2, p3, p4);
@@ -2069,7 +2105,7 @@ extern "C" int WINAPI vkWaitForFences(LPVOID p0, LONG p1, LPVOID p2, LONG p3, DW
 
 extern "C" int WINAPI vkWaitSemaphores(LPVOID p0, LPVOID p1, DWORD64 p2) {
     if (!LoadRealVulkan1()) return 0;
-    typedef int (WINAPI *PFN)(LPVOID, LPVOID, DWORD64);
+    typedef int(WINAPI * PFN)(LPVOID, LPVOID, DWORD64);
     PFN fn = (PFN)(LoadRealVulkan1() ? GetProcAddress(g_vulkan_1_module, "vkWaitSemaphores") : nullptr);
     if (!fn) return 0;
     return fn(p0, p1, p2);

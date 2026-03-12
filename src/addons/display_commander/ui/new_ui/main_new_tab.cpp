@@ -5248,8 +5248,7 @@ static void DrawDisplaySettings_VSyncAndTearing_PresentMonStatusLine(display_com
     if (imgui.Selectable("(click to enable)##presentmon", false)) {
         settings::g_advancedTabSettings.enable_presentmon_tracing.SetValue(true);
         settings::g_advancedTabSettings.enable_presentmon_tracing.Save();
-        presentmon::CreateAndStartPresentMon();
-        LogInfo("PresentMon enabled from Main tab (Flip status line).");
+        LogInfo("PresentMon enabled from Main tab (Flip status line). Continuous monitoring will start the worker.");
     }
     imgui.PopStyleColor();
     if (imgui.IsItemHovered()) {

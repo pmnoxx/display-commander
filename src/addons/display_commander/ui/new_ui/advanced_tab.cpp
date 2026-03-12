@@ -249,11 +249,10 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
         LogInfo("PresentMon ETW tracing setting changed to: %s",
                 settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue() ? "enabled" : "disabled");
 
-        if (settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
-            presentmon::CreateAndStartPresentMon();
-        } else {
+        if (!settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()) {
             presentmon::StopAndDestroyPresentMon(presentmon::PresentMonStopReason::UserDisabled);
         }
+        // When enabled, the continuous monitoring thread starts the worker on its next loop.
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(
@@ -265,7 +264,7 @@ void DrawPresentMonSection(display_commander::ui::IImGuiWrapper& imgui) {
             "- Useful for VRR indicator on D3D12 games\n"
             "- Required for accurate presentation stats on non-NVIDIA hardware\n\n"
             "STATUS:\n"
-            "- ETW session is started in a background thread\n"
+            "- Worker is started by the continuous monitoring thread (not from the UI thread)\n"
             "- Flip mode is best-effort (depends on ETW provider fields)\n"
             "- Default: enabled\n\n"
             "Note: Requires appropriate Windows permissions for ETW tracing.");
@@ -1126,23 +1125,23 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
     }
     if (imgui.IsItemHovered()) {
         imgui.SetTooltipEx(ICON_FK_WARNING
-                         " WARNING: Debug Layer Setup Required " ICON_FK_WARNING
-                         "\n\n"
-                         "REQUIREMENTS:\n"
-                         "- Windows 11 SDK must be installed\n"
-                         "- Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
-                         "- Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
-                         "SETUP STEPS:\n"
-                         "1. Install Windows 11 SDK with Graphics Tools\n"
-                         "2. Run DbgView.exe as Administrator\n"
-                         "3. Enable this setting\n"
-                         "4. RESTART THE GAME for changes to take effect\n\n"
-                         "FEATURES:\n"
-                         "- D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
-                         "- D3D12: Enables debug layer via D3D12GetDebugInterface\n"
-                         "- Breaks on all severity levels (ERROR, WARNING, INFO)\n"
-                         "- Debug output appears in DbgView\n\n" ICON_FK_WARNING
-                         " May significantly impact performance when enabled!");
+                           " WARNING: Debug Layer Setup Required " ICON_FK_WARNING
+                           "\n\n"
+                           "REQUIREMENTS:\n"
+                           "- Windows 11 SDK must be installed\n"
+                           "- Download: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/\n"
+                           "- Install 'Graphics Tools' and 'Debugging Tools for Windows'\n\n"
+                           "SETUP STEPS:\n"
+                           "1. Install Windows 11 SDK with Graphics Tools\n"
+                           "2. Run DbgView.exe as Administrator\n"
+                           "3. Enable this setting\n"
+                           "4. RESTART THE GAME for changes to take effect\n\n"
+                           "FEATURES:\n"
+                           "- D3D11: Adds D3D11_CREATE_DEVICE_DEBUG flag\n"
+                           "- D3D12: Enables debug layer via D3D12GetDebugInterface\n"
+                           "- Breaks on all severity levels (ERROR, WARNING, INFO)\n"
+                           "- Debug output appears in DbgView\n\n" ICON_FK_WARNING
+                           " May significantly impact performance when enabled!");
     }
 
     // Show status when debug layer is enabled
@@ -1724,7 +1723,7 @@ void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander
                            native_sleep_ns_smooth / 1000000.0);
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltipEx("Smoothed interval using rolling average. Raw: %.1f ms",
-                                     native_sleep_ns > 0 ? native_sleep_ns / 1000000.0 : 0.0);
+                                       native_sleep_ns > 0 ? native_sleep_ns / 1000000.0 : 0.0);
                 }
             }
             imgui.Text("NvAPI_D3D_SetSleepMode calls: %u", native_set_sleep_mode_count);

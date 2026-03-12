@@ -13,7 +13,7 @@
 
 namespace presentmon {
 
-constexpr bool kPresentMonEnabled = false;
+constexpr bool kPresentMonEnabled = true;
 
 // ETW event-type summary (cached schema for exploration/debug)
 struct PresentMonEventTypeSummary {
@@ -390,7 +390,7 @@ class PresentMonManager {
 // Global instance (start/stop worker; object lives for process lifetime)
 extern PresentMonManager g_presentMonManager;
 
-// Start worker if not already running (call when user enables or from continuous monitoring).
+// Start worker if not already running. Must be called only from the continuous monitoring thread, not from the UI.
 void CreateAndStartPresentMon();
 // Stop worker (call on disable or shutdown). Manager object is not destroyed.
 void StopAndDestroyPresentMon(PresentMonStopReason reason);

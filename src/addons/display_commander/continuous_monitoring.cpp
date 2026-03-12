@@ -729,11 +729,15 @@ void ContinuousMonitoringThread() {
         // When no swapchain window is set (e.g. no-ReShade mode), infer game window from foreground
         TrySetGameWindowFromForeground();
 
-        // PresentMon: start worker immediately when enabled and not running (requires EXPERIMENTAL_FEATURES)
-        if (presentmon::kPresentMonEnabled
-            && settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
+        // PresentMon: start worker 5s after continuous monitoring starts, when enabled and not running (requires
+        // EXPERIMENTAL_FEATURES)
+        if (presentmon::kPresentMonEnabled && settings::g_advancedTabSettings.enable_presentmon_tracing.GetValue()
             && !presentmon::g_presentMonManager.IsRunning()) {
-            presentmon::CreateAndStartPresentMon();
+            constexpr LONGLONG kPresentMonStartDelaySec = 5;
+            const LONGLONG elapsed_ns = utils::get_now_ns() - start_time;
+            if (elapsed_ns >= kPresentMonStartDelaySec * utils::SEC_TO_NS) {
+                presentmon::CreateAndStartPresentMon();
+            }
         }
 
         // Periodic display cache refresh off the UI thread
@@ -883,7 +887,8 @@ void ContinuousMonitoringThread() {
                 display_commander::utils::RefreshRunningGamesCache();
             }
 
-            // Steam achievement count cache: only place that calls GetSteamAchievementCountBlocking() so overlay/UI never block
+            // Steam achievement count cache: only place that calls GetSteamAchievementCountBlocking() so overlay/UI
+            // never block
             if (settings::g_advancedTabSettings.show_steam_achievement_notifications.GetValue()) {
                 CALL_GUARD(utils::get_now_ns());
                 g_continuous_monitoring_section.store("steam_achievement_cache", std::memory_order_release);

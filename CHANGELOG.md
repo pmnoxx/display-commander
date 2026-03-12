@@ -3,6 +3,9 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.421
+- [new feature] **PresentMon ETW tracing re-enabled** - PresentMon ETW tracing is enabled again. Enable "Enable PresentMon ETW Tracing" in the Advanced tab; the continuous monitoring thread starts the worker after a 5s delay (start/creation does not run from the UI or DllMain). Details: presentmon_manager.hpp kPresentMonEnabled = true.
+
 ## v0.12.420
 - [new feature] **Stack trace: set symbol search path and warn if PDB missing** - Before each stack trace, the addon sets DbgHelp’s symbol search path to include the addon directory (and any existing path) so Display Commander’s PDB can be found. If the addon’s `.pdb` file is not present at the expected path, a warning is logged: "Display Commander debug symbols ('...') not found, stack trace may be inaccurate." This makes crash and exit logs more informative when symbols are missing. Details: dbghelp_loader SymSetSearchPathW/SymGetSearchPathW; stack_trace.cpp sets path and checks PDB before each GenerateStackTrace.
 
@@ -19,6 +22,8 @@
 - [new feature] [hooks] **D3D9 hook suppression** - D3D9 hooks (Direct3DCreate9/CreateDeviceEx and present) can be suppressed like other hook types. When suppressed, Display Commander does not install hooks on d3d9.dll. Use Debug → Hooks and enable "Suppressed" for "D3D9", or set `D3D9Hooks = true` under `[DisplayCommander.HookSuppression]` in DisplayCommander.toml. Takes effect on next game start. Details: HookType::D3D9; suppress_d3d9_hooks / d3d9_hooks_installed in hook_suppression_settings; InstallDX9Hooks checks ShouldSuppressHook(HookType::D3D9) and calls MarkHookInstalled on success.
 
 ## v0.12.415 (unreleased)
+- [cleanup] **PresentMon: start worker only from continuous monitoring thread** - The PresentMon ETW worker is no longer started from the UI thread (Main tab "click to enable" or Advanced tab checkbox). Enabling the setting only saves the option; the continuous monitoring thread starts the worker on its next loop. This avoids starting the worker from the overlay/render thread or, when LoadFromDllMain=1, from DllMain. Stopping still runs from the UI when the user disables the option. Details: main_new_tab.cpp, advanced_tab.cpp remove CreateAndStartPresentMon() on enable; continuous_monitoring.cpp calls CreateAndStartPresentMon when enabled and not running.
+- [cleanup] **PresentMon: 5s delay after continuous monitoring starts** - The continuous monitoring thread now waits 5 seconds after it starts before starting the PresentMon worker (when the setting is enabled). This defers ETW/thread creation until after early process and DllMain-related activity has settled. Details: continuous_monitoring.cpp kPresentMonStartDelaySec, elapsed_ns check.
 - [ui] [settings] **Brightness / Auto HDR section off by default** - The Brightness and Auto HDR subsection on the Main tab is now disabled by default for new configs. The setting uses a new config key so existing users keep their current choice; new installs see the section collapsed until they enable it. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default false, key brightness_autohdr_section_enabled_doff).
 
 ## v0.12.414 (unreleased)

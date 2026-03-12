@@ -108,8 +108,8 @@ bool ProviderGuidByName(const wchar_t* provider_name, GUID& out_guid) {
     // Cap iteration so corrupt NumberOfProviders cannot cause OOB read or runaway loop.
     const ULONG n = providers->NumberOfProviders;
     const ULONG max_providers = (size > sizeof(PROVIDER_ENUMERATION_INFO))
-                                   ? (size - sizeof(PROVIDER_ENUMERATION_INFO)) / sizeof(TRACE_PROVIDER_INFO)
-                                   : 0;
+                                    ? (size - sizeof(PROVIDER_ENUMERATION_INFO)) / sizeof(TRACE_PROVIDER_INFO)
+                                    : 0;
     const ULONG limit = (n <= max_providers && n <= 32768u) ? n : max_providers;
 
     for (ULONG i = 0; i < limit; ++i) {
@@ -903,8 +903,7 @@ static bool GetSessionNameInfoSafe(const wchar_t* session_name, size_t max_name_
             *out_name_len = 0;
             return true;
         }
-        if (prefix_len != 0 &&
-            (name_len < prefix_len || _wcsnicmp(session_name, prefix, prefix_len) != 0)) {
+        if (prefix_len != 0 && (name_len < prefix_len || _wcsnicmp(session_name, prefix, prefix_len) != 0)) {
             *out_include = 0;
             *out_name_len = name_len;
             return true;

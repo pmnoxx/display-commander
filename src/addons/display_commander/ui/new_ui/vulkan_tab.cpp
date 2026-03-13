@@ -11,6 +11,7 @@
 #include <imgui.h>
 #include <windows.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -20,7 +21,7 @@ namespace ui::new_ui {
 namespace {
 
 // Value column X so labels (e.g. "VK_NV_low_latency2 last marker / presentID:") don't overlap values
-constexpr float kVulkanTabValueColumnX = 380.0f;
+constexpr float kVulkanTabValueColumnX = 660.0f;
 
 // Check if NvLowLatencyVk.dll is loaded in the process (for status display)
 bool IsNvLowLatencyVkLoaded() {
@@ -120,8 +121,10 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
         if (imgui.IsItemHovered()) {
             imgui.SetTooltipEx(
-                "When enabled, hooks vulkan-1.dll exports (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, "
-                "vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV) for logging and FPS limiter. Install on "
+                "When enabled, hooks vulkan-1.dll exports (vkGetInstanceProcAddr, vkCreateDevice, "
+                "vkCreateSwapchainKHR, "
+                "vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV) for logging and FPS limiter. Install "
+                "on "
                 "next vulkan-1.dll load, or now if already loaded.");
         }
 
@@ -148,10 +151,12 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             }
             if (has_low_latency || has_low_latency2) {
                 imgui.Spacing();
-                imgui.TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING " VK_NV_low_latency or VK_NV_low_latency2 is already enabled by the application.");
+                imgui.TextColored(ui::colors::ICON_WARNING, ICON_FK_WARNING
+                                  " VK_NV_low_latency or VK_NV_low_latency2 is already enabled by the application.");
                 if (imgui.IsItemHovered()) {
                     imgui.SetTooltipEx(
-                        "The game already requested a low-latency extension. Extension injection may be redundant or cause conflicts.");
+                        "The game already requested a low-latency extension. Extension injection may be redundant or "
+                        "cause conflicts.");
                 }
             }
         }
@@ -180,17 +185,17 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Text("Setting enabled:");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.TextColored(inj_state.enabled ? ui::colors::ICON_POSITIVE : ui::colors::TEXT_DIMMED,
-                             inj_state.enabled ? "Yes" : "No");
+                              inj_state.enabled ? "Yes" : "No");
 
             imgui.Text("Loader hooks on:");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.TextColored(inj_state.loader_hooks_on ? ui::colors::ICON_POSITIVE : ui::colors::TEXT_DIMMED,
-                             inj_state.loader_hooks_on ? "Yes" : "No");
+                              inj_state.loader_hooks_on ? "Yes" : "No");
 
             imgui.Text("NvLowLatencyVk loaded (injection skipped):");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.TextColored(inj_state.nvll_loaded ? ui::colors::ICON_WARNING : ui::colors::TEXT_DIMMED,
-                             inj_state.nvll_loaded ? "Yes" : "No");
+                              inj_state.nvll_loaded ? "Yes" : "No");
             if (inj_state.nvll_loaded && imgui.IsItemHovered()) {
                 imgui.SetTooltipEx("Game uses native NvLowLatencyVk; we do not inject.");
             }
@@ -198,7 +203,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
             imgui.Text("Injecting (all conditions met):");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.TextColored(inj_state.injecting ? ui::colors::ICON_SUCCESS : ui::colors::TEXT_DIMMED,
-                             inj_state.injecting ? "Yes" : "No");
+                              inj_state.injecting ? "Yes" : "No");
 
             imgui.Text("Present ID:");
             imgui.SameLine(kVulkanTabValueColumnX);
@@ -218,15 +223,13 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
 
             imgui.Text("Has device / swapchain / semaphore:");
             imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%s / %s / %s",
-                       inj_state.has_device ? "Y" : "N",
-                       inj_state.has_swapchain ? "Y" : "N",
+            imgui.Text("%s / %s / %s", inj_state.has_device ? "Y" : "N", inj_state.has_swapchain ? "Y" : "N",
                        inj_state.has_semaphore ? "Y" : "N");
 
             imgui.Text("Procs resolved:");
             imgui.SameLine(kVulkanTabValueColumnX);
             imgui.TextColored(inj_state.procs_resolved ? ui::colors::ICON_POSITIVE : ui::colors::TEXT_DIMMED,
-                             inj_state.procs_resolved ? "Yes" : "No");
+                              inj_state.procs_resolved ? "Yes" : "No");
 
             imgui.Unindent();
             imgui.Spacing();
@@ -334,22 +337,14 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         if (loader_active) {
-            std::uint64_t calls_get_instance = 0, calls_get_device = 0, calls_create_device = 0,
-                          calls_set_latency_marker = 0;
-            GetVulkanLoaderCallCounts(&calls_get_instance, &calls_get_device, &calls_create_device,
-                                      &calls_set_latency_marker);
-            imgui.Text("vkGetInstanceProcAddr:");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(calls_get_instance));
-            imgui.Text("vkGetDeviceProcAddr (not hooked):");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(calls_get_device));
-            imgui.Text("vkCreateDevice:");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(calls_create_device));
-            imgui.Text("vkSetLatencyMarkerNV:");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(calls_set_latency_marker));
+            constexpr std::size_t kLoaderHookCount = static_cast<std::size_t>(VulkanLoaderHook::kVulkanLoaderHookCount);
+            std::vector<std::uint64_t> loader_call_counts(kLoaderHookCount, 0);
+            GetVulkanLoaderHookCallCounts(loader_call_counts.data(), kLoaderHookCount);
+            for (std::size_t i = 0; i < kLoaderHookCount; ++i) {
+                imgui.Text("%s:", GetVulkanLoaderHookName(static_cast<VulkanLoaderHook>(i)));
+                imgui.SameLine(kVulkanTabValueColumnX);
+                imgui.Text("%llu", static_cast<unsigned long long>(loader_call_counts[i]));
+            }
         }
 
         // PCLStats ETW (game + Display Commander) – counts from EventWriteTransfer hook

@@ -1,8 +1,26 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+/** Vulkan loader hook indices; use for stats arrays. Order matches the hook table in vulkan_loader_hooks.cpp. */
+enum class VulkanLoaderHook : std::size_t {
+    GetInstanceProcAddr = 0,
+    CreateDevice,
+    CreateSwapchainKHR,
+    QueuePresentKHR,
+    BeginCommandBuffer,
+    SetLatencyMarkerNV,
+    kVulkanLoaderHookCount
+};
+
+/** Human-readable name for a Vulkan loader hook (for UI). */
+const char* GetVulkanLoaderHookName(VulkanLoaderHook hook);
+
+/** Fill call counts for each loader hook. out_counts must have at least kVulkanLoaderHookCount elements. */
+void GetVulkanLoaderHookCallCounts(uint64_t* out_counts, std::size_t count);
 
 /** Install hooks on vulkan-1.dll exports (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, vkQueuePresentKHR,
  *  vkBeginCommandBuffer, vkSetLatencyMarkerNV). No vkGetDeviceProcAddr; all hooks are from GetProcAddress(module, name).

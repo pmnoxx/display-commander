@@ -1418,8 +1418,8 @@ void DrawMpoSection(display_commander::ui::IImGuiWrapper& imgui) {
 void DrawNvapiSettings(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     uint64_t now_ns = utils::get_now_ns();
 
-    // Minimal NVIDIA Reflex Controls (device runtime dependent)
-    if (imgui.CollapsingHeader("NVIDIA Reflex (Minimal)", wrapper_flags::TreeNodeFlags_None)) {
+    // Minimal NVIDIA Reflex Controls (device runtime dependent); only when Reflex is available (64-bit + native or NVAPI init)
+    if (IsReflexAvailable() && imgui.CollapsingHeader("NVIDIA Reflex (Minimal)", wrapper_flags::TreeNodeFlags_None)) {
         imgui.Indent();
         // Native Reflex Status Indicator
         bool is_native_reflex_active = IsNativeReflexActive(now_ns);

@@ -207,6 +207,10 @@ inline bool is_64_bit() {
     return Is64BitBuild();
 }
 
+// True when Reflex UI/controls should be shown: 64-bit and (native Reflex was called or NVAPI
+// initialized with D3D device). Use for Reflex mode selector and related UI.
+bool IsReflexAvailable();
+
 // Calling DLL detection utility (similar to Special-K's SK_GetCallingDLL)
 // Returns the HMODULE of the DLL that contains the given address
 // Default parameter uses _ReturnAddress() to get the caller's return address

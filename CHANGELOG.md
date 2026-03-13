@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.473
+- [ui] **IsReflexAvailable for Reflex controls** - Reflex mode selector (OnPresent FPS limiter) and Advanced tab "NVIDIA Reflex (Minimal)" section visibility are now determined by `IsReflexAvailable()` instead of `is_64_bit()` alone. Reflex controls are shown when the process is 64-bit and either native Reflex was called (game used SetLatencyMarker) or NVAPI was initialized with a D3D device. This avoids showing Reflex UI when Reflex cannot be used. Details: `IsReflexAvailable()` in utils/general_utils.hpp/cpp; main_new_tab.cpp DrawDisplaySettings_FpsLimiterOnPresentSync; advanced_tab.cpp DrawNvapiSettings.
+
+---
 ## v0.12.472
 - [cleanup] [hooks] **DbgHelp symbol options in one place** - Stack trace generation no longer defines its own symbol options (SYMOPT_*); it now calls `dbghelp_loader::EnsureSymbolsInitialized(process)`, so the option list lives only in the loader. Removed duplicate `InitializeSymbolsOnce` from stack_trace.cpp. Details: stack_trace.cpp, dbghelp_private_loader.cpp.
 

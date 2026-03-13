@@ -3923,7 +3923,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     // Reflex mode selector (Low latency / Low+boost / Off / Game Defaults) — always visible so it's not lost when FPS
     // limiter preset is used
     imgui.Spacing();
-    if (is_64_bit()) {
+    if (IsReflexAvailable()) {
         if (ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
             // Setting is automatically saved via ComboSettingEnumWrapper
         }

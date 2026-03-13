@@ -1,4 +1,10 @@
 #include "general_utils.hpp"
+#include "../latency/reflex_provider.hpp"
+#include "../hooks/hook_suppression_manager.hpp"
+#include "globals.hpp"
+#include "logging.hpp"
+#include "settings/advanced_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
 #include <d3d9.h>
 #include <MinHook.h>
 #include <ShlObj.h>
@@ -9,11 +15,13 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "../hooks/hook_suppression_manager.hpp"
-#include "globals.hpp"
-#include "logging.hpp"
-#include "settings/advanced_tab_settings.hpp"
-#include "settings/main_tab_settings.hpp"
+
+bool IsReflexAvailable() {
+    if (!is_64_bit()) return false;
+    if (g_native_reflex_detected.load(std::memory_order_acquire)) return true;
+    ReflexProvider* p = g_reflexProvider.get();
+    return p != nullptr && p->IsInitialized();
+}
 
 // Version.dll dynamic loading
 namespace {

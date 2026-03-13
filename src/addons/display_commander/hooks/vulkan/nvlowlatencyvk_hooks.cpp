@@ -11,7 +11,10 @@
 
 #include <MinHook.h>
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
+
+#include <Windows.h>
 
 // NvLowLatencyVk.dll path: hook SetLatencyMarker, Sleep, SetSleepMode (same as Special K SK_CreateDLLHook2).
 // Many Vulkan Reflex games (e.g. Doom) use VK_NV_low_latency2 only (vkSetLatencyMarkerNV from vulkan-1.dll)
@@ -49,17 +52,38 @@ using NvLL_VK_Sleep_pfn = NvLL_VK_Status (*)(void* device, uint64_t signalValue)
 // InitLowLatencyDevice(device, pSignalSemaphoreHandle) - same as Special K
 using NvLL_VK_InitLowLatencyDevice_pfn = NvLL_VK_Status (*)(void* device, void* pSignalSemaphoreHandle);
 
+static NvLL_VK_Status NvLL_VK_InitLowLatencyDevice_Detour(void* device, void* pSignalSemaphoreHandle);
+static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATENCY_MARKER_PARAMS* params);
+static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEEP_MODE_PARAMS* params);
+static NvLL_VK_Status NvLL_VK_Sleep_Detour(void* device, uint64_t signalValue);
+
 static NvLL_VK_InitLowLatencyDevice_pfn NvLL_VK_InitLowLatencyDevice_Original = nullptr;
 static NvLL_VK_SetLatencyMarker_pfn NvLL_VK_SetLatencyMarker_Original = nullptr;
 static NvLL_VK_SetSleepMode_pfn NvLL_VK_SetSleepMode_Original = nullptr;
 static NvLL_VK_Sleep_pfn NvLL_VK_Sleep_Original = nullptr;
 
+/** Table-driven hook install: name, detour, original. InitLowLatencyDevice is optional (skipped if not exported). */
+struct NvllVkHookEntry {
+    const char* name;
+    LPVOID detour;
+    LPVOID* original;
+};
+static constexpr std::size_t K_NVLL_VK_HOOK_COUNT = static_cast<std::size_t>(NvllVkHook::kNvllVkHookCount);
+static const NvllVkHookEntry K_NVLL_VK_HOOKS[K_NVLL_VK_HOOK_COUNT] = {
+    {"NvLL_VK_InitLowLatencyDevice", reinterpret_cast<LPVOID>(&NvLL_VK_InitLowLatencyDevice_Detour),
+     reinterpret_cast<LPVOID*>(&NvLL_VK_InitLowLatencyDevice_Original)},
+    {"NvLL_VK_SetLatencyMarker", reinterpret_cast<LPVOID>(&NvLL_VK_SetLatencyMarker_Detour),
+     reinterpret_cast<LPVOID*>(&NvLL_VK_SetLatencyMarker_Original)},
+    {"NvLL_VK_SetSleepMode", reinterpret_cast<LPVOID>(&NvLL_VK_SetSleepMode_Detour),
+     reinterpret_cast<LPVOID*>(&NvLL_VK_SetSleepMode_Original)},
+    {"NvLL_VK_Sleep", reinterpret_cast<LPVOID>(&NvLL_VK_Sleep_Detour),
+     reinterpret_cast<LPVOID*>(&NvLL_VK_Sleep_Original)},
+};
+
 static std::atomic<bool> g_nvll_hooks_installed{false};
-static std::atomic<uint64_t> g_nvll_init_call_count{0};
-static std::atomic<uint64_t> g_nvll_marker_call_count{0};
+/** Call counts per hook (indexed by NvllVkHook); incremented on each detour entry. */
+static std::atomic<uint64_t> g_nvll_hook_call_counts[K_NVLL_VK_HOOK_COUNT]{};
 static std::atomic<uint64_t> g_nvll_marker_count_by_type[kNvllVkMarkerTypeCount] = {};
-static std::atomic<uint64_t> g_nvll_set_sleep_mode_call_count{0};
-static std::atomic<uint64_t> g_nvll_sleep_call_count{0};
 static std::atomic<int> g_nvll_last_marker_type{-1};
 static std::atomic<uint64_t> g_nvll_last_frame_id{0};
 
@@ -72,19 +96,18 @@ static NVLL_VK_SET_SLEEP_MODE_PARAMS g_last_nvll_vk_applied_sleep_mode_params = 
 static std::atomic<bool> g_nvll_vk_has_applied_params{false};
 
 static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATENCY_MARKER_PARAMS* params) {
+    g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::SetLatencyMarker)].fetch_add(1);
     if (params == nullptr) {
         if (NvLL_VK_SetLatencyMarker_Original != nullptr) {
             return NvLL_VK_SetLatencyMarker_Original(device, params);
         }
         return 1;
     }
-
     static bool first_call = true;
     if (first_call) {
         first_call = false;
         LogInfo("NvLowLatencyVk: SetLatencyMarker first call");
     }
-    g_nvll_marker_call_count.fetch_add(1);
     const int marker_type = static_cast<int>(params->markerType);
     if (marker_type >= 0 && marker_type < static_cast<int>(kNvllVkMarkerTypeCount)) {
         g_nvll_marker_count_by_type[marker_type].fetch_add(1);
@@ -147,7 +170,7 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
 }
 
 static NvLL_VK_Status NvLL_VK_InitLowLatencyDevice_Detour(void* device, void* pSignalSemaphoreHandle) {
-    g_nvll_init_call_count.fetch_add(1);
+    g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::InitLowLatencyDevice)].fetch_add(1);
     if (NvLL_VK_InitLowLatencyDevice_Original == nullptr) {
         return 1;
     }
@@ -155,7 +178,7 @@ static NvLL_VK_Status NvLL_VK_InitLowLatencyDevice_Detour(void* device, void* pS
 }
 
 static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEEP_MODE_PARAMS* params) {
-    g_nvll_set_sleep_mode_call_count.fetch_add(1);
+    g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::SetSleepMode)].fetch_add(1);
     if (NvLL_VK_SetSleepMode_Original == nullptr) {
         return 1;
     }
@@ -195,11 +218,22 @@ static NvLL_VK_Status NvLL_VK_SetSleepMode_Detour(void* device, NVLL_VK_SET_SLEE
 }
 
 static NvLL_VK_Status NvLL_VK_Sleep_Detour(void* device, uint64_t signalValue) {
-    g_nvll_sleep_call_count.fetch_add(1);
+    g_nvll_hook_call_counts[static_cast<std::size_t>(NvllVkHook::Sleep)].fetch_add(1);
     if (NvLL_VK_Sleep_Original == nullptr) {
         return 1;
     }
     return NvLL_VK_Sleep_Original(device, signalValue);
+}
+
+static void RollbackNvllVkHooks() {
+    for (std::size_t j = 0; j < K_NVLL_VK_HOOK_COUNT; ++j) {
+        LPVOID* const orig = K_NVLL_VK_HOOKS[j].original;
+        if (orig != nullptr && *orig != nullptr) {
+            MH_DisableHook(*orig);
+            MH_RemoveHook(*orig);
+            *orig = nullptr;
+        }
+    }
 }
 
 bool InstallNvLowLatencyVkHooks(HMODULE nvll_module) {
@@ -219,45 +253,22 @@ bool InstallNvLowLatencyVkHooks(HMODULE nvll_module) {
         return false;
     }
 
-    auto* pInitLowLatencyDevice =
-        reinterpret_cast<NvLL_VK_InitLowLatencyDevice_pfn>(GetProcAddress(nvll_module, "NvLL_VK_InitLowLatencyDevice"));
-    auto* pSetLatencyMarker =
-        reinterpret_cast<NvLL_VK_SetLatencyMarker_pfn>(GetProcAddress(nvll_module, "NvLL_VK_SetLatencyMarker"));
-    auto* pSetSleepMode =
-        reinterpret_cast<NvLL_VK_SetSleepMode_pfn>(GetProcAddress(nvll_module, "NvLL_VK_SetSleepMode"));
-    auto* pSleep = reinterpret_cast<NvLL_VK_Sleep_pfn>(GetProcAddress(nvll_module, "NvLL_VK_Sleep"));
-
-    if (pSetLatencyMarker == nullptr || pSetSleepMode == nullptr || pSleep == nullptr) {
-        LogInfo("NvLowLatencyVk: one or more exports not found");
-        return false;
-    }
-
-    if (pInitLowLatencyDevice != nullptr) {
-        if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(pInitLowLatencyDevice),
-                                 reinterpret_cast<LPVOID>(&NvLL_VK_InitLowLatencyDevice_Detour),
-                                 reinterpret_cast<LPVOID*>(&NvLL_VK_InitLowLatencyDevice_Original),
-                                 "NvLL_VK_InitLowLatencyDevice")) {
-            LogInfo("NvLowLatencyVk: failed to hook InitLowLatencyDevice");
+    for (std::size_t i = 0; i < K_NVLL_VK_HOOK_COUNT; ++i) {
+        const NvllVkHookEntry& entry = K_NVLL_VK_HOOKS[i];
+        FARPROC target = GetProcAddress(nvll_module, entry.name);
+        if (target == nullptr) {
+            if (i == static_cast<std::size_t>(NvllVkHook::InitLowLatencyDevice)) {
+                LogInfo("NvLowLatencyVk: %s not exported, skipping", entry.name);
+                continue;
+            }
+            LogInfo("NvLowLatencyVk: %s not exported", entry.name);
             return false;
         }
-    }
-
-    if (!CreateAndEnableHook(
-            reinterpret_cast<LPVOID>(pSetLatencyMarker), reinterpret_cast<LPVOID>(&NvLL_VK_SetLatencyMarker_Detour),
-            reinterpret_cast<LPVOID*>(&NvLL_VK_SetLatencyMarker_Original), "NvLL_VK_SetLatencyMarker")) {
-        LogInfo("NvLowLatencyVk: failed to hook SetLatencyMarker");
-        return false;
-    }
-    if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(pSetSleepMode),
-                             reinterpret_cast<LPVOID>(&NvLL_VK_SetSleepMode_Detour),
-                             reinterpret_cast<LPVOID*>(&NvLL_VK_SetSleepMode_Original), "NvLL_VK_SetSleepMode")) {
-        LogInfo("NvLowLatencyVk: failed to hook SetSleepMode");
-        return false;
-    }
-    if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(pSleep), reinterpret_cast<LPVOID>(&NvLL_VK_Sleep_Detour),
-                             reinterpret_cast<LPVOID*>(&NvLL_VK_Sleep_Original), "NvLL_VK_Sleep")) {
-        LogInfo("NvLowLatencyVk: failed to hook Sleep");
-        return false;
+        if (!CreateAndEnableHook(reinterpret_cast<LPVOID>(target), entry.detour, entry.original, entry.name)) {
+            LogInfo("NvLowLatencyVk: failed to hook %s", entry.name);
+            RollbackNvllVkHooks();
+            return false;
+        }
     }
 
     g_nvll_hooks_installed.store(true);
@@ -267,10 +278,7 @@ bool InstallNvLowLatencyVkHooks(HMODULE nvll_module) {
 
 bool AreNvLowLatencyVkHooksInstalled() { return g_nvll_hooks_installed.load(); }
 
-void GetNvLowLatencyVkDebugState(uint64_t* out_marker_count, int* out_last_marker_type, uint64_t* out_last_frame_id) {
-    if (out_marker_count) {
-        *out_marker_count = g_nvll_marker_call_count.load();
-    }
+void GetNvLowLatencyVkLastMarkerState(int* out_last_marker_type, uint64_t* out_last_frame_id) {
     if (out_last_marker_type) {
         *out_last_marker_type = g_nvll_last_marker_type.load();
     }
@@ -279,19 +287,11 @@ void GetNvLowLatencyVkDebugState(uint64_t* out_marker_count, int* out_last_marke
     }
 }
 
-void GetNvLowLatencyVkDetourCallCounts(uint64_t* out_init_count, uint64_t* out_set_latency_marker_count,
-                                       uint64_t* out_set_sleep_mode_count, uint64_t* out_sleep_count) {
-    if (out_init_count) {
-        *out_init_count = g_nvll_init_call_count.load();
-    }
-    if (out_set_latency_marker_count) {
-        *out_set_latency_marker_count = g_nvll_marker_call_count.load();
-    }
-    if (out_set_sleep_mode_count) {
-        *out_set_sleep_mode_count = g_nvll_set_sleep_mode_call_count.load();
-    }
-    if (out_sleep_count) {
-        *out_sleep_count = g_nvll_sleep_call_count.load();
+void GetNvllVkHookCallCounts(uint64_t* out_counts, std::size_t count) {
+    if (out_counts == nullptr) return;
+    const std::size_t n = (count < K_NVLL_VK_HOOK_COUNT) ? count : K_NVLL_VK_HOOK_COUNT;
+    for (std::size_t i = 0; i < n; ++i) {
+        out_counts[i] = g_nvll_hook_call_counts[i].load();
     }
 }
 
@@ -301,6 +301,20 @@ void GetNvLowLatencyVkMarkerCountsByType(uint64_t* out_counts, size_t max_count)
     for (size_t i = 0; i < n; ++i) {
         out_counts[i] = g_nvll_marker_count_by_type[i].load();
     }
+}
+
+const char* GetNvllVkHookName(NvllVkHook hook) {
+    static const char* const kNames[] = {
+        "NvLL_VK_InitLowLatencyDevice",
+        "NvLL_VK_SetLatencyMarker",
+        "NvLL_VK_SetSleepMode",
+        "NvLL_VK_Sleep",
+    };
+    const std::size_t idx = static_cast<std::size_t>(hook);
+    if (idx >= K_NVLL_VK_HOOK_COUNT) {
+        return "(unknown)";
+    }
+    return kNames[idx];
 }
 
 const char* GetNvLowLatencyVkMarkerTypeName(int index) {

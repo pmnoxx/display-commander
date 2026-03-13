@@ -308,14 +308,14 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Separator();
 
         if (nvll_active) {
-            std::uint64_t nvll_init = 0, nvll_marker = 0, nvll_sleep_mode = 0, nvll_sleep = 0;
-            GetNvLowLatencyVkDetourCallCounts(&nvll_init, &nvll_marker, &nvll_sleep_mode, &nvll_sleep);
-            imgui.Text("NvLL InitLowLatencyDevice:");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(nvll_init));
-            imgui.Text("NvLL SetLatencyMarker:");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(nvll_marker));
+            constexpr std::size_t kNvllHookCount = static_cast<std::size_t>(NvllVkHook::kNvllVkHookCount);
+            std::vector<std::uint64_t> nvll_call_counts(kNvllHookCount, 0);
+            GetNvllVkHookCallCounts(nvll_call_counts.data(), kNvllHookCount);
+            for (std::size_t i = 0; i < kNvllHookCount; ++i) {
+                imgui.Text("%s:", GetNvllVkHookName(static_cast<NvllVkHook>(i)));
+                imgui.SameLine(kVulkanTabValueColumnX);
+                imgui.Text("%llu", static_cast<unsigned long long>(nvll_call_counts[i]));
+            }
             std::uint64_t nvll_by_type[kNvllVkMarkerTypeCount] = {};
             GetNvLowLatencyVkMarkerCountsByType(nvll_by_type, kNvllVkMarkerTypeCount);
             if (imgui.CollapsingHeader("reflex_marker_vk_nvll by marker type", ImGuiTreeNodeFlags_None)) {
@@ -328,12 +328,6 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
                 }
                 imgui.Unindent();
             }
-            imgui.Text("NvLL SetSleepMode:");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(nvll_sleep_mode));
-            imgui.Text("NvLL Sleep:");
-            imgui.SameLine(kVulkanTabValueColumnX);
-            imgui.Text("%llu", static_cast<std::uint64_t>(nvll_sleep));
         }
 
         if (loader_active) {
@@ -377,10 +371,9 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Separator();
 
         // NvLowLatencyVk path
-        std::uint64_t marker_count = 0;
         int last_marker_type = -1;
         std::uint64_t last_frame_id = 0;
-        GetNvLowLatencyVkDebugState(&marker_count, &last_marker_type, &last_frame_id);
+        GetNvLowLatencyVkLastMarkerState(&last_marker_type, &last_frame_id);
         imgui.Text("NvLL last marker / frame ID:");
         imgui.SameLine(kVulkanTabValueColumnX);
         if (last_marker_type >= 0 || last_frame_id > 0) {

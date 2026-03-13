@@ -6,6 +6,11 @@
 ## Unreleased
 
 ---
+## v0.12.476
+- [cleanup] **LogWarnThrottled** - Added LogWarnThrottled(throttle_count, ...) macro in utils/logging.hpp for throttled warning logs (same pattern as LogErrorThrottled/LogInfoThrottled). Used in window_management.cpp ApplyWindowChange.
+- [cleanup] **DisplayCache::Refresh log spam removed** - Removed verbose [DisplayCache::Refresh] trace LogInfo calls (entry, before/after GetDisplayConfigBufferSizes, QueryDisplayConfig, EnumDisplayMonitors, monitor loop, exit). Error logs and rare config-fix messages kept. Details: display/display_cache.cpp.
+
+---
 ## v0.12.475
 - [ui] **"Important Info" renamed to "Performance Overlay"** - The Main tab collapsible section and the Experimental tab tab that contain performance overlay controls (enable overlay, what to show, position, frame time graph, refresh rate monitor) are now labeled "Performance Overlay" instead of "Important Info". Details: main_new_tab.cpp CollapsingHeader and g_rendering_ui_section; experimental_tab.cpp BeginTabItem.
 

@@ -129,18 +129,15 @@ void EnumerateDisplayModes(HMONITOR monitor, std::vector<Resolution>& resolution
 bool DisplayCache::Initialize() { return Refresh(); }
 
 bool DisplayCache::Refresh() {
-    LogInfo("[DisplayCache::Refresh] entry");
     // Build a fresh cache snapshot locally (no locking, allows system calls)
     std::vector<std::unique_ptr<DisplayInfo>> new_displays;
 
     // Query display configuration once for all monitors to avoid duplication
     UINT32 path_count = 0, mode_count = 0;
-    LogInfo("[DisplayCache::Refresh] before GetDisplayConfigBufferSizes");
     if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count) != ERROR_SUCCESS) {
         LogError("DisplayCache: Failed to get display config buffer sizes");
         return false;
     }
-    LogInfo("[DisplayCache::Refresh] after GetDisplayConfigBufferSizes path_count=%u mode_count=%u", path_count, mode_count);
 
     if (path_count == 0 || mode_count == 0) {
         LogError("DisplayCache: No active display paths or modes found");
@@ -150,17 +147,14 @@ bool DisplayCache::Refresh() {
     std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
     std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
 
-    LogInfo("[DisplayCache::Refresh] before QueryDisplayConfig");
     if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &path_count, paths.data(), &mode_count, modes.data(), nullptr)
         != ERROR_SUCCESS) {
         LogError("DisplayCache: Failed to query display configuration");
         return false;
     }
-    LogInfo("[DisplayCache::Refresh] after QueryDisplayConfig");
 
     // Enumerate all monitors
     std::vector<HMONITOR> monitors;
-    LogInfo("[DisplayCache::Refresh] before EnumDisplayMonitors");
     EnumDisplayMonitors(
         nullptr, nullptr,
         [](HMONITOR hmon, HDC, LPRECT, LPARAM lparam) -> BOOL {
@@ -169,7 +163,6 @@ bool DisplayCache::Refresh() {
             return TRUE;
         },
         reinterpret_cast<LPARAM>(&monitors));
-    LogInfo("[DisplayCache::Refresh] after EnumDisplayMonitors count=%zu", monitors.size());
     if (monitors.empty()) {
         LogError("DisplayCache: No monitors found");
         return false;
@@ -180,7 +173,6 @@ bool DisplayCache::Refresh() {
     auto old_displays = displays.load(std::memory_order_acquire);
 
     // Process each monitor
-    LogInfo("[DisplayCache::Refresh] before monitor loop");
     for (HMONITOR monitor : monitors) {
         auto display_info = std::make_unique<DisplayInfo>();
         display_info->monitor_handle = monitor;
@@ -225,7 +217,6 @@ bool DisplayCache::Refresh() {
         // Add to snapshot
         new_displays.push_back(std::move(display_info));
     }
-    LogInfo("[DisplayCache::Refresh] after monitor loop");
     first_time_log = false;
 
     // Atomically swap the new displays data
@@ -272,7 +263,6 @@ bool DisplayCache::Refresh() {
     // Update FPS limit maximums based on monitor refresh rates
     settings::UpdateFpsLimitMaximums();
 
-    LogInfo("[DisplayCache::Refresh] exit ok=%d", (displays_ptr && !displays_ptr->empty()) ? 1 : 0);
     return displays_ptr && !displays_ptr->empty();
 }
 

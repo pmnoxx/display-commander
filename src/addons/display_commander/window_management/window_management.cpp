@@ -1,6 +1,5 @@
 #include "window_management.hpp"
 #include "../addon.hpp"
-#include "display/display_cache.hpp"
 #include "../globals.hpp"
 #include "../hooks/windows_hooks/api_hooks.hpp"
 #include "../settings/advanced_tab_settings.hpp"
@@ -8,6 +7,8 @@
 #include "../ui/ui_display_tab.hpp"
 #include "../utils/general_utils.hpp"
 #include "../utils/logging.hpp"
+#include "display/display_cache.hpp"
+#include "utils/logging.hpp"
 
 #include <sstream>
 
@@ -194,19 +195,19 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
 // Second function: Apply the calculated window changes
 void ApplyWindowChange(HWND hwnd, const char* reason, bool force_apply) {
     if (hwnd == nullptr) {
-        LogWarn("ApplyWindowChange: Null window handle provided");
+        LogWarnThrottled(10, "ApplyWindowChange: Null window handle provided");
         return;
     }
 
     // Validate window handle
     if (IsWindow(hwnd) == FALSE) {
-        LogWarn("ApplyWindowChange: Invalid window handle 0x%p", hwnd);
+        LogWarnThrottled(10, "ApplyWindowChange: Invalid window handle 0x%p", hwnd);
         return;
     }
 
     // Do not apply position/size when window is minimized (use direct API so Continue Rendering spoof doesn't hide it).
     if (display_commanderhooks::IsIconic_direct(hwnd)) {
-        LogDebug("ApplyWindowChange: Skipping - window is minimized");
+        LogDebugThrottled(10, "ApplyWindowChange: Skipping - window is minimized");
         return;
     }
 

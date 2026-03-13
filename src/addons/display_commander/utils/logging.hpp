@@ -30,6 +30,21 @@ void LogInfoDirect(const char *msg, ...);
         } \
     } while(0)
 
+// Throttled warning logging macro
+// Usage: LogWarnThrottled(10, "Warning message %d", value);
+// Logs only the first throttle_count times per call site, then suppresses
+#define LogWarnThrottled(throttle_count, ...) \
+    do { \
+        static int _warn_throttle_counter = 0; \
+        if (_warn_throttle_counter < (throttle_count)) { \
+            _warn_throttle_counter++; \
+            LogWarn(__VA_ARGS__); \
+            if (_warn_throttle_counter == (throttle_count)) { \
+                LogWarn("(Suppressing further occurrences of this warning)"); \
+            } \
+        } \
+    } while(0)
+
 // Throttled info logging macro
 // Usage: LogInfoThrottled(10, "Info message %d", value);
 // Logs only the first throttle_count times per call site, then suppresses

@@ -1,12 +1,26 @@
+// Source Code <Display Commander>
+
+// Group 1 — Source Code (Display Commander)
 #include "dbghelp_hooks.hpp"
-#include "utils/dbghelp_loader.hpp"
+#include "hooks/dbghelp/dbghelp_loader.hpp"
 #include "../utils/logging.hpp"
 #include "hook_suppression_manager.hpp"
-#include <MinHook.h>
-#include <dbghelp.h>
+
+// Group 2 — ReShade / ImGui
+// (no includes)
+
+// Group 3 — Standard C++
 #include <iomanip>
 #include <sstream>
 #include <vector>
+
+// Group 4 — Windows.h
+#include <Windows.h>
+
+// Group 5 — Other Windows SDK
+// Libraries <Windows>
+#include <dbghelp.h>
+#include <MinHook.h>
 
 namespace {
 

@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.465
+- [cleanup] [hooks] **DbgHelp loader and hooks moved and table-driven** - The DbgHelp loader code is now under `hooks/dbghelp/` next to the DbgHelp hook implementation, with all consumers updated to include the new path. Loading of DbgHelp APIs uses a small enum + `std::array` table so `LoadDbgHelp()` iterates over entries instead of hardcoding calls to `GetProcAddress`, and optional search-path helpers are marked non-required. Behavior of stack tracing and symbol lookup is unchanged; this is an internal cleanup for organization and maintainability. 
+
+---
 ## v0.12.464
 - [cleanup] [hooks] [ui] **NvLowLatencyVk hooks: enum, table-driven install, simplified API** - NvLL VK hooks now use an `NvllVkHook` enum and a single hook table (like vulkan_loader_hooks): table-driven install with rollback, call counts in one array, and `GetNvllVkHookName` / `GetNvllVkHookCallCounts` for the Vulkan tab. Removed `GetNvLowLatencyVkDetourCallCounts` (replaced by `GetNvllVkHookCallCounts`). Replaced `GetNvLowLatencyVkDebugState` with `GetNvLowLatencyVkLastMarkerState` (last marker type and frame ID only; marker count is already shown in detour call counts). Vulkan tab NvLL stats use the same loop pattern as loader hooks. Details: nvlowlatencyvk_hooks.hpp/cpp, vulkan_tab.cpp.
 

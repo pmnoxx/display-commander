@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.479
+- [cleanup] [hooks] **Call guards on Vulkan and NvLL detours** - All Vulkan loader (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV) and NvLowLatencyVk (InitLowLatencyDevice, SetLatencyMarker, SetSleepMode, Sleep) detours now use CALL_GUARD for crash detection; undestroyed guards will appear in exit/crash reports. Details: vulkan_loader_hooks.cpp, nvlowlatencyvk_hooks.cpp, detour_call_tracker.
+
+---
 ## v0.12.478
 - [cleanup] **Vulkan loader hooks enum** - VulkanLoaderHook now uses Count as the last enum value instead of a separate kVulkanLoaderHookCount constant; hook count is derived from the enum. Details: vulkan_loader_hooks.hpp/cpp, vulkan_tab.cpp.
 

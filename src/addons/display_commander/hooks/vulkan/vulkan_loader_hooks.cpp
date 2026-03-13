@@ -2,6 +2,7 @@
 #include "../../globals.hpp"
 #include "../../settings/main_tab_settings.hpp"
 #include "../../swapchain_events.hpp"
+#include "../../utils/detour_call_tracker.hpp"
 #include "../../utils/general_utils.hpp"
 #include "../../utils/logging.hpp"
 #include "../../utils/srwlock_wrapper.hpp"
@@ -168,6 +169,7 @@ static bool HasExtension(const VkDeviceCreateInfo* pCreateInfo, const char* extN
 
 static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
                                                  const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) {
+    CALL_GUARD(utils::get_now_ns());
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::CreateDevice)].fetch_add(1);
     g_vkCreateDevice_detour_ever_called.store(true);
     if (g_real_vkCreateDevice == nullptr) {
@@ -241,6 +243,7 @@ static VkResult VKAPI_CALL vkCreateDevice_Detour(VkPhysicalDevice physicalDevice
 static VkResult VKAPI_CALL vkCreateSwapchainKHR_Detour(VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo,
                                                        const VkAllocationCallbacks* pAllocator,
                                                        VkSwapchainKHR* pSwapchain) {
+    CALL_GUARD(utils::get_now_ns());
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::CreateSwapchainKHR)].fetch_add(1);
     if (g_real_vkCreateSwapchainKHR == nullptr) {
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -250,6 +253,7 @@ static VkResult VKAPI_CALL vkCreateSwapchainKHR_Detour(VkDevice device, const Vk
 
 static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBuffer,
                                                        const VkCommandBufferBeginInfo* pBeginInfo) {
+    CALL_GUARD(utils::get_now_ns());
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::BeginCommandBuffer)].fetch_add(1);
     if (g_real_vkBeginCommandBuffer == nullptr) {
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -259,6 +263,7 @@ static VkResult VKAPI_CALL vkBeginCommandBuffer_Detour(VkCommandBuffer commandBu
 
 void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swapchain,
                                             const VkSetLatencyMarkerInfoNV* pLatencyMarkerInfo) {
+    CALL_GUARD(utils::get_now_ns());
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::SetLatencyMarkerNV)].fetch_add(1);
     g_loader_marker_count.fetch_add(1);
     const bool disabled = true;
@@ -314,6 +319,7 @@ void VKAPI_CALL vkSetLatencyMarkerNV_Detour(VkDevice device, VkSwapchainKHR swap
 
 // vkQueuePresentKHR detour: FPS limiter + logging/stats only (no Reflex injection).
 static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
+    CALL_GUARD(utils::get_now_ns());
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::QueuePresentKHR)].fetch_add(1);
     if (g_real_vkQueuePresentKHR == nullptr) {
         return VK_ERROR_INITIALIZATION_FAILED;
@@ -344,6 +350,7 @@ static VkResult VKAPI_CALL vkQueuePresentKHR_Detour(VkQueue queue, const VkPrese
 }
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance instance, const char* pName) {
+    CALL_GUARD(utils::get_now_ns());
     g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::GetInstanceProcAddr)].fetch_add(1);
     if (vkGetInstanceProcAddr_Original == nullptr) {
         return nullptr;

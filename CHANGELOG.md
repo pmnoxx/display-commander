@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.466
+- [cleanup] [hooks] **Stack trace: helpers + log symbol search path** - Stack trace generation now uses small helpers to initialize DbgHelp symbols once and to configure the symbol search path / PDB warning, reducing duplication and making the code easier to maintain. The effective DbgHelp symbol search path is logged (UTF-8) each time a stack trace is generated so missing or incorrect paths can be diagnosed more easily; behavior of crash logs and traces is otherwise unchanged. 
+
+---
 ## v0.12.465
 - [cleanup] [hooks] **DbgHelp loader and hooks moved and table-driven** - The DbgHelp loader code is now under `hooks/dbghelp/` next to the DbgHelp hook implementation, with all consumers updated to include the new path. Loading of DbgHelp APIs uses a small enum + `std::array` table so `LoadDbgHelp()` iterates over entries instead of hardcoding calls to `GetProcAddress`, and optional search-path helpers are marked non-required. Behavior of stack tracing and symbol lookup is unchanged; this is an internal cleanup for organization and maintainability. 
 

@@ -20,7 +20,6 @@
 // Libraries <Windows>
 #include <dbghelp.h>
 
-
 namespace stack_trace {
 
 namespace {
@@ -82,6 +81,93 @@ BOOL CALLBACK ReadProcessMemoryRoutine64(HANDLE h_process, DWORD64 lp_base_addre
 }  // namespace
 
 namespace {
+
+void InitializeSymbolsOnce(HANDLE process) {
+    static bool symbols_initialized = false;
+    if (symbols_initialized) {
+        return;
+    }
+
+    if (dbghelp_loader::SymInitialize_Original && dbghelp_loader::SymSetOptions_Original) {
+        // Set symbol options for better symbol resolution
+        // SYMOPT_UNDNAME: Undecorate C++ names
+        // SYMOPT_DEFERRED_LOADS: Load symbols on demand
+        // SYMOPT_INCLUDE_32BIT_MODULES: Include 32-bit modules in 64-bit process
+        // SYMOPT_LOAD_LINES: Load line number information
+        DWORD sym_options = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
+        dbghelp_loader::SymSetOptions_Original(sym_options);
+
+        // Initialize with default symbol path; TRUE loads symbols for all modules.
+        if (dbghelp_loader::SymInitialize_Original(process, nullptr, TRUE) != FALSE) {
+            symbols_initialized = true;
+        }
+    }
+}
+
+void ConfigureSymbolSearchPathAndWarnIfPdbMissing(HANDLE process) {
+    if (!dbghelp_loader::SymSetSearchPathW_Original) {
+        return;
+    }
+
+    HMODULE our_module = nullptr;
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           reinterpret_cast<LPCWSTR>(&ConfigureSymbolSearchPathAndWarnIfPdbMissing), &our_module)
+        && our_module != nullptr) {
+        wchar_t module_path[MAX_PATH] = {};
+        if (GetModuleFileNameW(our_module, module_path, MAX_PATH) != 0) {
+            std::wstring path(module_path);
+            const size_t last_slash = path.find_last_of(L"\\/");
+            std::wstring dir = (last_slash != std::wstring::npos) ? path.substr(0, last_slash + 1) : L".\\";
+            std::wstring pdb_path = path;
+            const size_t dot = pdb_path.rfind(L'.');
+            if (dot != std::wstring::npos) {
+                pdb_path.replace(dot, std::wstring::npos, L".pdb");
+            } else {
+                pdb_path += L".pdb";
+            }
+
+            std::wstring search_path;
+            if (dbghelp_loader::SymGetSearchPathW_Original) {
+                wchar_t current_path[MAX_PATH * 3] = {};
+                if (dbghelp_loader::SymGetSearchPathW_Original(process, current_path, MAX_PATH * 3) != FALSE
+                    && current_path[0] != L'\0') {
+                    search_path = current_path;
+                    search_path += L';';
+                }
+            }
+            search_path += dir;
+            if (!search_path.empty()) {
+                // Log the effective search path for debugging (convert from UTF-16 to UTF-8).
+                const int path_utf8_len =
+                    WideCharToMultiByte(CP_UTF8, 0, search_path.c_str(), static_cast<int>(search_path.size() + 1),
+                                        nullptr, 0, nullptr, nullptr);
+                if (path_utf8_len > 0) {
+                    std::string search_path_utf8(static_cast<size_t>(path_utf8_len), '\0');
+                    WideCharToMultiByte(CP_UTF8, 0, search_path.c_str(), static_cast<int>(search_path.size() + 1),
+                                        search_path_utf8.data(), path_utf8_len, nullptr, nullptr);
+                    LogInfo("DbgHelp symbol search path: '%s'", search_path_utf8.c_str());
+                }
+
+                dbghelp_loader::SymSetSearchPathW_Original(process, search_path.c_str());
+            }
+
+            if (GetFileAttributesW(pdb_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                const int utf8_len = WideCharToMultiByte(
+                    CP_UTF8, 0, pdb_path.c_str(), static_cast<int>(pdb_path.size() + 1), nullptr, 0, nullptr, nullptr);
+                if (utf8_len > 0) {
+                    std::string pdb_utf8(static_cast<size_t>(utf8_len), '\0');
+                    WideCharToMultiByte(CP_UTF8, 0, pdb_path.c_str(), static_cast<int>(pdb_path.size() + 1),
+                                        pdb_utf8.data(), utf8_len, nullptr, nullptr);
+                    LogWarn("Display Commander debug symbols ('%s') not found, stack trace may be inaccurate.",
+                            pdb_utf8.c_str());
+                } else {
+                    LogWarn("Display Commander debug symbols not found, stack trace may be inaccurate.");
+                }
+            }
+        }
+    }
+}
+
 // Internal helper function that does the actual stack trace generation
 std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     std::vector<std::string> stack_trace;
@@ -98,92 +184,8 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     HANDLE process = GetCurrentProcess();
     HANDLE thread = GetCurrentThread();
 
-    // Initialize symbol handler if not already done
-    static bool symbols_initialized = false;
-    if (!symbols_initialized) {
-        if (dbghelp_loader::SymInitialize_Original && dbghelp_loader::SymSetOptions_Original) {
-            // Set symbol options for better symbol resolution
-            // SYMOPT_UNDNAME: Undecorate C++ names
-            // SYMOPT_DEFERRED_LOADS: Load symbols on demand
-            // SYMOPT_INCLUDE_32BIT_MODULES: Include 32-bit modules in 64-bit process
-            // SYMOPT_LOAD_LINES: Load line number information
-            DWORD sym_options =
-                SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
-            dbghelp_loader::SymSetOptions_Original(sym_options);
-
-            // Get the directory where the DLL is located to help DbgHelp find the PDB
-            char module_path[MAX_PATH] = {};
-            HMODULE current_module = nullptr;
-            if (GetModuleHandleExA(
-                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                    reinterpret_cast<LPCSTR>(&GenerateStackTraceInternal), &current_module)) {
-                if (GetModuleFileNameA(current_module, module_path, MAX_PATH)) {
-                    // Extract directory path
-                    char* last_slash = strrchr(module_path, '\\');
-                    if (last_slash) {
-                        *last_slash = '\0';
-                    }
-                }
-            }
-
-            // Initialize with symbol path including the DLL directory
-            // nullptr as second parameter uses default symbol path + current directory
-            // TRUE means we want to load symbols for all modules
-            if (dbghelp_loader::SymInitialize_Original(process, nullptr, TRUE) != FALSE) {
-                symbols_initialized = true;
-            }
-        }
-    }
-
-    // Set symbol search path and warn if our PDB is missing (before each stack trace)
-    if (dbghelp_loader::SymSetSearchPathW_Original) {
-        HMODULE our_module = nullptr;
-        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                               reinterpret_cast<LPCWSTR>(&GenerateStackTraceInternal), &our_module)
-            && our_module != nullptr) {
-            wchar_t module_path[MAX_PATH] = {};
-            if (GetModuleFileNameW(our_module, module_path, MAX_PATH) != 0) {
-                std::wstring path(module_path);
-                const size_t last_slash = path.find_last_of(L"\\/");
-                std::wstring dir = (last_slash != std::wstring::npos) ? path.substr(0, last_slash + 1) : L".\\";
-                std::wstring pdb_path = path;
-                const size_t dot = pdb_path.rfind(L'.');
-                if (dot != std::wstring::npos) {
-                    pdb_path.replace(dot, std::wstring::npos, L".pdb");
-                } else {
-                    pdb_path += L".pdb";
-                }
-
-                std::wstring search_path;
-                if (dbghelp_loader::SymGetSearchPathW_Original) {
-                    wchar_t current_path[MAX_PATH * 3] = {};
-                    if (dbghelp_loader::SymGetSearchPathW_Original(process, current_path, MAX_PATH * 3) != FALSE
-                        && current_path[0] != L'\0') {
-                        search_path = current_path;
-                        search_path += L';';
-                    }
-                }
-                search_path += dir;
-                if (!search_path.empty()) {
-                    dbghelp_loader::SymSetSearchPathW_Original(process, search_path.c_str());
-                }
-
-                if (GetFileAttributesW(pdb_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
-                    const int utf8_len = WideCharToMultiByte(
-                        CP_UTF8, 0, pdb_path.c_str(), static_cast<int>(pdb_path.size() + 1), nullptr, 0, nullptr, nullptr);
-                    if (utf8_len > 0) {
-                        std::string pdb_utf8(static_cast<size_t>(utf8_len), '\0');
-                        WideCharToMultiByte(CP_UTF8, 0, pdb_path.c_str(), static_cast<int>(pdb_path.size() + 1),
-                                            pdb_utf8.data(), utf8_len, nullptr, nullptr);
-                        LogWarn("Display Commander debug symbols ('%s') not found, stack trace may be inaccurate.",
-                                pdb_utf8.c_str());
-                    } else {
-                        LogWarn("Display Commander debug symbols not found, stack trace may be inaccurate.");
-                    }
-                }
-            }
-        }
-    }
+    InitializeSymbolsOnce(process);
+    ConfigureSymbolSearchPathAndWarnIfPdbMissing(process);
 
     // Use provided context or capture current context
     CONTEXT context = {};

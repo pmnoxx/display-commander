@@ -2055,23 +2055,6 @@ static void DrawUpdatesReshadeHeader(display_commander::ui::IImGuiWrapper& imgui
             }
         }
 
-        // Open folder (global Reshade folder)
-        std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
-        if (!reshade_global.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open folder")) {
-            std::string folder_str = reshade_global.string();
-            std::thread([folder_str]() {
-                HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
-                if (reinterpret_cast<intptr_t>(result) <= 32) {
-                    LogError("Failed to open ReShade folder: %s (Error: %ld)", folder_str.c_str(),
-                             static_cast<long>(reinterpret_cast<intptr_t>(result)));
-                }
-            }).detach();
-        }
-        if (imgui.IsItemHovered() && !reshade_global.empty()) {
-            imgui.SetTooltipEx("Open the ReShade global folder. You can copy files manually to revert.\n\n%s",
-                               reshade_global.string().c_str());
-        }
-
         // Delete local ReShade (game folder): safe because we never load that copy directly.
         bool local_reshade_exists = !game_dir.empty() && !GetReshadeVersionInDirectory(game_dir).empty();
         static std::atomic<std::string*> s_delete_local_reshade_msg{nullptr};
@@ -2120,13 +2103,72 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     using namespace display_commander::utils;
     using namespace display_commander::utils::version_check;
 
-    // --- ReShade (per docs/ui_specs/updates_ui_spec.md) ---
     std::filesystem::path game_dir;
     {
         WCHAR exe_buf[MAX_PATH];
         if (GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
             game_dir = std::filesystem::path(exe_buf).parent_path();
         }
+    }
+
+    // Top block: Add DC Shaders/Textures checkbox + Open folder buttons (per private_docs/dc_folders_main_tab_spec.md)
+    if (CheckboxSetting(settings::g_mainTabSettings.add_dc_to_reshade_shader_paths,
+                        "Add DC Shaders/Textures to ReShade paths", imgui)) {
+        OverrideReShadeSettings();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "When on: Display Commander adds its Shaders/Textures folder to ReShade's EffectSearchPaths and "
+            "TextureSearchPaths. When off: DC removes those paths from ReShade config.");
+    }
+    std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
+    std::filesystem::path default_files = GetDefaultFilesFolder();
+    std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
+    if (!dc_reshade_root.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open Shaders/Textures folder")) {
+        std::string folder_str = dc_reshade_root.string();
+        std::thread([folder_str]() {
+            HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open DC Reshade folder: %s (Error: %ld)", folder_str.c_str(),
+                         static_cast<long>(reinterpret_cast<intptr_t>(result)));
+            }
+        }).detach();
+    }
+    if (imgui.IsItemHovered() && !dc_reshade_root.empty()) {
+        imgui.SetTooltipEx("Open the Display Commander ReShade root folder (Shaders and Textures).");
+    }
+    imgui.SameLine();
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Open DefaultFiles folder")) {
+        std::error_code ec;
+        std::filesystem::create_directories(default_files, ec);
+        std::string folder_str = default_files.string();
+        std::thread([folder_str]() {
+            HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open DefaultFiles folder: %s (Error: %ld)", folder_str.c_str(),
+                         static_cast<long>(reinterpret_cast<intptr_t>(result)));
+            }
+        }).detach();
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Files here are copied to the game folder when missing (e.g. ReShadeProfile.ini). Path: %s",
+            default_files.string().c_str());
+    }
+    imgui.SameLine();
+    if (!reshade_global.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open global ReShade folder")) {
+        std::string folder_str = reshade_global.string();
+        std::thread([folder_str]() {
+            HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open ReShade folder: %s (Error: %ld)", folder_str.c_str(),
+                         static_cast<long>(reinterpret_cast<intptr_t>(result)));
+            }
+        }).detach();
+    }
+    if (imgui.IsItemHovered() && !reshade_global.empty()) {
+        imgui.SetTooltipEx("Open the ReShade global folder. You can copy files manually to revert.\n\n%s",
+                           reshade_global.string().c_str());
     }
 
     DrawUpdatesDisplayCommanderHeader(imgui);
@@ -2430,9 +2472,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         }
         // status == 3: no line shown (check failed)
     }
-    // Updates (ReShade, Display Commander, Addons)
-    g_rendering_ui_section.store("ui:tab:main_new:updates", std::memory_order_release);
-    if (imgui.CollapsingHeader("Updates", ImGuiTreeNodeFlags_None)) {
+    // DC folders (paths, Add DC shaders checkbox, then Display Commander / ReShade / Addons version UI)
+    g_rendering_ui_section.store("ui:tab:main_new:dc_folders", std::memory_order_release);
+    if (imgui.CollapsingHeader("DC folders", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
         DrawUpdatesSectionContent(imgui);
         imgui.Unindent();
@@ -2453,15 +2495,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
         g_rendering_ui_section.store("ui:tab:main_new:brightness_autohdr", std::memory_order_release);
         if (imgui.CollapsingHeader("Brightness and AutoHDR", ImGuiTreeNodeFlags_None)) {
             imgui.Indent();
-            if (CheckboxSetting(settings::g_mainTabSettings.add_dc_to_reshade_shader_paths,
-                                "Add DC Shaders/Textures to ReShade paths", imgui)) {
-                OverrideReShadeSettings();
-            }
-            if (imgui.IsItemHovered()) {
-                imgui.SetTooltipEx(
-                    "When on: Display Commander adds its Shaders/Textures folder to ReShade's EffectSearchPaths and "
-                    "TextureSearchPaths. When off: DC removes those paths from ReShade config.");
-            }
             if (CheckboxSetting(settings::g_mainTabSettings.brightness_autohdr_section_enabled,
                                 "Load DC's shaders (Brightness, AutoHDR)", imgui)) {
                 // Value gates ApplyDisplayCommanderBrightness and ApplyDisplayCommanderAutoHdr only.
@@ -2470,20 +2503,6 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.SetTooltipEx(
                     "When on: Brightness, AutoHDR and related controls are active (DC's ReShade effects are applied). "
                     "When off: the whole Brightness and AutoHDR section is disabled.");
-            }
-            std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
-            if (!dc_reshade_root.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open Shaders/Textures folder")) {
-                std::string folder_str = dc_reshade_root.string();
-                std::thread([folder_str]() {
-                    HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
-                    if (reinterpret_cast<intptr_t>(result) <= 32) {
-                        LogError("Failed to open DC Reshade folder: %s (Error: %ld)", folder_str.c_str(),
-                                 static_cast<long>(reinterpret_cast<intptr_t>(result)));
-                    }
-                }).detach();
-            }
-            if (imgui.IsItemHovered() && !dc_reshade_root.empty()) {
-                imgui.SetTooltipEx("Open the Display Commander ReShade root folder (Shaders and Textures).");
             }
             if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
                 imgui.BeginDisabled();

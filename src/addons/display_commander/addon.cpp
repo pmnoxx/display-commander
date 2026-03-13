@@ -20,6 +20,7 @@
 #include "globals.hpp"
 #include "ui/cli_detect_exe.hpp"
 #include "utils/detour_call_tracker.hpp"
+#include "utils/general_utils.hpp"
 #include "utils/helper_exe_filter.hpp"
 #include "utils/logging.hpp"
 #include "utils/timing.hpp"
@@ -439,6 +440,15 @@ extern "C" __declspec(dllexport) bool AddonInit(HMODULE addon_module, HMODULE re
     reshade::unregister_overlay("DC", OnRegisterOverlayDisplayCommander);
     reshade::register_overlay("DC", OnRegisterOverlayDisplayCommander);
     DoInitializationWithoutHwnd(addon_module);
+
+    // Copy DefaultFiles into game folder (only if missing) once per launch
+    {
+        WCHAR exe_buf[MAX_PATH];
+        if (GetModuleFileNameW(nullptr, exe_buf, MAX_PATH) > 0) {
+            std::filesystem::path game_dir = std::filesystem::path(exe_buf).parent_path();
+            CopyDefaultFilesToGameFolder(game_dir);
+        }
+    }
 
     return true;
 }

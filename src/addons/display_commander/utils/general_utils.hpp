@@ -75,6 +75,13 @@ std::filesystem::path GetDisplayCommanderAppDataFolder();
 // Display Commander ReShade root: %LocalAppData%\Programs\Display_Commander\Reshade (contains Shaders, Textures)
 std::filesystem::path GetDisplayCommanderReshadeRootFolder();
 
+// DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles (files copied to game folder when missing)
+std::filesystem::path GetDefaultFilesFolder();
+
+// Copy each file from DefaultFiles into game_dir only if the file is missing there. No overwrite. Logs errors; no-op if
+// DefaultFiles does not exist or is empty.
+void CopyDefaultFilesToGameFolder(const std::filesystem::path& game_dir);
+
 // Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized location)
 std::filesystem::path GetDefaultDlssOverrideFolder();
 

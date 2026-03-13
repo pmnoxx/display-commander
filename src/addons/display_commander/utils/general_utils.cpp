@@ -163,8 +163,7 @@ float MapStickAxisValue(float value, float min_input, float max_input, float min
 }
 
 // Process stick input with radial mapping (one mapping applied to magnitude)
-void ProcessStickInputRadial(float& x, float& y, float min_input, float max_input, float min_output,
-                             float max_output) {
+void ProcessStickInputRadial(float& x, float& y, float min_input, float max_input, float min_output, float max_output) {
     float magnitude = std::sqrt(x * x + y * y);
     if (magnitude < 0.0001f) {
         x = 0.0f;
@@ -191,7 +190,7 @@ void ProcessStickInputRadial(float& x, float& y, float min_input, float max_inpu
 
 // Process stick input with square mapping (separate min/max input and min/max output per axis)
 void ProcessStickInputSquare(float& x, float& y, float min_in_x, float max_in_x, float min_out_x, float max_out_x,
-                            float min_in_y, float max_in_y, float min_out_y, float max_out_y) {
+                             float min_in_y, float max_in_y, float min_out_y, float max_out_y) {
     x = MapStickAxisValue(x, min_in_x, max_in_x, min_out_x, max_out_x);
     y = MapStickAxisValue(y, min_in_y, max_in_y, min_out_y, max_out_y);
 }
@@ -413,7 +412,7 @@ bool CreateAndEnableHookFromModule(HMODULE hModule, const char* procName, LPVOID
         return false;
     }
     return CreateAndEnableHook(reinterpret_cast<LPVOID>(pTarget), pDetour, ppOriginal,
-                              hookName != nullptr ? hookName : procName);
+                               hookName != nullptr ? hookName : procName);
 }
 
 // MinHook initialization wrapper that checks suppress_minhook setting
@@ -464,8 +463,9 @@ std::filesystem::path GetDisplayCommanderAppDataFolder() {
     return dc_folder;
 }
 
-// Display Commander ReShade root: contains Shaders and Textures subfolders used for EffectSearchPaths/TextureSearchPaths.
-// Creates the directory if it does not exist; returns empty path if creation fails.
+// Display Commander ReShade root: contains Shaders and Textures subfolders used for
+// EffectSearchPaths/TextureSearchPaths. Creates the directory if it does not exist; returns empty path if creation
+// fails.
 std::filesystem::path GetDisplayCommanderReshadeRootFolder() {
     std::filesystem::path base = GetDisplayCommanderAppDataFolder();
     if (base.empty()) {
@@ -479,6 +479,47 @@ std::filesystem::path GetDisplayCommanderReshadeRootFolder() {
         }
     }
     return reshade_folder;
+}
+
+// DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles. Does not create the directory.
+std::filesystem::path GetDefaultFilesFolder() {
+    std::filesystem::path base = GetDisplayCommanderAppDataFolder();
+    if (base.empty()) {
+        return base;
+    }
+    return base / L"DefaultFiles";
+}
+
+// Copy each file from DefaultFiles into game_dir only if missing. Flat files only; no overwrite.
+void CopyDefaultFilesToGameFolder(const std::filesystem::path& game_dir) {
+    std::filesystem::path default_files = GetDefaultFilesFolder();
+    std::error_code ec;
+    if (!std::filesystem::exists(default_files, ec) || !std::filesystem::is_directory(default_files, ec)) {
+        return;
+    }
+    if (game_dir.empty() || !std::filesystem::is_directory(game_dir, ec)) {
+        return;
+    }
+    for (const auto& entry :
+         std::filesystem::directory_iterator(default_files, std::filesystem::directory_options::skip_permission_denied,
+                                             ec)) {
+        if (ec) {
+            break;
+        }
+        if (!entry.is_regular_file(ec)) {
+            continue;
+        }
+        std::filesystem::path dest = game_dir / entry.path().filename();
+        if (std::filesystem::exists(dest, ec)) {
+            continue;  // do not overwrite
+        }
+        if (std::filesystem::copy_file(entry.path(), dest, std::filesystem::copy_options::none, ec)) {
+            LogInfo("DefaultFiles: copied %s to game folder.", entry.path().filename().string().c_str());
+        } else {
+            LogError("DefaultFiles: failed to copy %s to game folder: %s", entry.path().filename().string().c_str(),
+                     ec.message().c_str());
+        }
+    }
 }
 
 // Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized, shared across
@@ -824,7 +865,8 @@ int GetDLSSPresetValue(const std::string& presetString) {
     return -1;
 }
 
-// Convert DLSS quality preset string to NVSDK_NGX_PerfQuality_Value. Returns (NVSDK_NGX_PerfQuality_Value)-1 for "Game Default" (no override).
+// Convert DLSS quality preset string to NVSDK_NGX_PerfQuality_Value. Returns (NVSDK_NGX_PerfQuality_Value)-1 for "Game
+// Default" (no override).
 NVSDK_NGX_PerfQuality_Value GetDLSSQualityPresetValue(const std::string& presetString) {
     if (presetString == "Game Default") {
         return static_cast<NVSDK_NGX_PerfQuality_Value>(-1);

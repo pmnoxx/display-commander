@@ -62,16 +62,15 @@ void InitAdvancedTab() {
 void DrawAdvancedTab(display_commander::ui::GraphicsApi api, display_commander::ui::IImGuiWrapper& imgui) {
     DrawDcServiceStatusIndicators(imgui, false);
 
-    if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
-        DrawFeaturesEnabledByDefault(imgui);
-    }
-    imgui.Spacing();
-
     // Global settings (stored in Display Commander folder, shared across all games)
     if (imgui.CollapsingHeader("Global settings", wrapper_flags::TreeNodeFlags_None)) {
         DrawGlobalSettingsSection(imgui);
     }
+    imgui.Spacing();
 
+    if (imgui.CollapsingHeader("Features Enabled By Default", wrapper_flags::TreeNodeFlags_None)) {
+        DrawFeaturesEnabledByDefault(imgui);
+    }
     imgui.Spacing();
 
     // Advanced Settings Section
@@ -972,6 +971,22 @@ void DrawDcServiceSection(display_commander::ui::IImGuiWrapper& imgui) {
 
 void DrawGlobalSettingsSection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Indent();
+
+    // Auto-enable ReShade config backup for all games (stored in global_settings.toml)
+    if (CheckboxSetting(settings::g_advancedTabSettings.auto_enable_reshade_config_backup,
+                        "Auto-enable ReShade config backup", imgui)) {
+        if (settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()) {
+            CopyGameIniFilesToReshadeConfigBackupFolder();
+        }
+        LogInfo("Auto-enable ReShade config backup changed to: %s",
+                settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "When enabled, ReShade config backup is effectively on for all games (same as the per-game "
+            "\"Auto ReShade config backup\" on the Main tab, but applied globally). Stored in the Display Commander "
+            "folder (global_settings.toml).");
+    }
 
     // Windows Gaming Input suppression globally (stored in global_settings.toml, same folder as hotkeys.toml)
     if (CheckboxSetting(settings::g_advancedTabSettings.suppress_wgi_globally,

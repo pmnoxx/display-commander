@@ -80,6 +80,8 @@ class AdvancedTabSettings {
     // MinHook suppression setting
     BoolSetting suppress_minhook;
 
+    /** When true, ReShade config backup is effectively enabled for all games (global_settings.toml). Default false. */
+    BoolSetting auto_enable_reshade_config_backup;
     /** Global WGI suppression (global_settings.toml). When true, WGI suppression is on for all games. Default false. */
     BoolSetting suppress_wgi_globally;
     /** Master switch for WGI suppression (Controller tab). When false, WGI is never suppressed. Default false. */

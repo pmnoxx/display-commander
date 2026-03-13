@@ -226,6 +226,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
                            > g_latency_marker_buffer[prevSlot].marker_time_ns[marker_types.present_start].load()) {
                         // XXX
                         // fail safe: break after 1 frame time so we don't lower FPS as much
+                        //
                         const LONGLONG fail_safe_frame_time_ns = 50 * utils::NS_TO_MS;
                         if (utils::get_now_ns() - start_ns > fail_safe_frame_time_ns) {
                             break;

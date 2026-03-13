@@ -1,16 +1,22 @@
 // Source Code <Display Commander>
+
+// Group 1 — Source Code (Display Commander)
 #include "stack_trace.hpp"
-#include "utils/dbghelp_loader.hpp"
+#include "hooks/dbghelp/dbghelp_loader.hpp"
 #include "utils/logging.hpp"
 
-// Libraries <standard C++>
+// Group 2 — ReShade / ImGui
+// (no includes)
+
+// Group 3 — Standard C++
 #include <iomanip>
 #include <sstream>
 #include <string>
 
-// Libraries <Windows.h>
+// Group 4 — Windows.h
 #include <Windows.h>
 
+// Group 5 — Other Windows SDK
 // Libraries <Windows>
 #include <dbghelp.h>
 

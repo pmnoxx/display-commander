@@ -10,6 +10,7 @@
 #include "../dxgi/dxgi_present_hooks.hpp"
 
 #include <MinHook.h>
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -69,16 +70,20 @@ struct NvllVkHookEntry {
     LPVOID* original;
 };
 static constexpr std::size_t K_NVLL_VK_HOOK_COUNT = static_cast<std::size_t>(NvllVkHook::kNvllVkHookCount);
-static const NvllVkHookEntry K_NVLL_VK_HOOKS[K_NVLL_VK_HOOK_COUNT] = {
-    {"NvLL_VK_InitLowLatencyDevice", reinterpret_cast<LPVOID>(&NvLL_VK_InitLowLatencyDevice_Detour),
-     reinterpret_cast<LPVOID*>(&NvLL_VK_InitLowLatencyDevice_Original)},
-    {"NvLL_VK_SetLatencyMarker", reinterpret_cast<LPVOID>(&NvLL_VK_SetLatencyMarker_Detour),
-     reinterpret_cast<LPVOID*>(&NvLL_VK_SetLatencyMarker_Original)},
-    {"NvLL_VK_SetSleepMode", reinterpret_cast<LPVOID>(&NvLL_VK_SetSleepMode_Detour),
-     reinterpret_cast<LPVOID*>(&NvLL_VK_SetSleepMode_Original)},
-    {"NvLL_VK_Sleep", reinterpret_cast<LPVOID>(&NvLL_VK_Sleep_Detour),
-     reinterpret_cast<LPVOID*>(&NvLL_VK_Sleep_Original)},
-};
+static const std::array<NvllVkHookEntry, K_NVLL_VK_HOOK_COUNT> K_NVLL_VK_HOOKS = {{
+    {.name = "NvLL_VK_InitLowLatencyDevice",
+     .detour = reinterpret_cast<LPVOID>(&NvLL_VK_InitLowLatencyDevice_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NvLL_VK_InitLowLatencyDevice_Original)},
+    {.name = "NvLL_VK_SetLatencyMarker",
+     .detour = reinterpret_cast<LPVOID>(&NvLL_VK_SetLatencyMarker_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NvLL_VK_SetLatencyMarker_Original)},
+    {.name = "NvLL_VK_SetSleepMode",
+     .detour = reinterpret_cast<LPVOID>(&NvLL_VK_SetSleepMode_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NvLL_VK_SetSleepMode_Original)},
+    {.name = "NvLL_VK_Sleep",
+     .detour = reinterpret_cast<LPVOID>(&NvLL_VK_Sleep_Detour),
+     .original = reinterpret_cast<LPVOID*>(&NvLL_VK_Sleep_Original)},
+}};
 
 static std::atomic<bool> g_nvll_hooks_installed{false};
 /** Call counts per hook (indexed by NvllVkHook); incremented on each detour entry. */
@@ -158,6 +163,7 @@ static NvLL_VK_Status NvLL_VK_SetLatencyMarker_Detour(void* device, NVLL_VK_LATE
     if (NvLL_VK_SetLatencyMarker_Original == nullptr) {
         return 1;  // error
     }
+    // TODO: explain this, needed for Vulkan fps limiter
     const ReflexMarkerTypes vk_nvll_markers = {
         static_cast<int>(VK_SIMULATION_START),
         static_cast<int>(VK_PRESENT_START) - 1,
@@ -277,6 +283,14 @@ bool InstallNvLowLatencyVkHooks(HMODULE nvll_module) {
 }
 
 bool AreNvLowLatencyVkHooksInstalled() { return g_nvll_hooks_installed.load(); }
+
+void UninstallNvLowLatencyVkHooks() {
+    if (!g_nvll_hooks_installed.exchange(false)) {
+        return;
+    }
+    RollbackNvllVkHooks();
+    LogInfo("NvLowLatencyVk: hooks uninstalled on unload");
+}
 
 void GetNvLowLatencyVkLastMarkerState(int* out_last_marker_type, uint64_t* out_last_frame_id) {
     if (out_last_marker_type) {

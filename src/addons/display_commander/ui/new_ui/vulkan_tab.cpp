@@ -331,7 +331,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         }
 
         if (loader_active) {
-            constexpr std::size_t kLoaderHookCount = static_cast<std::size_t>(VulkanLoaderHook::kVulkanLoaderHookCount);
+            constexpr std::size_t kLoaderHookCount = static_cast<std::size_t>(VulkanLoaderHook::Count);
             std::vector<std::uint64_t> loader_call_counts(kLoaderHookCount, 0);
             GetVulkanLoaderHookCallCounts(loader_call_counts.data(), kLoaderHookCount);
             for (std::size_t i = 0; i < kLoaderHookCount; ++i) {

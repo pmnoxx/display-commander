@@ -6,6 +6,14 @@
 ## Unreleased
 
 ---
+## v0.12.471
+- [cleanup] [hooks] **DbgHelp ABI wrappers** - Callers (e.g. stack trace) no longer use `*_Original` pointers directly or perform `!= nullptr` checks. The loader now exposes wrapper functions (`SymGetModuleInfo64`, `SymFromAddr`, `StackWalk64`, etc.) that match the DbgHelp API and return a safe value (FALSE/0/nullptr) when DbgHelp is unavailable. Use the wrappers in code; reserve `*_Original` for the hook layer (trampolines). Details: dbghelp_private_loader.hpp/cpp, stack_trace.cpp.
+
+---
+## v0.12.470
+- [cleanup] [hooks] **DbgHelp symbol preloading for stack traces** - When generating a stack trace, Display Commander now uses its private DbgHelp instance to enumerate all loaded modules and call `SymLoadModule64` once up front, so subsequent symbol lookups have a better chance of resolving full function names and file/line info from PDBs. Combined with richer `SymSetOptions` flags, this brings our DbgHelp configuration closer to Special K’s crash handler while keeping overhead low (work runs only on first stack-trace generation).
+
+---
 ## v0.12.469
 - [cleanup] [hooks] **DbgHelp private copy: bitness-specific name and loader cleanup** - The private DbgHelp DLL under `%LocalAppData%\Programs\Display_Commander\dbghelp` is now named `dbghelp_dc64.dll` on 64-bit builds and `dbghelp_dc32.dll` on 32-bit builds, matching the addon architecture more clearly. The DbgHelp loader and original hooks were also cleaned up to use small descriptor tables and designated initializers, making it easier to add or audit symbol APIs without hand-written `GetProcAddress` / hook wiring.
 

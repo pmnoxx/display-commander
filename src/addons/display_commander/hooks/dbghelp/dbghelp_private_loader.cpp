@@ -9,9 +9,10 @@
 // (no includes)
 //
 // Group 3 — Standard C++
-#include <atomic>
 #include <array>
+#include <atomic>
 #include <filesystem>
+
 //
 // Group 4 — Windows.h
 #include <Windows.h>
@@ -40,32 +41,88 @@ namespace {
 
 struct DbgHelpFunctionEntry {
     const char* name;
-    void**      target;
-    bool        required;
+    void** target;
+    bool required;
 };
 
 std::atomic<bool> g_dbghelp_loaded{false};
 std::atomic<bool> g_dbghelp_available{false};
 HMODULE g_dbghelp_module = nullptr;
 
+#if defined(_WIN64)
+constexpr const wchar_t* kPrivateDbgHelpFilenameW = L"dbghelp_dc64.dll";
+constexpr const char*    kPrivateDbgHelpFilename  = "dbghelp_dc64.dll";
+#else
+constexpr const wchar_t* kPrivateDbgHelpFilenameW = L"dbghelp_dc32.dll";
+constexpr const char*    kPrivateDbgHelpFilename  = "dbghelp_dc32.dll";
+#endif
+
 // clang-format off
 const std::array<DbgHelpFunctionEntry, static_cast<size_t>(DbgHelpFunction::Count)> g_function_entries = {{
-    { "SymGetOptions",             reinterpret_cast<void**>(&SymGetOptions_Original),             true  },
-    { "SymSetOptions",             reinterpret_cast<void**>(&SymSetOptions_Original),             true  },
-    { "SymInitialize",             reinterpret_cast<void**>(&SymInitialize_Original),             true  },
-    { "SymCleanup",                reinterpret_cast<void**>(&SymCleanup_Original),                true  },
-    { "StackWalk64",               reinterpret_cast<void**>(&StackWalk64_Original),               true  },
-    { "SymFunctionTableAccess64",  reinterpret_cast<void**>(&SymFunctionTableAccess64_Original),  true  },
-    { "SymGetModuleBase64",        reinterpret_cast<void**>(&SymGetModuleBase64_Original),        true  },
-    { "SymFromAddr",               reinterpret_cast<void**>(&SymFromAddr_Original),               true  },
-    { "SymGetLineFromAddr64",      reinterpret_cast<void**>(&SymGetLineFromAddr64_Original),      true  },
-    { "SymGetModuleInfo64",        reinterpret_cast<void**>(&SymGetModuleInfo64_Original),        true  },
-    { "SymSetSearchPathW",         reinterpret_cast<void**>(&SymSetSearchPathW_Original),         false },
-    { "SymGetSearchPathW",         reinterpret_cast<void**>(&SymGetSearchPathW_Original),         false },
+    {
+        .name     = "SymGetOptions",
+        .target   = reinterpret_cast<void**>(&SymGetOptions_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymSetOptions",
+        .target   = reinterpret_cast<void**>(&SymSetOptions_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymInitialize",
+        .target   = reinterpret_cast<void**>(&SymInitialize_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymCleanup",
+        .target   = reinterpret_cast<void**>(&SymCleanup_Original),
+        .required = true,
+    },
+    {
+        .name     = "StackWalk64",
+        .target   = reinterpret_cast<void**>(&StackWalk64_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymFunctionTableAccess64",
+        .target   = reinterpret_cast<void**>(&SymFunctionTableAccess64_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymGetModuleBase64",
+        .target   = reinterpret_cast<void**>(&SymGetModuleBase64_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymFromAddr",
+        .target   = reinterpret_cast<void**>(&SymFromAddr_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymGetLineFromAddr64",
+        .target   = reinterpret_cast<void**>(&SymGetLineFromAddr64_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymGetModuleInfo64",
+        .target   = reinterpret_cast<void**>(&SymGetModuleInfo64_Original),
+        .required = true,
+    },
+    {
+        .name     = "SymSetSearchPathW",
+        .target   = reinterpret_cast<void**>(&SymSetSearchPathW_Original),
+        .required = false,
+    },
+    {
+        .name     = "SymGetSearchPathW",
+        .target   = reinterpret_cast<void**>(&SymGetSearchPathW_Original),
+        .required = false,
+    },
 }};
 // clang-format on
 
-} // namespace
+}  // namespace
 
 bool LoadDbgHelp() {
     if (g_dbghelp_loaded.load()) {
@@ -73,8 +130,8 @@ bool LoadDbgHelp() {
     }
 
     // Prefer a private copy of dbghelp.dll under
-    // %LocalAppData%\Programs\Display_Commander\dbghelp\dbghelp_dc.dll, copied once
-    // from the system directory if not already present.
+    // %LocalAppData%\Programs\Display_Commander\dbghelp\dbghelp_dc64.dll (or dbghelp_dc32.dll),
+    // copied once from the system directory if not already present.
     std::filesystem::path private_dbghelp_path;
     {
         std::filesystem::path dc_base = GetDisplayCommanderAppDataFolder();
@@ -83,12 +140,12 @@ bool LoadDbgHelp() {
             std::error_code ec;
             if (!std::filesystem::exists(dbghelp_dir, ec)) {
                 if (!std::filesystem::create_directories(dbghelp_dir, ec)) {
-                    LogWarn("DbgHelp: failed to create private folder '%s': %s",
-                            dbghelp_dir.string().c_str(), ec.message().c_str());
+                    LogWarn("DbgHelp: failed to create private folder '%s': %s", dbghelp_dir.string().c_str(),
+                            ec.message().c_str());
                 }
             }
             if (std::filesystem::exists(dbghelp_dir, ec) && std::filesystem::is_directory(dbghelp_dir, ec)) {
-                const std::filesystem::path dest = dbghelp_dir / L"dbghelp_dc.dll";
+                const std::filesystem::path dest = dbghelp_dir / kPrivateDbgHelpFilenameW;
 
                 if (!std::filesystem::exists(dest, ec)) {
                     // Resolve the system directory for the source dbghelp.dll (bitness-appropriate).
@@ -130,7 +187,7 @@ bool LoadDbgHelp() {
                     private_dbghelp_path.string().c_str());
         }
     } else {
-        LogWarn("DbgHelp: no private dbghelp_dc.dll found/configured; DbgHelp will be unavailable");
+        LogWarn("DbgHelp: no private %s found/configured; DbgHelp will be unavailable", kPrivateDbgHelpFilename);
     }
     if (g_dbghelp_module == nullptr) {
         LogInfo("DbgHelp not available - dbghelp.dll not found (this is normal on some systems)");
@@ -219,4 +276,3 @@ void EnsureSymbolsInitialized(HANDLE process) {
 }
 
 }  // namespace dbghelp_loader
-

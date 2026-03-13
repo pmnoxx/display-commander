@@ -481,6 +481,14 @@ std::filesystem::path GetDisplayCommanderReshadeRootFolder() {
     return reshade_folder;
 }
 
+std::filesystem::path GetDisplayCommanderAddonsFolder() {
+    std::filesystem::path reshade_root = GetDisplayCommanderReshadeRootFolder();
+    if (reshade_root.empty()) {
+        return std::filesystem::path();
+    }
+    return reshade_root / L"Addons";
+}
+
 // DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles. Does not create the directory.
 std::filesystem::path GetDefaultFilesFolder() {
     std::filesystem::path base = GetDisplayCommanderAppDataFolder();

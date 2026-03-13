@@ -75,6 +75,9 @@ std::filesystem::path GetDisplayCommanderAppDataFolder();
 // Display Commander ReShade root: %LocalAppData%\Programs\Display_Commander\Reshade (contains Shaders, Textures)
 std::filesystem::path GetDisplayCommanderReshadeRootFolder();
 
+// Display Commander Addons folder: %LocalAppData%\Programs\Display_Commander\Reshade\Addons (.addon64/.addon32 files)
+std::filesystem::path GetDisplayCommanderAddonsFolder();
+
 // DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles (files copied to game folder when missing)
 std::filesystem::path GetDefaultFilesFolder();
 

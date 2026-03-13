@@ -3,6 +3,10 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.459
+- [ui] **DC folders: Addons folder button** - Main tab DC folders row now includes an "Addons" button that opens `%LocalAppData%\Programs\Display_Commander\Reshade\Addons` in Explorer (where .addon64/.addon32 files are loaded from). The folder is created if missing when you click the button. Details: GetDisplayCommanderAddonsFolder in utils/general_utils; main_new_tab.cpp five-column folder buttons (Shaders/Textures, Addons, Default Files, Global Reshade, DLSS Overrides).
+
+---
 ## v0.12.458
 - [ui] **DC folders: dlss_override button and layout** - Added "DLSS Overrides" folder button; shortened all folder button labels to "Shaders/Textures", "Default Files", "Global Reshade", "DLSS Overrides"; arranged all four buttons on one line in four columns.
 - [cleanup] **Fork Awesome: icon source and submodule** - Documented in res/forkawesome.h that folder icons are from Fork Awesome (fa-folder, fa-folder-open); added external/ForkAwesome git submodule for reference.

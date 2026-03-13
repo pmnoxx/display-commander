@@ -2122,10 +2122,11 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             "TextureSearchPaths. When off: DC removes those paths from ReShade config.");
     }
     std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
+    std::filesystem::path dc_addons = GetDisplayCommanderAddonsFolder();
     std::filesystem::path default_files = GetDefaultFilesFolder();
     std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
     std::filesystem::path dlss_override = GetDefaultDlssOverrideFolder();
-    imgui.Columns(4, "dc_folders_buttons", false);
+    imgui.Columns(5, "dc_folders_buttons", false);
     if (dc_reshade_root.empty()) {
         imgui.BeginDisabled();
     }
@@ -2143,6 +2144,29 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         imgui.SetTooltipEx("Open the Display Commander ReShade root folder (Shaders and Textures).");
     }
     if (dc_reshade_root.empty()) {
+        imgui.EndDisabled();
+    }
+    imgui.NextColumn();
+    if (dc_addons.empty()) {
+        imgui.BeginDisabled();
+    }
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Addons")) {
+        std::error_code ec;
+        std::filesystem::create_directories(dc_addons, ec);
+        std::string folder_str = dc_addons.string();
+        std::thread([folder_str]() {
+            HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open Addons folder: %s (Error: %ld)", folder_str.c_str(),
+                         static_cast<long>(reinterpret_cast<intptr_t>(result)));
+            }
+        }).detach();
+    }
+    if (imgui.IsItemHovered() && !dc_addons.empty()) {
+        imgui.SetTooltipEx("Open the Display Commander Addons folder (.addon64/.addon32 files). Path: %s",
+                          dc_addons.string().c_str());
+    }
+    if (dc_addons.empty()) {
         imgui.EndDisabled();
     }
     imgui.NextColumn();

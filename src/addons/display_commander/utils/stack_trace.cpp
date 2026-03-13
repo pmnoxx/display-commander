@@ -28,8 +28,7 @@ std::string GetModuleName(HANDLE process, DWORD64 address) {
     IMAGEHLP_MODULE64 module_info = {};
     module_info.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
 
-    if (dbghelp_loader::SymGetModuleInfo64_Original
-        && dbghelp_loader::SymGetModuleInfo64_Original(process, address, &module_info) != FALSE) {
+    if (dbghelp_loader::SymGetModuleInfo64(process, address, &module_info) != FALSE) {
         return module_info.ModuleName;
     }
     return "Unknown";
@@ -44,8 +43,7 @@ std::string GetSymbolName(HANDLE process, DWORD64 address) {
     symbol_info->MaxNameLen = SYMBOL_BUFFER_SIZE;
 
     DWORD64 displacement = 0;
-    if (dbghelp_loader::SymFromAddr_Original
-        && dbghelp_loader::SymFromAddr_Original(process, address, &displacement, symbol_info) != FALSE) {
+    if (dbghelp_loader::SymFromAddr(process, address, &displacement, symbol_info) != FALSE) {
         return symbol_info->Name;
     }
     return "Unknown";
@@ -57,8 +55,7 @@ std::string GetSourceInfo(HANDLE process, DWORD64 address) {
     line_info.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
 
     DWORD displacement = 0;
-    if (dbghelp_loader::SymGetLineFromAddr64_Original
-        && dbghelp_loader::SymGetLineFromAddr64_Original(process, address, &displacement, &line_info) != FALSE) {
+    if (dbghelp_loader::SymGetLineFromAddr64(process, address, &displacement, &line_info) != FALSE) {
         std::ostringstream oss;
         oss << line_info.FileName << ":" << line_info.LineNumber;
         return oss.str();
@@ -88,24 +85,22 @@ void InitializeSymbolsOnce(HANDLE process) {
         return;
     }
 
-    if (dbghelp_loader::SymInitialize_Original && dbghelp_loader::SymSetOptions_Original) {
-        // Set symbol options for better symbol resolution
-        // SYMOPT_UNDNAME: Undecorate C++ names
-        // SYMOPT_DEFERRED_LOADS: Load symbols on demand
-        // SYMOPT_INCLUDE_32BIT_MODULES: Include 32-bit modules in 64-bit process
-        // SYMOPT_LOAD_LINES: Load line number information
-        DWORD sym_options = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
-        dbghelp_loader::SymSetOptions_Original(sym_options);
+    // Set symbol options for better symbol resolution
+    // SYMOPT_UNDNAME: Undecorate C++ names
+    // SYMOPT_DEFERRED_LOADS: Load symbols on demand
+    // SYMOPT_INCLUDE_32BIT_MODULES: Include 32-bit modules in 64-bit process
+    // SYMOPT_LOAD_LINES: Load line number information
+    DWORD sym_options = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
+    dbghelp_loader::SymSetOptions(sym_options);
 
-        // Initialize with default symbol path; TRUE loads symbols for all modules.
-        if (dbghelp_loader::SymInitialize_Original(process, nullptr, TRUE) != FALSE) {
-            symbols_initialized = true;
-        }
+    // Initialize with default symbol path; TRUE loads symbols for all modules.
+    if (dbghelp_loader::SymInitialize(process, nullptr, TRUE) != FALSE) {
+        symbols_initialized = true;
     }
 }
 
 void ConfigureSymbolSearchPathAndWarnIfPdbMissing(HANDLE process) {
-    if (!dbghelp_loader::SymSetSearchPathW_Original) {
+    if (!dbghelp_loader::IsDbgHelpAvailable()) {
         return;
     }
 
@@ -127,13 +122,11 @@ void ConfigureSymbolSearchPathAndWarnIfPdbMissing(HANDLE process) {
             }
 
             std::wstring search_path;
-            if (dbghelp_loader::SymGetSearchPathW_Original) {
-                wchar_t current_path[MAX_PATH * 3] = {};
-                if (dbghelp_loader::SymGetSearchPathW_Original(process, current_path, MAX_PATH * 3) != FALSE
-                    && current_path[0] != L'\0') {
-                    search_path = current_path;
-                    search_path += L';';
-                }
+            wchar_t current_path[MAX_PATH * 3] = {};
+            if (dbghelp_loader::SymGetSearchPathW(process, current_path, MAX_PATH * 3) != FALSE
+                && current_path[0] != L'\0') {
+                search_path = current_path;
+                search_path += L';';
             }
             search_path += dir;
             if (!search_path.empty()) {
@@ -148,7 +141,7 @@ void ConfigureSymbolSearchPathAndWarnIfPdbMissing(HANDLE process) {
                     LogInfo("DbgHelp symbol search path: '%s'", search_path_utf8.c_str());
                 }
 
-                dbghelp_loader::SymSetSearchPathW_Original(process, search_path.c_str());
+                dbghelp_loader::SymSetSearchPathW(process, search_path.c_str());
             }
 
             if (GetFileAttributesW(pdb_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
@@ -186,6 +179,7 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
 
     InitializeSymbolsOnce(process);
     ConfigureSymbolSearchPathAndWarnIfPdbMissing(process);
+    dbghelp_loader::PreloadSymbolsForAllModules(process);
 
     // Use provided context or capture current context
     CONTEXT context = {};
@@ -227,18 +221,14 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     dbghelp_loader::SetSuppressStackWalkLogging(true);
     SuppressGuard suppress_guard;
     while (frame_count < MAX_FRAMES) {
-        if (!dbghelp_loader::StackWalk64_Original) {
-            break;
-        }
-
-        BOOL result = dbghelp_loader::StackWalk64_Original(
+        BOOL result = dbghelp_loader::StackWalk64(
 #ifdef _WIN64
             IMAGE_FILE_MACHINE_AMD64,
 #else
             IMAGE_FILE_MACHINE_I386,
 #endif
             process, thread, &stack_frame, &context, ReadProcessMemoryRoutine64,
-            dbghelp_loader::SymFunctionTableAccess64_Original, dbghelp_loader::SymGetModuleBase64_Original, nullptr);
+            dbghelp_loader::SymFunctionTableAccess64, dbghelp_loader::SymGetModuleBase64, nullptr);
 
         if (result == FALSE) {
             break;

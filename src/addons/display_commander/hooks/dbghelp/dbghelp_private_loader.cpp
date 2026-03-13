@@ -229,6 +229,63 @@ bool LoadDbgHelp() {
     return g_dbghelp_available.load();
 }
 
+void PreloadSymbolsForAllModules(HANDLE process) {
+    if (!g_dbghelp_available.load() || process == nullptr || g_dbghelp_module == nullptr) {
+        return;
+    }
+
+    // Only do this work once per process; subsequent calls are no-ops.
+    static std::atomic<bool> s_preloaded{false};
+    bool expected = false;
+    if (!s_preloaded.compare_exchange_strong(expected, true)) {
+        return;
+    }
+
+    using EnumProcessModules_pfn = BOOL(WINAPI*)(HANDLE, HMODULE*, DWORD, LPDWORD);
+    HMODULE psapi_module = GetModuleHandleW(L"psapi.dll");
+    if (!psapi_module) {
+        psapi_module = LoadLibraryW(L"psapi.dll");
+    }
+    if (!psapi_module) {
+        return;
+    }
+
+    auto enum_process_modules = reinterpret_cast<EnumProcessModules_pfn>(GetProcAddress(psapi_module, "EnumProcessModules"));
+    if (!enum_process_modules) {
+        return;
+    }
+
+    using SymLoadModule64_pfn =
+        decltype(&SymLoadModule64);  // signature from <dbghelp.h>, uses the private dbghelp we loaded
+    auto sym_load_module64 = reinterpret_cast<SymLoadModule64_pfn>(GetProcAddress(g_dbghelp_module, "SymLoadModule64"));
+    if (!sym_load_module64) {
+        return;
+    }
+
+    HMODULE modules[512] = {};
+    DWORD bytes_needed = 0;
+    if (!enum_process_modules(process, modules, static_cast<DWORD>(sizeof(modules)), &bytes_needed) || bytes_needed == 0) {
+        return;
+    }
+
+    const size_t module_count = std::min<size_t>(bytes_needed / sizeof(HMODULE), _countof(modules));
+    for (size_t i = 0; i < module_count; ++i) {
+        HMODULE mod = modules[i];
+        if (!mod) {
+            continue;
+        }
+
+        char module_path[MAX_PATH] = {};
+        if (GetModuleFileNameA(mod, module_path, MAX_PATH) == 0) {
+            continue;
+        }
+
+        const DWORD64 base = reinterpret_cast<DWORD64>(mod);
+        // SizeOfImage is optional for SymLoadModule64; passing 0 lets DbgHelp query it.
+        sym_load_module64(process, nullptr, module_path, nullptr, base, 0);
+    }
+}
+
 void UnloadDbgHelp() {
     if (g_dbghelp_module) {
         FreeLibrary(g_dbghelp_module);
@@ -255,6 +312,53 @@ void UnloadDbgHelp() {
 
 bool IsDbgHelpAvailable() { return g_dbghelp_available.load(); }
 
+// ABI wrappers: safe to call from other modules; no nullptr checks required at call sites.
+DWORD SymGetOptions() {
+    return SymGetOptions_Original ? SymGetOptions_Original() : 0;
+}
+DWORD SymSetOptions(DWORD sym_options) {
+    return SymSetOptions_Original ? SymSetOptions_Original(sym_options) : 0;
+}
+BOOL SymInitialize(HANDLE process, PCSTR user_search_path, BOOL invade_process) {
+    return SymInitialize_Original ? SymInitialize_Original(process, user_search_path, invade_process) : FALSE;
+}
+BOOL SymCleanup(HANDLE process) {
+    return SymCleanup_Original ? SymCleanup_Original(process) : FALSE;
+}
+BOOL StackWalk64(DWORD machine_type, HANDLE process, HANDLE thread, LPSTACKFRAME64 stack_frame,
+                 PVOID context_record, PREAD_PROCESS_MEMORY_ROUTINE64 read_memory_routine,
+                 PFUNCTION_TABLE_ACCESS_ROUTINE64 function_table_access_routine,
+                 PGET_MODULE_BASE_ROUTINE64 get_module_base_routine,
+                 PTRANSLATE_ADDRESS_ROUTINE64 translate_address_routine) {
+    return StackWalk64_Original
+               ? StackWalk64_Original(machine_type, process, thread, stack_frame, context_record,
+                                     read_memory_routine, function_table_access_routine, get_module_base_routine,
+                                     translate_address_routine)
+               : FALSE;
+}
+PVOID SymFunctionTableAccess64(HANDLE process, DWORD64 addr_base) {
+    return SymFunctionTableAccess64_Original ? SymFunctionTableAccess64_Original(process, addr_base) : nullptr;
+}
+DWORD64 SymGetModuleBase64(HANDLE process, DWORD64 address) {
+    return SymGetModuleBase64_Original ? SymGetModuleBase64_Original(process, address) : 0;
+}
+BOOL SymFromAddr(HANDLE process, DWORD64 address, PDWORD64 displacement, PSYMBOL_INFO symbol_info) {
+    return SymFromAddr_Original ? SymFromAddr_Original(process, address, displacement, symbol_info) : FALSE;
+}
+BOOL SymGetLineFromAddr64(HANDLE process, DWORD64 address, PDWORD displacement, PIMAGEHLP_LINE64 line) {
+    return SymGetLineFromAddr64_Original ? SymGetLineFromAddr64_Original(process, address, displacement, line)
+                                         : FALSE;
+}
+BOOL SymGetModuleInfo64(HANDLE process, DWORD64 address, PIMAGEHLP_MODULE64 module_info) {
+    return SymGetModuleInfo64_Original ? SymGetModuleInfo64_Original(process, address, module_info) : FALSE;
+}
+BOOL SymSetSearchPathW(HANDLE process, PCWSTR search_path) {
+    return SymSetSearchPathW_Original ? SymSetSearchPathW_Original(process, search_path) : FALSE;
+}
+BOOL SymGetSearchPathW(HANDLE process, PWSTR search_path, DWORD search_path_len) {
+    return SymGetSearchPathW_Original ? SymGetSearchPathW_Original(process, search_path, search_path_len) : FALSE;
+}
+
 static thread_local bool g_suppress_stack_walk_logging = false;
 
 void SetSuppressStackWalkLogging(bool suppress) { g_suppress_stack_walk_logging = suppress; }
@@ -265,14 +369,12 @@ void EnsureSymbolsInitialized(HANDLE process) {
     if (!g_dbghelp_available.load() || process == nullptr) {
         return;
     }
-    if (SymSetOptions_Original) {
-        const DWORD opts = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
-        SymSetOptions_Original(opts);
-    }
-    if (SymInitialize_Original) {
-        // Idempotent: returns TRUE and does nothing if already initialized for this process
-        SymInitialize_Original(process, nullptr, TRUE);
-    }
+    const DWORD opts = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES |
+                       SYMOPT_NO_PROMPTS | SYMOPT_OMAP_FIND_NEAREST | SYMOPT_FAVOR_COMPRESSED |
+                       SYMOPT_FAIL_CRITICAL_ERRORS | SYMOPT_NO_UNQUALIFIED_LOADS | SYMOPT_LOAD_ANYTHING;
+    SymSetOptions(opts);
+    // Idempotent: returns TRUE and does nothing if already initialized for this process
+    SymInitialize(process, nullptr, TRUE);
 }
 
 }  // namespace dbghelp_loader

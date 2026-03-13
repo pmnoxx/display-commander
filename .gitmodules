@@ -32,3 +32,6 @@
 [submodule "external/tomlplusplus"]
 	path = external/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
+[submodule "external/ForkAwesome"]
+	path = external/ForkAwesome
+	url = https://github.com/ForkAwesome/Fork-Awesome.git

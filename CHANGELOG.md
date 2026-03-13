@@ -3,8 +3,13 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
-## Unreleased
-- [new feature] [ui] **DC folders section and DefaultFiles** - Main tab "Updates" is renamed to "DC folders". The section now has a top block: checkbox "Add DC Shaders/Textures to ReShade paths" and three open-folder buttons (Open Shaders/Textures folder, Open DefaultFiles folder, Open global ReShade folder). The checkbox and Open Shaders/Textures were moved from Brightness and AutoHDR; the global ReShade "Open folder" was removed from the Reshade subsection to avoid duplication. **DefaultFiles:** Files in `%LocalAppData%\Programs\Display_Commander\DefaultFiles` are copied into the game folder at startup only when missing (e.g. ReShadeProfile.ini). No overwrite. "Open DefaultFiles folder" creates the folder if needed. Details: private_docs/dc_folders_main_tab_spec.md; GetDefaultFilesFolder/CopyDefaultFilesToGameFolder in utils/general_utils; addon init calls copy once per launch.
+## v0.12.458
+- [ui] **DC folders: dlss_override button and layout** - Added "DLSS Overrides" folder button; shortened all folder button labels to "Shaders/Textures", "Default Files", "Global Reshade", "DLSS Overrides"; arranged all four buttons on one line in four columns.
+- [cleanup] **Fork Awesome: icon source and submodule** - Documented in res/forkawesome.h that folder icons are from Fork Awesome (fa-folder, fa-folder-open); added external/ForkAwesome git submodule for reference.
+
+---
+## v0.12.457
+- [new feature] [ui] **DC folders section and DefaultFiles** - Main tab "Updates" is renamed to "DC folders". The section now has a top block: checkbox "Add DC Shaders/Textures to ReShade paths" and open-folder buttons (Shaders/Textures, Default Files, Global Reshade; later DLSS Overrides). The checkbox and Shaders/Textures were moved from Brightness and AutoHDR; the global ReShade "Open folder" was removed from the Reshade subsection. **DefaultFiles:** Files in `%LocalAppData%\Programs\Display_Commander\DefaultFiles` are copied into the game folder at startup only when missing (e.g. ReShadeProfile.ini). No overwrite. Details: GetDefaultFilesFolder/CopyDefaultFilesToGameFolder in utils/general_utils; addon init calls copy once per launch.
 
 ---
 ## v0.12.456

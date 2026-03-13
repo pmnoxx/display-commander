@@ -2124,7 +2124,12 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
     std::filesystem::path default_files = GetDefaultFilesFolder();
     std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
-    if (!dc_reshade_root.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open Shaders/Textures folder")) {
+    std::filesystem::path dlss_override = GetDefaultDlssOverrideFolder();
+    imgui.Columns(4, "dc_folders_buttons", false);
+    if (dc_reshade_root.empty()) {
+        imgui.BeginDisabled();
+    }
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Shaders/Textures")) {
         std::string folder_str = dc_reshade_root.string();
         std::thread([folder_str]() {
             HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
@@ -2137,8 +2142,11 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.IsItemHovered() && !dc_reshade_root.empty()) {
         imgui.SetTooltipEx("Open the Display Commander ReShade root folder (Shaders and Textures).");
     }
-    imgui.SameLine();
-    if (imgui.Button(ICON_FK_FOLDER_OPEN " Open DefaultFiles folder")) {
+    if (dc_reshade_root.empty()) {
+        imgui.EndDisabled();
+    }
+    imgui.NextColumn();
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Default Files")) {
         std::error_code ec;
         std::filesystem::create_directories(default_files, ec);
         std::string folder_str = default_files.string();
@@ -2155,8 +2163,11 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             "Files here are copied to the game folder when missing (e.g. ReShadeProfile.ini). Path: %s",
             default_files.string().c_str());
     }
-    imgui.SameLine();
-    if (!reshade_global.empty() && imgui.Button(ICON_FK_FOLDER_OPEN " Open global ReShade folder")) {
+    imgui.NextColumn();
+    if (reshade_global.empty()) {
+        imgui.BeginDisabled();
+    }
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " Global Reshade")) {
         std::string folder_str = reshade_global.string();
         std::thread([folder_str]() {
             HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
@@ -2168,8 +2179,33 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     if (imgui.IsItemHovered() && !reshade_global.empty()) {
         imgui.SetTooltipEx("Open the ReShade global folder. You can copy files manually to revert.\n\n%s",
-                           reshade_global.string().c_str());
+                          reshade_global.string().c_str());
     }
+    if (reshade_global.empty()) {
+        imgui.EndDisabled();
+    }
+    imgui.NextColumn();
+    if (dlss_override.empty()) {
+        imgui.BeginDisabled();
+    }
+    if (imgui.Button(ICON_FK_FOLDER_OPEN " DLSS Overrides")) {
+        std::string folder_str = dlss_override.string();
+        std::thread([folder_str]() {
+            HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+            if (reinterpret_cast<intptr_t>(result) <= 32) {
+                LogError("Failed to open dlss_override folder: %s (Error: %ld)", folder_str.c_str(),
+                         static_cast<long>(reinterpret_cast<intptr_t>(result)));
+            }
+        }).detach();
+    }
+    if (imgui.IsItemHovered() && !dlss_override.empty()) {
+        imgui.SetTooltipEx("Open the DLSS override folder (centralized DLL overrides). Path: %s",
+                          dlss_override.string().c_str());
+    }
+    if (dlss_override.empty()) {
+        imgui.EndDisabled();
+    }
+    imgui.Columns(1);
 
     DrawUpdatesDisplayCommanderHeader(imgui);
     DrawUpdatesReshadeHeader(imgui, game_dir);

@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.478
+- [cleanup] **Vulkan loader hooks enum** - VulkanLoaderHook now uses Count as the last enum value instead of a separate kVulkanLoaderHookCount constant; hook count is derived from the enum. Details: vulkan_loader_hooks.hpp/cpp, vulkan_tab.cpp.
+
+---
 ## v0.12.477
 - [ui] [settings] **Brightness / Auto HDR section off by default** - The "Enable Brightness, AutoHDR and ReShade paths" subsection on the Main tab now defaults to disabled for new configs. Existing configs keep their current choice. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default false).
 

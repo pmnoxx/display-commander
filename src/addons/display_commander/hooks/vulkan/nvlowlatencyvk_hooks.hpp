@@ -36,6 +36,9 @@ bool InstallNvLowLatencyVkHooks(HMODULE nvll_module);
 /** Returns true if NvLowLatencyVk hooks are currently installed. */
 bool AreNvLowLatencyVkHooksInstalled();
 
+/** Uninstall NvLowLatencyVk hooks (e.g. on DLL unload). Idempotent; safe to call if not installed. */
+void UninstallNvLowLatencyVkHooks();
+
 /** Last NvLL_VK_SetLatencyMarker type (0-8) and frame ID for Vulkan tab. All params nullable. */
 void GetNvLowLatencyVkLastMarkerState(int* out_last_marker_type, uint64_t* out_last_frame_id);
 

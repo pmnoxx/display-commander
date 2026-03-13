@@ -83,8 +83,7 @@ struct VulkanLoaderHookEntry {
     LPVOID detour;
     LPVOID* original;
 };
-static constexpr std::size_t kVulkanLoaderHookCount = 6;
-static const VulkanLoaderHookEntry kVulkanLoaderHooks[kVulkanLoaderHookCount] = {
+static const VulkanLoaderHookEntry kVulkanLoaderHooks[static_cast<std::size_t>(VulkanLoaderHook::Count)] = {
     {.name = "vkGetInstanceProcAddr",
      .detour = reinterpret_cast<LPVOID>(&vkGetInstanceProcAddr_Detour),
      .original = reinterpret_cast<LPVOID*>(&vkGetInstanceProcAddr_Original)},
@@ -109,7 +108,7 @@ static std::atomic<uint64_t> g_loader_marker_count{0};
 static std::atomic<int> g_loader_last_marker_type{-1};
 static std::atomic<uint64_t> g_loader_last_present_id{0};
 /** Call counts per hook (indexed by VulkanLoaderHook); incremented on each detour entry. */
-static std::atomic<uint64_t> g_loader_hook_call_counts[kVulkanLoaderHookCount]{};
+static std::atomic<uint64_t> g_loader_hook_call_counts[static_cast<std::size_t>(VulkanLoaderHook::Count)]{};
 
 /** Enabled device extensions from last vkCreateDevice (thread-safe). */
 static std::vector<std::string> g_vulkan_enabled_extensions;
@@ -358,7 +357,7 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr_Detour(VkInstance
 }
 
 static void RollbackVulkanLoaderHooks() {
-    for (std::size_t j = 0; j < kVulkanLoaderHookCount; ++j) {
+    for (std::size_t j = 0; j < static_cast<std::size_t>(VulkanLoaderHook::Count); ++j) {
         LPVOID* const orig = kVulkanLoaderHooks[j].original;
         if (orig != nullptr && *orig != nullptr) {
             MH_DisableHook(*orig);
@@ -391,7 +390,7 @@ static bool InstallVulkanLoaderHooksImpl(void* vulkan1_module) {
         return false;
     }
 
-    for (std::size_t i = 0; i < kVulkanLoaderHookCount; ++i) {
+    for (std::size_t i = 0; i < static_cast<std::size_t>(VulkanLoaderHook::Count); ++i) {
         const VulkanLoaderHookEntry& entry = kVulkanLoaderHooks[i];
         FARPROC target = GetProcAddress(module, entry.name);
         if (target == nullptr) {
@@ -418,7 +417,7 @@ void GetVulkanLoaderHookCallCountsImpl(uint64_t* out_counts, std::size_t count) 
     if (out_counts == nullptr) {
         return;
     }
-    const std::size_t n = (count < kVulkanLoaderHookCount) ? count : kVulkanLoaderHookCount;
+    const std::size_t n = (count < static_cast<std::size_t>(VulkanLoaderHook::Count)) ? count : static_cast<std::size_t>(VulkanLoaderHook::Count);
     for (std::size_t i = 0; i < n; ++i) {
         out_counts[i] = g_loader_hook_call_counts[i].load();
     }
@@ -436,7 +435,7 @@ const char* GetVulkanLoaderHookName(VulkanLoaderHook hook) {
         "vkSetLatencyMarkerNV",
     };
     const std::size_t idx = static_cast<std::size_t>(hook);
-    const std::size_t max_hook = static_cast<std::size_t>(VulkanLoaderHook::kVulkanLoaderHookCount);
+    const std::size_t max_hook = static_cast<std::size_t>(VulkanLoaderHook::Count);
     if (idx >= max_hook) {
         return "(unknown)";
     }
@@ -450,6 +449,14 @@ void GetVulkanLoaderHookCallCounts(uint64_t* out_counts, std::size_t count) {
 bool InstallVulkanLoaderHooks(void* vulkan1_module) { return InstallVulkanLoaderHooksImpl(vulkan1_module); }
 
 bool AreVulkanLoaderHooksInstalled() { return g_loader_hooks_installed.load(); }
+
+void UninstallVulkanLoaderHooks() {
+    if (!g_loader_hooks_installed.exchange(false)) {
+        return;
+    }
+    RollbackVulkanLoaderHooks();
+    LogInfo("VulkanLoader: hooks uninstalled on unload");
+}
 
 void GetVulkanLoaderDebugState(uint64_t* out_marker_count, int* out_last_marker_type, uint64_t* out_last_present_id,
                                uint64_t* out_intercept_count) {

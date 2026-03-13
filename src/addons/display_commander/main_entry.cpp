@@ -10,6 +10,8 @@
 #include "hooks/input/hid_suppression_hooks.hpp"
 #include "hooks/input/xinput_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
+#include "hooks/vulkan/nvlowlatencyvk_hooks.hpp"
+#include "hooks/vulkan/vulkan_loader_hooks.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
@@ -2711,6 +2713,12 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             // Clean up API hooks
             display_commanderhooks::UninstallApiHooks();
+
+            // Clean up Vulkan loader hooks
+            UninstallVulkanLoaderHooks();
+
+            // Clean up NvLowLatencyVk hooks
+            UninstallNvLowLatencyVkHooks();
 
             // Clean up continuous monitoring if it's running
             StopContinuousMonitoring();

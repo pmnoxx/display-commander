@@ -5,7 +5,8 @@
 #include <string>
 #include <vector>
 
-/** Vulkan loader hook indices; use for stats arrays. Order matches the hook table in vulkan_loader_hooks.cpp. */
+/** Vulkan loader hook indices; use for stats arrays. Order matches the hook table in vulkan_loader_hooks.cpp.
+ *  Last value Count is the number of hooks; use static_cast<std::size_t>(VulkanLoaderHook::Count) for array size. */
 enum class VulkanLoaderHook : std::size_t {
     GetInstanceProcAddr = 0,
     CreateDevice,
@@ -13,13 +14,13 @@ enum class VulkanLoaderHook : std::size_t {
     QueuePresentKHR,
     BeginCommandBuffer,
     SetLatencyMarkerNV,
-    kVulkanLoaderHookCount
+    Count
 };
 
 /** Human-readable name for a Vulkan loader hook (for UI). */
 const char* GetVulkanLoaderHookName(VulkanLoaderHook hook);
 
-/** Fill call counts for each loader hook. out_counts must have at least kVulkanLoaderHookCount elements. */
+/** Fill call counts for each loader hook. out_counts must have at least Count elements. */
 void GetVulkanLoaderHookCallCounts(uint64_t* out_counts, std::size_t count);
 
 /** Install hooks on vulkan-1.dll exports (vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, vkQueuePresentKHR,
@@ -31,6 +32,9 @@ bool InstallVulkanLoaderHooks(void* vulkan1_module);
 
 /** Returns true if Vulkan loader hooks were successfully installed on vulkan-1.dll. */
 bool AreVulkanLoaderHooksInstalled();
+
+/** Uninstall Vulkan loader hooks (e.g. on DLL unload). Idempotent; safe to call if not installed. */
+void UninstallVulkanLoaderHooks();
 
 /** Debug state for VK_NV_low_latency2 path. All params nullable.
  *  out_intercept_count is unused (always 0; we no longer hook vkGetDeviceProcAddr). */

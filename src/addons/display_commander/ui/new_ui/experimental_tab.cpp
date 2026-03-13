@@ -322,7 +322,7 @@ void DrawExperimentalTab(display_commander::ui::IImGuiWrapper& imgui, reshade::a
         imgui.EndTabItem();
     }
 
-    if (imgui.BeginTabItem("Important Info", nullptr, 0)) {
+    if (imgui.BeginTabItem("Performance Overlay", nullptr, 0)) {
         DrawImportantInfo(imgui);
         imgui.EndTabItem();
     }

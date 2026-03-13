@@ -177,17 +177,18 @@ void DrawDxgiOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
 }
 
 // Draw NVAPI stats subsection (5 checkboxes + warning + refresh poll slider). Whole subsection is disabled when NVAPI
-// is not initialized.
+// is not initialized or when running 32-bit (NVAPI overlay stats are 64-bit only).
 void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui) {
     imgui.Columns(1);  // Reset to single column
     imgui.Separator();
     imgui.TextWrapped(
-        "NVAPI stats (NVIDIA only). These options may cause occasional hiccups; not available on Intel/AMD or "
-        "Linux.");
+        "NVAPI stats (NVIDIA only). These options may cause occasional hiccups; not available on Intel/AMD, "
+        "Linux, or 32-bit builds.");
     imgui.Columns(4, "overlay_checkboxes", false);
 
     const bool nvapi_initialized = nvapi::EnsureNvApiInitialized();
-    if (!nvapi_initialized) {
+    const bool nvapi_stats_available = nvapi_initialized && is_64_bit();
+    if (!nvapi_stats_available) {
         imgui.BeginDisabled();
     }
 
@@ -277,7 +278,7 @@ void DrawNvapiStatsOverlaySubsection(display_commander::ui::IImGuiWrapper& imgui
         }
     }
 
-    if (!nvapi_initialized) {
+    if (!nvapi_stats_available) {
         imgui.EndDisabled();
     }
 }
@@ -3363,8 +3364,8 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
     imgui.Spacing();
 
-    g_rendering_ui_section.store("ui:tab:main_new:important_info", std::memory_order_release);
-    if (imgui.CollapsingHeader("Important Info", ImGuiTreeNodeFlags_None)) {
+    g_rendering_ui_section.store("ui:tab:main_new:performance_overlay", std::memory_order_release);
+    if (imgui.CollapsingHeader("Performance Overlay", ImGuiTreeNodeFlags_None)) {
         imgui.Indent();
         DrawImportantInfo(imgui);
         imgui.Unindent();

@@ -6,6 +6,15 @@
 ## Unreleased
 
 ---
+## v0.12.475
+- [ui] **"Important Info" renamed to "Performance Overlay"** - The Main tab collapsible section and the Experimental tab tab that contain performance overlay controls (enable overlay, what to show, position, frame time graph, refresh rate monitor) are now labeled "Performance Overlay" instead of "Important Info". Details: main_new_tab.cpp CollapsingHeader and g_rendering_ui_section; experimental_tab.cpp BeginTabItem.
+
+---
+## v0.12.474
+- [ui] **NVAPI stats overlay disabled on 32-bit** - The performance overlay "NVAPI stats" subsection (VRR Status, VRR Debug Mode, Refresh rate, Refresh rate time graph/stats) is now disabled on 32-bit builds; options are greyed out and the description notes "not available on Intel/AMD, Linux, or 32-bit builds." Details: main_new_tab.cpp DrawNvapiStatsOverlaySubsection, nvapi_stats_available = nvapi_initialized && is_64_bit().
+- [bugfix] **DbgHelp loader x86 callbacks** - SymFunctionTableAccess64 and SymGetModuleBase64 wrappers are declared and defined with WINAPI so they match PFUNCTION_TABLE_ACCESS_ROUTINE64 / PGET_MODULE_BASE_ROUTINE64 on x86 (stdcall). Fixes StackWalk64 build error C2664 on 32-bit. Details: dbghelp_private_loader.hpp/cpp.
+
+---
 ## v0.12.473
 - [ui] **IsReflexAvailable for Reflex controls** - Reflex mode selector (OnPresent FPS limiter) and Advanced tab "NVIDIA Reflex (Minimal)" section visibility are now determined by `IsReflexAvailable()` instead of `is_64_bit()` alone. Reflex controls are shown when the process is 64-bit and either native Reflex was called (game used SetLatencyMarker) or NVAPI was initialized with a D3D device. This avoids showing Reflex UI when Reflex cannot be used. Details: `IsReflexAvailable()` in utils/general_utils.hpp/cpp; main_new_tab.cpp DrawDisplaySettings_FpsLimiterOnPresentSync; advanced_tab.cpp DrawNvapiSettings.
 

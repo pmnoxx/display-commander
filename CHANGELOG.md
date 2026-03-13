@@ -6,6 +6,14 @@
 ## Unreleased
 
 ---
+## v0.12.469
+- [cleanup] [hooks] **DbgHelp private copy: bitness-specific name and loader cleanup** - The private DbgHelp DLL under `%LocalAppData%\Programs\Display_Commander\dbghelp` is now named `dbghelp_dc64.dll` on 64-bit builds and `dbghelp_dc32.dll` on 32-bit builds, matching the addon architecture more clearly. The DbgHelp loader and original hooks were also cleaned up to use small descriptor tables and designated initializers, making it easier to add or audit symbol APIs without hand-written `GetProcAddress` / hook wiring.
+
+---
+## v0.12.468
+- [cleanup] [hooks] **DbgHelp original hooks: table-driven and moved under hooks/dbghelp** - The hooks that attach to the game’s original `dbghelp.dll` are now in `hooks/dbghelp/dbghelp_original_hooks.*` and use an enum + data table to describe symbol hooks (`SymSetOptions`, `SymInitialize`, `SymCleanup`, `SymFromAddr`, `SymGetModuleInfo64`, `SymGetLineFromAddr64`). This removes hand-written repetition when installing hooks and wiring trampolines into `dbghelp_loader::..._Original`, making it easier to audit and extend how we log stack traces from the game’s own DbgHelp copy.
+
+---
 ## v0.12.467
 - [cleanup] [hooks] **DbgHelp: use private copy only under AppData** - DbgHelp is now always loaded from a private copy `dbghelp_dc.dll` under `%LocalAppData%\Programs\Display_Commander\dbghelp`, copied once from `dbghelp.dll` next to the addon if present. If the private DLL is missing or fails to load, DbgHelp is treated as unavailable; we do not fall back to the game’s or system `dbghelp.dll`, so stack tracing uses only Display Commander’s own instance. 
 

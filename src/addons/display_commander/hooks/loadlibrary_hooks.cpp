@@ -24,7 +24,7 @@
 #include "../utils/timing.hpp"
 #include "windows_hooks/api_hooks.hpp"
 #include "d3d9/d3d9_hooks.hpp"
-#include "dbghelp_hooks.hpp"
+#include "dbghelp/dbghelp_original_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
 #include "input/dinput_hooks.hpp"
 #include "input/game_input_hooks.hpp"
@@ -1711,13 +1711,13 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             LogError("[OnModuleLoaded] Failed to install NGX hooks");
         }
     }
-    // dbghelp.dll – log stack trace queries from any thread
+    // dbghelp.dll – log stack trace queries from any thread (hooks on game's/original dbghelp)
     else if (lowerModuleName.find(L"dbghelp.dll") != std::wstring::npos) {
         LogInfo("[OnModuleLoaded] dbghelp.dll: %ws", moduleName.c_str());
-        if (InstallDbgHelpHooks(hModule)) {
-            LogInfo("[OnModuleLoaded] DbgHelp hooks installed successfully");
+        if (InstallDbgHelpOriginalHooks(hModule)) {
+            LogInfo("[OnModuleLoaded] DbgHelp original hooks installed successfully");
         } else {
-            LogInfo("[OnModuleLoaded] DbgHelp hooks not installed (e.g. already installed or symbol not found)");
+            LogInfo("[OnModuleLoaded] DbgHelp original hooks not installed (e.g. already installed or symbol not found)");
         }
     }
     // advapi32.dll – PCLStats ETW (EventRegister + EventWriteTransfer) for Reflex/PCLStats event counting

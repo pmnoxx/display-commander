@@ -2121,12 +2121,39 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             "When on: Display Commander adds its Shaders/Textures folder to ReShade's EffectSearchPaths and "
             "TextureSearchPaths. When off: DC removes those paths from ReShade config.");
     }
+    if (CheckboxSetting(settings::g_mainTabSettings.auto_reshade_config_backup,
+                        "Auto ReShade config backup", imgui)) {
+        if (settings::g_mainTabSettings.auto_reshade_config_backup.GetValue()) {
+            CopyGameIniFilesToReshadeConfigBackupFolder();
+        }
+    }
+    if (imgui.IsItemHovered()) {
+        std::string game_name = GetGameNameFromProcess();
+        std::filesystem::path configs = GetDisplayCommanderReshadeConfigsFolder();
+        std::filesystem::path backup_path = configs.empty() || game_name.empty()
+                                                ? std::filesystem::path()
+                                                : configs / game_name;
+        imgui.SetTooltipEx(
+            "When enabled, backup all .ini files from the game folder to the backup folder (only if not already there).\n\n"
+            "Game: %s\nBackup path: %s",
+            game_name.empty() ? "(unknown)" : game_name.c_str(),
+            backup_path.empty() ? "(n/a)" : backup_path.string().c_str());
+    }
     std::filesystem::path dc_reshade_root = GetDisplayCommanderReshadeRootFolder();
     std::filesystem::path dc_addons = GetDisplayCommanderAddonsFolder();
     std::filesystem::path default_files = GetDefaultFilesFolder();
     std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
     std::filesystem::path dlss_override = GetDefaultDlssOverrideFolder();
-    imgui.Columns(5, "dc_folders_buttons", false);
+    const bool show_backup_btn = settings::g_mainTabSettings.auto_reshade_config_backup.GetValue();
+    std::filesystem::path reshade_backup_path;
+    if (show_backup_btn) {
+        std::filesystem::path configs = GetDisplayCommanderReshadeConfigsFolder();
+        std::string game_name_btn = GetGameNameFromProcess();
+        if (!configs.empty() && !game_name_btn.empty()) {
+            reshade_backup_path = configs / game_name_btn;
+        }
+    }
+    imgui.Columns(show_backup_btn ? 6 : 5, "dc_folders_buttons", false);
     if (dc_reshade_root.empty()) {
         imgui.BeginDisabled();
     }
@@ -2228,6 +2255,31 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     if (dlss_override.empty()) {
         imgui.EndDisabled();
+    }
+    if (show_backup_btn) {
+        imgui.NextColumn();
+        if (reshade_backup_path.empty()) {
+            imgui.BeginDisabled();
+        }
+        if (imgui.Button(ICON_FK_FOLDER_OPEN " Backup")) {
+            std::error_code ec;
+            std::filesystem::create_directories(reshade_backup_path, ec);
+            std::string folder_str = reshade_backup_path.string();
+            std::thread([folder_str]() {
+                HINSTANCE result = ShellExecuteA(nullptr, "explore", folder_str.c_str(), nullptr, nullptr, SW_SHOW);
+                if (reinterpret_cast<intptr_t>(result) <= 32) {
+                    LogError("Failed to open ReShade config backup folder: %s (Error: %ld)", folder_str.c_str(),
+                             static_cast<long>(reinterpret_cast<intptr_t>(result)));
+                }
+            }).detach();
+        }
+        if (imgui.IsItemHovered() && !reshade_backup_path.empty()) {
+            imgui.SetTooltipEx("Open this game's ReShade config backup folder. Path: %s",
+                              reshade_backup_path.string().c_str());
+        }
+        if (reshade_backup_path.empty()) {
+            imgui.EndDisabled();
+        }
     }
     imgui.Columns(1);
 

@@ -3,6 +3,15 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.461
+- [new feature] [ui] [settings] **Auto ReShade config backup** - Replaced "Per-game ReShade config folder" with "Auto ReShade config backup". When enabled, all .ini files from the game folder are copied to `%LocalAppData%\Programs\Display_Commander\Reshade\Configs\<GameName>` only if they do not already exist there (no overwrite). ReShade's config path is no longer overridden; this is a backup-only feature. A "Backup" button in the DC folders row opens the backup folder. Details: auto_reshade_config_backup setting; CopyGameIniFilesToReshadeConfigBackupFolder in utils/general_utils; RESHADE_BASE_PATH_OVERRIDE no longer set in DllMain or when loading ReShade from Documents.
+
+---
+## v0.12.460
+- [new feature] [ui] [settings] **Per-game ReShade config folder** - Added checkbox "Per-game ReShade config folder" in DC folders. When enabled, before ReShade loads we set `RESHADE_BASE_PATH_OVERRIDE` to `%LocalAppData%\Programs\Display_Commander\Reshade\Configs\<GameName>` (e.g. Sekiro from `...\steamapps\common\Sekiro`), so ReShade uses a separate config folder per game. Tooltip shows game name and path; requires restart. Details: per_game_reshade_config_folder setting; ApplyPerGameReshadeConfigOverrideIfNeeded in LoadLibrary hooks; GetDisplayCommanderReshadeConfigsFolder, GetGameNameFromProcess in utils/general_utils.
+- [ui] **DC folders: Game config button** - When "Per-game ReShade config folder" is enabled, a "Game config" button appears in the folder row that opens this game's ReShade config folder (Configs\<GameName>); folder is created if missing.
+
+---
 ## v0.12.459
 - [ui] **DC folders: Addons folder button** - Main tab DC folders row now includes an "Addons" button that opens `%LocalAppData%\Programs\Display_Commander\Reshade\Addons` in Explorer (where .addon64/.addon32 files are loaded from). The folder is created if missing when you click the button. Details: GetDisplayCommanderAddonsFolder in utils/general_utils; main_new_tab.cpp five-column folder buttons (Shaders/Textures, Addons, Default Files, Global Reshade, DLSS Overrides).
 

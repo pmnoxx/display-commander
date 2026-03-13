@@ -78,12 +78,25 @@ std::filesystem::path GetDisplayCommanderReshadeRootFolder();
 // Display Commander Addons folder: %LocalAppData%\Programs\Display_Commander\Reshade\Addons (.addon64/.addon32 files)
 std::filesystem::path GetDisplayCommanderAddonsFolder();
 
+// Display Commander ReShade configs root: %LocalAppData%\Programs\Display_Commander\Reshade\Configs (per-game subfolders)
+std::filesystem::path GetDisplayCommanderReshadeConfigsFolder();
+
+// Last path component of the process exe directory (e.g. "D:\SteamLibrary\...\Sekiro" -> "Sekiro"). Empty on failure.
+std::string GetGameNameFromProcess();
+
+// Process exe's parent directory (game folder). Empty on failure.
+std::filesystem::path GetGameFolderFromProcess();
+
 // DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles (files copied to game folder when missing)
 std::filesystem::path GetDefaultFilesFolder();
 
 // Copy each file from DefaultFiles into game_dir only if the file is missing there. No overwrite. Logs errors; no-op if
 // DefaultFiles does not exist or is empty.
 void CopyDefaultFilesToGameFolder(const std::filesystem::path& game_dir);
+
+// Backup all .ini files from the game folder into the ReShade config backup folder (Configs\<GameName>) only if they
+// do not already exist there. Creates the backup directory if needed. No overwrite. Call when enabling auto backup.
+void CopyGameIniFilesToReshadeConfigBackupFolder();
 
 // Default DLSS override folder: AppData\Local\Programs\Display_Commander\dlss_override (centralized location)
 std::filesystem::path GetDefaultDlssOverrideFolder();

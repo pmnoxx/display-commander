@@ -489,6 +489,36 @@ std::filesystem::path GetDisplayCommanderAddonsFolder() {
     return reshade_root / L"Addons";
 }
 
+std::filesystem::path GetDisplayCommanderReshadeConfigsFolder() {
+    std::filesystem::path reshade_root = GetDisplayCommanderReshadeRootFolder();
+    if (reshade_root.empty()) {
+        return std::filesystem::path();
+    }
+    return reshade_root / L"Configs";
+}
+
+std::string GetGameNameFromProcess() {
+    WCHAR buf[MAX_PATH];
+    if (::GetModuleFileNameW(nullptr, buf, MAX_PATH) == 0) {
+        return std::string();
+    }
+    std::filesystem::path exe_path(buf);
+    std::filesystem::path parent = exe_path.parent_path();
+    std::string name = parent.filename().string();
+    if (name.empty()) {
+        return "Game";
+    }
+    return name;
+}
+
+std::filesystem::path GetGameFolderFromProcess() {
+    WCHAR buf[MAX_PATH];
+    if (::GetModuleFileNameW(nullptr, buf, MAX_PATH) == 0) {
+        return std::filesystem::path();
+    }
+    return std::filesystem::path(buf).parent_path();
+}
+
 // DefaultFiles folder: %LocalAppData%\Programs\Display_Commander\DefaultFiles. Does not create the directory.
 std::filesystem::path GetDefaultFilesFolder() {
     std::filesystem::path base = GetDisplayCommanderAppDataFolder();
@@ -525,6 +555,53 @@ void CopyDefaultFilesToGameFolder(const std::filesystem::path& game_dir) {
             LogInfo("DefaultFiles: copied %s to game folder.", entry.path().filename().string().c_str());
         } else {
             LogError("DefaultFiles: failed to copy %s to game folder: %s", entry.path().filename().string().c_str(),
+                     ec.message().c_str());
+        }
+    }
+}
+
+void CopyGameIniFilesToReshadeConfigBackupFolder() {
+    std::filesystem::path game_dir = GetGameFolderFromProcess();
+    std::filesystem::path configs = GetDisplayCommanderReshadeConfigsFolder();
+    std::string game_name = GetGameNameFromProcess();
+    std::error_code ec;
+    if (game_dir.empty() || !std::filesystem::is_directory(game_dir, ec)) {
+        return;
+    }
+    if (configs.empty() || game_name.empty()) {
+        return;
+    }
+    std::filesystem::path dest_dir = configs / std::filesystem::path(game_name);
+    if (!std::filesystem::exists(dest_dir, ec)) {
+        if (!std::filesystem::create_directories(dest_dir, ec)) {
+            LogError("ReShade config backup: failed to create folder %s: %s", dest_dir.string().c_str(),
+                     ec.message().c_str());
+            return;
+        }
+    }
+    for (const auto& entry :
+         std::filesystem::directory_iterator(game_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+        if (ec) {
+            break;
+        }
+        if (!entry.is_regular_file(ec)) {
+            continue;
+        }
+        const std::filesystem::path& p = entry.path();
+        std::string ext = p.extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (ext != ".ini") {
+            continue;
+        }
+        std::filesystem::path dest = dest_dir / p.filename();
+        if (std::filesystem::exists(dest, ec)) {
+            continue;  // do not overwrite
+        }
+        if (std::filesystem::copy_file(entry.path(), dest, std::filesystem::copy_options::none, ec)) {
+            LogInfo("ReShade config backup: copied %s from game folder to %s", p.filename().string().c_str(),
+                    dest_dir.string().c_str());
+        } else {
+            LogError("ReShade config backup: failed to copy %s: %s", p.filename().string().c_str(),
                      ec.message().c_str());
         }
     }

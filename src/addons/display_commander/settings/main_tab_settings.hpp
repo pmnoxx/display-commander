@@ -207,6 +207,9 @@ class MainTabSettings {
     /** When true, DC adds its Shaders/Textures folder to ReShade's EffectSearchPaths and TextureSearchPaths.
      * When false, those paths are removed from ReShade config. Default on. */
     ui::new_ui::BoolSetting add_dc_to_reshade_shader_paths;
+    /** When true, backup all .ini files from the game folder to Display_Commander\\Reshade\\Configs\\<GameName>
+     * when the option is enabled (only if not already present). Does not set ReShade config path. Default off. */
+    ui::new_ui::BoolSetting auto_reshade_config_backup;
     /** When true, Brightness/AutoHDR and DC shader effects are active (section enabled). When false, the whole
      * Brightness and AutoHDR section is disabled. Default on. */
     ui::new_ui::BoolSetting brightness_autohdr_section_enabled;

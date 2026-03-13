@@ -7,12 +7,12 @@
 #include "display/dpi_management.hpp"
 #include "exit_handler.hpp"
 #include "globals.hpp"
-#include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/input/hid_suppression_hooks.hpp"
+#include "hooks/input/xinput_hooks.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
+#include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
-#include "hooks/input/xinput_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
@@ -2185,7 +2185,8 @@ void ProcessAttach_DetectEntryPoint(HMODULE h_module, std::wstring& entry_point,
         {L"d3d12", L"d3d12.dll", "[DisplayCommander] Entry point detected: d3d12.dll (proxy mode)\n",
          "Display Commander loaded as d3d12.dll proxy - D3D12 functions will be forwarded to system d3d12.dll"},
         {L"dinput8", L"dinput8.dll", "[DisplayCommander] Entry point detected: dinput8.dll (proxy mode)\n",
-         "Display Commander loaded as dinput8.dll proxy - DirectInput8 functions will be forwarded to system dinput8.dll"},
+         "Display Commander loaded as dinput8.dll proxy - DirectInput8 functions will be forwarded to system "
+         "dinput8.dll"},
         {L"version", L"version.dll", "[DisplayCommander] Entry point detected: version.dll (proxy mode)\n",
          "Display Commander loaded as version.dll proxy - Version functions will be forwarded to system version.dll"},
         {L"opengl32", L"opengl32.dll", "[DisplayCommander] Entry point detected: opengl32.dll (proxy mode)\n",
@@ -2271,8 +2272,6 @@ bool ProcessAttach_TryLoadReShadeWhenNotLoaded(HMODULE /*h_module*/, bool found_
     }
     display_commanderhooks::InstallLoadLibraryHooks();
 
-    const std::wstring dc_config_dir = ProcessAttach_GetConfigDirectoryW();
-    if (!dc_config_dir.empty()) SetEnvironmentVariableW(L"RESHADE_BASE_PATH_OVERRIDE", dc_config_dir.c_str());
     SetEnvironmentVariableW(L"RESHADE_DISABLE_LOADING_CHECK", L"1");
     display_commanderhooks::InstallLoadLibraryHooks();
     display_commanderhooks::g_hooked_before_reshade.store(true);
@@ -2396,7 +2395,8 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
         }
     }
 
-    // Use global version is set but we're loaded from the game folder (same as exe): act as loader only and load global DC.
+    // Use global version is set but we're loaded from the game folder (same as exe): act as loader only and load global
+    // DC.
     if (display_commander::utils::GetUseGlobalDcVersionFromConfig()) {
         WCHAR mod_buf[MAX_PATH];
         WCHAR exe_buf[MAX_PATH];
@@ -2417,7 +2417,9 @@ ProcessAttachEarlyResult ProcessAttach_EarlyChecksAndInit(HMODULE h_module) {
                         g_display_commander_state.store(DisplayCommanderState::DC_STATE_DLL_LOADER,
                                                         std::memory_order_release);
                         if (LoadLibraryW(addon_path.c_str()) != nullptr) {
-                            OutputDebugStringA("[DisplayCommander] Use global version is set; loaded global DC from game-folder instance, returning loader only.\n");
+                            OutputDebugStringA(
+                                "[DisplayCommander] Use global version is set; loaded global DC from game-folder "
+                                "instance, returning loader only.\n");
                             return ProcessAttachEarlyResult::LoaderOnly;
                         }
                         g_display_commander_state.store(DisplayCommanderState::DC_STATE_UNDECIDED,

@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.477
+- [ui] [settings] **Brightness / Auto HDR section off by default** - The "Enable Brightness, AutoHDR and ReShade paths" subsection on the Main tab now defaults to disabled for new configs. Existing configs keep their current choice. Details: main_tab_settings.cpp brightness_autohdr_section_enabled (default false).
+
+---
 ## v0.12.476
 - [cleanup] **LogWarnThrottled** - Added LogWarnThrottled(throttle_count, ...) macro in utils/logging.hpp for throttled warning logs (same pattern as LogErrorThrottled/LogInfoThrottled). Used in window_management.cpp ApplyWindowChange.
 - [cleanup] **DisplayCache::Refresh log spam removed** - Removed verbose [DisplayCache::Refresh] trace LogInfo calls (entry, before/after GetDisplayConfigBufferSizes, QueryDisplayConfig, EnumDisplayMonitors, monitor loop, exit). Error logs and rare config-fix messages kept. Details: display/display_cache.cpp.

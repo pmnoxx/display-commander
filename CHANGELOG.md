@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.464
+- [cleanup] [hooks] [ui] **NvLowLatencyVk hooks: enum, table-driven install, simplified API** - NvLL VK hooks now use an `NvllVkHook` enum and a single hook table (like vulkan_loader_hooks): table-driven install with rollback, call counts in one array, and `GetNvllVkHookName` / `GetNvllVkHookCallCounts` for the Vulkan tab. Removed `GetNvLowLatencyVkDetourCallCounts` (replaced by `GetNvllVkHookCallCounts`). Replaced `GetNvLowLatencyVkDebugState` with `GetNvLowLatencyVkLastMarkerState` (last marker type and frame ID only; marker count is already shown in detour call counts). Vulkan tab NvLL stats use the same loop pattern as loader hooks. Details: nvlowlatencyvk_hooks.hpp/cpp, vulkan_tab.cpp.
+
+---
 ## v0.12.463
 - [ui] [hooks] **Vulkan loader hook stats and enum** - Vulkan tab Debug section now shows call counts for all six vulkan-1 loader hooks: vkGetInstanceProcAddr, vkCreateDevice, vkCreateSwapchainKHR, vkQueuePresentKHR, vkBeginCommandBuffer, vkSetLatencyMarkerNV. Added `VulkanLoaderHook` enum (with `kVulkanLoaderHookCount`) and `GetVulkanLoaderHookName` / `GetVulkanLoaderHookCallCounts` so stats are driven from a single array and easy to extend. Details: vulkan_loader_hooks.hpp/cpp, vulkan_tab.cpp.
 

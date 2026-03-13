@@ -5,6 +5,21 @@
 
 #include <windows.h>
 
+/** NvLowLatencyVk hook indices; use for stats arrays. Order matches the hook table in nvlowlatencyvk_hooks.cpp. */
+enum class NvllVkHook : std::size_t {
+    InitLowLatencyDevice = 0,
+    SetLatencyMarker,
+    SetSleepMode,
+    Sleep,
+    kNvllVkHookCount
+};
+
+/** Human-readable name for an NvLL VK hook (for UI). */
+const char* GetNvllVkHookName(NvllVkHook hook);
+
+/** Fill call counts for each NvLL VK hook. out_counts must have at least kNvllVkHookCount elements. */
+void GetNvllVkHookCallCounts(uint64_t* out_counts, std::size_t count);
+
 /** View struct for NvLL VK SetSleepMode params (for UI; no dependency on internal types). */
 struct NvLLVkSleepModeParamsView {
     bool low_latency = false;
@@ -21,14 +36,8 @@ bool InstallNvLowLatencyVkHooks(HMODULE nvll_module);
 /** Returns true if NvLowLatencyVk hooks are currently installed. */
 bool AreNvLowLatencyVkHooksInstalled();
 
-/** Debug state for Vulkan tab: marker call count, last marker type (0-8), last frame ID. */
-void GetNvLowLatencyVkDebugState(uint64_t* out_marker_count, int* out_last_marker_type, uint64_t* out_last_frame_id);
-
-/** Per-detour call counts for Vulkan tab debug. All params nullable. */
-void GetNvLowLatencyVkDetourCallCounts(uint64_t* out_init_count,
-                                      uint64_t* out_set_latency_marker_count,
-                                      uint64_t* out_set_sleep_mode_count,
-                                      uint64_t* out_sleep_count);
+/** Last NvLL_VK_SetLatencyMarker type (0-8) and frame ID for Vulkan tab. All params nullable. */
+void GetNvLowLatencyVkLastMarkerState(int* out_last_marker_type, uint64_t* out_last_frame_id);
 
 /** Number of NvLL VK latency marker types (0..8 = SIMULATION_START .. PC_LATENCY_PING). */
 constexpr size_t kNvllVkMarkerTypeCount = 9;

@@ -2,7 +2,7 @@
 
 // Group 1 — Source Code (Display Commander)
 #include "dbghelp_hooks.hpp"
-#include "hooks/dbghelp/dbghelp_loader.hpp"
+#include "hooks/dbghelp/dbghelp_private_loader.hpp"
 #include "../utils/logging.hpp"
 #include "hook_suppression_manager.hpp"
 

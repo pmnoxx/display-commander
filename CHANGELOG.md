@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.467
+- [cleanup] [hooks] **DbgHelp: use private copy only under AppData** - DbgHelp is now always loaded from a private copy `dbghelp_dc.dll` under `%LocalAppData%\Programs\Display_Commander\dbghelp`, copied once from `dbghelp.dll` next to the addon if present. If the private DLL is missing or fails to load, DbgHelp is treated as unavailable; we do not fall back to the game’s or system `dbghelp.dll`, so stack tracing uses only Display Commander’s own instance. 
+
+---
 ## v0.12.466
 - [cleanup] [hooks] **Stack trace: helpers + log symbol search path** - Stack trace generation now uses small helpers to initialize DbgHelp symbols once and to configure the symbol search path / PDB warning, reducing duplication and making the code easier to maintain. The effective DbgHelp symbol search path is logged (UTF-8) each time a stack trace is generated so missing or incorrect paths can be diagnosed more easily; behavior of crash logs and traces is otherwise unchanged. 
 

@@ -1,7 +1,16 @@
 #include "process_exit_hooks.hpp"
+#include "exit_handler.hpp"
+#include "globals.hpp"
+#include "hooks/dbghelp/dbghelp_private_loader.hpp"
 #include "hooks/windows_hooks/api_hooks.hpp"
-#include <psapi.h>
-#include <windows.h>
+#include "utils/detour_call_tracker.hpp"
+#include "utils/display_commander_logger.hpp"
+#include "utils/logging.hpp"
+#include "utils/srwlock_wrapper.hpp"
+#include "utils/stack_trace.hpp"
+#include "utils/timing.hpp"
+#include "version.hpp"
+
 #include <atomic>
 #include <cstdlib>
 #include <ctime>
@@ -9,16 +18,10 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "utils/dbghelp_loader.hpp"
-#include "exit_handler.hpp"
-#include "globals.hpp"
-#include "utils/logging.hpp"
-#include "utils/detour_call_tracker.hpp"
-#include "utils/display_commander_logger.hpp"
-#include "utils/srwlock_wrapper.hpp"
-#include "utils/stack_trace.hpp"
-#include "utils/timing.hpp"
-#include "version.hpp"
+
+#include <windows.h>
+
+#include <psapi.h>
 
 namespace {
 
@@ -332,7 +335,7 @@ LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* exception_info) {
         if (code == CONTROL_C_EXIT || code == 0x406D1388 /* SetThreadName */ || code == DBG_PRINTEXCEPTION_C
             || code == DBG_PRINTEXCEPTION_WIDE_C || code == STATUS_BREAKPOINT
             || code == 0xE0434352 /* CLR exception */ || code == 0xE0434F4D /* CLR unhandled .NET exception */
-            || code == 0xE06D7363 /* Visual C++ exception */
+            || code == 0xE06D7363                                           /* Visual C++ exception */
             || ((code ^ 0xE24C4A00) <= 0xFF) /* LuaJIT exception */) {
             return EXCEPTION_CONTINUE_SEARCH;
         }
@@ -374,7 +377,7 @@ LONG WINAPI VectoredExceptionHandler(PEXCEPTION_POINTERS ex) {
     if (code == CONTROL_C_EXIT || code == 0x406D1388 /* SetThreadName */ || code == DBG_PRINTEXCEPTION_C
         || code == DBG_PRINTEXCEPTION_WIDE_C || code == STATUS_BREAKPOINT
         || code == 0xE0434352 /* CLR exception */ || code == 0xE0434F4D /* CLR unhandled .NET exception */
-        || code == 0xE06D7363 /* Visual C++ exception */
+        || code == 0xE06D7363                                           /* Visual C++ exception */
         || ((code ^ 0xE24C4A00) <= 0xFF) /* LuaJIT exception */) {
         return EXCEPTION_CONTINUE_SEARCH;
     }

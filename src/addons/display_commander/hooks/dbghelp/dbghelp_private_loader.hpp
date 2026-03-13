@@ -1,19 +1,17 @@
-#pragma once
-
 // Source Code <Display Commander>
-
+//
 // Group 1 — Source Code (Display Commander)
 // (no includes)
-
+//
 // Group 2 — ReShade / ImGui
 // (no includes)
-
+//
 // Group 3 — Standard C++
 #include <cstdint>
-
+//
 // Group 4 — Windows.h
 #include <Windows.h>
-
+//
 // Group 5 — Other Windows SDK
 // Libraries <Windows>
 #include <dbghelp.h>
@@ -36,11 +34,20 @@ using SymGetModuleInfo64_pfn = BOOL(WINAPI*)(HANDLE, DWORD64, PIMAGEHLP_MODULE64
 using SymSetSearchPathW_pfn = BOOL(WINAPI*)(HANDLE, PCWSTR);
 using SymGetSearchPathW_pfn = BOOL(WINAPI*)(HANDLE, PWSTR, DWORD);
 
-// Logical groups of functions; keep in sync with table in cpp
-enum class DbgHelpGroup : uint32_t {
-    CoreSymbols = 0,
-    StackWalking = 1,
-    SearchPath = 2,
+// Logical function index; keep in sync with table in cpp
+enum class DbgHelpFunction : std::uint8_t {
+    SymGetOptions = 0,
+    SymSetOptions,
+    SymInitialize,
+    SymCleanup,
+    StackWalk64,
+    SymFunctionTableAccess64,
+    SymGetModuleBase64,
+    SymFromAddr,
+    SymGetLineFromAddr64,
+    SymGetModuleInfo64,
+    SymSetSearchPathW,
+    SymGetSearchPathW,
     Count
 };
 

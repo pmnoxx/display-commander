@@ -2,7 +2,7 @@
 
 // Group 1 — Source Code (Display Commander)
 #include "stack_trace.hpp"
-#include "hooks/dbghelp/dbghelp_loader.hpp"
+#include "hooks/dbghelp/dbghelp_private_loader.hpp"
 #include "utils/logging.hpp"
 
 // Group 2 — ReShade / ImGui

@@ -85,8 +85,9 @@ BOOL StackWalk64(DWORD machine_type, HANDLE process, HANDLE thread, LPSTACKFRAME
                  PFUNCTION_TABLE_ACCESS_ROUTINE64 function_table_access_routine,
                  PGET_MODULE_BASE_ROUTINE64 get_module_base_routine,
                  PTRANSLATE_ADDRESS_ROUTINE64 translate_address_routine);
-PVOID SymFunctionTableAccess64(HANDLE process, DWORD64 addr_base);
-DWORD64 SymGetModuleBase64(HANDLE process, DWORD64 address);
+// WINAPI so they match PFUNCTION_TABLE_ACCESS_ROUTINE64 / PGET_MODULE_BASE_ROUTINE64 on x86 (stdcall)
+PVOID WINAPI SymFunctionTableAccess64(HANDLE process, DWORD64 addr_base);
+DWORD64 WINAPI SymGetModuleBase64(HANDLE process, DWORD64 address);
 BOOL SymFromAddr(HANDLE process, DWORD64 address, PDWORD64 displacement, PSYMBOL_INFO symbol_info);
 BOOL SymGetLineFromAddr64(HANDLE process, DWORD64 address, PDWORD displacement, PIMAGEHLP_LINE64 line);
 BOOL SymGetModuleInfo64(HANDLE process, DWORD64 address, PIMAGEHLP_MODULE64 module_info);

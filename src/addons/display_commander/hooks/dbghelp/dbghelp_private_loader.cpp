@@ -336,10 +336,10 @@ BOOL StackWalk64(DWORD machine_type, HANDLE process, HANDLE thread, LPSTACKFRAME
                                      translate_address_routine)
                : FALSE;
 }
-PVOID SymFunctionTableAccess64(HANDLE process, DWORD64 addr_base) {
+PVOID WINAPI SymFunctionTableAccess64(HANDLE process, DWORD64 addr_base) {
     return SymFunctionTableAccess64_Original ? SymFunctionTableAccess64_Original(process, addr_base) : nullptr;
 }
-DWORD64 SymGetModuleBase64(HANDLE process, DWORD64 address) {
+DWORD64 WINAPI SymGetModuleBase64(HANDLE process, DWORD64 address) {
     return SymGetModuleBase64_Original ? SymGetModuleBase64_Original(process, address) : 0;
 }
 BOOL SymFromAddr(HANDLE process, DWORD64 address, PDWORD64 displacement, PSYMBOL_INFO symbol_info) {

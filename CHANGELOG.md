@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.472
+- [cleanup] [hooks] **DbgHelp symbol options in one place** - Stack trace generation no longer defines its own symbol options (SYMOPT_*); it now calls `dbghelp_loader::EnsureSymbolsInitialized(process)`, so the option list lives only in the loader. Removed duplicate `InitializeSymbolsOnce` from stack_trace.cpp. Details: stack_trace.cpp, dbghelp_private_loader.cpp.
+
+---
 ## v0.12.471
 - [cleanup] [hooks] **DbgHelp ABI wrappers** - Callers (e.g. stack trace) no longer use `*_Original` pointers directly or perform `!= nullptr` checks. The loader now exposes wrapper functions (`SymGetModuleInfo64`, `SymFromAddr`, `StackWalk64`, etc.) that match the DbgHelp API and return a safe value (FALSE/0/nullptr) when DbgHelp is unavailable. Use the wrappers in code; reserve `*_Original` for the hook layer (trampolines). Details: dbghelp_private_loader.hpp/cpp, stack_trace.cpp.
 

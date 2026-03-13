@@ -79,26 +79,6 @@ BOOL CALLBACK ReadProcessMemoryRoutine64(HANDLE h_process, DWORD64 lp_base_addre
 
 namespace {
 
-void InitializeSymbolsOnce(HANDLE process) {
-    static bool symbols_initialized = false;
-    if (symbols_initialized) {
-        return;
-    }
-
-    // Set symbol options for better symbol resolution
-    // SYMOPT_UNDNAME: Undecorate C++ names
-    // SYMOPT_DEFERRED_LOADS: Load symbols on demand
-    // SYMOPT_INCLUDE_32BIT_MODULES: Include 32-bit modules in 64-bit process
-    // SYMOPT_LOAD_LINES: Load line number information
-    DWORD sym_options = SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_INCLUDE_32BIT_MODULES | SYMOPT_LOAD_LINES;
-    dbghelp_loader::SymSetOptions(sym_options);
-
-    // Initialize with default symbol path; TRUE loads symbols for all modules.
-    if (dbghelp_loader::SymInitialize(process, nullptr, TRUE) != FALSE) {
-        symbols_initialized = true;
-    }
-}
-
 void ConfigureSymbolSearchPathAndWarnIfPdbMissing(HANDLE process) {
     if (!dbghelp_loader::IsDbgHelpAvailable()) {
         return;
@@ -177,7 +157,7 @@ std::vector<std::string> GenerateStackTraceInternal(CONTEXT* context_ptr) {
     HANDLE process = GetCurrentProcess();
     HANDLE thread = GetCurrentThread();
 
-    InitializeSymbolsOnce(process);
+    dbghelp_loader::EnsureSymbolsInitialized(process);
     ConfigureSymbolSearchPathAndWarnIfPdbMissing(process);
     dbghelp_loader::PreloadSymbolsForAllModules(process);
 

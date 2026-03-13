@@ -2121,8 +2121,9 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
             "When on: Display Commander adds its Shaders/Textures folder to ReShade's EffectSearchPaths and "
             "TextureSearchPaths. When off: DC removes those paths from ReShade config.");
     }
-    if (CheckboxSetting(settings::g_mainTabSettings.auto_reshade_config_backup,
-                        "Auto ReShade config backup", imgui)) {
+    const bool backup_effective = settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()
+                                  || settings::g_mainTabSettings.auto_reshade_config_backup.GetValue();
+    if (CheckboxSetting(settings::g_mainTabSettings.auto_reshade_config_backup, "Auto ReShade config backup", imgui)) {
         if (settings::g_mainTabSettings.auto_reshade_config_backup.GetValue()) {
             CopyGameIniFilesToReshadeConfigBackupFolder();
         }
@@ -2130,11 +2131,11 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     if (imgui.IsItemHovered()) {
         std::string game_name = GetGameNameFromProcess();
         std::filesystem::path configs = GetDisplayCommanderReshadeConfigsFolder();
-        std::filesystem::path backup_path = configs.empty() || game_name.empty()
-                                                ? std::filesystem::path()
-                                                : configs / game_name;
+        std::filesystem::path backup_path =
+            configs.empty() || game_name.empty() ? std::filesystem::path() : configs / game_name;
         imgui.SetTooltipEx(
-            "When enabled, backup all .ini files from the game folder to the backup folder (only if not already there).\n\n"
+            "When enabled, backup all .ini files from the game folder to the backup folder (only if not already "
+            "there).\n\n"
             "Game: %s\nBackup path: %s",
             game_name.empty() ? "(unknown)" : game_name.c_str(),
             backup_path.empty() ? "(n/a)" : backup_path.string().c_str());
@@ -2144,7 +2145,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     std::filesystem::path default_files = GetDefaultFilesFolder();
     std::filesystem::path reshade_global = GetGlobalReshadeDirectory();
     std::filesystem::path dlss_override = GetDefaultDlssOverrideFolder();
-    const bool show_backup_btn = settings::g_mainTabSettings.auto_reshade_config_backup.GetValue();
+    const bool show_backup_btn = backup_effective;
     std::filesystem::path reshade_backup_path;
     if (show_backup_btn) {
         std::filesystem::path configs = GetDisplayCommanderReshadeConfigsFolder();
@@ -2191,7 +2192,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     if (imgui.IsItemHovered() && !dc_addons.empty()) {
         imgui.SetTooltipEx("Open the Display Commander Addons folder (.addon64/.addon32 files). Path: %s",
-                          dc_addons.string().c_str());
+                           dc_addons.string().c_str());
     }
     if (dc_addons.empty()) {
         imgui.EndDisabled();
@@ -2210,9 +2211,8 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }).detach();
     }
     if (imgui.IsItemHovered()) {
-        imgui.SetTooltipEx(
-            "Files here are copied to the game folder when missing (e.g. ReShadeProfile.ini). Path: %s",
-            default_files.string().c_str());
+        imgui.SetTooltipEx("Files here are copied to the game folder when missing (e.g. ReShadeProfile.ini). Path: %s",
+                           default_files.string().c_str());
     }
     imgui.NextColumn();
     if (reshade_global.empty()) {
@@ -2230,7 +2230,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     if (imgui.IsItemHovered() && !reshade_global.empty()) {
         imgui.SetTooltipEx("Open the ReShade global folder. You can copy files manually to revert.\n\n%s",
-                          reshade_global.string().c_str());
+                           reshade_global.string().c_str());
     }
     if (reshade_global.empty()) {
         imgui.EndDisabled();
@@ -2251,7 +2251,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
     }
     if (imgui.IsItemHovered() && !dlss_override.empty()) {
         imgui.SetTooltipEx("Open the DLSS override folder (centralized DLL overrides). Path: %s",
-                          dlss_override.string().c_str());
+                           dlss_override.string().c_str());
     }
     if (dlss_override.empty()) {
         imgui.EndDisabled();
@@ -2275,7 +2275,7 @@ static void DrawUpdatesSectionContent(display_commander::ui::IImGuiWrapper& imgu
         }
         if (imgui.IsItemHovered() && !reshade_backup_path.empty()) {
             imgui.SetTooltipEx("Open this game's ReShade config backup folder. Path: %s",
-                              reshade_backup_path.string().c_str());
+                               reshade_backup_path.string().c_str());
         }
         if (reshade_backup_path.empty()) {
             imgui.EndDisabled();
@@ -3923,38 +3923,40 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
     // Reflex mode selector (Low latency / Low+boost / Off / Game Defaults) — always visible so it's not lost when FPS
     // limiter preset is used
     imgui.Spacing();
-    if (ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
-        // Setting is automatically saved via ComboSettingEnumWrapper
-    }
-    if (imgui.IsItemHovered()) {
-        std::string tooltip =
-            "NVIDIA Reflex setting when using OnPresent FPS limiter.\n\n"
-            "Low latency: Enables Reflex Low Latency Mode (default).\n"
-            "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
-            "Off: Disables both Low Latency and Boost.\n"
-            "Game Defaults: Do not override; use the game's own Reflex settings.";
-        auto last_params = ::g_last_reflex_params_set_by_addon.load();
-        if (last_params) {
-            float fps = (last_params->minimumIntervalUs > 0)
-                            ? (1000000.0f / static_cast<float>(last_params->minimumIntervalUs))
-                            : 0.0f;
-            tooltip += "\n\nLast Reflex settings we set via API:";
-            tooltip += "\n  Low Latency: ";
-            tooltip += (last_params->bLowLatencyMode != 0) ? "On" : "Off";
-            tooltip += ", Boost: ";
-            tooltip += (last_params->bLowLatencyBoost != 0) ? "On" : "Off";
-            tooltip += ", Use Markers: ";
-            tooltip += (last_params->bUseMarkersToOptimize != 0) ? "On" : "Off";
-            tooltip += "\n  FPS limit: ";
-            if (fps > 0.0f) {
-                std::ostringstream oss;
-                oss << std::fixed << std::setprecision(1) << fps;
-                tooltip += oss.str();
-            } else {
-                tooltip += "none";
-            }
+    if (is_64_bit()) {
+        if (ComboSettingEnumWrapper(settings::g_mainTabSettings.onpresent_reflex_mode, "Reflex", imgui, 600.f)) {
+            // Setting is automatically saved via ComboSettingEnumWrapper
         }
-        imgui.SetTooltipEx("%s", tooltip.c_str());
+        if (imgui.IsItemHovered()) {
+            std::string tooltip =
+                "NVIDIA Reflex setting when using OnPresent FPS limiter.\n\n"
+                "Low latency: Enables Reflex Low Latency Mode (default).\n"
+                "Low Latency + boost: Enables both Low Latency and Boost for maximum latency reduction.\n"
+                "Off: Disables both Low Latency and Boost.\n"
+                "Game Defaults: Do not override; use the game's own Reflex settings.";
+            auto last_params = ::g_last_reflex_params_set_by_addon.load();
+            if (last_params) {
+                float fps = (last_params->minimumIntervalUs > 0)
+                                ? (1000000.0f / static_cast<float>(last_params->minimumIntervalUs))
+                                : 0.0f;
+                tooltip += "\n\nLast Reflex settings we set via API:";
+                tooltip += "\n  Low Latency: ";
+                tooltip += (last_params->bLowLatencyMode != 0) ? "On" : "Off";
+                tooltip += ", Boost: ";
+                tooltip += (last_params->bLowLatencyBoost != 0) ? "On" : "Off";
+                tooltip += ", Use Markers: ";
+                tooltip += (last_params->bUseMarkersToOptimize != 0) ? "On" : "Off";
+                tooltip += "\n  FPS limit: ";
+                if (fps > 0.0f) {
+                    std::ostringstream oss;
+                    oss << std::fixed << std::setprecision(1) << fps;
+                    tooltip += oss.str();
+                } else {
+                    tooltip += "none";
+                }
+            }
+            imgui.SetTooltipEx("%s", tooltip.c_str());
+        }
     }
 
     if (!::IsNativeFramePacingInSync()) {
@@ -4196,8 +4198,7 @@ static void DrawDisplaySettings_FpsLimiterOnPresentSync(display_commander::ui::I
 
     // Experimental Safe Mode fps limiter (only visible if OnPresentSync mode is selected)
     // Shown when Custom FPS limiter preset, or when outside native reflex block (safe mode is not preset-controlled)
-    const FpsLimiterPreset fps_limiter_preset =
-        settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();
+    const FpsLimiterPreset fps_limiter_preset = settings::g_mainTabSettings.native_reflex_fps_preset.GetEnumValue();
     const bool show_safe_mode = !::IsNativeFramePacingInSync() || fps_limiter_preset == FpsLimiterPreset::kCustom;
     if (show_safe_mode
         && CheckboxSetting(settings::g_mainTabSettings.safe_mode_fps_limiter, "Safe Mode fps limiter", imgui)) {

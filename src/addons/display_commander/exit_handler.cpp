@@ -6,6 +6,9 @@
 #include <vector>
 #include "config/display_commander_config.hpp"
 #include "display/display_restore.hpp"
+#include "settings/advanced_tab_settings.hpp"
+#include "settings/main_tab_settings.hpp"
+#include "utils/general_utils.hpp"
 #include "hooks/loadlibrary_hooks.hpp"
 #include "presentmon/presentmon_manager.hpp"
 #include "utils.hpp"
@@ -71,6 +74,12 @@ void OnHandleExit(ExitSource source, const std::string& message) {
 
     // Restore Windows taskbar if we hid it (e.g. ADHD auto-hide taskbar)
     display_commander::utils::RestoreTaskbarIfHidden();
+
+    // ReShade config backup on exit when enabled (global or per-game)
+    if (settings::g_advancedTabSettings.auto_enable_reshade_config_backup.GetValue()
+        || settings::g_mainTabSettings.auto_reshade_config_backup.GetValue()) {
+        CopyGameIniFilesToReshadeConfigBackupFolder();
+    }
 
     display_commander::config::DisplayCommanderConfigManager::GetInstance().SetAutoFlushLogs(true);
     display_commander::logger::FlushLogs();

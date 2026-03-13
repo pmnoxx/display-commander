@@ -202,6 +202,11 @@ inline bool Is64BitBuild() {
 #endif
 }
 
+// Same as Is64BitBuild(); use where 64-bit check is needed (e.g. Reflex UI only on 64-bit)
+inline bool is_64_bit() {
+    return Is64BitBuild();
+}
+
 // Calling DLL detection utility (similar to Special-K's SK_GetCallingDLL)
 // Returns the HMODULE of the DLL that contains the given address
 // Default parameter uses _ReturnAddress() to get the caller's return address

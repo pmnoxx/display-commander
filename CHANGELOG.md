@@ -3,6 +3,15 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 ---
+## v0.12.462
+- [ui] **Reflex UI only on 64-bit** - The Reflex mode selector (OnPresent FPS limiter) is now shown only when running the 64-bit addon; it is hidden on 32-bit builds where NVIDIA Reflex is not available. Details: `is_64_bit()` in utils/general_utils.hpp (delegates to `Is64BitBuild()`); main_new_tab.cpp DrawDisplaySettings_FpsLimiterOnPresentSync.
+
+---
+## Unreleased
+- [ui] [settings] **Global settings at top of Advanced tab** - The "Global settings" section is now the first collapsible section on the Advanced tab (above "Features Enabled By Default") so shared settings are easier to find.
+- [new feature] [ui] [settings] **Auto-enable ReShade config backup** - Added global option "Auto-enable ReShade config backup" in Advanced → Global settings. When enabled, ReShade config backup is effectively on for all games (same behavior as the per-game "Auto ReShade config backup" on the Main tab). Stored in global_settings.toml. The Main tab Backup button and backup behavior are shown when either the global or the per-game setting is on. Enabling the global checkbox triggers one backup for the current game. **Auto-backup runs in the exit handler** (exit_handler::OnHandleExit): when backup is enabled (global or per-game), .ini files are copied to the ReShade config backup folder once on process exit (DLL_PROCESS_DETACH, ATEXIT, WM_CLOSE, etc.). Details: AutoEnableReshadeConfigBackup in global_settings_file; auto_enable_reshade_config_backup in advanced_tab_settings; DrawGlobalSettingsSection; main_new_tab uses global || per-game for show_backup_btn; exit_handler.cpp calls CopyGameIniFilesToReshadeConfigBackupFolder on exit when enabled.
+
+---
 ## v0.12.461
 - [new feature] [ui] [settings] **Auto ReShade config backup** - Replaced "Per-game ReShade config folder" with "Auto ReShade config backup". When enabled, all .ini files from the game folder are copied to `%LocalAppData%\Programs\Display_Commander\Reshade\Configs\<GameName>` only if they do not already exist there (no overwrite). ReShade's config path is no longer overridden; this is a backup-only feature. A "Backup" button in the DC folders row opens the backup folder. Details: auto_reshade_config_backup setting; CopyGameIniFilesToReshadeConfigBackupFolder in utils/general_utils; RESHADE_BASE_PATH_OVERRIDE no longer set in DllMain or when loading ReShade from Documents.
 

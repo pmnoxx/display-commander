@@ -15,6 +15,7 @@ namespace display_commander::config {
 namespace {
 
 const char* const GLOBAL_KEYS[] = {
+    "AutoEnableReshadeConfigBackup",
     "SuppressWgiGlobally",
 };
 constexpr size_t NUM_GLOBAL_KEYS = sizeof(GLOBAL_KEYS) / sizeof(GLOBAL_KEYS[0]);
@@ -101,7 +102,7 @@ bool LoadGlobalSettingsFile() {
         std::string k, v;
         if (ParseTomlLine(line, k, v)) {
             if (!IsGlobalConfigKey(k.c_str())) continue;
-            if (k == "SuppressWgiGlobally") v = NormalizeBoolValue(v);
+            if (k == "AutoEnableReshadeConfigBackup" || k == "SuppressWgiGlobally") v = NormalizeBoolValue(v);
             g_global_cache[k] = v;
         }
     }

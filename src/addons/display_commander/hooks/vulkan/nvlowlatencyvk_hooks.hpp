@@ -5,19 +5,20 @@
 
 #include <windows.h>
 
-/** NvLowLatencyVk hook indices; use for stats arrays. Order matches the hook table in nvlowlatencyvk_hooks.cpp. */
+/** NvLowLatencyVk hook indices; use for stats arrays. Order matches the hook table in nvlowlatencyvk_hooks.cpp.
+ *  Last value Count is the number of hooks; use static_cast<std::size_t>(NvllVkHook::Count) for array size. */
 enum class NvllVkHook : std::size_t {
     InitLowLatencyDevice = 0,
     SetLatencyMarker,
     SetSleepMode,
     Sleep,
-    kNvllVkHookCount
+    Count
 };
 
 /** Human-readable name for an NvLL VK hook (for UI). */
 const char* GetNvllVkHookName(NvllVkHook hook);
 
-/** Fill call counts for each NvLL VK hook. out_counts must have at least kNvllVkHookCount elements. */
+/** Fill call counts for each NvLL VK hook. out_counts must have at least Count elements. */
 void GetNvllVkHookCallCounts(uint64_t* out_counts, std::size_t count);
 
 /** View struct for NvLL VK SetSleepMode params (for UI; no dependency on internal types). */

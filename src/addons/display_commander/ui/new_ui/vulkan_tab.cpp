@@ -308,7 +308,7 @@ void DrawVulkanTab(display_commander::ui::IImGuiWrapper& imgui) {
         imgui.Separator();
 
         if (nvll_active) {
-            constexpr std::size_t kNvllHookCount = static_cast<std::size_t>(NvllVkHook::kNvllVkHookCount);
+            constexpr std::size_t kNvllHookCount = static_cast<std::size_t>(NvllVkHook::Count);
             std::vector<std::uint64_t> nvll_call_counts(kNvllHookCount, 0);
             GetNvllVkHookCallCounts(nvll_call_counts.data(), kNvllHookCount);
             for (std::size_t i = 0; i < kNvllHookCount; ++i) {

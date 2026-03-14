@@ -2559,24 +2559,59 @@ static bool DllDetectorCopyToLoadedIfEnabled(HMODULE h_module) {
     return true;
 }
 
-// If DisplayCommander.log does not exist in the process exe dir, create it and write the current module path.
+// Captures the path of the module that caused this DLL to load (first stack frame outside our DLL and the loader).
+// Safe to call from DllMain; sets g_dll_load_caller_path.
+static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
+    try {
+        void* backtrace[32] = {};
+        const USHORT n = CaptureStackBackTrace(0, static_cast<ULONG>(sizeof(backtrace) / sizeof(backtrace[0])),
+                                              backtrace, nullptr);
+        wchar_t path_buf[MAX_PATH] = {};
+        for (USHORT i = 0; i < n; ++i) {
+            HMODULE hmod = nullptr;
+            if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                   static_cast<LPCWSTR>(backtrace[i]), &hmod) ||
+                hmod == nullptr) {
+                continue;
+            }
+            if (hmod == h_our_module) continue;
+            if (GetModuleFileNameW(hmod, path_buf, MAX_PATH) == 0) continue;
+            std::filesystem::path p(path_buf);
+            std::string name = p.filename().string();
+            for (auto& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (name == "ntdll.dll" || name == "kernel32.dll" || name == "kernelbase.dll") continue;
+            g_dll_load_caller_path = p.string();
+            return;
+        }
+    } catch (...) {
+        // avoid crashing DllMain
+    }
+}
+
+// Append current module path (and caller if known) to DisplayCommander.log in the process exe dir on every load.
 // No-throw; safe to call from DllMain.
 static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     wchar_t exe_path_buf[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, exe_path_buf, MAX_PATH) == 0) return;
     std::filesystem::path exe_dir = std::filesystem::path(exe_path_buf).parent_path();
     std::filesystem::path log_path = exe_dir / "DisplayCommander.log";
-    std::error_code ec;
-    if (std::filesystem::exists(log_path, ec)) return;
     wchar_t module_path_buf[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return;
     try {
-        std::ofstream f(log_path);
+        std::error_code ec;
+        if (!exe_dir.empty() && !std::filesystem::exists(exe_dir, ec)) {
+            std::filesystem::create_directories(exe_dir, ec);
+        }
+        std::ofstream f(log_path, std::ios::app);
         if (f) {
             char module_path_narrow[MAX_PATH] = {};
             WideCharToMultiByte(CP_ACP, 0, module_path_buf, -1, module_path_narrow,
                                 static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr);
-            f << "DisplayCommander module path: " << module_path_narrow << "\n";
+            f << "DisplayCommander module path: " << module_path_narrow;
+            if (!g_dll_load_caller_path.empty()) {
+                f << " Caller: " << g_dll_load_caller_path;
+            }
+            f << "\n";
             f.flush();
             // Also visible in DebugView
             char dbg_buf[MAX_PATH + 64];
@@ -2593,6 +2628,7 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
+            CaptureDllLoadCallerPath(h_module);
             EnsureDisplayCommanderLogWithModulePath(h_module);
 
             static const char* reason = "";

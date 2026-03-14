@@ -6,5 +6,5 @@ if not exist "zzz_display_commander.addon32" (
     pause
     exit /b 1
 )
-python try_all_proxies.py -32
+python try_all_proxies.py --32
 pause

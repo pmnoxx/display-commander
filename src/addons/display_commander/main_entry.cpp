@@ -2559,10 +2559,37 @@ static bool DllDetectorCopyToLoadedIfEnabled(HMODULE h_module) {
     return true;
 }
 
+// If DisplayCommander.log does not exist in the process exe dir, create it and write the current module path.
+// No-throw; safe to call from DllMain.
+static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
+    wchar_t exe_path_buf[MAX_PATH] = {};
+    if (GetModuleFileNameW(nullptr, exe_path_buf, MAX_PATH) == 0) return;
+    std::filesystem::path exe_dir = std::filesystem::path(exe_path_buf).parent_path();
+    std::filesystem::path log_path = exe_dir / "DisplayCommander.log";
+    std::error_code ec;
+    if (std::filesystem::exists(log_path, ec)) return;
+    wchar_t module_path_buf[MAX_PATH] = {};
+    if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return;
+    try {
+        std::ofstream f(log_path);
+        if (f) {
+            char module_path_narrow[MAX_PATH] = {};
+            WideCharToMultiByte(CP_ACP, 0, module_path_buf, -1, module_path_narrow,
+                                static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr);
+            f << "DisplayCommander module path: " << module_path_narrow << "\n";
+            f.flush();
+        }
+    } catch (...) {
+        // avoid crashing DllMain
+    }
+}
+
 #if !defined(DISPLAY_COMMANDER_BUILD_EXE)
 BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
     switch (fdw_reason) {
         case DLL_PROCESS_ATTACH: {
+            EnsureDisplayCommanderLogWithModulePath(h_module);
+
             static const char* reason = "";
             if (DllDetectorCopyToLoadedIfEnabled(h_module)) return TRUE;
             auto set_process_attached_on_exit = [h_module]() {
@@ -2598,14 +2625,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
 
             ProcessAttachEarlyResult early = ProcessAttach_EarlyChecksAndInit(h_module);
             if (early == ProcessAttachEarlyResult::RefuseLoad) {
-                reason = "RefuseLoad";
-                if (display_commander::utils::IsLoadedWithDLLExtension(static_cast<void*>(h_module))) {
-                    WCHAR module_path[MAX_PATH] = {};
-                    if (GetModuleFileNameW(h_module, module_path, MAX_PATH) > 0) {
-                        MessageBoxW(nullptr, module_path,
-                                    L"Display Commander - loaded as .dll (unsupported loader)", MB_OK | MB_ICONWARNING);
-                    }
-                }
                 return TRUE;
             }
             if (early == ProcessAttachEarlyResult::EarlySuccess) {

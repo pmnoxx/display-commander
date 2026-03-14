@@ -2,9 +2,9 @@
 
 Pure CMD scripts that copy the Display Commander addon to the **proxy DLL names that DC supports** (the names defined in `proxy_dll/exports.def`), so the addon can be loaded when a game loads any of those DLLs.
 
-## Proxy names (11)
+## Proxy names (12)
 
-`d3d9.dll`, `d3d11.dll`, `d3d12.dll`, `ddraw.dll`, `dinput8.dll`, `opengl32.dll`, `dxgi.dll`, `version.dll`, `winmm.dll`, `dbghelp.dll`, `vulkan-1.dll`.
+`d3d9.dll`, `d3d11.dll`, `d3d12.dll`, `ddraw.dll`, `dinput8.dll`, `hid.dll`, `opengl32.dll`, `dxgi.dll`, `version.dll`, `winmm.dll`, `dbghelp.dll`, `vulkan-1.dll`.
 
 ## Prerequisites
 
@@ -32,4 +32,4 @@ copy_addon_to_dc_proxies_32bit.cmd "C:\Games\MyGame"
 ## Difference from try_all_proxies
 
 - **try_all_proxies** (Python): copies the addon to *every* Wine/Proton proxy DLL name (hundreds) to discover which one a game loads.
-- **copy_addon_to_dc_proxies** (CMD): copies only to the **11** proxy names that Display Commander actually implements; use this when you already know the game uses one of them (e.g. dxgi, d3d11) or want a minimal set of proxies in the folder.
+- **copy_addon_to_dc_proxies** (CMD): copies only to the **12** proxy names that Display Commander actually implements; use this when you already know the game uses one of them (e.g. dxgi, d3d11) or want a minimal set of proxies in the folder.

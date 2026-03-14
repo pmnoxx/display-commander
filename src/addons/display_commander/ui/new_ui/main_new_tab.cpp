@@ -2706,8 +2706,11 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 const reshade::api::device_api api = g_last_reshade_device_api.load();
                 const bool is_dxgi = (api == reshade::api::device_api::d3d10 || api == reshade::api::device_api::d3d11
                                       || api == reshade::api::device_api::d3d12);
-                if (is_dxgi) {
-                    bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+
+                auto show_checkbox = (g_show_auto_colorspace_fix_in_main_tab.load(std::memory_order_relaxed));
+                bool auto_colorspace = settings::g_advancedTabSettings.auto_colorspace.GetValue();
+                bool swap_chain_upgrade = settings::g_mainTabSettings.swapchain_hdr_upgrade.GetValue();
+                if (is_dxgi && (show_checkbox || !auto_colorspace || swap_chain_upgrade)) {
                     if (imgui.Checkbox("HDR10 / scRGB color fix", &auto_colorspace)) {
                         settings::g_advancedTabSettings.auto_colorspace.SetValue(auto_colorspace);
                     }

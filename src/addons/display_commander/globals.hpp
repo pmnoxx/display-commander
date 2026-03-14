@@ -291,6 +291,9 @@ bool IsUsingWine();
 // Module handle for pinning/unpinning
 extern HMODULE g_hmodule;
 
+// Path of the module that caused this DLL to load (set during DLL_PROCESS_ATTACH from stack walk; empty if unknown).
+extern std::string g_dll_load_caller_path;
+
 // Our addon DLL module handle (set in AddonInit; atomic for lock-free caller checks in hooks).
 extern std::atomic<HMODULE> g_module;
 

@@ -6,6 +6,12 @@
 ## Unreleased
 
 ---
+## v0.12.501
+- **Logger shows load caller** - The "DisplayCommander Logger initialized" line now includes the path of the module that caused this DLL to load (e.g. the game exe or DbgHelp.dll) when available: "Path: ... Caller: ...". Helps see which binary triggered the load. Caller is determined during DLL_PROCESS_ATTACH via a short stack walk (first frame outside our DLL and the loader). Details: main_entry.cpp CaptureDllLoadCallerPath, g_dll_load_caller_path, display_commander_logger.cpp Initialize().
+
+- **DisplayCommander.log in exe dir always appends** - The file in the game executable's folder (DisplayCommander.log) now has a line appended on every DLL load, not only when the file was missing. Each line is "DisplayCommander module path: ..." plus " Caller: ..." when the load caller is known. Details: main_entry.cpp EnsureDisplayCommanderLogWithModulePath (append mode, no early return when file exists).
+
+---
 ## v0.12.500
 - [new feature] [hooks] **Block GameOverlayRenderer (Steam overlay DLL)** - Optional blocking of gameoverlayrenderer.dll / gameoverlayrenderer64.dll from loading. When enabled (Advanced tab checkbox), LoadLibrary/LoadLibraryEx/LdrLoadDll return failure for these DLLs so the Steam overlay does not load. UI shows current status: "GameOverlayRenderer: Loaded" or "Not loaded". Setting is persisted; takes effect on next load attempt (e.g. after game restart). Details: loadlibrary_hooks.cpp ShouldBlockGameOverlayRendererDLL, advanced_tab_settings block_gameoverlayrenderer, Advanced tab UI.
 

@@ -6,8 +6,13 @@
 ## Unreleased
 
 ---
+
+## v0.12.505
+- [hooks] [compatibility] **Prevent ReShade from unloading Display Commander** - When ReShade calls FreeLibrary or FreeLibraryAndExitThread on the Display Commander addon, the hooks ignore the call so the addon stays loaded (FreeLibrary returns TRUE, FreeLibraryAndExitThread returns without exiting). Only requests from the ReShade module are ignored; other callers can still unload the addon. Details: loadlibrary_hooks.cpp IsReshadeTryingToFreeDisplayCommander, FreeLibrary_Detour, FreeLibraryAndExitThread_Detour.
+
+---
 ## v0.12.504
-- (placeholder)
+- [settings] **Turn off pinning Display Commander module** - Pinning the addon in memory can be disabled via config (DisplayCommander.Safemode, SuppressPinModule). When enabled, the addon is no longer kept loaded by an extra refcount from GetModuleHandleEx(PIN). Instead, ReShade is prevented from unloading the addon via the FreeLibrary hooks (see next). Details: main_entry.cpp pin/unpin on init and unregister.
 
 ---
 ## v0.12.503

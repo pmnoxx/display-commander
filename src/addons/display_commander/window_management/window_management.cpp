@@ -119,7 +119,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
             std::ostringstream oss;
             oss << "CalculateWindowState: Desired width " << local_state.desired_width << " exceeds monitor width "
                 << display_width << ", clamping";
-            LogInfo(oss.str().c_str());
+            LogInfoThrottled(10, oss.str().c_str());
             local_state.desired_width = display_width;
         }
 
@@ -127,7 +127,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
             std::ostringstream oss;
             oss << "CalculateWindowState: Desired height " << local_state.desired_height << " exceeds monitor height "
                 << display_height << ", clamping";
-            LogInfo(oss.str().c_str());
+            LogInfoThrottled(10, oss.str().c_str());
             local_state.desired_height = display_height;
         }
 
@@ -136,7 +136,7 @@ void CalculateWindowState(HWND hwnd, const char* reason) {
         if (AdjustWindowRectEx(&client_rect, static_cast<DWORD>(local_state.new_style), FALSE,
                                static_cast<DWORD>(local_state.new_ex_style))
             == FALSE) {
-            LogWarn("AdjustWindowRectEx failed for CalculateWindowState.");
+            LogWarnThrottled(10, "AdjustWindowRectEx failed for CalculateWindowState.");
             return;
         }
         local_state.target_w = client_rect.right - client_rect.left;

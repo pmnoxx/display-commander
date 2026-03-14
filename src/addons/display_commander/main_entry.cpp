@@ -1727,7 +1727,7 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
     }
     HandleSafemode();
 
-    bool suppress_pin_module = false;
+    bool suppress_pin_module = true;
     display_commander::config::get_config_value_ensure_exists("DisplayCommander.Safemode", "SuppressPinModule",
                                                               suppress_pin_module, false);
     if (!suppress_pin_module) {
@@ -1746,6 +1746,7 @@ void DoInitializationWithoutHwndSafe_Early(HMODULE h_module) {
         LogInfo("Module pinning suppressed by config (SuppressPinModule=true)");
         g_module_pinned.store(false);
     }
+
     process_exit_hooks::Initialize();
     LogInfo("DLL initialization complete - DXGI calls now enabled");
     LogInfo("DLL_THREAD_ATTACH: Installing API hooks...");
@@ -2568,22 +2569,22 @@ static bool IsLoaderModule(const wchar_t* path) {
     if (last) name = last + 1;
     const wchar_t* last_slash = wcsrchr(path, L'/');
     if (last_slash && last_slash > name) name = last_slash + 1;
-    return _wcsicmp(name, L"ntdll.dll") == 0 || _wcsicmp(name, L"kernel32.dll") == 0 ||
-           _wcsicmp(name, L"kernelbase.dll") == 0 || _wcsicmp(name, L"wow64.dll") == 0 ||
-           _wcsicmp(name, L"wow64win.dll") == 0 || _wcsicmp(name, L"wow64cpu.dll") == 0;
+    return _wcsicmp(name, L"ntdll.dll") == 0 || _wcsicmp(name, L"kernel32.dll") == 0
+           || _wcsicmp(name, L"kernelbase.dll") == 0 || _wcsicmp(name, L"wow64.dll") == 0
+           || _wcsicmp(name, L"wow64win.dll") == 0 || _wcsicmp(name, L"wow64cpu.dll") == 0;
 }
 
 // Captures the path of the module that requested this DLL to load: first stack frame outside our DLL
-// and outside loader modules. Also builds g_dll_load_call_stack_list (all modules seen, outer first, consecutive dedup).
-// Safe to call from DllMain; sets g_dll_load_caller_path and g_dll_load_call_stack_list.
+// and outside loader modules. Also builds g_dll_load_call_stack_list (all modules seen, outer first, consecutive
+// dedup). Safe to call from DllMain; sets g_dll_load_caller_path and g_dll_load_call_stack_list.
 static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
     try {
         void* backtrace[256] = {};
-        const USHORT n = CaptureStackBackTrace(0, static_cast<ULONG>(sizeof(backtrace) / sizeof(backtrace[0])),
-                                              backtrace, nullptr);
-        g_dll_main_backtrace_count = (n <= static_cast<USHORT>(kDllMainBacktraceMax)) ? n : static_cast<USHORT>(kDllMainBacktraceMax);
-        for (USHORT i = 0; i < g_dll_main_backtrace_count; ++i)
-            g_dll_main_backtrace[i] = backtrace[i];
+        const USHORT n =
+            CaptureStackBackTrace(0, static_cast<ULONG>(sizeof(backtrace) / sizeof(backtrace[0])), backtrace, nullptr);
+        g_dll_main_backtrace_count =
+            (n <= static_cast<USHORT>(kDllMainBacktraceMax)) ? n : static_cast<USHORT>(kDllMainBacktraceMax);
+        for (USHORT i = 0; i < g_dll_main_backtrace_count; ++i) g_dll_main_backtrace[i] = backtrace[i];
         wchar_t path_buf[MAX_PATH] = {};
         std::string fallback;
         bool fallback_is_loader = false;
@@ -2591,9 +2592,10 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
         std::string last_path;
         for (USHORT i = 0; i < n; ++i) {
             HMODULE hmod = nullptr;
-            if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                   static_cast<LPCWSTR>(backtrace[i]), &hmod) ||
-                hmod == nullptr) {
+            if (!GetModuleHandleExW(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    static_cast<LPCWSTR>(backtrace[i]), &hmod)
+                || hmod == nullptr) {
                 continue;
             }
             if (hmod == h_our_module) continue;
@@ -2614,30 +2616,31 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
             return;
         }
         g_dll_load_call_stack_list = std::move(list_buf);
-        if (!fallback_is_loader && !fallback.empty())
-            g_dll_load_caller_path = std::move(fallback);
+        if (!fallback_is_loader && !fallback.empty()) g_dll_load_caller_path = std::move(fallback);
     } catch (...) {
         // avoid crashing DllMain
     }
 }
 
 // Append current module path (and caller if known) to DisplayCommander.log next to our DLL on every load.
-// No-throw; safe to call from DllMain. Does not create directories; only writes if the DLL's dir exists (it always does).
+// No-throw; safe to call from DllMain. Does not create directories; only writes if the DLL's dir exists (it always
+// does).
 static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     wchar_t module_path_buf[MAX_PATH] = {};
     if (GetModuleFileNameW(h_module, module_path_buf, MAX_PATH) == 0) return;
     char module_path_narrow[MAX_PATH] = {};
     if (WideCharToMultiByte(CP_ACP, 0, module_path_buf, -1, module_path_narrow,
-                             static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr) == 0) {
+                            static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr)
+        == 0) {
         return;
     }
     // Always emit to DebugView so the message is visible even when the file cannot be written
     char dbg_buf[MAX_PATH + 128];
-    int dbg_len = snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] DisplayCommander module path: %s",
-                           module_path_narrow);
+    int dbg_len =
+        snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] DisplayCommander module path: %s", module_path_narrow);
     if (!g_dll_load_caller_path.empty() && dbg_len >= 0 && static_cast<size_t>(dbg_len) < sizeof(dbg_buf) - 32) {
-        dbg_len += snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len),
-                            " Caller: %s", g_dll_load_caller_path.c_str());
+        dbg_len += snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), " Caller: %s",
+                            g_dll_load_caller_path.c_str());
     }
     if (dbg_len >= 0 && static_cast<size_t>(dbg_len) < sizeof(dbg_buf)) {
         snprintf(dbg_buf + dbg_len, sizeof(dbg_buf) - static_cast<size_t>(dbg_len), "\n");
@@ -2661,10 +2664,10 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     }
 }
 
-// Resolves g_dll_main_backtrace to function names via DbgHelp and appends to log + DebugView. Call after init (no loader lock).
+// Resolves g_dll_main_backtrace to function names via DbgHelp and appends to log + DebugView. Call after init (no
+// loader lock).
 void ResolveAndLogDllMainFunctionStack() {
-    if (g_dll_main_backtrace_count == 0)
-        return;
+    if (g_dll_main_backtrace_count == 0) return;
     const USHORT count = g_dll_main_backtrace_count;
     g_dll_main_backtrace_count = 0;
 
@@ -2672,27 +2675,28 @@ void ResolveAndLogDllMainFunctionStack() {
         OutputDebugStringA("[DisplayCommander]   ");
         OutputDebugStringA(line.c_str());
         OutputDebugStringA("\n");
-        if (f && f->is_open())
-            *f << "  " << line << "\n";
+        if (f && f->is_open()) *f << "  " << line << "\n";
     };
 
     OutputDebugStringA("[DisplayCommander] DLL load call stack (functions, outer first):\n");
     std::ofstream f;
     if (!g_dll_main_log_path.empty()) {
         f.open(g_dll_main_log_path, std::ios::app);
-        if (f)
-            f << "DLL load call stack (functions, outer first):\n";
+        if (f) f << "DLL load call stack (functions, outer first):\n";
     }
 
     if (!dbghelp_loader::LoadDbgHelp() || !dbghelp_loader::IsDbgHelpAvailable()) {
         for (USHORT i = 0; i < count; ++i) {
             HMODULE hmod = nullptr;
             wchar_t path_buf[MAX_PATH] = {};
-            if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                   static_cast<LPCWSTR>(g_dll_main_backtrace[i]), &hmod) && hmod != nullptr
-                && GetModuleFileNameW(hmod, path_buf, MAX_PATH) != 0) {
+            if (GetModuleHandleExW(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    static_cast<LPCWSTR>(g_dll_main_backtrace[i]), &hmod)
+                && hmod != nullptr && GetModuleFileNameW(hmod, path_buf, MAX_PATH) != 0) {
                 char narrow[MAX_PATH] = {};
-                if (WideCharToMultiByte(CP_UTF8, 0, path_buf, -1, narrow, static_cast<int>(sizeof(narrow)), nullptr, nullptr) > 0)
+                if (WideCharToMultiByte(CP_UTF8, 0, path_buf, -1, narrow, static_cast<int>(sizeof(narrow)), nullptr,
+                                        nullptr)
+                    > 0)
                     emit_line(narrow, &f);
             } else {
                 char addr_buf[32];
@@ -2719,8 +2723,7 @@ void ResolveAndLogDllMainFunctionStack() {
         DWORD64 displacement = 0;
 
         std::string module_name = "?";
-        if (dbghelp_loader::SymGetModuleInfo64(process, addr, &mod_info) != FALSE)
-            module_name = mod_info.ModuleName;
+        if (dbghelp_loader::SymGetModuleInfo64(process, addr, &mod_info) != FALSE) module_name = mod_info.ModuleName;
 
         std::string line;
         if (dbghelp_loader::SymFromAddr(process, addr, &displacement, sym_info) != FALSE) {
@@ -2937,9 +2940,6 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             // Try to remove post-ReShade addon temp dir (may fail while loaded DLLs still hold files)
             CleanupPostReShadeAddonTempDir();
 
-            // Shutdown DisplayCommander logger (must be last to capture all cleanup messages)
-            display_commander::logger::Shutdown();
-
             // Note: reshade::unregister_addon() will automatically unregister all events and overlays
             // registered by this add-on, so manual unregistration is not needed and can cause issues
             // display_restore::RestoreAllIfEnabled(); // restore display settings on exit
@@ -2957,6 +2957,8 @@ BOOL APIENTRY DllMain(HMODULE h_module, DWORD fdw_reason, LPVOID lpv_reserved) {
             }
 
             reshade::unregister_addon(h_module);
+            // Shutdown DisplayCommander logger (must be last to capture all cleanup messages)
+            display_commander::logger::Shutdown();
 
             break;
     }

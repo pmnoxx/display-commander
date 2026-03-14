@@ -1053,9 +1053,21 @@ BOOL WINAPI GetModuleHandleExA_Detour(DWORD dwFlags, LPCSTR lpModuleName, HMODUL
                                        : GetModuleHandleExA(dwFlags, lpModuleName, phModule);
 }
 
+// True when caller is ReShade and the handle is the Display Commander addon (used to no-op in FreeLibrary hooks)
+static bool IsReshadeTryingToFreeDisplayCommander(HMODULE hLibModule, HMODULE caller_module) {
+    HMODULE const reshade = g_reshade_module.load(std::memory_order_relaxed);
+    return hLibModule != nullptr && reshade != nullptr && g_display_commander_module != nullptr
+           && hLibModule == g_display_commander_module && caller_module == reshade;
+}
+
 // Hooked FreeLibrary function
 BOOL WINAPI FreeLibrary_Detour(HMODULE hLibModule) {
     CALL_GUARD(utils::get_now_ns());
+
+    if (IsReshadeTryingToFreeDisplayCommander(hLibModule, GetCallingDLL())) {
+        LogInfo("FreeLibrary: Ignoring ReShade request to unload Display Commander (0x%p)", hLibModule);
+        return TRUE;
+    }
 
     // Check if this is the ReShade module being unloaded
     bool is_reshade_module = (hLibModule != nullptr && hLibModule == g_reshade_module);
@@ -1085,6 +1097,11 @@ VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode
 
     static const uint32_t s_fle_detour_idx = detour_call_tracker::AllocateEntryIndex(DETOUR_CALL_SITE_KEY);
     detour_call_tracker::RecordCallNoGuard(s_fle_detour_idx, utils::get_now_ns());
+
+    if (IsReshadeTryingToFreeDisplayCommander(hLibModule, caller_module)) {
+        LogInfo("FreeLibraryAndExitThread: Ignoring ReShade request to unload Display Commander (0x%p)", hLibModule);
+        return;
+    }
 
     // Check if this is the ReShade module being unloaded
     // FreeLibraryAndExitThread always unloads the module (doesn't check refcount)

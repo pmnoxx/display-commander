@@ -1,4 +1,6 @@
 # Wine bcrypt.spec - https://github.com/wine-mirror/wine/blob/master/dlls/bcrypt/bcrypt.spec
+# WARNING: This spec is wrong for some functions (e.g. BCryptResolveProviders has wrong param count).
+# The bcrypt proxy is maintained against the official Windows API (bcrypt.h / Microsoft docs).
 @ stdcall BCryptAddContextFunction(long wstr long wstr long)
 @ stdcall BCryptAddContextFunctionProvider(long wstr long wstr wstr long)
 @ stdcall BCryptCloseAlgorithmProvider(ptr long)

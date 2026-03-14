@@ -1,5 +1,6 @@
 // Source Code <Display Commander>
 #include "safe_remove.hpp"
+#include "general_utils.hpp"
 #include "logging.hpp"
 #include "version_check.hpp"
 
@@ -50,6 +51,13 @@ bool IsAllowedForRemoveAll(const std::filesystem::path& path) {
     if (!path.is_absolute()) {
         return false;
     }
+    // Never allow removing the Display Commander AppData root (e.g. ...\AppData\Local\Programs\Display_Commander).
+    std::filesystem::path dc_appdata = GetDisplayCommanderAppDataFolder();
+    if (!dc_appdata.empty()) {
+        if (path.lexically_normal() == dc_appdata.lexically_normal()) {
+            return false;
+        }
+    }
     if (IsSafeTempSubdirPath(path)) return true;
     if (IsAllowedSystemTempSubdir(path, L"dc_reshade_update")) return true;
     if (IsAllowedSystemTempSubdir(path, L"dc_reshade_download")) return true;
@@ -61,6 +69,11 @@ bool SafeRemoveAll(const std::filesystem::path& path, std::error_code& ec) {
     ec.clear();
     if (path.empty() || !path.is_absolute()) {
         LogError("SafeRemoveAll: path must be a full path (e.g. C:\\...), refused: %s", path.string().c_str());
+        return false;
+    }
+    std::filesystem::path dc_appdata = GetDisplayCommanderAppDataFolder();
+    if (!dc_appdata.empty() && path.lexically_normal() == dc_appdata.lexically_normal()) {
+        LogError("SafeRemoveAll: cannot remove Display Commander AppData root, refused: %s", path.string().c_str());
         return false;
     }
     if (!IsAllowedForRemoveAll(path)) {

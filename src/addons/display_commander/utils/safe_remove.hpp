@@ -12,7 +12,8 @@ namespace display_commander::utils {
 // ever deleting from Display_Commander root or arbitrary paths.
 bool IsSafeTempSubdirPath(const std::filesystem::path& dir);
 
-// Returns true if path is an absolute path (e.g. C:\...) and on the whitelist
+// Returns true if path is an absolute path (e.g. C:\...), not the Display Commander
+// AppData root (e.g. ...\AppData\Local\Programs\Display_Commander), and on the whitelist
 // for recursive directory removal:
 // - .../tmp/<numeric_pid> (post-ReShade addon temp)
 // - <GetTempPath()>/dc_reshade_update

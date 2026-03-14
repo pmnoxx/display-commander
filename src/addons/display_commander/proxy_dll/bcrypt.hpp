@@ -71,7 +71,7 @@ typedef NTSTATUS (WINAPI *PFN_BCryptRegisterConfigChangeNotify)(HANDLE* pEvent);
 typedef NTSTATUS (WINAPI *PFN_BCryptRegisterProvider)(LPCWSTR pszProvider, ULONG dwMode, void* pRegistration);
 typedef NTSTATUS (WINAPI *PFN_BCryptRemoveContextFunction)(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction);
 typedef NTSTATUS (WINAPI *PFN_BCryptRemoveContextFunctionProvider)(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction, LPCWSTR pszProvider);
-typedef NTSTATUS (WINAPI *PFN_BCryptResolveProviders)(LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction, LPCWSTR pszProvider, ULONG* pcbBuffer, void* ppBuffer);
+typedef NTSTATUS (WINAPI *PFN_BCryptResolveProviders)(LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction, LPCWSTR pszProvider, ULONG dwMode, ULONG dwFlags, ULONG* pcbBuffer, void* ppBuffer);
 typedef NTSTATUS (WINAPI *PFN_BCryptSecretAgreement)(void* hPrivKey, void* hPubKey, void* phSecret, ULONG dwFlags);
 typedef NTSTATUS (WINAPI *PFN_BCryptSetAuditingInterface)(void* pAuditingInterface);
 typedef NTSTATUS (WINAPI *PFN_BCryptSetContextFunctionProperty)(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface, LPCWSTR pszFunction, LPCWSTR pszProperty, void* pbValue, ULONG cbValue);

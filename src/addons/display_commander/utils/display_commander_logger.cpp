@@ -58,7 +58,14 @@ void DisplayCommanderLogger::Initialize(const std::string& log_path) {
     shutdown_writer_.store(false);
     writer_thread_ = std::thread(&DisplayCommanderLogger::WriterLoop, this);
 
-    Log(LogLevel::Info, "DisplayCommander Logger initialized");
+    std::string dc_path_str("(unknown)");
+    if (HMODULE hmod = g_hmodule) {
+        wchar_t path_buf[MAX_PATH] = {};
+        if (GetModuleFileNameW(hmod, path_buf, MAX_PATH) > 0) {
+            dc_path_str = std::filesystem::path(path_buf).string();
+        }
+    }
+    Log(LogLevel::Info, "DisplayCommander Logger initialized. Path: " + dc_path_str);
 }
 
 void DisplayCommanderLogger::Log(LogLevel level, const std::string& message) {

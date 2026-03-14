@@ -1005,6 +1005,9 @@ static const std::wstring* GetProxyDllNames() {
 }
 static constexpr size_t kProxyDllNamesCount = 10;
 
+// Proc names we have already logged for GetProcAddress(our proxy, result found). One log per name.
+static std::set<std::string> g_proxy_getproc_logged_names;
+
 static bool IsOurProxyModule(const std::wstring& module_path) {
     std::wstring path_lower = module_path;
     std::transform(path_lower.begin(), path_lower.end(), path_lower.begin(), ::towlower);
@@ -1026,6 +1029,27 @@ static bool IsOurProxyModule(const std::wstring& module_path) {
 FARPROC WINAPI GetProcAddress_Detour(HMODULE hModule, LPCSTR lpProcName) {
     FARPROC result =
         GetProcAddress_Original ? GetProcAddress_Original(hModule, lpProcName) : GetProcAddress(hModule, lpProcName);
+    // When someone resolved a proc from our proxy and it was found, log each lpProcName once.
+    if (result != nullptr && hModule != nullptr) {
+        WCHAR path[MAX_PATH] = {};
+        if (GetModuleFileNameW(hModule, path, MAX_PATH) != 0) {
+            std::wstring path_str(path);
+            if (IsOurProxyModule(path_str)) {
+                std::string key;
+                if (IS_INTRESOURCE(lpProcName)) {
+                    key = "ordinal " + std::to_string(reinterpret_cast<uintptr_t>(lpProcName) & 0xFFFF);
+                } else {
+                    key = lpProcName;
+                }
+                {
+                    utils::SRWLockExclusive lock(utils::g_proxy_getproc_logged_srwlock);
+                    if (g_proxy_getproc_logged_names.insert(key).second) {
+                        LogInfo("GetProcAddress(our proxy): %s", key.c_str());
+                    }
+                }
+            }
+        }
+    }
     if (result != nullptr || lpProcName == nullptr || hModule == nullptr) return result;
 
     WCHAR path[MAX_PATH] = {};

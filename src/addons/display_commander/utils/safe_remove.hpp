@@ -12,16 +12,18 @@ namespace display_commander::utils {
 // ever deleting from Display_Commander root or arbitrary paths.
 bool IsSafeTempSubdirPath(const std::filesystem::path& dir);
 
-// Returns true if path is on the whitelist for recursive directory removal:
+// Returns true if path is an absolute path (e.g. C:\...) and on the whitelist
+// for recursive directory removal:
 // - .../tmp/<numeric_pid> (post-ReShade addon temp)
 // - <GetTempPath()>/dc_reshade_update
 // - <GetTempPath()>/dc_reshade_download
 // - <GetDownloadDirectory()>/Debug/_staging_latest_debug
 bool IsAllowedForRemoveAll(const std::filesystem::path& path);
 
-// If path is allowed (IsAllowedForRemoveAll), removes the directory and all
-// contents; otherwise does nothing. Returns true if removal was attempted and
-// succeeded (or path did not exist); false if not allowed or remove_all failed.
+// If path is an absolute path and allowed (IsAllowedForRemoveAll), removes the
+// directory and all contents; otherwise does nothing. Returns true if removal
+// was attempted and succeeded (or path did not exist); false if not allowed or
+// remove_all failed.
 bool SafeRemoveAll(const std::filesystem::path& path, std::error_code& ec);
 
 }  // namespace display_commander::utils

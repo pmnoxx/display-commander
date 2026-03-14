@@ -46,6 +46,10 @@ bool IsAllowedStagingPath(const std::filesystem::path& path) {
 
 bool IsAllowedForRemoveAll(const std::filesystem::path& path) {
     if (path.empty()) return false;
+    // Require full path (e.g. "C:\...") to avoid removing based on relative paths.
+    if (!path.is_absolute()) {
+        return false;
+    }
     if (IsSafeTempSubdirPath(path)) return true;
     if (IsAllowedSystemTempSubdir(path, L"dc_reshade_update")) return true;
     if (IsAllowedSystemTempSubdir(path, L"dc_reshade_download")) return true;
@@ -55,6 +59,10 @@ bool IsAllowedForRemoveAll(const std::filesystem::path& path) {
 
 bool SafeRemoveAll(const std::filesystem::path& path, std::error_code& ec) {
     ec.clear();
+    if (path.empty() || !path.is_absolute()) {
+        LogError("SafeRemoveAll: path must be a full path (e.g. C:\\...), refused: %s", path.string().c_str());
+        return false;
+    }
     if (!IsAllowedForRemoveAll(path)) {
         LogError("SafeRemoveAll: path not on whitelist, refused: %s", path.string().c_str());
         return false;

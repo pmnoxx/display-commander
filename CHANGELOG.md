@@ -4,6 +4,9 @@
 
 ## Unreleased
 
+## v0.12.518
+- [cleanup] **Safe directory removal requires full path** - The safe directory removal wrapper (`SafeRemoveAll` / `IsAllowedForRemoveAll`) now requires the path to be absolute (e.g. `C:\...`). Relative paths are refused and logged, reducing the risk of deleting the wrong directory when a relative path is passed by mistake. Details: utils/safe_remove.cpp, utils/safe_remove.hpp.
+
 ## v0.12.517
 - [ui] **winhttp.dll proxy warning on Main tab** - When Display Commander is loaded as winhttp.dll (proxy in the game folder), the Main tab now shows a warning that the DLL is not signed by Microsoft and may cause network connection issues (e.g. blocked traffic, login failures). Tooltip explains the risk and suggests using another proxy (e.g. dxgi.dll) if network problems occur. Details: utils/dc_load_path.hpp IsLoadedAsWinHttpProxy, main_new_tab.cpp warning block.
 

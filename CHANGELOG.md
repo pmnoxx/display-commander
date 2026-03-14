@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.499
+- [hooks] **GetProcAddress(our proxy): log each resolved symbol once** - When something in the process resolves an export from one of Display Commander's proxy DLLs via GetProcAddress and the symbol is found, the addon now logs that symbol name once per session (no repeated lines for the same name). Helps see which proxy exports are actually used by the game or other loaders. Uses a dedicated SRWLOCK and per-name deduplication. Details: loadlibrary_hooks.cpp GetProcAddress_Detour, utils/srwlock_registry (g_proxy_getproc_logged_srwlock).
+
+---
 ## v0.12.498
 - [hooks] **GetProcAddress hook for proxy missing exports** - When something in the process calls GetProcAddress on one of Display Commander's proxy DLLs (e.g. bcrypt.dll, hid.dll, dxgi.dll in the game folder) and the requested export is not found, an error is now logged with the module path and symbol name. Helps identify missing exports so they can be added to the proxy. Only applies to proxy DLLs we ship (not system copies in System32/SysWOW64). Details: loadlibrary_hooks.cpp GetProcAddress_Detour, InstallLoadLibraryHooks.
 

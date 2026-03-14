@@ -26,6 +26,7 @@ SRWLOCK g_dinput_devices_mutex = SRWLOCK_INIT;
 SRWLOCK g_dinput_device_hooks_mutex = SRWLOCK_INIT;
 SRWLOCK g_wndproc_map_lock = SRWLOCK_INIT;
 SRWLOCK g_hdr_upgrade_back_buffers_lock = SRWLOCK_INIT;
+SRWLOCK g_proxy_getproc_logged_srwlock = SRWLOCK_INIT;
 
 namespace {
 
@@ -55,6 +56,7 @@ void LogAllSrwlockStatus() {
     LogOne("dinput_device_hooks", TryIsSRWLockHeld(g_dinput_device_hooks_mutex));
     LogOne("wndproc_map", TryIsSRWLockHeld(g_wndproc_map_lock));
     LogOne("hdr_upgrade_back_buffers", TryIsSRWLockHeld(g_hdr_upgrade_back_buffers_lock));
+    LogOne("proxy_getproc_logged", TryIsSRWLockHeld(g_proxy_getproc_logged_srwlock));
 }
 
 }  // namespace utils

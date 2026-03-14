@@ -21,6 +21,7 @@
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/general_utils.hpp"  // GetDefaultDlssOverrideFolder, GetCallingDLL
 #include "../utils/logging.hpp"
+#include "../utils/pe_static_imports.hpp"
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
 #include "d3d9/d3d9_hooks.hpp"
@@ -1843,6 +1844,12 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
     }
     LogInfo("[OnModuleLoaded] %ws (0x%p)%s%s", moduleName.c_str(), hModule, has_dc_export ? " (DC proxy)" : "",
             product_and_version.c_str());
+    {
+        std::string imports = GetStaticImportDllNamesSingleLine(hModule);
+        if (!imports.empty()) {
+            LogInfo("[OnModuleLoaded] %ws static imports: %s", moduleName.c_str(), imports.c_str());
+        }
+    }
 
     if (IsRenoDxAddonPath(moduleName)) {
         OnRenoDxAddonLoaded();

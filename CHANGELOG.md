@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.500
+- [new feature] [hooks] **Block GameOverlayRenderer (Steam overlay DLL)** - Optional blocking of gameoverlayrenderer.dll / gameoverlayrenderer64.dll from loading. When enabled (Advanced tab checkbox), LoadLibrary/LoadLibraryEx/LdrLoadDll return failure for these DLLs so the Steam overlay does not load. UI shows current status: "GameOverlayRenderer: Loaded" or "Not loaded". Setting is persisted; takes effect on next load attempt (e.g. after game restart). Details: loadlibrary_hooks.cpp ShouldBlockGameOverlayRendererDLL, advanced_tab_settings block_gameoverlayrenderer, Advanced tab UI.
+
+---
 ## v0.12.499
 - [hooks] **GetProcAddress(our proxy): log each resolved symbol once** - When something in the process resolves an export from one of Display Commander's proxy DLLs via GetProcAddress and the symbol is found, the addon now logs that symbol name once per session (no repeated lines for the same name). Helps see which proxy exports are actually used by the game or other loaders. Uses a dedicated SRWLOCK and per-name deduplication. Details: loadlibrary_hooks.cpp GetProcAddress_Detour, utils/srwlock_registry (g_proxy_getproc_logged_srwlock).
 

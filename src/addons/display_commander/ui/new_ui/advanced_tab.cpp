@@ -1076,6 +1076,30 @@ void DrawAdvancedTabSettingsSection(display_commander::ui::GraphicsApi api,
 
     imgui.Spacing();
 
+    // Block GameOverlayRenderer (Steam overlay) setting
+    if (CheckboxSetting(settings::g_advancedTabSettings.block_gameoverlayrenderer,
+                        "Block GameOverlayRenderer (Steam overlay DLL)", imgui)) {
+        LogInfo("Block GameOverlayRenderer setting changed to: %s",
+                settings::g_advancedTabSettings.block_gameoverlayrenderer.GetValue() ? "enabled" : "disabled");
+    }
+    if (imgui.IsItemHovered()) {
+        imgui.SetTooltipEx(
+            "Prevent gameoverlayrenderer.dll / gameoverlayrenderer64.dll (Steam overlay) from loading.\n"
+            "When enabled, any attempt to load the Steam overlay DLL will fail with access denied.\n"
+            "Use this if the overlay causes conflicts with ReShade or display settings.\n\n"
+            "Takes effect on next load attempt (e.g. after game restart if Steam injects later).");
+    }
+    {
+        HMODULE hSteamOverlay = GetModuleHandleW(L"gameoverlayrenderer64.dll");
+        if (!hSteamOverlay) {
+            hSteamOverlay = GetModuleHandleW(L"gameoverlayrenderer.dll");
+        }
+        imgui.TextColored(ui::colors::TEXT_DIMMED, "GameOverlayRenderer: %s",
+                         hSteamOverlay ? "Loaded" : "Not loaded");
+    }
+
+    imgui.Spacing();
+
     // Auto-hide Discord Overlay setting
     if (CheckboxSetting(settings::g_advancedTabSettings.auto_hide_discord_overlay, "Auto-hide Discord Overlay",
                         imgui)) {

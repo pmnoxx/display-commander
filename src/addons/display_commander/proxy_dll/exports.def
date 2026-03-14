@@ -1,5 +1,5 @@
 EXPORTS
-	; Proxy export blocks for winmm, d3d11, dbghelp, etc. can be regenerated from Wine .spec files
+	; Proxy export blocks for d3d9, d3d11, d3d12, ddraw, dinput8, hid, bcrypt, opengl32, dxgi, version, winmm, winhttp, dbghelp, vulkan-1 (keep updating this list)
 	; using: python scripts/gen_proxy_from_spec.py <dll> scripts/specs/<dll>.spec (see script docstring).
 	; d3d9.dll exports (ordinals match ReShade/d3d9.lib where specified)
 	; https://github.com/wine-mirror/wine/blob/master/dlls/d3d9/d3d9.spec
@@ -786,6 +786,59 @@ EXPORTS
 	waveOutSetVolume PRIVATE
 	waveOutUnprepareHeader PRIVATE
 	waveOutWrite PRIVATE
+
+	; winhttp.dll exports (official WinHTTP API; winhttp_proxy.hpp)
+	; winhttp.dll exports 1-20
+	WinHttpAddRequestHeaders PRIVATE
+	WinHttpAddRequestHeadersEx PRIVATE
+	WinHttpCheckPlatform PRIVATE
+	WinHttpCloseHandle PRIVATE
+	WinHttpConnect PRIVATE
+	WinHttpCrackUrl PRIVATE
+	WinHttpCreateProxyResolver PRIVATE
+	WinHttpCreateUrl PRIVATE
+	WinHttpDetectAutoProxyConfigUrl PRIVATE
+	WinHttpFreeProxyResult PRIVATE
+	WinHttpFreeProxySettingsEx PRIVATE
+	WinHttpFreeQueryConnectionGroupResult PRIVATE
+	WinHttpGetDefaultProxyConfiguration PRIVATE
+	WinHttpGetIEProxyConfigForCurrentUser PRIVATE
+	WinHttpGetProxyForUrl PRIVATE
+	WinHttpGetProxyForUrlEx PRIVATE
+	WinHttpGetProxyResult PRIVATE
+	WinHttpGetProxySettingsEx PRIVATE
+	WinHttpGetProxySettingsResultEx PRIVATE
+	WinHttpOpen PRIVATE
+	; winhttp.dll exports 21-40
+	WinHttpOpenRequest PRIVATE
+	WinHttpQueryAuthSchemes PRIVATE
+	WinHttpQueryConnectionGroup PRIVATE
+	WinHttpQueryDataAvailable PRIVATE
+	WinHttpQueryHeaders PRIVATE
+	WinHttpQueryHeadersEx PRIVATE
+	WinHttpQueryOption PRIVATE
+	WinHttpReadData PRIVATE
+	WinHttpReadDataEx PRIVATE
+	WinHttpReceiveResponse PRIVATE
+	WinHttpRegisterProxyChangeNotification PRIVATE
+	WinHttpResetAutoProxy PRIVATE
+	WinHttpSendRequest PRIVATE
+	WinHttpSetCredentials PRIVATE
+	WinHttpSetDefaultProxyConfiguration PRIVATE
+	WinHttpSetOption PRIVATE
+	WinHttpSetStatusCallback PRIVATE
+	WinHttpSetTimeouts PRIVATE
+	WinHttpTimeFromSystemTime PRIVATE
+	WinHttpTimeToSystemTime PRIVATE
+	; winhttp.dll exports 41-48
+	WinHttpUnregisterProxyChangeNotification PRIVATE
+	WinHttpWriteData PRIVATE
+	WinHttpWebSocketClose PRIVATE
+	WinHttpWebSocketCompleteUpgrade PRIVATE
+	WinHttpWebSocketQueryCloseStatus PRIVATE
+	WinHttpWebSocketReceive PRIVATE
+	WinHttpWebSocketSend PRIVATE
+	WinHttpWebSocketShutdown PRIVATE
 
 	; dbghelp.dll exports (from scripts/gen_proxy_from_spec.py + scripts/specs/dbghelp.spec)
 	DbgHelpCreateUserDump PRIVATE

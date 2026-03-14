@@ -1128,10 +1128,11 @@ static const std::wstring* GetProxyDllNames() {
     static const std::wstring names[] = {
         L"bcrypt.dll",  L"hid.dll",     L"dxgi.dll",     L"d3d11.dll",   L"d3d12.dll",
         L"dinput8.dll", L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll",
+        L"winhttp.dll",
     };
     return names;
 }
-static constexpr size_t kProxyDllNamesCount = 10;
+static constexpr size_t kProxyDllNamesCount = 11;
 
 // Proc names we have already logged for GetProcAddress(our proxy, result found). One log per name.
 static std::set<std::string> g_proxy_getproc_logged_names;
@@ -1842,12 +1843,14 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
             }
         }
     }
-    LogInfo("[OnModuleLoaded] %ws (0x%p)%s%s", moduleName.c_str(), hModule, has_dc_export ? " (DC proxy)" : "",
-            product_and_version.c_str());
+    const std::wstring module_display_name =
+        (IsKnownDllName(moduleName) ? L"*" : L"") + moduleName;
+    LogInfo("[OnModuleLoaded] %ws (0x%p)%s%s", module_display_name.c_str(), hModule,
+            has_dc_export ? " (DC proxy)" : "", product_and_version.c_str());
     {
         std::string imports = GetStaticImportDllNamesSingleLine(hModule);
         if (!imports.empty()) {
-            LogInfo("[OnModuleLoaded] %ws static imports: %s", moduleName.c_str(), imports.c_str());
+            LogInfo("[OnModuleLoaded] %ws static imports: %s", module_display_name.c_str(), imports.c_str());
         }
     }
 
@@ -1903,8 +1906,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         if (is_reshade_dll) {
             HMODULE expected = nullptr;
             if (g_reshade_module.compare_exchange_strong(expected, hModule))
-                LogInfo("[OnModuleLoaded] ReShade module set from LoadLibrary: %ws (0x%p)", moduleName.c_str(),
-                        hModule);
+                LogInfo("[OnModuleLoaded] ReShade module set from LoadLibrary: %ws (0x%p)",
+                        module_display_name.c_str(), hModule);
         }
     }
 
@@ -2094,7 +2097,7 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
 
     // Generic logging for other modules
     else {
-        LogInfo("[OnModuleLoaded] Other module loaded: %ws (0x%p)", moduleName.c_str(), hModule);
+        LogInfo("[OnModuleLoaded] Other module loaded: %ws (0x%p)", module_display_name.c_str(), hModule);
     }
 }
 

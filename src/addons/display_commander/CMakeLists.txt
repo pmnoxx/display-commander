@@ -5,6 +5,7 @@ file(GLOB_RECURSE DISPLAY_COMMANDER_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_LIST_DIR}/*.cpp
   ${CMAKE_CURRENT_LIST_DIR}/utils/*.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/proxy_dll/*.cpp
 )
 list(FILTER DISPLAY_COMMANDER_SOURCES EXCLUDE REGEX ".*/cli_ui_exe/.*")
 # ReShade ImGui wrapper is header-only (included from experimental_tab.cpp) to avoid undefined ImGui symbols at link
@@ -25,7 +26,7 @@ endif()
 # Version (single source of truth for addon and exe; used by common_options and version.rc)
 set(DISPLAY_COMMANDER_VERSION_MAJOR 0)
 set(DISPLAY_COMMANDER_VERSION_MINOR 12)
-set(DISPLAY_COMMANDER_VERSION_PATCH 511)
+set(DISPLAY_COMMANDER_VERSION_PATCH 512)
 set(DISPLAY_COMMANDER_VERSION_STRING "${DISPLAY_COMMANDER_VERSION_MAJOR}.${DISPLAY_COMMANDER_VERSION_MINOR}.${DISPLAY_COMMANDER_VERSION_PATCH}.${GIT_COMMIT_COUNT}")
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(DISPLAY_COMMANDER_BITNESS "32-bit")

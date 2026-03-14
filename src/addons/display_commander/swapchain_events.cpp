@@ -1576,7 +1576,15 @@ void HandleFpsLimiterPre(bool from_present_detour, bool from_wrapper = false) {
                     CALL_GUARD(start_time_ns);
                     if (ideal_frame_start_ns - post_sleep_ns > start_time_ns) {
                         // On time - sleep until calculated time (ensures we sleep for pre_sleep_ns)
-                        utils::wait_until_ns(ideal_frame_start_ns - post_sleep_ns, g_timer_handle_pre);
+                        LONGLONG wait_target_ns = ideal_frame_start_ns - post_sleep_ns;
+                        constexpr LONGLONG k_fps_limiter_max_wait_ns = 100 * utils::NS_TO_MS;
+                        if (wait_target_ns - start_time_ns > k_fps_limiter_max_wait_ns) {
+                            wait_target_ns = start_time_ns + k_fps_limiter_max_wait_ns;
+                            LogWarn(
+                                "[FPS limiter] Pre-sleep capped at 100 ms (requested wait was longer); timing may be "
+                                "off.");
+                        }
+                        utils::wait_until_ns(wait_target_ns, g_timer_handle_pre);
                         late_amount_ns.store(0);
                         g_onpresent_sync_pre_sleep_ns.store(ideal_frame_start_ns - start_time_ns);
                     } else {

@@ -991,6 +991,71 @@ VOID WINAPI FreeLibraryAndExitThread_Detour(HMODULE hLibModule, DWORD dwExitCode
     }
 }
 
+// GetProcAddress hook: log when a caller requests an export from one of our proxy DLLs and it is missing.
+using GetProcAddress_pfn = FARPROC(WINAPI*)(HMODULE hModule, LPCSTR lpProcName);
+static GetProcAddress_pfn GetProcAddress_Original = nullptr;
+
+// Base names (lowercase) of DLLs we ship as proxies. If GetProcAddress fails for such a module, we log.
+static const std::wstring* GetProxyDllNames() {
+    static const std::wstring names[] = {
+        L"bcrypt.dll", L"hid.dll",      L"dxgi.dll",    L"d3d11.dll",  L"d3d12.dll",
+        L"dinput8.dll", L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll",
+    };
+    return names;
+}
+static constexpr size_t kProxyDllNamesCount = 10;
+
+static bool IsOurProxyModule(const std::wstring& module_path) {
+    std::wstring path_lower = module_path;
+    std::transform(path_lower.begin(), path_lower.end(), path_lower.begin(), ::towlower);
+    // Don't treat system copies as our proxy (e.g. C:\Windows\System32\bcrypt.dll).
+    if (path_lower.find(L"\\system32\\") != std::wstring::npos ||
+        path_lower.find(L"\\syswow64\\") != std::wstring::npos) {
+        return false;
+    }
+    std::filesystem::path p(module_path);
+    std::wstring filename = p.filename().wstring();
+    std::transform(filename.begin(), filename.end(), filename.begin(), ::towlower);
+    const std::wstring* names = GetProxyDllNames();
+    for (size_t i = 0; i < kProxyDllNamesCount; ++i) {
+        if (filename == names[i]) return true;
+    }
+    return false;
+}
+
+FARPROC WINAPI GetProcAddress_Detour(HMODULE hModule, LPCSTR lpProcName) {
+    FARPROC result =
+        GetProcAddress_Original ? GetProcAddress_Original(hModule, lpProcName) : GetProcAddress(hModule, lpProcName);
+    if (result != nullptr || lpProcName == nullptr || hModule == nullptr) return result;
+
+    WCHAR path[MAX_PATH] = {};
+    if (GetModuleFileNameW(hModule, path, MAX_PATH) == 0) return result;
+    std::wstring path_str(path);
+    if (!IsOurProxyModule(path_str)) return result;
+
+    // ReShade probes for these in addon DLLs; ignore when our proxy is loaded as e.g. dxgi.dll.
+    if (!IS_INTRESOURCE(lpProcName)) {
+        const char* name = lpProcName;
+        if (strcmp(name, "ReShadeVersion") == 0 || strcmp(name, "ReShadeRegisterAddon") == 0 ||
+            strcmp(name, "ReShadeUnregisterAddon") == 0 || strcmp(name, "AUTHOR") == 0 ||
+            strcmp(name, "WEBSITE") == 0 || strcmp(name, "ISSUES") == 0) {
+            return result;
+        }
+    }
+
+    std::string path_narrow = WideToNarrow(path_str);
+    if (IS_INTRESOURCE(lpProcName)) {
+        LogError("Proxy DLL missing export: module=%s, ordinal=%u (GetProcAddress returned NULL). Consider adding this "
+                 "export to the proxy.",
+                 path_narrow.c_str(), static_cast<unsigned>(reinterpret_cast<uintptr_t>(lpProcName) & 0xFFFF));
+    } else {
+        LogError("Proxy DLL missing export: module=%s, symbol=%s (GetProcAddress returned NULL). Consider adding this "
+                 "export to the proxy.",
+                 path_narrow.c_str(), lpProcName);
+    }
+    return result;
+}
+
 bool InstallLoadLibraryHooks() {
     // Initialize MinHook before enumerating modules so that OnModuleLoaded -> InstallNGXHooks (etc.)
     // can use CreateAndEnableHook when _nvngx.dll or other modules are already loaded at startup.
@@ -1086,6 +1151,12 @@ bool InstallLoadLibraryHooks() {
             }
         } else {
             LogInfo("LoadPackagedLibrary not available (e.g. Windows 7), skipping hook");
+        }
+
+        // Hook GetProcAddress to log when a caller requests a missing export from one of our proxy DLLs.
+        if (!CreateAndEnableHookFromModule(hKernel32, "GetProcAddress", reinterpret_cast<LPVOID>(GetProcAddress_Detour),
+                                            reinterpret_cast<LPVOID*>(&GetProcAddress_Original), "GetProcAddress")) {
+            LogError("Failed to create and enable GetProcAddress hook");
         }
     }
 

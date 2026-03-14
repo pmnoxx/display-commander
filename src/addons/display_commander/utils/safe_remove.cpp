@@ -1,5 +1,6 @@
 // Source Code <Display Commander>
 #include "safe_remove.hpp"
+#include "logging.hpp"
 #include "version_check.hpp"
 
 // Libraries <standard C++>
@@ -24,8 +25,7 @@ bool IsSafeTempSubdirPath(const std::filesystem::path& dir) {
 
 namespace {
 
-bool IsAllowedSystemTempSubdir(const std::filesystem::path& path,
-                               const wchar_t* subdir_name) {
+bool IsAllowedSystemTempSubdir(const std::filesystem::path& path, const wchar_t* subdir_name) {
     wchar_t temp_path_buf[MAX_PATH];
     if (GetTempPathW(static_cast<DWORD>(std::size(temp_path_buf)), temp_path_buf) == 0) {
         return false;
@@ -56,6 +56,7 @@ bool IsAllowedForRemoveAll(const std::filesystem::path& path) {
 bool SafeRemoveAll(const std::filesystem::path& path, std::error_code& ec) {
     ec.clear();
     if (!IsAllowedForRemoveAll(path)) {
+        LogError("SafeRemoveAll: path not on whitelist, refused: %s", path.string().c_str());
         return false;
     }
     if (!std::filesystem::exists(path, ec)) {

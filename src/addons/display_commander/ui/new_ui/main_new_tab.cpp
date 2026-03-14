@@ -2370,9 +2370,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
     }
 
     g_rendering_ui_section.store("ui:tab:main_new:warnings:multi_swapchain", std::memory_order_release);
-    // Multiple swapchains (ReShade runtimes) warning
+    // Multiple swapchains (ReShade runtimes) warning — skip when RenoDX is loaded (expected multiple runtimes)
     const size_t runtime_count = GetReShadeRuntimeCount();
-    if (runtime_count > 1) {
+    if (runtime_count > 1 && !g_is_renodx_loaded.load(std::memory_order_relaxed)) {
         imgui.Spacing();
         imgui.TextColored(ui::colors::TEXT_WARNING,
                           ICON_FK_WARNING " WARNING: Multiple swapchains detected (%zu ReShade runtimes)",
@@ -2472,9 +2472,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 
         // Display current graphics API with feature level/version
         const reshade::api::device_api api = g_last_reshade_device_api.load();
+        imgui.SameLine();
         if (api != static_cast<reshade::api::device_api>(0)) {
             uint32_t api_version = g_last_api_version.load();
-            imgui.SameLine();
 
             if (api == reshade::api::device_api::d3d9 && s_d3d9e_upgrade_successful.load()) {
                 api_version =
@@ -2499,7 +2499,7 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
 #else
             const char* bitness_label = "32-bit";
 #endif
-            imgui.TextColored(ui::colors::TEXT_LABEL, "| %s: %s", bitness_label, "Unknown");
+            imgui.TextColored(ui::colors::TEXT_LABEL, "| %s", bitness_label);
         }
 
         // Display detected platform APIs (Steam, Epic, GOG, etc.)

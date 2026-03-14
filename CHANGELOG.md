@@ -3,6 +3,16 @@
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
 
+## v0.12.508
+- **Static imports on each OnModuleLoaded** - For every module that triggers OnModuleLoaded (LoadLibrary, LdrLoadDll, or enumeration), the log now prints one line with that module's statically imported DLLs (e.g. `[OnModuleLoaded] d3d11.dll static imports: kernel32.dll, user32.dll, ...`). Uses in-memory PE import directory via utils/pe_static_imports. Details: loadlibrary_hooks.cpp OnModuleLoaded, utils/pe_static_imports.hpp and .cpp.
+
+---
+
+## v0.12.507
+- **Game executable static imports in load log** - When the DLL load function call stack is written to DisplayCommander.log and DebugView (after process attach), the list of statically imported DLLs from the game executable is now appended (e.g. kernel32.dll, d3d11.dll). Read from the main module in memory via PE import directory; no file open or DbgHelp. Helps see which DLLs the game links against at a glance. Details: main_entry.cpp LogGameExeStaticImports, ResolveAndLogDllMainFunctionStack.
+
+---
+
 ## v0.12.506
 - [ui] [compatibility] **Multiple swapchains warning hidden when RenoDX is loaded** - The "WARNING: Multiple swapchains detected (N ReShade runtimes)" message on the Main tab is no longer shown when a RenoDX addon is detected. Multiple runtimes are expected with RenoDX, so the warning was misleading. Details: main_new_tab.cpp uses `g_is_renodx_loaded` to skip the warning.
 

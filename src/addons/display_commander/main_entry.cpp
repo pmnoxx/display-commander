@@ -2664,6 +2664,49 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     }
 }
 
+#ifndef IMAGE_DIRECTORY_ENTRY_IMPORT
+#define IMAGE_DIRECTORY_ENTRY_IMPORT 1
+#endif
+
+// Reads IMAGE_IMPORT_DESCRIPTOR[] from the game executable (main module) in memory and logs each imported DLL name.
+// Uses manual PE parsing only (no DbgHelp). Safe to call when we log the PROCESS_ATTACH stack.
+static void LogGameExeStaticImports(void (*emit_line)(const std::string&, std::ofstream*), std::ofstream* f) {
+    HMODULE const base = GetModuleHandleW(nullptr);
+    if (!base) return;
+    const auto* const dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return;
+    const auto* const nt =
+        reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const BYTE*>(base) + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) return;
+
+    DWORD import_rva = 0;
+    DWORD size_of_image = 0;
+    if (nt->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64) {
+        const auto* const oh = &nt->OptionalHeader;
+        import_rva = oh->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+        size_of_image = oh->SizeOfImage;
+    } else {
+        const auto* const oh = reinterpret_cast<const IMAGE_OPTIONAL_HEADER32*>(&nt->OptionalHeader);
+        import_rva = oh->DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+        size_of_image = oh->SizeOfImage;
+    }
+    if (import_rva == 0 || size_of_image == 0) return;
+
+    emit_line("Game executable static imports (DLLs):", f);
+    const auto* desc =
+        reinterpret_cast<const IMAGE_IMPORT_DESCRIPTOR*>(reinterpret_cast<const BYTE*>(base) + import_rva);
+    constexpr DWORD kMaxImports = 1024;
+    for (DWORD i = 0; i < kMaxImports && desc->Name != 0; ++i, ++desc) {
+        DWORD const name_rva = desc->Name;
+        if (name_rva >= size_of_image) continue;
+        const char* const name = reinterpret_cast<const char*>(reinterpret_cast<const BYTE*>(base) + name_rva);
+        size_t len = 0;
+        while (len < 260 && name[len]) ++len;
+        if (len == 0) continue;
+        emit_line(std::string(name, len), f);
+    }
+}
+
 // Resolves g_dll_main_backtrace to function names via DbgHelp and appends to log + DebugView. Call after init (no
 // loader lock).
 void ResolveAndLogDllMainFunctionStack() {
@@ -2704,6 +2747,7 @@ void ResolveAndLogDllMainFunctionStack() {
                 emit_line(std::string(addr_buf), &f);
             }
         }
+        LogGameExeStaticImports(emit_line, &f);
         return;
     }
 
@@ -2741,6 +2785,7 @@ void ResolveAndLogDllMainFunctionStack() {
         }
         emit_line(line, &f);
     }
+    LogGameExeStaticImports(emit_line, &f);
 }
 
 #if !defined(DISPLAY_COMMANDER_BUILD_EXE)

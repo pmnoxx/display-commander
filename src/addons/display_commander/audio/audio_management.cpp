@@ -517,8 +517,7 @@ bool GetVolumeForCurrentProcess(float* volume_0_100_out) {
 bool AdjustVolumeForCurrentProcess(float percent_change) {
     float current_volume = 0.0f;
     if (!GetVolumeForCurrentProcess(&current_volume)) {
-        // If we can't get current volume, use the stored value
-        current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+        current_volume = s_game_volume_percent.load();
     }
 
     float new_volume = current_volume + percent_change;
@@ -539,8 +538,7 @@ bool AdjustVolumeForCurrentProcess(float percent_change) {
     }
 
     if (SetVolumeForCurrentProcess(new_volume)) {
-        // Update stored value
-        settings::g_mainTabSettings.audio_volume_percent.SetValue(new_volume);
+        s_game_volume_percent.store(new_volume);
 
         // Trigger action notification for overlay display
         ActionNotification notification;

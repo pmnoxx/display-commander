@@ -7,6 +7,7 @@
 #include <windows.h>
 
 std::atomic<float> s_system_volume_percent{100.f};
+std::atomic<float> s_game_volume_percent{100.f};
 
 namespace settings {
 
@@ -78,7 +79,6 @@ MainTabSettings::MainTabSettings()
       backbuffer_count_override("backbuffer_count_override", 0, {"No override", "1", "2", "3", "4"},
                                 "DisplayCommander"),
       force_flip_discard_upgrade("ForceFlipDiscardUpgrade", false, "DisplayCommander"),
-      audio_volume_percent("audio_volume_percent", 100.0f, 0.0f, 100.0f, "DisplayCommander"),
       audio_mute("audio_mute", false, "DisplayCommander"),
       mute_in_background("mute_in_background", false, "DisplayCommander"),
       mute_in_background_if_other_audio("mute_in_background_if_other_audio", false, "DisplayCommander"),
@@ -236,7 +236,6 @@ MainTabSettings::MainTabSettings()
         &limit_real_frames,
         &backbuffer_count_override,
         &force_flip_discard_upgrade,
-        &audio_volume_percent,
         &audio_mute,
         &mute_in_background,
         &mute_in_background_if_other_audio,

@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.484
+- [settings] **Game volume no longer stored in config** - Game volume (audio_volume_percent) is no longer saved or loaded from DisplayCommander.toml. The value is read by querying Windows audio (WASAPI) for the current process session volume. A non-persisted in-memory cache (`s_game_volume_percent`) is updated by continuous monitoring and when volume is changed, so the overlay and UI show the current level without extra COM calls. Details: main_tab_settings (removed audio_volume_percent, added s_game_volume_percent), audio_management.cpp, continuous_monitoring.cpp, main_new_tab.cpp, hotkeys_tab.cpp, input_remapping.cpp.
+
+---
 ## v0.12.483
 - [cleanup] [hooks] **DbgHelp SymLoadModule64 via table-driven loader** - SymLoadModule64 is now loaded through the same table-driven DbgHelp loader as the other symbol APIs (enum, function table, wrapper). PreloadSymbolsForAllModules uses the SymLoadModule64 wrapper instead of ad-hoc GetProcAddress, and UnloadDbgHelp clears the trampoline. Details: dbghelp_private_loader.hpp/cpp.
 

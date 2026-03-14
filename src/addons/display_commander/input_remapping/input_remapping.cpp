@@ -1037,8 +1037,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
         // Increase volume by relative 20% (multiply by 1.2), minimum 1% change
         float current_volume = 0.0f;
         if (!GetVolumeForCurrentProcess(&current_volume)) {
-            // If we can't get current volume, use stored value or default
-            current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+            current_volume = ::s_game_volume_percent.load();
         }
 
         float percent_change = 0.0f;
@@ -1058,7 +1057,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
 
         // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
         if (AdjustVolumeForCurrentProcess(percent_change)) {
-            float new_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+            float new_volume = ::s_game_volume_percent.load();
             LogInfo("InputRemapper::execute_action() - Volume increased from %.1f%% to %.1f%% (change: +%.1f%%)",
                     current_volume, new_volume, percent_change);
         } else {
@@ -1068,8 +1067,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
         // Decrease volume by relative 20% (divide by 1.2), minimum 1% change
         float current_volume = 0.0f;
         if (!GetVolumeForCurrentProcess(&current_volume)) {
-            // If we can't get current volume, use stored value or default
-            current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+            current_volume = ::s_game_volume_percent.load();
         }
 
         if (current_volume <= 0.0f) {
@@ -1088,7 +1086,7 @@ void InputRemapper::execute_action(const std::string& action_name) {
 
         // Use AdjustVolumeForCurrentProcess which handles system volume when game volume is at 100%
         if (AdjustVolumeForCurrentProcess(percent_change)) {
-            float final_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+            float final_volume = ::s_game_volume_percent.load();
             LogInfo("InputRemapper::execute_action() - Volume decreased from %.1f%% to %.1f%% (change: %.1f%%)",
                     current_volume, final_volume, percent_change);
         } else {

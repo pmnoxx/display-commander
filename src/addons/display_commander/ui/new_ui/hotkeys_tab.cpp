@@ -417,7 +417,7 @@ void InitializeHotkeyDefinitions() {
          []() {
              float current_volume = 0.0f;
              if (!GetVolumeForCurrentProcess(&current_volume)) {
-                 current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+                 current_volume = s_game_volume_percent.load();
              }
 
              // Calculate percentage-based step: 20% of current volume, minimum 1%
@@ -442,7 +442,7 @@ void InitializeHotkeyDefinitions() {
          []() {
              float current_volume = 0.0f;
              if (!GetVolumeForCurrentProcess(&current_volume)) {
-                 current_volume = settings::g_mainTabSettings.audio_volume_percent.GetValue();
+                 current_volume = s_game_volume_percent.load();
              }
 
              // Calculate percentage-based step: 20% of current volume, minimum 1%

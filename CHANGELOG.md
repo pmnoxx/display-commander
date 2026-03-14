@@ -4,11 +4,15 @@
 
 ## Unreleased
 
+## v0.12.516
+- [cleanup] **Safe directory removal wrapper** - All recursive directory removal now goes through a whitelist: `utils/safe_remove.hpp` exposes `SafeRemoveAll(path, ec)` and `IsSafeTempSubdirPath(path)`. Only these paths may be removed: `.../tmp/<numeric_pid>` (post-ReShade addon temp), `<GetTempPath()>/dc_reshade_update`, `<GetTempPath()>/dc_reshade_download`, and `<GetDownloadDirectory()>/Debug/_staging_latest_debug`. Direct `std::filesystem::remove_all` calls were replaced in `main_entry.cpp`, `cli_standalone_ui.cpp`, `version_check.cpp`, and `reshade_version_download.cpp`. Reduces risk of deleting wrong directories.
+
 ## v0.12.515
 - [bugfix] **Display_Commander folder wipe safeguard** - Post-ReShade addon temp cleanup could theoretically target the wrong path (e.g. when the Display Commander base path is empty or in edge cases). Added strict guards: (1) skip all global temp create/iterate/remove when the Display Commander base path is empty (avoids using relative path tmp\pid under current working directory). (2) Only treat a path as a safe temp dir when it has the form .../tmp/numeric_pid; refuse to create, iterate, or remove from any other path so the Display_Commander root can never be wiped. Applied in ProcessAttach_LoadLocalAddonDllsAfterReShade and CleanupPostReShadeAddonTempDir. Details: main_entry.cpp IsSafeTempSubdirPath, early return when base_dc.empty(), and try_remove_dir only when path is safe.
 
 ## v0.12.514
-- **WinMM proxy audit** - Audited winmm_proxy against official Microsoft documentation (mmiscapi.h, mmeapi.h). The header (`winmm_proxy.hpp`) is the source of truth and was not changed; the .cpp matches the .hpp. Official docs use MMRESULT (UINT) for MMIO functions; the header uses LRESULT for those—kept as-is. Ensures consistency on both 32-bit and 64-bit. Details: private_docs/winmm_proxy_audit_mistakes.md.
+- **WinMM proxy audit** - Audited winmm_proxy against official Microsoft documentation (mmiscapi.h, mmeapi.h). The header (`winmm_proxy.hpp`) is the source of truth; the .cpp matches the .hpp. Ensures consistency on both 32-bit and 64-bit. Details: private_docs/winmm_proxy_audit_mistakes.md.
+- **WinMM proxy MMIO types (official docs)** - Updated `winmm_proxy.hpp` and `winmm_proxy.cpp` so MMIO function signatures match Microsoft docs (mmiscapi.h): error-returning MMIO APIs now use **MMRESULT** (UINT); **mmioRead**, **mmioSeek**, and **mmioWrite** use **LONG** (bytes/position); **mmioSendMessage** remains **LRESULT**. Added local `MMRESULT` typedef so the header stays independent of mmiscapi.h.
 
 ## v0.12.513
 - [bugfix] **BCryptSetContextFunctionProperty parameter order in bcrypt proxy** - The last two parameters were reversed: the proxy had (..., pbValue, cbValue) but the official API is (..., cbValue, pbValue). Typedef and proxy now match the official signature to avoid misaligned arguments. Details: bcrypt_proxy.hpp PFN_BCryptSetContextFunctionProperty, bcrypt_proxy.cpp BCryptSetContextFunctionProperty.

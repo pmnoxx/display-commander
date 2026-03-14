@@ -1,5 +1,6 @@
 #include "version_check.hpp"
 #include "general_utils.hpp"
+#include "safe_remove.hpp"
 
 #include <ShlObj.h>
 #include <Windows.h>
@@ -820,31 +821,31 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
     std::filesystem::path path64 = staging / name64;
     std::filesystem::path path32 = staging / name32;
     if (!DownloadBinaryFromUrl(url_64, path64)) {
-        std::filesystem::remove_all(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, ec);
         if (out_error) *out_error = "Failed to download 64-bit addon";
         return false;
     }
     if (!DownloadBinaryFromUrl(url_32, path32)) {
-        std::filesystem::remove_all(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, ec);
         if (out_error) *out_error = "Failed to download 32-bit addon";
         return false;
     }
     std::string version_from_dll = GetDLLVersionString(path64.wstring());
     if (version_from_dll.empty() || version_from_dll == "Unknown") {
-        std::filesystem::remove_all(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, ec);
         if (out_error) *out_error = "Could not read version from downloaded addon";
         return false;
     }
     std::string folder_xyz = VersionStringToXyzFolder(version_from_dll);
     if (folder_xyz.empty()) {
-        std::filesystem::remove_all(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, ec);
         if (out_error) *out_error = "Invalid version from addon";
         return false;
     }
     std::filesystem::path target_dir = base / std::filesystem::path(folder_xyz);
     std::filesystem::create_directories(target_dir, ec);
     if (ec) {
-        std::filesystem::remove_all(staging, ec);
+        display_commander::utils::SafeRemoveAll(staging, ec);
         if (out_error) *out_error = "Could not create Debug version folder";
         return false;
     }
@@ -854,7 +855,7 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
     if (ec) {
         std::filesystem::copy(path64, dest64, std::filesystem::copy_options::overwrite_existing, ec);
         if (ec) {
-            std::filesystem::remove_all(staging, ec);
+            display_commander::utils::SafeRemoveAll(staging, ec);
             if (out_error) *out_error = "Could not move 64-bit addon to version folder";
             return false;
         }
@@ -865,13 +866,13 @@ bool DownloadDcLatestDebugToDebugFolder(std::string* out_error) {
         std::filesystem::copy(path32, dest32, std::filesystem::copy_options::overwrite_existing, ec);
         if (ec) {
             std::filesystem::remove(dest64, ec);
-            std::filesystem::remove_all(staging, ec);
+            display_commander::utils::SafeRemoveAll(staging, ec);
             if (out_error) *out_error = "Could not move 32-bit addon to version folder";
             return false;
         }
         std::filesystem::remove(path32, ec);
     }
-    std::filesystem::remove_all(staging, ec);
+    display_commander::utils::SafeRemoveAll(staging, ec);
     return true;
 }
 

@@ -49,6 +49,7 @@
 #include "utils/platform_api_detector.hpp"
 #include "utils/process_window_enumerator.hpp"
 #include "utils/reshade_load_path.hpp"
+#include "utils/safe_remove.hpp"
 #include "utils/steam_achievement_cache.hpp"
 #include "utils/timing.hpp"
 #include "utils/version_check.hpp"
@@ -2040,18 +2041,6 @@ void ProcessAttach_LoadLocalAddonDlls(HMODULE h_module) {
     }
 }
 
-// Returns true only for a path that is .../tmp/<numeric_pid>. Used to avoid ever deleting from Display_Commander root.
-bool IsSafeTempSubdirPath(const std::filesystem::path& dir) {
-    if (dir.empty()) return false;
-    std::filesystem::path parent = dir.parent_path();
-    std::wstring pid_part = dir.filename().wstring();
-    if (pid_part.empty()) return false;
-    for (wchar_t c : pid_part) {
-        if (c < L'0' || c > L'9') return false;
-    }
-    return parent.filename() == L"tmp";
-}
-
 // Post-ReShade addon dir: .dc64r / .dc32r / .dcr. We hard-link into global Display_Commander\tmp\<pid>;
 // when cross-volume (hard link not possible), we create a local tmp\<pid> in the addon dir and copy there
 // so the copy stays on the same volume. LoadLibrary from the chosen path so originals can be updated while running.
@@ -2073,10 +2062,11 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
     wchar_t pid_buf[32];
     swprintf_s(pid_buf, L"%lu", static_cast<unsigned long>(pid));
     std::filesystem::path global_temp_dir = base_dc / L"tmp" / pid_buf;
-    if (!IsSafeTempSubdirPath(global_temp_dir)) {
+    if (!display_commander::utils::IsSafeTempSubdirPath(global_temp_dir)) {
         return;  // Never iterate/delete from a path that could be the Display_Commander root
     }
     std::error_code ec;
+    display_commander::utils::SafeRemoveAll(global_temp_dir, ec);
     if (!std::filesystem::exists(global_temp_dir, ec)) {
         std::filesystem::create_directories(global_temp_dir, ec);
     }
@@ -2087,10 +2077,6 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
         OutputDebugStringA(msg);
         return;
     }
-    for (const auto& entry : std::filesystem::directory_iterator(global_temp_dir, ec)) {
-        if (!ec) std::filesystem::remove(entry.path(), ec);
-    }
-    ec.clear();
     std::filesystem::path local_temp_dir;  // created only when cross-volume forces a copy
     for (const auto& entry : std::filesystem::directory_iterator(
              addon_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
@@ -2111,11 +2097,14 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
             // Cross-volume: use local tmp in addon dir (same volume), create only when needed
             if (local_temp_dir.empty()) {
                 local_temp_dir = addon_dir / L"tmp" / pid_buf;
-                if (!IsSafeTempSubdirPath(local_temp_dir)) {
+                if (!display_commander::utils::IsSafeTempSubdirPath(local_temp_dir)) {
                     local_temp_dir.clear();
                     continue;
                 }
-                std::filesystem::create_directories(local_temp_dir, ec);
+                display_commander::utils::SafeRemoveAll(local_temp_dir, ec);
+                if (!std::filesystem::exists(local_temp_dir, ec)) {
+                    std::filesystem::create_directories(local_temp_dir, ec);
+                }
                 if (ec) {
                     char msg[384];
                     snprintf(msg, sizeof(msg),
@@ -2125,10 +2114,6 @@ void ProcessAttach_LoadLocalAddonDllsAfterReShade(HMODULE h_module) {
                     local_temp_dir.clear();
                     continue;
                 }
-                for (const auto& e : std::filesystem::directory_iterator(local_temp_dir, ec)) {
-                    if (!ec) std::filesystem::remove(e.path(), ec);
-                }
-                ec.clear();
             }
             dest_path = local_temp_dir / entry.path().filename();
             if (CopyFileW(path_w.c_str(), dest_path.c_str(), FALSE)) {
@@ -2157,24 +2142,15 @@ void CleanupPostReShadeAddonTempDir() {
     const DWORD pid = GetCurrentProcessId();
     const std::wstring pid_str = std::to_wstring(pid);
     std::error_code ec;
-    auto try_remove_dir = [&ec](const std::filesystem::path& dir) {
-        if (!IsSafeTempSubdirPath(dir)) return;  // Never remove from Display_Commander root or arbitrary paths
-        if (!std::filesystem::exists(dir, ec)) return;
-        for (const auto& entry : std::filesystem::directory_iterator(dir, ec)) {
-            if (ec) break;
-            std::filesystem::remove(entry.path(), ec);
-        }
-        std::filesystem::remove(dir, ec);
-    };
     std::filesystem::path base_dc = display_commander::utils::GetLocalDcDirectory();
     if (!base_dc.empty()) {
-        try_remove_dir(base_dc / L"tmp" / pid_str);
+        display_commander::utils::SafeRemoveAll(base_dc / L"tmp" / pid_str, ec);
     }
     if (g_hmodule != nullptr) {
         WCHAR module_path[MAX_PATH];
         if (GetModuleFileNameW(g_hmodule, module_path, MAX_PATH) > 0) {
             std::filesystem::path module_tmp = std::filesystem::path(module_path).parent_path() / L"tmp" / pid_str;
-            try_remove_dir(module_tmp);
+            display_commander::utils::SafeRemoveAll(module_tmp, ec);
         }
     }
 }

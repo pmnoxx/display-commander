@@ -204,7 +204,7 @@ int ProcessReflexMarkerFpsLimiter(FpsLimiterCallSite site, int marker_type, uint
 
             // wait until the previous frame is ready to be shown to display based on
             // reflex_fps_limiter_max_queued_frames setting
-            if (marker_type == marker_types.simulation_start && reflex_fps_limiter_max_queued_frames > 0) {
+            if (reflex_fps_limiter_max_queued_frames > 0) {
                 const size_t prevSlot = static_cast<size_t>(
                     (frame_id + kFrameDataBufferSize - reflex_fps_limiter_max_queued_frames) % kFrameDataBufferSize);
                 const size_t slot = static_cast<size_t>(frame_id % kFrameDataBufferSize);

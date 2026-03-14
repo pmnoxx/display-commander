@@ -6,6 +6,18 @@
 ## Unreleased
 
 ---
+## v0.12.487
+- [bugfix] [hooks] **Frame limiter: revert SIMULATION_START guard** - Removed the `marker_type == marker_types.simulation_start` check from the max-queued-frames wait block so the wait runs for the appropriate marker type. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
+
+---
+## v0.12.486
+- [bugfix] **FPS limiter pre-sleep 100 ms failsafe** - The On-Present FPS limiter now caps the pre-sleep wait in HandleFpsLimiterPre at 100 ms. If the requested wait would exceed 100 ms, the wait is limited to 100 ms and a warning is logged ("Pre-sleep capped at 100 ms (requested wait was longer); timing may be off."). This avoids excessively long blocks that could cause freezes or unresponsive behavior. Details: swapchain_events.cpp HandleFpsLimiterPre.
+
+---
+## v0.12.485
+- [bugfix] [hooks] **Frame limiter: add missing SIMULATION_START guard** - Frame limiter logic that depends on SIMULATION_START now correctly checks `marker_type == marker_types.simulation_start` before running, avoiding incorrect behavior when other marker types are processed. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
+
+---
 ## v0.12.484
 - [settings] **Game volume no longer stored in config** - Game volume (audio_volume_percent) is no longer saved or loaded from DisplayCommander.toml. The value is read by querying Windows audio (WASAPI) for the current process session volume. A non-persisted in-memory cache (`s_game_volume_percent`) is updated by continuous monitoring and when volume is changed, so the overlay and UI show the current level without extra COM calls. Details: main_tab_settings (removed audio_volume_percent, added s_game_volume_percent), audio_management.cpp, continuous_monitoring.cpp, main_new_tab.cpp, hotkeys_tab.cpp, input_remapping.cpp.
 

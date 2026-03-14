@@ -5,6 +5,10 @@
 
 ## Unreleased
 
+---
+## v0.12.498
+- [hooks] **GetProcAddress hook for proxy missing exports** - When something in the process calls GetProcAddress on one of Display Commander's proxy DLLs (e.g. bcrypt.dll, hid.dll, dxgi.dll in the game folder) and the requested export is not found, an error is now logged with the module path and symbol name. Helps identify missing exports so they can be added to the proxy. Only applies to proxy DLLs we ship (not system copies in System32/SysWOW64). Details: loadlibrary_hooks.cpp GetProcAddress_Detour, InstallLoadLibraryHooks.
+
 - [cleanup] **copy_addon_to_dc_proxies scripts** - Pure CMD scripts that copy the Display Commander addon to the 11 proxy DLL names DC supports (d3d9, d3d11, d3d12, ddraw, dinput8, opengl32, dxgi, version, winmm, dbghelp, vulkan-1). Use when deploying the addon as proxy DLLs in a game folder. Separate 32-bit and 64-bit scripts; optional target folder as first argument. Details: scripts/copy_addon_to_dc_proxies/.
 
 - [cleanup] **try_all_proxies scripts reorganized**

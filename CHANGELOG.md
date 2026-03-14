@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.490
+- [cleanup] **README proxy list corrected** - The "Proxy loading" bullet in README.md now matches the proxy DLL names supported at runtime: dxgi, d3d11, d3d12, dinput8, version, opengl32, dbghelp, vulkan-1. Removed d3d9, ddraw, winmm (not in proxy_dlls); added dinput8, version, vulkan-1.
+
+---
 ## v0.12.489
 - [hooks] **slUpgradeInterface detour bypass** - The slUpgradeInterface detour now returns the original result immediately (`disabled = true`), skipping DXGI proxy factory/swapchain vtable hooking, event counter, and config-driven prevent flag. The detour remains installed; re-enabling the logic is a single flag change. Details: streamline_hooks.cpp slUpgradeInterface_Detour.
 - [cleanup] [hooks] **Vulkan loader hooks table-driven** - Vulkan loader hook install/rollback and names now use a single table (`kVulkanLoaderHooks`); `GetVulkanLoaderHookName` indexes the table; install success log is built from the table; range-for used for rollback and install; dead code and unused constants removed from `vkSetLatencyMarkerNV_Detour`; hook count uses `VulkanLoaderHook::Count` directly. Details: vulkan_loader_hooks.cpp/hpp.

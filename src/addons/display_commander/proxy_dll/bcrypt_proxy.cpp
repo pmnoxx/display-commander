@@ -1,6 +1,6 @@
 /*
- * bcrypt.dll proxy. Signatures follow the official Windows API; do not rely on Wine bcrypt.spec
- * (it is wrong for some functions, e.g. BCryptResolveProviders, BCryptExportKey).
+ * bcrypt.dll proxy. Signatures follow the official Windows API only.
+ * Wine bcrypt.spec was removed (wrong for several functions). See docs/bcrypt_proxy_signature_verification_plan.md.
  *
  * Official API: https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/
  * Header: bcrypt.h (we must not include it here so our extern "C" proxy symbols do not conflict

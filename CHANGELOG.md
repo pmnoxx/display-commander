@@ -10,6 +10,15 @@
 - [cleanup] **try_all_proxies scripts reorganized**
 
 ---
+## v0.12.497
+- [compatibility] **bcrypt.dll proxy** - Display Commander proxy DLL can now be used as bcrypt.dll: all BCrypt* and Get*Interface exports from Wine's bcrypt.spec are forwarded to the system bcrypt.dll; stubs return NTSTATUS 0. Enables games or tools that load bcrypt.dll (e.g. for CNG hashing or DRM) to work when using DC as a proxy. BCryptFreeBuffer returns void per official API. copy_addon_to_dc_proxies scripts now include bcrypt.dll (13 proxy names). Details: proxy_dll/bcrypt_proxy.cpp, proxy_dll/exports.def (bcrypt block), scripts/specs/bcrypt.spec, scripts/gen_proxy_from_spec.py (bcrypt return types), README.md, scripts/copy_addon_to_dc_proxies/.
+- [cleanup] **bcrypt proxy vs official API** - Added docs/uptodate/bcrypt_proxy_official_comparison.md comparing every bcrypt proxy export to Microsoft bcrypt.h documentation. All BCrypt* return types and parameter types match (NTSTATUS = LONG, BCryptFreeBuffer = void, handles = LPVOID); Get*Interface are undocumented stubs returning 0. No proxy code changes required.
+
+---
+## v0.12.496
+- [cleanup] **hid.dll proxy CALL_GUARD and copy_addon hid** - All HID proxy APIs now use CALL_GUARD for crash/exit reporting. The proxy generator (gen_proxy_from_spec.py) emits CALL_GUARD and the detour_call_tracker/timing includes for all generated proxies. copy_addon_to_dc_proxies scripts now include hid.dll (12 proxy names). Details: proxy_dll/hid_proxy.cpp, scripts/gen_proxy_from_spec.py, scripts/copy_addon_to_dc_proxies/.
+
+---
 ## v0.12.495
 - [bugfix] [compatibility] **hid.dll proxy aligned with official API** - HidD_* functions that take a device handle now use HANDLE (pointer-sized) for the first parameter instead of LONG, fixing 64-bit builds where the handle was truncated. All HidP_* functions now return LONG (NTSTATUS) as in the official API instead of BOOL. Added docs/uptodate/hid_proxy_official_comparison.md comparing each export to Microsoft documentation. Details: proxy_dll/hid_proxy.cpp.
 

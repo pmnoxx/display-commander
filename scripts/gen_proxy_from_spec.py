@@ -9,6 +9,7 @@ Takes DLL name and path to .spec file. Outputs xxx_proxy.cpp and xxx_exports.def
   python scripts/gen_proxy_from_spec.py dinput8 scripts/specs/dinput8.spec
   python scripts/gen_proxy_from_spec.py dbghelp scripts/specs/dbghelp.spec
   python scripts/gen_proxy_from_spec.py hid scripts/specs/hid.spec
+  python scripts/gen_proxy_from_spec.py bcrypt scripts/specs/bcrypt.spec
   python scripts/gen_proxy_from_spec.py vulkan-1 scripts/specs/vulkan-1.spec
 
 Wine .spec format:
@@ -156,6 +157,11 @@ def default_return_type(name, dll_name):
     if dll_lower == "hid":
         # HidD_* and HidP_* return BOOLEAN (BOOL) on Windows
         return "BOOL"
+    if dll_lower == "bcrypt":
+        # BCrypt* return NTSTATUS (LONG); BCryptFreeBuffer returns void
+        if name == "BCryptFreeBuffer":
+            return "void"
+        return "LONG"
     return "LONG"
 
 

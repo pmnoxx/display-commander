@@ -151,7 +151,7 @@ Goal: keep addon **root** for cross-cutting pieces only; move feature-specific m
 
 ## addons/display_commander/proxy_dll
 
-- **dxgi_proxy.cpp**, **dxgi_proxy_init.hpp**, **d3d11_proxy.cpp**, **d3d12_proxy.cpp**, **d3d9_proxy.cpp**, **d3d9_proxy_init.hpp**, **ddraw_proxy.cpp**, **ddraw_proxy_init.hpp**, **opengl32_proxy.cpp**, **opengl32_proxy_init.hpp**, **winmm_proxy.cpp**, **winmm_proxy_init.hpp**, **version_proxy.cpp**, **reshade_loader.cpp**, **.hpp**, **proxy_detection.hpp**
+- **dxgi_proxy.cpp**, **dxgi_proxy_init.hpp**, **d3d11_proxy.cpp**, **d3d12_proxy.cpp**, **d3d9_proxy.cpp**, **d3d9_proxy_init.hpp**, **ddraw_proxy.cpp**, **ddraw_proxy_init.hpp**, **opengl32_proxy.cpp**, **opengl32_proxy_init.hpp**, **winmm_proxy.cpp**, **winmm_proxy_init.hpp**, **version_proxy.cpp**, **dbghelp_proxy.cpp**, **hid_proxy.cpp**, **bcrypt_proxy.cpp**, **reshade_loader.cpp**, **.hpp**, **proxy_detection.hpp**
 
 ## addons/display_commander/settings
 

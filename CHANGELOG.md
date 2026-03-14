@@ -7,7 +7,7 @@
 
 ---
 ## v0.12.482
-- [ui] **Optional visibility of HDR10 / scRGB color fix in Main tab** - The "HDR10 / scRGB color fix" checkbox on the Main tab can be hidden to reduce clutter when the fix is already enabled; if hidden, the checkbox still appears when the fix is off so you can turn it on. Details: globals.cpp/hpp (`g_show_auto_colorspace_fix_in_main_tab`), main_new_tab.cpp.
+- [ui] **HDR10 / scRGB color fix checkbox only when applicable** - The "HDR10 / scRGB color fix" checkbox on the Main tab is shown only when it can be applied to the current swapchain (e.g. DXGI), so the UI stays relevant to the active display/game state. Details: globals.cpp/hpp (`g_show_auto_colorspace_fix_in_main_tab`), main_new_tab.cpp.
 
 ---
 ## v0.12.481

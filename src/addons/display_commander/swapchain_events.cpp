@@ -5,20 +5,20 @@
 #include "display/hdr_control.hpp"
 #include "globals.hpp"
 #include "hdr_upgrade/hdr_upgrade.hpp"
-#include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/d3d11/d3d11_device_hooks.hpp"
 #include "hooks/d3d9/d3d9_device_vtable_logging.hpp"
 #include "hooks/d3d9/d3d9_present_hooks.hpp"
+#include "hooks/dxgi/dxgi_factory_wrapper.hpp"
 #include "hooks/dxgi/dxgi_gpu_completion.hpp"
 #include "hooks/dxgi/dxgi_present_hooks.hpp"
-#include "hooks/dxgi/dxgi_factory_wrapper.hpp"
 #include "hooks/input/hid_suppression_hooks.hpp"
+#include "hooks/input/xinput_hooks.hpp"
 #include "hooks/nvidia/ngx_hooks.hpp"
 #include "hooks/nvidia/streamline_hooks.hpp"
 #include "hooks/system/timeslowdown_hooks.hpp"
+#include "hooks/windows_hooks/api_hooks.hpp"
 #include "hooks/windows_hooks/window_proc_hooks.hpp"
 #include "hooks/windows_hooks/windows_message_hooks.hpp"
-#include "hooks/input/xinput_hooks.hpp"
 #include "input_remapping/input_remapping.hpp"
 #include "latency/gpu_completion_monitoring.hpp"
 #include "latency/reflex_provider.hpp"
@@ -1656,6 +1656,8 @@ static void SetSwapChainColorSpace(reshade::api::swapchain* swapchain, DXGI_COLO
                  utils::GetDXGIColorSpaceString(color_space), static_cast<int>(color_space), static_cast<unsigned>(hr));
         return;
     }
+    g_show_auto_colorspace_fix_in_main_tab.store(true);
+
     // Log only when values change to avoid repeated identical log lines.
     static std::atomic<int> s_last_color_space{-1};
     static std::atomic<int> s_last_reshade_cs{-1};

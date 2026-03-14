@@ -3,6 +3,7 @@
 #include <psapi.h>
 #include <tlhelp32.h>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <filesystem>
@@ -22,24 +23,25 @@
 #include "../utils/logging.hpp"
 #include "../utils/platform_api_detector.hpp"
 #include "../utils/timing.hpp"
-#include "windows_hooks/api_hooks.hpp"
 #include "d3d9/d3d9_hooks.hpp"
 #include "dbghelp/dbghelp_original_hooks.hpp"
 #include "ddraw/ddraw_present_hooks.hpp"
+#include "hook_suppression_manager.hpp"
 #include "input/dinput_hooks.hpp"
 #include "input/game_input_hooks.hpp"
 #include "input/hid_hooks_install.hpp"
-#include "hook_suppression_manager.hpp"
+#include "input/windows_gaming_input_hooks.hpp"
+#include "input/xinput_hooks.hpp"
 #include "nvidia/ngx_hooks.hpp"
 #include "nvidia/nvapi_hooks.hpp"
-#include "opengl/opengl_hooks.hpp"
 #include "nvidia/pclstats_etw_hooks.hpp"
 #include "nvidia/streamline_hooks.hpp"
+#include "opengl/opengl_hooks.hpp"
 #include "utils/srwlock_wrapper.hpp"
 #include "vulkan/nvlowlatencyvk_hooks.hpp"
 #include "vulkan/vulkan_loader_hooks.hpp"
-#include "input/windows_gaming_input_hooks.hpp"
-#include "input/xinput_hooks.hpp"
+#include "windows_hooks/api_hooks.hpp"
+
 
 // Declare K32EnumProcessModules (kernel32 variant, safe from DllMain)
 extern "C" BOOL WINAPI K32EnumProcessModules(HANDLE hProcess, HMODULE* lphModule, DWORD cb, LPDWORD lpcbNeeded);
@@ -998,7 +1000,7 @@ static GetProcAddress_pfn GetProcAddress_Original = nullptr;
 // Base names (lowercase) of DLLs we ship as proxies. If GetProcAddress fails for such a module, we log.
 static const std::wstring* GetProxyDllNames() {
     static const std::wstring names[] = {
-        L"bcrypt.dll", L"hid.dll",      L"dxgi.dll",    L"d3d11.dll",  L"d3d12.dll",
+        L"bcrypt.dll",  L"hid.dll",     L"dxgi.dll",     L"d3d11.dll",   L"d3d12.dll",
         L"dinput8.dll", L"version.dll", L"opengl32.dll", L"dbghelp.dll", L"vulkan-1.dll",
     };
     return names;
@@ -1008,12 +1010,35 @@ static constexpr size_t kProxyDllNamesCount = 10;
 // Proc names we have already logged for GetProcAddress(our proxy, result found). One log per name.
 static std::set<std::string> g_proxy_getproc_logged_names;
 
+// When .GET_PROC_ADDRESS exists in process exe dir: log every GetProcAddress that returns non-null, once per (module,
+// symbol).
+enum class LogAllGetProcState : int {
+    Unchecked = -1,  // not yet checked
+    Checking = -2,   // one thread is doing the file check (others wait)
+    Disabled = 0,
+    Enabled = 1,
+};
+static std::atomic<LogAllGetProcState> s_log_all_getproc{LogAllGetProcState::Unchecked};
+static std::set<std::string> g_getproc_all_logged_keys;
+
+// Returns true if .GET_PROC_ADDRESS exists in the process exe directory. Call once, cache result in s_log_all_getproc.
+// Optionally returns the exe dir (narrow) for logging; pass nullptr to skip.
+static bool CheckGetProcAddressFlagFileExists(std::string* out_exe_dir_narrow = nullptr) {
+    WCHAR exe_path[MAX_PATH] = {};
+    if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) return false;
+    std::filesystem::path exe_dir = std::filesystem::path(exe_path).parent_path();
+    if (out_exe_dir_narrow) *out_exe_dir_narrow = WideToNarrow(exe_dir.wstring());
+    std::filesystem::path flag_path = exe_dir / ".GET_PROC_ADDRESS";
+    std::error_code ec;
+    return std::filesystem::exists(flag_path, ec) && !ec;
+}
+
 static bool IsOurProxyModule(const std::wstring& module_path) {
     std::wstring path_lower = module_path;
     std::transform(path_lower.begin(), path_lower.end(), path_lower.begin(), ::towlower);
     // Don't treat system copies as our proxy (e.g. C:\Windows\System32\bcrypt.dll).
-    if (path_lower.find(L"\\system32\\") != std::wstring::npos ||
-        path_lower.find(L"\\syswow64\\") != std::wstring::npos) {
+    if (path_lower.find(L"\\system32\\") != std::wstring::npos
+        || path_lower.find(L"\\syswow64\\") != std::wstring::npos) {
         return false;
     }
     std::filesystem::path p(module_path);
@@ -1049,6 +1074,55 @@ FARPROC WINAPI GetProcAddress_Detour(HMODULE hModule, LPCSTR lpProcName) {
                 }
             }
         }
+        // If .GET_PROC_ADDRESS exists in exe dir (checked once), log every successful GetProcAddress for any module,
+        // once per (module, symbol).
+        LogAllGetProcState state = s_log_all_getproc.load(std::memory_order_acquire);
+        if (state == LogAllGetProcState::Unchecked) {
+            LogAllGetProcState expected = LogAllGetProcState::Unchecked;
+            if (s_log_all_getproc.compare_exchange_strong(expected, LogAllGetProcState::Checking,
+                                                          std::memory_order_acq_rel)) {
+                std::string exe_dir_narrow;
+                bool on = CheckGetProcAddressFlagFileExists(&exe_dir_narrow);
+                s_log_all_getproc.store(on ? LogAllGetProcState::Enabled : LogAllGetProcState::Disabled,
+                                        std::memory_order_release);
+                state = on ? LogAllGetProcState::Enabled : LogAllGetProcState::Disabled;
+                if (on) {
+                    LogInfo("GetProcAddress logging (.GET_PROC_ADDRESS): enabled (exe dir: %s)",
+                            exe_dir_narrow.c_str());
+                } else {
+                    LogInfo("GetProcAddress logging (.GET_PROC_ADDRESS): disabled - file not found (exe dir: %s)",
+                            exe_dir_narrow.c_str());
+                }
+            } else {
+                while ((state = s_log_all_getproc.load(std::memory_order_acquire)) == LogAllGetProcState::Checking) {
+                    // Another thread is doing the check; wait briefly.
+                }
+            }
+        }
+        if (state == LogAllGetProcState::Enabled) {
+            WCHAR mod_path[MAX_PATH] = {};
+            if (GetModuleFileNameW(hModule, mod_path, MAX_PATH) != 0) {
+                std::string path_narrow = WideToNarrow(mod_path);
+                std::string symbol_str =
+                    IS_INTRESOURCE(lpProcName)
+                        ? ("ordinal " + std::to_string(reinterpret_cast<uintptr_t>(lpProcName) & 0xFFFF))
+                        : std::string(lpProcName);
+                HMODULE caller_mod = GetCallingDLL();
+                std::string caller_narrow;
+                if (caller_mod != nullptr) {
+                    WCHAR caller_path[MAX_PATH] = {};
+                    if (GetModuleFileNameW(caller_mod, caller_path, MAX_PATH) != 0)
+                        caller_narrow = WideToNarrow(caller_path);
+                }
+                if (caller_narrow.empty()) caller_narrow = "(unknown)";
+                std::string key = path_narrow + "\t" + symbol_str + "\t" + caller_narrow;
+                utils::SRWLockExclusive lock(utils::g_getproc_all_logged_srwlock);
+                if (g_getproc_all_logged_keys.insert(key).second) {
+                    LogInfo("GetProcAddress: %s -> %s (caller: %s)", path_narrow.c_str(), symbol_str.c_str(),
+                            caller_narrow.c_str());
+                }
+            }
+        }
     }
     if (result != nullptr || lpProcName == nullptr || hModule == nullptr) return result;
 
@@ -1060,22 +1134,24 @@ FARPROC WINAPI GetProcAddress_Detour(HMODULE hModule, LPCSTR lpProcName) {
     // ReShade probes for these in addon DLLs; ignore when our proxy is loaded as e.g. dxgi.dll.
     if (!IS_INTRESOURCE(lpProcName)) {
         const char* name = lpProcName;
-        if (strcmp(name, "ReShadeVersion") == 0 || strcmp(name, "ReShadeRegisterAddon") == 0 ||
-            strcmp(name, "ReShadeUnregisterAddon") == 0 || strcmp(name, "AUTHOR") == 0 ||
-            strcmp(name, "WEBSITE") == 0 || strcmp(name, "ISSUES") == 0) {
+        if (strcmp(name, "ReShadeVersion") == 0 || strcmp(name, "ReShadeRegisterAddon") == 0
+            || strcmp(name, "ReShadeUnregisterAddon") == 0 || strcmp(name, "AUTHOR") == 0
+            || strcmp(name, "WEBSITE") == 0 || strcmp(name, "ISSUES") == 0) {
             return result;
         }
     }
 
     std::string path_narrow = WideToNarrow(path_str);
     if (IS_INTRESOURCE(lpProcName)) {
-        LogError("Proxy DLL missing export: module=%s, ordinal=%u (GetProcAddress returned NULL). Consider adding this "
-                 "export to the proxy.",
-                 path_narrow.c_str(), static_cast<unsigned>(reinterpret_cast<uintptr_t>(lpProcName) & 0xFFFF));
+        LogError(
+            "Proxy DLL missing export: module=%s, ordinal=%u (GetProcAddress returned NULL). Consider adding this "
+            "export to the proxy.",
+            path_narrow.c_str(), static_cast<unsigned>(reinterpret_cast<uintptr_t>(lpProcName) & 0xFFFF));
     } else {
-        LogError("Proxy DLL missing export: module=%s, symbol=%s (GetProcAddress returned NULL). Consider adding this "
-                 "export to the proxy.",
-                 path_narrow.c_str(), lpProcName);
+        LogError(
+            "Proxy DLL missing export: module=%s, symbol=%s (GetProcAddress returned NULL). Consider adding this "
+            "export to the proxy.",
+            path_narrow.c_str(), lpProcName);
     }
     return result;
 }
@@ -1179,7 +1255,7 @@ bool InstallLoadLibraryHooks() {
 
         // Hook GetProcAddress to log when a caller requests a missing export from one of our proxy DLLs.
         if (!CreateAndEnableHookFromModule(hKernel32, "GetProcAddress", reinterpret_cast<LPVOID>(GetProcAddress_Detour),
-                                            reinterpret_cast<LPVOID*>(&GetProcAddress_Original), "GetProcAddress")) {
+                                           reinterpret_cast<LPVOID*>(&GetProcAddress_Original), "GetProcAddress")) {
             LogError("Failed to create and enable GetProcAddress hook");
         }
     }
@@ -1812,7 +1888,8 @@ void OnModuleLoaded(const std::wstring& moduleName, HMODULE hModule) {
         if (InstallDbgHelpOriginalHooks(hModule)) {
             LogInfo("[OnModuleLoaded] DbgHelp original hooks installed successfully");
         } else {
-            LogInfo("[OnModuleLoaded] DbgHelp original hooks not installed (e.g. already installed or symbol not found)");
+            LogInfo(
+                "[OnModuleLoaded] DbgHelp original hooks not installed (e.g. already installed or symbol not found)");
         }
     }
     // advapi32.dll – PCLStats ETW (EventRegister + EventWriteTransfer) for Reflex/PCLStats event counting

@@ -29,8 +29,9 @@ extern SRWLOCK g_dinput_device_hooks_mutex;
 extern SRWLOCK g_wndproc_map_lock;
 extern SRWLOCK g_hdr_upgrade_back_buffers_lock;
 extern SRWLOCK g_proxy_getproc_logged_srwlock;  // GetProcAddress detour: set of logged proc names (our proxy, found)
+extern SRWLOCK g_getproc_all_logged_srwlock;    // GetProcAddress detour: set of logged (module,symbol) when .GET_PROC_ADDRESS exists
 
-// Logs status of all 19 locks (17 registry + logger queue_lock + swapchain_tracking)
+// Logs status of all 20 locks (18 registry + logger queue_lock + swapchain_tracking)
 // to the addon log. HELD = lock is in use; free = not held. Call from stuck-detection.
 void LogAllSrwlockStatus();
 

@@ -567,6 +567,7 @@ int slUpgradeInterface_Detour(void** baseInterface) {
     CALL_GUARD(utils::get_now_ns());
     const bool disabled = true;
     if (disabled) {
+        // NOTE: Breaks UE4SS and unreal mods
         return slUpgradeInterface_Original(baseInterface);
     }
     // Increment counter

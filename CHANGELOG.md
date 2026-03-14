@@ -10,6 +10,10 @@
 - [cleanup] **try_all_proxies scripts reorganized**
 
 ---
+## v0.12.495
+- [bugfix] [compatibility] **hid.dll proxy aligned with official API** - HidD_* functions that take a device handle now use HANDLE (pointer-sized) for the first parameter instead of LONG, fixing 64-bit builds where the handle was truncated. All HidP_* functions now return LONG (NTSTATUS) as in the official API instead of BOOL. Added docs/uptodate/hid_proxy_official_comparison.md comparing each export to Microsoft documentation. Details: proxy_dll/hid_proxy.cpp.
+
+---
 ## v0.12.494
 - [compatibility] **hid.dll proxy** - Display Commander proxy DLL can now be used as hid.dll: all HidD_* and HidP_* exports from Wine's hid.spec are forwarded to the system hid.dll. Generated from scripts/gen_proxy_from_spec.py and scripts/specs/hid.spec; stubs return FALSE. Enables games or tools that load hid.dll to work when using DC as a proxy. Details: proxy_dll/hid_proxy.cpp, proxy_dll/exports.def (hid block), gen_proxy_from_spec.py (hid return type BOOL).
 

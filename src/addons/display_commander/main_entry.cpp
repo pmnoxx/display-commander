@@ -2563,7 +2563,7 @@ static bool DllDetectorCopyToLoadedIfEnabled(HMODULE h_module) {
 // No-throw; safe to call from DllMain.
 static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
     wchar_t exe_path_buf[MAX_PATH] = {};
-    if (GetModuleFileNameW(nullptr, exe_path_buf, MAX_PATH) == 0) return;
+    if (GetModuleFileNameW(h_module, exe_path_buf, MAX_PATH) == 0) return;
     std::filesystem::path exe_dir = std::filesystem::path(exe_path_buf).parent_path();
     std::filesystem::path log_path = exe_dir / "DisplayCommander.log";
     std::error_code ec;
@@ -2578,6 +2578,11 @@ static void EnsureDisplayCommanderLogWithModulePath(HMODULE h_module) {
                                 static_cast<int>(sizeof(module_path_narrow)), nullptr, nullptr);
             f << "DisplayCommander module path: " << module_path_narrow << "\n";
             f.flush();
+            // Also visible in DebugView
+            char dbg_buf[MAX_PATH + 64];
+            (void)snprintf(dbg_buf, sizeof(dbg_buf), "[DisplayCommander] DisplayCommander module path: %s\n",
+                           module_path_narrow);
+            OutputDebugStringA(dbg_buf);
         }
     } catch (...) {
         // avoid crashing DllMain

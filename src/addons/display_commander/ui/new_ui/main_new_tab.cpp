@@ -2697,6 +2697,10 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                 imgui.SetTooltipEx(
                     "Runs DisplayCommander_PerceptualBoost.fx. Use 'Swapchain HDR Upgrade' for SDR->HDR upgrade.");
             }
+            // HDR10 / scRGB color fix is independent of "Load DC's shaders" (DXGI swapchain/ReShade color space only)
+            if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+                imgui.EndDisabled();
+            }
             // HDR10 / scRGB color fix (DXGI only): 10-bit HDR10 or 16-bit scRGB back buffer
             {
                 const reshade::api::device_api api = g_last_reshade_device_api.load();
@@ -2714,6 +2718,9 @@ void DrawMainNewTab(display_commander::ui::GraphicsApi api, display_commander::u
                             "No change for 8-bit (SDR). Improves compatibility with RenoDX HDR10 mode. DirectX 11/12.");
                     }
                 }
+            }
+            if (!settings::g_mainTabSettings.brightness_autohdr_section_enabled.GetValue()) {
+                imgui.BeginDisabled();
             }
             if (settings::g_mainTabSettings.auto_hdr.GetValue()) {
                 // Warning when 8-bit backbuffer: recommend RenoDX for SDR->HDR upgrade

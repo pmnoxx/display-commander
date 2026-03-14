@@ -1213,8 +1213,13 @@ void HandleFpsLimiterPost(bool from_present_detour, bool from_wrapper = false) {
     }
     if (s_fps_limiter_mode.load() == FpsLimiterMode::kOnPresentSync) {
         CALL_GUARD(now);
-        auto sleep_until_ns = g_post_sleep_ns.load();
+        LONGLONG sleep_until_ns = g_post_sleep_ns.load();
         if (sleep_until_ns > now) {
+            constexpr LONGLONG k_fps_limiter_max_wait_ns = 100 * utils::NS_TO_MS;
+            if (sleep_until_ns - now > k_fps_limiter_max_wait_ns) {
+                sleep_until_ns = now + k_fps_limiter_max_wait_ns;
+                LogWarn("[FPS limiter] Post-sleep capped at 100 ms (requested wait was longer); timing may be off.");
+            }
             utils::wait_until_ns(sleep_until_ns, g_timer_handle_post);
             g_onpresent_sync_post_sleep_ns.store(sleep_until_ns - now);
         } else {

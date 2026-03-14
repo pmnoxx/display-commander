@@ -6,6 +6,10 @@
 ## Unreleased
 
 ---
+## v0.12.488
+- [bugfix] **FPS limiter post-sleep 100 ms failsafe** - The On-Present FPS limiter now caps the post-sleep wait in HandleFpsLimiterPost at 100 ms (same as pre-sleep). If the requested wait would exceed 100 ms, the wait is limited to 100 ms and a warning is logged ("Post-sleep capped at 100 ms (requested wait was longer); timing may be off."). Avoids long freezes after present. Details: swapchain_events.cpp HandleFpsLimiterPost.
+
+---
 ## v0.12.487
 - [bugfix] [hooks] **Frame limiter: revert SIMULATION_START guard** - Removed the `marker_type == marker_types.simulation_start` check from the max-queued-frames wait block so the wait runs for the appropriate marker type. Details: nvapi_hooks.cpp ProcessReflexMarkerFpsLimiter.
 

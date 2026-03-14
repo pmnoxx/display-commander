@@ -2,7 +2,7 @@
 
 ## Goal
 
-Check every `PFN_BCrypt*` and `PFN_Get*Interface` in `bcrypt.hpp` and the corresponding proxy in `bcrypt_proxy.cpp` against the **official** Windows BCrypt API. Use Microsoft docs (bcrypt.h) as the source of truth. **Wine bcrypt.spec was removed** (it was wrong for several functions; proxy is maintained manually).
+Check every `PFN_BCrypt*` and `PFN_Get*Interface` in `bcrypt_proxy.hpp` and the corresponding proxy in `bcrypt_proxy.cpp` against the **official** Windows BCrypt API. Use Microsoft docs (bcrypt.h) as the source of truth. **Wine bcrypt.spec was removed** (it was wrong for several functions; proxy is maintained manually).
 
 ## Official references
 
@@ -11,7 +11,7 @@ Check every `PFN_BCrypt*` and `PFN_Get*Interface` in `bcrypt.hpp` and the corres
 
 ## Files to check
 
-- `src/addons/display_commander/proxy_dll/bcrypt.hpp` — typedefs for forwarding (PFN_*).
+- `src/addons/display_commander/proxy_dll/bcrypt_proxy.hpp` — typedefs for forwarding (PFN_*).
 - `src/addons/display_commander/proxy_dll/bcrypt_proxy.cpp` — extern "C" proxy implementations and fn() call argument order.
 
 ## Verification process (per function)
@@ -20,7 +20,7 @@ Check every `PFN_BCrypt*` and `PFN_Get*Interface` in `bcrypt.hpp` and the corres
 2. **Compare parameter count and order** — Our typedef and proxy must match the "Syntax" block exactly (parameter names may differ; types must be ABI-compatible: opaque handles as `void*`, ULONG, LPCWSTR, etc.).
 3. **Compare return type** — NTSTATUS (we use LONG, which is correct for Windows ABI).
 4. **Proxy forwarding** — In bcrypt_proxy.cpp the `fn(...)` call must pass arguments in the **same order** as the typedef and the official API (no swapped pbOutput/cbOutput, etc.).
-5. **Mark result** — OK / Wrong (fix in bcrypt.hpp and bcrypt_proxy.cpp).
+5. **Mark result** — OK / Wrong (fix in bcrypt_proxy.hpp and bcrypt_proxy.cpp).
 
 ## Already fixed (do not regress)
 
@@ -58,7 +58,7 @@ Use this table to track. Verify each row: open the doc, compare signature, then 
 | 20 | BCryptEnumContextFunctionProviders | [nf-bcrypt-bcryptenumcontextfunctionproviders](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptenumcontextfunctionproviders) | 6: dwTable, pszContext, dwInterface, pszFunction, pcbBuffer, ppBuffer | |
 | 21 | BCryptEnumContextFunctions | [nf-bcrypt-bcryptenumcontextfunctions](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptenumcontextfunctions) | 5: dwTable, pszContext, dwInterface, pcbBuffer, ppBuffer | |
 | 22 | BCryptEnumContexts | [nf-bcrypt-bcryptenumcontexts](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptenumcontexts) | 3: dwTable, pcbBuffer, ppBuffer | |
-| 23 | BCryptEnumProviders | [nf-bcrypt-bcryptenumproviders](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptenumproviders) | 4: dwAlgOperations, pImplCount, ppImplList, dwFlags | |
+| 23 | BCryptEnumProviders | [nf-bcrypt-bcryptenumproviders](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptenumproviders) | 4: **pszAlgId** (LPCWSTR), pImplCount, ppImplList, dwFlags | **Fixed** (was dwAlgOperations ULONG; official API uses LPCWSTR pszAlgId) |
 | 24 | BCryptEnumRegisteredProviders | [nf-bcrypt-bcryptenumregisteredproviders](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptenumregisteredproviders) | 2: pcbBuffer, ppBuffer | |
 | 25 | BCryptExportKey | [nf-bcrypt-bcryptexportkey](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptexportkey) | 7: hKey, hExportKey, pszBlobType, pbOutput, cbOutput, pcbResult, dwFlags | **Fixed** (was 8 with pParameterList) |
 | 26 | BCryptFinalizeKeyPair | [nf-bcrypt-bcryptfinalizekeypair](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptfinalizekeypair) | 2: hKey, dwFlags | |
@@ -86,7 +86,7 @@ Use this table to track. Verify each row: open the doc, compare signature, then 
 | 48 | BCryptResolveProviders | [nf-bcrypt-bcryptresolveproviders](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptresolveproviders) | 8: pszContext, dwInterface, pszFunction, pszProvider, dwMode, dwFlags, pcbBuffer, ppBuffer | **Fixed** (was 6) |
 | 49 | BCryptSecretAgreement | [nf-bcrypt-bcryptsecretagreement](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptsecretagreement) | 4: hPrivKey, hPubKey, phSecret, dwFlags | |
 | 50 | BCryptSetAuditingInterface | [nf-bcrypt-bcryptsetauditinginterface](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptsetauditinginterface) | 1: pAuditingInterface | |
-| 51 | BCryptSetContextFunctionProperty | [nf-bcrypt-bcryptsetcontextfunctionproperty](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptsetcontextfunctionproperty) | 7: dwTable, pszContext, dwInterface, pszFunction, pszProperty, pbValue, cbValue | |
+| 51 | BCryptSetContextFunctionProperty | [nf-bcrypt-bcryptsetcontextfunctionproperty](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptsetcontextfunctionproperty) | 7: dwTable, pszContext, dwInterface, pszFunction, pszProperty, **cbValue**, **pbValue** | **Fixed** (was pbValue, cbValue; official order is cbValue then pbValue) |
 | 52 | BCryptSetProperty | [nf-bcrypt-bcryptsetproperty](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptsetproperty) | 5: hObject, pszProperty, pbInput, cbInput, dwFlags | |
 | 53 | BCryptSignHash | [nf-bcrypt-bcryptsignhash](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptsignhash) | 8: hKey, pPaddingInfo, pbInput, cbInput, pbOutput, cbOutput, pcbResult, dwFlags | |
 | 54 | BCryptUnregisterConfigChangeNotify | [nf-bcrypt-bcryptunregisterconfigchangenotify](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptunregisterconfigchangenotify) | 1: hEvent (HANDLE) | |

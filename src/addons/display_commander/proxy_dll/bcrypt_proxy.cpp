@@ -15,7 +15,7 @@
 // Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top
 #include "../utils/detour_call_tracker.hpp"
 #include "../utils/timing.hpp"
-#include "bcrypt.hpp"
+#include "bcrypt_proxy.hpp"
 
 // Libraries <standard C++>
 #include <string>
@@ -39,6 +39,7 @@ bool LoadRealBcrypt() {
 
 }  // namespace
 
+/* 1-20 */
 extern "C" LONG WINAPI BCryptAddContextFunction(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
                                                 LPCWSTR pszFunction, ULONG dwPosition) {
     CALL_GUARD(utils::get_now_ns());
@@ -230,12 +231,12 @@ extern "C" LONG WINAPI BCryptEnumContexts(ULONG dwTable, ULONG* pcbBuffer, void*
     return (LONG)fn(dwTable, pcbBuffer, ppBuffer);
 }
 
-extern "C" LONG WINAPI BCryptEnumProviders(ULONG dwAlgOperations, ULONG* pImplCount, void* ppImplList, ULONG dwFlags) {
+extern "C" LONG WINAPI BCryptEnumProviders(LPCWSTR pszAlgId, ULONG* pImplCount, void* ppImplList, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
     if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
     auto fn = (PFN_BCryptEnumProviders)GetProcAddress(g_bcrypt_module, "BCryptEnumProviders");
     if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
-    return (LONG)fn(dwAlgOperations, pImplCount, ppImplList, dwFlags);
+    return (LONG)fn(pszAlgId, pImplCount, ppImplList, dwFlags);
 }
 
 extern "C" LONG WINAPI BCryptEnumRegisteredProviders(ULONG* pcbBuffer, void* ppBuffer) {
@@ -246,6 +247,7 @@ extern "C" LONG WINAPI BCryptEnumRegisteredProviders(ULONG* pcbBuffer, void* ppB
     return (LONG)fn(pcbBuffer, ppBuffer);
 }
 
+/* 21-40 */
 extern "C" LONG WINAPI BCryptExportKey(void* hKey, void* hExportKey, LPCWSTR pszBlobType, void* pbOutput,
                                        ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags) {
     CALL_GUARD(utils::get_now_ns());
@@ -422,6 +424,7 @@ extern "C" LONG WINAPI BCryptRegisterConfigChangeNotify(HANDLE* pEvent) {
     return (LONG)fn(pEvent);
 }
 
+/* 41-56 */
 extern "C" LONG WINAPI BCryptRegisterProvider(LPCWSTR pszProvider, ULONG dwMode, void* pRegistration) {
     CALL_GUARD(utils::get_now_ns());
     if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
@@ -476,13 +479,13 @@ extern "C" LONG WINAPI BCryptSetAuditingInterface(void* pAuditingInterface) {
 }
 
 extern "C" LONG WINAPI BCryptSetContextFunctionProperty(ULONG dwTable, LPCWSTR pszContext, ULONG dwInterface,
-                                                        LPCWSTR pszFunction, LPCWSTR pszProperty, void* pbValue,
-                                                        ULONG cbValue) {
+                                                        LPCWSTR pszFunction, LPCWSTR pszProperty, ULONG cbValue,
+                                                        void* pbValue) {
     CALL_GUARD(utils::get_now_ns());
     if (!LoadRealBcrypt()) return (LONG)STATUS_NOT_IMPLEMENTED;
     auto fn = (PFN_BCryptSetContextFunctionProperty)GetProcAddress(g_bcrypt_module, "BCryptSetContextFunctionProperty");
     if (fn == nullptr) return (LONG)STATUS_NOT_IMPLEMENTED;
-    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pszProperty, pbValue, cbValue);
+    return (LONG)fn(dwTable, pszContext, dwInterface, pszFunction, pszProperty, cbValue, pbValue);
 }
 
 extern "C" LONG WINAPI BCryptSetProperty(void* hObject, LPCWSTR pszProperty, void* pbInput, ULONG cbInput,
@@ -529,6 +532,7 @@ extern "C" LONG WINAPI BCryptVerifySignature(void* hKey, void* pPaddingInfo, voi
     return (LONG)fn(hKey, pPaddingInfo, pbHash, cbHash, pbSignature, cbSignature, dwFlags);
 }
 
+/* Get*Interface (undocumented) */
 extern "C" void* WINAPI GetAsymmetricEncryptionInterface(void) {
     CALL_GUARD(utils::get_now_ns());
     if (!LoadRealBcrypt()) return nullptr;

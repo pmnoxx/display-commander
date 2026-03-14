@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate bcrypt_proxy.cpp from bcrypt.hpp by parsing every PFN_ typedef.
+Generate bcrypt_proxy.cpp from bcrypt_proxy.hpp by parsing every PFN_ typedef.
 
   python scripts/gen_bcrypt_proxy_from_hpp.py
 
-Reads src/addons/display_commander/proxy_dll/bcrypt.hpp and writes
+Reads src/addons/display_commander/proxy_dll/bcrypt_proxy.hpp and writes
 src/addons/display_commander/proxy_dll/bcrypt_proxy.cpp.
 
 Only lines matching:
@@ -12,7 +12,7 @@ Only lines matching:
 are used. Export name is derived by stripping the PFN_ prefix (e.g. PFN_BCryptDecrypt -> BCryptDecrypt).
 Return types: NTSTATUS -> LONG WINAPI wrapper; void -> void WINAPI; void* -> void* WINAPI (for Get*Interface).
 
-After adding or changing PFN_ typedefs in bcrypt.hpp, run this script to regenerate the proxy.
+After adding or changing PFN_ typedefs in bcrypt_proxy.hpp, run this script to regenerate the proxy.
 """
 
 import re
@@ -63,7 +63,7 @@ def export_name_from_pfn(pfn_type: str) -> str:
 
 
 def collect_typedefs(hpp_path: str) -> list[tuple[str, str, str, list[str]]]:
-    """Read bcrypt.hpp and return list of (return_type, pfn_type, params_str, param_names)."""
+    """Read bcrypt_proxy.hpp and return list of (return_type, pfn_type, params_str, param_names)."""
     with open(hpp_path, "r", encoding="utf-8") as f:
         content = f.read()
     entries = []
@@ -80,7 +80,7 @@ def generate_cpp(entries: list[tuple[str, str, str, list[str]]], out_path: str, 
     """Write bcrypt_proxy.cpp with header and one extern \"C\" wrapper per entry."""
     lines = [
         "/*",
-        " * bcrypt.dll proxy. Generated from bcrypt.hpp by scripts/gen_bcrypt_proxy_from_hpp.py",
+        " * bcrypt.dll proxy. Generated from bcrypt_proxy.hpp by scripts/gen_bcrypt_proxy_from_hpp.py",
         " * Regenerate: python scripts/gen_bcrypt_proxy_from_hpp.py",
         " *",
         " * This file must not include bcrypt.h so our extern \"C\" proxy symbols do not conflict with",
@@ -94,7 +94,7 @@ def generate_cpp(entries: list[tuple[str, str, str, list[str]]], out_path: str, 
         "// Source Code <Display Commander> // follow this order for includes in all files + add this comment at the top",
         '#include "../utils/detour_call_tracker.hpp"',
         '#include "../utils/timing.hpp"',
-        '#include "bcrypt.hpp"',
+        '#include "bcrypt_proxy.hpp"',
         "",
         "// Libraries <standard C++>",
         "#include <string>",
@@ -164,7 +164,7 @@ def generate_cpp(entries: list[tuple[str, str, str, list[str]]], out_path: str, 
 def main():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     src = os.path.join(repo_root, "src", "addons", "display_commander", "proxy_dll")
-    hpp_path = os.path.join(src, "bcrypt.hpp")
+    hpp_path = os.path.join(src, "bcrypt_proxy.hpp")
     cpp_path = os.path.join(src, "bcrypt_proxy.cpp")
 
     if not os.path.isfile(hpp_path):
@@ -172,7 +172,7 @@ def main():
 
     entries = collect_typedefs(hpp_path)
     if not entries:
-        raise SystemExit("No PFN_ typedefs found in bcrypt.hpp")
+        raise SystemExit("No PFN_ typedefs found in bcrypt_proxy.hpp")
 
     generate_cpp(entries, cpp_path, src)
     print(f"Wrote {len(entries)} exports to {cpp_path}")

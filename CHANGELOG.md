@@ -2,6 +2,12 @@
 
 **Used tags** (multiple allowed per entry): `[new feature]` – New user-facing capability. `[bugfix]` – Fix for incorrect or broken behavior. `[cleanup]` – Code or docs refactor; behavior unchanged. `[ui]` – UI/UX change only. `[settings]` – Config, defaults, or persistence. `[hooks]` – Hook install/suppress/behavior. `[removal]` – Feature removed or disabled. `[compatibility]` – Interop with other software (e.g. ReFramework, ReShade). `[experimental]` – Experimental or optional feature.
 
+## Unreleased
+
+## v0.12.513
+- [bugfix] **BCryptSetContextFunctionProperty parameter order in bcrypt proxy** - The last two parameters were reversed: the proxy had (..., pbValue, cbValue) but the official API is (..., cbValue, pbValue). Typedef and proxy now match the official signature to avoid misaligned arguments. Details: bcrypt_proxy.hpp PFN_BCryptSetContextFunctionProperty, bcrypt_proxy.cpp BCryptSetContextFunctionProperty.
+- [bugfix] **BCryptEnumProviders wrong signature in bcrypt proxy** - The proxy used `ULONG dwAlgOperations` as the first parameter; the official API uses `LPCWSTR pszAlgId` (algorithm identifier string). Callers passing a string pointer would have been misinterpreted, or vice versa. Typedef and proxy now match the official BCryptEnumProviders signature. Details: bcrypt_proxy.hpp PFN_BCryptEnumProviders, bcrypt_proxy.cpp BCryptEnumProviders.
+
 ## v0.12.512
 - **WinHTTP proxy (winhttp.dll)** - Display Commander can now be used as a winhttp.dll proxy: all WinHTTP API exports are forwarded to the system winhttp.dll loaded from the system directory. Enables games or tools that load winhttp.dll from the game folder to work when using DC as a proxy. Signatures in winhttp_proxy.hpp and proxy stubs were verified against the official Microsoft WinHTTP API (winhttp.h). Details: proxy_dll/winhttp_proxy.hpp, winhttp_proxy.cpp, exports.def (winhttp block), loadlibrary_hooks GetProxyDllNames, dc_load_path known DLLs.
 - **WinHTTP proxy signatures header** - Added `winhttp_proxy.hpp` with function pointer typedefs (signatures) for the full WinHTTP API, extracted from the official winhttp.h. Enables a future winhttp.dll proxy that forwards to the system WINHTTP.dll. Details: proxy_dll/winhttp_proxy.hpp (PFN_WinHttp* types, HINTERNET as void*).
@@ -12,11 +18,11 @@
 - **Known DLLs: * before module name on [OnModuleLoaded] line** - When the loaded module itself is a Known DLL (e.g. mswsock.dll), the main log line now shows "*" before the module name (e.g. "[OnModuleLoaded] *mswsock.dll (0x71AD0000) - …"). Same logic for "ReShade module set" and "Other module loaded" lines. Added IsKnownDllName() and mswsock.dll to the hardcoded list. Details: utils/pe_static_imports.hpp IsKnownDllName, loadlibrary_hooks.cpp OnModuleLoaded module_display_name.
 
 ## v0.12.510
-- [bugfix] **BCryptHash wrong signature in bcrypt proxy** - The proxy used 8 parameters (pbInput, cbInput, pbHashObject, cbHashObject, pbOutput, cbOutput, dwFlags) but the official API has 7: (pbSecret, cbSecret, pbInput, cbInput, pbOutput, cbOutput) with no dwFlags. Corrected typedef and proxy to match the official BCryptHash signature to avoid crashes. Details: bcrypt.hpp PFN_BCryptHash, bcrypt_proxy.cpp BCryptHash.
+- [bugfix] **BCryptHash wrong signature in bcrypt proxy** - The proxy used 8 parameters (pbInput, cbInput, pbHashObject, cbHashObject, pbOutput, cbOutput, dwFlags) but the official API has 7: (pbSecret, cbSecret, pbInput, cbInput, pbOutput, cbOutput) with no dwFlags. Corrected typedef and proxy to match the official BCryptHash signature to avoid crashes. Details: bcrypt_proxy.hpp PFN_BCryptHash, bcrypt_proxy.cpp BCryptHash.
 - [cleanup] **Remove Wine bcrypt.spec** - The Wine bcrypt.spec was wrong for several functions (e.g. BCryptResolveProviders, BCryptExportKey, BCryptHash). Removed `scripts/specs/bcrypt.spec`; the bcrypt proxy is maintained manually against the official Windows API only. Updated gen_proxy_from_spec.py, bcrypt_proxy.cpp header, verification plan, and docs/uptodate/bcrypt_proxy_official_comparison.md.
 
 ## v0.12.509
-- [bugfix] **BCryptResolveProviders crash in bcrypt proxy** - The proxy’s signature was missing two parameters (`dwMode`, `dwFlags`) that the real Windows API has. Callers passed 8 arguments but the proxy only accepted 6 and forwarded 6, so the real bcrypt.dll saw misaligned arguments (e.g. buffer pointer in the `dwMode` slot) and crashed. The proxy and typedef now match the official 8-parameter signature. Details: bcrypt_proxy.cpp, bcrypt.hpp PFN_BCryptResolveProviders.
+- [bugfix] **BCryptResolveProviders crash in bcrypt proxy** - The proxy’s signature was missing two parameters (`dwMode`, `dwFlags`) that the real Windows API has. Callers passed 8 arguments but the proxy only accepted 6 and forwarded 6, so the real bcrypt.dll saw misaligned arguments (e.g. buffer pointer in the `dwMode` slot) and crashed. The proxy and typedef now match the official 8-parameter signature. Details: bcrypt_proxy.cpp, bcrypt_proxy.hpp PFN_BCryptResolveProviders.
 
 ---
 

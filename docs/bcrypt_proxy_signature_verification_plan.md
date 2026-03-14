@@ -2,7 +2,7 @@
 
 ## Goal
 
-Check every `PFN_BCrypt*` and `PFN_Get*Interface` in `bcrypt.hpp` and the corresponding proxy in `bcrypt_proxy.cpp` against the **official** Windows BCrypt API. Use Microsoft docs (bcrypt.h) as the source of truth; do not rely on Wine bcrypt.spec (it is wrong for some functions).
+Check every `PFN_BCrypt*` and `PFN_Get*Interface` in `bcrypt.hpp` and the corresponding proxy in `bcrypt_proxy.cpp` against the **official** Windows BCrypt API. Use Microsoft docs (bcrypt.h) as the source of truth. **Wine bcrypt.spec was removed** (it was wrong for several functions; proxy is maintained manually).
 
 ## Official references
 

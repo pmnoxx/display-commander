@@ -3,7 +3,7 @@
 Compare each export with the official Windows CNG API (bcrypt.h). References: [bcrypt.h](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/), [BCrypt functions](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/#functions).
 
 - **Official:** Microsoft Learn signature (NTSTATUS = LONG; BCRYPT_*_HANDLE = void*; ULONG = LONG; ULONGLONG = DWORD64).
-- **Ours:** Current proxy signature in `proxy_dll/bcrypt_proxy.cpp` (from Wine bcrypt.spec via gen_proxy_from_spec.py).
+- **Ours:** Current proxy signature in `proxy_dll/bcrypt_proxy.cpp` (maintained against official API; Wine bcrypt.spec was removed as wrong).
 - **Match?:** Yes / No. **Notes:** ABI or type differences (especially 64-bit).
 
 ## Summary
@@ -121,9 +121,9 @@ Not in bcrypt.h; internal/legacy exports. We stub and return 0. If real bcrypt.d
 
 ## Not in our proxy (documented in bcrypt.h)
 
-The following are documented but not exported in Wine's bcrypt.spec / our proxy. We do not add them unless a game or tool requires them.
+The following are documented but not in our proxy. We do not add them unless a game or tool requires them.
 
 - **BCryptCreateMultiHash**, **BCryptProcessMultiOperations** — multi-hash APIs (newer).
 - **BCRYPT_INIT_AUTH_MODE_INFO** — macro/helper, not a DLL export.
 
-Our proxy is generated from Wine's bcrypt.spec; the spec matches the exports that Wine and many games use. No changes to the proxy are required for official API alignment.
+Our proxy is maintained against the official API (see docs/bcrypt_proxy_signature_verification_plan.md). Wine bcrypt.spec was removed; several signatures were fixed (e.g. BCryptResolveProviders, BCryptExportKey, BCryptHash) to match the official API.

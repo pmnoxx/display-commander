@@ -5,6 +5,8 @@
 
 ## Unreleased
 
+- **Caller detection skips nothing** - When resolving the "Caller" for the DllMain log line, the stack walk now reports the first module outside our DLL with no other skips (caller may be kernel32, ntdll, game exe, etc.). Details: main_entry.cpp CaptureDllLoadCallerPath.
+
 ---
 ## v0.12.502
 - [bugfix] **DllMain log message and file write** - The "[DisplayCommander] DisplayCommander module path: ..." line is now always sent to DebugView on every load, even when the log file cannot be created or written. Removed create_directories from DllMain so directory creation no longer runs during process attach (avoids exceptions/failures that prevented any message or file write). File append still happens when the DLL directory is writable. Details: main_entry.cpp EnsureDisplayCommanderLogWithModulePath.

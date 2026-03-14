@@ -2559,8 +2559,8 @@ static bool DllDetectorCopyToLoadedIfEnabled(HMODULE h_module) {
     return true;
 }
 
-// Captures the path of the module that caused this DLL to load (first stack frame outside our DLL and the loader).
-// Safe to call from DllMain; sets g_dll_load_caller_path.
+// Captures the path of the module that caused this DLL to load (first stack frame outside our DLL).
+// Safe to call from DllMain; sets g_dll_load_caller_path. Does not skip any modules (caller may be loader/system).
 static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
     try {
         void* backtrace[32] = {};
@@ -2576,11 +2576,7 @@ static void CaptureDllLoadCallerPath(HMODULE h_our_module) {
             }
             if (hmod == h_our_module) continue;
             if (GetModuleFileNameW(hmod, path_buf, MAX_PATH) == 0) continue;
-            std::filesystem::path p(path_buf);
-            std::string name = p.filename().string();
-            for (auto& c : name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-            if (name == "ntdll.dll" || name == "kernel32.dll" || name == "kernelbase.dll") continue;
-            g_dll_load_caller_path = p.string();
+            g_dll_load_caller_path = std::filesystem::path(path_buf).string();
             return;
         }
     } catch (...) {

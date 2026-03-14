@@ -93,6 +93,53 @@ EXPORTS
 	DllRegisterServer PRIVATE
 	DllUnregisterServer PRIVATE
 
+	; hid.dll exports (Wine hid.spec)
+	; https://github.com/wine-mirror/wine/blob/master/dlls/hid/hid.spec
+	HidD_FlushQueue PRIVATE
+	HidD_FreePreparsedData PRIVATE
+	HidD_GetAttributes PRIVATE
+	HidD_GetConfiguration PRIVATE
+	HidD_GetFeature PRIVATE
+	HidD_GetHidGuid PRIVATE
+	HidD_GetIndexedString PRIVATE
+	HidD_GetInputReport PRIVATE
+	HidD_GetManufacturerString PRIVATE
+	HidD_GetMsGenreDescriptor PRIVATE
+	HidD_GetNumInputBuffers PRIVATE
+	HidD_GetPhysicalDescriptor PRIVATE
+	HidD_GetPreparsedData PRIVATE
+	HidD_GetProductString PRIVATE
+	HidD_GetSerialNumberString PRIVATE
+	HidD_Hello PRIVATE
+	HidD_SetConfiguration PRIVATE
+	HidD_SetFeature PRIVATE
+	HidD_SetNumInputBuffers PRIVATE
+	HidD_SetOutputReport PRIVATE
+	HidP_GetButtonCaps PRIVATE
+	HidP_GetCaps PRIVATE
+	HidP_GetData PRIVATE
+	HidP_GetExtendedAttributes PRIVATE
+	HidP_GetLinkCollectionNodes PRIVATE
+	HidP_GetScaledUsageValue PRIVATE
+	HidP_GetSpecificButtonCaps PRIVATE
+	HidP_GetSpecificValueCaps PRIVATE
+	HidP_GetUsageValue PRIVATE
+	HidP_GetUsageValueArray PRIVATE
+	HidP_GetUsages PRIVATE
+	HidP_GetUsagesEx PRIVATE
+	HidP_GetValueCaps PRIVATE
+	HidP_InitializeReportForID PRIVATE
+	HidP_MaxDataListLength PRIVATE
+	HidP_MaxUsageListLength PRIVATE
+	HidP_SetData PRIVATE
+	HidP_SetScaledUsageValue PRIVATE
+	HidP_SetUsageValue PRIVATE
+	HidP_SetUsageValueArray PRIVATE
+	HidP_SetUsages PRIVATE
+	HidP_TranslateUsagesToI8042ScanCodes PRIVATE
+	HidP_UnsetUsages PRIVATE
+	HidP_UsageListDifference PRIVATE
+
 	; opengl32.dll exports
 	glAccum PRIVATE
 	glAlphaFunc PRIVATE

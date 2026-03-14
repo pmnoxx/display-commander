@@ -10,6 +10,10 @@
 - [cleanup] **try_all_proxies scripts reorganized**
 
 ---
+## v0.12.494
+- [compatibility] **hid.dll proxy** - Display Commander proxy DLL can now be used as hid.dll: all HidD_* and HidP_* exports from Wine's hid.spec are forwarded to the system hid.dll. Generated from scripts/gen_proxy_from_spec.py and scripts/specs/hid.spec; stubs return FALSE. Enables games or tools that load hid.dll to work when using DC as a proxy. Details: proxy_dll/hid_proxy.cpp, proxy_dll/exports.def (hid block), gen_proxy_from_spec.py (hid return type BOOL).
+
+---
 ## v0.12.493
 - **DisplayCommander.log created in exe folder when missing** - On DLL load, if DisplayCommander.log does not exist in the game executable's folder, it is created and the full path of the loaded Display Commander module is written into it. Helps confirm which DLL is loaded when debugging. Details: main_entry.cpp DllMain (before the logger is initialized).
 

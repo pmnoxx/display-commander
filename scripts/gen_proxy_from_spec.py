@@ -8,6 +8,7 @@ Takes DLL name and path to .spec file. Outputs xxx_proxy.cpp and xxx_exports.def
   python scripts/gen_proxy_from_spec.py d3d11 scripts/specs/d3d11.spec
   python scripts/gen_proxy_from_spec.py dinput8 scripts/specs/dinput8.spec
   python scripts/gen_proxy_from_spec.py dbghelp scripts/specs/dbghelp.spec
+  python scripts/gen_proxy_from_spec.py hid scripts/specs/hid.spec
   python scripts/gen_proxy_from_spec.py vulkan-1 scripts/specs/vulkan-1.spec
 
 Wine .spec format:
@@ -152,6 +153,9 @@ def default_return_type(name, dll_name):
         if "UnDecorate" in name or "SymUnDName" in name:
             return "DWORD"
         return "LONG"
+    if dll_lower == "hid":
+        # HidD_* and HidP_* return BOOLEAN (BOOL) on Windows
+        return "BOOL"
     return "LONG"
 
 
